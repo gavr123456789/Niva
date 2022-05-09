@@ -110,5 +110,7 @@ x = 65
 x > 2 ifTrue: ["> 2" print].
 x == 0 ifTrue: ["== 0" print].
 x switch
+
+
   
 ```
