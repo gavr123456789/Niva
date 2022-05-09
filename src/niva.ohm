@@ -1,14 +1,11 @@
 Niva {
 
-
   // STATEMENTS
   statements = 
     | returnStatement dot?  -- returnStatement
     | typeDeclaration dot? -- typeDeclarationStatement
     | methodDeclaration dot? -- methodDeclarationStatement
-  	| expression (dot statements)? -- expressionStatement
-
-
+  	| expression (dot statements)? dot? -- expressionStatement
 
   // TYPE DECLARATION
 	typeDeclaration = "type" spaces untypedIdentifier spaces "=" spaces typedProperties
@@ -43,8 +40,8 @@ Niva {
     
   // MESSAGES
   messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
-  					   | (binaryMessage+ keywordMessage?) -- binaryFirst
-                       | (keywordMessage)
+  					  | (binaryMessage+ keywordMessage?) -- binaryFirst
+              | (keywordMessage)
   
   
   keywordMessage = spaces (keywordM spaces keywordArgument)+ spaces
@@ -148,5 +145,5 @@ Niva {
   
   assignmentOp= "="
   returnOp = "^"
-  dot = "."
+  dot = "." spaces
   }
