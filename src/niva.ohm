@@ -1,7 +1,4 @@
 Niva {
-
-
-
   // statement
   statements = statement (dot statement)* dot?
   statement = 
@@ -9,7 +6,7 @@ Niva {
     | typeDeclaration -- typeDeclarationStatement
     | methodDeclaration -- methodDeclarationStatement
     | assignment -- assignmentStatement
-  	| basicExpression  -- expressionStatement
+  	| expression  -- expressionStatement
 
 
 
@@ -23,29 +20,34 @@ Niva {
   methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
   
   // min: x::int max: y::int from: z
-  keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
+  keywordMethodDeclarationArgs = spaces (keywordMethodDeclarationArg | unaryMethodDeclarationArgs | binaryMethodDeclarationArgs) ( spaces keywordMethodDeclarationArg spaces )*
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
-  unaryMethodDeclarationArgs = 
-  
+  unaryMethodDeclarationArgs = untypedIdentifier
+  binaryMethodDeclarationArgs = binarySelector whiteSpaces identifier
+
   returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier
   returnTypeOperator = "->"
   
   
   // EXPRESSION
-  expression = basicExpression
   
   assignment = assignmentTarget spaces assignmentOp spaces expression
   assignmentTarget = identifier
   
-  basicExpression = primary (messages cascadedMessages)* // Может быть просто x = 4, а может быть x = 4 factorial
+  // expressionAsReceiver = expression
+  receiver = 
+  	| primary
+   // | expressionAsReceiver
+    | "(" expression ")" -- expressionInBrackets
+    | blockConstructor
+  
+  expression = receiver (messages cascadedMessages)* // Может быть просто x = 4, а может быть x = 4 factorial
   // x = 3 или "asd" или x someMessage
   primary = 
   	| identifier 
     | anyLiteral 
-    | expression    
-    | "(" expression ")" -- expressionInBrackets
-    | blockConstructor
+    
 
     
     
@@ -70,7 +72,7 @@ Niva {
   
   // BLOCKS
   blockConstructor = "[" spaces blockBody spaces "]"
-  blockBody = (blockArgument* "|")? spaces statement? 
+  blockBody = (blockArgument* "|")? spaces statements? 
   // blockArgument = ":" identifier spaces
   blockArgument = identifier spaces
   

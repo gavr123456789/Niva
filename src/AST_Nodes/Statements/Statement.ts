@@ -1,8 +1,9 @@
-import { IntLiteralNode } from "../Literals/IntLiteralNode"
-import { StringLiteralNode } from "../Literals/StringLiteralNode"
+import { IntLiteral } from "./Expressions/Primary/Literals/IntLiteralNode"
+import { StringLiteral } from "./Expressions/Primary/Literals/StringLiteralNode"
+import { Expression } from "./Expressions/Expressions"
 
 export type Statement = 
-  | ExpressionStatement 
+  | Expression 
   | ReturnStatement 
   | MethodDeclarationStatement 
   | TypeDeclarationStatement
@@ -13,7 +14,7 @@ export interface Assignment {
   kindStatement: "Assignment"
   assignmentTarget: string
   type?: string
-  to: StringLiteralNode | IntLiteralNode // | BoolLiteralNode
+  to: Expression // | BoolLiteralNode
   mutability: Mutability 
 
   messagelineAndColumnMessage: string,
@@ -21,10 +22,6 @@ export interface Assignment {
   file: "" // TODO
 }
 
-export interface ExpressionStatement {
-  kindStatement: "ExpressionStatement"
-  value: Assignment // | BasicExpression
-}
 export interface ReturnStatement {
   kindStatement: "ReturnStatement"
   value: never

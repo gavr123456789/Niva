@@ -1,31 +1,74 @@
-import test from 'ava';
+import test, { ExecutionContext } from 'ava';
 import { RedefinitionOfVariableError } from './Errors/Error';
 import { generateNimCode } from './niva';
 import { echo, grammarMatch, isDebug } from './utils';
 
 isDebug.isDebug = false
 
+
+function match(t: ExecutionContext<unknown>, code: string, startRule: string = "statement") {
+  t.is(grammarMatch(code, startRule).succeeded(), true)
+}
+
+// GRAMMAR
+
+// Messages
 test('Grammar binary message send', t => {
-  t.is(grammarMatch("5 + 5", "basicExpression").succeeded(), true)
-  t.is(grammarMatch("5 ++ 5", "basicExpression").succeeded(), true)
-  t.is(grammarMatch("5 |> 5", "basicExpression").succeeded(), true)
+  match(t, "5 + 5", "expression")
+  match(t, "5 ++ 5", "expression")
+  match(t, "5 |> 5", "expression")
 });
 
 test('Grammar unary message send', t => {
-  t.is(grammarMatch("\"reverce this!\" reverce", "basicExpression").succeeded(), true)
-  t.is(grammarMatch("5 factorial", "basicExpression").succeeded(), true)
+  match(t, "\"reverce this!\" reverce", "expression")
+  match(t, "5 factorial", "expression")
 });
 
-
+// Code blocks
 test('Grammar code block', t => {
-  t.is(grammarMatch("[ 5 factorial ]",).succeeded(), true)
+  match(t, "[ 5 factorial ]", "expression")
 });
 test('Grammar multy-line code block', t => {
-  t.is(grammarMatch("[\n 5 factorial \n]",).succeeded(), true)
+  match(t, "[\n 5 factorial \n]", "expression")
 });
 test('Grammar empty code block', t => {
-  t.is(grammarMatch("[\n\n]").succeeded(), true)
+  match(t, "[\n\n]")
 });
+
+// Methods declaration
+test('Methods declaration, unary', t => {
+  match(t, "Person die -> int = [ x sas ]")
+});
+test('Methods declaration, binary', t => {
+  match(t, "Person + x::int -> int = [ x sas ]")
+});
+test('Methods declaration, keyword', t => {
+  match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
+});
+
+// Message call
+
+test('Methods call, unary typed', t => {
+  match(t, "Person x -> int = [ x sas ]")
+});
+test('Methods call, unary untyped', t => {
+  match(t, "Person from: a to: b = [ x sas ]")
+});
+
+test('Methods call, binary typed', t => {
+  match(t, "int + x::int -> int = [ x sas ]")
+});
+test('Methods call, binary untyped', t => {
+  match(t, "int + x -> int = [ x sas ]")
+});
+
+test('Methods call, keyword typed', t => {
+  match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
+});
+test('Methods call, keyword untyped', t => {
+  match(t, "Person from: a to: b = [ x sas ]")
+});
+
 
 // CODEGEN
 
@@ -41,7 +84,6 @@ test('Codegen assignment statement', t => {
 test('Codegen Asigment same variables names', t => {
   const code = 'x = 5.\nx = 6.'
   const [_statementList,_nimCode, errors] = generateNimCode(code)
-  // echo({_statementList})
   
   const varError = errors[0]
   t.truthy(varError)
@@ -55,4 +97,20 @@ test('Codegen Asigment same variables names', t => {
   // console.log("was already defined in ");
   // console.log(varError.previousLineAndColMessage);
 
+});
+
+// Expressions
+
+// test('Codegen Expressions Binary messages', t => {
+//   const code = 'x = 5 + 5.'
+//   const [_,nimCode] = generateNimCode(code)
+
+//   t.is("let x = 5 + 5", nimCode)
+// });
+
+test('Codegen Expressions Binary messages', t => {
+  const code = '42 echo'
+  const [_,nimCode] = generateNimCode(code)
+
+  t.is("42.echo()", nimCode)
 });
