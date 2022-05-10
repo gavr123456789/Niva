@@ -7,7 +7,7 @@ export function grammarMatch(input: string, startRule?: string): MatchResult {
 
 
 export let isDebug = {
-  isDebug: false
+  isDebug: true
 } 
 export function getName(variable: any){ return Object.keys(variable)[0]}
 // console.log(getName({x}));
