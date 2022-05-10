@@ -1,8 +1,9 @@
 import test from 'ava';
 import { RedefinitionOfVariableError } from './Errors/Error';
 import { generateNimCode } from './niva';
-import { grammarMatch } from './utils';
+import { echo, grammarMatch, isDebug } from './utils';
 
+isDebug.isDebug = false
 
 test('Grammar binary message send', t => {
   t.is(grammarMatch("5 + 5", "basicExpression").succeeded(), true)
@@ -39,7 +40,8 @@ test('Codegen assignment statement', t => {
 // Asigment same variables names
 test('Codegen Asigment same variables names', t => {
   const code = 'x = 5.\nx = 6.'
-  const [_sas,_nimCode, errors] = generateNimCode(code)
+  const [_statementList,_nimCode, errors] = generateNimCode(code)
+  // echo({_statementList})
   
   const varError = errors[0]
   t.truthy(varError)
@@ -48,12 +50,9 @@ test('Codegen Asigment same variables names', t => {
   }
 
   t.is("RedefinitionOfVariableError", varError.errorKind)
-  console.log("variable ", varError.variableName, " from " );
-  console.log(varError.lineAndColMessage);
-  console.log("was already defined in ");
-  console.log(varError.previousLineAndColMessage);
-  // console.log("var error = ", varError);
-  
-  // t.is(expectedError.line, varError.line)
-  // t.is(expectedError.previousLine2, varError.previousLine2)
+  // console.log("variable ", varError.variableName, " from " );
+  // console.log(varError.lineAndColMessage);
+  // console.log("was already defined in ");
+  // console.log(varError.previousLineAndColMessage);
+
 });

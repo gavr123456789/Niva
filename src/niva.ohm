@@ -1,11 +1,17 @@
 Niva {
 
-  // STATEMENTS
-  statements = 
-    | returnStatement dot?  -- returnStatement
-    | typeDeclaration dot? -- typeDeclarationStatement
-    | methodDeclaration dot? -- methodDeclarationStatement
-  	| expression (dot statements)? dot? -- expressionStatement
+
+
+  // statement
+  statements = statement (dot statement)* dot?
+  statement = 
+    | returnStatement  -- returnStatement
+    | typeDeclaration -- typeDeclarationStatement
+    | methodDeclaration -- methodDeclarationStatement
+    | assignment -- assignmentStatement
+  	| basicExpression  -- expressionStatement
+
+
 
   // TYPE DECLARATION
 	typeDeclaration = "type" spaces untypedIdentifier spaces "=" spaces typedProperties
@@ -14,15 +20,20 @@ Niva {
     
   // METHOD DECLARATION
   
-  methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs spaces "=" spaces blockConstructor
+  methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
   
   // min: x::int max: y::int from: z
-  keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )+
+  keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
+  
+  unaryMethodDeclarationArgs = 
+  
+  returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier
+  returnTypeOperator = "->"
   
   
   // EXPRESSION
-  expression = assignment | basicExpression
+  expression = basicExpression
   
   assignment = assignmentTarget spaces assignmentOp spaces expression
   assignmentTarget = identifier
@@ -59,7 +70,7 @@ Niva {
   
   // BLOCKS
   blockConstructor = "[" spaces blockBody spaces "]"
-  blockBody = (blockArgument* "|")? spaces statements? 
+  blockBody = (blockArgument* "|")? spaces statement? 
   // blockArgument = ":" identifier spaces
   blockArgument = identifier spaces
   
@@ -139,11 +150,15 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+" | "," | "/" | "<" | "=" | ">" | "?" | "@" | "\"" | "~" | "|" | "-"
+  binaryCharacter = "!" | "%" | "&" | "*" | "+" | "," | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "|" | "-" 
   binarySelector = binaryCharacter+
 
   
   assignmentOp= "="
   returnOp = "^"
   dot = "." spaces
-  }
+  
+  whiteSpaces = whiteSpace*
+  whiteSpace = " "
+  
+}
