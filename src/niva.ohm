@@ -12,7 +12,7 @@ Niva {
 
   // TYPE DECLARATION
 	typeDeclaration = "type" spaces untypedIdentifier spaces "=" spaces typedProperties
-    typedProperties = typedProperty (spaces "," spaces typedProperty)*
+    typedProperties = typedProperty (spaces typedProperty)*
     typedProperty = untypedIdentifier ":" spaces untypedIdentifier
     
   // METHOD DECLARATION
@@ -58,12 +58,14 @@ Niva {
   
   
   keywordMessage = spaces (keywordM spaces keywordArgument)+ spaces
-  // for keywords messages
+ 
+ 	
+ 
   keywordM = identifier ":"
-  keywordArgument = primary unaryMessage* binaryMessage*
+  keywordArgument = receiver unaryMessage* binaryMessage*
   
   binaryMessage = spaces binarySelector spaces binaryArgument
-  binaryArgument = primary unaryMessage*
+  binaryArgument = receiver unaryMessage*
   
   unaryMessage  = spaces unarySelector
   unarySelector = identifier ~":" // TODO может быть сделать унари селектором только идентифиеры с маленькой буквы?
@@ -148,7 +150,7 @@ Niva {
   
   // CONST
   reservedWord = keyword | nullLiteral | boolLiteral
-  keyword = "type" | "self"
+  keyword = "type"
   separator = (space | comment)* 
   
   // for binary messages 
