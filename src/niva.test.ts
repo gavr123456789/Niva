@@ -7,7 +7,12 @@ isDebug.isDebug = false
 
 
 function match(t: ExecutionContext<unknown>, code: string, startRule: string = "statement") {
-  t.is(grammarMatch(code, startRule).succeeded(), true)
+  const matchedGrammar = grammarMatch(code, startRule)
+  if (matchedGrammar.failed()) {
+    console.error(matchedGrammar.message);
+  } 
+  t.is(matchedGrammar.succeeded(), true)
+ 
 }
 
 // GRAMMAR
@@ -36,38 +41,50 @@ test('Grammar empty code block', t => {
 });
 
 // Methods declaration
-test('Methods declaration, unary', t => {
+test('Grammar Methods declaration, unary', t => {
   match(t, "Person die -> int = [ x sas ]")
 });
-test('Methods declaration, binary', t => {
+test('Grammar Methods declaration, binary', t => {
   match(t, "Person + x::int -> int = [ x sas ]")
 });
-test('Methods declaration, keyword', t => {
+test('Grammar Methods declaration, keyword', t => {
   match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
 });
+
+// Type declaration
+test('Grammar Type declaration', t => {
+  match(t, "type Person = name: string job: string", "typeDeclaration")
+});
+
 
 // Message call
 
-test('Methods call, unary typed', t => {
+test('Grammar Methods call, unary typed', t => {
   match(t, "Person x -> int = [ x sas ]")
 });
-test('Methods call, unary untyped', t => {
+test('Grammar Methods call, unary untyped', t => {
   match(t, "Person from: a to: b = [ x sas ]")
 });
 
-test('Methods call, binary typed', t => {
+test('Grammar Methods call, binary typed', t => {
   match(t, "int + x::int -> int = [ x sas ]")
 });
-test('Methods call, binary untyped', t => {
+test('Grammar Methods call, binary untyped', t => {
   match(t, "int + x -> int = [ x sas ]")
 });
 
-test('Methods call, keyword typed', t => {
+test('Grammar Methods call, keyword typed', t => {
   match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
 });
-test('Methods call, keyword untyped', t => {
+test('Grammar Methods call, keyword untyped', t => {
   match(t, "Person from: a to: b = [ x sas ]")
 });
+
+// Others
+test('Grammar Others typedProperties', t => {
+  match(t, "age: int name: string", "typedProperties")
+});
+
 
 
 // CODEGEN
@@ -108,7 +125,7 @@ test('Codegen Asigment same variables names', t => {
 //   t.is("let x = 5 + 5", nimCode)
 // });
 
-test('Codegen Expressions Binary messages', t => {
+test('Codegen Expressions Unary messages', t => {
   const code = '42 echo'
   const [_,nimCode] = generateNimCode(code)
 
