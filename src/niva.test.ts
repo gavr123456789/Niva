@@ -56,6 +56,11 @@ test('Grammar Type declaration', t => {
   match(t, "type Person = name: string job: string", "typeDeclaration")
 });
 
+// Nested type
+test('Grammar Nested Type declaration', t => {
+  match(t, "type P = x: int y: (type O = z: int)", "typeDeclaration")
+});
+
 
 // Message call
 
@@ -78,6 +83,15 @@ test('Grammar Methods call, keyword typed', t => {
 });
 test('Grammar Methods call, keyword untyped', t => {
   match(t, "Person from: a to: b = [ x sas ]")
+});
+
+// Literals
+test('Grammar List Literal', t => {
+  match(t, "[1,2, 3]", "listLiteral")
+});
+
+test('Grammar Block', t => {
+  match(t, "[1 sas]", "blockConstructor")
 });
 
 // Others
@@ -118,16 +132,50 @@ test('Codegen Asigment same variables names', t => {
 
 // Expressions
 
-// test('Codegen Expressions Binary messages', t => {
-//   const code = 'x = 5 + 5.'
-//   const [_,nimCode] = generateNimCode(code)
 
-//   t.is("let x = 5 + 5", nimCode)
-// });
 
 test('Codegen Expressions Unary messages', t => {
   const code = '42 echo'
   const [_,nimCode] = generateNimCode(code)
 
   t.is("42.echo()", nimCode)
+});
+
+test('Codegen Expressions Unary messages two times', t => {
+  const code = '42 sas sas'
+  const [_,nimCode] = generateNimCode(code)
+
+  t.is("42.sas().sas()", nimCode)
+});
+
+// Binary
+
+test('Codegen Expressions Binary messages', t => {
+  const code = '1 + 2'
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.`+`(2)", nimCode)
+});
+test('Codegen Expressions Binary messages many', t => {
+  const code = '1 + 2 + 3' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.`+`(2).`+`(3)", nimCode)
+});
+
+// Keyword
+
+test('Codegen Expressions Keyword messages', t => {
+  const code = '1 from: 2 to: 3' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.from_to(2, 3)", nimCode)
+});
+
+// Combined 
+test('Codegen Expressions Unary with Binarys', t => {
+  const code = '1 sas + 2 sas' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.sas().`+`(2.sas())", nimCode)
 });
