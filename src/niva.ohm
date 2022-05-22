@@ -13,7 +13,10 @@ Niva {
   // TYPE DECLARATION
 	typeDeclaration = "type" spaces untypedIdentifier spaces "=" spaces typedProperties
     typedProperties = typedProperty (spaces typedProperty)*
-    typedProperty = untypedIdentifier ":" spaces untypedIdentifier
+    typedProperty =
+	  untypedIdentifier ":" spaces (untypedIdentifier | nestedType) 
+	nestedType = "(" spaces typeDeclaration spaces ")"  
+    
     
   // METHOD DECLARATION
   
@@ -38,26 +41,20 @@ Niva {
   // expressionAsReceiver = expression
   receiver = 
   	| primary
-   // | expressionAsReceiver
+    | listLiteral
     | "(" expression ")" -- expressionInBrackets
     | blockConstructor
   
-  expression = receiver (messages cascadedMessages)* // Может быть просто x = 4, а может быть x = 4 factorial
-  // x = 3 или "asd" или x someMessage
-  primary = 
-  	| identifier 
-    | anyLiteral 
-    
-
+  expression = receiver (messages cascadedMessages)? // Может быть просто x = 4, а может быть x = 4 factorial
     
     
   // MESSAGES
   messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
   					  | (binaryMessage+ keywordMessage?) -- binaryFirst
-              | (keywordMessage)
+              | (keywordMessage) -- keywordFirst
   
   
-  keywordMessage = spaces (keywordM spaces keywordArgument)+ spaces
+  keywordMessage = spaces (keywordM spaces keywordArgument spaces)+ spaces
  
  	
  
@@ -72,6 +69,8 @@ Niva {
   
   cascadedMessages = (";" messages)*
   
+  
+
   // BLOCKS
   blockConstructor = "[" spaces blockBody spaces "]"
   blockBody = (blockArgument* "|")? spaces statements? 
@@ -86,8 +85,15 @@ Niva {
   
   identifier = typedIdentifier | untypedIdentifier
   untypedIdentifier = ~reservedWord identifierName
-  type = untypedIdentifier
-  typedIdentifier = untypedIdentifier "::" type
+  typeName = untypedIdentifier
+  typedIdentifier = nestedTypedIdentifier | unaryTypedIdentifier  
+  unaryTypedIdentifier = untypedIdentifier "::" unaryType
+  nestedTypedIdentifier = unaryTypedIdentifier "::" (nonUnaryType | unaryType)+
+  
+  
+  
+  unaryType = typeName
+  nonUnaryType = (nestedTypedIdentifier | typeName) ("," whiteSpaces (nestedTypedIdentifier | typeName))+
   
   identifierName = identifierStart identifierPart*
   identifierStart = letter | "$" | "_"
@@ -95,8 +101,21 @@ Niva {
   
   
   // LITERALS
+  primary = 
+    | identifier 
+    | anyLiteral 
+  
   anyLiteral
     = (stringLiteral | integerLiteral | boolLiteral)
+  
+    //
+  listLiteral = 
+  	| "[]" -- emptyList
+    | "[" elements "]" -- notEmptyList
+  elements = primary whiteSpaces ("," spaces primary)*
+  //
+  
+  
     
   // StringLiteral
   stringLiteral = "\"" doubleStringCharacter* "\""
@@ -154,7 +173,7 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+" | "," | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "|" | "-" 
+  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "|" | "-"  // | ","
   binarySelector = binaryCharacter+
 
   
