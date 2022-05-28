@@ -2,7 +2,7 @@ import fs from 'fs';
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { Expression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Assignment, Mutability } from './AST_Nodes/Statements/Statement';
+import { Assignment, Mutability, Statement } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
@@ -22,8 +22,8 @@ import {
 import { StringLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/StringLiteralNode';
 import { AnyLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/AnyLiteral';
 import { TypeDeclaration, TypedProperty } from './AST_Nodes/Statements/TypeDeclaration/TypeDeclaration';
-
-// import {toAST} from 'ohm-js/extras'
+import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration, UnaryMethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
+import { Identifer } from './AST_Nodes/Statements/Expressions/Primary/Identifier';
 
 function addGlobalVariableDeclaratuon(
 	map: Map<string, Assignment> | undefined,
@@ -66,13 +66,13 @@ export function generateNimCode(code: string): [StatementList, string, NivaError
 	semantics.addOperation<string | ASTNode | Expression>('toAst()', {
 		statements(
 			statement: NonterminalNode,
-			arg1: IterationNode,
+			_dot: IterationNode,
 			otherStatements: IterationNode,
-			arg3: IterationNode
-		) {
-			echo('statement');
+			_dot2: IterationNode
+		): StatementList {
+			// echo('statement');
 			const firstStatementAst = statement.toAst();
-			echo({ firstStatementAst });
+			// echo({ firstStatementAst });
 
 			const ast: StatementList = {
 				kind: 'StatementList',
@@ -88,11 +88,11 @@ export function generateNimCode(code: string): [StatementList, string, NivaError
 		},
 
 		statement(s: NonterminalNode) {
-			echo('statement');
+			// echo('statement');
 			return s.toAst();
 		},
 		expression(receiver: NonterminalNode, maymeMessages, cascadedMessages) {
-			echo('expression');
+			// echo('expression');
 			// TODO пока только primary
 			const astOfReceiver: Receiver = receiver.toAst();
 			const result: Expression = {
@@ -107,15 +107,155 @@ export function generateNimCode(code: string): [StatementList, string, NivaError
 			}
 
 			const astMessages = messages.toAst();
-			console.log('astMessages =', astMessages);
+			// console.log('astMessages =', astMessages);
 			result.messageCalls = astMessages;
 			return result;
 		},
 
 		/// METHOD DECLARATION
-		
-		///
 
+		// Unary
+		methodDeclaration(_dash, oneOfTheMessagesType) {
+			return oneOfTheMessagesType.toAst();
+		},
+		unaryMethodDeclaration(
+			untypedIdentifier,
+			_s,
+			unarySelector,
+			_s2,
+			returnTypeDeclaration,
+			_s3,
+			_eq,
+			_s4,
+			methodBody
+		): MethodDeclaration {
+			// -Person sas = []
+			const bodyStatements = methodBody.toAst();
+			const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+			const expandableType = untypedIdentifier.sourceString
+
+
+			const unary: UnaryMethodDeclaration = {
+				expandableType,
+				bodyStatements,
+				methodKind: 'UnaryMethodDeclaration',
+				name: unarySelector.sourceString,
+				returnType
+			};
+
+			const result: MethodDeclaration = {
+				kindStatement: "MethodDeclaration",
+				method: unary
+			}
+
+			return result;
+		},
+
+		// Binary
+		binaryMethodDeclaration(
+			untypedIdentifier,
+			_s,
+			binaryMethodDeclarationArg,
+			_s2,
+			returnTypeDeclaration,
+			_s3,
+			_eq,
+			_s4,
+			methodBody): MethodDeclaration{
+			const bodyStatements = methodBody.toAst();
+			const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+			const binarySelector: BinaryMethodDeclarationArg = binaryMethodDeclarationArg.toAst();
+			const expandableType = untypedIdentifier.sourceString
+
+			const binary: BinaryMethodDeclaration = {
+				methodKind: "BinaryMethodDeclaration",
+				expandableType,
+				returnType,
+				binarySelector: binarySelector.binarySelector,
+				identifier: binarySelector.identifier,
+				bodyStatements,
+			}
+
+			const result: MethodDeclaration = {
+				kindStatement: "MethodDeclaration",
+				method: binary
+			}
+
+			return result;
+		},
+		binaryMethodDeclarationArg(binarySelector, _s, identifier): BinaryMethodDeclarationArg {
+			const ident: Identifer = identifier.toAst()
+			const result: BinaryMethodDeclarationArg = {
+				binarySelector: binarySelector.sourceString,
+				identifier: ident
+			}
+			return result
+		},
+
+		// Keyword
+		keywordMethodDeclaration(
+			untypedIdentifier,
+			keywordMethodDeclarationArgs,
+			_s,
+			returnTypeDeclaration,
+			_s2,
+			_eq,
+			_s3,
+			methodBody
+			): MethodDeclaration{
+			const bodyStatements = methodBody.toAst();
+			const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+			const expandableType = untypedIdentifier.sourceString
+			const keywordMethodDeclarationArg: KeywordMethodDeclarationArg = keywordMethodDeclarationArgs.toAst()
+			const keyValueNames: KeywordMethodArgument[] = keywordMethodDeclarationArg.keyValueNames
+
+			const keyword: KeywordMethodDeclaration = {
+				methodKind: "KeywordMethodDeclaration",
+				returnType,
+				bodyStatements,
+				expandableType,
+				keyValueNames
+			}
+
+			const result: MethodDeclaration = {
+				kindStatement: "MethodDeclaration",
+				method: keyword
+			}
+			return result
+
+		},
+		keywordMethodDeclarationArgs(_s, keywordMethodDeclarationArg, _s2, otherKeywordMethodDeclarationArg, _s3 ): KeywordMethodDeclarationArg{
+			const firstKeyVal: KeywordMethodArgument = keywordMethodDeclarationArg.toAst()
+			const otherKeyVals: KeywordMethodArgument[] = otherKeywordMethodDeclarationArg.children.map(x => x.toAst())
+			const keyValueNames: KeywordMethodArgument[] = [firstKeyVal, ...otherKeyVals]
+
+			const result: KeywordMethodDeclarationArg = {
+				keyValueNames
+			}
+			return result
+		},
+		keywordMethodDeclarationArg(untypedIdentifier, _colon, _s, identifier ): KeywordMethodArgument{
+			const ident: Identifer = identifier.toAst();
+
+			return {
+				keyName: untypedIdentifier.sourceString,
+				identifier: ident
+			}
+		},
+
+		methodBody(_openBracket, _s1, statements, _s2, _closeBracket): Statement[] {
+			const child = statements.children.at(0)
+			if (statements.children.length !== 1 || !child){
+				throw new Error("statements node must have one child");
+			}
+			const statementsList: StatementList = child.toAst()
+			return statementsList.statements
+		},
+
+		returnTypeDeclaration(_returnTypeOperator, _s, untypedIdentifier): string {
+			return untypedIdentifier.sourceString;
+		},
+		///
 
 		messages_unaryFirst(unaryMessages, binaryMessages, keywordMessages) {
 			const astOfUnaryMessages: MessageCall[] = unaryMessages.children.map((x) => x.toAst()); // call unaryMessage
@@ -266,6 +406,22 @@ export function generateNimCode(code: string): [StatementList, string, NivaError
 			return arg0.toAst();
 		},
 
+		untypedIdentifier(identifierName): Identifer {
+			const result: Identifer = { 
+				kindPrimary: "Identifer",
+				value: identifierName.sourceString,
+			}
+			return result
+		},
+		unaryTypedIdentifier(untypedIdentifier, _twoColons, unaryType ): Identifer{
+			const result: Identifer = { 
+				kindPrimary: "Identifer",
+				value: untypedIdentifier.sourceString,
+				type: unaryType.sourceString
+			}
+			return result
+		},
+
 		anyLiteral(arg0: NonterminalNode): AnyLiteral {
 			echo(arg0.ctorName);
 			return arg0.toAst();
@@ -307,6 +463,7 @@ export function generateNimCode(code: string): [StatementList, string, NivaError
 // console.log(JSON.stringify(generateNimCode('1 from: 2 to: 3'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
-console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
+// console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
+console.log(JSON.stringify(generateNimCode('-Person sas = [ x echo ]')[1], undefined, 2));
 
 // generateNimCode('5 echo');

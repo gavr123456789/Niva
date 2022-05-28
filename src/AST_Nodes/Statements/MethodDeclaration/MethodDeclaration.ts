@@ -14,11 +14,10 @@ export interface BinaryMethodDeclarationArgs {
 
 export interface KeywordMethodArgument{
   keyName: string
-  valueName: Identifer
+  identifier: Identifer
 }
 
 export interface KeywordMethodDeclarationArg {
-  methodArgKind: "Keyword"
   keyValueNames: KeywordMethodArgument[]
 }
 
@@ -41,6 +40,10 @@ export interface BinaryMethodDeclaration extends MethodDeclarationBase {
   binarySelector: string // +
   identifier: Identifer // x::int
 }
+export interface BinaryMethodDeclarationArg{
+  binarySelector: string,
+  identifier: Identifer
+}
 
 export interface KeywordMethodDeclaration extends MethodDeclarationBase {
   methodKind: "KeywordMethodDeclaration"
@@ -57,14 +60,3 @@ type MethodDeclarationNode =
   | BinaryMethodDeclaration
   | KeywordMethodDeclaration
 
-
-// export type MethodArguments = UnaryMethodDeclarationArgs | BinaryMethodDeclarationArgs | KeywordMethodDeclarationArg 
-
-// export interface MethodDeclaration {
-//   kindStatement: "MethodDeclaration"
-//   methodName: string,
-//   returnType?: string
-//   expandableType: string
-//   arguments: MethodArguments
-//   bodyStatements: Statement[]
-// }

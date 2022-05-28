@@ -41,14 +41,18 @@ test('Grammar empty code block', t => {
 });
 
 // Methods declaration
-test('Grammar Methods declaration, unary', t => {
-  match(t, "Person die -> int = [ x sas ]")
+test('Grammar Methods declaration, unary typed', t => {
+  match(t, "-Person x -> int = [ x sas ]")
 });
-test('Grammar Methods declaration, binary', t => {
-  match(t, "Person + x::int -> int = [ x sas ]")
+test('Grammar Methods declaration, unary untyped', t => {
+  match(t, "-Person from: a to: b = [ x sas ]")
 });
-test('Grammar Methods declaration, keyword', t => {
-  match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
+
+test('Grammar Methods declaration, binary typed', t => {
+  match(t, "-int + x::int -> int = [ x sas ]")
+});
+test('Grammar Methods declaration, binary untyped', t => {
+  match(t, "-int + x -> int = [ x sas ]")
 });
 
 // Type declaration
@@ -64,25 +68,12 @@ test('Grammar Nested Type declaration', t => {
 
 // Message call
 
-test('Grammar Methods call, unary typed', t => {
-  match(t, "Person x -> int = [ x sas ]")
-});
-test('Grammar Methods call, unary untyped', t => {
-  match(t, "Person from: a to: b = [ x sas ]")
-});
 
-test('Grammar Methods call, binary typed', t => {
-  match(t, "int + x::int -> int = [ x sas ]")
+test('Grammar Methods declaration, keyword typed', t => {
+  match(t, "-Person from: a::int to: b::int  -> int = [ x sas ]")
 });
-test('Grammar Methods call, binary untyped', t => {
-  match(t, "int + x -> int = [ x sas ]")
-});
-
-test('Grammar Methods call, keyword typed', t => {
-  match(t, "Person from: a::int to: b::int  -> int = [ x sas ]")
-});
-test('Grammar Methods call, keyword untyped', t => {
-  match(t, "Person from: a to: b = [ x sas ]")
+test('Grammar Methods declaration, keyword untyped', t => {
+  match(t, "-Person from: a to: b = [ x sas ]")
 });
 
 // Literals
@@ -123,10 +114,6 @@ test('Codegen Asigment same variables names', t => {
   }
 
   t.is("RedefinitionOfVariableError", varError.errorKind)
-  // console.log("variable ", varError.variableName, " from " );
-  // console.log(varError.lineAndColMessage);
-  // console.log("was already defined in ");
-  // console.log(varError.previousLineAndColMessage);
 
 });
 
@@ -175,8 +162,7 @@ test('Codegen Expressions Keyword messages', t => {
 // Combined 
 test('Codegen Expressions Unary with Binary', t => {
   const code = '1 sas + 2 sas' 
-  const [_, nimCode] = generateNimCode(code)
-
+  const [_s, nimCode] = generateNimCode(code)
   t.is("1.sas().`+`(2.sas())", nimCode)
 });
 
@@ -212,11 +198,49 @@ test('Codegen two Type Declaration', t => {
 
 
 // MESSAGE DECLARATION
-test('Codegen Method Declaration', t => {
-  const code = 'Person + x::int = [ x echo ]' 
-  const [_, nimCode] = generateNimCode(code)
-
-  t.is("proc from(self: Person, x: int) =\n  x.echo()", nimCode)
+// unary
+test('Codegen Method Declaration Unary no retrun type', t => {
+  const code = '-Person sas = [ x echo ]' 
+  const [_s, nimCode] = generateNimCode(code)
+  // console.log("ast = ", JSON.stringify(_s, undefined, 2));
+  
+  t.is("proc sas(self: Person): auto =\n  x.echo()", nimCode)
 });
 
+test('Codegen Method Declaration Unary with retrun type', t => {
+  const code = '-Person sas -> int = [ 5 ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc sas(self: Person): int =\n  5", nimCode)
+});
+
+
+test('Codegen Method Declaration Binary typed', t => {
+  const code = '-Person + x::int -> void = [ x echo ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc `+`(self: Person, x: int): void =\n  x.echo()", nimCode)
+});
+
+test('Codegen Method Declaration Binary untyped', t => {
+  const code = '-Person + x = [ x echo ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc `+`(self: Person, x: auto): auto =\n  x.echo()", nimCode)
+});
+
+// Keyword
+test('Codegen Method Declaration Keyword typed', t => {
+  const code = '-Person from: x::int to: y::int -> void = [ x echo ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc from_to(self: Person, x: int, y: int): void =\n  x.echo()", nimCode)
+});
+
+test('Codegen Method Declaration Keyword untyped', t => {
+  const code = '-Person from: x to: y = [ x echo ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc from_to(self: Person, x: auto, y: auto): auto =\n  x.echo()", nimCode)
+});
 

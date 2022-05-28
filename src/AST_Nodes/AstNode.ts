@@ -5,6 +5,8 @@ import { Assignment, Statement  } from "./Statements/Statement"
 import { Primary } from "./Statements/Expressions/Primary/Primary"
 import { BinaryArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
 import { TypeDeclaration, TypedProperty } from "./Statements/TypeDeclaration/TypeDeclaration"
+import { BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclarationArg, MethodDeclaration, UnaryMethodDeclaration } from "./Statements/MethodDeclaration/MethodDeclaration"
+import { Identifer } from "./Statements/Expressions/Primary/Identifier"
 
 export type ASTNode = 
 | StatementList
@@ -19,6 +21,12 @@ export type ASTNode =
 | TypedProperty
 | TypedProperty[]
 | Primary
+| Identifer
+| MethodDeclaration
+| BinaryMethodDeclarationArg
+| KeywordMethodDeclarationArg
+| KeywordMethodArgument
+| Statement[]
 
 export interface StatementList {
   kind: "StatementList"
