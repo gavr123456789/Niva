@@ -53,12 +53,12 @@ test('Grammar Methods declaration, keyword', t => {
 
 // Type declaration
 test('Grammar Type declaration', t => {
-  match(t, "type Person = name: string job: string", "typeDeclaration")
+  match(t, "type Person name: string job: string", "typeDeclaration")
 });
 
 // Nested type
 test('Grammar Nested Type declaration', t => {
-  match(t, "type P = x: int y: (type O = z: int)", "typeDeclaration")
+  match(t, "type P x: int y: (type O z: int)", "typeDeclaration")
 });
 
 
@@ -173,9 +173,50 @@ test('Codegen Expressions Keyword messages', t => {
 });
 
 // Combined 
-test('Codegen Expressions Unary with Binarys', t => {
+test('Codegen Expressions Unary with Binary', t => {
   const code = '1 sas + 2 sas' 
   const [_, nimCode] = generateNimCode(code)
 
   t.is("1.sas().`+`(2.sas())", nimCode)
 });
+
+test('Codegen Expressions two Unary with Binary', t => {
+  const code = '1 sas + 2 sas.\n1 sas + 2 sas.' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.sas().`+`(2.sas())\n1.sas().`+`(2.sas())", nimCode)
+});
+
+test('Codegen Expressions Unary with Binary many', t => {
+  const code = '1 sas + 2 sas sus ses' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.sas().`+`(2.sas().sus().ses())", nimCode)
+});
+
+// TYPE DECLARATION
+test('Codegen Type Declaration', t => {
+  const code = 'type Person name: string age: int' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("type Person = object\n  name: string\n  age: int\n", nimCode)
+});
+
+
+test('Codegen two Type Declaration', t => {
+  const code = 'type Person name: string age: int.\ntype AnotherPerson name: string age: int' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("type Person = object\n  name: string\n  age: int\n\ntype AnotherPerson = object\n  name: string\n  age: int\n", nimCode)
+});
+
+
+// MESSAGE DECLARATION
+test('Codegen Method Declaration', t => {
+  const code = 'Person + x::int = [ x echo ]' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("proc from(self: Person, x: int) =\n  x.echo()", nimCode)
+});
+
+

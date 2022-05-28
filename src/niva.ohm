@@ -11,7 +11,7 @@ Niva {
 
 
   // TYPE DECLARATION
-	typeDeclaration = "type" spaces untypedIdentifier spaces "=" spaces typedProperties
+	typeDeclaration = "type" spaces untypedIdentifier spaces typedProperties
     typedProperties = typedProperty (spaces typedProperty)*
     typedProperty =
 	  untypedIdentifier ":" spaces (untypedIdentifier | nestedType) 
@@ -20,14 +20,27 @@ Niva {
     
   // METHOD DECLARATION
   
-  methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  //methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
   
+  methodDeclaration =
+  	| keywordMethodDeclaration 
+    | binaryMethodDeclaration
+    | unaryMethodDeclaration 
+  
+  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
+  
+  unaryMethodDeclaration = untypedIdentifier whiteSpaces untypedIdentifier whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  naryMethodDeclarationArgs = untypedIdentifier
+  
+  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  // + x::int
+  binaryMethodDeclarationArg = binarySelector whiteSpaces identifier
+
   // min: x::int max: y::int from: z
-  keywordMethodDeclarationArgs = spaces (keywordMethodDeclarationArg | unaryMethodDeclarationArgs | binaryMethodDeclarationArgs) ( spaces keywordMethodDeclarationArg spaces )*
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
-  unaryMethodDeclarationArgs = untypedIdentifier
-  binaryMethodDeclarationArgs = binarySelector whiteSpaces identifier
+  
 
   returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier
   returnTypeOperator = "->"

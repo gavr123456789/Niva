@@ -2,9 +2,11 @@ import { StatementList } from './AST_Nodes/AstNode';
 import { IntLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/IntLiteralNode';
 import { StringLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/StringLiteralNode';
 import { Expression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Mutability } from './AST_Nodes/Statements/Statement';
+import { Mutability, Statement } from './AST_Nodes/Statements/Statement';
 import { Primary } from './AST_Nodes/Statements/Expressions/Primary/Primary';
 import { BinaryArgument, KeywordArgument } from './AST_Nodes/Statements/Expressions/Messages/Message';
+import { TypeDeclaration } from './AST_Nodes/Statements/TypeDeclaration/TypeDeclaration';
+import { KeywordMethodArgument, MethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
 
 function generateAssigment(assignmentTarget: string, to: Expression, type?: string): string {
 	if (to.messageCalls.length === 0) {
@@ -31,9 +33,9 @@ function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument)
 	if (!argument.unaryMessages) {
 		return '.' + '`' + binaryMessageName + '`' + '(' + argValue + ')';
 	}
-
-	const unaryCalls = argValue + argument.unaryMessages.map(x => generateUnaryCall(x.unarySelector)).join(".")
-	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCalls + ')'
+	const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.unarySelector)).join("")
+	const unaryCallsWithReceiver = argValue + listOfUnaryCalls
+	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
 }
 
 function generateKeywordCall(keyWordArgs: KeywordArgument[]): string {
@@ -42,7 +44,7 @@ function generateKeywordCall(keyWordArgs: KeywordArgument[]): string {
 	return '.' + functionName + '(' + argumentsSeparatedByComma + ')';
 }
 
-export function generateNimFromAst(x: StatementList, discardable = true): string {
+export function generateNimFromAst(x: StatementList, identation = 0, discardable = true): string {
 	let lines: string[] = [];
 
 	if (discardable) {
@@ -112,9 +114,17 @@ export function generateNimFromAst(x: StatementList, discardable = true): string
 							throw new Error('SoundError');
 					}
 				}
+				// generate ident
+				const identStr = " ".repeat(identation) 
 				// пушим строку вызовов сообщений
-				lines.push(messageLine.join(''));
+				if (identation === 0) {
+					lines.push(messageLine.join(''));
+				} else {
+					lines.push(identStr + messageLine.join(''));
+				}
 
+
+				
 				break;
 
 			case 'Assignment':
@@ -125,13 +135,17 @@ export function generateNimFromAst(x: StatementList, discardable = true): string
 				}
 				break;
 
-			case 'MethodDeclarationStatement':
-				throw new Error('MethodDeclarationStatement not done');
 			case 'ReturnStatement':
 				throw new Error('ReturnStatement not done');
-			case 'TypeDeclarationStatement':
-				throw new Error('TypeDeclarationStatement not done');
-
+			case 'TypeDeclaration':
+				const typeDeclarationAst = s
+				const typeDeclarationCode: string = generateTypeDeclaration(typeDeclarationAst)
+				lines.push(typeDeclarationCode)
+				break;
+			case 'MethodDeclaration':
+				const methodDeclarationAst = s
+				const methodDeclarationCode = generateMethodDeclaration(methodDeclarationAst);
+			break;
 			default:
 				const _never: never = s;
 				throw new Error('SoundError');
@@ -157,18 +171,76 @@ function getAtomPrimary(primary: Primary): string {
 	}
 }
 
-// function codeGenerateExpression(x: Expression, lines: string[]) {
-// 	switch (x.kindExpression) {
-// 		case 'Assignment':
-// 			if (x.mutability === Mutability.IMUTABLE) {
-// 				lines.push(generateAssigment(x.assignmentTarget, x.to.value, x.type));
-// 			}
-// 			break;
-// 		case 'Parentheses':
-// 			break;
+function generateTypeDeclaration(typeDeclarationAst: TypeDeclaration): string {
+	const {typeName, typedProperties, ref} = typeDeclarationAst
+	const objectType = ref? "ref": "object"
+	const typedArgPart = typedProperties.map(x => "  " + x.identifier + ": " + x.type)
 
-// 		default:
-// 			const _never: never = x;
-// 			break;
-// 	}
-// }
+	// const result = "type " + typeName + " = " + objectType + "\n" + typedArgPart.join("\n") + "\n"
+	const result2 = `type ${typeName} = ${objectType}\n${typedArgPart.join("\n")}\n`
+
+	return result2
+}
+
+
+function generateMethodDeclaration(methodDec: MethodDeclaration): string {
+	const {bodyStatements, expandableType} = methodDec.method
+	const {method: x} = methodDec
+
+	const returnType = x.returnType? ": " + x.returnType: "auto"
+	const methodBody = generateMethodBody(bodyStatements, 1)
+
+	switch (x.methodKind) {
+		case "UnaryMethodDeclaration":
+		return `proc ${x.name} (self: ${expandableType}) ${returnType} =\n${methodBody}`
+
+		case "BinaryMethodDeclaration":
+			const argumentType = x.identifier.type ?? "auto"
+		return `proc \`${x.binarySelector}\` (self: ${expandableType}, ${x.identifier.value}: ${argumentType}) : ${returnType} =\n${methodBody}`
+
+		case "KeywordMethodDeclaration":
+		const keyArgs = x.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
+		// from_to
+		const keywordProcName = x.keyValueNames.map(y => y.keyName).join("_")
+		return `proc ${keywordProcName} (self: ${expandableType}, ${keyArgs}) : ${returnType} =\n${methodBody}`
+
+		
+		default:
+			const _never: never = x
+			throw new Error("SoundError");
+	}
+
+	// int from: x-int to: y-int -> int = [ x echo. 5 ]
+	// proc from_to(self: int, x: int, y: int): int =
+  //   x.echo()
+
+	// int from: x-int to: y-int = [ x echo. 5 ]
+	// proc from_to(self: int, x: int, y: int): auto =
+  //   x.echo()
+	//   5
+
+	// то какой тип расширяем это первый аргумент self
+
+}
+
+
+
+// level - degree of nesting of the code
+function generateMethodBody(statements: Statement[], level: number) {
+	const statementList: StatementList = {
+		kind: "StatementList",
+		statements
+	} 
+	generateNimFromAst(statementList, level * 2)
+}
+
+
+
+function generateKeywordMethodArg(x: KeywordMethodArgument): string {
+	if (x.valueName.type) {
+		return `${x.valueName.value}: ${x.valueName.type}`
+	} else {
+		return `${x.valueName.value}: auto`
+
+	}
+}
