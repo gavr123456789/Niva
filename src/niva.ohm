@@ -20,26 +20,27 @@ Niva {
     
   // METHOD DECLARATION
   
-  //methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  //methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
   
-  methodDeclaration =
-  	| keywordMethodDeclaration 
+  methodDeclaration = "-"
+  	(keywordMethodDeclaration 
     | binaryMethodDeclaration
-    | unaryMethodDeclaration 
+    | unaryMethodDeclaration )
   
-  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
   keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
   
-  unaryMethodDeclaration = untypedIdentifier whiteSpaces untypedIdentifier whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
-  naryMethodDeclarationArgs = untypedIdentifier
+  unaryMethodDeclaration = untypedIdentifier  whiteSpaces unaryMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
+  unaryMethodDeclarationArgs = untypedIdentifier
   
-  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces "=" spaces blockConstructor
+  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
   // + x::int
   binaryMethodDeclarationArg = binarySelector whiteSpaces identifier
 
   // min: x::int max: y::int from: z
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
+  methodBody  = "[" spaces statements?  spaces "]"
   
 
   returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier

@@ -44,7 +44,7 @@ function generateKeywordCall(keyWordArgs: KeywordArgument[]): string {
 	return '.' + functionName + '(' + argumentsSeparatedByComma + ')';
 }
 
-export function generateNimFromAst(x: StatementList, identation = 0, discardable = true): string {
+export function generateNimFromAst(x: StatementList, identation = 0, discardable = false): string {
 	let lines: string[] = [];
 
 	if (discardable) {
@@ -145,9 +145,12 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 			case 'MethodDeclaration':
 				const methodDeclarationAst = s
 				const methodDeclarationCode = generateMethodDeclaration(methodDeclarationAst);
+				lines.push(methodDeclarationCode)
 			break;
 			default:
 				const _never: never = s;
+				console.log("!!! s = ", s);
+				
 				throw new Error('SoundError');
 		}
 	}
@@ -167,6 +170,8 @@ function getAtomPrimary(primary: Primary): string {
 			return atom.value;
 		default:
 			const _never: never = atom;
+			console.log("!!! atom = ", atom);
+			
 			throw new Error('SoundError');
 	}
 }
@@ -187,22 +192,24 @@ function generateMethodDeclaration(methodDec: MethodDeclaration): string {
 	const {bodyStatements, expandableType} = methodDec.method
 	const {method: x} = methodDec
 
-	const returnType = x.returnType? ": " + x.returnType: "auto"
+	const returnType = x.returnType? x.returnType: "auto"
 	const methodBody = generateMethodBody(bodyStatements, 1)
+	console.log("methodBody = ", methodBody);
+	
 
 	switch (x.methodKind) {
 		case "UnaryMethodDeclaration":
-		return `proc ${x.name} (self: ${expandableType}) ${returnType} =\n${methodBody}`
+		return `proc ${x.name}(self: ${expandableType}): ${returnType} =\n${methodBody}`
 
 		case "BinaryMethodDeclaration":
 			const argumentType = x.identifier.type ?? "auto"
-		return `proc \`${x.binarySelector}\` (self: ${expandableType}, ${x.identifier.value}: ${argumentType}) : ${returnType} =\n${methodBody}`
+		return `proc \`${x.binarySelector}\`(self: ${expandableType}, ${x.identifier.value}: ${argumentType}): ${returnType} =\n${methodBody}`
 
 		case "KeywordMethodDeclaration":
 		const keyArgs = x.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
 		// from_to
 		const keywordProcName = x.keyValueNames.map(y => y.keyName).join("_")
-		return `proc ${keywordProcName} (self: ${expandableType}, ${keyArgs}) : ${returnType} =\n${methodBody}`
+		return `proc ${keywordProcName}(self: ${expandableType}, ${keyArgs}): ${returnType} =\n${methodBody}`
 
 		
 		default:
@@ -226,21 +233,23 @@ function generateMethodDeclaration(methodDec: MethodDeclaration): string {
 
 
 // level - degree of nesting of the code
-function generateMethodBody(statements: Statement[], level: number) {
+function generateMethodBody(statements: Statement[], level: number): string {
 	const statementList: StatementList = {
 		kind: "StatementList",
 		statements
 	} 
-	generateNimFromAst(statementList, level * 2)
+	console.log("generateMethodBody", statements);
+	
+  return generateNimFromAst(statementList, level * 2)
 }
 
 
 
 function generateKeywordMethodArg(x: KeywordMethodArgument): string {
-	if (x.valueName.type) {
-		return `${x.valueName.value}: ${x.valueName.type}`
+	if (x.identifier.type) {
+		return `${x.identifier.value}: ${x.identifier.type}`
 	} else {
-		return `${x.valueName.value}: auto`
+		return `${x.identifier.value}: auto`
 
 	}
 }
