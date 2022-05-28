@@ -1,6 +1,8 @@
 {
   "include": ["src/**/*.ts"],
   "compilerOptions": {
+    "incremental": true,
+    "noFallthroughCasesInSwitch": true,
     "outDir": "dist",
     "target": "ES2015",
     "module": "commonjs",

@@ -1,13 +1,15 @@
 import { IntLiteral } from "./Expressions/Primary/Literals/IntLiteralNode"
 import { StringLiteral } from "./Expressions/Primary/Literals/StringLiteralNode"
 import { Expression } from "./Expressions/Expressions"
+import { TypeDeclaration } from "./TypeDeclaration/TypeDeclaration"
+import { MethodDeclaration } from "./MethodDeclaration/MethodDeclaration"
 
 export type Statement = 
   | Expression 
   | ReturnStatement 
-  | MethodDeclarationStatement 
-  | TypeDeclarationStatement
   | Assignment
+  | TypeDeclaration
+  | MethodDeclaration
 
 
 export interface Assignment {
@@ -26,14 +28,7 @@ export interface ReturnStatement {
   kindStatement: "ReturnStatement"
   value: never
 }
-export interface TypeDeclarationStatement {
-  kindStatement: "TypeDeclarationStatement"
-  value: never
-}
-export interface MethodDeclarationStatement {
-  kindStatement: "MethodDeclarationStatement"
-  value: never
-}
+
 
 export enum Mutability {
   MUTABLE,

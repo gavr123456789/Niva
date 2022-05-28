@@ -78,10 +78,10 @@ union Shape =
     | type Rectangle = height: int width: int.
     
 Shape getShapeWidth = [
-    self 
-        Circle: [ :circle | 2 * circle radius ]
-        Square: [ :square | square side ]
-        Rectangle: [ :rectangle | rectangle width ].
+  self 
+    Circle: [ :circle | 2 * circle radius ]
+    Square: [ :square | square side ]
+    Rectangle: [ :rectangle | rectangle width ].
 ]
 // Nested
 union Toping = 
@@ -91,15 +91,17 @@ union Toping =
 union Menu  = 
   | type Pizza = topping: Topping
   | type Calzone = topping: Topping
- // generated messages: 
- // Menu Pizza:Calzone: 
- // Pizza Cheese:Pepperoni:Peppers:
- // Calzone Cheese:Pepperoni:Peppers:
- 
+
  // So check that T is pizza looks like
  t Pizza: [ pizza | "its pizza" pring ]
  // Nested check
  t Pizza [ pizza | pizza Pepperoni: [ pizzaWithPepperoni | "its pizza with pepperoni!" print ] ].
+
+
+// generated messages: 
+// Menu Pizza:Calzone: 
+// Pizza Cheese:Pepperoni:Peppers:
+// Calzone Cheese:Pepperoni:Peppers:
 ```
 
 ### Case Expressions

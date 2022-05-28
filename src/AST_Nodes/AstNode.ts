@@ -1,8 +1,10 @@
 import { IntLiteral } from "./Statements/Expressions/Primary/Literals/IntLiteralNode"
 import { StringLiteral } from "./Statements/Expressions/Primary/Literals/StringLiteralNode"
-import { Expression, MessageCall } from "./Statements/Expressions/Expressions"
+import { Expression } from "./Statements/Expressions/Expressions"
 import { Assignment, Statement  } from "./Statements/Statement"
 import { Primary } from "./Statements/Expressions/Primary/Primary"
+import { BinaryArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
+import { TypeDeclaration, TypedProperty } from "./Statements/TypeDeclaration/TypeDeclaration"
 
 export type ASTNode = 
 | StatementList
@@ -12,6 +14,10 @@ export type ASTNode =
 | IntLiteral
 | MessageCall
 | MessageCall[]
+| BinaryArgument
+| TypeDeclaration
+| TypedProperty
+| TypedProperty[]
 | Primary
 
 export interface StatementList {
