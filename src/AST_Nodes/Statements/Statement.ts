@@ -1,11 +1,26 @@
 import { IntLiteral } from "./Expressions/Primary/Literals/IntLiteralNode"
 import { StringLiteral } from "./Expressions/Primary/Literals/StringLiteralNode"
-import { Expression } from "./Expressions/Expressions"
+import { BracketExpression, Expression } from "./Expressions/Expressions"
 import { TypeDeclaration } from "./TypeDeclaration/TypeDeclaration"
 import { MethodDeclaration } from "./MethodDeclaration/MethodDeclaration"
+import { Receiver } from "./Expressions/Receiver/Receiver"
+
+//TODO move
+export interface BodyStatements {
+  statements: Statement[]
+  switchReturns: SwitchReturn[]
+
+
+}
+export interface SwitchReturn {
+  expression: Expression,
+  receiver: Receiver
+}
+//
 
 export type Statement = 
   | Expression 
+  | BracketExpression
   | ReturnStatement 
   | Assignment
   | TypeDeclaration

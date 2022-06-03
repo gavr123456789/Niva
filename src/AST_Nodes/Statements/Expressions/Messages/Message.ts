@@ -8,8 +8,8 @@ export interface UnaryMessage {
 }
 
 export interface BinaryArgument {
-	value: Receiver
-	unaryMessages?: UnaryMessage[]
+	value: Receiver // x | 
+	unaryMessages?: UnaryMessage[] // x + 5 sas
 }
 
 export interface BinaryMessage {

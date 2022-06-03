@@ -4,6 +4,6 @@ import { AnyLiteral } from "./Literals/AnyLiteral";
 
 
 export interface Primary {
-  kindReceiver: "Primary"
+  kindStatement: "Primary"
   atomReceiver: AnyLiteral | Identifer
 }

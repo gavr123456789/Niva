@@ -1,7 +1,7 @@
 import { StatementList } from './AST_Nodes/AstNode';
 import { IntLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/IntLiteralNode';
 import { StringLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/StringLiteralNode';
-import { Expression } from './AST_Nodes/Statements/Expressions/Expressions';
+import { BracketExpression, Expression } from './AST_Nodes/Statements/Expressions/Expressions';
 import { Mutability, Statement } from './AST_Nodes/Statements/Statement';
 import { Primary } from './AST_Nodes/Statements/Expressions/Primary/Primary';
 import { BinaryArgument, KeywordArgument } from './AST_Nodes/Statements/Expressions/Messages/Message';
@@ -9,6 +9,9 @@ import { TypeDeclaration } from './AST_Nodes/Statements/TypeDeclaration/TypeDecl
 import { KeywordMethodArgument, MethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
 
 function generateAssigment(assignmentTarget: string, to: Expression, type?: string): string {
+	if (to.receiver.kindStatement === "BracketExpression") {
+		throw new Error("BracketExpression not supported as left part of assigment");
+	}
 	if (to.messageCalls.length === 0) {
 		const assignRightValue = to.receiver.atomReceiver.value;
 		if (type) {
@@ -24,11 +27,15 @@ function generateAssigment(assignmentTarget: string, to: Expression, type?: stri
 
 // function call generators
 function generateUnaryCall(unaryMessageName: string): string {
-	return '.' + unaryMessageName + '()';
+	// TODO check all strange symbols?
+	if (unaryMessageName !== "$"){
+		return '.' + unaryMessageName + '()';
+	} else {
+		return '.' + '`' + unaryMessageName + '`' + '()';
+	}
 }
-
-function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
-	const argValue = argument.value.atomReceiver.value
+// Without nested expressions in brackets
+function generateSimpleBinaryCall(binaryMessageName: string, argument: BinaryArgument, argValue: string) {
 
 	if (!argument.unaryMessages) {
 		return '.' + '`' + binaryMessageName + '`' + '(' + argValue + ')';
@@ -36,6 +43,32 @@ function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument)
 	const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.unarySelector)).join("")
 	const unaryCallsWithReceiver = argValue + listOfUnaryCalls
 	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
+}
+
+function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
+	if (argument.value.kindStatement === "BracketExpression") {
+
+		// console.log("BracketExpression = ", argument.value);
+		const lines: string[] = []
+
+		processExpression(argument.value, 0, lines)
+		// console.log("lines after processExpression = ", lines);
+		const expressionInBracketsCode = lines.at(0)
+
+		if (!expressionInBracketsCode) throw new Error("expressionInBracketsCode cant be null");
+		
+		const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
+		return codeWithArgumentInBrackets
+	}
+	const argValue = argument.value.atomReceiver.value
+	const code = generateSimpleBinaryCall(binaryMessageName, argument, argValue)
+	return code 
+	// if (!argument.unaryMessages) {
+	// 	return '.' + '`' + binaryMessageName + '`' + '(' + argValue + ')';
+	// }
+	// const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.unarySelector)).join("")
+	// const unaryCallsWithReceiver = argValue + listOfUnaryCalls
+	// return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
 }
 
 function generateKeywordCall(keyWordArgs: KeywordArgument[]): string {
@@ -54,78 +87,9 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 	for (const s of x.statements) {
 		switch (s.kindStatement) {
 			case 'Expression':
-				// превратить x echo в x.echo
-				// сначала добавит вызывающего x
-				// потом будем добавлять по вызову за цикл
-				// например для унарных будет добавлятся .sas().sus().sos()
-				// для бинарных .add(1).mul(3)
-				// для кейвордных .fromto(1, 2)
-				const primaryName = getAtomPrimary(s.receiver);
-				const messageLine = [ primaryName ];
-				if (typeof primaryName === 'object') {
-					throw new Error('typeof primaryName === object');
-				}
-
-				for (const messageCall of s.messageCalls) {
-					switch (messageCall.selectorKind) {
-						case 'unary':
-							switch (s.receiver.kindReceiver) {
-								case 'Primary':
-									const unaryNimCall = generateUnaryCall(messageCall.unarySelector);
-									messageLine.push(unaryNimCall);
-									break;
-
-								default:
-									throw new Error('expression as receiver not supported yet');
-							}
-							break;
-
-
-						case 'binary':
-							switch (s.receiver.kindReceiver) {
-								case 'Primary':
-									const { binarySelector: messageIdent, argument: binaryArguments } = messageCall;
-									const binaryMessageCall = generateBinaryCall(messageIdent, binaryArguments);
-									messageLine.push(binaryMessageCall);
-									break;
-
-								default:
-									throw new Error('expression as receiver not supported yet');
-							}
-							break;
-
-
-						case 'keyword':
-								switch (s.receiver.kindReceiver) {
-								case 'Primary':
-									const { arguments: keywordArguments } = messageCall;
-									const keywordMessageCall = generateKeywordCall(keywordArguments);
-									messageLine.push(keywordMessageCall);
-									break;
-
-								default:
-									throw new Error('expression as receiver not supported yet');
-							}
-							break;
-						default:
-							const _never: never = messageCall;
-							console.log("NEVER = ", _never);
-							
-							throw new Error('SoundError');
-					}
-				}
-				// generate ident
-				const identStr = " ".repeat(identation) 
-				// пушим строку вызовов сообщений
-				if (identation === 0) {
-					lines.push(messageLine.join(''));
-				} else {
-					lines.push(identStr + messageLine.join(''));
-				}
-
-
-				
-				break;
+			case "BracketExpression":
+				processExpression(s, identation, lines)
+			break;
 
 			case 'Assignment':
 				// codeGenerateExpression(s.value, lines)
@@ -190,11 +154,11 @@ function generateTypeDeclaration(typeDeclarationAst: TypeDeclaration): string {
 
 function generateMethodDeclaration(methodDec: MethodDeclaration): string {
 	const {bodyStatements, expandableType} = methodDec.method
+	const {statements} = bodyStatements
 	const {method: x} = methodDec
 
 	const returnType = x.returnType? x.returnType: "auto"
-	const methodBody = generateMethodBody(bodyStatements, 1)
-	console.log("methodBody = ", methodBody);
+	const methodBody = generateMethodBody(statements, 1)
 	
 
 	switch (x.methodKind) {
@@ -238,7 +202,6 @@ function generateMethodBody(statements: Statement[], level: number): string {
 		kind: "StatementList",
 		statements
 	} 
-	console.log("generateMethodBody", statements);
 	
   return generateNimFromAst(statementList, level * 2)
 }
@@ -253,3 +216,94 @@ function generateKeywordMethodArg(x: KeywordMethodArgument): string {
 
 	}
 }
+
+function processExpression(s: Expression | BracketExpression, identation: number, lines: string[]) {
+					// превратить x echo в x.echo
+				// сначала добавит вызывающего x
+				// потом будем добавлять по вызову за цикл
+				// например для унарных будет добавлятся .sas().sus().sos()
+				// для бинарных .add(1).mul(3)
+				// для кейвордных .fromto(1, 2)
+				
+				const receiver = s.receiver
+				
+				const primaryName = receiver.kindStatement === "BracketExpression"? getExpressionCode(receiver, identation) :  getAtomPrimary(receiver);
+				const messageLine = [ primaryName ];
+				if (typeof primaryName === 'object') {
+					throw new Error('typeof primaryName === object');
+				}
+				
+				for (const messageCall of s.messageCalls) {
+					switch (messageCall.selectorKind) {
+						case 'unary':
+							switch (receiver.kindStatement) {
+								case 'Primary':
+								case "BracketExpression":
+									const unaryNimCall = generateUnaryCall(messageCall.unarySelector);
+									messageLine.push(unaryNimCall);
+									break;
+
+								default:
+									const _never: never = receiver
+									throw new Error('Sound error');
+							}
+							break;
+
+
+						case 'binary':
+							switch (receiver.kindStatement) {
+								case 'Primary':
+								case "BracketExpression":
+									const { binarySelector: messageIdent, argument: binaryArguments } = messageCall;
+									const binaryMessageCall = generateBinaryCall(messageIdent, binaryArguments);
+									messageLine.push(binaryMessageCall);
+									break;
+
+									default:
+										const _never: never = receiver
+										throw new Error('Sound error');
+							}
+							break;
+
+
+						case 'keyword':
+								switch (receiver.kindStatement) {
+								case 'Primary':
+								case "BracketExpression":
+
+									const { arguments: keywordArguments } = messageCall;
+									const keywordMessageCall = generateKeywordCall(keywordArguments);
+									messageLine.push(keywordMessageCall);
+									break;
+									default:
+										const _never: never = receiver
+										throw new Error('Sound error');
+							}
+							break;
+						default:
+							const _never: never = messageCall;
+							console.log("!!! = ", _never);
+							
+							throw new Error('SoundError');
+					}
+				}
+				// generate ident
+				const identStr = " ".repeat(identation) 
+				// пушим строку вызовов сообщений
+				const needBrackets = s.kindStatement === "BracketExpression"
+				const messageCall = !needBrackets? messageLine.join(''): "(" + messageLine.join('') + ")"
+				
+				if (identation === 0) {
+					lines.push(messageCall);
+				} else {
+					lines.push(identStr + messageCall);
+				}
+
+
+}
+function getExpressionCode(receiver: BracketExpression, identation: number): string {
+	const lines: string[] = []
+	processExpression(receiver, identation, lines)
+	return lines.join("")
+}
+
