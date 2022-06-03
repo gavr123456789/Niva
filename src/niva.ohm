@@ -1,6 +1,6 @@
 Niva {
   // statement
-  statements = statement (dot statement)* dot?
+  statements = spaces statement (dot statement)* dot?
   statement = 
     | returnStatement  -- returnStatement
     | typeDeclaration -- typeDeclarationStatement
@@ -27,6 +27,9 @@ Niva {
     | binaryMethodDeclaration
     | unaryMethodDeclaration )
   
+  
+
+  
   keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
   keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
   
@@ -40,8 +43,17 @@ Niva {
   // min: x::int max: y::int from: z
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
-  methodBody  = "[" spaces statements?  spaces "]"
+  methodBody  = "[" spaces statements?  spaces switchReturns? spaces "]"
   
+  
+  
+  
+  switchReturns = switchReturn spaces (switchReturn spaces)*
+  switchReturn = "|" whiteSpaces switchStatement spaces
+  switchStatement = expression whiteSpaces "=>" whiteSpaces expression
+
+
+
 
   returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier
   returnTypeOperator = "->"
@@ -59,7 +71,7 @@ Niva {
     | "(" expression ")" -- expressionInBrackets
     | blockConstructor
   
-  expression = receiver (messages cascadedMessages)? // Может быть просто x = 4, а может быть x = 4 factorial
+  expression = receiver (messages cascadedMessages)? 
     
     
   // MESSAGES
@@ -79,7 +91,7 @@ Niva {
   binaryArgument = receiver unaryMessage*
   
   unaryMessage  = spaces unarySelector
-  unarySelector = identifier ~":" // TODO может быть сделать унари селектором только идентифиеры с маленькой буквы?
+  unarySelector = identifier ~":" 
   
   cascadedMessages = (";" messages)*
   
@@ -187,8 +199,8 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "|" | "-"  // | ","
-  binarySelector = binaryCharacter+
+  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|"    //"|"   // | "," |  
+  binarySelector =  binaryCharacter+
 
   
   assignmentOp= "="

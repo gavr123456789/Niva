@@ -1,11 +1,17 @@
 import { MessageCall } from "./Messages/Message";
 import { Receiver } from "./Receiver/Receiver";
 
-
-export interface Expression {
-  kindStatement: "Expression"
+interface BaseExpression {
 	receiver: Receiver;
 	messageCalls: MessageCall[];
+}
+
+export interface Expression extends BaseExpression {
+  kindStatement: "Expression"
+}
+
+export interface BracketExpression extends BaseExpression {
+	kindStatement: "BracketExpression"
 }
 
 // 5 factorial

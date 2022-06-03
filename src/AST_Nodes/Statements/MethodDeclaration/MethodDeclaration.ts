@@ -1,5 +1,7 @@
+import { Expression } from "../Expressions/Expressions"
 import { Identifer } from "../Expressions/Primary/Identifier"
-import { Statement } from "../Statement"
+import { Receiver } from "../Expressions/Receiver/Receiver"
+import { BodyStatements, Statement } from "../Statement"
 
 export interface UnaryMethodDeclarationArgs {
   methodArgKind: "Unary"
@@ -25,12 +27,10 @@ export interface KeywordMethodDeclarationArg {
 interface MethodDeclarationBase {
   expandableType: string
   returnType?: string
-  bodyStatements: Statement[]
+  bodyStatements: BodyStatements
 }
 
 export interface UnaryMethodDeclaration extends MethodDeclarationBase {
-  // Person sas = []
-
   methodKind: "UnaryMethodDeclaration"
   name: string
 }

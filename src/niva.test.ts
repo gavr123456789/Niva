@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from 'ava';
 import { RedefinitionOfVariableError } from './Errors/Error';
 import { generateNimCode } from './niva';
-import { echo, grammarMatch, isDebug } from './utils';
+import {  grammarMatch, isDebug } from './utils';
 
 isDebug.isDebug = false
 
@@ -207,6 +207,14 @@ test('Codegen Method Declaration Unary no retrun type', t => {
   t.is("proc sas(self: Person): auto =\n  x.echo()", nimCode)
 });
 
+test('Codegen two Method Declaration Unary', t => {
+  const code = '-Person sas = [ x echo ].\n-Person sas = [ x echo ].' 
+  const [_s, nimCode] = generateNimCode(code)
+  // console.log("ast = ", JSON.stringify(_s, undefined, 2));
+  
+  t.is("proc sas(self: Person): auto =\n  x.echo()\nproc sas(self: Person): auto =\n  x.echo()", nimCode)
+});
+
 test('Codegen Method Declaration Unary with retrun type', t => {
   const code = '-Person sas -> int = [ 5 ]' 
   const [_, nimCode] = generateNimCode(code)
@@ -242,5 +250,21 @@ test('Codegen Method Declaration Keyword untyped', t => {
   const [_, nimCode] = generateNimCode(code)
 
   t.is("proc from_to(self: Person, x: auto, y: auto): auto =\n  x.echo()", nimCode)
+});
+
+// Brackets
+
+test('Codegen Brackets expression', t => {
+  const code = '(1 + 2) echo.' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("(1.`+`(2)).echo()", nimCode)
+});
+
+test('Codegen Brackets after expression', t => {
+  const code = '1 + (1 - 1)' 
+  const [_, nimCode] = generateNimCode(code)
+
+  t.is("1.`+`((1.`-`(1)))", nimCode)
 });
 
