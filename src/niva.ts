@@ -3,7 +3,7 @@ import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression } from './AST_Nodes/Statements/Expressions/Expressions';
 import { Assignment, BodyStatements, Mutability, Statement } from './AST_Nodes/Statements/Statement';
-import { generateNimFromAst } from './codeGenerator';
+import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
 import extras from 'ohm-js/extras';
