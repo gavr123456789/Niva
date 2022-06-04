@@ -1,4 +1,4 @@
-import { Expression } from "../Expressions/Expressions"
+import { MessageCallExpression } from "../Expressions/Expressions"
 import { Identifer } from "../Expressions/Primary/Identifier"
 import { Receiver } from "../Expressions/Receiver/Receiver"
 import { BodyStatements, Statement } from "../Statement"

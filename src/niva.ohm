@@ -6,6 +6,7 @@ Niva {
     | typeDeclaration -- typeDeclarationStatement
     | methodDeclaration -- methodDeclarationStatement
     | assignment -- assignmentStatement
+    | switchStatement -- switchStatement
   	| expression  -- expressionStatement
 
 
@@ -43,14 +44,14 @@ Niva {
   // min: x::int max: y::int from: z
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
-  methodBody  = "[" spaces statements?  spaces switchReturns? spaces "]"
+  methodBody  = "[" spaces statements? spaces "]"
   
   
   
   
-  switchReturns = switchReturn spaces (switchReturn spaces)*
-  switchReturn = "|" whiteSpaces switchStatement spaces
-  switchStatement = expression whiteSpaces "=>" whiteSpaces expression
+  switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement? spaces
+  switchBranch = "|" whiteSpaces expression whiteSpaces "=>" whiteSpaces expression spaces 
+  switchBranchElseStatement = "|=>" whiteSpaces expression 
 
 
 
@@ -59,10 +60,13 @@ Niva {
   returnTypeOperator = "->"
   
   
-  // EXPRESSION
+  // Assignment statement
   
   assignment = assignmentTarget spaces assignmentOp spaces expression
   assignmentTarget = identifier
+
+  // Switch statement
+  switchStatement = receiver switchExpression
   
   // expressionAsReceiver = expression
   receiver = 
@@ -71,7 +75,10 @@ Niva {
     | "(" expression ")" -- expressionInBrackets
     | blockConstructor
   
-  expression = receiver (messages cascadedMessages)? 
+
+  expression = messageCall | switchExpression
+  messageCall = receiver (messages cascadedMessages)?
+  
     
     
   // MESSAGES
@@ -199,7 +206,7 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|"    //"|"   // | "," |  
+  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||"   //"|"   // | "," |  
   binarySelector =  binaryCharacter+
 
   

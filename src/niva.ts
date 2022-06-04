@@ -1,8 +1,8 @@
 import fs from 'fs';
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
-import { BracketExpression, Expression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Assignment, BodyStatements, Mutability, Statement, SwitchReturn } from './AST_Nodes/Statements/Statement';
+import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression } from './AST_Nodes/Statements/Expressions/Expressions';
+import { Assignment, BodyStatements, Mutability, Statement } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
@@ -62,7 +62,7 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 
 	const semantics: NivaSemantics = grammar.createSemantics();
 
-	semantics.addOperation<string | ASTNode | Expression>('toAst()', {
+	semantics.addOperation<string | ASTNode | MessageCallExpression>('toAst()', {
 		statements(
 			_s1,
 			statement: NonterminalNode,
@@ -90,10 +90,10 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 		statement(s: NonterminalNode) {
 			return s.toAst();
 		},
-		expression(receiver: NonterminalNode, maymeMessages, cascadedMessages): Expression {
+		messageCall(receiver: NonterminalNode, maymeMessages, cascadedMessages): MessageCallExpression {
 			const astOfReceiver: Receiver = receiver.toAst();
-			const result: Expression = {
-				kindStatement: 'Expression',
+			const result: MessageCallExpression = {
+				kindStatement: 'MessageCallExpression',
 				receiver: astOfReceiver,
 				messageCalls: []
 			};
@@ -240,40 +240,65 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			}
 		},
 
-		methodBody(_openBracket, _s1, statements, _s2, switchReturns ,_s3, _closeBracket): BodyStatements {
+		methodBody(_openBracket, _s1, statements, _s2, _closeBracket): BodyStatements {
 			const child = statements.children.at(0)
 			if (statements.children.length !== 1 || !child){
 				throw new Error("statements node must have one child");
 			}
 			const statementsList: StatementList = child.toAst()
 
-			const switchChild = switchReturns.children.at(0)
-			const switchReturnAst: SwitchReturn[] = switchChild? switchChild.toAst() : []
+			// const switchChild = switchExpression.children.at(0)
+			// const switchReturnAst: SwitchReturn[] = switchChild? switchChild.toAst() : []
 
 			const bodyStatements: BodyStatements = {
 				statements: statementsList.statements,
-				switchReturns: switchReturnAst /// TODO DSMFNM<DSF
 			}
 			return bodyStatements
 		},
 
-		switchReturns(switchReturn, _s, otherSwitchReturn, _s2): SwitchReturn[]{
-			const switchReturn1: SwitchReturn = switchReturn.toAst()
-			const switchReturn2: SwitchReturn[] = otherSwitchReturn.children.map(x => x.toAst())
+		switchExpression(_s0, switchBranch, _s, otherSwitchBranch, _s2, switchBranchElseStatement, _s3): SwitchExpression{
+			const switchReturn1: SwitchBranch = switchBranch.toAst()
+			const switchReturn2: SwitchBranch[] = otherSwitchBranch.children.map(x => x.toAst())
 
-			return [switchReturn1, ...switchReturn2]
-		},
-
-		switchReturn(_pipe, _s, switchStatement, _s2): SwitchReturn{
-			const result: SwitchReturn = switchStatement.toAst()
+			const maybeElseBranch = switchBranchElseStatement.children.at(0)
+			if (maybeElseBranch) {
+				const elseBranch = maybeElseBranch.toAst()
+				const result: SwitchExpression = {
+					kindStatement: "SwitchExpression",
+					branches: [switchReturn1, ...switchReturn2],
+					elseBranch: elseBranch
+				}
+				return result
+			}
+			const result: SwitchExpression = {
+				kindStatement: "SwitchExpression",
+				branches: [switchReturn1, ...switchReturn2],
+			}
 			return result
 		},
 
-		switchStatement(expression, _ws, _arrow, _ws2, receiver): SwitchReturn{
-			const result: SwitchReturn = {
-				expression: expression.toAst(),
-				receiver: receiver.toAst()
+		switchBranchElseStatement(_arrow, _s, expression): ElseBranch {
+			const elseBranch: ElseBranch = {
+				thenDoExpression: expression.toAst()
 			}
+			return elseBranch
+		},
+
+		switchBranch(_pipe, _s, caseExpression, _s2, _arrow, _s3, thenDoExpression, _s4 ): SwitchBranch{
+			const caseExpressionNode: Expression = caseExpression.toAst()
+			if (caseExpressionNode.kindStatement === "SwitchExpression") {
+				throw new Error(`${caseExpression.sourceString} case cant be another switch expression`);
+			}
+			const thenDoExpressionNode: Expression = thenDoExpression.toAst()
+			if (thenDoExpressionNode.kindStatement === "SwitchExpression") {
+				throw new Error(`${thenDoExpression.sourceString} nested switch expression are not supported`);
+			}
+			
+			const result: SwitchBranch = {
+				caseExpression: caseExpressionNode,
+				thenDoExpression: thenDoExpressionNode
+			}
+			
 			return result
 		},
 
@@ -281,10 +306,10 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			return untypedIdentifier.sourceString;
 		},
 
-		///
+		
 		receiver_expressionInBrackets(_lb, expression, _rb): BracketExpression {
 
-			const result: Expression = expression.toAst()
+			const result: MessageCallExpression = expression.toAst()
 			const result2: BracketExpression = {...result, kindStatement: "BracketExpression"}
 
 			return result2
@@ -406,7 +431,7 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			expression: NonterminalNode
 		) {
 			const message = assignmentTarget.source.getLineAndColumnMessage();
-			const assignRightValue: Expression = expression.toAst();
+			const assignRightValue: MessageCallExpression = expression.toAst();
 
 			const astAssign: Assignment = {
 				kindStatement: 'Assignment',
@@ -435,7 +460,6 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 		},
 
 		primary(arg0: NonterminalNode) {
-
 			return arg0.toAst();
 		},
 
@@ -494,6 +518,6 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
 // console.log(JSON.stringify(generateNimCode('-Person sas = [ x echo ]')[1], undefined, 2));
 // console.log(JSON.stringify(generateNimCode('(1 + 2) echo.')[1], undefined, 2));
-
+const code = ``
 
 // generateNimCode('5 echo');

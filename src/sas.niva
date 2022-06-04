@@ -1,0 +1,5 @@
+sas = 42.
+
+| sas > 100 => "sas > 100" echo
+| sas < 40  => "sas < 90" echo
+|=> "sas between 40 and 100" echo
