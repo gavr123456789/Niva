@@ -1,4 +1,4 @@
-import { BracketExpression, Expression } from "../Expressions";
+import { BracketExpression } from "../Expressions";
 import { Primary } from "../Primary/Primary";
 
 export type Receiver = 
