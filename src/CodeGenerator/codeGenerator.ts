@@ -1,5 +1,5 @@
 import { StatementList } from '../AST_Nodes/AstNode';
-import { Mutability } from '../AST_Nodes/Statements/Statement';
+import { Mutability, ReturnStatement } from '../AST_Nodes/Statements/Statement';
 import { generateAssigment } from './assigment';
 import { generateMethodDeclaration } from './methodDeclaration';
 import { processExpression } from './expression/expression';
@@ -34,7 +34,9 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 				break;
 
 			case 'ReturnStatement':
-				throw new Error('ReturnStatement not done');
+			  const retrunCode: string =	generateReturn(s, identation)
+				lines.push(retrunCode)
+				break;
 			case 'TypeDeclaration':
 				const typeDeclarationAst = s
 				const typeDeclarationCode: string = generateTypeDeclaration(typeDeclarationAst, identation)
@@ -49,11 +51,8 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 			break;
 
 			case 'SwitchExpression':
-				console.log("code generator, switch ident = ", identation);
-				
 				const switchCode = generateSwitchExpression(s, identation);
 				lines.push(switchCode)
-
 				break;
 			default:
 				const _never: never = s;
@@ -65,11 +64,13 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 
 	return lines.join('\n');
 }
-
-
-
-
-
-
-
+function generateReturn(s: ReturnStatement, identation: number): string {
+	const ident = " ".repeat(identation) 
+	if (s.value.kindStatement === "SwitchExpression"){
+		const switchCode = generateSwitchExpression(s.value, 0)
+		return `${ident}return ${switchCode}` 
+	}
+	const exprCode = processExpression(s.value, 0)
+	return `${ident}return ${exprCode}` 
+}
 

@@ -110,7 +110,6 @@ Niva {
   blockArgument = identifier spaces
   
   // STATEMENT
-  // ReturnStatement
   returnStatement = returnOp spaces expression
      
   // IDENTEFIER
@@ -142,11 +141,20 @@ Niva {
   
     //
   listLiteral = 
-  	| "[]" -- emptyList
-    | "[" elements "]" -- notEmptyList
-  elements = primary whiteSpaces ("," spaces primary)*
-  //
+  	| "{" spaces "}" -- emptyList
+    | "{" listElements "}" -- notEmptyList
+  listElements = primary whiteSpaces (","? spaces primary)*
   
+  mapLiteral = 
+  	| "{" spaces "}" -- emptyMap
+    | "{" mapElements "}" -- notEmptyList
+  mapElements = ":"primary whiteSpaces primary (","? spaces ":"primary whiteSpaces primary)*
+  
+  hashSetLiteral = 
+  	| "#{" spaces "}" -- emptyHashSet
+    | "#{" listElements "}" -- notEmptyHashSet
+  
+  //  
   
     
   // StringLiteral

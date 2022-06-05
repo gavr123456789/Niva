@@ -24,7 +24,7 @@ export interface Assignment {
   kindStatement: "Assignment"
   assignmentTarget: string
   type?: string
-  to: MessageCallExpression // | BoolLiteralNode
+  to: Expression // | BoolLiteralNode
   mutability: Mutability 
 
   messagelineAndColumnMessage: string,
@@ -34,7 +34,7 @@ export interface Assignment {
 
 export interface ReturnStatement {
   kindStatement: "ReturnStatement"
-  value: never
+  value: Expression
 }
 
 
