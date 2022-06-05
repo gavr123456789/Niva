@@ -148,7 +148,8 @@ Niva {
   mapLiteral = 
   	| "{" spaces "}" -- emptyMap
     | "{" mapElements "}" -- notEmptyList
-  mapElements = ":"primary whiteSpaces primary (","? spaces ":"primary whiteSpaces primary)*
+  mapElements = mapElement (","? spaces mapElement)*
+  mapElement = ":"primary whiteSpaces primary
   
   hashSetLiteral = 
   	| "#{" spaces "}" -- emptyHashSet

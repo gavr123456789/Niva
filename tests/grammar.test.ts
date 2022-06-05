@@ -102,7 +102,7 @@ test('Methods declaration, keyword untyped', t => {
 
 // Literals
 test('List Literal', t => {
-  match(t, "[1,2, 3]", "listLiteral")
+  match(t, "{1, 2, 3}", "listLiteral")
 });
 
 test('Block', t => {
