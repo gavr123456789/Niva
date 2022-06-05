@@ -28,10 +28,8 @@ export function generateSwitchExpression(switchExp: SwitchExpression, identation
 		if (switchExp.elseBranch.thenDoExpression.kindStatement === "SwitchExpression") {
 			throw new Error("nested SwitchExpression doesnt support yet");
 		}
-		console.log("else branch ident + 2 = ", identation + 2);
 		
 		const elseExpressionCode = processExpression(switchExp.elseBranch.thenDoExpression, identation + 2);
-		console.log("else expression =", JSON.stringify(elseExpressionCode) );
 		
 		branchesCode.push(`${ident}else:\n${elseExpressionCode}`);
 	}

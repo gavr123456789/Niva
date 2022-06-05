@@ -2,13 +2,12 @@
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Assignment, BodyStatements, Mutability } from './AST_Nodes/Statements/Statement';
+import { Assignment, BodyStatements, Mutability, ReturnStatement } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
 
 import { IntLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/IntLiteralNode';
-import { Primary } from './AST_Nodes/Statements/Expressions/Primary/Primary';
 import { Receiver } from './AST_Nodes/Statements/Expressions/Receiver/Receiver';
 import {
 	BinaryArgument,
@@ -23,6 +22,8 @@ import { AnyLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/
 import { TypeDeclaration, TypedProperty } from './AST_Nodes/Statements/TypeDeclaration/TypeDeclaration';
 import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration, UnaryMethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
 import { Identifer } from './AST_Nodes/Statements/Expressions/Primary/Identifier';
+import { BoolLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/BoolLiteral';
+import exp from 'constants';
 
 function addGlobalVariableDeclaratuon(
 	map: Map<string, Assignment> | undefined,
@@ -256,11 +257,20 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			}
 			return bodyStatements
 		},
+		
+		returnStatement(_op, _s, expression): ReturnStatement{
+			const expr = expression.toAst()
+			const result: ReturnStatement = {
+				kindStatement: "ReturnStatement",
+				value: expr
+			}
+			return result
+		},
 
 		switchExpression(_s0, switchBranch, _s, otherSwitchBranch, _s2, switchBranchElseStatement, _s3): SwitchExpression{
 			const switchReturn1: SwitchBranch = switchBranch.toAst()
 			const switchReturn2: SwitchBranch[] = otherSwitchBranch.children.map(x => x.toAst())
-
+			
 			const maybeElseBranch = switchBranchElseStatement.children.at(0)
 			if (maybeElseBranch) {
 				const elseBranch = maybeElseBranch.toAst()
@@ -432,8 +442,11 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			expression: NonterminalNode
 		) {
 			const message = assignmentTarget.source.getLineAndColumnMessage();
-			const assignRightValue: MessageCallExpression = expression.toAst();
-
+			const assignRightValue: Expression = expression.toAst();
+			if (assignRightValue.kindStatement === "SwitchExpression" && !assignRightValue.elseBranch) {
+				
+				throw new Error(`${message} switch assignment must have else branch`);
+			}
 			const astAssign: Assignment = {
 				kindStatement: 'Assignment',
 				assignmentTarget: assignmentTarget.sourceString,
@@ -490,14 +503,21 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			};
 			return result;
 		},
-
-		integerLiteral(arg0: NonterminalNode): IntLiteral {
+		integerLiteral(intLiteral: NonterminalNode): IntLiteral {
 			const result: IntLiteral = {
 				kindPrimary: 'IntLiteral',
-				value: arg0.sourceString
+				value: intLiteral.sourceString
 			};
 			return result;
+		},
+		boolLiteral(boolLiteral): BoolLiteral{
+			const result: BoolLiteral = {
+				kindPrimary: "BoolLiteral",
+				value: boolLiteral.sourceString
+			}
+			return result
 		}
+		
 	});
 
 	const matchResult = grammar.match(code);
@@ -519,6 +539,3 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
 // console.log(JSON.stringify(generateNimCode('-Person sas = [ x echo ]')[1], undefined, 2));
 // console.log(JSON.stringify(generateNimCode('(1 + 2) echo.')[1], undefined, 2));
-const code = ``
-
-// generateNimCode('5 echo');

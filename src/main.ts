@@ -9,7 +9,6 @@ const filePath = process.argv.at(2)
 
 if (!filePath){
 	throw new Error("Missing a file argument.")
-
 }
 
 const nivaCode = readFileSync(filePath, "utf8");
