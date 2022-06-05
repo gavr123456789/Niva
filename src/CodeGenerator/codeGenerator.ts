@@ -19,6 +19,7 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 		switch (s.kindStatement) {
 			case 'MessageCallExpression':
 			case "BracketExpression":
+				
 				const expressionCode = processExpression(s, identation)
 				lines.push(expressionCode)
 			break;
@@ -48,6 +49,8 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 			break;
 
 			case 'SwitchExpression':
+				console.log("code generator, switch ident = ", identation);
+				
 				const switchCode = generateSwitchExpression(s, identation);
 				lines.push(switchCode)
 

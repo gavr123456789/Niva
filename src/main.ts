@@ -14,7 +14,9 @@ if (!filePath){
 
 const nivaCode = readFileSync(filePath, "utf8");
 
-const [_, nimCode] = generateNimCode(nivaCode, true )
+const [ast, nimCode] = generateNimCode(nivaCode, true )
+// console.log("ast = ", JSON.stringify(ast, undefined, 2));
+
 
 writeFileSync(EXPORTED_NIM_CODE, nimCode)
 
