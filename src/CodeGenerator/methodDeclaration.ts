@@ -4,30 +4,30 @@ import { Statement } from "../AST_Nodes/Statements/Statement"
 import { generateNimFromAst } from "./codeGenerator"
 
 
-
-
-export function generateMethodDeclaration(methodDec: MethodDeclaration): string {
+export function generateMethodDeclaration(methodDec: MethodDeclaration, identation: number): string {
 	const {bodyStatements, expandableType} = methodDec.method
 	const {statements} = bodyStatements
 	const {method: x} = methodDec
 
 	const returnType = x.returnType? x.returnType: "auto"
-	const methodBody = generateMethodBody(statements, 2)
+	const methodBody = generateMethodBody(statements, identation + 2)
+	const ident = " ".repeat(identation) 
 	
 
 	switch (x.methodKind) {
 		case "UnaryMethodDeclaration":
-		return `proc ${x.name}(self: ${expandableType}): ${returnType} =\n${methodBody}`
+		return `${ident}proc ${x.name}(self: ${expandableType}): ${returnType} =\n${methodBody}`
 
 		case "BinaryMethodDeclaration":
 			const argumentType = x.identifier.type ?? "auto"
-		return `proc \`${x.binarySelector}\`(self: ${expandableType}, ${x.identifier.value}: ${argumentType}): ${returnType} =\n${methodBody}`
+		return `${ident}proc \`${x.binarySelector}\`(self: ${expandableType}, ${x.identifier.value}: ${argumentType}): ${returnType} =\n${methodBody}`
 
 		case "KeywordMethodDeclaration":
 		const keyArgs = x.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
 		// from_to
 		const keywordProcName = x.keyValueNames.map(y => y.keyName).join("_")
-		return `proc ${keywordProcName}(self: ${expandableType}, ${keyArgs}): ${returnType} =\n${methodBody}`
+		
+		return `${ident}proc ${keywordProcName}(self: ${expandableType}, ${keyArgs}): ${returnType} =\n${methodBody}`
 
 		
 		default:
@@ -38,13 +38,13 @@ export function generateMethodDeclaration(methodDec: MethodDeclaration): string 
 
 
 // level - degree of nesting of the code
-function generateMethodBody(statements: Statement[], level: number): string {
+function generateMethodBody(statements: Statement[], identation: number): string {
 	const statementList: StatementList = {
 		kind: "StatementList",
 		statements
 	} 
 	
-  return generateNimFromAst(statementList, level)
+  return generateNimFromAst(statementList, identation)
 }
 
 

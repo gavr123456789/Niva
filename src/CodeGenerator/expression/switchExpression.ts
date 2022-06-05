@@ -1,16 +1,18 @@
 import { SwitchBranch, SwitchExpression } from "../../AST_Nodes/Statements/Expressions/Expressions";
 import { processExpression } from "./expression";
 
-export function generateSwitchExpression(s: SwitchExpression): string {
+export function generateSwitchExpression(s: SwitchExpression, identation: number): string {
 	const switchExp = s;
 	const branchesCode: string[] = [];
+	const ident = " ".repeat(identation) 
+	
 
 	// case -> thenDo branches
 	// first must be if, others must be elif
 	const firstBranch = switchExp.branches.at(0);
 	if (firstBranch) {
-		const { caseExpressionCode, thenDoExpressionCode } = generateBranch(firstBranch);
-		const switchExpLine = `if ${caseExpressionCode}:\n${thenDoExpressionCode}`;
+		const { caseExpressionCode, thenDoExpressionCode } = generateBranch(firstBranch, identation);
+		const switchExpLine = `${ident}if ${caseExpressionCode}:\n${thenDoExpressionCode}`;
 		branchesCode.push(switchExpLine);
 		// remove first 
 		switchExp.branches = switchExp.branches.slice(1);
@@ -18,8 +20,8 @@ export function generateSwitchExpression(s: SwitchExpression): string {
 
 	// process others elif branches
 	switchExp.branches.forEach(x => {
-		const { caseExpressionCode, thenDoExpressionCode } = generateBranch(x);
-		const elIfSwitchExpLine = `elif ${caseExpressionCode}:\n${thenDoExpressionCode}`;
+		const { caseExpressionCode, thenDoExpressionCode } = generateBranch(x, identation);
+		const elIfSwitchExpLine = `${ident}elif ${caseExpressionCode}:\n${thenDoExpressionCode}`;
 		branchesCode.push(elIfSwitchExpLine);
 	});
 	// else branch
@@ -27,12 +29,10 @@ export function generateSwitchExpression(s: SwitchExpression): string {
 		if (switchExp.elseBranch.thenDoExpression.kindStatement === "SwitchExpression") {
 			throw new Error("nested SwitchExpression doesnt support yet");
 		}
-		const elseExpressionLines: string[] = [];
 
-		processExpression(switchExp.elseBranch.thenDoExpression, 2, elseExpressionLines);
-		const elseExpressionCode = elseExpressionLines.at(0) ?? "";
+		const elseExpressionCode = processExpression(switchExp.elseBranch.thenDoExpression, identation);
 
-		branchesCode.push(`else:\n${elseExpressionCode}`);
+		branchesCode.push(`${ident}else:\n${elseExpressionCode}`);
 	}
 	const switchExpResult = branchesCode.join("\n");
   return switchExpResult
@@ -40,7 +40,7 @@ export function generateSwitchExpression(s: SwitchExpression): string {
 
 
 
-function generateBranch(x: SwitchBranch) {
+function generateBranch(x: SwitchBranch, identation: number) {
   if (x.caseExpression.kindStatement === "SwitchExpression") {
     //| | x > 5. => "sas" echo
     throw new Error("case expression cant be another switch expression");
@@ -49,13 +49,9 @@ function generateBranch(x: SwitchBranch) {
     throw new Error("nested SwitchExpression doesnt support yet");
   }
 
-  const caseExpressionLines: string[] = [];
-  const thenDoExpressionLines: string[] = [];
+	// if   x < 2 // identation not needed after if
+  const caseExpressionCode = processExpression(x.caseExpression, 0);
+  const thenDoExpressionCode = processExpression(x.thenDoExpression, identation + 2);
 
-  processExpression(x.caseExpression, 0, caseExpressionLines);
-  processExpression(x.thenDoExpression, 2, thenDoExpressionLines);
-
-  const caseExpressionCode = caseExpressionLines.at(0) ?? "";
-  const thenDoExpressionCode = thenDoExpressionLines.at(0) ?? "";
   return { caseExpressionCode, thenDoExpressionCode };
 }

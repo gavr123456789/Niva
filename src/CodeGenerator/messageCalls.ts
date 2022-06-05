@@ -4,11 +4,7 @@ import { processExpression } from "./expression/expression";
 export function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
 	// example: 1 + (1 - 1)
 	if (argument.value.kindStatement === "BracketExpression") {
-		const lines: string[] = []
-		processExpression(argument.value, 0, lines)
-		const expressionInBracketsCode = lines.at(0)
-
-		if (!expressionInBracketsCode) throw new Error("expressionInBracketsCode cant be null");
+		const expressionInBracketsCode = processExpression(argument.value, 0)
 		const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
 		return codeWithArgumentInBrackets
 	}

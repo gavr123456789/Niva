@@ -1,5 +1,8 @@
-sas = 42.
+-int fib -> int = [
+  | self < 2 => 1
+  |=> (self - 2) fib + (self - 1) fib
+].
 
-| sas > 100 => "sas > 100" echo
-| sas < 40  => "sas < 90" echo
-|=> "sas between 40 and 100" echo
+5 fib echo
+
+

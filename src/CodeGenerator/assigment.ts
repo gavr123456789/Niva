@@ -1,18 +1,24 @@
 import { MessageCallExpression } from "../AST_Nodes/Statements/Expressions/Expressions";
+import { processExpression } from "./expression/expression";
 
-export function generateAssigment(assignmentTarget: string, to: MessageCallExpression, type?: string): string {
+export function generateAssigment(assignmentTarget: string, to: MessageCallExpression, identation: number, type?: string): string {
 	if (to.receiver.kindStatement === "BracketExpression") {
 		throw new Error("BracketExpression not supported as left part of assigment");
 	}
+
+	const ident = " ".repeat(identation)
+
 	if (to.messageCalls.length === 0) {
 		const assignRightValue = to.receiver.atomReceiver.value;
 		if (type) {
-			return 'let ' + assignmentTarget + ': ' + type + ' = ' + assignRightValue;
+			return `${ident}let ${assignmentTarget}: ${type} = ${assignRightValue}`;
 		} else {
-			return 'let ' + assignmentTarget + ' = ' + assignRightValue;
+			return `${ident}let ${assignmentTarget} = ${assignRightValue}`;
 		}
 	} else {
-		// тут преобразовать expression, который по сути message call в ним код, и добавить
-		throw new Error('x = exporessiong not supported yet');
+		// identation after '=' not needed
+    const messagesAfterAsign = processExpression(to, 0)
+		// Todo infer types
+		return `${ident}let ${assignmentTarget} = ${messagesAfterAsign}`
 	}
 }

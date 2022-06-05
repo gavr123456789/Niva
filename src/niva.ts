@@ -1,12 +1,12 @@
-import fs from 'fs';
+
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Assignment, BodyStatements, Mutability, Statement } from './AST_Nodes/Statements/Statement';
+import { Assignment, BodyStatements, Mutability } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
-import extras from 'ohm-js/extras';
+
 import { IntLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/IntLiteralNode';
 import { Primary } from './AST_Nodes/Statements/Expressions/Primary/Primary';
 import { Receiver } from './AST_Nodes/Statements/Expressions/Receiver/Receiver';
@@ -68,7 +68,8 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			statement: NonterminalNode,
 			_dot: IterationNode,
 			otherStatements: IterationNode,
-			_dot2: IterationNode
+			_dot2: IterationNode,
+			_s3
 		): StatementList {
 			// echo('statement');
 			const firstStatementAst = statement.toAst();
