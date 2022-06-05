@@ -19,14 +19,16 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 		switch (s.kindStatement) {
 			case 'MessageCallExpression':
 			case "BracketExpression":
-				processExpression(s, identation, lines)
+				const expressionCode = processExpression(s, identation)
+				lines.push(expressionCode)
 			break;
 
 			case 'Assignment':
 				// codeGenerateExpression(s.value, lines)
 				const assignment = s;
 				if (assignment.mutability === Mutability.IMUTABLE) {
-					lines.push(generateAssigment(assignment.assignmentTarget, assignment.to, s.type));
+					
+					lines.push(generateAssigment(assignment.assignmentTarget, assignment.to, identation, s.type));
 				}
 				break;
 
@@ -34,17 +36,19 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 				throw new Error('ReturnStatement not done');
 			case 'TypeDeclaration':
 				const typeDeclarationAst = s
-				const typeDeclarationCode: string = generateTypeDeclaration(typeDeclarationAst)
+				const typeDeclarationCode: string = generateTypeDeclaration(typeDeclarationAst, identation)
 				lines.push(typeDeclarationCode)
+
 				break;
 			case 'MethodDeclaration':
 				const methodDeclarationAst = s
-				const methodDeclarationCode = generateMethodDeclaration(methodDeclarationAst);
+				const methodDeclarationCode = generateMethodDeclaration(methodDeclarationAst, identation);
 				lines.push(methodDeclarationCode)
+
 			break;
 
 			case 'SwitchExpression':
-				const switchCode = generateSwitchExpression(s);
+				const switchCode = generateSwitchExpression(s, identation);
 				lines.push(switchCode)
 
 				break;

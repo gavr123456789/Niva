@@ -1,6 +1,6 @@
 Niva {
   // statement
-  statements = spaces statement (dot statement)* dot?
+  statements = spaces statement (dot statement)* dot? spaces
   statement = 
     | returnStatement  -- returnStatement
     | typeDeclaration -- typeDeclarationStatement
@@ -67,8 +67,7 @@ Niva {
 
   // Switch statement
   switchStatement = receiver switchExpression
-  
-  // expressionAsReceiver = expression
+
   receiver = 
   	| primary
     | listLiteral
