@@ -247,6 +247,8 @@ I think it will look similar, only with classes and methods instead of a folder 
 Here picture of Smalltalk Browser if you are not familiar with it:  
 
 ![Smalltalk Browser](https://www.researchgate.net/profile/Stephane-Ducasse/publication/40637510/figure/fig4/AS:669413896380430@1536612118655/The-browser-showing-the-printString-method-of-class-object.png)
+![image](https://user-images.githubusercontent.com/30507409/172058279-e1666c93-fee2-4909-a7a8-1ef97b5a89dd.png)
+
 
 
 # How to try
