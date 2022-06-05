@@ -20,8 +20,14 @@ Just like keyword message in Smalltalk
 type Person name: string job: string.
 ```
 
+### Distinct type 
+If type declarated as 
+```F#
+```
+
 ### Type System
-Now the nominal one is being used, I plan to conduct performance tests, and if it doesn't hurt to switch to structural typing to add more dynamism, or give the user the opportunity to choose hmm.
+Now the nominal one is being used, I plan to conduct performance tests, and if it doesn't hurt to switch to structural typing to add more dynamism, or give the user the opportunity to choose hmm.   
+All types now only on nim side, yet.
 
 ### Method Declaration [Done]
 This is exactly the same as in Smalltalk.  
@@ -86,8 +92,10 @@ protocol getInformation for Person
   inRelationship: relationType with: person = []
   addRelationshipOfType: relationType with: person = []
 ```
-
-
+### Send message (function call) [Done]
+```F#
+person renameTo: "Alice".
+```
 ### Create instance of Person [WIP]
 Just like keyword message to Type
 ```haskell 
@@ -107,9 +115,15 @@ type Point x: int y: int.
 
 ```
 Of course they are inlined
-### Send message to person (function call) [Done]
+### Code Blocks [WIP]
+It's just like lambda.  
+Here how to declare type of code block  
+`[argsTypes | returnType]`  
+To 
 ```F#
-person renameTo: "Alice".
+-Foo do: code::[int string | int] -> int = [
+  code value: 4 value: "string argument" // apply code block
+]
 ```
 
 ### Generic Type [Done]
@@ -146,12 +160,10 @@ y
 |=> "x is neither 5 nor 7" echo
 ```
 
-### Modules (need desing)
+### Modules [need desing]
 There no such thing as modules in Smalltalk, so I still thinking how to better implement that in kinda smalltalk like style.
 
-### 
-
-### Live comments (WIP)
+### Live comments [WIP]
 This is a replacement for the ability of a small thread to select any part of the code and execute it. A way to show callstack may be added.  
 ```F#
 x = 42.
@@ -164,7 +176,7 @@ x isEven. //! true
 ```
 No need to debug printing anymore.
 
-### Live unit tests (WIP, need design)
+### Live unit tests [WIP, need design]
 Smalltalk contains great features for TDD and even DDD, niva should have them too.  
 Write the tests first.
 
@@ -183,22 +195,104 @@ after compile
 -int addOne -> int = self + 1
 ```
 
-# Code examples
 
-Fibonacci [works]
-```rust
--int fib -> int = [
-  n = self.
-  | n < 2 => 1
-  |=> (n - 2) fib + (n - 1) fib
-].
+# Message cascading [WIP]
+This feature is directly from smalltalk. Its the same as [Clojure doto](https://clojuredocs.org/clojure.core/doto) or [Pascal With Do](https://www.freepascal.org/docs-html/ref/refsu62.html) or [Kotlin with](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/with.html), many langs has something like that:
+`;` are cascade operator, that mean the message will be send to the first receiver
+```F#
+c = {}. // empty list
+c add: 1; add: 2; add: 3
+```
+is the same as 
+```F#
+c = {}.
+c add: 1.
+c add: 2.
+c add: 3.
+```
+That is, imagine that you have an add function that takes 2 numbers and returns their sum
+C lang
+```C
+int add(int a, int b) {
+  return a + b;
+}
+```
+If you chain functions like this
+```C
+add(1, add(2, add(3, 4)))
+```
+you will get 1 + 2 + 3 + 4  
+and if you wanna apply all functions to the same value you will need:
+```C
+int a = 0;
+a = add(3, 4);
+a = add(a, 2);
+a = add(a, 1);
+``` 
+Lest imagine its Java, and int itself has add method then:
+```Java
+int a = 0;
+a = a.add(1).add(2).add(3).add(4);
+```
+will give you 1, because each call after `add(1)` was applied to the result of the previous call, and not to the original variable a.  
+So to get fluent desing in Java like languages you need to return this or new instance of this on each method. 
 
-5 fib echo
+So the same on niva will looks like:
+Niva
+```Smalltalk
+-int add: b -> int = [ 
+  self + b 
+]
+a = add: 1; add: 2; add: 3; add 4.
+```
+This is very convenient for chaining any calls. Since setting field values is also a message, you can do this:
+```Smalltalk
+person = Person name: "Alice" age: 42.
+person name: "Bob"; age: 43. // send message name and age to person
+
+boxWidget = Box width: 40 height: 50.
+boxWidget 
+  add: Label text: "hello"; 
+  add: Button text: "press me";
+  height: 100;
 ```
 
 
-# Collections (WIP)
-I almost stole Rich Hickey's syntax, I hope he won't be offended.
+# Tagged unions [WIP]
+Declaration:  
+```F#
+union Shape = 
+  | type Circle = radius: int
+  | type Square = side: int
+  | type Rectangle = height: int width: int.
+```
+Now shape has one method with next signature:
+```Smalltalk
+-Shape Circle: [Circle | auto] Square: [Square | auto] Rectangle: [Rectangle | auto]
+```
+This means that you always check union for all possible tags (exhaustion). If you add a new tag, all the places in which you match will show an error, since now the signature of the method has changed.  
+```Smalltalk
+-Shape getShapeWidth = [
+  self 
+    Circle:    [ circle | 2 * circle radius ]
+    Square:    [ square | square side ]
+    Rectangle: [ rectangle | rectangle width ].
+]
+```
+Every branch is usual type, so you can create them separately.
+```Smalltalk
+circle = Circle side: 4
+```
+### Default values [WIP]
+You can create union with default values
+```F#
+union Person = name: string age: int // Default Person properties
+	| StrangePerson fumos: List::Fumo 
+	| NormalPerson
+```
+
+# Collections [WIP]
+I almost stole Rich Hickey's syntax, I hope he won't be offended ^_^
 ```lua
 listLiteral = 
   | "{" spaces "}" -- emptyList
@@ -258,4 +352,73 @@ cd niva
 yarn
 yarn test 
 yarn ts-node ./src/main.ts ./yourfile.niva
+```
+
+# Code examples
+
+## Working now
+#### Fibonacci
+```rust
+-int fib -> int = [
+  n = self.
+  | n < 2 => 1
+  |=> (n - 2) fib + (n - 1) fib
+].
+
+5 fib echo
+```
+
+#### Is Even
+```rust
+-int isEven = [
+  | self % 2 == 0 => true
+  |=> false
+].
+
+5 isEven echo.
+4 isEven echo.
+```
+
+## Can be implemented
+
+#### Get the HTML source of a web page
+```F#
+"http://www.pharo.org" asUrl retrieveContents
+```
+
+#### Compute difference in days between two dates
+```F#
+('2014-07-01' asDate - '2013/2/1' asDate) days
+```
+
+#### Decimal digit length of 42!
+```F#
+42 factorial decimalDigitLength
+```
+
+#### Set up an HTTP server that returns the current timestamp
+```Smalltalk
+(Server startDefaultOn: 8080) 
+  onRequestRespond: [ request | 
+    Response ok: (Entity with: (DateAndTime now asString)) ]
+```
+#### Split a string on dashes, reverse the order of the elements and join them using slashes
+
+```F#
+'/' join: ('1969-07-20' split: '-') reverse // 20/07/1969
+```
+
+#### Test whether one set is included in another one
+```Swift
+#{a b c d e f} includesAll: #{f d b}
+```
+
+#### Generate a random string
+```Rust
+(string new: 32) map: [ ('a'..'z') atRandom ]
+```
+
+#### Count the number of the leap years between two years
+```Smalltalk
+(1914 to: 1945) count: [ it isLeapYear ].
 ```
