@@ -20,15 +20,6 @@ Just like keyword message in Smalltalk
 type Person name: string job: string.
 ```
 
-### Distinct type 
-If type declarated as 
-```F#
-```
-
-### Type System
-Now the nominal one is being used, I plan to conduct performance tests, and if it doesn't hurt to switch to structural typing to add more dynamism, or give the user the opportunity to choose hmm.   
-All types now only on nim side, yet.
-
 ### Method Declaration [Done]
 This is exactly the same as in Smalltalk.  
 The first is an identifier of the type for which the method is declared, then the signature and the body.
@@ -140,7 +131,6 @@ May remind Haskell a bit
 |=> elseExpr
 ```
 So else branch is just a regular branch without `caseExpr`  
-
 It can be used as an expression as well as a statement:  
 
 ```Haskell
@@ -333,6 +323,16 @@ set add: 4 //! #{1 2 3 4}
 set has: 3 //! true
 ```
 
+### Type System
+Now the nominal one is being used, I plan to conduct performance tests, and if it doesn't hurt to switch to structural typing to add more dynamism, or give the user the opportunity to choose hmm.   
+All types now only on nim side, yet.
+### Distinct type [WIP need design]
+If type assigned to one of base types then its distinct type
+```F#
+type Path = string
+```
+`Path` is not compatible with the string type, that is, it is not suitable as an string argument. 
+
 # Smalltalk inspiration
 ### But wait, Smalltalk was a live programming enviroment
 When core of the lang will ready I plan to add gui with class browser just like in Smalltalk, so the syntax of method declaration will starts from signature.  
@@ -343,7 +343,11 @@ Here picture of Smalltalk Browser if you are not familiar with it:
 ![Smalltalk Browser](https://www.researchgate.net/profile/Stephane-Ducasse/publication/40637510/figure/fig4/AS:669413896380430@1536612118655/The-browser-showing-the-printString-method-of-class-object.png)
 ![image](https://user-images.githubusercontent.com/30507409/172058279-e1666c93-fee2-4909-a7a8-1ef97b5a89dd.png)
 
-
+### Does Not Understand [need design]
+I plan to make a way to return this functionality to a statically typed language. There will be a way to define the method in a special way, in which the signatures of messages that are called over this object will come to this method, and not just arguments as usual.  
+For example:
+`someObj foo; bar.`
+This special method of `someObj` will get `foo` and `bar` as arguments. 
 
 # How to try
 ```sh
