@@ -7,7 +7,7 @@ import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
 
-import { IntLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/IntLiteralNode';
+import { IntLiteral } from './AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/IntLiteralNode';
 import { Receiver } from './AST_Nodes/Statements/Expressions/Receiver/Receiver';
 import {
 	BinaryArgument,
@@ -17,13 +17,17 @@ import {
 	MessageCall,
 	UnaryMessage
 } from './AST_Nodes/Statements/Expressions/Messages/Message';
-import { StringLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/StringLiteralNode';
-import { AnyLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/AnyLiteral';
+import { StringLiteral } from './AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/StringLiteralNode';
+import { AnyLiteral } from './AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/AnyLiteral';
 import { TypeDeclaration, TypedProperty } from './AST_Nodes/Statements/TypeDeclaration/TypeDeclaration';
 import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration, UnaryMethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
-import { Identifer } from './AST_Nodes/Statements/Expressions/Primary/Identifier';
-import { BoolLiteral } from './AST_Nodes/Statements/Expressions/Primary/Literals/BoolLiteral';
-import exp from 'constants';
+import { Identifer } from './AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier';
+import { BoolLiteral } from './AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/BoolLiteral';
+import { BlockConstructor } from './AST_Nodes/Statements/Expressions/Receiver/BlockConstructor';
+
+
+
+let isInMethodBody = false
 
 function addGlobalVariableDeclaratuon(
 	map: Map<string, Assignment> | undefined,
@@ -49,7 +53,7 @@ function addGlobalVariableDeclaratuon(
 }
 
 // Returns AST, nim code and errors
-export function generateNimCode(code: string, discardable = false): [StatementList, string, NivaError[]] {
+export function generateNimCode(code: string, discardable = false, includePrelude = false): [StatementList, string, NivaError[]] {
 	// place to variable name to AST node
 	const variables = new Map<string, Map<string, Assignment>>();
 	// const typeDeclarations = new Map<string, Map<string, Assignment>>();
@@ -243,6 +247,7 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 		},
 
 		methodBody(_openBracket, _s1, statements, _s2, _closeBracket): BodyStatements {
+			isInMethodBody = true
 			const child = statements.children.at(0)
 			if (statements.children.length !== 1 || !child){
 				throw new Error("statements node must have one child");
@@ -255,10 +260,15 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			const bodyStatements: BodyStatements = {
 				statements: statementsList.statements,
 			}
+			isInMethodBody = false
+
 			return bodyStatements
 		},
 		
 		returnStatement(_op, _s, expression): ReturnStatement{
+			if (!isInMethodBody) {
+				throw new Error("Retrun statement must be inside method body");
+			}
 			const expr = expression.toAst()
 			const result: ReturnStatement = {
 				kindStatement: "ReturnStatement",
@@ -378,14 +388,16 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			return [ keywordMessage.toAst() ];
 		},
 
-		keywordMessage(_s1, keywordM, _s2, keywordArgument, _s3, _s4) {
+		keywordMessage(_s1, keywordM, _s2, keywordArgument, _s3, _s4): KeywordMessage {
 			const resultArguments: KeywordArgument[] = [];
-			keywordM.children.forEach((x, y) => {
-				const keyword = x.toAst();
-				const arg = keywordArgument.children[y].toAst();
+
+			// keywordM and keywordArgument always have same length
+			keywordM.children.forEach((node, i) => {
+				const keywordArgName: string = node.toAst();
+				const arg: Receiver = keywordArgument.children[i].toAst();
 				resultArguments.push({
-					ident: keyword,
-					value: arg
+					ident: keywordArgName,
+					receiver: arg
 				});
 			});
 
@@ -398,8 +410,9 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 		keywordM(identifier, colon) {
 			return identifier.sourceString;
 		},
-		keywordArgument(receiver, unaryMessages, binaryMessages) {
-			return receiver.sourceString;
+		keywordArgument(receiver, unaryMessages, binaryMessages): Receiver {
+			const sas: Receiver = receiver.toAst()
+			return sas;
 		},
 
 		typeDeclaration(_type, _s, untypedIdentifier, _s2, typedProperties): TypeDeclaration {
@@ -434,6 +447,41 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 			return result;
 		},
 
+		/// CodeBlock
+		blockConstructor(_lsquare, _s, blockBody,_s1, _rsquare): BlockConstructor {
+			const blockConstructor: BlockConstructor = blockBody.toAst()
+
+			return blockConstructor
+		},
+		blockBody(s,_s, maybeStatements): BlockConstructor {
+			const statements = maybeStatements.children.at(0)
+			if (!statements) {
+				throw new Error("Empty code block is useless");
+			}
+
+			const statementsNode: StatementList = statements.toAst()
+
+			const blockArgList = s.children.at(0)
+			const blockArguments = blockArgList? blockArgList.children.map(x => x.toAst()): []
+
+			const result: BlockConstructor = {
+				kindStatement: "BlockConstructor",
+				blockArguments,
+				statements: statementsNode.statements
+			}
+				
+			return result
+		},
+
+		blockArgument(s, r){
+			throw new Error("blockArgument not done yet");
+			
+		},
+
+
+
+		///
+
 		assignment(
 			assignmentTarget: NonterminalNode,
 			_arg1: NonterminalNode,
@@ -466,6 +514,11 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 				const result: BracketExpression = x.toAst()
 				return result
 			}
+			if (x.sourceString[0] === "[") {
+				const result: BlockConstructor = x.toAst()
+				return result
+			}
+
 			const result: Receiver = {
 				kindStatement: 'Primary',
 				atomReceiver: x.toAst()
@@ -527,7 +580,7 @@ export function generateNimCode(code: string, discardable = false): [StatementLi
 	}
 	const Ast: StatementList = semantics(matchResult).toAst();
 
-	const generatedNimCode = generateNimFromAst(Ast, 0, discardable);
+	const generatedNimCode = generateNimFromAst(Ast, 0, discardable, includePrelude);
 
 	return [ Ast, generatedNimCode, errors ];
 }

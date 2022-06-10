@@ -1,4 +1,4 @@
-import { Primary } from "../AST_Nodes/Statements/Expressions/Primary/Primary";
+import { Primary } from "../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 
 // If primary is not an expression
 export function getAtomPrimary(primary: Primary): string {
