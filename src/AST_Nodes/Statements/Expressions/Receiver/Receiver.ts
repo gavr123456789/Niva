@@ -1,8 +1,8 @@
 import { BracketExpression } from "../Expressions";
-import { Primary } from "../Primary/Primary";
+import { BlockConstructor } from "./BlockConstructor";
+import { Primary } from "./Primary/Primary";
 
 export type Receiver = 
   | Primary
-  // | ExpressionAsReceiver
-  // | BlockConstructor
+  | BlockConstructor
   | BracketExpression

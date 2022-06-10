@@ -1,7 +1,5 @@
-import { MessageCallExpression } from "../Expressions/Expressions"
-import { Identifer } from "../Expressions/Primary/Identifier"
-import { Receiver } from "../Expressions/Receiver/Receiver"
-import { BodyStatements, Statement } from "../Statement"
+import { Identifer } from "../Expressions/Receiver/Primary/Identifier"
+import { BodyStatements } from "../Statement"
 
 export interface UnaryMethodDeclarationArgs {
   methodArgKind: "Unary"

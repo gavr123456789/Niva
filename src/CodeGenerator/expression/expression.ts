@@ -1,9 +1,25 @@
+import { StatementList } from '../../AST_Nodes/AstNode';
 import { BracketExpression, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
+import { generateNimFromAst } from '../codeGenerator';
 import { generateUnaryCall, generateBinaryCall, generateKeywordCall } from '../messageCalls';
 import { getAtomPrimary } from '../primary';
 
 export function processExpression(s: MessageCallExpression | BracketExpression, identation: number): string {
 	const receiver = s.receiver;
+
+	if (receiver.kindStatement === "BlockConstructor"){
+		const statemetList: StatementList = {
+			kind: "StatementList",
+			statements: receiver.statements
+		}
+		// process "it"
+		if (receiver.blockArguments.length === 1) {
+
+		}
+		const statementsCode = generateNimFromAst(statemetList)
+		throw new Error("BlockConstructor");
+		
+	}
 
 	const primaryName =
 		receiver.kindStatement === 'BracketExpression'
@@ -13,6 +29,7 @@ export function processExpression(s: MessageCallExpression | BracketExpression, 
 	if (typeof primaryName === 'object') {
 		throw new Error('typeof primaryName === object');
 	}
+
 
 	for (const messageCall of s.messageCalls) {
 		switch (messageCall.selectorKind) {
@@ -50,7 +67,8 @@ export function processExpression(s: MessageCallExpression | BracketExpression, 
 					case 'Primary':
 					case 'BracketExpression':
 						const { arguments: keywordArguments } = messageCall;
-						const keywordMessageCall = generateKeywordCall(keywordArguments);
+						const keywordMessageCall = generateKeywordCall(keywordArguments, identation);
+
 						messageLine.push(keywordMessageCall);
 						break;
 					default:
@@ -69,6 +87,8 @@ export function processExpression(s: MessageCallExpression | BracketExpression, 
 	const identStr = ' '.repeat(identation);
 	// пушим строку вызовов сообщений
 	const needBrackets = s.kindStatement === 'BracketExpression';
+
+
 	const messageCall = !needBrackets ? messageLine.join('') : '(' + messageLine.join('') + ')';
 
 	if (identation === 0) {

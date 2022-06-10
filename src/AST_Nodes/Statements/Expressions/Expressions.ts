@@ -31,16 +31,3 @@ export interface SwitchBranch {
 export interface ElseBranch{
 	thenDoExpression: Expression,
 }
-// 5 factorial
-// const basicExpression: BasicExpression = {
-//   primary: 5,
-//   message: {
-//     selectorKind: "unary",
-//     messageIdent: "factorial"
-//   }
-// }
-
-// export interface Parentheses {
-// 	kindExpression: 'Parentheses';
-// 	expression: ExpressionStatement;
-// }

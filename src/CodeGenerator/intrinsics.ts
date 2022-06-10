@@ -1,0 +1,1 @@
+type loopMessages = "timesRepeat" | "toDo"

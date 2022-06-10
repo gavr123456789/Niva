@@ -1,5 +1,5 @@
-import { IntLiteral } from "./Expressions/Primary/Literals/IntLiteralNode"
-import { StringLiteral } from "./Expressions/Primary/Literals/StringLiteralNode"
+import { IntLiteral } from "./Expressions/Receiver/Primary/Literals/IntLiteralNode"
+import { StringLiteral } from "./Expressions/Receiver/Primary/Literals/StringLiteralNode"
 import { BracketExpression, Expression, MessageCallExpression } from "./Expressions/Expressions"
 import { TypeDeclaration } from "./TypeDeclaration/TypeDeclaration"
 import { MethodDeclaration } from "./MethodDeclaration/MethodDeclaration"

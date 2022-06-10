@@ -1,8 +1,3 @@
--int fib -> int = [
-  | self < 2 => 1
-  |=> (self - 2) fib + (self - 1) fib
-].
-
-5 fib echo
-
-
+x = 10.
+1 to: 4 do: [ x inc ].
+x echo

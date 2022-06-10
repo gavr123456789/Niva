@@ -8,8 +8,11 @@ import { generateTypeDeclaration } from './typeDeclaration';
 
 
 // То что может быть на первом уровне вложенности
-export function generateNimFromAst(x: StatementList, identation = 0, discardable = false): string {
+export function generateNimFromAst(x: StatementList, identation = 0, discardable = false, includePrelude = false): string {
 	let lines: string[] = [];
+	if (includePrelude) {
+		lines.push(`import "nivaPrelude"`)
+	}
 
 	if (discardable) {
 		lines.push('{. push discardable .}');

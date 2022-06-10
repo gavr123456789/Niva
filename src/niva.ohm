@@ -105,7 +105,8 @@ Niva {
 
   // BLOCKS
   blockConstructor = "[" spaces blockBody spaces "]"
-  blockBody = (blockArgument* "|")? spaces statements? 
+  blockBody = (blockArgList)? spaces statements? 
+  blockArgList = blockArgument* "|"
   // blockArgument = ":" identifier spaces
   blockArgument = identifier spaces
   

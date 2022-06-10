@@ -19,10 +19,10 @@ export interface BinaryMessage {
 }
 
 export interface KeywordArgument {
-	// from: 10
-	// ident: value
 	ident: string
-	value: string // TODO
+	receiver: Receiver
+	// binaryMessage: BinaryMessage
+	// unaryMessage: UnaryMessage
 }
 export interface KeywordMessage {
 	selectorKind: 'keyword';
