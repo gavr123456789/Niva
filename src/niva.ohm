@@ -1,6 +1,9 @@
 Niva {
+
+  space += comment
   // statement
-  statements = spaces statement (dot statement)* dot? spaces
+  statements = spaces statement (dot statement)* statementSeparator? spaces
+  statementSeparator =  dot 
   statement = 
     | returnStatement  -- returnStatement
     | typeDeclaration -- typeDeclarationStatement
@@ -8,6 +11,8 @@ Niva {
     | assignment -- assignmentStatement
     | switchStatement -- switchStatement
   	| expression  -- expressionStatement
+  //  | comment
+    
 
 
 
@@ -50,7 +55,8 @@ Niva {
   
   
   switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement? spaces
-  switchBranch = "|" whiteSpaces expression whiteSpaces "=>" spaces expression spaces 
+  switchBranch = "|" whiteSpaces expressionList whiteSpaces "=>" spaces expression spaces 
+  expressionList = expression ("," whiteSpaces expression)*
   switchBranchElseStatement = "|=>" whiteSpaces expression 
 
 
@@ -90,14 +96,14 @@ Niva {
  
  	
  
-  keywordM = identifier ":"
+  keywordM = ~"and" ~"or" identifier ":"
   keywordArgument = receiver unaryMessage* binaryMessage*
   
   binaryMessage = spaces binarySelector spaces binaryArgument
   binaryArgument = receiver unaryMessage*
   
   unaryMessage  = spaces unarySelector
-  unarySelector = identifier ~":" 
+  unarySelector = ~"and" ~"or" identifier ~":" 
   
   cascadedMessages = (";" messages)*
   
@@ -129,7 +135,7 @@ Niva {
   
   identifierName = identifierStart identifierPart*
   identifierStart = letter | "$" | "_"
-  identifierPart = identifierStart | letter
+  identifierPart = identifierStart | letter 
   
   
   // LITERALS
@@ -204,9 +210,8 @@ Niva {
   
 
   // Comment
-  comment = multiLineComment | singleLineComment
-  multiLineComment = "/*" (~"*/" sourceCharacter)* "*/"
-  singleLineComment = "//" (~lineTerminator sourceCharacter)*
+  comment = singleLineComment
+  singleLineComment = "//" (~lineTerminator sourceCharacter)* (lineTerminator | end)
   
   
   // CONST
@@ -215,7 +220,7 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||"   //"|"   // | "," |  
+  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||" | "and" | "or"  //"|"   // | "," |  
   binarySelector =  binaryCharacter+
 
   

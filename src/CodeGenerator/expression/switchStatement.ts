@@ -1,5 +1,5 @@
 import { SwitchStatement } from '../../AST_Nodes/Statements/Expressions/Expressions';
-import { generateBranchExpressions2, generateElseBranchExpression, generateSwitchExpression } from './switchExpression';
+import { generateBranchExpressions, generateElseBranchExpression, generateSwitchExpression } from './switchExpression';
 
 export function generateSwitchStatement(s: SwitchStatement, identation: number) {
 	const { receiver, switchExpression } = s;
@@ -32,7 +32,7 @@ export function generateSwitchStatement(s: SwitchStatement, identation: number) 
 	const branchesCode: string[] = [];
 
   for (const branch of switchExpression.branches) {
-    branchesCode.push(generateBranchExpressions2('of', branch, identation)) 
+    branchesCode.push(generateBranchExpressions('of', branch, identation)) 
   }
   branchesCode.push(generateElseBranchExpression(elseBranch, ident, identation)) 
 

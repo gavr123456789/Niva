@@ -27,7 +27,7 @@ export interface SwitchExpression  {
 }
 
 export interface SwitchBranch {
-	caseExpression: Expression,
+	caseExpressions: Expression[],
 	thenDoExpression: Expression,
 }
 

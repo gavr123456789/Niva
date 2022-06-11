@@ -305,10 +305,13 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			return elseBranch
 		},
 
-		switchBranch(_pipe, _s, caseExpression, _s2, _arrow, _s3, thenDoExpression, _s4 ): SwitchBranch{
-			const caseExpressionNode: Expression = caseExpression.toAst()
-			if (caseExpressionNode.kindStatement === "SwitchExpression") {
-				throw new Error(`${caseExpression.sourceString} case cant be another switch expression`);
+
+
+		switchBranch(_pipe, _s, expressionListNode, _s2, _arrow, _s3, thenDoExpression, _s4 ): SwitchBranch{
+	
+			const expressionList: Expression[] = expressionListNode.toAst()
+			if (expressionList.find(x => x.kindStatement === "SwitchExpression")) {
+				throw new Error(`${expressionListNode.sourceString} case cant be another switch expression`);
 			}
 			const thenDoExpressionNode: Expression = thenDoExpression.toAst()
 			if (thenDoExpressionNode.kindStatement === "SwitchExpression") {
@@ -316,10 +319,17 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			}
 			
 			const result: SwitchBranch = {
-				caseExpression: caseExpressionNode,
+				caseExpressions: expressionList,
 				thenDoExpression: thenDoExpressionNode
 			}
 			
+			return result
+		},
+
+		expressionList(expression, _comma, _s,otherExpressionsNode): Expression[]{
+			const firstExpression: Expression = expression.toAst()
+			const otherExpressions: Expression[] = otherExpressionsNode.children.map(x => x.toAst())
+			const result = [firstExpression, ...otherExpressions]
 			return result
 		},
 

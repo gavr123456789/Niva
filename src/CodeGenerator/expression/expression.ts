@@ -4,7 +4,13 @@ import { generateNimFromAst } from '../codeGenerator';
 import { generateUnaryCall, generateBinaryCall, generateKeywordCall } from '../messageCalls';
 import { getAtomPrimary } from '../primary';
 
-export function processExpression(s: MessageCallExpression | BracketExpression, identation: number): string {
+export type MessageSendExpression = MessageCallExpression | BracketExpression
+
+export function processManyExpressions(s: MessageSendExpression[], identation: number): string[] {
+	return s.map(x => processExpression(x, identation))
+}
+
+export function processExpression(s: MessageSendExpression, identation: number): string {
 	const receiver = s.receiver;
 	// ident stacks if its already idented
 	const recurciveIdent = identation >= 2? identation - 2: identation

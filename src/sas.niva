@@ -1,3 +1,19 @@
-x = 10.
-1 to: 4 do: [ x inc ].
-x echo
+// switch expression
+y = 42.
+x =
+| y > 100            => "vala"
+| y == 7, y / 2 == 8 => "nim"
+| y / 7 == 6         => "niva"
+|=> "something else" .
+x echo.
+
+// switch statement
+x
+| "nim"              => "no" echo
+| "vala"             => "no" echo
+| "ni", "va", "niva" => "yes!" echo
+|=> "I dont know" echo.
+
+// if else statement
+| y < 10, y / 5 == 4 => "foo" echo.
+| x == "yes!" and: y == 42 => "yay!" echo.

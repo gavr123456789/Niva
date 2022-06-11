@@ -1,0 +1,7 @@
+-int factorial = [
+  self
+  | 0 => 1
+  |=> n * (n-1) factorial
+].
+
+5 factorial echo
