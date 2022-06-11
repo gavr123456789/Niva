@@ -2,7 +2,7 @@
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression, SwitchStatement } from './AST_Nodes/Statements/Expressions/Expressions';
-import { Assignment, BodyStatements, Mutability, ReturnStatement } from './AST_Nodes/Statements/Statement';
+import { Assignment, BodyStatements, Mutability, ReturnStatement, Statement } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
@@ -246,8 +246,13 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			}
 		},
 
-		methodBody(_openBracket, _s1, statements, _s2, _closeBracket): BodyStatements {
+		methodBody(fullOrShort): BodyStatements {
 			isInMethodBody = true
+			const keke: BodyStatements = fullOrShort.toAst()
+			isInMethodBody = false
+			return keke
+		},
+		methodBodyFull(_openBracket, _s1, statements, _s2, _closeBracket): BodyStatements{
 			const child = statements.children.at(0)
 			if (statements.children.length !== 1 || !child){
 				throw new Error("statements node must have one child");
@@ -260,9 +265,17 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			const bodyStatements: BodyStatements = {
 				statements: statementsList.statements,
 			}
-			isInMethodBody = false
 
 			return bodyStatements
+		},
+
+		methodBodyShort(statementNode): StatementList{
+			const statement: Statement = statementNode.toAst()
+			const statementList:StatementList = {
+				kind: "StatementList",
+				statements: [statement]
+			}
+			return statementList
 		},
 		
 		returnStatement(_op, _s, expression): ReturnStatement{

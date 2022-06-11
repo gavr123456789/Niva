@@ -1,0 +1,4 @@
+-int addFive = self + 5.
+
+4 addFive echo.
+
