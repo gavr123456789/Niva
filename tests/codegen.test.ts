@@ -11,7 +11,7 @@ test('assignment statement', t => {
   const code = 'x = 5. y = 6. z =  7'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("let x = 5\nlet y = 6\nlet z = 7", nimCode)
+  t.is("var x = 5\nvar y = 6\nvar z = 7", nimCode)
 });
 
 // Asigment same variables names
@@ -194,3 +194,25 @@ elif x.\`<\`(4):
   t.is(result, nimCode)
 });
 
+// Switch Statement
+
+
+test('Switch Statement', t => {
+  const code = 
+  `
+  x 
+  | 5 => "x = 5" echo
+  | 7 => "x = 7" echo
+  |=> "not 5, not 7" echo`
+  const [_, nimCode] = generateNimCode(code)
+  const result = 
+`case x:
+of 5:
+  "x = 5".echo()
+of 7:
+  "x = 7".echo()
+else:
+  "not 5, not 7".echo()`
+  
+  t.is(result, nimCode)
+});

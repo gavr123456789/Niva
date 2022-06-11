@@ -1,6 +1,6 @@
 import { IntLiteral } from "./Statements/Expressions/Receiver/Primary/Literals/IntLiteralNode"
 import { StringLiteral } from "./Statements/Expressions/Receiver/Primary/Literals/StringLiteralNode"
-import { BracketExpression, ElseBranch, MessageCallExpression, SwitchBranch, SwitchExpression } from "./Statements/Expressions/Expressions"
+import { BracketExpression, ElseBranch, MessageCallExpression, SwitchBranch, SwitchExpression, SwitchStatement } from "./Statements/Expressions/Expressions"
 import { Assignment, BodyStatements, ReturnStatement, Statement  } from "./Statements/Statement"
 import { Primary } from "./Statements/Expressions/Receiver/Primary/Primary"
 import { BinaryArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
@@ -32,6 +32,7 @@ export type ASTNode =
 | BodyStatements
 | SwitchBranch
 | SwitchExpression
+| SwitchStatement
 | ElseBranch
 
 export interface StatementList {

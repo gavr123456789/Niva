@@ -1,7 +1,7 @@
 
 import ohm, { IterationNode, NonterminalNode, TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
-import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression } from './AST_Nodes/Statements/Expressions/Expressions';
+import { BracketExpression, ElseBranch, Expression, MessageCallExpression, SwitchBranch, SwitchExpression, SwitchStatement } from './AST_Nodes/Statements/Expressions/Expressions';
 import { Assignment, BodyStatements, Mutability, ReturnStatement } from './AST_Nodes/Statements/Statement';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
@@ -323,6 +323,18 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			return result
 		},
 
+		switchStatement(receiverNode, switchExpressionNode): SwitchStatement{
+			const switchExpression: SwitchExpression = switchExpressionNode.toAst()
+			const receiver: Receiver = receiverNode.toAst()
+			const result: SwitchStatement = {
+				kindStatement: "SwitchStatement",
+				receiver,
+				switchExpression
+			}
+			
+			return result
+		},
+
 		returnTypeDeclaration(_returnTypeOperator, _s, untypedIdentifier): string {
 			return untypedIdentifier.sourceString;
 		},
@@ -450,7 +462,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		/// CodeBlock
 		blockConstructor(_lsquare, _s, blockBody,_s1, _rsquare): BlockConstructor {
 			const blockConstructor: BlockConstructor = blockBody.toAst()
-
 			return blockConstructor
 		},
 		blockBody(s,_s, maybeStatements): BlockConstructor {
@@ -471,11 +482,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 			}
 				
 			return result
-		},
-
-		blockArgument(s, r){
-			throw new Error("blockArgument not done yet");
-			
 		},
 
 

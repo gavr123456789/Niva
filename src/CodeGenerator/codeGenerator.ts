@@ -5,6 +5,7 @@ import { generateMethodDeclaration } from './methodDeclaration';
 import { processExpression } from './expression/expression';
 import { generateSwitchExpression } from './expression/switchExpression';
 import { generateTypeDeclaration } from './typeDeclaration';
+import { generateSwitchStatement } from './expression/switchStatement';
 
 
 // То что может быть на первом уровне вложенности
@@ -57,6 +58,12 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 				const switchCode = generateSwitchExpression(s, identation);
 				lines.push(switchCode)
 				break;
+			case 'SwitchStatement':
+				const switchStatementCode = generateSwitchStatement(s, identation)
+				lines.push(switchStatementCode)
+				
+				break;
+				
 			default:
 				const _never: never = s;
 				console.log("!!! s = ", s);
@@ -73,6 +80,13 @@ function generateReturn(s: ReturnStatement, identation: number): string {
 		const switchCode = generateSwitchExpression(s.value, 0)
 		return `${ident}return ${switchCode}` 
 	}
+
+	// if (s.value.kindStatement === "SwitchStatement"){
+	// 	const switchStatementCode = generateSwitchStatement(s.value, 0)
+	// 	return `${ident}return ${switchStatementCode}` 
+
+	// }
+
 	const exprCode = processExpression(s.value, 0)
 	return `${ident}return ${exprCode}` 
 }

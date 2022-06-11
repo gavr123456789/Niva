@@ -1,6 +1,6 @@
 import { IntLiteral } from "./Expressions/Receiver/Primary/Literals/IntLiteralNode"
 import { StringLiteral } from "./Expressions/Receiver/Primary/Literals/StringLiteralNode"
-import { BracketExpression, Expression, MessageCallExpression } from "./Expressions/Expressions"
+import { BracketExpression, Expression, MessageCallExpression, SwitchStatement } from "./Expressions/Expressions"
 import { TypeDeclaration } from "./TypeDeclaration/TypeDeclaration"
 import { MethodDeclaration } from "./MethodDeclaration/MethodDeclaration"
 import { Receiver } from "./Expressions/Receiver/Receiver"
@@ -18,6 +18,8 @@ export type Statement =
   | Assignment
   | TypeDeclaration
   | MethodDeclaration
+  | SwitchStatement
+
 
 
 export interface Assignment {

@@ -50,7 +50,7 @@ Niva {
   
   
   switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement? spaces
-  switchBranch = "|" whiteSpaces expression whiteSpaces "=>" whiteSpaces expression spaces 
+  switchBranch = "|" whiteSpaces expression whiteSpaces "=>" spaces expression spaces 
   switchBranchElseStatement = "|=>" whiteSpaces expression 
 
 

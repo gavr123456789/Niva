@@ -59,6 +59,18 @@ template to_do*(self: int, to: int, doBlock: untyped) =
 #   echo(b)
 
 
+### int add
+template add*(self: int, arg: int) =
+  self += arg
+###
+### print - echo withoud newline
+template print*(s: string) =
+  stdout.write(s)
+
+### toString 
+template toString*(self: auto): string =
+  self.`$`()
+###
 
 
 func to*(x, y: int): HSlice[system.int, system.int] =
