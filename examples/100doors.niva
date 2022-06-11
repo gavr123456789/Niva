@@ -1,0 +1,13 @@
+
+square = 1. increment = 3.
+
+1 to: 100 do: [
+  ("door №" & it toString) print.
+  | it == square => 
+    [
+      " is open\n" print.
+      square    add: increment.
+      increment add: 2
+    ]
+  |=> " is closed" echo
+].

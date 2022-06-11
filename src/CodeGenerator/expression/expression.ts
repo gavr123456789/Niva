@@ -6,6 +6,8 @@ import { getAtomPrimary } from '../primary';
 
 export function processExpression(s: MessageCallExpression | BracketExpression, identation: number): string {
 	const receiver = s.receiver;
+	// ident stacks if its already idented
+	const recurciveIdent = identation >= 2? identation - 2: identation
 
 	if (receiver.kindStatement === "BlockConstructor"){
 		const statemetList: StatementList = {
@@ -14,16 +16,15 @@ export function processExpression(s: MessageCallExpression | BracketExpression, 
 		}
 		// process "it"
 		if (receiver.blockArguments.length === 1) {
-
+			// TODO
 		}
-		const statementsCode = generateNimFromAst(statemetList)
-		throw new Error("BlockConstructor");
-		
+		const statementsCode = generateNimFromAst(statemetList, identation)
+		return statementsCode
 	}
 
 	const primaryName =
 		receiver.kindStatement === 'BracketExpression'
-			? processExpression(receiver, identation)
+			? processExpression(receiver, recurciveIdent) 
 			: getAtomPrimary(receiver);
 	const messageLine = [ primaryName ];
 	if (typeof primaryName === 'object') {

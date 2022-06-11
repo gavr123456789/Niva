@@ -1,7 +1,10 @@
 import { MessageCall } from "./Messages/Message";
 import { Receiver } from "./Receiver/Receiver";
 
-export type Expression = MessageCallExpression | BracketExpression | SwitchExpression
+export type Expression = 
+| MessageCallExpression 
+| BracketExpression 
+| SwitchExpression
 
 
 interface BaseMessageCallExpression {
@@ -30,4 +33,10 @@ export interface SwitchBranch {
 
 export interface ElseBranch{
 	thenDoExpression: Expression,
+}
+
+export interface SwitchStatement{
+	kindStatement: "SwitchStatement"
+	switchExpression: SwitchExpression
+	receiver: Receiver
 }
