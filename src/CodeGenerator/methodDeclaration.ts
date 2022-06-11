@@ -51,8 +51,13 @@ function generateMethodBody(statements: Statement[], identation: number): string
 
 function generateKeywordMethodArg(x: KeywordMethodArgument): string {
 	if (x.identifier.type) {
+		// const getter = generateGetter(x.identifier.value, x.identifier.type)
 		return `${x.identifier.value}: ${x.identifier.type}`
 	} else {
 		return `${x.identifier.value}: auto`
 	}
 }
+
+// function generateGetter(value: string, type: string): string {
+	
+// }

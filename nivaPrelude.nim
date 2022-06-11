@@ -80,6 +80,14 @@ func to*(x, y: int): HSlice[system.int, system.int] =
 template invert*(self: bool) =
   self = !self
 
+template `not`*(self: bool) =
+  self = !self
+
+template `&&`*(self: bool, value: bool): bool =
+  self and value
+
+template `||`*(self: bool, value: bool): bool =
+  self or value
 ### send proc as value
 # proc zzz(self: int, bloc: proc(x: int): int) =
 #   for i in 1..self:
