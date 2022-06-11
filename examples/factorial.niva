@@ -1,7 +1,7 @@
--int factorial = [
-  self
+-int factorial -> int = self
   | 0 => 1
-  |=> n * (n-1) factorial
-].
+  |=> self * (self - 1) factorial.
 
 5 factorial echo
+
+

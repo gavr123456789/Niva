@@ -1,1 +1,1 @@
-its just syntax examples, they cant be compiled yet.
+All of this examples works now ^_^ !

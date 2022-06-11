@@ -36,21 +36,22 @@ Niva {
   
 
   
-  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
+  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
   keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( spaces keywordMethodDeclarationArg spaces )*
   
-  unaryMethodDeclaration = untypedIdentifier  whiteSpaces unaryMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
+  unaryMethodDeclaration = untypedIdentifier  whiteSpaces unaryMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
   unaryMethodDeclarationArgs = untypedIdentifier
   
-  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
+  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
   // + x::int
   binaryMethodDeclarationArg = binarySelector whiteSpaces identifier
 
   // min: x::int max: y::int from: z
   keywordMethodDeclarationArg = untypedIdentifier ":" spaces identifier 
   
-  methodBody  = "[" spaces statements? spaces "]"
-  
+  methodBody  = methodBodyFull | methodBodyShort
+  methodBodyFull = "[" spaces statements? spaces "]"
+  methodBodyShort = statement
   
   
   
