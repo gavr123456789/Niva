@@ -1,11 +1,11 @@
 import { StatementList } from '../AST_Nodes/AstNode';
 import { Mutability, ReturnStatement } from '../AST_Nodes/Statements/Statement';
 import { generateAssigment } from './assigment';
-import { generateMethodDeclaration } from './methodDeclaration';
 import { processExpression } from './expression/expression';
 import { generateSwitchExpression } from './expression/switchExpression';
-import { generateTypeDeclaration } from './typeDeclaration';
 import { generateSwitchStatement } from './expression/switchStatement';
+import { generateMethodDeclaration } from './methodDeclaration';
+import { generateTypeDeclaration } from './typeDeclaration';
 
 
 // То что может быть на первом уровне вложенности

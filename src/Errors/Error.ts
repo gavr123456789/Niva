@@ -1,8 +1,18 @@
-export type NivaError = RedefinitionOfVariableError
+export type NivaError = RedefinitionOfVariable | TypeAlreadyDefined
 
+export interface ErrorInfo {
+  lineAndColMessage: string
+}
 
-export interface RedefinitionOfVariableError {
-  errorKind: "RedefinitionOfVariableError"
+export interface TypeAlreadyDefined {
+  errorKind: "TypeAlreadyDefined"
+
+  lineAndColMessage: string
+  typeName: string
+}
+
+export interface RedefinitionOfVariable {
+  errorKind: "RedefinitionOfVariable"
 
   file: string
   lineAndColMessage: string

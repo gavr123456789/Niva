@@ -23,6 +23,7 @@ export interface KeywordMethodDeclarationArg {
 
 
 interface MethodDeclarationBase {
+  kind: "proc" | "template"
   expandableType: string
   returnType?: string
   bodyStatements: BodyStatements
