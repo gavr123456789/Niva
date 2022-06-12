@@ -1,5 +1,4 @@
 import test, { ExecutionContext } from 'ava';
-import { RedefinitionOfVariableError } from '../src/Errors/Error';
 import { generateNimCode } from '../src/niva';
 import {  grammarMatch, isDebug } from '../src/utils';
 

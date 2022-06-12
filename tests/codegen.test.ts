@@ -15,19 +15,19 @@ test('assignment statement', t => {
 });
 
 // Asigment same variables names
-test('Asigment same variables names', t => {
-  const code = 'x = 5.\nx = 6.'
-  const [_statementList,_nimCode, errors] = generateNimCode(code)
+// test('Asigment same variables names', t => {
+//   const code = 'x = 5.\nx = 6.'
+//   const [_statementList,_nimCode, errors] = generateNimCode(code)
   
-  const varError = errors[0]
-  t.truthy(varError)
-  if (!varError) {
-    throw new Error("there no redefinition error");
-  }
+//   const varError = errors[0]
+//   t.truthy(varError)
+//   if (!varError) {
+//     throw new Error("there no redefinition error");
+//   }
 
-  t.is("RedefinitionOfVariableError", varError.errorKind)
+//   t.is("RedefinitionOfVariableError", varError.errorKind)
 
-});
+// });
 
 // Expressions
 
