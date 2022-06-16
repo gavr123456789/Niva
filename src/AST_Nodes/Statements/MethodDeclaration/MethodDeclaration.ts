@@ -37,7 +37,7 @@ export interface UnaryMethodDeclaration extends MethodDeclarationBase {
 export interface BinaryMethodDeclaration extends MethodDeclarationBase {
   methodKind: "BinaryMethodDeclaration"
   binarySelector: string // +
-  identifier: Identifer // x::int
+  argument: Identifer // x::int
 }
 export interface BinaryMethodDeclarationArg{
   binarySelector: string,

@@ -1,7 +1,7 @@
 import { TerminalNode, NonterminalNode, IterationNode } from "ohm-js";
 import { TypeDeclaration, TypedProperty } from "../../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration";
 import { ErrorInfo } from "../../Errors/Error";
-import { state, TypeField, typesBD } from "../../niva";
+import { state, TypeField, codeDB } from "../../niva";
 
 export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untypedIdentifier: NonterminalNode, _s2: NonterminalNode, typedProperties: NonterminalNode): TypeDeclaration {
   const typedPropertiesAst: TypedProperty[] = typedProperties.toAst();
@@ -15,7 +15,7 @@ export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untype
 
 
   // Add to BD
-  if (typesBD.alreadyHasType(typeName)){
+  if (codeDB.hasType(typeName)){
     state.errors.push({
       errorKind: "TypeAlreadyDefined",
       lineAndColMessage: _type.source.getLineAndColumnMessage(),
@@ -28,7 +28,7 @@ export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untype
       fields.set(x.identifier, {type: x.type ?? "auto"})
     })
   
-    typesBD.addNewType(typeName, fields)
+    codeDB.addNewType(typeName, fields)
   }
 
   return result;

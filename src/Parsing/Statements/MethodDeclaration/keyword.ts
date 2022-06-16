@@ -2,6 +2,7 @@ import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
+import { codeDB, state } from "../../../niva";
 
 export function keywordMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -13,20 +14,25 @@ export function keywordMethodDeclaration(
   _s3: NonterminalNode,
   methodBody: NonterminalNode
 ): MethodDeclaration {
-  const bodyStatements: BodyStatements = methodBody.toAst();
   const returnType = returnTypeDeclaration.children.at(0)?.toAst()
-  const expandableType = untypedIdentifier.sourceString
+  const extendableType = untypedIdentifier.sourceString
   const keywordMethodDeclarationArg: KeywordMethodDeclarationArg = keywordMethodDeclarationArgs.toAst()
   const keyValueNames: KeywordMethodArgument[] = keywordMethodDeclarationArg.keyValueNames
   const isProc = _eq.sourceString === "="
 
+  state.insudeMessage.forType = extendableType
+  const selectorName = keywordMethodDeclarationArg.keyValueNames.map(x => x.keyName).join("_")
+  state.insudeMessage.withName = selectorName
+  codeDB.addKeywordMessageForType(extendableType, selectorName, {effects: new Set()})
+  
 
+  const bodyStatements: BodyStatements = methodBody.toAst();
   const keyword: KeywordMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     methodKind: "KeywordMethodDeclaration",
     returnType,
     bodyStatements,
-    expandableType,
+    expandableType: extendableType,
     keyValueNames
   }
 

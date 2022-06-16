@@ -8,6 +8,7 @@ export type Expression =
 
 
 interface BaseMessageCallExpression {
+	selfTypeName: string
 	receiver: Receiver;
 	messageCalls: MessageCall[];
 }
@@ -18,6 +19,7 @@ export interface MessageCallExpression extends BaseMessageCallExpression {
 
 export interface BracketExpression extends BaseMessageCallExpression {
 	kindStatement: "BracketExpression"
+	type?: string // TODO: add type
 }
 
 export interface SwitchExpression  {

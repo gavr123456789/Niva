@@ -11,7 +11,6 @@ export function getAtomPrimary(primary: Primary): string {
 			return atom.value;
 		default:
 			const _never: never = atom;
-			console.log("!!! atom = ", atom);
 			
 			throw new Error('SoundError');
 	}

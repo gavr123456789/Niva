@@ -44,10 +44,10 @@ export function generateBranchExpressions(switchKind: 'if' | 'elif' | 'of', x: S
 	const ident = ' '.repeat(identation);
 
 	// Switch expression cant get here because of check in lexer
-	const asdd = x.caseExpressions.filter(x => x.kindStatement !== "SwitchExpression") as MessageSendExpression[]
+	const asdd = x.caseExpressions as MessageSendExpression[]
 	
 	// if   x < 2 // identation not needed after if
-	const qwe = processManyExpressions(asdd, 0)
+	const qwe = processManyExpressions(asdd ,0)
 	const caseExpressionCode = qwe.join(switchKind === "of"? ", " : " or ");// switch statement delimiter is ,
 	const thenDoExpressionCode = processExpression(x.thenDoExpression, identation + 2);
 

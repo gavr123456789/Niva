@@ -66,7 +66,6 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 				
 			default:
 				const _never: never = s;
-				console.log("!!! s = ", s);
 				
 				throw new Error('SoundError');
 		}

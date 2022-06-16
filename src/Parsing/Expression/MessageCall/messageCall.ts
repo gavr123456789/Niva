@@ -2,14 +2,18 @@ import { NonterminalNode, IterationNode, TerminalNode } from "ohm-js";
 import { MessageCallExpression } from "../../../AST_Nodes/Statements/Expressions/Expressions";
 import { BinaryArgument, BinaryMessage, KeywordArgument, KeywordMessage, MessageCall, UnaryMessage } from "../../../AST_Nodes/Statements/Expressions/Messages/Message";
 import { Receiver } from "../../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
+import { state } from "../../../niva";
 
 export function messageCall(receiver: NonterminalNode, maymeMessages: IterationNode, cascadedMessages: IterationNode): MessageCallExpression {
   const astOfReceiver: Receiver = receiver.toAst();
+  
   const result: MessageCallExpression = {
     kindStatement: 'MessageCallExpression',
     receiver: astOfReceiver,
+    selfTypeName: "", 
     messageCalls: []
   };
+
   // check if receiver has messages
   const messages = maymeMessages.children.at(0);
   if (!messages) {
@@ -17,6 +21,10 @@ export function messageCall(receiver: NonterminalNode, maymeMessages: IterationN
   }
 
   const astMessages = messages.toAst();
+
+  result.selfTypeName = state.insudeMessage.forType
+  // result.selectorName = state.insudeMessage.withName
+
   result.messageCalls = astMessages;
   return result;
 }
@@ -92,16 +100,17 @@ export function keywordMessage(_s1: NonterminalNode,
   const resultArguments: KeywordArgument[] = [];
 
   // keywordM and keywordArgument always have same length
-  keywordM.children.forEach((node, i) => {
-    const keywordArgName: string = node.toAst();
-    const arg: Receiver = keywordArgument.children[i].toAst();
-    resultArguments.push({
-      ident: keywordArgName,
-      receiver: arg
-    });
+  keywordM.children.forEach((kwM, i) => {
+    const keywordArgName: string = kwM.toAst();
+    const argWithoutName: KeywordArgument = keywordArgument.children[i].toAst();
+    argWithoutName.keyName = keywordArgName
+    const arg = argWithoutName
+    resultArguments.push(arg)
+    
   });
-
+  
   const result: KeywordMessage = {
+    selectorName: state.insudeMessage.withName,
     selectorKind: 'keyword',
     arguments: resultArguments
   };
@@ -112,7 +121,17 @@ export function keywordM(identifier: NonterminalNode, colon: TerminalNode) {
   return identifier.sourceString;
 }
 
-export function keywordArgument(receiver: NonterminalNode, unaryMessages: IterationNode, binaryMessages: IterationNode): Receiver {
-  const sas: Receiver = receiver.toAst()
-  return sas;
+export function keywordArgument(receiverNode: NonterminalNode, unaryMessagesNode: IterationNode, binaryMessagesNode: IterationNode): KeywordArgument {
+  const receiver: Receiver = receiverNode.toAst()
+  
+  const binaryMessages: BinaryMessage[] = binaryMessagesNode.children.map(x => x.toAst())
+  const unaryMessages: UnaryMessage[] = unaryMessagesNode.children.map(x => x.toAst())
+  
+  const result: KeywordArgument = {
+    receiver: receiver,
+    binaryMessages,
+    unaryMessages,
+    keyName: "" 
+  }
+  return result;
 }

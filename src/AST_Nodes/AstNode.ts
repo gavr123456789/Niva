@@ -3,7 +3,7 @@ import { StringLiteral } from "./Statements/Expressions/Receiver/Primary/Literal
 import { BracketExpression, ElseBranch, MessageCallExpression, SwitchBranch, SwitchExpression, SwitchStatement } from "./Statements/Expressions/Expressions"
 import { Assignment, BodyStatements, ReturnStatement, Statement  } from "./Statements/Statement"
 import { Primary } from "./Statements/Expressions/Receiver/Primary/Primary"
-import { BinaryArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
+import { BinaryArgument, KeywordArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
 import { TypeDeclaration, TypedProperty } from "./Statements/TypeDeclaration/TypeDeclaration"
 import { BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclarationArg, MethodDeclaration, UnaryMethodDeclaration } from "./Statements/MethodDeclaration/MethodDeclaration"
 import { Identifer } from "./Statements/Expressions/Receiver/Primary/Identifier"
@@ -34,6 +34,7 @@ export type ASTNode =
 | SwitchExpression
 | SwitchStatement
 | ElseBranch
+| KeywordArgument
 
 export interface StatementList {
   kind: "StatementList"

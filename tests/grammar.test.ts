@@ -13,9 +13,6 @@ function match(t: ExecutionContext<unknown>, code: string, startRule: string = "
   t.is(matchedGrammar.succeeded(), true)
  
 }
-
-// GRAMMAR
-
 // Messages
 test('binary message send', t => {
   match(t, "5 + 5", "expression")

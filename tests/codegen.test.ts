@@ -37,14 +37,14 @@ test('Expressions Unary messages', t => {
   const code = '42 echo'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("42.echo()", nimCode)
+  t.is("42.`echo`()", nimCode)
 });
 
 test('Expressions Unary messages two times', t => {
   const code = '42 sas sas'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("42.sas().sas()", nimCode)
+  t.is("42.`sas`().`sas`()", nimCode)
 });
 
 // Binary
@@ -75,21 +75,21 @@ test('Expressions Keyword messages', t => {
 test('Expressions Unary with Binary', t => {
   const code = '1 sas + 2 sas' 
   const [_s, nimCode] = generateNimCode(code)
-  t.is("1.sas().`+`(2.sas())", nimCode)
+  t.is("1.`sas`().`+`(2.`sas`())", nimCode)
 });
 
 test('Expressions two Unary with Binary', t => {
   const code = '1 sas + 2 sas.\n1 sas + 2 sas.' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.sas().`+`(2.sas())\n1.sas().`+`(2.sas())", nimCode)
+  t.is("1.`sas`().`+`(2.`sas`())\n1.`sas`().`+`(2.`sas`())", nimCode)
 });
 
 test('Expressions Unary with Binary many', t => {
   const code = '1 sas + 2 sas sus ses' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.sas().`+`(2.sas().sus().ses())", nimCode)
+  t.is("1.`sas`().`+`(2.`sas`().`sus`().`ses`())", nimCode)
 });
 
 // TYPE DECLARATION
@@ -114,17 +114,15 @@ test('two Type Declaration', t => {
 test('Method Declaration Unary no retrun type', t => {
   const code = '-Person sas = [ x echo ]' 
   const [_s, nimCode] = generateNimCode(code)
-  // console.log("ast = ", JSON.stringify(_s, undefined, 2));
   
-  t.is("proc sas(self: Person): auto =\n  x.echo()", nimCode)
+  t.is("proc sas(self: Person): auto =\n  x.`echo`()", nimCode)
 });
 
 test('two Method Declaration Unary', t => {
   const code = '-Person sas = [ x echo ].\n-Person sas = [ x echo ].' 
   const [_s, nimCode] = generateNimCode(code)
-  // console.log("ast = ", JSON.stringify(_s, undefined, 2));
   
-  t.is("proc sas(self: Person): auto =\n  x.echo()\nproc sas(self: Person): auto =\n  x.echo()", nimCode)
+  t.is("proc sas(self: Person): auto =\n  x.`echo`()\nproc sas(self: Person): auto =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Unary with retrun type', t => {
@@ -139,14 +137,14 @@ test('Method Declaration Binary typed', t => {
   const code = '-Person + x::int -> void = [ x echo ]' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc `+`(self: Person, x: int): void =\n  x.echo()", nimCode)
+  t.is("proc `+`(self: Person, x: int): void =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Binary untyped', t => {
   const code = '-Person + x = [ x echo ]' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc `+`(self: Person, x: auto): auto =\n  x.echo()", nimCode)
+  t.is("proc `+`(self: Person, x: auto): auto =\n  x.`echo`()", nimCode)
 });
 
 // Keyword
@@ -154,14 +152,14 @@ test('Method Declaration Keyword typed', t => {
   const code = '-Person from: x::int to: y::int -> void = [ x echo ]' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc from_to(self: Person, x: int, y: int): void =\n  x.echo()", nimCode)
+  t.is("proc from_to(self: Person, x: int, y: int): void =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Keyword untyped', t => {
   const code = '-Person from: x to: y = [ x echo ]' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc from_to(self: Person, x: auto, y: auto): auto =\n  x.echo()", nimCode)
+  t.is("proc from_to(self: Person, x: auto, y: auto): auto =\n  x.`echo`()", nimCode)
 });
 
 // Brackets
@@ -170,7 +168,7 @@ test('Brackets expression', t => {
   const code = '(1 + 2) echo.' 
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("(1.`+`(2)).echo()", nimCode)
+  t.is("(1.`+`(2)).`echo`()", nimCode)
 });
 
 test('Brackets after expression', t => {
@@ -187,9 +185,9 @@ test('Switch Expression assigment with else', t => {
   const [_, nimCode] = generateNimCode(code)
   const result = 
 `if x.\`>\`(4):
-  "sas".echo()
+  "sas".\`echo\`()
 elif x.\`<\`(4):
-  "sus".echo()`
+  "sus".\`echo\`()`
   
   t.is(result, nimCode)
 });
@@ -208,11 +206,11 @@ test('Switch Statement', t => {
   const result = 
 `case x:
 of 5:
-  "x = 5".echo()
+  "x = 5".\`echo\`()
 of 7:
-  "x = 7".echo()
+  "x = 7".\`echo\`()
 else:
-  "not 5, not 7".echo()`
+  "not 5, not 7".\`echo\`()`
   
   t.is(result, nimCode)
 });

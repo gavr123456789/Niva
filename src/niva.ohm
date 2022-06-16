@@ -97,14 +97,14 @@ Niva {
  
  	
  
-  keywordM = ~"and" ~"or" identifier ":"
+  keywordM = identifier ":"
   keywordArgument = receiver unaryMessage* binaryMessage*
   
   binaryMessage = spaces binarySelector spaces binaryArgument
   binaryArgument = receiver unaryMessage*
   
   unaryMessage  = spaces unarySelector
-  unarySelector = ~"and" ~"or" identifier ~":" 
+  unarySelector = identifier ~":" 
   
   cascadedMessages = (";" messages)*
   
@@ -221,7 +221,7 @@ Niva {
   separator = (space | comment)* 
   
   // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||" | "and" | "or"  //"|"   // | "," |  
+  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||"  //"|"   // | "," |  
   binarySelector =  binaryCharacter+
 
   
