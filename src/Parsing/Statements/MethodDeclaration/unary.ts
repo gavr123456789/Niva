@@ -1,7 +1,7 @@
 import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { MethodDeclaration, UnaryMethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
-import { typesBD } from "../../../niva";
+import { codeDB, state } from "../../../niva";
 
 export function unaryMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -17,17 +17,23 @@ export function unaryMethodDeclaration(
   // -Person sas = []
   const bodyStatements: BodyStatements = methodBody.toAst();
   const returnType = returnTypeDeclaration.children.at(0)?.toAst()
-  const expandableType = untypedIdentifier.sourceString
+  const extendableType = untypedIdentifier.sourceString
+  const selectorName = unarySelector.sourceString
   const isProc = _eq.sourceString === "="
 
+  // TODO добавит в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
+  state.insudeMessage.forType = extendableType
+  state.insudeMessage.withName = selectorName
+
+  codeDB.addUnaryMessageForType(extendableType, selectorName, {effects: new Set()})
 
 
   const unary: UnaryMethodDeclaration = {
     kind: isProc ? "proc" : "template",
-    expandableType,
+    expandableType: extendableType,
     bodyStatements,
     methodKind: 'UnaryMethodDeclaration',
-    name: unarySelector.sourceString,
+    name: selectorName,
     returnType
   };
 

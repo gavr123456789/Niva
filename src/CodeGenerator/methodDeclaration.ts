@@ -1,6 +1,7 @@
 import { StatementList } from "../AST_Nodes/AstNode"
 import { KeywordMethodArgument, MethodDeclaration } from "../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration"
 import { Statement } from "../AST_Nodes/Statements/Statement"
+import { codeDB } from "../niva"
 import { generateNimFromAst } from "./codeGenerator"
 
 
@@ -21,15 +22,17 @@ export function generateMethodDeclaration(methodDec: MethodDeclaration, identati
 		return `${ident}${procOrTemplate} ${x.name}(self: ${expandableType}): ${returnType} =\n${methodBody}`
 
 		case "BinaryMethodDeclaration":
-			const argumentType = x.identifier.type ?? "auto"
-		return `${ident}${procOrTemplate} \`${x.binarySelector}\`(self: ${expandableType}, ${x.identifier.value}: ${argumentType}): ${returnType} =\n${methodBody}`
+			const argumentType = x.argument.type ?? "auto"
+		return `${ident}${procOrTemplate} \`${x.binarySelector}\`(self: ${expandableType}, ${x.argument.value}: ${argumentType}): ${returnType} =\n${methodBody}`
 
 		case "KeywordMethodDeclaration":
 		const keyArgs = x.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
 		// from_to
 		const keywordProcName = x.keyValueNames.map(y => y.keyName).join("_")
 		
-		return `${ident}${procOrTemplate} ${keywordProcName}(self: ${expandableType}, ${keyArgs}): ${returnType} =\n${methodBody}`
+		const isSelfMutating: boolean = codeDB.hasMutateEffect(x.expandableType, keywordProcName)
+		const args = `self: ${isSelfMutating? "var ": ""}${expandableType}, ${keyArgs}`
+		return `${ident}${procOrTemplate} ${keywordProcName}(${args}): ${returnType} =\n${methodBody}`
 
 		
 		default:

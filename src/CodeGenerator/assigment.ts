@@ -3,7 +3,6 @@ import { processExpression } from './expression/expression';
 import { generateSwitchExpression } from './expression/switchExpression';
 
 export function generateAssigment(assignmentTarget: string, to: Expression, identation: number, type?: string): string {
-	// console.log('to = ', to);
 	const ident = ' '.repeat(identation);
 
 	if (to.kindStatement === 'BracketExpression' || to.kindStatement === 'MessageCallExpression') {

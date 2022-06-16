@@ -25,8 +25,17 @@ import { statement, statements, switchStatement } from './Parsing/Statements/sta
 import { typeDeclaration, typedProperties, typedProperty } from './Parsing/Statements/typeDeclaration';
 
 
+interface ContextInformation {
+	forType: string
+	withName: string
+}
 class State {
 	isInMethodBody = false
+	// insideMessageForType: string = "__global__"
+	insudeMessage: ContextInformation = {
+		forType: "__global__",
+		withName: "__global__"
+	}
 	errors: NivaError[] = []
 }
 
@@ -34,19 +43,26 @@ interface MessageCallInfo {
 	callStack: string[]
 }
 
+type EffectType = "mutatesFields"
+
 interface UnaryMessageInfo {
-	ast: UnaryMethodDeclaration,
-	code: string
+	// ast: UnaryMethodDeclaration,
+	code?: string
+	effects: Set<EffectType>
+
 }
 
 interface BinaryMethodInfo {
-	ast: BinaryMethodDeclaration,
-	code: string
+	// ast: BinaryMethodDeclaration,
+	code?: string
+	effects: Set<EffectType>
+
 }
 
 interface KeywordMethodInfo {
-	ast: KeywordMethodDeclaration,
-	code: string
+	// ast: KeywordMethodDeclaration,
+	code?: string
+	effects: Set<EffectType>
 }
 
 
@@ -65,19 +81,119 @@ class TypeInfo {
 	keywordMessages: Map<string, KeywordMethodInfo> = new Map()
 }
 
-class TypesBD {
+
+type MethodKinds = "unary" | "binary" | "keyword"
+
+
+class CodeDB {
+
+	// TODO methods must have all variables and their types table
+
 	private typeNameToInfo: Map<string, TypeInfo> = new Map()
 
-	addNewType(name: string, fields: Map<string, TypeField>){
-
-		const typeInfo = new TypeInfo(fields)
-		this.typeNameToInfo.set(name, typeInfo)
-		console.log("addNewType name = ", name, " fields = ", fields);	
+	private addDefaultType(name: string){
+		const intFields = new Map<string, TypeField>()
+		intFields.set("value", {type: name})
+		this.typeNameToInfo.set(name, new TypeInfo(intFields))
 	}
 
+	constructor(){
+		// add default types and functions
+		this.addDefaultType("int")
+		this.addDefaultType("string")
+		this.addDefaultType("bool")
+		this.addDefaultType("float")
+	}
 
+	addNewType(name: string, fields: Map<string, TypeField>){
+		const typeInfo = new TypeInfo(fields)
+		this.typeNameToInfo.set(name, typeInfo)
+	}
 
-	alreadyHasType(name: string){
+	addKeywordMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
+		const type = this.typeNameToInfo.get(typeName)
+		if(!type){
+			throw new Error("trying to add method for non existing type");
+		}
+		type.keywordMessages.set(selectorName, info)
+	}
+	addUnaryMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
+		const type = this.typeNameToInfo.get(typeName)
+		if(!type){
+			throw new Error("trying to add method for non existing type");
+		}
+		type.unaryMessages.set(selectorName, info)
+	}
+	addBinaryMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
+		const type = this.typeNameToInfo.get(typeName)
+		if(!type){
+			throw new Error("trying to add method for non existing type");
+		}
+		type.binaryMessages.set(selectorName, info)
+	}
+
+	private getTypeOrThrowError(typeName: string, errorText: string){
+
+	}
+
+	hasMutateEffect(typeName: string, methodSelector: string): boolean {
+		const type = this.typeNameToInfo.get(typeName)
+		if (!type){
+			throw new Error("trying to check effect of non existing type");
+		}
+
+		const unary =   !!type.unaryMessages.get(methodSelector)?.effects.has("mutatesFields")
+		const binary =  !!type.binaryMessages.get(methodSelector)?.effects.has("mutatesFields")
+		const keyword = !!type.keywordMessages.get(methodSelector)?.effects.has("mutatesFields")
+		return unary || binary || keyword
+	}
+
+	addEffectForMethod(selfType: string, methodKind: MethodKinds, methodName: string, effect: { kind: EffectType; }) {
+		const type = this.typeNameToInfo.get(selfType)
+		if (!type){
+			throw new Error("trying to add effect to non existing type");
+		}
+
+		if (methodName.length === 0){
+			throw new Error("MethodName is Empty");
+			
+		}
+
+		switch (methodKind) {
+			case "keyword":
+			  const keywordMethod = type.keywordMessages.get(methodName)
+				if (!keywordMethod){
+					console.error(`All known keywordMethods of type ${selfType}:`)
+					
+					throw new Error(`trying to add effecto for non existing method: ${methodName}` );
+				}
+				keywordMethod.effects.add(effect.kind)
+				break;
+			case "binary":
+				const binaryMethod = type.binaryMessages.get(methodName)
+				if (!binaryMethod){
+					throw new Error("trying to add effect for non existing method");
+				}
+				binaryMethod.effects.add(effect.kind)
+				break;
+			case "unary":
+				const unaryMethod = type.unaryMessages.get(methodName)
+				if (!unaryMethod){
+					throw new Error("trying to add effecto for non existing method");
+				}
+				unaryMethod.effects.add(effect.kind)
+				break;
+		
+			default:
+				const _never: never = methodKind
+				break;
+		}
+
+		// TODO
+		// throw new Error("Method not implemented.");
+	}
+
+	hasType(name: string){
 		return this.typeNameToInfo.has(name)
 	}
 
@@ -95,10 +211,18 @@ class TypesBD {
 		}
 
 	}
+
+	typeHasField(typeName: string, keyName: string): boolean {
+		const type = this.typeNameToInfo.get(typeName)
+		if (!type){
+			return false
+		}
+		return 	type.fields.has(keyName)
+  }
 }
 
 
-export const typesBD: TypesBD = new TypesBD()
+export const codeDB: CodeDB = new CodeDB()
 
 export const state = new State()
 

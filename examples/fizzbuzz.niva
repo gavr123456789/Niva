@@ -1,0 +1,14 @@
+-int fizzbuzz = 
+| (self mod: 3 * 5) == 0 => "FizzBuzz"
+| (self mod: 3) == 0 => "Fizz"
+| (self mod: 5) == 0 => "Buzz"
+|=> self toString.
+
+5 fizzbuzz echo.
+
+
+-int fizzbuzzTo: x = self to: x do: [
+  it fizzbuzz echo
+].
+
+1 fizzbuzzTo: 100.

@@ -1,0 +1,7 @@
+type Person name: string.
+
+-Person renameTo: newName::string = self name: newName.
+
+//person = Person name: "sas".
+//person renameTo: "kek".
+//person echo.

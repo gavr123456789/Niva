@@ -1,7 +1,7 @@
 import { StatementList } from '../../AST_Nodes/AstNode';
 import { BracketExpression, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
 import { generateNimFromAst } from '../codeGenerator';
-import { generateUnaryCall, generateBinaryCall, generateKeywordCall } from '../messageCalls';
+import { generateBinaryCall, generateKeywordCall, generateUnaryCall } from './messageCalls';
 import { getAtomPrimary } from '../primary';
 
 export type MessageSendExpression = MessageCallExpression | BracketExpression
@@ -13,9 +13,9 @@ export function processManyExpressions(s: MessageSendExpression[], identation: n
 export function processExpression(s: MessageSendExpression, identation: number): string {
 	const receiver = s.receiver;
 	// ident stacks if its already idented
-	const recurciveIdent = identation >= 2? identation - 2: identation
+	const recurciveIdent = identation >= 2 ? identation - 2 : identation
 
-	if (receiver.kindStatement === "BlockConstructor"){
+	if (receiver.kindStatement === "BlockConstructor") {
 		const statemetList: StatementList = {
 			kind: "StatementList",
 			statements: receiver.statements
@@ -30,9 +30,9 @@ export function processExpression(s: MessageSendExpression, identation: number):
 
 	const primaryName =
 		receiver.kindStatement === 'BracketExpression'
-			? processExpression(receiver, recurciveIdent) 
+			? processExpression(receiver, recurciveIdent)
 			: getAtomPrimary(receiver);
-	const messageLine = [ primaryName ];
+	const messageLine = [primaryName];
 	if (typeof primaryName === 'object') {
 		throw new Error('typeof primaryName === object');
 	}
@@ -74,8 +74,10 @@ export function processExpression(s: MessageSendExpression, identation: number):
 					case 'Primary':
 					case 'BracketExpression':
 						const { arguments: keywordArguments } = messageCall;
-						const keywordMessageCall = generateKeywordCall(keywordArguments, identation);
-
+						
+						const {keywordMessageCall, isContructor} = generateKeywordCall(s.selfTypeName, messageCall.selectorName, keywordArguments, receiver, identation);
+					  
+						
 						messageLine.push(keywordMessageCall);
 						break;
 					default:
@@ -85,7 +87,6 @@ export function processExpression(s: MessageSendExpression, identation: number):
 				break;
 			default:
 				const _never: never = messageCall;
-				console.log('!!! = ', _never);
 
 				throw new Error('SoundError');
 		}
@@ -95,14 +96,9 @@ export function processExpression(s: MessageSendExpression, identation: number):
 	// пушим строку вызовов сообщений
 	const needBrackets = s.kindStatement === 'BracketExpression';
 
-
 	const messageCall = !needBrackets ? messageLine.join('') : '(' + messageLine.join('') + ')';
 
-	if (identation === 0) {
-		return messageCall;
-	} else {
-		return identStr + messageCall;
-	}
+	return `${identStr}${messageCall}`
 
 
 }

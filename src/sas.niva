@@ -1,2 +1,3 @@
-type Person age: int name: string.
-"sas" echo.
+type Person name: string age: int.
+
+kek = Person age: 42 name: "sas".
