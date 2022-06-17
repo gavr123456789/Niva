@@ -1,5 +1,5 @@
 export interface IntLiteral {
-  kindPrimary: "IntLiteral"
+  kindPrimary: "int"
   
   readonly value: string
 }

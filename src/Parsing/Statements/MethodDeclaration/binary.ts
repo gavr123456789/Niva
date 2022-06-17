@@ -2,6 +2,7 @@ import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
+import { newBinaryMethodInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
 
 export function binaryMethodDeclaration(
@@ -14,20 +15,25 @@ export function binaryMethodDeclaration(
   _eq: TerminalNode,
   _s4: NonterminalNode,
   methodBody: NonterminalNode): MethodDeclaration {
-  const bodyStatements: BodyStatements = methodBody.toAst();
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+
   const binarySelector: BinaryMethodDeclarationArg = binaryMethodDeclarationArg.toAst();
   const extendableType = untypedIdentifier.sourceString
   const selectorName = binarySelector.binarySelector
-  const isProc = _eq.sourceString === "="
 
-  // set state and db
-  state.insudeMessage.forType = extendableType
-  state.insudeMessage.withName = selectorName
+  // set state 
+  state.enterMethodScope({
+    forType: extendableType,
+    kind: "binary",
+    withName: selectorName
+  })
 
-  codeDB.addBinaryMessageForType(extendableType, selectorName, {effects: new Set()})
+  codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo())
   //
 
+  const bodyStatements: BodyStatements = methodBody.toAst();
+  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+  const isProc = _eq.sourceString === "="
+  
   const binary: BinaryMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     methodKind: "BinaryMethodDeclaration",

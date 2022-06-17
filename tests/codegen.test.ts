@@ -1,5 +1,5 @@
 import test from 'ava';
-import { generateNimCode } from '../src/niva';
+import { codeDB, generateNimCode } from '../src/niva';
 import {  isDebug } from '../src/utils';
 
 isDebug.isDebug = false
@@ -143,7 +143,7 @@ test('Method Declaration Binary typed', t => {
 test('Method Declaration Binary untyped', t => {
   const code = '-Person + x = [ x echo ]' 
   const [_, nimCode] = generateNimCode(code)
-
+  codeDB
   t.is("proc `+`(self: Person, x: auto): auto =\n  x.`echo`()", nimCode)
 });
 

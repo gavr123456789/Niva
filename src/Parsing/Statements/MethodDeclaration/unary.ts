@@ -1,6 +1,7 @@
 import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { MethodDeclaration, UnaryMethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
+import { newUnaryMessageInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
 
 export function unaryMethodDeclaration(
@@ -15,19 +16,23 @@ export function unaryMethodDeclaration(
   methodBody: NonterminalNode
 ): MethodDeclaration {
   // -Person sas = []
-  const bodyStatements: BodyStatements = methodBody.toAst();
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+
   const extendableType = untypedIdentifier.sourceString
   const selectorName = unarySelector.sourceString
+  state.enterMethodScope({
+    forType: extendableType,
+    kind: "unary",
+    withName: selectorName
+  })
+
+  codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMessageInfo())
+
+  // TODO добавить в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
+  const bodyStatements: BodyStatements = methodBody.toAst();
+  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+
   const isProc = _eq.sourceString === "="
-
-  // TODO добавит в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
-  state.insudeMessage.forType = extendableType
-  state.insudeMessage.withName = selectorName
-
-  codeDB.addUnaryMessageForType(extendableType, selectorName, {effects: new Set()})
-
-
+  
   const unary: UnaryMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     expandableType: extendableType,

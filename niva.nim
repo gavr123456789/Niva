@@ -1,12 +1,13 @@
+import "nivaPrelude"
 {. push discardable .}
-proc fib(self: int): int =
-  if self.`<`(2):
-    1
-  else:
-    (self.`-`(1)).fib().`+`((self.`-`(2)).fib())
-0.fib().echo()
-1.fib().echo()
-2.fib().echo()
-3.fib().echo()
-4.fib().echo()
-5.fib().echo()
+type Person = object
+  name: string
+  age: int
+
+var kek = Person(age: 42, name: "sas")
+proc sas(self: int): auto =
+  var x = 3
+proc `++`(self: string, string: auto): auto =
+  var y = true
+proc fromString(self: int, string: auto): auto =
+  var z = "sas"

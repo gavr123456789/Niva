@@ -11,6 +11,7 @@ interface BaseMessageCallExpression {
 	selfTypeName: string
 	receiver: Receiver;
 	messageCalls: MessageCall[];
+	type?: string
 }
 
 export interface MessageCallExpression extends BaseMessageCallExpression {
@@ -24,6 +25,7 @@ export interface BracketExpression extends BaseMessageCallExpression {
 
 export interface SwitchExpression  {
 	kindStatement: "SwitchExpression"
+	type?: string
 	branches: SwitchBranch[]
   elseBranch?: ElseBranch
 }

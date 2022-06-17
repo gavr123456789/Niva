@@ -2,15 +2,18 @@
 import { TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
 import { MessageCallExpression } from './AST_Nodes/Statements/Expressions/Expressions';
-import { BinaryMethodDeclaration, KeywordMethodDeclaration, UnaryMethodDeclaration } from './AST_Nodes/Statements/MethodDeclaration/MethodDeclaration';
 import { Assignment } from './AST_Nodes/Statements/Statement';
+import { CodeDB, MethodKinds } from './CodeDB/codeDB';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
 import { NivaError } from './Errors/Error';
 import grammar, { NivaSemantics } from './niva.ohm-bundle';
 import { blockBody, blockConstructor } from './Parsing/codeBlock';
 import { expressionList } from './Parsing/Expression/expression';
-import { binaryArgument, binaryMessage, binarySelector, keywordArgument, keywordM, keywordMessage, messageCall, messages_binaryFirst, messages_keywordFirst, messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/messageCall';
+import { binaryArgument, binaryMessage, binarySelector, messages_binaryFirst } from './Parsing/Expression/MessageCall/binary';
+import { keywordArgument, keywordM, keywordMessage, messages_keywordFirst } from './Parsing/Expression/MessageCall/keyword';
+import { messageCall } from './Parsing/Expression/MessageCall/messageCall';
 import { primary, receiver, receiver_expressionInBrackets } from './Parsing/Expression/MessageCall/receiver';
+import { messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/unaryCall';
 import { switchBranch, switchBranchElseStatement, switchExpression } from './Parsing/Expression/Switch/switchExpression';
 import { unaryTypedIdentifier, untypedIdentifier } from './Parsing/identifiers';
 import { anyLiteral, boolLiteral, integerLiteral, stringLiteral } from './Parsing/literals';
@@ -25,205 +28,40 @@ import { statement, statements, switchStatement } from './Parsing/Statements/sta
 import { typeDeclaration, typedProperties, typedProperty } from './Parsing/Statements/typeDeclaration';
 
 
-interface ContextInformation {
+export interface ContextInformation {
+  kind: MethodKinds | "__global__" ;
 	forType: string
 	withName: string
 }
 class State {
 	isInMethodBody = false
-	// insideMessageForType: string = "__global__"
-	insudeMessage: ContextInformation = {
+	insideMessage: ContextInformation = {
 		forType: "__global__",
-		withName: "__global__"
+		withName: "__global__",
+		kind: "__global__"
 	}
+	
+	enterMethodScope(x: ContextInformation){
+		this.insideMessage = x
+	}
+	exitFromMethodDeclaration(){
+		this.insideMessage.forType = "__global__";
+		this.insideMessage.withName = "__global__";
+		this.insideMessage.kind = "__global__";
+		this.isInMethodBody = false
+	}
+
+
 	errors: NivaError[] = []
-}
-
-interface MessageCallInfo {
-	callStack: string[]
-}
-
-type EffectType = "mutatesFields"
-
-interface UnaryMessageInfo {
-	// ast: UnaryMethodDeclaration,
-	code?: string
-	effects: Set<EffectType>
-
-}
-
-interface BinaryMethodInfo {
-	// ast: BinaryMethodDeclaration,
-	code?: string
-	effects: Set<EffectType>
-
-}
-
-interface KeywordMethodInfo {
-	// ast: KeywordMethodDeclaration,
-	code?: string
-	effects: Set<EffectType>
 }
 
 
 export interface TypeField {
 	type: string
 }
-class TypeInfo {
-	// field name to info
-	constructor(public fields: Map<string, TypeField>) {}
-
-	structural: boolean = false
-	distinct: boolean = false
-
-	unaryMessages: Map<string, UnaryMessageInfo> = new Map()
-	binaryMessages: Map<string, BinaryMethodInfo> = new Map()
-	keywordMessages: Map<string, KeywordMethodInfo> = new Map()
-}
-
-
-type MethodKinds = "unary" | "binary" | "keyword"
-
-
-class CodeDB {
-
-	// TODO methods must have all variables and their types table
-
-	private typeNameToInfo: Map<string, TypeInfo> = new Map()
-
-	private addDefaultType(name: string){
-		const intFields = new Map<string, TypeField>()
-		intFields.set("value", {type: name})
-		this.typeNameToInfo.set(name, new TypeInfo(intFields))
-	}
-
-	constructor(){
-		// add default types and functions
-		this.addDefaultType("int")
-		this.addDefaultType("string")
-		this.addDefaultType("bool")
-		this.addDefaultType("float")
-	}
-
-	addNewType(name: string, fields: Map<string, TypeField>){
-		const typeInfo = new TypeInfo(fields)
-		this.typeNameToInfo.set(name, typeInfo)
-	}
-
-	addKeywordMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
-		const type = this.typeNameToInfo.get(typeName)
-		if(!type){
-			throw new Error("trying to add method for non existing type");
-		}
-		type.keywordMessages.set(selectorName, info)
-	}
-	addUnaryMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
-		const type = this.typeNameToInfo.get(typeName)
-		if(!type){
-			throw new Error("trying to add method for non existing type");
-		}
-		type.unaryMessages.set(selectorName, info)
-	}
-	addBinaryMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo){
-		const type = this.typeNameToInfo.get(typeName)
-		if(!type){
-			throw new Error("trying to add method for non existing type");
-		}
-		type.binaryMessages.set(selectorName, info)
-	}
-
-	private getTypeOrThrowError(typeName: string, errorText: string){
-
-	}
-
-	hasMutateEffect(typeName: string, methodSelector: string): boolean {
-		const type = this.typeNameToInfo.get(typeName)
-		if (!type){
-			throw new Error("trying to check effect of non existing type");
-		}
-
-		const unary =   !!type.unaryMessages.get(methodSelector)?.effects.has("mutatesFields")
-		const binary =  !!type.binaryMessages.get(methodSelector)?.effects.has("mutatesFields")
-		const keyword = !!type.keywordMessages.get(methodSelector)?.effects.has("mutatesFields")
-		return unary || binary || keyword
-	}
-
-	addEffectForMethod(selfType: string, methodKind: MethodKinds, methodName: string, effect: { kind: EffectType; }) {
-		const type = this.typeNameToInfo.get(selfType)
-		if (!type){
-			throw new Error("trying to add effect to non existing type");
-		}
-
-		if (methodName.length === 0){
-			throw new Error("MethodName is Empty");
-			
-		}
-
-		switch (methodKind) {
-			case "keyword":
-			  const keywordMethod = type.keywordMessages.get(methodName)
-				if (!keywordMethod){
-					console.error(`All known keywordMethods of type ${selfType}:`)
-					
-					throw new Error(`trying to add effecto for non existing method: ${methodName}` );
-				}
-				keywordMethod.effects.add(effect.kind)
-				break;
-			case "binary":
-				const binaryMethod = type.binaryMessages.get(methodName)
-				if (!binaryMethod){
-					throw new Error("trying to add effect for non existing method");
-				}
-				binaryMethod.effects.add(effect.kind)
-				break;
-			case "unary":
-				const unaryMethod = type.unaryMessages.get(methodName)
-				if (!unaryMethod){
-					throw new Error("trying to add effecto for non existing method");
-				}
-				unaryMethod.effects.add(effect.kind)
-				break;
-		
-			default:
-				const _never: never = methodKind
-				break;
-		}
-
-		// TODO
-		// throw new Error("Method not implemented.");
-	}
-
-	hasType(name: string){
-		return this.typeNameToInfo.has(name)
-	}
-
-	autoCompleteMessage(type: string, start: string): string{
-		const x = this.typeNameToInfo.get(type)
-		if (!x) return ""
-
-		if (start === ""){
-			const allFieldsAndMethodsName = ""
-			return allFieldsAndMethodsName
-		} else {
-			const allFieldsAndMethodsStartWith = ""
-			return allFieldsAndMethodsStartWith
-
-		}
-
-	}
-
-	typeHasField(typeName: string, keyName: string): boolean {
-		const type = this.typeNameToInfo.get(typeName)
-		if (!type){
-			return false
-		}
-		return 	type.fields.has(keyName)
-  }
-}
 
 
 export const codeDB: CodeDB = new CodeDB()
-
 export const state = new State()
 
 
