@@ -5,9 +5,9 @@ export function getAtomPrimary(primary: Primary): string {
 	const atom = primary.atomReceiver;
 	switch (atom.kindPrimary) {
 		case 'Identifer':
-		case 'IntLiteral':
-		case 'StringLiteral':
-		case 'BoolLiteral':
+		case 'int':
+		case 'string':
+		case 'bool':
 			return atom.value;
 		default:
 			const _never: never = atom;

@@ -1,5 +1,5 @@
 export interface BoolLiteral {
-  kindPrimary: "BoolLiteral"
+  kindPrimary: "bool"
   
   readonly value: string
 }

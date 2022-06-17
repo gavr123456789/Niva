@@ -6,7 +6,7 @@ import { StringLiteral } from "../AST_Nodes/Statements/Expressions/Receiver/Prim
 
 export function boolLiteral(boolLiteral: NonterminalNode): BoolLiteral {
   const result: BoolLiteral = {
-    kindPrimary: "BoolLiteral",
+    kindPrimary: "bool",
     value: boolLiteral.sourceString
   }
   return result
@@ -14,7 +14,7 @@ export function boolLiteral(boolLiteral: NonterminalNode): BoolLiteral {
 
 export function integerLiteral(intLiteral: NonterminalNode): IntLiteral {
   const result: IntLiteral = {
-    kindPrimary: 'IntLiteral',
+    kindPrimary: 'int',
     value: intLiteral.sourceString
   };
   return result;
@@ -22,7 +22,7 @@ export function integerLiteral(intLiteral: NonterminalNode): IntLiteral {
 
 export function stringLiteral(_lQuote: TerminalNode, text: IterationNode, _rQuote: TerminalNode): StringLiteral {
   const result: StringLiteral = {
-    kindPrimary: 'StringLiteral',
+    kindPrimary: 'string',
     value: '"' + text.sourceString + '"'
   };
   return result;

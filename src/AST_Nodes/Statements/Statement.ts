@@ -31,7 +31,6 @@ export interface Assignment {
 
   messagelineAndColumnMessage: string,
   sourceCode: string
-  file: "" // TODO
 }
 
 export interface ReturnStatement {

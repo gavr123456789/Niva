@@ -2,6 +2,7 @@ import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
+import { newKeywordMethodInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
 
 export function keywordMethodDeclaration(
@@ -20,10 +21,15 @@ export function keywordMethodDeclaration(
   const keyValueNames: KeywordMethodArgument[] = keywordMethodDeclarationArg.keyValueNames
   const isProc = _eq.sourceString === "="
 
-  state.insudeMessage.forType = extendableType
   const selectorName = keywordMethodDeclarationArg.keyValueNames.map(x => x.keyName).join("_")
-  state.insudeMessage.withName = selectorName
-  codeDB.addKeywordMessageForType(extendableType, selectorName, {effects: new Set()})
+  
+  state.enterMethodScope({
+    forType: extendableType,
+    kind: "keyword",
+    withName: selectorName
+  })
+
+  codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo())
   
 
   const bodyStatements: BodyStatements = methodBody.toAst();
@@ -40,6 +46,8 @@ export function keywordMethodDeclaration(
     kindStatement: "MethodDeclaration",
     method: keyword
   }
+
+  
   return result
 
 }
