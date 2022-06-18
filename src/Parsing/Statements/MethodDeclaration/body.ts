@@ -6,7 +6,6 @@ import { state } from "../../../niva"
 export function methodBody(fullOrShort: NonterminalNode): BodyStatements {
   state.isInMethodBody = true
   const body: BodyStatements = fullOrShort.toAst()
-  state.exitFromMethodDeclaration()
   return body
 }
 

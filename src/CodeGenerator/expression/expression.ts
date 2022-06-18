@@ -1,30 +1,38 @@
 import { StatementList } from '../../AST_Nodes/AstNode';
-import { BracketExpression, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
+import { BracketExpression, Constructor, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
 import { generateNimFromAst } from '../codeGenerator';
-import { generateBinaryCall, generateKeywordCall, generateUnaryCall } from './messageCalls';
+import { fillKeywordArgsAndReturnStatements, generateBinaryCall, generateConstructor, generateKeywordCall, generateUnaryCall } from './messageCalls';
 import { getAtomPrimary } from '../primary';
 
-export type MessageSendExpression = MessageCallExpression | BracketExpression
+export type MessageSendExpression = MessageCallExpression | BracketExpression | Constructor
 
 export function processManyExpressions(s: MessageSendExpression[], identation: number): string[] {
 	return s.map(x => processExpression(x, identation))
 }
 
-export function processExpression(s: MessageSendExpression, identation: number): string {
-	const receiver = s.receiver;
+export function processExpression(s: MessageSendExpression, indentation: number): string {
 	// ident stacks if its already idented
-	const recurciveIdent = identation >= 2 ? identation - 2 : identation
+	const recurciveIdent = indentation >= 2 ? indentation - 2 : indentation
+ 
+	if (s.kindStatement === "Constructor"){
+
+    const constructorCode = generateConstructor(s)
+		console.log("constructor code ", constructorCode);
+		
+		return constructorCode
+	}
+
+	const receiver = s.receiver;
 
 	if (receiver.kindStatement === "BlockConstructor") {
 		const statemetList: StatementList = {
 			kind: "StatementList",
 			statements: receiver.statements
 		}
-		// process "it"
 		if (receiver.blockArguments.length === 1) {
-			// TODO
+			// TODO  add it
 		}
-		const statementsCode = generateNimFromAst(statemetList, identation)
+		const statementsCode = generateNimFromAst(statemetList, indentation)
 		return statementsCode
 	}
 
@@ -74,10 +82,7 @@ export function processExpression(s: MessageSendExpression, identation: number):
 					case 'Primary':
 					case 'BracketExpression':
 						const { arguments: keywordArguments } = messageCall;
-						
-						const {keywordMessageCall, isContructor} = generateKeywordCall(s.selfTypeName, messageCall.selectorName, keywordArguments, receiver, identation);
-					  
-						
+						const keywordMessageCall = generateKeywordCall(s.selfTypeName, messageCall.selectorName, keywordArguments, receiver, indentation);
 						messageLine.push(keywordMessageCall);
 						break;
 					default:
@@ -92,7 +97,7 @@ export function processExpression(s: MessageSendExpression, identation: number):
 		}
 	}
 	// generate ident
-	const identStr = ' '.repeat(identation);
+	const identStr = ' '.repeat(indentation);
 	// пушим строку вызовов сообщений
 	const needBrackets = s.kindStatement === 'BracketExpression';
 
