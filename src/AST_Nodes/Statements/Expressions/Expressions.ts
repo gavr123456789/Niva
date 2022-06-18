@@ -1,10 +1,11 @@
-import { MessageCall } from "./Messages/Message";
+import { KeywordMessage, MessageCall } from "./Messages/Message";
 import { Receiver } from "./Receiver/Receiver";
 
 export type Expression = 
 | MessageCallExpression 
 | BracketExpression 
 | SwitchExpression
+| Constructor
 
 
 interface BaseMessageCallExpression {
@@ -15,12 +16,18 @@ interface BaseMessageCallExpression {
 }
 
 export interface MessageCallExpression extends BaseMessageCallExpression {
-  kindStatement: "MessageCallExpression"
+  kindStatement: "MessageCallExpression" 
 }
+export interface Constructor {
+	selfTypeName: string
 
+	// Person name: "sas" age: 34
+	type: string
+	call: KeywordMessage,
+  kindStatement: "Constructor"
+}
 export interface BracketExpression extends BaseMessageCallExpression {
 	kindStatement: "BracketExpression"
-	type?: string // TODO: add type
 }
 
 export interface SwitchExpression  {

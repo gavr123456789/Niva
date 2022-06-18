@@ -98,8 +98,8 @@ export class CodeDB {
 
 		const type = this.typeNameToInfo.get(typeName)
 		if(!type){
-      console.error("typeName = ", typeName);
-			throw new Error("trying to add method for non existing type");
+      console.error("typeName = ", );
+			throw new Error(`trying to add method for non existing type: ${typeName}`);
 		}
 
 		switch (kind) {
@@ -110,16 +110,7 @@ export class CodeDB {
           console.log(`All known messages are: ${type.unaryMessages}`);
           return
         }
-        const alreadyDefinedUnary = unaryMessage.declaratedValueToType.get(valueName)
-        if (alreadyDefinedUnary){
-          console.log(`${valueName} value already defined in ${messageName}`);
-          return
-        }
-        unaryMessage.declaratedValueToType.get(valueName)
-        // console.log("added val unary current:",  unaryMessage.declaratedValueToType);
-        
-
-        break;
+        return unaryMessage.declaratedValueToType.get(valueName)
       case "binary":
         const binaryMessage = type.binaryMessages.get(messageName)
         if (!binaryMessage) {
@@ -127,11 +118,7 @@ export class CodeDB {
           console.log(`All known messages are: ${type.binaryMessages}`);
           return
         }
-        const alreadyDefinedBinary = binaryMessage.declaratedValueToType.get(valueName)
-        if (alreadyDefinedBinary){
-          console.log(`${valueName} value already defined in ${messageName}`);
-          return
-        }
+
         return binaryMessage.declaratedValueToType.get(valueName)
         // console.log(`added val with name: ${valueName}, type: ${valueType} inside binary method ${messageName} for type ${typeName}`);
 
@@ -142,11 +129,7 @@ export class CodeDB {
           console.log(`All known messages are: ${type.keywordMessages}`);
           return
         }
-        const alreadyDefinedKeyword = keywordMessage.declaratedValueToType.get(valueName)
-        if (alreadyDefinedKeyword){
-          console.log(`${valueName} value already defined in ${messageName}`);
-          return
-        }
+
         return keywordMessage.declaratedValueToType.get(valueName)
 
 			case "__global__":

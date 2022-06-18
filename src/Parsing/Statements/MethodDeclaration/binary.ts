@@ -19,6 +19,7 @@ export function binaryMethodDeclaration(
   const binarySelector: BinaryMethodDeclarationArg = binaryMethodDeclarationArg.toAst();
   const extendableType = untypedIdentifier.sourceString
   const selectorName = binarySelector.binarySelector
+  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
   // set state 
   state.enterMethodScope({
@@ -27,11 +28,10 @@ export function binaryMethodDeclaration(
     withName: selectorName
   })
 
-  codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo())
+  codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
   //
 
   const bodyStatements: BodyStatements = methodBody.toAst();
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
   const isProc = _eq.sourceString === "="
   
   const binary: BinaryMethodDeclaration = {
@@ -48,6 +48,7 @@ export function binaryMethodDeclaration(
     kindStatement: "MethodDeclaration",
     method: binary
   }
+  state.exitFromMethodDeclaration()
 
   return result;
 }

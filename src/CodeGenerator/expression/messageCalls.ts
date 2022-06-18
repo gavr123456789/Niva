@@ -1,5 +1,5 @@
 import { StatementList } from "../../AST_Nodes/AstNode";
-import { BracketExpression } from "../../AST_Nodes/Statements/Expressions/Expressions";
+import {BracketExpression, Constructor} from "../../AST_Nodes/Statements/Expressions/Expressions";
 import { BinaryArgument, KeywordArgument } from "../../AST_Nodes/Statements/Expressions/Messages/Message";
 import { Primary } from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 import { codeDB } from "../../niva";
@@ -51,13 +51,13 @@ export function generateKeywordCall(
 	currentMethodName: string,
 	keyWordArgs: KeywordArgument[],
 	receiver: BracketExpression | Primary,
-	identation: number): {keywordMessageCall: string, isContructor: boolean} {
+	identation: number): string {
 
 	// Check if this a object constructor
-	const isThisIsConstructorCall =
-		receiver.kindStatement === "Primary" &&
-		receiver.atomReceiver.kindPrimary === "Identifer" &&
-		codeDB.hasType(receiver.atomReceiver.value)
+	// const isThisIsConstructorCall =
+	// 	receiver.kindStatement === "Primary" &&
+	// 	receiver.atomReceiver.kindPrimary === "Identifer" &&
+	// 	codeDB.hasType(receiver.atomReceiver.value)
 
 	// if this call a constructor => set type of receiver
 	
@@ -67,62 +67,72 @@ export function generateKeywordCall(
 	const ifThisIsSetterCode: string | null = ifFieldSetterGenerateCode(selfType, keyWordArgs)
 	if (ifThisIsSetterCode) {
 		codeDB.addEffectForMethod(selfType, "keyword", currentMethodName, { kind: "mutatesFields" })
-		return {keywordMessageCall: ifThisIsSetterCode, isContructor: false}
+		return ifThisIsSetterCode
 	}
 
 
 	const functionName = keyWordArgs.map(x => x.keyName).join("_")
-	const args: string[] = []
-	const keyWordArgsCount = keyWordArgs.length
+	const argsValuesCode: string[] = []
 
-	let lastKeyWordArgBody: undefined | string = undefined
 
 	// generateArgs должна возвращать массив аргументов с вызовами у них унарных и бинарных функций
-	lastKeyWordArgBody = generateArgs(keyWordArgs, args, keyWordArgsCount, lastKeyWordArgBody, identation);
+	const lastKeyWordArgBody = fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, identation);
 
-	const argumentsSeparatedByComma = args.join(", ")
+	const argumentsSeparatedByComma = argsValuesCode.join(", ")
 
-	if (isThisIsConstructorCall){
-		// TODO type check, check that all arguments was setted
-		// Person(name: "sas", age: 42)
-		const typeName = receiver.atomReceiver.value 
-		// create "key: val, key2: val2" pairs
-		const argNameColonArgVal = keyWordArgs.map((x, i) => {
-		 return	x.keyName + ": " + args[i] 
-		}).join(", ")
-
-		const code =  `(${argNameColonArgVal})`
-		return {keywordMessageCall: code, isContructor: true}
-	}
+	// if (isThisIsConstructorCall){
+	// 	// TODO type check, check that all arguments was setted
+	// 	// Person(name: "sas", age: 42)
+	// 	return generateConstructor(keyWordArgs, argsValuesCode);
+	// }
 	if (!lastKeyWordArgBody) {
 		const keywordMessageCall = '.' + functionName + '(' + argumentsSeparatedByComma + ')'
-		return {keywordMessageCall: keywordMessageCall, isContructor: false}
+		return keywordMessageCall
 	} else {
 		// .sas:
 		//   blockOfCode
-		if (args.length === 1) {
-			const keywordMessageCall = `.${functionName}(${args[0]}):\n${lastKeyWordArgBody}`
-			return {keywordMessageCall: keywordMessageCall, isContructor: false}
+		if (argsValuesCode.length === 1) {
+			const keywordMessageCall = `.${functionName}(${argsValuesCode[0]}):\n${lastKeyWordArgBody}`
+			return keywordMessageCall
 		}
 		// .sas(1, 2):
 		//   blockOfCode
-		if (args.length > 1) {
-			const allArgsExceptLast = args.slice(0, -1).join(", ")
+		if (argsValuesCode.length > 1) {
+			const allArgsExceptLast = argsValuesCode.slice(0, -1).join(", ")
 			const keywordMessageCall = `.${functionName}(${allArgsExceptLast}):\n${lastKeyWordArgBody}`
 
-			return {keywordMessageCall: keywordMessageCall, isContructor: false}
+			return keywordMessageCall
 		}
 
 		// console.log("lastKeyWordArgBody = ", lastKeyWordArgBody);
 
-		throw new Error(`Args count must be 1 or more, args: ${args}`);
+		throw new Error(`Args count must be 1 or more, args: ${argsValuesCode}`);
 	}
 
 }
 
+// (name: "sas", age: 33)
+export function generateConstructor(c: Constructor) {
+	const keyWordArgs = c.call.arguments
+	const argsValuesCode: string[] = []
 
-function generateArgs(keyWordArgs: KeywordArgument[], args: string[], keyWordArgsCount: number, lastKeyWordArgBody: string | undefined, identation: number): string | undefined {
-	
+	fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
+	// const typeName = receiver.atomReceiver.value;
+
+
+	// create "key: val, key2: val2" pairs
+	const argNameColonArgVal = keyWordArgs.map((x, i) => {
+		return x.keyName + ": " + argsValuesCode[i];
+	}).join(", ");
+
+	const code = `${c.type}(${argNameColonArgVal})`;
+	return code;
+}
+
+export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[], args: string[], identation: number): string | undefined {
+	const keyWordArgsCount = keyWordArgs.length
+	let lastKeyWordArgBody: undefined | string = undefined
+	let wasBlockConstructor = false
 	keyWordArgs.forEach((kwArg, i) => {
 		switch (kwArg.receiver.kindStatement) {
 			// Arg is just a simple thing(identifier or literal)
@@ -135,9 +145,7 @@ function generateArgs(keyWordArgs: KeywordArgument[], args: string[], keyWordArg
 			// Arg is CodeBlock
 			// do: [...]
 			case "BlockConstructor":
-				// TODO тут нужна информация о том это вызов темплейта или обычной функции
-				// если темплейта то код должен быть ...:\n expressions.join("\n")
-				// если функция то proc(x: int): int = code
+
 				if (i !== keyWordArgsCount - 1) {
 					throw new Error(`BlockConstructor as not last argument(arg# ${i + 1}, and the last is ${keyWordArgsCount})`);
 				}
@@ -153,7 +161,6 @@ function generateArgs(keyWordArgs: KeywordArgument[], args: string[], keyWordArg
 			//key: (...)
 			case "BracketExpression":
 				lastKeyWordArgBody = processExpression(kwArg.receiver, identation)
-
 				break;
 
 
@@ -189,7 +196,6 @@ function ifFieldSetterGenerateCode(extendedType: string, keyWordArgs: KeywordArg
 	// must have one argument, and that argument has key name same as one of the fields
 	const firstArg = keyWordArgs.at(0)
 	if (!firstArg || keyWordArgs.length !== 1) {
-
 		return null
 	}
 

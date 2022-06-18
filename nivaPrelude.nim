@@ -40,6 +40,15 @@ template whileTrue*(self: bool, body: typed) =
 #   t.inc()
 #   echo t
 
+template combineTwo*(body1: untyped, body2: untyped) =
+  body1
+  body2
+
+combineTwo:
+  echo(4)
+do:
+  echo(4)
+#  3 dsd: "343"
 template timesRepeat*(self: int, z: bool, body: typed) =
   echo z
   for i in 0..self:

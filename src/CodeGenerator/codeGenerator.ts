@@ -2,6 +2,7 @@ import { StatementList } from '../AST_Nodes/AstNode';
 import { Mutability, ReturnStatement } from '../AST_Nodes/Statements/Statement';
 import { generateAssigment } from './assigment';
 import { processExpression } from './expression/expression';
+import { generateConstructor } from './expression/messageCalls';
 import { generateSwitchExpression } from './expression/switchExpression';
 import { generateSwitchStatement } from './expression/switchStatement';
 import { generateMethodDeclaration } from './methodDeclaration';
@@ -23,10 +24,19 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 		switch (s.kindStatement) {
 			case 'MessageCallExpression':
 			case "BracketExpression":
-				
+			case "Constructor":
 				const expressionCode = processExpression(s, identation)
 				lines.push(expressionCode)
 			break;
+			// :{
+			// 	const firstMessage = s.messageCalls.at(0)
+			// 	if (firstMessage?.selectorKind !== "keyword" || s.receiver.kindStatement !== "Primary"){
+			// 		throw new Error("keyword message is not constuctor");
+			// 	}
+			// 	const argsCode: string[] = []
+			// 	generateConstructor(s.receiver, firstMessage.arguments, argsCode)
+			// 	break
+			// }
 
 			case 'Assignment':
 				// codeGenerateExpression(s.value, lines)

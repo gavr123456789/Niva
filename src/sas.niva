@@ -4,6 +4,9 @@ kek = Person age: 42 name: "sas".
 
 -int sas = [
   x = 3.
+  y = x.
+  z = y.
+  q = z
 ].
 
 -string ++ string = [

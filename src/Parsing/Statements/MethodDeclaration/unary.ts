@@ -24,12 +24,12 @@ export function unaryMethodDeclaration(
     kind: "unary",
     withName: selectorName
   })
+  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
-  codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMessageInfo())
+  codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMessageInfo(returnType || "auto"))
 
   // TODO добавить в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
   const bodyStatements: BodyStatements = methodBody.toAst();
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
   const isProc = _eq.sourceString === "="
   
@@ -48,6 +48,7 @@ export function unaryMethodDeclaration(
   }
 
   // sas.typeNameToInfo.set(expandableType, )
+  state.exitFromMethodDeclaration()
 
   return result;
 }

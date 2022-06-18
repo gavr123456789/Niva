@@ -1,7 +1,8 @@
 import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
-import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
+import { BodyStatements, Statement } from "../../../AST_Nodes/Statements/Statement";
+import { inferStatementsType } from "../../../CodeDB/InferTypes/sas";
 import { newKeywordMethodInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
 
@@ -29,10 +30,13 @@ export function keywordMethodDeclaration(
     withName: selectorName
   })
 
-  codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo())
+  codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo(returnType || "auto"))
   
 
   const bodyStatements: BodyStatements = methodBody.toAst();
+  const bodyType = inferStatementsType(bodyStatements.statements)
+
+
   const keyword: KeywordMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     methodKind: "KeywordMethodDeclaration",
@@ -47,9 +51,8 @@ export function keywordMethodDeclaration(
     method: keyword
   }
 
-  
+  state.exitFromMethodDeclaration()
   return result
-
 }
 
 export function keywordMethodDeclarationArgs(_s: NonterminalNode, keywordMethodDeclarationArg: NonterminalNode, _s2: IterationNode, otherKeywordMethodDeclarationArg: IterationNode, _s3: IterationNode): KeywordMethodDeclarationArg {
@@ -71,3 +74,4 @@ export function keywordMethodDeclarationArg(untypedIdentifier: NonterminalNode, 
     identifier: ident
   }
 }
+
