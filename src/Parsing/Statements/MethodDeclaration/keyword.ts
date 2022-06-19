@@ -1,5 +1,5 @@
 import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
-import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
+import { Identifier } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements, Statement } from "../../../AST_Nodes/Statements/Statement";
 import { inferStatementsType } from "../../../CodeDB/InferTypes/sas";
@@ -67,7 +67,7 @@ export function keywordMethodDeclarationArgs(_s: NonterminalNode, keywordMethodD
 }
 
 export function keywordMethodDeclarationArg(untypedIdentifier: NonterminalNode, _colon: TerminalNode, _s: NonterminalNode, identifier: NonterminalNode): KeywordMethodArgument {
-  const ident: Identifer = identifier.toAst();
+  const ident: Identifier = identifier.toAst();
 
   return {
     keyName: untypedIdentifier.sourceString,

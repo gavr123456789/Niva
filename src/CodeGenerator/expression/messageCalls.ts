@@ -1,10 +1,10 @@
-import { StatementList } from "../../AST_Nodes/AstNode";
-import {BracketExpression, Constructor} from "../../AST_Nodes/Statements/Expressions/Expressions";
-import { BinaryArgument, KeywordArgument } from "../../AST_Nodes/Statements/Expressions/Messages/Message";
-import { Primary } from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
-import { codeDB } from "../../niva";
-import { generateNimFromAst } from "../codeGenerator";
-import { processExpression } from "./expression";
+import {StatementList} from "../../AST_Nodes/AstNode";
+import {BracketExpression} from "../../AST_Nodes/Statements/Expressions/Expressions";
+import {BinaryArgument, KeywordArgument} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
+import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
+import {codeDB} from "../../niva";
+import {generateNimFromAst} from "../codeGenerator";
+import {processExpression} from "./expression";
 
 export function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
 	// example: 1 + (1 - 1)
@@ -28,7 +28,7 @@ function generateSimpleBinaryCall(binaryMessageName: string, argument: BinaryArg
 	if (!argument.unaryMessages) {
 		return '.' + '`' + binaryMessageName + '`' + '(' + argValue + ')';
 	}
-	const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.unarySelector)).join("")
+	const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.name)).join("")
 	const unaryCallsWithReceiver = argValue + listOfUnaryCalls
 	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
 }
@@ -52,16 +52,6 @@ export function generateKeywordCall(
 	keyWordArgs: KeywordArgument[],
 	receiver: BracketExpression | Primary,
 	identation: number): string {
-
-	// Check if this a object constructor
-	// const isThisIsConstructorCall =
-	// 	receiver.kindStatement === "Primary" &&
-	// 	receiver.atomReceiver.kindPrimary === "Identifer" &&
-	// 	codeDB.hasType(receiver.atomReceiver.value)
-
-	// if this call a constructor => set type of receiver
-	
-
 
 	// Check if this a setter
 	const ifThisIsSetterCode: string | null = ifFieldSetterGenerateCode(selfType, keyWordArgs)
@@ -111,28 +101,9 @@ export function generateKeywordCall(
 
 }
 
-// (name: "sas", age: 33)
-export function generateConstructor(c: Constructor) {
-	const keyWordArgs = c.call.arguments
-	const argsValuesCode: string[] = []
-
-	fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
-	// const typeName = receiver.atomReceiver.value;
-
-
-	// create "key: val, key2: val2" pairs
-	const argNameColonArgVal = keyWordArgs.map((x, i) => {
-		return x.keyName + ": " + argsValuesCode[i];
-	}).join(", ");
-
-	const code = `${c.type}(${argNameColonArgVal})`;
-	return code;
-}
-
-export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[], args: string[], identation: number): string | undefined {
+export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[], args: string[], indentation: number): string | undefined {
 	const keyWordArgsCount = keyWordArgs.length
 	let lastKeyWordArgBody: undefined | string = undefined
-	let wasBlockConstructor = false
 	keyWordArgs.forEach((kwArg, i) => {
 		switch (kwArg.receiver.kindStatement) {
 			// Arg is just a simple thing(identifier or literal)
@@ -145,7 +116,6 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
 			// Arg is CodeBlock
 			// do: [...]
 			case "BlockConstructor":
-
 				if (i !== keyWordArgsCount - 1) {
 					throw new Error(`BlockConstructor as not last argument(arg# ${i + 1}, and the last is ${keyWordArgsCount})`);
 				}
@@ -154,20 +124,16 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
 					kind: "StatementList",
 					statements: kwArg.receiver.statements
 				};
-
-				lastKeyWordArgBody = generateNimFromAst(statementList, identation + 2);
-
+				lastKeyWordArgBody = generateNimFromAst(statementList, indentation + 2);
 				break;
 			//key: (...)
 			case "BracketExpression":
-				lastKeyWordArgBody = processExpression(kwArg.receiver, identation)
+				lastKeyWordArgBody = processExpression(kwArg.receiver, indentation)
 				break;
-
 
 			default:
 				const _never: never = kwArg.receiver;
 				throw new Error("Sound error!");
-
 		}
 
 	});
@@ -178,12 +144,12 @@ function generateKeywordArgCalls(kwArg: KeywordArgument) {
 	let result = ""
 	// if there any unary calls, call them first
 	for (const unaryMsg of kwArg.unaryMessages) {
-		const unaryCallCode = generateUnaryCall(unaryMsg.unarySelector);
+		const unaryCallCode = generateUnaryCall(unaryMsg.name);
 		result = result + unaryCallCode;
 	}
 	// if there any binary calls, call them after
 	for (const binaryMsg of kwArg.binaryMessages) {
-		const binaryCallCode = generateBinaryCall(binaryMsg.binarySelector, binaryMsg.argument);
+		const binaryCallCode = generateBinaryCall(binaryMsg.name, binaryMsg.argument);
 		result = result + binaryCallCode;
 	}
 	return result;
@@ -227,7 +193,7 @@ function generateSetter(fieldName: string, value: string): string {
 	// input  person name: "sas"
 	// output person.name = "sas"
 	// we here after dot
-	// keywords messages cant be continued with other type of messages, so here no problems like
+	// keywords messages cant be continued with other type of messages, so here no problems
 	return `.${fieldName} = ${value}`
 
 }

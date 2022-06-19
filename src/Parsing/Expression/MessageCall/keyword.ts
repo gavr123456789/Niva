@@ -30,7 +30,7 @@ export function keywordMessage(_s1: NonterminalNode,
   
   
   const result: KeywordMessage = {
-    selectorName: state.insideMessage.withName,
+    name: state.insideMessage.withName,
     selectorKind: 'keyword',
     arguments: resultArguments
   };

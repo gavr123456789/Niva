@@ -4,7 +4,7 @@ import { Primary } from "../AST_Nodes/Statements/Expressions/Receiver/Primary/Pr
 export function getAtomPrimary(primary: Primary): string {
 	const atom = primary.atomReceiver;
 	switch (atom.kindPrimary) {
-		case 'Identifer':
+		case 'Identifier':
 		case 'int':
 		case 'string':
 		case 'bool':

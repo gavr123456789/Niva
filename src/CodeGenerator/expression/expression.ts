@@ -1,8 +1,9 @@
 import { StatementList } from '../../AST_Nodes/AstNode';
 import { BracketExpression, Constructor, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
 import { generateNimFromAst } from '../codeGenerator';
-import { fillKeywordArgsAndReturnStatements, generateBinaryCall, generateConstructor, generateKeywordCall, generateUnaryCall } from './messageCalls';
+import { fillKeywordArgsAndReturnStatements, generateBinaryCall, generateKeywordCall, generateUnaryCall } from './messageCalls';
 import { getAtomPrimary } from '../primary';
+import {generateConstructor} from "./constructor";
 
 export type MessageSendExpression = MessageCallExpression | BracketExpression | Constructor
 
@@ -52,7 +53,7 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 				switch (receiver.kindStatement) {
 					case 'Primary':
 					case 'BracketExpression':
-						const unaryNimCall = generateUnaryCall(messageCall.unarySelector);
+						const unaryNimCall = generateUnaryCall(messageCall.name);
 						messageLine.push(unaryNimCall);
 						break;
 
@@ -66,7 +67,7 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 				switch (receiver.kindStatement) {
 					case 'Primary':
 					case 'BracketExpression':
-						const { binarySelector: messageIdent, argument: binaryArguments } = messageCall;
+						const { name: messageIdent, argument: binaryArguments } = messageCall;
 						const binaryMessageCall = generateBinaryCall(messageIdent, binaryArguments);
 						messageLine.push(binaryMessageCall);
 						break;
@@ -82,7 +83,7 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 					case 'Primary':
 					case 'BracketExpression':
 						const { arguments: keywordArguments } = messageCall;
-						const keywordMessageCall = generateKeywordCall(s.selfTypeName, messageCall.selectorName, keywordArguments, receiver, indentation);
+						const keywordMessageCall = generateKeywordCall(s.selfTypeName, messageCall.name, keywordArguments, receiver, indentation);
 						messageLine.push(keywordMessageCall);
 						break;
 					default:

@@ -61,15 +61,28 @@ export interface TypeField {
 }
 
 
+
 export const codeDB: CodeDB = new CodeDB()
 export const state = new State()
 
+type qwe = State | number
+
+function sas(sas: qwe) {
+	if (typeof sas === "object" && "forType" in sas){
+
+	}
+}
 
 function addGlobalVariableDeclaratuon(
 	map: Map<string, Assignment> | undefined,
 	assignment: Assignment,
 	errors: NivaError[]
 ) {
+
+	
+
+
+
 	const varName = assignment.assignmentTarget;
 	if (!map) {
 		throw new Error('map of global variables is undefined!');

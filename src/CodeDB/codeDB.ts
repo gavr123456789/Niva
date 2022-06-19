@@ -272,6 +272,43 @@ export class CodeDB {
 		}
 		return 	type.fields.has(keyName)
   }
-}
 
-export const codeDB2 = new CodeDB()
+  getMethodReturnType(typeName: string, methodName: string, kind: MethodKinds): string {
+		const type = this.typeNameToInfo.get(typeName)
+		if (!type){
+			throw new Error("trying to check effect of non existing type");
+		}
+		switch (kind) {
+			case "unary":
+				const unaryMethod = type.unaryMessages.get(methodName)
+				if (!unaryMethod){
+					throw new Error(`no such unary method: ${methodName}, all known methods: ${type.unaryMessages}`)
+				}
+				if (unaryMethod.returnType === "auto"){
+					throw new Error(`Return type of: ${methodName}, is auto`)
+				}
+				return unaryMethod.returnType
+				break;
+			case "binary":
+				const binaryMethod = type.unaryMessages.get(methodName)
+				if (!binaryMethod){
+					throw new Error(`no such unary method: ${methodName}, all known methods: ${type.binaryMessages}`)
+				}
+				if (binaryMethod.returnType === "auto"){
+					throw new Error(`Return type of: ${methodName}, is auto`)
+				}
+				return binaryMethod.returnType
+				break;
+			case "keyword":
+				const keywordMethod = type.unaryMessages.get(methodName)
+				if (!keywordMethod){
+					throw new Error(`no such unary method: ${methodName}, all known methods: ${type.keywordMessages}`)
+				}
+				if (keywordMethod.returnType === "auto"){
+					throw new Error(`Return type of: ${methodName}, is auto`)
+				}
+				return keywordMethod.returnType
+				break;
+		}
+  }
+}

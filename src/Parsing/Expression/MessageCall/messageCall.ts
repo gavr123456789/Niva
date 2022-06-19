@@ -30,9 +30,10 @@ export function messageCall(receiver: NonterminalNode, maymeMessages: IterationN
   const firstMessage = astMessages.at(0)
   const isThisIsConstructorCall =
     astOfReceiver.kindStatement === "Primary" &&
-    astOfReceiver.atomReceiver.kindPrimary === "Identifer" &&
+    astOfReceiver.atomReceiver.kindPrimary === "Identifier" &&
     firstMessage?.selectorKind === "keyword" &&
     codeDB.hasType(astOfReceiver.atomReceiver.value)
+
   if (isThisIsConstructorCall) {
     const constructor: Constructor = {
       kindStatement: "Constructor",

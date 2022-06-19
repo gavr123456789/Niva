@@ -1,4 +1,4 @@
-import { Identifer } from "../Expressions/Receiver/Primary/Identifier"
+import { Identifier } from "../Expressions/Receiver/Primary/Identifier"
 import { BodyStatements } from "../Statement"
 
 export interface UnaryMethodDeclarationArgs {
@@ -9,12 +9,12 @@ export interface UnaryMethodDeclarationArgs {
 export interface BinaryMethodDeclarationArgs {
   methodArgKind: "Binary"
   binarySelector: string
-  identifier: Identifer
+  identifier: Identifier
 }
 
 export interface KeywordMethodArgument{
   keyName: string
-  identifier: Identifer
+  identifier: Identifier
 }
 
 export interface KeywordMethodDeclarationArg {
@@ -37,11 +37,11 @@ export interface UnaryMethodDeclaration extends MethodDeclarationBase {
 export interface BinaryMethodDeclaration extends MethodDeclarationBase {
   methodKind: "BinaryMethodDeclaration"
   binarySelector: string // +
-  argument: Identifer // x::int
+  argument: Identifier // x::int
 }
 export interface BinaryMethodDeclarationArg{
   binarySelector: string,
-  identifier: Identifer
+  identifier: Identifier
 }
 
 export interface KeywordMethodDeclaration extends MethodDeclarationBase {
