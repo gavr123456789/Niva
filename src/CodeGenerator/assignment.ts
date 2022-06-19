@@ -1,10 +1,10 @@
-import { Expression } from '../AST_Nodes/Statements/Expressions/Expressions';
-import { processExpression } from './expression/expression';
-import { generateSwitchExpression } from './expression/switchExpression';
-import {generateConstructor} from "./expression/messageCalls";
+import {Expression} from '../AST_Nodes/Statements/Expressions/Expressions';
+import {processExpression} from './expression/expression';
+import {generateSwitchExpression} from './expression/switchExpression';
+import {generateConstructor} from "./expression/constructor";
 
 export function generateAssigment(assignmentTarget: string, to: Expression, identation: number, type?: string): string {
-	const ident = ' '.repeat(identation);
+  const ident = ' '.repeat(identation);
 
   switch (to.kindStatement) {
     case 'BracketExpression':
@@ -40,9 +40,6 @@ export function generateAssigment(assignmentTarget: string, to: Expression, iden
     case "Constructor":
       const constructorCode = generateConstructor(to)
       return `${ident}var ${assignmentTarget} = ${constructorCode}`;
-
-      return constructorCode
-
 
     default:
       const never: never = to

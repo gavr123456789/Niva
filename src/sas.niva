@@ -1,12 +1,14 @@
 type Person name: string age: int.
 
-kek = Person age: 42 name: "sas".
 
 -int sas = [
+  kek = Person age: 42 name: "sas".
+
   x = 3.
   y = x.
   z = y.
-  q = z
+  q = z.
+  kek age
 ].
 
 -string ++ string = [

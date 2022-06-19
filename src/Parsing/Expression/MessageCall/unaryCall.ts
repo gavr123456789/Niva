@@ -16,7 +16,7 @@ export function unaryMessage(_s: NonterminalNode, unarySelector: NonterminalNode
 export function unarySelector(ident: NonterminalNode) {
   const result: UnaryMessage = {
     selectorKind: 'unary',
-    unarySelector: ident.sourceString
+    name: ident.sourceString
   };
   return result;
 }

@@ -1,5 +1,5 @@
 import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
-import { Identifer } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
+import { Identifier } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
 import { newBinaryMethodInfo } from "../../../CodeDB/types";
@@ -54,7 +54,7 @@ export function binaryMethodDeclaration(
 }
 
 export function binaryMethodDeclarationArg(binarySelector: NonterminalNode, _s: NonterminalNode, identifier: NonterminalNode): BinaryMethodDeclarationArg {
-  const ident: Identifer = identifier.toAst()
+  const ident: Identifier = identifier.toAst()
   const result: BinaryMethodDeclarationArg = {
     binarySelector: binarySelector.sourceString,
     identifier: ident

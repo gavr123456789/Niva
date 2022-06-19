@@ -20,7 +20,7 @@ export function generateSwitchStatement(s: SwitchStatement, identation: number) 
 		throw new Error('Receiver of switch statement must be identifier, not literal');
 	}
 
-  if (receiver.atomReceiver.kindPrimary !== "Identifer") {
+  if (receiver.atomReceiver.kindPrimary !== "Identifier") {
 		throw new Error('collection not yet implemented as Receiver of switch');
     
   }

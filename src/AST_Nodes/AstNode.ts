@@ -4,7 +4,7 @@ import { Primary } from "./Statements/Expressions/Receiver/Primary/Primary"
 import { BinaryArgument, KeywordArgument, MessageCall } from "./Statements/Expressions/Messages/Message"
 import { TypeDeclaration, TypedProperty } from "./Statements/TypeDeclaration/TypeDeclaration"
 import { BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclarationArg, MethodDeclaration } from "./Statements/MethodDeclaration/MethodDeclaration"
-import { Identifer } from "./Statements/Expressions/Receiver/Primary/Identifier"
+import { Identifier } from "./Statements/Expressions/Receiver/Primary/Identifier"
 import { AnyLiteral } from "./Statements/Expressions/Receiver/Primary/Literals/AnyLiteral"
 
 export type ASTNode = 
@@ -21,7 +21,7 @@ export type ASTNode =
 | TypedProperty
 | TypedProperty[]
 | Primary
-| Identifer
+| Identifier
 | MethodDeclaration
 | BinaryMethodDeclarationArg
 | KeywordMethodDeclarationArg

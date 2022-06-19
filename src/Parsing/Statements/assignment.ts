@@ -27,31 +27,31 @@ export function assignment(
 
   const currentMessageInfo = state.insideMessage
   // if reciever is literal, then assign type
+  //TODO будут еще конструкторы остальных типов тоже
   if (assignRightValue.kindStatement === "MessageCallExpression" &&
     assignRightValue.receiver.kindStatement === "Primary") {
 
-    // "x = y", not "yx= Person from: 3"
+    // "x = y", not "x= Person from: 3"
     if (assignRightValue.messageCalls.length === 0 ){
-    const rightLiteralType = assignRightValue.receiver.atomReceiver.kindPrimary
-     
-      if (rightLiteralType !== "Identifer") {
-        // console.log("expression.sourceString = ", currentMessageInfo);
-        codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, rightLiteralType)
-      } else {
+    const rightLiteralKind = assignRightValue.receiver.atomReceiver.kindPrimary
+      // x = y
+      if (rightLiteralKind === "Identifier") {
         // check, if there already defined identifier
         const rightIdentifier = assignRightValue.receiver.atomReceiver.value
         const alreadyDefinedTypeOfOtherVal = codeDB.checkMethodHasValue(currentMessageInfo, rightIdentifier)
         if (alreadyDefinedTypeOfOtherVal) {
           codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, alreadyDefinedTypeOfOtherVal)
         }
+      } else {
+        // x = 3
+        codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, rightLiteralKind)
       }
-
-    } else {
-      // get type of messageCalls
-      
-
     }
-
+  }
+  // x = Person name: "Bob" age: 42
+  if (assignRightValue.kindStatement === "Constructor"){
+    // get type if right is Constructor
+    codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
   }
 
   // addGlobalVariableDeclaratuon(variables.get('global'), astAssign, errors);
