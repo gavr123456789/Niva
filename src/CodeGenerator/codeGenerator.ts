@@ -1,12 +1,18 @@
-import { StatementList } from '../AST_Nodes/AstNode';
-import { Mutability, ReturnStatement } from '../AST_Nodes/Statements/Statement';
-import { generateAssigment } from './assignment';
-import { processExpression } from './expression/expression';
-import { generateSwitchExpression } from './expression/switchExpression';
-import { generateSwitchStatement } from './expression/switchStatement';
-import { generateMethodDeclaration } from './methodDeclaration';
-import { generateTypeDeclaration } from './typeDeclaration';
-import {generateConstructor} from "./expression/constructor";
+import {StatementList} from '../AST_Nodes/AstNode';
+import {Mutability, ReturnStatement} from '../AST_Nodes/Statements/Statement';
+import {generateAssigment} from './assignment';
+import {generateSwitchExpression} from './expression/switchExpression';
+import {generateSwitchStatement} from './expression/switchStatement';
+import {generateMethodDeclaration} from './methodDeclaration';
+import {generateTypeDeclaration} from './typeDeclaration';
+import {
+	BracketExpression,
+	Constructor,
+	Getter,
+	MessageCallExpression
+} from "../AST_Nodes/Statements/Expressions/Expressions";
+import {generateReturn} from "./return";
+import {generateCallLikeExpression} from "./expression/callLikeExpression";
 
 
 // То что может быть на первом уровне вложенности
@@ -18,6 +24,7 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 
 	if (discardable) {
 		lines.push('{. push discardable .}');
+		lines.push('{. push warning[ProveField]:on .}');
 	}
 
 	for (const s of x.statements) {
@@ -25,53 +32,32 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 			case 'MessageCallExpression':
 			case "BracketExpression":
 			case "Constructor":
-				const expressionCode = processExpression(s, identation)
-				lines.push(expressionCode)
-			break;
-			// :{
-			// 	const firstMessage = s.messageCalls.at(0)
-			// 	if (firstMessage?.selectorKind !== "keyword" || s.receiver.kindStatement !== "Primary"){
-			// 		throw new Error("keyword message is not constuctor");
-			// 	}
-			// 	const argsCode: string[] = []
-			// 	generateConstructor(s.receiver, firstMessage.arguments, argsCode)
-			// 	break
-			// }
-
+			case "Getter":
+			case "Setter":
+				const callLikeExpressionCode = generateCallLikeExpression(s, identation)
+				lines.push(callLikeExpressionCode)
+				break;
 			case 'Assignment':
-				// codeGenerateExpression(s.value, lines)
 				const assignment = s;
 				if (assignment.mutability === Mutability.IMUTABLE) {
-					
 					lines.push(generateAssigment(assignment.assignmentTarget, assignment.to, identation, s.type));
 				}
 				break;
 
 			case 'ReturnStatement':
-			  const retrunCode: string =	generateReturn(s, identation)
-				lines.push(retrunCode)
+				lines.push(generateReturn(s, identation))
 				break;
 			case 'TypeDeclaration':
-				const typeDeclarationAst = s
-				const typeDeclarationCode: string = generateTypeDeclaration(typeDeclarationAst, identation)
-				lines.push(typeDeclarationCode)
-
+				lines.push(generateTypeDeclaration(s, identation))
 				break;
 			case 'MethodDeclaration':
-				const methodDeclarationAst = s
-				const methodDeclarationCode = generateMethodDeclaration(methodDeclarationAst, identation);
-				lines.push(methodDeclarationCode)
-
+				lines.push(generateMethodDeclaration(s, identation))
 			break;
-
 			case 'SwitchExpression':
-				const switchCode = generateSwitchExpression(s, identation);
-				lines.push(switchCode)
+				lines.push(generateSwitchExpression(s, identation))
 				break;
 			case 'SwitchStatement':
-				const switchStatementCode = generateSwitchStatement(s, identation)
-				lines.push(switchStatementCode)
-				
+				lines.push(generateSwitchStatement(s, identation))
 				break;
 				
 			default:
@@ -82,21 +68,5 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 	}
 
 	return lines.join('\n');
-}
-function generateReturn(s: ReturnStatement, identation: number): string {
-	const ident = " ".repeat(identation) 
-	if (s.value.kindStatement === "SwitchExpression"){
-		const switchCode = generateSwitchExpression(s.value, 0)
-		return `${ident}return ${switchCode}` 
-	}
-
-	// if (s.value.kindStatement === "SwitchStatement"){
-	// 	const switchStatementCode = generateSwitchStatement(s.value, 0)
-	// 	return `${ident}return ${switchStatementCode}` 
-
-	// }
-
-	const exprCode = processExpression(s.value, 0)
-	return `${ident}return ${exprCode}` 
 }
 

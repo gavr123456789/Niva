@@ -1,0 +1,30 @@
+
+fun string replaceToKek = "Kek".
+
+fun Person renameTo: name = [
+  self name: name replaceToKek.
+].
+
+fun Person birthday = [
+  self age: 100
+].
+
+
+person = Person age: 42 name: "sas".
+person renameTo: "new name!".
+person name echo
+
+type Person name: string age: int.
+
+Person on:
+  renameTo: name = [],
+  sayHello = [],
+  eat: someFood sleep: someHour = [],
+  + person = [].
+
+
+  
+
+
+
+

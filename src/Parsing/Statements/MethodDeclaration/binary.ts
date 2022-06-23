@@ -29,6 +29,8 @@ export function binaryMethodDeclaration(
   })
 
   codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
+  codeDB.addTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+
   //
 
   const bodyStatements: BodyStatements = methodBody.toAst();

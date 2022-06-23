@@ -1,1 +1,0 @@
-type loopMessages = "timesRepeat" | "toDo"

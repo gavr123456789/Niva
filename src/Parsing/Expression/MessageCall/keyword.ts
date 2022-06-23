@@ -25,12 +25,12 @@ export function keywordMessage(_s1: NonterminalNode,
     argWithoutName.keyName = keywordArgName
     const arg = argWithoutName
     resultArguments.push(arg)
-    
   });
+  const keywordMessageName = resultArguments.map(x => x.keyName).join("_")
   
   
   const result: KeywordMessage = {
-    name: state.insideMessage.withName,
+    name: keywordMessageName,
     selectorKind: 'keyword',
     arguments: resultArguments
   };
