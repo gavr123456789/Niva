@@ -1,11 +1,11 @@
-import { KeywordMessage, MessageCall } from "./Messages/Message";
+import { CallLikeExpression } from "../../../CodeGenerator/expression/callLikeExpression";
+import {KeywordArgument, KeywordMessage, MessageCall} from "./Messages/Message";
 import { Receiver } from "./Receiver/Receiver";
 
 export type Expression = 
-| MessageCallExpression 
-| BracketExpression 
+| CallLikeExpression
 | SwitchExpression
-| Constructor
+
 
 
 interface BaseMessageCallExpression {
@@ -26,6 +26,35 @@ export interface Constructor {
 	call: KeywordMessage,
   kindStatement: "Constructor"
 }
+
+export interface Getter {
+	kindStatement: "Getter"
+
+	selfTypeName: string
+
+	// person name
+	valueName: string
+	fieldName: string
+
+	// all except first
+	messageCalls: MessageCall[];
+
+}
+
+// TODO добавить в иерархию
+// person name: "sas"
+// keyword сообщение с одним аргуменом
+export interface Setter extends BaseMessageCallExpression {
+	kindStatement: "Setter"
+
+	valueName: string
+
+	argument: KeywordArgument
+
+}
+
+
+
 export interface BracketExpression extends BaseMessageCallExpression {
 	kindStatement: "BracketExpression"
 }

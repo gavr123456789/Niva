@@ -38,7 +38,7 @@ export function assignment(
       if (rightLiteralKind === "Identifier") {
         // check, if there already defined identifier
         const rightIdentifier = assignRightValue.receiver.atomReceiver.value
-        const alreadyDefinedTypeOfOtherVal = codeDB.checkMethodHasValue(currentMessageInfo, rightIdentifier)
+        const alreadyDefinedTypeOfOtherVal = codeDB.getValueType(currentMessageInfo, rightIdentifier)
         if (alreadyDefinedTypeOfOtherVal) {
           codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, alreadyDefinedTypeOfOtherVal)
         }

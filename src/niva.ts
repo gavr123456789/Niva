@@ -118,7 +118,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		/// METHOD DECLARATION
 
 		// Unary
-		methodDeclaration(_dash: TerminalNode, oneOfTheMessagesType) {
+		methodDeclaration(_dash: TerminalNode, _s, oneOfTheMessagesType) {
 			return oneOfTheMessagesType.toAst();
 		},
 		unaryMethodDeclaration,
@@ -139,10 +139,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		returnStatement,
 
 		switchExpression,
-
 		switchBranchElseStatement,
-
-
 
 		switchBranch,
 		expressionList,
@@ -208,5 +205,5 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
-// console.log(JSON.stringify(generateNimCode('-Person sas = [ x echo ]')[1], undefined, 2));
+// console.log(JSON.stringify(generateNimCode('type Person name: string. -Person sas = [ x echo ]')[0], undefined, 2));
 // console.log(JSON.stringify(generateNimCode('(1 + 2) echo.')[1], undefined, 2));

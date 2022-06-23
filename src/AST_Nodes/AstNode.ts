@@ -6,11 +6,10 @@ import { TypeDeclaration, TypedProperty } from "./Statements/TypeDeclaration/Typ
 import { BinaryMethodDeclarationArg, KeywordMethodArgument, KeywordMethodDeclarationArg, MethodDeclaration } from "./Statements/MethodDeclaration/MethodDeclaration"
 import { Identifier } from "./Statements/Expressions/Receiver/Primary/Identifier"
 import { AnyLiteral } from "./Statements/Expressions/Receiver/Primary/Literals/AnyLiteral"
+import {CallLikeExpression} from "../CodeGenerator/expression/callLikeExpression";
 
 export type ASTNode = 
 | StatementList
-| MessageCallExpression
-| BracketExpression
 | Assignment
 | AnyLiteral
 | ReturnStatement
@@ -33,7 +32,7 @@ export type ASTNode =
 | SwitchStatement
 | ElseBranch
 | KeywordArgument
-| Constructor
+| CallLikeExpression
 
 export interface StatementList {
   kind: "StatementList"

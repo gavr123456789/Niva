@@ -1,21 +1,2 @@
-type Person name: string age: int.
-
-
--int sas = [
-  kek = Person age: 42 name: "sas".
-
-  x = 3.
-  y = x.
-  z = y.
-  q = z.
-  kek age
-].
-
--string ++ string = [
-  y = true
-].
-
--int fromString: string = [
-  z = "sas"
-]
- 
+type Person name: string.
+-Person sas = [ x echo ]

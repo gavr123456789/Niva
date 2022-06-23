@@ -31,7 +31,8 @@ export function keywordMethodDeclaration(
   })
 
   codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo(returnType || "auto"))
-  
+  codeDB.addTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+
 
   const bodyStatements: BodyStatements = methodBody.toAst();
   const bodyType = inferStatementsType(bodyStatements.statements)

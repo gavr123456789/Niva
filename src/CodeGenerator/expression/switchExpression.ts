@@ -1,5 +1,6 @@
 import { ElseBranch, SwitchBranch, SwitchExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
 import { MessageSendExpression, processExpression, processManyExpressions } from './expression';
+import {generateCallLikeExpression} from "./callLikeExpression";
 
 export function generateSwitchExpression(switchExp: SwitchExpression, identation: number): string {
 	const branchesCode: string[] = [];
@@ -49,7 +50,7 @@ export function generateBranchExpressions(switchKind: 'if' | 'elif' | 'of', x: S
 	// if   x < 2 // identation not needed after if
 	const qwe = processManyExpressions(asdd ,0)
 	const caseExpressionCode = qwe.join(switchKind === "of"? ", " : " or ");// switch statement delimiter is ,
-	const thenDoExpressionCode = processExpression(x.thenDoExpression, identation + 2);
+	const thenDoExpressionCode = generateCallLikeExpression(x.thenDoExpression, identation + 2);
 
 	const result = `${ident}${switchKind} ${caseExpressionCode}:\n${thenDoExpressionCode}`;
 	return result;
@@ -60,7 +61,7 @@ export function generateElseBranchExpression(x: ElseBranch, rootIdent: string, i
 		throw new Error('nested SwitchExpression doesnt support yet');
 	}
 
-	const elseExpressionCode = processExpression(x.thenDoExpression, identation + 2);
+	const elseExpressionCode = generateCallLikeExpression(x.thenDoExpression, identation + 2);
 
 	const result = `${rootIdent}else:\n${elseExpressionCode}`;
 	return result;

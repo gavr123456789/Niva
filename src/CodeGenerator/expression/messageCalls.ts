@@ -2,9 +2,15 @@ import {StatementList} from "../../AST_Nodes/AstNode";
 import {BracketExpression} from "../../AST_Nodes/Statements/Expressions/Expressions";
 import {BinaryArgument, KeywordArgument} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
 import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
-import {codeDB} from "../../niva";
 import {generateNimFromAst} from "../codeGenerator";
 import {processExpression} from "./expression";
+
+export function generateUnaryCall( unaryMessageName: string): string {
+
+	return '.' + '`' + unaryMessageName + '`' + '()';
+}
+
+
 
 export function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
 	// example: 1 + (1 - 1)
@@ -33,32 +39,12 @@ function generateSimpleBinaryCall(binaryMessageName: string, argument: BinaryArg
 	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
 }
 
-// function call generators
-export function generateUnaryCall( unaryMessageName: string): string {
-	// Check if this a getter
-	// need to know receiver type
-	// if receiver type has field with the same name as the 
-	
-	return '.' + '`' + unaryMessageName + '`' + '()';
-}
 
 
-// Keyword can be just a method call
-// or a type constructor: Person name: "Bob" age: 42.
-// or a field setter 
 export function generateKeywordCall(
-	selfType: string,
 	currentMethodName: string,
 	keyWordArgs: KeywordArgument[],
-	receiver: BracketExpression | Primary,
 	identation: number): string {
-
-	// Check if this a setter
-	const ifThisIsSetterCode: string | null = ifFieldSetterGenerateCode(selfType, keyWordArgs)
-	if (ifThisIsSetterCode) {
-		codeDB.addEffectForMethod(selfType, "keyword", currentMethodName, { kind: "mutatesFields" })
-		return ifThisIsSetterCode
-	}
 
 
 	const functionName = keyWordArgs.map(x => x.keyName).join("_")
@@ -70,11 +56,6 @@ export function generateKeywordCall(
 
 	const argumentsSeparatedByComma = argsValuesCode.join(", ")
 
-	// if (isThisIsConstructorCall){
-	// 	// TODO type check, check that all arguments was setted
-	// 	// Person(name: "sas", age: 42)
-	// 	return generateConstructor(keyWordArgs, argsValuesCode);
-	// }
 	if (!lastKeyWordArgBody) {
 		const keywordMessageCall = '.' + functionName + '(' + argumentsSeparatedByComma + ')'
 		return keywordMessageCall
@@ -93,8 +74,6 @@ export function generateKeywordCall(
 
 			return keywordMessageCall
 		}
-
-		// console.log("lastKeyWordArgBody = ", lastKeyWordArgBody);
 
 		throw new Error(`Args count must be 1 or more, args: ${argsValuesCode}`);
 	}
@@ -153,47 +132,4 @@ function generateKeywordArgCalls(kwArg: KeywordArgument) {
 		result = result + binaryCallCode;
 	}
 	return result;
-}
-
-function ifFieldSetterGenerateCode(extendedType: string, keyWordArgs: KeywordArgument[]): string | null {
-	// code DB
-	// Check if this call is setter
-
-	// must have one argument, and that argument has key name same as one of the fields
-	const firstArg = keyWordArgs.at(0)
-	if (!firstArg || keyWordArgs.length !== 1) {
-		return null
-	}
-
-
-	const isField = codeDB.typeHasField(extendedType, firstArg.keyName)
-
-	// TODO: type check that field is of the same type as arg
-	if (true) {
-
-	}
-
-	// Check that arg is simple primary
-	if (isField && firstArg.receiver.kindStatement === "Primary") {
-		const code = generateSetter(firstArg.keyName, firstArg.receiver.atomReceiver.value)
-		return code
-	} else {
-		return null
-	}
-
-	// if (firstArg.receiver.kindStatement === "BlockConstructor"){
-	// 	throw new Error("BlockConstructor not supported yet as ");
-
-	// }
-
-}
-
-function generateSetter(fieldName: string, value: string): string {
-
-	// input  person name: "sas"
-	// output person.name = "sas"
-	// we here after dot
-	// keywords messages cant be continued with other type of messages, so here no problems
-	return `.${fieldName} = ${value}`
-
 }
