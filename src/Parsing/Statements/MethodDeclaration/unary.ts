@@ -27,7 +27,7 @@ export function unaryMethodDeclaration(
   const returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
   codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMessageInfo(returnType || "auto"))
-  codeDB.addTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+  codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
 
   // TODO добавить в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
   const bodyStatements: BodyStatements = methodBody.toAst();

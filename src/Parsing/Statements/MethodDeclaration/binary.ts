@@ -29,7 +29,7 @@ export function binaryMethodDeclaration(
   })
 
   codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
-  codeDB.addTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+  codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
 
   //
 

@@ -6,6 +6,8 @@ import { getAtomPrimary } from '../primary';
 import {generateConstructor} from "./constructor";
 import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 import {MessageCall} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
+import {checkForGetter} from "./callLikeExpression";
+import {Receiver} from "../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
 
 export type MessageSendExpression = MessageCallExpression | BracketExpression
 
@@ -13,12 +15,14 @@ export function processManyExpressions(s: MessageSendExpression[], identation: n
 	return s.map(x => processExpression(x, identation))
 }
 
-export function generateMessageCalls(messageCalls:  MessageCall[], indentation: number): string[]  {
+export function generateMessageCalls(messageCalls:  MessageCall[], indentation: number, receiver: Receiver): string[]  {
 	const messageLine: string[] = []
 	for (const messageCall of messageCalls) {
 		switch (messageCall.selectorKind) {
 			case 'unary':
-				const unaryNimCall = generateUnaryCall(messageCall.name);
+				const isThisGetter = checkForGetter(receiver, messageCall)
+
+				const unaryNimCall = generateUnaryCall(messageCall.name, isThisGetter);
 				messageLine.push(unaryNimCall);
 				break;
 
@@ -68,7 +72,7 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 		throw new Error('typeof primaryName === object');
 	}
 
-	const messageLine = [primaryName, ...generateMessageCalls(s.messageCalls, indentation)];
+	const messageLine = [primaryName, ...generateMessageCalls(s.messageCalls, indentation, receiver)];
 
 	// generate ident
 	const identStr = ' '.repeat(indentation);

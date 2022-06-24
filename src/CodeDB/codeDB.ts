@@ -47,7 +47,7 @@ class TypeInfo {
 export class CodeDB {
   private globalDeclaratedValueToType: Map<string, string> = new Map();
 
-  addTypedValueToMethodScope(insideMethod: ContextInformation, valueName: string, valueType: string) {
+  setTypedValueToMethodScope(insideMethod: ContextInformation, valueName: string, valueType: string) {
     const {forType: typeName, kind, withName: messageName} = insideMethod
 
     const type = this.typeNameToInfo.get(typeName)
@@ -170,7 +170,6 @@ export class CodeDB {
 
   }
 
-  // TODO methods must have all variables and their types table
 
   private typeNameToInfo: Map<string, TypeInfo> = new Map()
 

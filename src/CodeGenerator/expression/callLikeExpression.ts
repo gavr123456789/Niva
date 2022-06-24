@@ -1,79 +1,79 @@
 import {
   BracketExpression,
   Constructor,
-  Getter,
   MessageCallExpression,
   Setter
 } from "../../AST_Nodes/Statements/Expressions/Expressions";
 import {generateConstructor} from "./constructor";
 import {processExpression} from "./expression";
-import {generateGetter} from "./getter";
 import {generateSetter} from "./setter";
-import {codeDB, state} from "../../niva";
+import {codeDB} from "../../niva";
+import {MessageCall} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
+import {Receiver} from "../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
 
-export type CallLikeExpression = MessageCallExpression | BracketExpression | Constructor | Getter | Setter
+export type CallLikeExpression = MessageCallExpression | BracketExpression | Constructor | Setter //  Getter
 
 function checkForConstructor(s: MessageCallExpression) {
 
   return false;
 }
 
-function checkForGetter(s: MessageCallExpression): Getter | null {
-  //only one message
-  // receiver type is in the codeDb, message is unary, its selector is one of the type fields
-  const onlyOneMessageCall = s.messageCalls.length === 1
-  const firstMessage = s.messageCalls[0]
-  const isPrimaryReceiver = s.receiver.kindStatement === "Primary"
-  const isMessageUnary = firstMessage?.selectorKind === "unary"
-  if (!onlyOneMessageCall || !firstMessage || s.receiver.kindStatement !== "Primary" || !isMessageUnary) {
-    return null
+
+// get previousMessage type
+export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall) {
+  console.log("checkForGetter")
+  const isPrimaryReceiver = receiver.kindStatement === "Primary"
+  const isMessageUnary = unaryMessage?.selectorKind === "unary"
+  if ( !unaryMessage || receiver.kindStatement !== "Primary" || !(unaryMessage?.selectorKind === "unary")) {
+    console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
+
+    return false
   }
 
-  const valueName = s.receiver.atomReceiver.value
-  const fieldName = firstMessage.name
+  const valueName = receiver.atomReceiver.value
+  const fieldName = unaryMessage.name
 
-  const receiverType = codeDB.getValueType(state.insideMessage, valueName)
-  if (!receiverType || !codeDB.typeHasField(receiverType, fieldName)) {
-    return null
+
+  const receiverType = codeDB.getValueType(unaryMessage.insideMethod, valueName)
+
+  if (!receiverType) {
+    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    console.log("receiverType = ", receiverType)
+    return false
   }
+  const typeOfField = codeDB.getFieldType(receiverType, fieldName)
+  if (!typeOfField){
+    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    console.log("receiverType = ", receiverType)
 
-  const result: Getter = {
-    kindStatement: "Getter",
-    valueName,
-    fieldName,
-    selfTypeName: s.selfTypeName,
-    messageCalls: s.messageCalls.slice(1)
+    return false
   }
-  return result
+  console.log("true state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
 
+  // тип receiver меняется на тип возвращаемый геттером
+  console.log("type of receiver ", receiver, "will be changed")
+  // TODO check for previous message type
+  // receiver.type = typeOfField
+  // codeDB.setTypedValueToMethodScope(unaryMessage.insideMethod, valueName, typeOfField)
+  console.log("type of receiver ", receiver, "has changed")
+  return true
 }
 
 export function generateCallLikeExpression(s: CallLikeExpression, indentation: number) {
   // преобразовать все сообщения в конструкторы, геттеры и сеттеры
   // transform all messages into constructors getters and setters
 
-  switch (s.kindStatement) {
-
-    case "MessageCallExpression":
-      // const isConstructor: boolean = checkForConstructor(s)
-      const getter: Getter | null = checkForGetter(s)
-      if (getter) {
-        console.log("found MessageCallExpression after parsing")
-        return generateGetter(getter, indentation)
-      }
-      // const isSetter: boolean = checkForSetter(s)
-      // const x = 5
-      // x.
-      break;
-    case "Constructor":
-    case "BracketExpression":
-    case "Getter":
-    case "Setter":
-      break;
-    default:
-      const _never: never = s
-      throw new Error("Sound error")
-  }
+  // switch (s.kindStatement) {
+  //
+  //   case "MessageCallExpression":
+  //   case "Constructor":
+  //   case "BracketExpression":
+  //   case "Setter":
+  //     break;
+  //   default:
+  //     const _never: never = s
+  //     throw new Error("Sound error")
+  // }
 
   // generate code
   switch (s.kindStatement) {
@@ -82,8 +82,6 @@ export function generateCallLikeExpression(s: CallLikeExpression, indentation: n
     case "MessageCallExpression":
     case "BracketExpression":
       return processExpression(s, indentation)
-    case "Getter":
-      return generateGetter(s, indentation)
     case "Setter":
       return generateSetter(s, indentation)
     default:

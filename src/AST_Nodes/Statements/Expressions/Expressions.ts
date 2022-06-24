@@ -27,30 +27,14 @@ export interface Constructor {
   kindStatement: "Constructor"
 }
 
-export interface Getter {
-	kindStatement: "Getter"
-
-	selfTypeName: string
-
-	// person name
-	valueName: string
-	fieldName: string
-
-	// all except first
-	messageCalls: MessageCall[];
-
-}
-
-// TODO добавить в иерархию
-// person name: "sas"
-// keyword сообщение с одним аргуменом
-export interface Setter extends BaseMessageCallExpression {
+export interface Setter {
 	kindStatement: "Setter"
-
+	selfTypeName: string
+	receiver: Receiver;
 	valueName: string
 
 	argument: KeywordArgument
-
+	type?: string
 }
 
 
