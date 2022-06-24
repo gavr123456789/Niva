@@ -1,7 +1,6 @@
 import {IterationNode, NonterminalNode} from "ohm-js";
 import {
   Constructor,
-  Getter,
   MessageCallExpression,
   Setter
 } from "../../../AST_Nodes/Statements/Expressions/Expressions";
@@ -48,7 +47,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       
       codeDB.addEffectForMethod(selfTypeName, state.insideMessage.kind, state.insideMessage.withName, { kind: "mutatesFields" })
       const setter: Setter = {
-        messageCalls: astMessages,
+        // messageCalls: astMessages,
         kindStatement: "Setter",
         argument: firstArg,
         receiver,
@@ -79,31 +78,6 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
 
     return constructor
   }
-
-  // check for getter
-  // receiver type is in the codeDb, message is unary, its selector is one of the type fields
-  if (firstMessage?.selectorKind === "unary" &&
-    receiver.kindStatement === "Primary" &&
-    receiver.atomReceiver.kindPrimary === "Identifier") {
-    const valueName = receiver.atomReceiver.value
-    const fieldName = firstMessage.name
-    const receiverType = codeDB.getValueType(state.insideMessage, valueName)
-    if (receiverType && codeDB.typeHasField(receiverType, fieldName)) {
-      const getter: Getter = {
-        kindStatement: "Getter",
-        valueName,
-        fieldName,
-        selfTypeName,
-        messageCalls: astMessages.slice(1)
-      }
-      console.log("getter detected:", getter.valueName, "receiverType =", receiverType, "fieldName =", fieldName);
-      return getter
-    }
-
-
-  }
-  ///
-
 
   return result;
 }

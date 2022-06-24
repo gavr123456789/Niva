@@ -4,5 +4,5 @@
 |=> false.
 
 
-(5 between: 1 and: 10) echo.
-(12 between: 1 and: 10) echo.
+(5 between: 1 and: 10) echo
+(12 between: 1 and: 10) echo

@@ -214,3 +214,40 @@ else:
   
   t.is(result, nimCode)
 });
+
+
+test('to:do: loop', t => {
+  const code =
+    `
+-int toString = [
+  self $
+].
+
+square = 1. increment = 3. door = 0.
+
+1 to: 100 do: [
+  ("door №" & it toString) echo
+  | it == square =>
+    [
+      square    add: increment.
+      increment add: 2
+    ]
+  |=> "is closed" echo
+].`
+  const [_, nimCode] = generateNimCode(code)
+  const result =
+    `proc toString(self: int): auto =
+  self.\`$\`()
+var square = 1
+var increment = 3
+var door = 0
+1.to_do(100):
+  ("door №".\`&\`(it.\`toString\`())).\`echo\`()
+  if it.\`==\`(square):
+    square.add(increment)
+    increment.add(2)
+  else:
+    "is closed".\`echo\`()`
+
+  t.is(result, nimCode)
+});

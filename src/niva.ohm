@@ -2,9 +2,10 @@ Niva {
 
   space += comment
   // statement
-  statements = spaces statement (dot statement)* statementSeparator? spaces
-  statementSeparator =  dot 
-  statement = 
+  statements = spaces statement (statementSeparator statement)* statementSeparator*
+  statementSeparator =  lineTerminatorsAndSpaces | dot
+  lineTerminatorsAndSpaces = lineTerminator+ whiteSpaces
+  statement =
     | returnStatement  -- returnStatement
     | typeDeclaration -- typeDeclarationStatement
     | methodDeclaration -- methodDeclarationStatement
@@ -57,7 +58,7 @@ Niva {
 
 
 
-  switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement? spaces
+  switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement?
   switchBranch = "|" whiteSpaces expressionList whiteSpaces "=>" spaces expression spaces
   expressionList = expression ("," whiteSpaces expression)*
   switchBranchElseStatement = "|=>" whiteSpaces expression
@@ -95,7 +96,10 @@ Niva {
               | (keywordMessage) -- keywordFirst
 
 
-  keywordMessage = spaces (keywordM spaces keywordArgument spaces)+ spaces
+  keywordArgSeparation = whiteSpace+ | lineTerminatorAndSpaces
+  lineTerminatorAndSpaces = (lineTerminator whiteSpace+)
+
+  keywordMessage = spaces (keywordM spaces keywordArgument whiteSpaces)+ whiteSpaces
 
 
 
@@ -105,7 +109,7 @@ Niva {
   binaryMessage = spaces binarySelector spaces binaryArgument
   binaryArgument = receiver unaryMessage*
 
-  unaryMessage  = spaces unarySelector
+  unaryMessage  = whiteSpaces unarySelector
   unarySelector = identifier ~":"
 
   cascadedMessages = (";" messages)*

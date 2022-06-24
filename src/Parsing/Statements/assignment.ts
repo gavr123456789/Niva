@@ -40,18 +40,18 @@ export function assignment(
         const rightIdentifier = assignRightValue.receiver.atomReceiver.value
         const alreadyDefinedTypeOfOtherVal = codeDB.getValueType(currentMessageInfo, rightIdentifier)
         if (alreadyDefinedTypeOfOtherVal) {
-          codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, alreadyDefinedTypeOfOtherVal)
+          codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, alreadyDefinedTypeOfOtherVal)
         }
       } else {
         // x = 3
-        codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, rightLiteralKind)
+        codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, rightLiteralKind)
       }
     }
   }
   // x = Person name: "Bob" age: 42
   if (assignRightValue.kindStatement === "Constructor"){
     // get type if right is Constructor
-    codeDB.addTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
+    codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
   }
 
   // addGlobalVariableDeclaratuon(variables.get('global'), astAssign, errors);

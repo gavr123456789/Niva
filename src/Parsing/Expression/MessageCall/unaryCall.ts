@@ -1,5 +1,6 @@
 import { IterationNode, NonterminalNode } from "ohm-js";
 import { MessageCall, UnaryMessage } from "../../../AST_Nodes/Statements/Expressions/Messages/Message";
+import {state} from "../../../niva";
 
 export function messages_unaryFirst(unaryMessages: IterationNode, binaryMessages: IterationNode, keywordMessages: IterationNode) {
   const astOfUnaryMessages: MessageCall[] = unaryMessages.children.map((x) => x.toAst()); // call unaryMessage
@@ -15,8 +16,10 @@ export function unaryMessage(_s: NonterminalNode, unarySelector: NonterminalNode
 }
 export function unarySelector(ident: NonterminalNode) {
   const result: UnaryMessage = {
+    insideMethod: {...state.insideMessage},
     selectorKind: 'unary',
     name: ident.sourceString
   };
+  console.log("set ", state.insideMessage, " for ", ident.sourceString)
   return result;
 }

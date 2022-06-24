@@ -6,10 +6,9 @@ import { Receiver } from "../../AST_Nodes/Statements/Expressions/Receiver/Receiv
 export function statements(
   _s1: NonterminalNode,
   statement: NonterminalNode,
-  _dot: IterationNode,
+  _statementSeparator: IterationNode,
   otherStatements: IterationNode,
-  _dot2: IterationNode,
-  _s3: NonterminalNode
+  _statementSeparator2: IterationNode,
 ): StatementList {
   // echo('statement');
   const firstStatementAst = statement.toAst();

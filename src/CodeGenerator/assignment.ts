@@ -1,8 +1,7 @@
-import {Expression, Getter} from '../AST_Nodes/Statements/Expressions/Expressions';
+import {Expression} from '../AST_Nodes/Statements/Expressions/Expressions';
 import {processExpression} from './expression/expression';
 import {generateSwitchExpression} from './expression/switchExpression';
 import {generateConstructor} from "./expression/constructor";
-import {generateGetter} from "./expression/getter";
 import {generateSetter} from "./expression/setter";
 
 export function generateAssigment(assignmentTarget: string, to: Expression, identation: number, type?: string): string {
@@ -43,9 +42,6 @@ export function generateAssigment(assignmentTarget: string, to: Expression, iden
       const constructorCode = generateConstructor(to)
       return `${ident}var ${assignmentTarget} = ${constructorCode}`;
 
-    case "Getter":
-      const getterCode = generateGetter(to, 0)
-      return `${ident}var ${assignmentTarget} = ${getterCode}`;
     case "Setter":
       const setterCode = generateSetter(to, 0)
       return `${ident}var ${assignmentTarget} = ${setterCode}`;

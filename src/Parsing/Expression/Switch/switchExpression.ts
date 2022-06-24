@@ -6,8 +6,7 @@ export function switchExpression(_s0: NonterminalNode,
   _s: NonterminalNode,
   otherSwitchBranch: IterationNode,
   _s2: IterationNode,
-  switchBranchElseStatement: IterationNode,
-  _s3: NonterminalNode): SwitchExpression {
+  switchBranchElseStatement: IterationNode): SwitchExpression {
   const switchReturn1: SwitchBranch = switchBranch.toAst()
   const switchReturn2: SwitchBranch[] = otherSwitchBranch.children.map(x => x.toAst())
 

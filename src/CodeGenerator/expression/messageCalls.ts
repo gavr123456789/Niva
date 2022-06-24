@@ -4,10 +4,12 @@ import {BinaryArgument, KeywordArgument} from "../../AST_Nodes/Statements/Expres
 import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 import {generateNimFromAst} from "../codeGenerator";
 import {processExpression} from "./expression";
+import {checkForGetter} from "./callLikeExpression";
 
-export function generateUnaryCall( unaryMessageName: string): string {
-
-	return '.' + '`' + unaryMessageName + '`' + '()';
+export function generateUnaryCall( unaryMessageName: string, isGetter: boolean): string {
+	return !isGetter?
+		'.' + '`' + unaryMessageName + '`' + '()':
+		'.' + unaryMessageName
 }
 
 
@@ -31,10 +33,17 @@ export function generateBinaryCall(binaryMessageName: string, argument: BinaryAr
 
 function generateSimpleBinaryCall(binaryMessageName: string, argument: BinaryArgument, argValue: string) {
 
+	// if there is no unary message then just return code
 	if (!argument.unaryMessages) {
 		return '.' + '`' + binaryMessageName + '`' + '(' + argValue + ')';
 	}
-	const listOfUnaryCalls = argument.unaryMessages.map(x => generateUnaryCall(x.name)).join("")
+
+	const receiver = argument.value
+
+	const listOfUnaryCalls = argument.unaryMessages.map<string>(unaryMessageCall => {
+		const isThisGetter = checkForGetter(receiver, unaryMessageCall)
+		 return generateUnaryCall(unaryMessageCall.name, isThisGetter)
+	}).join("")
 	const unaryCallsWithReceiver = argValue + listOfUnaryCalls
 	return '.' + '`' + binaryMessageName + '`' + '(' + unaryCallsWithReceiver + ')'
 }
@@ -87,7 +96,8 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
 		switch (kwArg.receiver.kindStatement) {
 			// Arg is just a simple thing(identifier or literal)
 			case "Primary":
-				const receiverVal = kwArg.receiver.atomReceiver.value + generateKeywordArgCalls(kwArg);
+				const keyArgReceiverName = kwArg.receiver.atomReceiver.value
+				const receiverVal = kwArg.receiver.atomReceiver.value + generateKeywordArgCalls(keyArgReceiverName, kwArg);
 
 				args.push(receiverVal);
 				break;
@@ -119,11 +129,16 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
 	return lastKeyWordArgBody;
 }
 
-function generateKeywordArgCalls(kwArg: KeywordArgument) {
+function generateKeywordArgCalls(receiverName: string, kwArg: KeywordArgument) {
 	let result = ""
 	// if there any unary calls, call them first
+
 	for (const unaryMsg of kwArg.unaryMessages) {
-		const unaryCallCode = generateUnaryCall(unaryMsg.name);
+		// can be getter
+		// self age: self age + 1
+		const isThisGetter = checkForGetter(kwArg.receiver, unaryMsg)
+		const unaryCallCode = generateUnaryCall(unaryMsg.name, isThisGetter);
+
 		result = result + unaryCallCode;
 	}
 	// if there any binary calls, call them after

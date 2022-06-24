@@ -8,7 +8,6 @@ import {generateTypeDeclaration} from './typeDeclaration';
 import {
 	BracketExpression,
 	Constructor,
-	Getter,
 	MessageCallExpression
 } from "../AST_Nodes/Statements/Expressions/Expressions";
 import {generateReturn} from "./return";
@@ -32,7 +31,6 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 			case 'MessageCallExpression':
 			case "BracketExpression":
 			case "Constructor":
-			case "Getter":
 			case "Setter":
 				const callLikeExpressionCode = generateCallLikeExpression(s, identation)
 				lines.push(callLikeExpressionCode)
