@@ -11,7 +11,7 @@ test('assignment statement', t => {
   const code = 'x = 5. y = 6. z =  7'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("var x = 5\nvar y = 6\nvar z = 7", nimCode)
+  t.is("var x: int = 5\nvar y: int = 6\nvar z: int = 7", nimCode)
 });
 
 // Asigment same variables names
@@ -123,11 +123,11 @@ test('two Method Declaration Unary', t => {
   const code = 'int sas = [ x echo ].\nint sus = [ x echo ].'
   const [_s, nimCode] = generateNimCode(code)
   
-  t.is("proc sas(self: int, sas: auto): auto =\n  x.`echo`()\nproc sus(self: int, sus: auto): auto =\n  x.`echo`()", nimCode)
+  t.is("proc sas(self: int): auto =\n  x.`echo`()\nproc sus(self: int): auto =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Unary with retrun type', t => {
-  const code = '-int sas: -> int = [ 5 ]'
+  const code = '-int sas -> int = [ 5 ]'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("proc sas(self: int): int =\n  5", nimCode)
@@ -220,10 +220,6 @@ else:
 test('to:do: loop', t => {
   const code =
     `
--int toString = [
-  self $
-].
-
 square = 1. increment = 3. door = 0.
 
 1 to: 100 do: [
@@ -237,11 +233,9 @@ square = 1. increment = 3. door = 0.
 ].`
   const [_, nimCode] = generateNimCode(code)
   const result =
-    `proc toString(self: int): auto =
-  self.\`$\`()
-var square = 1
-var increment = 3
-var door = 0
+    `var square: int = 1
+var increment: int = 3
+var door: int = 0
 1.to_do(100):
   ("door №".\`&\`(it.\`toString\`())).\`echo\`()
   if it.\`==\`(square):

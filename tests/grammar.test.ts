@@ -75,6 +75,19 @@ test('Methods declaration, binary untyped', t => {
   match(t, "-int + x -> int = [ x sas ]")
 });
 
+test('Methods declaration, keyword with type with local name', t => {
+  match(t, "int from: y::int, to: x::string = 4")
+});
+test('Methods declaration, keyword with type no local name', t => {
+  match(t, "int from::int, to::string = 4")
+});
+test('Methods declaration, keyword no type with local name', t => {
+  match(t, "int from: y = 5")
+});
+test('Methods declaration, keyword no type no local name', t => {
+  match(t, "int :x :y :z = 8")
+});
+
 // Type declaration
 test('Type declaration', t => {
   match(t, "type Person name: string job: string", "typeDeclaration")
