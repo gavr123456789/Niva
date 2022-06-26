@@ -1,11 +1,12 @@
+type Person name: string age: int.
 
-fun string replaceToKek = "Kek".
+fun string replaceToKek -> string = "Kek".
 
-fun Person renameTo: name = [
+fun Person renameTo: name -> void= [
   self name: name replaceToKek.
 ].
 
-fun Person birthday = [
+fun Person birthday -> void = [
   self age: 100
 ].
 
@@ -14,13 +15,6 @@ person = Person age: 42 name: "sas".
 person renameTo: "new name!".
 person name echo
 
-type Person name: string age: int.
-
-Person on:
-  renameTo: name = [],
-  sayHello = [],
-  eat: someFood sleep: someHour = [],
-  + person = [].
 
 
   

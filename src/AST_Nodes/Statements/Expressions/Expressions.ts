@@ -8,7 +8,7 @@ export type Expression =
 
 
 
-interface BaseMessageCallExpression {
+export interface BaseMessageCallExpression {
 	selfTypeName: string
 	receiver: Receiver;
 	messageCalls: MessageCall[];

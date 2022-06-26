@@ -3,19 +3,36 @@ import {processExpression} from './expression/expression';
 import {generateSwitchExpression} from './expression/switchExpression';
 import {generateConstructor} from "./expression/constructor";
 import {generateSetter} from "./expression/setter";
+import {Assignment} from "../AST_Nodes/Statements/Statement";
 
-export function generateAssigment(assignmentTarget: string, to: Expression, identation: number, type?: string): string {
-  const ident = ' '.repeat(identation);
+
+export function generateAssigment(assignment: Assignment, indentation: number): string {
+  const {assignmentTarget, to, type} = assignment
+  const ident = ' '.repeat(indentation);
 
   switch (to.kindStatement) {
     case 'BracketExpression':
     case 'MessageCallExpression':
       if (to.receiver.kindStatement === 'BracketExpression') {
-        throw new Error('BracketExpression not supported as left part of assigment');
+        const expressionCode = processExpression(to, 0)
+        if (type) {
+          return `${ident}var ${assignmentTarget}: ${type} = ${expressionCode}`;
+        } else {
+          return `${ident}var ${assignmentTarget} = ${expressionCode}`;
+        }
+
       }
 
       if (to.receiver.kindStatement === 'BlockConstructor') {
-        throw new Error('BlockConstructor not supported as left part of assigment');
+        // const statemetList: StatementList = {
+        //   kind: "StatementList",
+        //   statements: to.receiver.statements
+        // }
+        // const statementsCode = generateNimFromAst(statemetList, indentation)
+        // return `${ident}var ${assignmentTarget} = ${statementsCode}`
+
+        throw new Error("BlockConstructor not implemented")
+
       }
 
       if (to.messageCalls.length === 0) {
@@ -40,7 +57,11 @@ export function generateAssigment(assignmentTarget: string, to: Expression, iden
 
     case "Constructor":
       const constructorCode = generateConstructor(to)
-      return `${ident}var ${assignmentTarget} = ${constructorCode}`;
+      if (type){
+        return `${ident}var ${assignmentTarget}: ${type} = ${constructorCode}`;
+      } else {
+        return `${ident}var ${assignmentTarget} = ${constructorCode}`;
+      }
 
     case "Setter":
       const setterCode = generateSetter(to, 0)

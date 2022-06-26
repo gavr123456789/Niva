@@ -36,10 +36,9 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
 				lines.push(callLikeExpressionCode)
 				break;
 			case 'Assignment':
-				const assignment = s;
-				if (assignment.mutability === Mutability.IMUTABLE) {
-					lines.push(generateAssigment(assignment.assignmentTarget, assignment.to, identation, s.type));
-				}
+				// if (s.mutability === Mutability.IMUTABLE) {
+				lines.push(generateAssigment(s, identation));
+				// }
 				break;
 
 			case 'ReturnStatement':

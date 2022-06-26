@@ -2,9 +2,9 @@ import {ContextInformation, TypeField} from "../niva"
 import {
   BinaryMethodInfo,
   EffectType,
-  KeywordMethodInfo,
+  KeywordMethodInfo, newBinaryMethodInfo,
   newKeywordMethodInfo,
-  newUnaryMessageInfo,
+  newUnaryMethodInfo,
   UnaryMessageInfo
 } from "./types"
 
@@ -17,7 +17,7 @@ class TypeInfo {
     // fill getters and setters
     fields.forEach((value, key) => {
       // getter
-      const unaryInfo = newUnaryMessageInfo(value.type)
+      const unaryInfo = newUnaryMethodInfo(value.type)
       const unaryMessageInfo: UnaryMessageInfo = {
         returnType: value.type,
         effects: new Set(),
@@ -62,15 +62,16 @@ export class CodeDB {
         if (!unaryMessage) {
           console.log(`addTypedValueToMethodScope, message with name: ${messageName} not found for type, ${typeName}`);
           console.log(`All known messages are: ${type.unaryMessages}`);
+          throw new Error("unary not found")
           return
         }
         const alreadyDefinedUnary = unaryMessage.declaratedValueToType.get(valueName)
         if (alreadyDefinedUnary) {
-          console.log(`${valueName} value already defined in ${messageName}`);
+          // console.log(`${valueName} value already defined in ${messageName}`);
           return
         }
         unaryMessage.declaratedValueToType.set(valueName, valueType)
-        console.log(`added val with name: ${valueName}, type: ${valueType} inside unary method ${messageName} for type ${typeName}`);
+        // console.log(`added val with name: ${valueName}, type: ${valueType} inside unary method ${messageName} for type ${typeName}`);
 
         break;
       case "binary":
@@ -86,7 +87,7 @@ export class CodeDB {
           return
         }
         binaryMessage.declaratedValueToType.set(valueName, valueType)
-        console.log(`added val with name: ${valueName}, type: ${valueType} inside binary method ${messageName} for type ${typeName}`);
+        // console.log(`added val with name: ${valueName}, type: ${valueType} inside binary method ${messageName} for type ${typeName}`);
 
         break;
       case "keyword":
@@ -103,14 +104,14 @@ export class CodeDB {
         }
         keywordMessage.declaratedValueToType.set(valueName, valueType)
 
-        console.log(`added val with name: ${valueName}, type: ${valueType} inside keyword method ${messageName} for type ${typeName}`);
+        // console.log(`added val with name: ${valueName}, type: ${valueType} inside keyword method ${messageName} for type ${typeName}`);
 
         break;
 
       case "__global__":
         this.globalDeclaratedValueToType.set(valueName, valueType)
 
-        console.log(`added val with name: ${valueName}, type: ${valueType} inside global scope ${messageName} for type ${typeName}`);
+        // console.log(`added val with name: ${valueName}, type: ${valueType} inside global scope ${messageName} for type ${typeName}`);
 
         break;
 
@@ -142,8 +143,9 @@ export class CodeDB {
         const binaryMessage = type.binaryMessages.get(messageName)
         if (!binaryMessage) {
           console.log(`checkMethodHasValue, message with name: ${messageName} not found for type, ${typeName}`);
-          console.log(`All known messages are: ${type.binaryMessages}`);
-          return
+          console.log(`All known messages are: `, type.binaryMessages);
+          throw Error("Message not found")
+
         }
 
         return binaryMessage.declaratedValueToType.get(valueName)
@@ -184,15 +186,59 @@ export class CodeDB {
     // add default types and functions
     this.addDefaultType("__global__")
     this.addDefaultType("int")
+    // int unary
+    this.addUnaryMessageForType("int", "toString", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("int", "echo", newUnaryMethodInfo("void"))
+    // int binary
+    this.addBinaryMessageForType("int", "+", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "-", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "*", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "/", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", ">", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("int", "<", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("int", "==", newBinaryMethodInfo("bool"))
+    // int keyword
+    this.addKeywordMessageForType("int", "to_do", newKeywordMethodInfo("void"))
+    this.addKeywordMessageForType("int", "add", newKeywordMethodInfo("void"))
+    this.addKeywordMessageForType("int", "mod", newKeywordMethodInfo("int"))
+
+
     this.addDefaultType("uint")
+
     this.addDefaultType("string")
+    // string unary
+    this.addUnaryMessageForType("string", "echo", newUnaryMethodInfo("void"))
+    this.addUnaryMessageForType("string", "print", newUnaryMethodInfo("void"))
+    this.addUnaryMessageForType("string", "toString", newUnaryMethodInfo("string"))
+    // string binary
+    this.addBinaryMessageForType("string", "==", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("string", "!=", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("string", "&", newBinaryMethodInfo("string"))
+
+
     this.addDefaultType("bool")
+    // bool unary
+    this.addUnaryMessageForType("bool", "toString", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("bool", "echo", newUnaryMethodInfo("void"))
+    // bool binary
+    this.addBinaryMessageForType("bool", "==", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "!=", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "||", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "&&", newBinaryMethodInfo("bool"))
+
     this.addDefaultType("float")
   }
 
-  addNewType(name: string, fields: Map<string, TypeField>) {
+  addNewType(typeName: string, fields: Map<string, TypeField>) {
     const typeInfo = new TypeInfo(fields)
-    this.typeNameToInfo.set(name, typeInfo)
+    this.typeNameToInfo.set(typeName, typeInfo)
+    // add getters and setters
+    fields.forEach((v, fieldName) => {
+      this.addUnaryMessageForType(typeName, fieldName, newUnaryMethodInfo(v.type))
+      this.addKeywordMessageForType(typeName, fieldName, newUnaryMethodInfo("void"))
+      // console.log("added getter, setter for type ", typeName, " fieldName: ", fieldName, " with type ", v.type)
+    })
+
   }
 
   addKeywordMessageForType(typeName: string, selectorName: string, info: KeywordMethodInfo) {
@@ -280,28 +326,6 @@ export class CodeDB {
     return this.typeNameToInfo.has(name)
   }
 
-  autoCompleteMessage(type: string, start: string): string {
-    const x = this.typeNameToInfo.get(type)
-    if (!x) return ""
-
-    if (start === "") {
-      const allFieldsAndMethodsName = ""
-      return allFieldsAndMethodsName
-    } else {
-      const allFieldsAndMethodsStartWith = ""
-      return allFieldsAndMethodsStartWith
-    }
-
-  }
-
-  typeHasField(typeName: string, keyName: string): boolean {
-    const type = this.typeNameToInfo.get(typeName)
-    if (!type) {
-      return false
-    }
-    return type.fields.has(keyName)
-  }
-
   getFieldType(typeName: string, keyName: string): string | undefined {
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
@@ -313,31 +337,31 @@ export class CodeDB {
   getMethodReturnType(typeName: string, methodName: string, kind: MethodKinds): string {
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
-      throw new Error("trying to check effect of non existing type");
+      throw new Error(`trying to get return type of non existing type: ${typeName} for methodName: ${methodName}`);
     }
     switch (kind) {
       case "unary":
         const unaryMethod = type.unaryMessages.get(methodName)
         if (!unaryMethod) {
-          throw new Error(`no such unary method: ${methodName}, all known methods: ${type.unaryMessages}`)
+          console.log(`all known unaryMessages of type:  `, typeName," = ", type.unaryMessages)
+          throw new Error(`no such unary method: ${methodName} `)
         }
         if (unaryMethod.returnType === "auto") {
           throw new Error(`Return type of: ${methodName}, is auto`)
         }
         return unaryMethod.returnType
-        break;
       case "binary":
-        const binaryMethod = type.unaryMessages.get(methodName)
+        const binaryMethod = type.binaryMessages.get(methodName)
         if (!binaryMethod) {
-          throw new Error(`no such unary method: ${methodName}, all known methods: ${type.binaryMessages}`)
+          console.log("all known types = ", type.binaryMessages)
+          throw new Error(`no such binary method: ${methodName}`)
         }
         if (binaryMethod.returnType === "auto") {
           throw new Error(`Return type of: ${methodName}, is auto`)
         }
         return binaryMethod.returnType
-        break;
       case "keyword":
-        const keywordMethod = type.unaryMessages.get(methodName)
+        const keywordMethod = type.keywordMessages.get(methodName)
         if (!keywordMethod) {
           throw new Error(`no such unary method: ${methodName}, all known methods: ${type.keywordMessages}`)
         }
@@ -345,7 +369,6 @@ export class CodeDB {
           throw new Error(`Return type of: ${methodName}, is auto`)
         }
         return keywordMethod.returnType
-        break;
 
         case "__global__":
           throw new Error("TODO global");

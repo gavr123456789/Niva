@@ -17,10 +17,10 @@ export function processManyExpressions(s: MessageSendExpression[], identation: n
 
 export function generateMessageCalls(messageCalls:  MessageCall[], indentation: number, receiver: Receiver): string[]  {
 	const messageLine: string[] = []
-	for (const messageCall of messageCalls) {
+	for (const [i, messageCall] of messageCalls.entries()) {
 		switch (messageCall.selectorKind) {
 			case 'unary':
-				const isThisGetter = checkForGetter(receiver, messageCall)
+				const isThisGetter = checkForGetter(receiver, messageCall, messageCalls[i - 1])
 
 				const unaryNimCall = generateUnaryCall(messageCall.name, isThisGetter);
 				messageLine.push(unaryNimCall);

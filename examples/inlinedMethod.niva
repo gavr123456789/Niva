@@ -1,4 +1,4 @@
--int sas ^= [
+-int sas -> void ^= [
   5 echo
 ].
 
