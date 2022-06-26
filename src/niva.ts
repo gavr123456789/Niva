@@ -22,8 +22,11 @@ import { binaryMethodDeclaration, binaryMethodDeclarationArg } from './Parsing/S
 import { methodBody, methodBodyFull, methodBodyShort } from './Parsing/Statements/MethodDeclaration/body';
 import {
 	keywordMethodDeclaration,
-	keywordMethodDeclarationArg,
 	keywordMethodDeclarationArgs,
+	keywordNoTypeNoLocalName,
+	keywordNoTypeWithLocalName,
+	keywordWithTypeNoLocalName,
+	keywordWithTypeWithLocalName,
 	localNameKeywordArg
 } from './Parsing/Statements/MethodDeclaration/keyword';
 import { returnTypeDeclaration } from './Parsing/Statements/MethodDeclaration/returnTypeDeclaration';
@@ -135,8 +138,11 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		// Keyword
 		keywordMethodDeclaration,
 		keywordMethodDeclarationArgs,
-		keywordMethodDeclarationArg,
-		localNameKeywordArg,
+
+		keywordWithTypeWithLocalName,
+		keywordNoTypeWithLocalName,
+		keywordWithTypeNoLocalName,
+		keywordNoTypeNoLocalName,
 
 		methodBody,
 		methodBodyFull,

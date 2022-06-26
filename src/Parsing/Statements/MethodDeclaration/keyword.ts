@@ -67,43 +67,54 @@ export function keywordMethodDeclarationArgs(_s: NonterminalNode, keywordMethodD
 
 // identifier typed or untyped
 // localNameKeywordArg typed or untyped
-export function keywordMethodDeclarationArg(identifier: NonterminalNode, colon: TerminalNode, localNameKeywordArg: IterationNode): KeywordMethodArgument {
-  const ident: Identifier = identifier.toAst();
-  const localName: Identifier | undefined = localNameKeywordArg.children.at(0)?.toAst()
 
-  // Теперь тайп есть либо на первом либо на втором
-  // from x::int = []
-  // from::int = []
-  // if first has type, then must be no localNameKeywordArg
-  if (localName){
-    // from x::int = []
-    if (ident.type && localName.type){
-      // !! from::int x::int = []
-      throw new Error("you must specify type only once for keyword argument")
-    }
 
-    // console.log("has local name")
-    // console.log("result = ",{
-    //   identifier: localName,
-    //   keyName: ident.value
-    // } )
-    return {
-      identifier: localName,
-      keyName: ident.value
-    }
+export function keywordWithTypeWithLocalName(untypedIdentifier: NonterminalNode, colon: TerminalNode, _s: NonterminalNode, typedIdentifier: NonterminalNode): KeywordMethodArgument{
 
-  } else {
-    // from:int = []
-    // console.log("no local name")
-    // console.log("result = ",{
-    //   keyName: ident.value,
-    //   identifier: ident,
-    // } )
-    return {
-      keyName: ident.value,
-      identifier: ident,
-    }
+  const keyName = untypedIdentifier.sourceString
+  const identifier: Identifier = typedIdentifier.toAst()
+
+  const result: KeywordMethodArgument = {
+    keyName,
+    identifier
   }
+
+  return result
+}
+
+export function keywordNoTypeWithLocalName(untypedIdentifier: NonterminalNode, colon: TerminalNode, _s: NonterminalNode, untypedIdentifier2: NonterminalNode): KeywordMethodArgument{
+  const keyName = untypedIdentifier.sourceString
+  const identifier: Identifier = untypedIdentifier2.toAst()
+
+  const result: KeywordMethodArgument = {
+    keyName,
+    identifier
+  }
+
+  return result
+}
+export function keywordWithTypeNoLocalName(typedIdentifier: NonterminalNode): KeywordMethodArgument{
+
+  const identifier: Identifier = typedIdentifier.toAst()
+
+  const result: KeywordMethodArgument = {
+    keyName: identifier.value,
+    identifier
+  }
+
+  return result
+}
+
+export function keywordNoTypeNoLocalName(colon: TerminalNode,_s: IterationNode, untypedIdentifier: NonterminalNode): KeywordMethodArgument{
+
+  const identifier: Identifier = untypedIdentifier.toAst()
+
+  const result: KeywordMethodArgument = {
+    keyName: identifier.value,
+    identifier
+  }
+
+  return result
 }
 
 export function localNameKeywordArg( _s: NonterminalNode, ident: NonterminalNode): Identifier {

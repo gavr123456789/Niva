@@ -42,6 +42,35 @@ Niva {
   keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
   keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( comma keywordMethodDeclarationArg spaces )*
 
+  //
+
+
+  keywordMethodDeclarationArg =
+    | keywordWithTypeWithLocalName
+    | keywordNoTypeWithLocalName
+    | keywordNoTypeNoLocalName
+    | keywordWithTypeNoLocalName
+
+
+
+
+
+
+  keywordNoTypeNoLocalName = ":" whiteSpaces untypedIdentifier
+  //int x: y: z:
+
+  keywordWithTypeNoLocalName = typedIdentifier
+  //int x::int y: z::int
+
+  keywordWithTypeWithLocalName = untypedIdentifier ":" whiteSpaces typedIdentifier
+  // x: a::int y: b::int
+
+  keywordNoTypeWithLocalName = untypedIdentifier ":" whiteSpaces untypedIdentifier
+  // x: a y: b
+
+
+
+
   unaryMethodDeclaration = untypedIdentifier  whiteSpaces unaryMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
   unaryMethodDeclarationArgs = untypedIdentifier
 
@@ -50,8 +79,7 @@ Niva {
   binaryMethodDeclarationArg = binarySelector whiteSpaces identifier
 
   // min: x::int max: y::int from: z
-  localNameKeywordArg =  spaces identifier
-  keywordMethodDeclarationArg = identifier ":" localNameKeywordArg?
+
 
   methodBody  = methodBodyFull | methodBodyShort
   methodBodyFull = "[" spaces statements? spaces "]"
@@ -111,7 +139,7 @@ Niva {
   binaryArgument = receiver unaryMessage*
 
   unaryMessage  = whiteSpaces unarySelector
-  unarySelector = identifier ~":"
+  unarySelector = untypedIdentifier ~":"
 
   cascadedMessages = (";" messages)*
 
