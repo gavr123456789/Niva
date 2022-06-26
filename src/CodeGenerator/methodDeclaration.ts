@@ -17,7 +17,6 @@ export function generateMethodDeclaration(methodDec: MethodDeclaration, identati
   const procOrTemplate = kind
 
 
-
   // TODO refactor
   switch (m.methodKind) {
     case "UnaryMethodDeclaration":

@@ -41,10 +41,10 @@ test('Expressions Unary messages', t => {
 });
 
 test('Expressions Unary messages two times', t => {
-  const code = '42 sas sas'
+  const code = '42 toString toString'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("42.`sas`().`sas`()", nimCode)
+  t.is("42.`toString`().`toString`()", nimCode)
 });
 
 // Binary
@@ -65,31 +65,32 @@ test('Expressions Binary messages many', t => {
 // Keyword
 
 test('Expressions Keyword messages', t => {
-  const code = '1 from: 2 to: 3' 
+  const code = '1 to: 2 do: [1 echo]'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.from_to(2, 3)", nimCode)
+  t.is(`1.to_do(2):
+  1.\`echo\`()`, nimCode)
 });
 
 // Combined 
 test('Expressions Unary with Binary', t => {
-  const code = '1 sas + 2 sas' 
+  const code = '1 toString & 2 toString'
   const [_s, nimCode] = generateNimCode(code)
-  t.is("1.`sas`().`+`(2.`sas`())", nimCode)
+  t.is("1.`toString`().`&`(2.`toString`())", nimCode)
 });
 
 test('Expressions two Unary with Binary', t => {
-  const code = '1 sas + 2 sas.\n1 sas + 2 sas.' 
+  const code = '1 toString & 2 toString.\n1 toString & 2 toString.'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.`sas`().`+`(2.`sas`())\n1.`sas`().`+`(2.`sas`())", nimCode)
+  t.is("1.`toString`().`&`(2.`toString`())\n1.`toString`().`&`(2.`toString`())", nimCode)
 });
 
 test('Expressions Unary with Binary many', t => {
-  const code = '1 sas + 2 sas sus ses' 
+  const code = `1 toString & 2 toString toString toString`
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.`sas`().`+`(2.`sas`().`sus`().`ses`())", nimCode)
+  t.is("1.`toString`().`&`(2.`toString`().`toString`().`toString`())", nimCode)
 });
 
 // TYPE DECLARATION
@@ -119,17 +120,17 @@ test('Method Declaration Unary no retrun type', t => {
 });
 
 test('two Method Declaration Unary', t => {
-  const code = '-Person sas = [ x echo ].\n-Person sas = [ x echo ].' 
+  const code = 'int sas = [ x echo ].\nint sus = [ x echo ].'
   const [_s, nimCode] = generateNimCode(code)
   
-  t.is("proc sas(self: Person): auto =\n  x.`echo`()\nproc sas(self: Person): auto =\n  x.`echo`()", nimCode)
+  t.is("proc sas(self: int, sas: auto): auto =\n  x.`echo`()\nproc sus(self: int, sus: auto): auto =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Unary with retrun type', t => {
-  const code = '-Person sas -> int = [ 5 ]' 
+  const code = '-int sas: -> int = [ 5 ]'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc sas(self: Person): int =\n  5", nimCode)
+  t.is("proc sas(self: int): int =\n  5", nimCode)
 });
 
 

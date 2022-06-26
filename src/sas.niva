@@ -1,11 +1,5 @@
-type Passport number: int
+fun string concat: another::string extra: extra::string -> string = self & another & extra
+concat = "abc" plus: "xyz" extra: "sas"
+concat echo
 
-type Person name: string age: int passport: Passport
-
-passport = Passport number: 1234
-person = Person name: "Bob" age: 10 passport: passport
-Person sleepOneYearOfLife = [self age: self age + 1]
-
-person passport number echo
-person passport number echo
 

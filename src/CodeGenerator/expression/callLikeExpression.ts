@@ -20,42 +20,37 @@ function checkForConstructor(s: MessageCallExpression) {
 
 
 // get previousMessage type
-export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall) {
-  console.log("checkForGetter")
+export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, previousMessage: MessageCall | undefined) {
   const isPrimaryReceiver = receiver.kindStatement === "Primary"
   const isMessageUnary = unaryMessage?.selectorKind === "unary"
-  if ( !unaryMessage || receiver.kindStatement !== "Primary" || !(unaryMessage?.selectorKind === "unary")) {
-    console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
-
+  if (!unaryMessage || receiver.kindStatement !== "Primary" || !(unaryMessage?.selectorKind === "unary")) {
+    // console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
     return false
   }
 
   const valueName = receiver.atomReceiver.value
   const fieldName = unaryMessage.name
 
+  // console.log("checkForGetter: ", fieldName)
+  // console.log("checkForGetter: unaryMessage.type.name= ", unaryMessage.type.name)
 
-  const receiverType = codeDB.getValueType(unaryMessage.insideMethod, valueName)
+  // TODO если есть предыдущее сообщение то receiverType должен стать его типом
+  const receiverType = previousMessage? previousMessage.type.name: codeDB.getValueType(unaryMessage.insideMethod, valueName)
 
   if (!receiverType) {
-    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
-    console.log("receiverType = ", receiverType)
+    // console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    // console.log("receiverType = ", receiverType)
     return false
   }
   const typeOfField = codeDB.getFieldType(receiverType, fieldName)
   if (!typeOfField){
-    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
-    console.log("receiverType = ", receiverType)
-
+    // console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    // console.log("receiverType = ", receiverType)
     return false
   }
-  console.log("true state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+  // console.log("true state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+  console.log(fieldName, " is getter")
 
-  // тип receiver меняется на тип возвращаемый геттером
-  console.log("type of receiver ", receiver, "will be changed")
-  // TODO check for previous message type
-  // receiver.type = typeOfField
-  // codeDB.setTypedValueToMethodScope(unaryMessage.insideMethod, valueName, typeOfField)
-  console.log("type of receiver ", receiver, "has changed")
   return true
 }
 

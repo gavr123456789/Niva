@@ -4,6 +4,7 @@ import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, MethodDeclaration 
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
 import { newBinaryMethodInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
+import {getStatementType} from "../../../CodeDB/InferTypes/getStatementType";
 
 export function binaryMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -19,7 +20,7 @@ export function binaryMethodDeclaration(
   const binarySelector: BinaryMethodDeclarationArg = binaryMethodDeclarationArg.toAst();
   const extendableType = untypedIdentifier.sourceString
   const selectorName = binarySelector.binarySelector
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+  let returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
   // set state 
   state.enterMethodScope({
@@ -28,14 +29,31 @@ export function binaryMethodDeclaration(
     withName: selectorName
   })
 
+  // this must be done before ast because inside ast there will be a calls to know this method's
+  // variables type
+  // we dont know real return type at that point
+  // we will know it after ast with the last statement type
+
   codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
   codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
 
-  //
-
   const bodyStatements: BodyStatements = methodBody.toAst();
   const isProc = _eq.sourceString === "="
-  
+
+
+
+  // Infer return type
+  if (!returnType){
+    const lastBodyStatement = bodyStatements.statements.at(-1)
+    if (lastBodyStatement){
+      returnType = getStatementType(lastBodyStatement);
+      console.log("inferred return type of ", selectorName, " is ", returnType)
+      // need to change return type in codeDB because now we know the type of last statement
+      codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType))
+    }
+  }
+
+
   const binary: BinaryMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     methodKind: "BinaryMethodDeclaration",

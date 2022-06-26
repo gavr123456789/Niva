@@ -25,9 +25,8 @@ function newDefaultMessageInfo(returnType: string): DefaultMessageInfo {
 
 export interface UnaryMessageInfo extends DefaultMessageInfo {
   // ast: UnaryMethodDeclaration,
-
 }
-export function newUnaryMessageInfo(returnType: string): UnaryMessageInfo {
+export function newUnaryMethodInfo(returnType: string): UnaryMessageInfo {
   return newDefaultMessageInfo(returnType)
 }
 

@@ -7,6 +7,7 @@
     "ohm-js": "^16.3.4"
   },
   "devDependencies": {
+    "@base2/pretty-print-object": "^1.0.2",
     "@ohm-js/cli": "^1.1.0",
     "@types/node": "^17.0.31",
     "ava": "^4.2.0",

@@ -2,6 +2,8 @@ import { NonterminalNode } from "ohm-js";
 import { Expression } from "../../AST_Nodes/Statements/Expressions/Expressions";
 import { Assignment, Mutability } from "../../AST_Nodes/Statements/Statement";
 import { codeDB, state } from "../../niva";
+import { prettyPrint } from '@base2/pretty-print-object';
+import {getReceiverType} from "../../CodeDB/InferTypes/getReceiverType";
 
 export function assignment(
   assignmentTargetNode: NonterminalNode,
@@ -12,7 +14,12 @@ export function assignment(
 ) {
   const message = assignmentTargetNode.source.getLineAndColumnMessage();
   const assignRightValue: Expression = expression.toAst();
+  // console.log(prettyPrint(assignRightValue));
+
+
   const leftName = assignmentTargetNode.sourceString
+
+  // else branch in switch
   if (assignRightValue.kindStatement === "SwitchExpression" && !assignRightValue.elseBranch) {
     throw new Error(`${message} switch assignment must have else branch`);
   }
@@ -26,34 +33,36 @@ export function assignment(
   };
 
   const currentMessageInfo = state.insideMessage
-  // if reciever is literal, then assign type
-  //TODO будут еще конструкторы остальных типов тоже
-  if (assignRightValue.kindStatement === "MessageCallExpression" &&
-    assignRightValue.receiver.kindStatement === "Primary") {
 
-    // "x = y", not "x= Person from: 3"
-    if (assignRightValue.messageCalls.length === 0 ){
-    const rightLiteralKind = assignRightValue.receiver.atomReceiver.kindPrimary
-      // x = y
-      if (rightLiteralKind === "Identifier") {
-        // check, if there already defined identifier
-        const rightIdentifier = assignRightValue.receiver.atomReceiver.value
-        const alreadyDefinedTypeOfOtherVal = codeDB.getValueType(currentMessageInfo, rightIdentifier)
-        if (alreadyDefinedTypeOfOtherVal) {
-          codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, alreadyDefinedTypeOfOtherVal)
+
+  // add type of last message return to variable
+
+  switch (assignRightValue.kindStatement) {
+    case "MessageCallExpression":
+      if (assignRightValue.messageCalls.length > 0) {
+        // x = 7 + 4
+        const typeOfLastMessageCall = assignRightValue.messageCalls.at(-1)?.type.name
+        if (typeOfLastMessageCall) {
+          codeDB.setTypedValueToMethodScope(state.insideMessage, leftName, typeOfLastMessageCall)
+          console.log("assignment set type for ", leftName, ": ", typeOfLastMessageCall)
+          astAssign.type = typeOfLastMessageCall
         }
       } else {
-        // x = 3
-        codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, rightLiteralKind)
+        // x = 7
+        const receiverType = getReceiverType(assignRightValue.receiver)
+        if (receiverType) {
+          codeDB.setTypedValueToMethodScope(state.insideMessage, leftName, receiverType)
+          astAssign.type = receiverType
+        }
       }
-    }
-  }
-  // x = Person name: "Bob" age: 42
-  if (assignRightValue.kindStatement === "Constructor"){
-    // get type if right is Constructor
-    codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
+      break;
+    case "Constructor":
+      // x = Person name: "Bob" age: 42
+      codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
+      astAssign.type = assignRightValue.type
+      break;
   }
 
-  // addGlobalVariableDeclaratuon(variables.get('global'), astAssign, errors);
+
   return astAssign;
 }

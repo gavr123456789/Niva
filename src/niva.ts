@@ -15,12 +15,17 @@ import { messageCall } from './Parsing/Expression/MessageCall/messageCall';
 import { primary, receiver, receiver_expressionInBrackets } from './Parsing/Expression/MessageCall/receiver';
 import { messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/unaryCall';
 import { switchBranch, switchBranchElseStatement, switchExpression } from './Parsing/Expression/Switch/switchExpression';
-import { unaryTypedIdentifier, untypedIdentifier } from './Parsing/identifiers';
+import {unaryTypedIdentifier, untypedIdentifier} from './Parsing/identifiers';
 import { anyLiteral, boolLiteral, integerLiteral, stringLiteral } from './Parsing/literals';
 import { assignment } from './Parsing/Statements/assignment';
 import { binaryMethodDeclaration, binaryMethodDeclarationArg } from './Parsing/Statements/MethodDeclaration/binary';
 import { methodBody, methodBodyFull, methodBodyShort } from './Parsing/Statements/MethodDeclaration/body';
-import { keywordMethodDeclaration, keywordMethodDeclarationArg, keywordMethodDeclarationArgs } from './Parsing/Statements/MethodDeclaration/keyword';
+import {
+	keywordMethodDeclaration,
+	keywordMethodDeclarationArg,
+	keywordMethodDeclarationArgs,
+	localNameKeywordArg
+} from './Parsing/Statements/MethodDeclaration/keyword';
 import { returnTypeDeclaration } from './Parsing/Statements/MethodDeclaration/returnTypeDeclaration';
 import { unaryMethodDeclaration } from './Parsing/Statements/MethodDeclaration/unary';
 import { returnStatement } from './Parsing/Statements/return';
@@ -131,6 +136,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		keywordMethodDeclaration,
 		keywordMethodDeclarationArgs,
 		keywordMethodDeclarationArg,
+		localNameKeywordArg,
 
 		methodBody,
 		methodBodyFull,
@@ -200,10 +206,17 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
-// console.log(JSON.stringify(generateNimCode('1 + 2'), undefined, 2) );
+console.log(JSON.stringify(generateNimCode('int sas = [ x echo ].\nint sus = [ x echo ].'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 from: 2 to: 3'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
 // console.log(JSON.stringify(generateNimCode('type Person name: string. -Person sas = [ x echo ]')[0], undefined, 2));
-// console.log(JSON.stringify(generateNimCode('(1 + 2) echo.')[1], undefined, 2));
+// const codeHas = `
+// int from: sas to: sus = [1 echo]
+// `
+// console.log(JSON.stringify(generateNimCode(codeHas)[1], undefined, 2));
+// const codeHasnt = `
+// int from to = [1 echo]
+// `
+// console.log(JSON.stringify(generateNimCode(codeHasnt)[1], undefined, 2));

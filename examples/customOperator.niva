@@ -1,4 +1,4 @@
--int /++/ x::int = self toString & x toString.
+int /++/ x::int -> string = self toString & x toString.
 
 x = 5 /++/ 3.
 x echo

@@ -1,8 +1,12 @@
-import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
-import { MethodDeclaration, UnaryMethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
-import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
-import { newUnaryMessageInfo } from "../../../CodeDB/types";
-import { codeDB, state } from "../../../niva";
+import {IterationNode, NonterminalNode, TerminalNode} from "ohm-js";
+import {
+  MethodDeclaration,
+  UnaryMethodDeclaration
+} from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
+import {BodyStatements} from "../../../AST_Nodes/Statements/Statement";
+import {newBinaryMethodInfo, newUnaryMethodInfo} from "../../../CodeDB/types";
+import {codeDB, state} from "../../../niva";
+import {getStatementType} from "../../../CodeDB/InferTypes/getStatementType";
 
 export function unaryMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -24,16 +28,29 @@ export function unaryMethodDeclaration(
     kind: "unary",
     withName: selectorName
   })
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+  let returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
-  codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMessageInfo(returnType || "auto"))
+
+  codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMethodInfo(returnType || "auto"))
   codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
 
-  // TODO добавить в лексер обработку ноды мессадж кола и вынести туда, вместо того чтобы из каждой делать
+
   const bodyStatements: BodyStatements = methodBody.toAst();
 
   const isProc = _eq.sourceString === "="
-  
+
+
+
+  // Infer return type
+  if (!returnType){
+    const lastBodyStatement = bodyStatements.statements.at(-1)
+    if (lastBodyStatement){
+      returnType = getStatementType(lastBodyStatement);
+      console.log("inferred return type of ", selectorName, " is ", returnType)
+      codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMethodInfo(returnType))
+    }
+  }
+
   const unary: UnaryMethodDeclaration = {
     kind: isProc ? "proc" : "template",
     expandableType: extendableType,
@@ -48,7 +65,8 @@ export function unaryMethodDeclaration(
     method: unary
   }
 
-  // sas.typeNameToInfo.set(expandableType, )
+
+
   state.exitFromMethodDeclaration()
 
   return result;

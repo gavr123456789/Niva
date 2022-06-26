@@ -32,7 +32,8 @@ export function keywordMessage(_s1: NonterminalNode,
   const result: KeywordMessage = {
     name: keywordMessageName,
     selectorKind: 'keyword',
-    arguments: resultArguments
+    arguments: resultArguments,
+    type: {name: ""}
   };
   return result;
 }
