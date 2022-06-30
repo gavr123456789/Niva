@@ -253,12 +253,10 @@ export class CodeDB {
   }
 
   addBinaryMessageForType(typeName: string, selectorName: string, info: BinaryMethodInfo) {
-    console.log("addBinaryMessageForType, selector = ", selectorName)
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
       throw new Error("trying to add method for non existing type");
     }
-    // TODO select name = +::int
     type.binaryMessages.set(selectorName, info)
   }
   needInferBinaryMethodTypeLater(typeName: string, selectorName: string) {

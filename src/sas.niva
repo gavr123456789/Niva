@@ -1,7 +1,7 @@
-//fun int -- sas::int = [
-//  "sas" echo
-//  false
-//]
+fun int -- sas::int = [
+  "sas" echo
+  false
+]
 
 fun int -- sus::string = [
   "sus" echo
@@ -9,6 +9,6 @@ fun int -- sus::string = [
 ]
 
 3 -- (5 toString)
-//3 -- 3
+3 -- 3
 
 

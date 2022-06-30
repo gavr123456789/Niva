@@ -58,7 +58,6 @@ function getMsgCallReturnType(msg: MessageCall, previousType: string) {
     case "unary":
       return codeDB.getMethodReturnType(previousType, msg.name, msg.selectorKind)
     case "binary":
-      console.log("trying to get type for ", msg, "with previous msg type: ", previousType)
 
       const typedSelector = getTypedSelector(msg)
       return codeDB.getMethodReturnType(previousType, typedSelector, msg.selectorKind)
