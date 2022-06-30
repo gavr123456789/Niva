@@ -1,5 +1,14 @@
-fun string concat: another::string extra: extra::string -> string = self & another & extra
-concat = "abc" plus: "xyz" extra: "sas"
-concat echo
+//fun int -- sas::int = [
+//  "sas" echo
+//  false
+//]
+
+fun int -- sus::string = [
+  "sus" echo
+  "string"
+]
+
+3 -- (5 toString)
+//3 -- 3
 
 

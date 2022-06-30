@@ -41,7 +41,7 @@ export function assignment(
     case "MessageCallExpression":
       if (assignRightValue.messageCalls.length > 0) {
         // x = 7 + 4
-        const typeOfLastMessageCall = assignRightValue.messageCalls.at(-1)?.type.name
+        const typeOfLastMessageCall = assignRightValue.messageCalls.at(-1)?.returnType.name
         if (typeOfLastMessageCall) {
           codeDB.setTypedValueToMethodScope(state.insideMessage, leftName, typeOfLastMessageCall)
           console.log("assignment set type for ", leftName, ": ", typeOfLastMessageCall)

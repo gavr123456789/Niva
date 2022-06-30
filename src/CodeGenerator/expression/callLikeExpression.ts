@@ -35,7 +35,7 @@ export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, pr
   // console.log("checkForGetter: unaryMessage.type.name= ", unaryMessage.type.name)
 
   // TODO если есть предыдущее сообщение то receiverType должен стать его типом
-  const receiverType = previousMessage? previousMessage.type.name: codeDB.getValueType(unaryMessage.insideMethod, valueName)
+  const receiverType = previousMessage? previousMessage.returnType.name: codeDB.getValueType(unaryMessage.insideMethod, valueName)
 
   if (!receiverType) {
     // console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)

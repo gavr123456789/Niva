@@ -212,7 +212,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
-console.log(JSON.stringify(generateNimCode('int sas = [ x echo ].\nint sus = [ x echo ].'), undefined, 2) );
+// console.log(JSON.stringify(generateNimCode('int sas = [ 1 echo ].\nint sus = [ 2 echo ].'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 from: 2 to: 3'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );

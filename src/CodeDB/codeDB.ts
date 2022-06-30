@@ -1,8 +1,9 @@
 import {ContextInformation, TypeField} from "../niva"
 import {
+  ArgInfo,
   BinaryMethodInfo,
   EffectType,
-  KeywordMethodInfo, newBinaryMethodInfo,
+  KeywordMethodInfo, newArgInfo, newBinaryMethodInfo,
   newKeywordMethodInfo,
   newUnaryMethodInfo,
   UnaryMessageInfo
@@ -18,13 +19,7 @@ class TypeInfo {
     fields.forEach((value, key) => {
       // getter
       const unaryInfo = newUnaryMethodInfo(value.type)
-      const unaryMessageInfo: UnaryMessageInfo = {
-        returnType: value.type,
-        effects: new Set(),
-        statements: [],
-        declaratedValueToType: new Map()
-      }
-      this.unaryMessages.set(key, unaryMessageInfo)
+      this.unaryMessages.set(key, unaryInfo)
 
       //setter
       const setterInfo = newKeywordMethodInfo(value.type)
@@ -41,11 +36,17 @@ class TypeInfo {
   unaryMessages: Map<string, UnaryMessageInfo> = new Map()
   binaryMessages: Map<string, BinaryMethodInfo> = new Map()
   keywordMessages: Map<string, KeywordMethodInfo> = new Map()
-  
+
+
+
+  needInferArgsUnaryMessages: Set<string> = new Set()
+  needInferArgsBinaryMessages: Set<string> = new Set()
+  needInferArgsKeywordMessages: Set<string> = new Set()
 }
 
 export class CodeDB {
   private globalDeclaratedValueToType: Map<string, string> = new Map();
+  private typeNameToInfo: Map<string, TypeInfo> = new Map()
 
   setTypedValueToMethodScope(insideMethod: ContextInformation, valueName: string, valueType: string) {
     const {forType: typeName, kind, withName: messageName} = insideMethod
@@ -110,11 +111,7 @@ export class CodeDB {
 
       case "__global__":
         this.globalDeclaratedValueToType.set(valueName, valueType)
-
-        // console.log(`added val with name: ${valueName}, type: ${valueType} inside global scope ${messageName} for type ${typeName}`);
-
         break;
-
       default:
         const never: never = kind
         break;
@@ -169,11 +166,9 @@ export class CodeDB {
         break;
     }
 
-
   }
 
 
-  private typeNameToInfo: Map<string, TypeInfo> = new Map()
 
 
   private addDefaultType(name: string) {
@@ -190,17 +185,17 @@ export class CodeDB {
     this.addUnaryMessageForType("int", "toString", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("int", "echo", newUnaryMethodInfo("void"))
     // int binary
-    this.addBinaryMessageForType("int", "+", newBinaryMethodInfo("int"))
-    this.addBinaryMessageForType("int", "-", newBinaryMethodInfo("int"))
-    this.addBinaryMessageForType("int", "*", newBinaryMethodInfo("int"))
-    this.addBinaryMessageForType("int", "/", newBinaryMethodInfo("int"))
-    this.addBinaryMessageForType("int", ">", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("int", "<", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("int", "==", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("int", "+::int", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "-::int", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "*::int", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", "/::int", newBinaryMethodInfo("int"))
+    this.addBinaryMessageForType("int", ">::int", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("int", "<::int", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("int", "==::int", newBinaryMethodInfo("bool"))
     // int keyword
-    this.addKeywordMessageForType("int", "to_do", newKeywordMethodInfo("void"))
-    this.addKeywordMessageForType("int", "add", newKeywordMethodInfo("void"))
-    this.addKeywordMessageForType("int", "mod", newKeywordMethodInfo("int"))
+    this.addKeywordMessageForType("int", "to_do::code", newKeywordMethodInfo("void"))
+    this.addKeywordMessageForType("int", "add::int", newKeywordMethodInfo("void"))
+    this.addKeywordMessageForType("int", "mod::int", newKeywordMethodInfo("int"))
 
 
     this.addDefaultType("uint")
@@ -211,9 +206,9 @@ export class CodeDB {
     this.addUnaryMessageForType("string", "print", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("string", "toString", newUnaryMethodInfo("string"))
     // string binary
-    this.addBinaryMessageForType("string", "==", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("string", "!=", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("string", "&", newBinaryMethodInfo("string"))
+    this.addBinaryMessageForType("string", "==::string", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("string", "!=::string", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("string", "&::string", newBinaryMethodInfo("string"))
 
 
     this.addDefaultType("bool")
@@ -221,10 +216,10 @@ export class CodeDB {
     this.addUnaryMessageForType("bool", "toString", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("bool", "echo", newUnaryMethodInfo("void"))
     // bool binary
-    this.addBinaryMessageForType("bool", "==", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("bool", "!=", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("bool", "||", newBinaryMethodInfo("bool"))
-    this.addBinaryMessageForType("bool", "&&", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "==::bool", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "!=::bool", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "||::bool", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("bool", "&&::bool", newBinaryMethodInfo("bool"))
 
     this.addDefaultType("float")
   }
@@ -258,11 +253,23 @@ export class CodeDB {
   }
 
   addBinaryMessageForType(typeName: string, selectorName: string, info: BinaryMethodInfo) {
+    console.log("addBinaryMessageForType, selector = ", selectorName)
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
       throw new Error("trying to add method for non existing type");
     }
+    // TODO select name = +::int
     type.binaryMessages.set(selectorName, info)
+  }
+  needInferBinaryMethodTypeLater(typeName: string, selectorName: string) {
+    const type = this.typeNameToInfo.get(typeName)
+    if (!type) {
+      throw new Error("trying to add method for non existing type");
+    }
+    console.log("added ", selectorName, " to another dimension")
+    // TODO select name = +::int
+
+    type.needInferArgsBinaryMessages.add(selectorName)
   }
 
   hasMutateEffect(typeName: string, methodSelector: string): boolean {
@@ -343,7 +350,7 @@ export class CodeDB {
       case "unary":
         const unaryMethod = type.unaryMessages.get(methodName)
         if (!unaryMethod) {
-          console.log(`all known unaryMessages of type:  `, typeName," = ", type.unaryMessages)
+          console.log(`all known unaryMessages of type:  `, typeName, " = ", type.unaryMessages)
           throw new Error(`no such unary method: ${methodName} `)
         }
         if (unaryMethod.returnType === "auto") {
@@ -353,7 +360,7 @@ export class CodeDB {
       case "binary":
         const binaryMethod = type.binaryMessages.get(methodName)
         if (!binaryMethod) {
-          console.log("all known types = ", type.binaryMessages)
+          console.log("all known types = ", type.binaryMessages.keys())
           throw new Error(`no such binary method: ${methodName}`)
         }
         if (binaryMethod.returnType === "auto") {
@@ -379,4 +386,6 @@ export class CodeDB {
 
     }
   }
+
+
 }

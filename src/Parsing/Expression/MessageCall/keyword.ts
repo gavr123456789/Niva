@@ -33,7 +33,7 @@ export function keywordMessage(_s1: NonterminalNode,
     name: keywordMessageName,
     selectorKind: 'keyword',
     arguments: resultArguments,
-    type: {name: ""}
+    returnType: {name: ""}
   };
   return result;
 }
