@@ -1,9 +1,10 @@
 Niva {
 
-  space += comment
+
+  space := " " | lineTerminator | comment
   // statement
-  statements = spaces statement (statementSeparator statement)* statementSeparator*
-  statementSeparator =  lineTerminatorsAndSpaces | dot
+  statements = spaces statement (statementSeparator+ statement)* statementSeparator*
+  statementSeparator =  space | dot
   lineTerminatorsAndSpaces = lineTerminator+ whiteSpaces
   statement =
     | returnStatement  -- returnStatement
@@ -110,7 +111,7 @@ Niva {
   receiver =
   	| primary
     | listLiteral
-    | "(" expression ")" -- expressionInBrackets
+    | "(" whiteSpaces expression whiteSpaces ")" -- expressionInBrackets
     | blockConstructor
 
 
@@ -253,10 +254,10 @@ Niva {
   // CONST
   reservedWord = keyword | nullLiteral | boolLiteral
   keyword = "type" | "fun"
-  separator = (space | comment)* 
-  
-  // for binary messages 
-  binaryCharacter = "!" | "%" | "&" | "*" | "+"  | "/" | "<" | "==" | ">" | "?" | "@" | "\"" | "~" | "-" | "|>" | "<|" | "||"  //"|"   // | "," |  
+  separator = (comment | space)*
+
+  // for binary messages
+  binaryCharacter = "!" | "%" | "&" | "*" | "+" | "<" | "==" | ">" | "?" | "@" | "~" | "-" | "|>" | "<|" | "||" | "/" | "\\" //"|"   // | "," |
   binarySelector =  binaryCharacter+
 
   
