@@ -18,6 +18,7 @@ export interface UnaryMessage {
 export interface BinaryArgument {
 	value: Receiver // x | 
 	unaryMessages?: UnaryMessage[]
+	type: string
 }
 
 export interface BinaryMessage {

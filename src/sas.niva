@@ -1,14 +1,14 @@
-fun int -- sas::int = [
+fun int sas::int = [
   "sas" echo
   false
 ]
 
-fun int -- sus::string = [
+fun int sas::string = [
   "sus" echo
   "string"
 ]
 
-3 -- (5 toString)
-3 -- 3
+3 sas: true toString & false toString
+//3 sas: 3 + 3 + 3
 
 

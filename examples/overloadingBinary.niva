@@ -1,0 +1,22 @@
+fun int -- sas::int = [
+  "sas" echo
+  5
+]
+
+fun int -- sus::string = [
+  "sus" echo
+  "string"
+]
+
+fun string ++ ses::string = [
+  "ses" echo
+  6
+]
+
+//3 -- 3 -- 3
+
+3 -- (5 toString)
+3 -- 3
+3 toString ++ 5 toString
+3 toString ++ 5 toString ++ "str"
+

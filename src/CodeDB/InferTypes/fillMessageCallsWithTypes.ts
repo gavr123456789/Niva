@@ -53,6 +53,8 @@ export function getTypedSelector(msg: MessageCall): string {
   }
 }
 
+// так как унарные и бинарные сообщения могут идти за другими сообщениями,
+// нам нужно узнавать типы предыдущих сообщений чтобы узнать тип получателя текущего сообщения
 function getMsgCallReturnType(msg: MessageCall, previousType: string) {
   switch (msg.selectorKind) {
     case "unary":
@@ -60,9 +62,14 @@ function getMsgCallReturnType(msg: MessageCall, previousType: string) {
     case "binary":
 
       const typedSelector = getTypedSelector(msg)
+
+      // тут в previous type должен попадать не предыдущий аргумент, а результат предыдущего бинарного сообдения
+      // 5 \/\/ 3 & "sas"
+      // \/\/ переводит оба в стринги и складывает
+      // & должен принять не 3 в качестве аргумента а результат \/\/ то есть стринг
       return codeDB.getMethodReturnType(previousType, typedSelector, msg.selectorKind)
     case "keyword":
-      throw new Error("I dont know how to get typed selector")
+      throw new Error("keyword message cant follow another message, its always first")
       // return codeDB.getMethodReturnType(previousType, ????, msg.selectorKind)
   }
 }
@@ -79,6 +86,7 @@ function getReturnType(msg: UnaryMessage | BinaryMessage | KeywordMessage, previ
       return returnType
 
     case "binary":
+      // если у аргумента есть унарные сообщения то
       if (msg.argument.unaryMessages) {
         const argReceiverType = getReceiverType(msg.argument.value)
         if (!argReceiverType) {
@@ -87,6 +95,7 @@ function getReturnType(msg: UnaryMessage | BinaryMessage | KeywordMessage, previ
         fillMessageCallsWithTypes(argReceiverType, msg.argument.unaryMessages)
       }
 
+      // 2 + x
       switch (msg.argument.value.kindStatement) {
         case "Primary":
           const returnType = getMsgCallReturnType(msg, previousType)
@@ -106,29 +115,106 @@ function getReturnType(msg: UnaryMessage | BinaryMessage | KeywordMessage, previ
           const _never: never = msg.argument.value
           throw new Error("Sound error")
       }
+
+      // Нужно вычислить тип каждого аргумента, чтобы знать
+      // какой именно метод мы будем искать исходя из этих типов
+      // на случай если он перегружен
     case "keyword":
-      throw new Error("TODO")
+      // если есть бинарные сообщения - вычислить их типы
+      // если есть унарные сообщения - вычислить их типы
+
+      // array of arg types,
+      // example: 23 between "sas" length and: 348 + 23
+      // arrayOfArgTypes = [int, int]
+      const arrayOfArgTypes: string[] = []
+      msg.arguments.forEach(arg => {
+        const argReceiverType = getReceiverType(arg.receiver)
+        if (!argReceiverType){
+          throw new Error("cant get receiverType of keyword argument")
+        }
+
+        fillMessageCallsWithTypes(argReceiverType, arg.unaryMessages)
+        // заполняя типы бинарных мы должны знать типы унарных сообщений
+        fillMessageCallsWithTypes(argReceiverType, arg.binaryMessages)
+        // 34 between: 12 invert + 15 invert and: 45 sas - 72 sus
+        // first all unary, then all binary
+        // so to know to what binary calls we need to check unary first
+        // const allUnaryThenBinaryMessages = [...arg.unaryMessages, arg.binaryMessages]
+
+
+        // если там были унарные сообщения и бинарные то возвращаем тип последнего бинарного
+        // если там были только бинарные или только унарные то возращаем тип последнего
+        const isThereUnaryMessages = arg.unaryMessages.length > 0
+        const isThereBinaryMessages = arg.binaryMessages.length > 0
+
+        if(!isThereBinaryMessages && !isThereUnaryMessages){
+          arrayOfArgTypes.push(argReceiverType)
+        } else if (isThereBinaryMessages) {
+          const returnType = getTypeOfLastMessage(arg.binaryMessages)
+          if (!returnType){
+            throw new Error("cant get return type")
+          }
+          arrayOfArgTypes.push(returnType)
+        } else if (isThereUnaryMessages && !isThereBinaryMessages){
+          const returnType = getTypeOfLastMessage(arg.unaryMessages)
+          if (!returnType){
+            throw new Error("cant get return type")
+          }
+          arrayOfArgTypes.push(returnType)
+        }
+      })
+
+      const arrayOfArgsNames = msg.arguments.map(x => x.keyName)
+      if (arrayOfArgsNames.length !== arrayOfArgTypes.length) {
+        console.log("arrayOfArgsNames = ", arrayOfArgsNames)
+        console.log("arrayOfArgTypes = ", arrayOfArgTypes)
+        throw new Error("every argument of keyword message must have type")
+      }
+
+      const namesWithTypes = arrayOfArgsNames.map((x, i) => {
+        const sas = x + "::" + arrayOfArgTypes[i]
+        return sas
+      })
+
+      // "between::int and::int"
+
+      const result = namesWithTypes.join(" ")
+      console.log("keyword result = ", result)
+      return result
     default:
       const _never: never = msg
       throw new Error("Sound error")
-
   }
 }
 
+function getPreviousType(previousMsg: MessageCall | undefined, receiverType: string): string {
+  if(!previousMsg){
+    return receiverType
+  } else {
+    if (previousMsg.selectorKind == "binary") {
+      // 5 /\/\ 5 & "sas"
+
+      const binaryMethodName = previousMsg.name + "::" + previousMsg.argument.type
+      console.log(`returnTypeOfPreviousMsg args: type: ${receiverType}, methodName: ${binaryMethodName}`)
+      const returnTypeOfPreviousMsg = codeDB.getMethodReturnType(
+        receiverType, // receiverType of previous message
+        binaryMethodName,
+        "binary"
+      )
+      console.log("returnTypeOfPreviousMsg = ", returnTypeOfPreviousMsg)
+      return returnTypeOfPreviousMsg
+    }
+    return previousMsg.returnType.name
+  }
+
+
+}
+
 export function fillMessageCallsWithTypes(receiverType: string, astMessages: MessageCall[]) {
-
   astMessages.forEach((msg, i, array) => {
-
-
-    const previousMsg = array[i - 1]
-    const previousType = previousMsg ? previousMsg.returnType.name : receiverType
+    const previousMsg: MessageCall | undefined = array[i - 1]
+    const previousType = getPreviousType(previousMsg, receiverType)//previousMsg ? previousMsg.returnType.name : receiverType
 
     msg.returnType.name = getReturnType(msg, previousType);
-    // const returnType =  getReturnType(msg, previousType)//codeDB.getMethodReturnType(previousType, msg.name + "::" + msg.type.name, msg.selectorKind)
-    // if (!returnType) {
-    //   console.log("message: ", msg)
-    //   throw new Error("I dont know return type of message")
-    // }
-    // msg.returnType.name = returnType
   })
 }

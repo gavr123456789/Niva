@@ -359,7 +359,7 @@ export class CodeDB {
         const binaryMethod = type.binaryMessages.get(methodName)
         if (!binaryMethod) {
           console.log("all known types = ", type.binaryMessages.keys())
-          throw new Error(`no such binary method: ${methodName}`)
+          throw new Error(`no such binary method: ${methodName} on type ${typeName}`)
         }
         if (binaryMethod.returnType === "auto") {
           throw new Error(`Return type of: ${methodName}, is auto`)
