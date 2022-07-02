@@ -20,13 +20,15 @@ export function binaryMethodDeclaration(
   const binarySelector: BinaryMethodDeclarationArg = binaryMethodDeclarationArg.toAst();
   const extendableType = untypedIdentifier.sourceString
   const selectorName = binarySelector.binarySelector
+  const argType = binarySelector.identifier.type
+  const argName = binarySelector.identifier.value
   let returnType = returnTypeDeclaration.children.at(0)?.toAst()
 
   // set state 
   state.enterMethodScope({
     forType: extendableType,
     kind: "binary",
-    withName: selectorName
+    withName: selectorName + "::" + argType ?? "auto"
   })
 
   // this must be done before ast because inside ast there will be a calls to know this method's
@@ -34,8 +36,18 @@ export function binaryMethodDeclaration(
   // we dont know real return type at that point
   // we will know it after ast with the last statement type
 
-  codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
+
+  codeDB.addBinaryMessageForType(extendableType, selectorName + "::" + argType ?? "auto", newBinaryMethodInfo(returnType || "auto"))
   codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+
+  if(argType)
+    codeDB.setTypedValueToMethodScope(state.insideMessage, argName, argType)
+  else {
+    console.log("binary selector = ", binarySelector)
+    codeDB.needInferBinaryMethodTypeLater(extendableType, selectorName)
+    // throw new Error("binary arg doesnt have type")
+  }
+
 
   const bodyStatements: BodyStatements = methodBody.toAst();
   const isProc = _eq.sourceString === "="
@@ -47,9 +59,12 @@ export function binaryMethodDeclaration(
     const lastBodyStatement = bodyStatements.statements.at(-1)
     if (lastBodyStatement){
       returnType = getStatementType(lastBodyStatement);
-      console.log("inferred return type of ", selectorName, " is ", returnType)
+      if(!returnType){
+        // throw new Error("no return type")
+      }
+      console.log("inferred return type of ", selectorName + "::" + argType ?? "auto", " is ", returnType)
       // need to change return type in codeDB because now we know the type of last statement
-      codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType))
+      codeDB.addBinaryMessageForType(extendableType, selectorName + "::" + argType ?? "auto", newBinaryMethodInfo(returnType))
     }
   }
 

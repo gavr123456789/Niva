@@ -15,8 +15,9 @@ export function binaryMessage(_spaces1: NonterminalNode, binarySelector: Nonterm
     selectorKind: 'binary',
     argument: binaryArgument.toAst(), // returns its name
     name: binarySelector.toAst(), // returns its name
-    type: {name: ""}
+    returnType: {name: ""}
   };
+
   return result;
 }
 

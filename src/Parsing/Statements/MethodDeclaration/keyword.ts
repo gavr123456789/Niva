@@ -2,8 +2,9 @@ import { IterationNode, NonterminalNode, TerminalNode } from "ohm-js";
 import { Identifier } from "../../../AST_Nodes/Statements/Expressions/Receiver/Primary/Identifier";
 import { KeywordMethodArgument, KeywordMethodDeclaration, KeywordMethodDeclarationArg, MethodDeclaration } from "../../../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
-import { newKeywordMethodInfo } from "../../../CodeDB/types";
+import {newKeywordMethodInfo, newUnaryMethodInfo} from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
+import {getStatementType} from "../../../CodeDB/InferTypes/getStatementType";
 
 export function keywordMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -15,11 +16,13 @@ export function keywordMethodDeclaration(
   _s3: NonterminalNode,
   methodBody: NonterminalNode
 ): MethodDeclaration {
-  const returnType = returnTypeDeclaration.children.at(0)?.toAst()
+  let returnType = returnTypeDeclaration.children.at(0)?.toAst()
   const extendableType = untypedIdentifier.sourceString
   const keywordMethodDeclarationArg: KeywordMethodDeclarationArg = keywordMethodDeclarationArgs.toAst()
   const keyValueNames: KeywordMethodArgument[] = keywordMethodDeclarationArg.keyValueNames
   const isProc = _eq.sourceString === "="
+
+
 
   const selectorName = keywordMethodDeclarationArg.keyValueNames.map(x => x.keyName).join("_")
   
@@ -34,7 +37,15 @@ export function keywordMethodDeclaration(
 
 
   const bodyStatements: BodyStatements = methodBody.toAst();
-
+  // Infer return type
+  if (!returnType){
+    const lastBodyStatement = bodyStatements.statements.at(-1)
+    if (lastBodyStatement){
+      returnType = getStatementType(lastBodyStatement);
+      console.log("inferred return type of ", selectorName, " is ", returnType)
+      codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo(returnType))
+    }
+  }
 
   const keyword: KeywordMethodDeclaration = {
     kind: isProc ? "proc" : "template",

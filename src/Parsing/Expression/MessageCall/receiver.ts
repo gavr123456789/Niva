@@ -1,9 +1,9 @@
-import { TerminalNode, NonterminalNode } from "ohm-js"
+import {TerminalNode, NonterminalNode, IterationNode} from "ohm-js"
 import { BracketExpression, MessageCallExpression } from "../../../AST_Nodes/Statements/Expressions/Expressions"
 import { BlockConstructor } from "../../../AST_Nodes/Statements/Expressions/Receiver/BlockConstructor"
 import { Receiver } from "../../../AST_Nodes/Statements/Expressions/Receiver/Receiver"
 
-export function receiver_expressionInBrackets(_lb: TerminalNode, expression: NonterminalNode, _rb: TerminalNode): BracketExpression {
+export function receiver_expressionInBrackets(_lb: TerminalNode, _s: IterationNode, expression: NonterminalNode, _s2: IterationNode, _rb: TerminalNode): BracketExpression {
 
   const result: MessageCallExpression = expression.toAst()
   const result2: BracketExpression = { ...result, kindStatement: "BracketExpression" }

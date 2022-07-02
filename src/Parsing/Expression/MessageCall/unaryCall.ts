@@ -19,7 +19,7 @@ export function unarySelector(ident: NonterminalNode) {
     insideMethod: {...state.insideMessage},
     selectorKind: 'unary',
     name: ident.sourceString,
-    type: {name: ""}
+    returnType: {name: ""}
   };
   // console.log("set ", state.insideMessage, " for ", ident.sourceString)
   return result;

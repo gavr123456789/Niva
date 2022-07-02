@@ -7,7 +7,7 @@ import {CallLikeExpression} from "../../../CodeGenerator/expression/callLikeExpr
 import {fillMessageCallsWithTypes} from "../../../CodeDB/InferTypes/fillMessageCallsWithTypes";
 import {getReceiverType} from "../../../CodeDB/InferTypes/getReceiverType";
 
-export function messageCall(receiverNode: NonterminalNode, maymeMessages: IterationNode, cascadedMessages: IterationNode): CallLikeExpression {
+export function messageCall(receiverNode: NonterminalNode, maybeMessages: IterationNode, cascadedMessages: IterationNode): CallLikeExpression {
   const receiver: Receiver = receiverNode.toAst();
   const receiverType = getReceiverType(receiver)
 
@@ -19,7 +19,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
   };
 
   // if no messages than its just a value
-  const messages = maymeMessages.children.at(0);
+  const messages = maybeMessages.children.at(0);
   if (!messages) {
     if (receiverType){
       result.type = receiverType
@@ -34,8 +34,26 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
 
   if (receiverType){
     fillMessageCallsWithTypes(receiverType, astMessages)
+    // TODO нужно также запускать это на все подсообщения
+
+  } else {
+    console.log("I dont know the receiver type receiver = ", receiver)
+    // Вот мы встретили функцию у которой нужно вывети тип
+    // Проверяем что нашы аргументы(в бинарном токо один) удовлетворяют условиям(имеют все вызываемые в этом темплейте методы)
+
+    //TODO
+    // Запускаем вывод возвращаемого значения с учетом наших аргументов
+    // Добавляем полученный тип возвращаемого значения в хешмапу конкатенации типов аргументов к типу возвращаемого значения,
+    // чтобы в следующий раз ничего не вычислять
+    // codeDB.
+    // throw new Error("I dont know the receiver type")
   }
-  result.type = astMessages.at(-1)?.type.name
+  const resultType = astMessages.at(-1)?.returnType.name
+  if (!resultType){
+    console.log("I dont know the type of last astMessage, lastAstMessage is ", astMessages.at(-1))
+    // throw new Error("I dont know the type of last astMessage")
+  }
+  result.type = astMessages.at(-1)?.returnType.name
   // console.log("ast with types = ", astMessages)
 
   const selfTypeName = state.insideMessage.forType

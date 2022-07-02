@@ -12,7 +12,7 @@ export interface UnaryMessage {
 	selectorKind: 'unary';
 	name: string;
 	insideMethod: ContextInformation
-	type: MessageType
+	returnType: MessageType
 }
 
 export interface BinaryArgument {
@@ -24,8 +24,8 @@ export interface BinaryMessage {
 	selectorKind: 'binary';
 	name: string;
   argument: BinaryArgument
-	type: MessageType
-
+	returnType: MessageType
+	typedName?: string
 }
 
 export interface KeywordArgument {
@@ -38,6 +38,7 @@ export interface KeywordMessage {
 	selectorKind: 'keyword';
 	name: string
 	arguments: KeywordArgument[]
-	type: MessageType
+	returnType: MessageType
+	typedName?: string
 
 }

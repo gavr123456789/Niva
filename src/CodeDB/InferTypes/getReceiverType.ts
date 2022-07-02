@@ -10,19 +10,26 @@ export function getReceiverType(receiver: Receiver): string | undefined {
         case "string":
         case "int":
         case "bool":
-          return receiver.atomReceiver.kindPrimary
+          const resultPrimary = receiver.atomReceiver.kindPrimary
+          receiver.type = resultPrimary
+          return resultPrimary
         case "Identifier":
-          const typeOfValInsideMethdod = codeDB.getValueType(state.insideMessage, receiver.atomReceiver.value)
-          return typeOfValInsideMethdod
+          const typeOfValInsideMethod = codeDB.getValueType(state.insideMessage, receiver.atomReceiver.value)
+          receiver.type = typeOfValInsideMethod
+          return typeOfValInsideMethod
       }
       break;
     case "BlockConstructor":
       const lastStatement = receiver.statements.at(-1)
       if (lastStatement){
-        return getStatementType(lastStatement)
+        const lastStatementType = getStatementType(lastStatement)
+        receiver.type = lastStatementType
+        return lastStatementType
       }
       throw new Error("blockConstructor has no statements")
     case "BracketExpression":
-      return getTypeOfExpression(receiver)
+      const resultExpressionType = getTypeOfExpression(receiver)
+      receiver.type = resultExpressionType
+      return resultExpressionType
   }
 }
