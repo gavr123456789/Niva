@@ -18,7 +18,6 @@ export interface UnaryMessage {
 export interface BinaryArgument {
 	value: Receiver // x | 
 	unaryMessages?: UnaryMessage[]
-	type: string
 }
 
 export interface BinaryMessage {
@@ -26,7 +25,7 @@ export interface BinaryMessage {
 	name: string;
   argument: BinaryArgument
 	returnType: MessageType
-
+	typedName?: string
 }
 
 export interface KeywordArgument {
@@ -40,5 +39,6 @@ export interface KeywordMessage {
 	name: string
 	arguments: KeywordArgument[]
 	returnType: MessageType
+	typedName?: string
 
 }

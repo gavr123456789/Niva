@@ -194,7 +194,7 @@ function getPreviousType(previousMsg: MessageCall | undefined, receiverType: str
     if (previousMsg.selectorKind == "binary") {
       // 5 /\/\ 5 & "sas"
 
-      const binaryMethodName = previousMsg.name + "::" + previousMsg.argument.type
+      const binaryMethodName = previousMsg.name + "::" + previousMsg.argument.value.type
       console.log(`returnTypeOfPreviousMsg args: type: ${receiverType}, methodName: ${binaryMethodName}`)
       const returnTypeOfPreviousMsg = codeDB.getMethodReturnType(
         receiverType, // receiverType of previous message
