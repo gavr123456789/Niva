@@ -1,9 +1,18 @@
-type Person name: string
-construct Person bob = Person name: "Bob"
-construct Person fromName: name = Person name: name
-y = Person bob
-x = Person fromName: "qwe"
+type Wallet money: int
+construct Wallet empty = Wallet money: 0
 
-y name echo
-x name echo
+emptyWallet = Wallet empty
+emptyWallet money echo
+
+type Person name: string wallet: Wallet
+
+
+
+//construct Person bob = Person name: "Bob"
+//construct Person fromName: name = Person name: name
+//y = Person bob
+//x = Person fromName: "qwe"
+//
+//y name echo
+//x name echo
 //x = Person bob

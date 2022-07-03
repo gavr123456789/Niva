@@ -8,6 +8,7 @@ export function getAtomPrimary(primary: Primary): string {
 		case 'int':
 		case 'string':
 		case 'bool':
+		case "float":
 			return atom.value;
 		default:
 			const _never: never = atom;
