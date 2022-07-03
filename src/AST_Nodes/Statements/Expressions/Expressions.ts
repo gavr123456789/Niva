@@ -1,5 +1,5 @@
 import { CallLikeExpression } from "../../../CodeGenerator/expression/callLikeExpression";
-import {KeywordArgument, KeywordMessage, MessageCall} from "./Messages/Message";
+import {BinaryMessage, KeywordArgument, KeywordMessage, MessageCall, UnaryMessage} from "./Messages/Message";
 import { Receiver } from "./Receiver/Receiver";
 
 export type Expression = 
@@ -25,6 +25,14 @@ export interface Constructor {
 	type: string
 	call: KeywordMessage,
   kindStatement: "Constructor"
+}
+
+export interface CustomConstructor {
+	selfTypeName: string
+
+	type: string
+	call: MessageCall,
+	kindStatement: "CustomConstructor"
 }
 
 export interface Setter {

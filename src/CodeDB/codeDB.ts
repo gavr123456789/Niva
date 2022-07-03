@@ -322,8 +322,15 @@ export class CodeDB {
     }
   }
 
-  hasType(name: string) {
-    return this.typeNameToInfo.has(name)
+  hasType(typeName: string) {
+    return this.typeNameToInfo.has(typeName)
+  }
+  getTypeFields(typeName: string): Map<string, TypeField> {
+    const type = this.typeNameToInfo.get(typeName)
+    if (!type) {
+      throw new Error(`No such type as ${typeName}`)
+    }
+    return type.fields
   }
 
   getFieldType(typeName: string, keyName: string): string | undefined {

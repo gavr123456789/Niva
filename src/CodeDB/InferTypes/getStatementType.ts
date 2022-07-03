@@ -12,6 +12,7 @@ export function getStatementType(lastBodyStatement: Statement): string | undefin
 
       break;
     case "Constructor":
+    case "CustomConstructor":
       return lastBodyStatement.type
     case "Setter":
       return "void"
@@ -26,5 +27,9 @@ export function getStatementType(lastBodyStatement: Statement): string | undefin
       return "void"
     case "SwitchStatement":
       return "void"
+    case "ConstructorDeclaration":
+      return "void"
+    default:
+      const _never: never = lastBodyStatement
   }
 }

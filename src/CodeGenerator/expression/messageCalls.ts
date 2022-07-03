@@ -14,19 +14,27 @@ export function generateUnaryCall(unaryMessageName: string, isGetter: boolean): 
 
 
 export function generateBinaryCall(binaryMessageName: string, argument: BinaryArgument): string {
-  // example: 1 + (1 - 1)
-  if (argument.value.kindStatement === "BracketExpression") {
-    const expressionInBracketsCode = processExpression(argument.value, 0)
-    const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
-    return codeWithArgumentInBrackets
+  switch (argument.value.kindStatement) {
+    case "Primary":
+      // example 1 + 1
+      const argValue = argument.value.atomReceiver.value
+      const code = generateSimpleBinaryCall(binaryMessageName, argument, argValue)
+      return code
+    case "BlockConstructor":
+      throw new Error("BlockConstructor");
+
+    case "BracketExpression":
+      // example: 1 + (1 - 1)
+
+      const expressionInBracketsCode = processExpression(argument.value, 0)
+      const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
+      return codeWithArgumentInBrackets
+    default:
+      const _never: never = argument.value
+      throw new Error("Sound error")
   }
-  if (argument.value.kindStatement === "BlockConstructor") {
-    throw new Error("BlockConstructor");
-  }
-  // example 1 + 1
-  const argValue = argument.value.atomReceiver.value
-  const code = generateSimpleBinaryCall(binaryMessageName, argument, argValue)
-  return code
+
+
 }
 
 
@@ -51,10 +59,11 @@ function generateSimpleBinaryCall(binaryMessageName: string, argument: BinaryArg
 export function generateKeywordCall(
   currentMethodName: string,
   keyWordArgs: KeywordArgument[],
+  keywordMessageName: string,
   identation: number): string {
 
 
-  const functionName = keyWordArgs.map(x => x.keyName).join("_")
+  const functionName = keywordMessageName
   const argsValuesCode: string[] = []
 
 

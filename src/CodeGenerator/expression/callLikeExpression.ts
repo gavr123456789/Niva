@@ -1,17 +1,17 @@
 import {
   BracketExpression,
-  Constructor,
+  Constructor, CustomConstructor,
   MessageCallExpression,
   Setter
 } from "../../AST_Nodes/Statements/Expressions/Expressions";
-import {generateConstructor} from "./constructor";
+import {generateConstructor, generateCustomConstructor} from "./constructor";
 import {processExpression} from "./expression";
 import {generateSetter} from "./setter";
 import {codeDB} from "../../niva";
 import {MessageCall} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
 import {Receiver} from "../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
 
-export type CallLikeExpression = MessageCallExpression | BracketExpression | Constructor | Setter //  Getter
+export type CallLikeExpression = MessageCallExpression | BracketExpression | Constructor | CustomConstructor | Setter //  Getter
 
 function checkForConstructor(s: MessageCallExpression) {
 
@@ -24,7 +24,7 @@ export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, pr
   const isPrimaryReceiver = receiver.kindStatement === "Primary"
   const isMessageUnary = unaryMessage?.selectorKind === "unary"
   if (!unaryMessage || receiver.kindStatement !== "Primary" || !(unaryMessage?.selectorKind === "unary")) {
-    // console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
+    console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
     return false
   }
 
@@ -35,11 +35,13 @@ export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, pr
   // console.log("checkForGetter: unaryMessage.type.name= ", unaryMessage.type.name)
 
   // TODO если есть предыдущее сообщение то receiverType должен стать его типом
-  const receiverType = previousMessage? previousMessage.type.name: codeDB.getValueType(unaryMessage.insideMethod, valueName)
+  const receiverType = previousMessage
+    ? previousMessage.type.name
+    : codeDB.getValueType(unaryMessage.insideMethod, valueName)
 
   if (!receiverType) {
-    // console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
-    // console.log("receiverType = ", receiverType)
+    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    console.log("receiverType = ", receiverType)
     return false
   }
   const typeOfField = codeDB.getFieldType(receiverType, fieldName)
@@ -73,7 +75,9 @@ export function generateCallLikeExpression(s: CallLikeExpression, indentation: n
   // generate code
   switch (s.kindStatement) {
     case "Constructor":
-      return generateConstructor(s)
+      return generateConstructor(s, indentation)
+    case "CustomConstructor":
+      return generateCustomConstructor(s, indentation)
     case "MessageCallExpression":
     case "BracketExpression":
       return processExpression(s, indentation)

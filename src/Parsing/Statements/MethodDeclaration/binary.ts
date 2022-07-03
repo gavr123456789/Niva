@@ -47,7 +47,13 @@ export function binaryMethodDeclaration(
     const lastBodyStatement = bodyStatements.statements.at(-1)
     if (lastBodyStatement){
       returnType = getStatementType(lastBodyStatement);
-      console.log("inferred return type of ", selectorName, " is ", returnType)
+      if (!returnType){
+        console.log("inferred return type of ", selectorName, " is auto")
+
+      } else {
+        console.log("inferred return type of ", selectorName, " is ", returnType)
+
+      }
       // need to change return type in codeDB because now we know the type of last statement
       codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType))
     }
@@ -59,7 +65,7 @@ export function binaryMethodDeclaration(
     methodKind: "BinaryMethodDeclaration",
     expandableType: extendableType,
     returnType,
-    binarySelector: selectorName,
+    name: selectorName,
     argument: binarySelector.identifier,
     bodyStatements,
   }

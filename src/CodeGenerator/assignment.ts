@@ -1,7 +1,7 @@
 import {Expression} from '../AST_Nodes/Statements/Expressions/Expressions';
 import {processExpression} from './expression/expression';
 import {generateSwitchExpression} from './expression/switchExpression';
-import {generateConstructor} from "./expression/constructor";
+import {generateConstructor, generateCustomConstructor} from "./expression/constructor";
 import {generateSetter} from "./expression/setter";
 import {Assignment} from "../AST_Nodes/Statements/Statement";
 
@@ -56,13 +56,19 @@ export function generateAssigment(assignment: Assignment, indentation: number): 
       return `${ident}var ${assignmentTarget} = ${switchCode}`;
 
     case "Constructor":
-      const constructorCode = generateConstructor(to)
+      const constructorCode = generateConstructor(to, indentation)
       if (type){
         return `${ident}var ${assignmentTarget}: ${type} = ${constructorCode}`;
       } else {
         return `${ident}var ${assignmentTarget} = ${constructorCode}`;
       }
-
+    case "CustomConstructor":
+      const customConstructorCode = generateCustomConstructor(to, indentation)
+      if (type){
+        return `${ident}var ${assignmentTarget}: ${type} = ${customConstructorCode}`;
+      } else {
+        return `${ident}var ${assignmentTarget} = ${customConstructorCode}`;
+      }
     case "Setter":
       const setterCode = generateSetter(to, 0)
       return `${ident}var ${assignmentTarget} = ${setterCode}`;

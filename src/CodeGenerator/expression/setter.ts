@@ -13,7 +13,6 @@ export function generateSetter(s: Setter, indentation: number): string {
   const keyWordArgs = [argument]
   fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, indentation)
   const argumentCode = argsValuesCode[0]
-  console.log("argsValuesCode = ", argsValuesCode)
   const fieldName = argument.keyName
   // fillKeywordArgsAndReturnStatements(messageCall.keyWordArgs, argsValuesCode, 0)
   // input  person name: "sas"

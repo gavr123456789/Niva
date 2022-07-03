@@ -1,11 +1,31 @@
 import {IterationNode, NonterminalNode} from "ohm-js";
-import {Constructor, MessageCallExpression, Setter} from "../../../AST_Nodes/Statements/Expressions/Expressions";
-import {MessageCall} from "../../../AST_Nodes/Statements/Expressions/Messages/Message";
+import {
+  Constructor,
+  CustomConstructor,
+  MessageCallExpression,
+  Setter
+} from "../../../AST_Nodes/Statements/Expressions/Expressions";
+import {KeywordMessage, MessageCall} from "../../../AST_Nodes/Statements/Expressions/Messages/Message";
 import {Receiver} from "../../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
 import {codeDB, state} from "../../../niva";
 import {CallLikeExpression} from "../../../CodeGenerator/expression/callLikeExpression";
 import {fillMessageCallsWithTypes} from "../../../CodeDB/InferTypes/fillMessageCallsWithTypes";
 import {getReceiverType} from "../../../CodeDB/InferTypes/getReceiverType";
+
+function checkIfAllKeysAreTypeFields(kwMsg: KeywordMessage, typeName: string): boolean {
+  const sas = codeDB.getTypeFields(typeName)
+
+  if (sas.size !== kwMsg.arguments.length){
+    return false
+  }
+
+  for (let argument of kwMsg.arguments)
+    if (!sas.has(argument.keyName))
+      return false
+
+
+  return true;
+}
 
 export function messageCall(receiverNode: NonterminalNode, maymeMessages: IterationNode, cascadedMessages: IterationNode): CallLikeExpression {
   const receiver: Receiver = receiverNode.toAst();
@@ -44,8 +64,10 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
   // if this is keyword message with one arg, and its arg is one of the type fields
   if (firstMessage?.selectorKind === "keyword"
     && firstMessage.arguments.length === 1
-    && receiver.kindStatement === "Primary" &&
-    receiver.atomReceiver.kindPrimary === "Identifier") {
+    && receiver.kindStatement === "Primary"
+    && receiver.atomReceiver.kindPrimary === "Identifier"
+    && !codeDB.hasType(receiver.atomReceiver.value) // if true, its Constructor, not setter
+  ) {
     const firstArg = firstMessage.arguments[0]
     const valueName = receiver.atomReceiver.value
 
@@ -68,24 +90,54 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       return setter
     }
   }
+
+
   /// check for constructor
-  const isThisIsConstructorCall =
+  const isThisIsTypeCall =
     receiver.kindStatement === "Primary" &&
     receiver.atomReceiver.kindPrimary === "Identifier" &&
-    firstMessage?.selectorKind === "keyword" &&
+    firstMessage &&
+    // firstMessage?.selectorKind === "keyword" &&
     codeDB.hasType(receiver.atomReceiver.value)
 
-  if (isThisIsConstructorCall) {
-    const constructor: Constructor = {
-      kindStatement: "Constructor",
-      call: firstMessage,
-      selfTypeName,
-      type: receiver.atomReceiver.value
-    }
-    console.log("constructor detected type: ", constructor.type, " signature: ", constructor.call.name);
+  // если все кеи аргументов есть у поля типа то это обычный конструктор
+  // иначе это кастомный конструктор
 
-    return constructor
+  if (firstMessage?.selectorKind === "keyword") {
+    if (isThisIsTypeCall) {
+      const allKeysAreTypeFields: boolean = checkIfAllKeysAreTypeFields(firstMessage, receiver.atomReceiver.value)
+      if (allKeysAreTypeFields) {
+        const constructor: Constructor = {
+          kindStatement: "Constructor",
+          call: firstMessage,
+          selfTypeName,
+          type: receiver.atomReceiver.value
+        }
+        console.log("constructor detected type: ", constructor.type, " signature: ", constructor.call.name);
+        return constructor
+      }
+    } else {
+      // вернуть кастомный кейворд конструктор
+    }
   }
+  // проверяем на 2 оставшихся вида кастомных конструкторов
+  if (isThisIsTypeCall && firstMessage){
+    switch (firstMessage.selectorKind) {
+      case "unary":
+      case "binary":
+      case "keyword":
+
+        const unaryCustomConstructor: CustomConstructor = {
+          call: firstMessage,
+          selfTypeName,
+          type: receiver.atomReceiver.value,
+          kindStatement: "CustomConstructor",
+        }
+        return unaryCustomConstructor
+    }
+  }
+
+
 
   return result;
 }

@@ -42,7 +42,8 @@ export function keywordMethodDeclaration(
     returnType,
     bodyStatements,
     expandableType: extendableType,
-    keyValueNames
+    keyValueNames,
+    name: selectorName
   }
 
   const result: MethodDeclaration = {
