@@ -57,10 +57,18 @@ export function assignment(
       }
       break;
     case "Constructor":
+    case "CustomConstructor":
       // x = Person name: "Bob" age: 42
       codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
       astAssign.type = assignRightValue.type
       break;
+    case "Setter":
+      throw new Error(`You cant assign setter: ${assignRightValue.valueName} to value ${leftName}`)
+    case "SwitchExpression":
+    case "BracketExpression":
+      throw new Error("TODO")
+    default:
+      const _never: never = assignRightValue
   }
 
 

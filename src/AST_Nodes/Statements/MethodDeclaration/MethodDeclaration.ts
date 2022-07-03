@@ -27,16 +27,15 @@ interface MethodDeclarationBase {
   expandableType: string
   returnType?: string
   bodyStatements: BodyStatements
+  name: string
 }
 
 export interface UnaryMethodDeclaration extends MethodDeclarationBase {
   methodKind: "UnaryMethodDeclaration"
-  name: string
 }
 
 export interface BinaryMethodDeclaration extends MethodDeclarationBase {
   methodKind: "BinaryMethodDeclaration"
-  binarySelector: string // +
   argument: Identifier // x::int
 }
 export interface BinaryMethodDeclarationArg{
@@ -51,6 +50,11 @@ export interface KeywordMethodDeclaration extends MethodDeclarationBase {
 
 export interface MethodDeclaration {
   kindStatement: "MethodDeclaration"
+  method: MethodDeclarationNode
+}
+
+export interface ConstructorDeclaration {
+  kindStatement: "ConstructorDeclaration"
   method: MethodDeclarationNode
 }
 

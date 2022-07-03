@@ -1,7 +1,7 @@
 type Passport number: int
 type Person name: string age: int passport: Passport
 
-Person sleepOneYearOfLife -> mut = self age: self age + 1
+Person sleepOneYearOfLife -> void = self age: self age + 1
 
 passport = Passport number: 1234
 person = Person name: "Bob" age: 10 passport: passport

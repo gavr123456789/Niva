@@ -34,7 +34,7 @@ export function generateMessageCalls(messageCalls:  MessageCall[], indentation: 
 
 			case 'keyword':
 				const {arguments: keywordArguments} = messageCall;
-				const keywordMessageCall = generateKeywordCall(messageCall.name, keywordArguments, indentation);
+				const keywordMessageCall = generateKeywordCall(messageCall.name, keywordArguments, messageCall.name, indentation);
 				messageLine.push(keywordMessageCall);
 				break;
 			default:

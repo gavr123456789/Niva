@@ -1,43 +1,103 @@
 import {StatementList} from "../AST_Nodes/AstNode"
-import {KeywordMethodArgument, MethodDeclaration} from "../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration"
+import {
+  BinaryMethodDeclaration,
+  ConstructorDeclaration,
+  KeywordMethodArgument, KeywordMethodDeclaration,
+  MethodDeclaration,
+  UnaryMethodDeclaration
+} from "../AST_Nodes/Statements/MethodDeclaration/MethodDeclaration"
 import {Statement} from "../AST_Nodes/Statements/Statement"
 import {codeDB} from "../niva"
 import {generateNimFromAst} from "./codeGenerator"
 
 
-export function generateMethodDeclaration(methodDec: MethodDeclaration, identation: number): string {
+interface CustomMethodParameters {
+  customName?: string,
+
+}
+
+function generateUnary(
+  m: UnaryMethodDeclaration,
+  unaryName: string,
+  ident: string,
+  procOrTemplate: "proc" | "template",
+  expandableType: string,
+  returnType: string,
+  methodBody: string,
+  isConstructorDeclaration: boolean
+): string {
+
+  const isSelfMutatingUnary: boolean = codeDB.hasMutateEffect(m.expandableType, m.name)
+  const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingUnary ? "var " : ""}${expandableType}`: ""
+  return `${ident}${procOrTemplate} ${unaryName}(${selfArg}): ${returnType} =\n${methodBody}`
+}
+
+function generateBinary(
+  ident: string,
+  name: string,
+  procOrTemplate: "proc" | "template",
+  m: BinaryMethodDeclaration,
+  isSelfMutatingBinary: boolean,
+  expandableType: string,
+  argumentType: string,
+  returnType: string,
+  methodBody: string
+): string {
+  return `${ident}${procOrTemplate} \`${name}\`(self: ${isSelfMutatingBinary ? "var " : ""}${expandableType}, ${m.argument.value}: ${argumentType}): ${returnType} =\n${methodBody}`
+}
+
+function generateKeyword(
+  m: KeywordMethodDeclaration,
+  keywordProcName: string,
+  expandableType: string,
+  ident: string,
+  procOrTemplate: "proc" | "template",
+  returnType: string,
+  methodBody: string,
+  isConstructorDeclaration: boolean
+): string {
+  const keyArgs = m.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
+
+  const isSelfMutatingKeyword: boolean = codeDB.hasMutateEffect(m.expandableType, keywordProcName)
+  // constructor doesn't need a self
+  const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingKeyword ? "var " : ""}${expandableType}, `: ""
+  const args = `${selfArg}${keyArgs}`
+  return `${ident}${procOrTemplate} ${keywordProcName}(${args}): ${returnType} =\n${methodBody}`
+}
+
+function getConstructName(isConstructorDeclaration: boolean, name: string, expandableType: string): string {
+  return isConstructorDeclaration ? "construct_" + expandableType +"_" + name : name;
+}
+
+export function generateMethodDeclaration(methodDec: MethodDeclaration | ConstructorDeclaration, indentation: number): string {
   const {bodyStatements, expandableType, kind} = methodDec.method
   const {statements} = bodyStatements
   const {method: m} = methodDec
 
   const returnType = m.returnType ? m.returnType : "auto"
-  const methodBody = generateMethodBody(statements, identation + 2)
-  const ident = " ".repeat(identation)
+  const methodBody = generateMethodBody(statements, indentation + 2)
+  const ident = " ".repeat(indentation)
 
   const procOrTemplate = kind
 
-
+  const isConstructorDeclaration = methodDec.kindStatement === "ConstructorDeclaration"
   // TODO refactor
   switch (m.methodKind) {
     case "UnaryMethodDeclaration":
-      const isSelfMutatingUnary: boolean = codeDB.hasMutateEffect(m.expandableType, m.name)
-      return `${ident}${procOrTemplate} ${m.name}(self: ${isSelfMutatingUnary ? "var " : ""}${expandableType}): ${returnType} =\n${methodBody}`
+      const unaryName = getConstructName(isConstructorDeclaration, m.name, expandableType)
+      return generateUnary(m, unaryName, ident, procOrTemplate, expandableType, returnType, methodBody, isConstructorDeclaration);
 
     case "BinaryMethodDeclaration":
       const argumentType = m.argument.type ?? "auto"
-      const isSelfMutatingBinary: boolean = codeDB.hasMutateEffect(m.expandableType, m.binarySelector)
+      const isSelfMutatingBinary: boolean = codeDB.hasMutateEffect(m.expandableType, m.name)
+      const binaryName = getConstructName(isConstructorDeclaration, m.name, expandableType)
 
-      return `${ident}${procOrTemplate} \`${m.binarySelector}\`(self: ${isSelfMutatingBinary ? "var " : ""}${expandableType}, ${m.argument.value}: ${argumentType}): ${returnType} =\n${methodBody}`
+      return generateBinary(ident, binaryName,procOrTemplate, m, isSelfMutatingBinary, expandableType, argumentType, returnType, methodBody);
 
     case "KeywordMethodDeclaration":
-      const keyArgs = m.keyValueNames.map(y => generateKeywordMethodArg(y)).join(", ")
       // from_to
-
-      const keywordProcName = m.keyValueNames.map(y => y.keyName).join("_")
-      const isSelfMutatingKeyword: boolean = codeDB.hasMutateEffect(m.expandableType, keywordProcName)
-
-      const args = `self: ${isSelfMutatingKeyword ? "var " : ""}${expandableType}, ${keyArgs}`
-      return `${ident}${procOrTemplate} ${keywordProcName}(${args}): ${returnType} =\n${methodBody}`
+      const keywordProcName = getConstructName(isConstructorDeclaration, m.name, expandableType)
+      return generateKeyword(m, keywordProcName, expandableType, ident, procOrTemplate, returnType, methodBody, isConstructorDeclaration);
 
 
     default:
@@ -58,12 +118,12 @@ function generateMethodBody(statements: Statement[], identation: number): string
 }
 
 
-function generateKeywordMethodArg(x: KeywordMethodArgument): string {
-  if (x.identifier.type) {
+function generateKeywordMethodArg(keywordMethodArgument: KeywordMethodArgument): string {
+  if (keywordMethodArgument.identifier.type) {
     // const getter = generateGetter(x.identifier.value, x.identifier.type)
-    return `${x.identifier.value}: ${x.identifier.type}`
+    return `${keywordMethodArgument.identifier.value}: ${keywordMethodArgument.identifier.type}`
   } else {
-    return `${x.identifier.value}: auto`
+    return `${keywordMethodArgument.identifier.value}: auto`
   }
 }
 

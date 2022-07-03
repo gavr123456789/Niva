@@ -46,7 +46,11 @@ export function unaryMethodDeclaration(
     const lastBodyStatement = bodyStatements.statements.at(-1)
     if (lastBodyStatement){
       returnType = getStatementType(lastBodyStatement);
-      console.log("inferred return type of ", selectorName, " is ", returnType)
+      if (!returnType){
+        console.log("inferred return type of ", selectorName, " is auto")
+      } else {
+        console.log("inferred return type of ", selectorName, " is ", returnType)
+      }
       codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMethodInfo(returnType))
     }
   }

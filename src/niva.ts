@@ -1,7 +1,7 @@
 
 import { TerminalNode } from 'ohm-js';
 import { ASTNode, StatementList } from './AST_Nodes/AstNode';
-import { MessageCallExpression } from './AST_Nodes/Statements/Expressions/Expressions';
+import {Constructor, MessageCallExpression} from './AST_Nodes/Statements/Expressions/Expressions';
 import { Assignment } from './AST_Nodes/Statements/Statement';
 import { CodeDB, MethodKinds } from './CodeDB/codeDB';
 import { generateNimFromAst } from './CodeGenerator/codeGenerator';
@@ -34,6 +34,7 @@ import { unaryMethodDeclaration } from './Parsing/Statements/MethodDeclaration/u
 import { returnStatement } from './Parsing/Statements/return';
 import { statement, statements, switchStatement } from './Parsing/Statements/statements';
 import { typeDeclaration, typedProperties, typedProperty } from './Parsing/Statements/typeDeclaration';
+import {ConstructorDeclaration, MethodDeclaration} from "./AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 
 
 export interface ContextInformation {
@@ -126,8 +127,15 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		/// METHOD DECLARATION
 
 		// Unary
-		methodDeclaration(_dash: TerminalNode, _s, oneOfTheMessagesType) {
+		methodDeclaration(_dash: TerminalNode, _s, oneOfTheMessagesType): MethodDeclaration {
 			return oneOfTheMessagesType.toAst();
+		},
+		constructorDeclaration(_c: TerminalNode, _s, oneOfTheMessagesType): ConstructorDeclaration {
+			const messageDeclaration: MethodDeclaration = oneOfTheMessagesType.toAst();
+			return {
+				kindStatement: "ConstructorDeclaration",
+				method: messageDeclaration.method
+			}
 		},
 		unaryMethodDeclaration,
 
@@ -212,7 +220,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
-console.log(JSON.stringify(generateNimCode('int sas = [ x echo ].\nint sus = [ x echo ].'), undefined, 2) );
+// console.log(JSON.stringify(generateNimCode('int sas = [ x echo ].\nint sus = [ x echo ].'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 from: 2 to: 3'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );

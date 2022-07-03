@@ -10,6 +10,7 @@ Niva {
     | returnStatement  -- returnStatement
     | typeDeclaration -- typeDeclarationStatement
     | methodDeclaration -- methodDeclarationStatement
+    | constructorDeclaration
     | assignment -- assignmentStatement
     | switchStatement -- switchStatement
   	| expression  -- expressionStatement
@@ -37,7 +38,10 @@ Niva {
     | binaryMethodDeclaration
     | unaryMethodDeclaration )
 
-
+  constructorDeclaration = "construct" spaces
+  	(keywordMethodDeclaration
+    | binaryMethodDeclaration
+    | unaryMethodDeclaration )
 
   comma = ","? spaces
   keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
@@ -253,7 +257,7 @@ Niva {
 
   // CONST
   reservedWord = keyword | nullLiteral | boolLiteral
-  keyword = "type" | "fun"
+  keyword = "type" | "fun" | "construct"
   separator = (comment | space)*
 
   // for binary messages

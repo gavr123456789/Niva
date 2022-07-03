@@ -1,25 +1,22 @@
-import { IntLiteral } from "./Expressions/Receiver/Primary/Literals/IntLiteralNode"
-import { StringLiteral } from "./Expressions/Receiver/Primary/Literals/StringLiteralNode"
-import { BracketExpression, Expression, MessageCallExpression, SwitchStatement } from "./Expressions/Expressions"
-import { TypeDeclaration } from "./TypeDeclaration/TypeDeclaration"
-import { MethodDeclaration } from "./MethodDeclaration/MethodDeclaration"
-import { Receiver } from "./Expressions/Receiver/Receiver"
+import {Expression, SwitchStatement} from "./Expressions/Expressions"
+import {TypeDeclaration} from "./TypeDeclaration/TypeDeclaration"
+import {ConstructorDeclaration, MethodDeclaration} from "./MethodDeclaration/MethodDeclaration"
 
 //TODO move
 export interface BodyStatements {
   statements: Statement[]
 }
 
-export type Statement = 
+export type Statement =
   | Expression
   // | MessageCallExpression 
   // | BracketExpression
-  | ReturnStatement 
+  | ReturnStatement
   | Assignment
   | TypeDeclaration
   | MethodDeclaration
+  | ConstructorDeclaration
   | SwitchStatement
-
 
 
 export interface Assignment {
@@ -27,7 +24,7 @@ export interface Assignment {
   assignmentTarget: string
   type?: string
   to: Expression // | BoolLiteralNode
-  mutability: Mutability 
+  mutability: Mutability
 
   messagelineAndColumnMessage: string,
   sourceCode: string

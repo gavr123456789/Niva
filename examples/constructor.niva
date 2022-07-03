@@ -1,0 +1,9 @@
+type Person name: string
+construct Person bob = Person name: "Bob"
+construct Person fromName: name = Person name: name
+y = Person bob
+x = Person fromName: "qwe"
+
+y name echo
+x name echo
+//x = Person bob
