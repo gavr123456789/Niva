@@ -1,5 +1,2 @@
-fun string concat: another::string extra: extra::string -> string = self & another & extra
-concat = "abc" plus: "xyz" extra: "sas"
-concat echo
-
-
+x = 7.9
+x echo

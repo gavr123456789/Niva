@@ -185,7 +185,7 @@ Niva {
     | anyLiteral
 
   anyLiteral
-    = (stringLiteral | integerLiteral | boolLiteral)
+    = (stringLiteral | decimalLiteral | integerLiteral | boolLiteral)
 
     //
   listLiteral =
@@ -216,6 +216,9 @@ Niva {
   // IntegerLiteral
   integerLiteral = nonZeroDigit decimalDigit*  -- nonZero
                         | "0"                         -- zero
+
+  decimalLiteral = integerLiteral "." decimalDigit+
+
   decimalDigit = "0".."9"
   nonZeroDigit = "1".."9"
 

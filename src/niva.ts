@@ -16,7 +16,7 @@ import { primary, receiver, receiver_expressionInBrackets } from './Parsing/Expr
 import { messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/unaryCall';
 import { switchBranch, switchBranchElseStatement, switchExpression } from './Parsing/Expression/Switch/switchExpression';
 import {unaryTypedIdentifier, untypedIdentifier} from './Parsing/identifiers';
-import { anyLiteral, boolLiteral, integerLiteral, stringLiteral } from './Parsing/literals';
+import {anyLiteral, boolLiteral, decimalLiteral, integerLiteral, stringLiteral} from './Parsing/literals';
 import { assignment } from './Parsing/Statements/assignment';
 import { binaryMethodDeclaration, binaryMethodDeclarationArg } from './Parsing/Statements/MethodDeclaration/binary';
 import { methodBody, methodBodyFull, methodBodyShort } from './Parsing/Statements/MethodDeclaration/body';
@@ -120,7 +120,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 
 	semantics.addOperation<string | ASTNode | MessageCallExpression>('toAst()', {
 		statements,
-
 		statement,
 		messageCall,
 
@@ -204,7 +203,9 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		anyLiteral,
 		stringLiteral,
 		integerLiteral,
-		boolLiteral
+		decimalLiteral,
+		boolLiteral,
+
 
 	});
 
