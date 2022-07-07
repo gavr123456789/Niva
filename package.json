@@ -1,6 +1,6 @@
 {
-  "name": "ohm",
-  "version": "1.0.0",
+  "name": "niva",
+  "version": "0.0.1",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {

@@ -1,0 +1,9 @@
+// no local names
+int foo::int bar::int =
+  self + foo + bar
+
+x = 1 foo: 2*2 bar: 2+2
+x echo
+
+
+

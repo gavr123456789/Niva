@@ -69,7 +69,6 @@ export function generateKeywordCall(
 
   // generateArgs должна возвращать массив аргументов с вызовами у них унарных и бинарных функций
   const lastKeyWordArgBody = fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, identation);
-
   const argumentsSeparatedByComma = argsValuesCode.join(", ")
 
   if (!lastKeyWordArgBody) {
@@ -96,8 +95,13 @@ export function generateKeywordCall(
 
 }
 
+// цель заполнить массив аргументов кодом для вычисления каждого аргумента
 export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[], args: string[], indentation: number): string | undefined {
   const keyWordArgsCount = keyWordArgs.length
+  if(keyWordArgsCount === 0) {
+    throw new Error("keyWordArgsCount cant be 0")
+  }
+
   let lastKeyWordArgBody: undefined | string = undefined
   keyWordArgs.forEach((kwArg, i) => {
     switch (kwArg.receiver.kindStatement) {
@@ -113,18 +117,30 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
       // do: [...]
       case "BlockConstructor":
         if (i !== keyWordArgsCount - 1) {
-          throw new Error(`BlockConstructor as not last argument(arg# ${i + 1}, and the last is ${keyWordArgsCount})`);
+          throw new Error(`BlockConstructor cant be not last argument(arg# ${i + 1}, and the last is ${keyWordArgsCount})`);
         }
 
         const statementList: StatementList = {
           kind: "StatementList",
           statements: kwArg.receiver.statements
         };
-        lastKeyWordArgBody = generateNimFromAst(statementList, indentation + 2);
+
+        // проверить последний ли текущий аргумент, если да то присвоить
+        const sas = generateNimFromAst(statementList, indentation + 2);
+        const isLastArg = i === keyWordArgsCount - 1
+        if (isLastArg){
+          lastKeyWordArgBody = sas
+        }
+        args.push(sas)
         break;
       //key: (...)
       case "BracketExpression":
-        lastKeyWordArgBody = processExpression(kwArg.receiver, indentation)
+        const sus = processExpression(kwArg.receiver, indentation)
+        if (!sus) {
+          throw new Error(`error while process BracketExpression as KeywordMessageArgument: ${kwArg.keyName}`)
+        }
+        console.log("Keyword bracket expression: ", sus)
+        args.push(sus)
         break;
 
       default:
@@ -133,6 +149,10 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
     }
 
   });
+
+  if (args.length === 0){
+    throw new Error(`cant fill arguments of ${keyWordArgs.map(x => x.keyName)}`)
+  }
   return lastKeyWordArgBody;
 }
 

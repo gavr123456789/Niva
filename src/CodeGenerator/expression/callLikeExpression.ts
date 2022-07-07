@@ -40,8 +40,8 @@ export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, pr
     : codeDB.getValueType(unaryMessage.insideMethod, valueName)
 
   if (!receiverType) {
-    console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
-    console.log("receiverType = ", receiverType)
+    // console.log("false1 state.insideMessage = ", unaryMessage.insideMethod, " valueName = ", valueName, " fieldName = ", fieldName)
+    // console.log("receiverType = ", receiverType)
     return false
   }
   const typeOfField = codeDB.getFieldType(receiverType, fieldName)

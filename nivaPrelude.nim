@@ -79,8 +79,8 @@ template add*(self: int, arg: int) =
 template print*(s: string) =
   stdout.write(s)
 
-### toString 
-template toString*(self: auto): string =
+### toStr
+template toStr*(self: auto): string =
   self.`$`()
 ###
 

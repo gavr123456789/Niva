@@ -5,6 +5,12 @@ emptyWallet = Wallet empty
 emptyWallet money echo
 
 type Person name: string wallet: Wallet
+type Personn name: string age: int
+sas = Personn name: (24 + 42) toStr toStr age: 23 + 23
+sas age echo
+//construct Person name: name = Person name: name wallet: Wallet empty
+//person = Person name: "Bob"
+
 
 
 

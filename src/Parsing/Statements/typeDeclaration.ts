@@ -3,8 +3,9 @@ import { TypeDeclaration, TypedProperty } from "../../AST_Nodes/Statements/TypeD
 import { ErrorInfo } from "../../Errors/Error";
 import { state, TypeField, codeDB } from "../../niva";
 
-export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untypedIdentifier: NonterminalNode, _s2: NonterminalNode, typedProperties: NonterminalNode): TypeDeclaration {
-  const typedPropertiesAst: TypedProperty[] = typedProperties.toAst();
+export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untypedIdentifier: NonterminalNode, _s2: NonterminalNode, typedProperties: IterationNode): TypeDeclaration {
+  const hasTypeProperties = typedProperties.children.at(0)
+  const typedPropertiesAst: TypedProperty[] = hasTypeProperties?.toAst() || [];
   const typeName = untypedIdentifier.sourceString
   const result: TypeDeclaration = {
     kindStatement: 'TypeDeclaration',

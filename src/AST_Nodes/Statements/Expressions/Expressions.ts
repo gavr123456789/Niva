@@ -23,7 +23,8 @@ export interface Constructor {
 
 	// Person name: "sas" age: 34
 	type: string
-	call: KeywordMessage,
+	// type can have zero fields
+	call?: KeywordMessage,
   kindStatement: "Constructor"
 }
 

@@ -1,6 +1,6 @@
 import {Statement} from "../../AST_Nodes/Statements/Statement";
 
-export function getStatementType(lastBodyStatement: Statement): string | undefined {
+export function inferStatementType(lastBodyStatement: Statement): string | undefined {
   switch (lastBodyStatement.kindStatement) {
     case "ReturnStatement":
 

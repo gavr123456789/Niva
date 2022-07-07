@@ -177,17 +177,23 @@ export class CodeDB {
 
 
   private addDefaultType(name: string) {
-    const intFields = new Map<string, TypeField>()
-    intFields.set("value", {type: name})
-    this.typeNameToInfo.set(name, new TypeInfo(intFields))
+    if (this.typeNameToInfo.has(name)){
+      throw new Error(`Type ${name} already added`)
+    }
+    const fields = new Map<string, TypeField>()
+    fields.set("value", {type: name})
+    this.typeNameToInfo.set(name, new TypeInfo(fields))
   }
 
   constructor() {
     // add default types and functions
     this.addDefaultType("__global__")
     this.addDefaultType("int")
+    this.addDefaultType("auto")
+    this.addUnaryMessageForType("auto", "echo", newUnaryMethodInfo("void"))
+
     // int unary
-    this.addUnaryMessageForType("int", "toString", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("int", "toStr", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("int", "echo", newUnaryMethodInfo("void"))
     // int binary
     this.addBinaryMessageForType("int", "+", newBinaryMethodInfo("int"))
@@ -202,6 +208,20 @@ export class CodeDB {
     this.addKeywordMessageForType("int", "add", newKeywordMethodInfo("void"))
     this.addKeywordMessageForType("int", "mod", newKeywordMethodInfo("int"))
 
+    // float
+    this.addDefaultType("float")
+    // float unary
+    this.addUnaryMessageForType("float", "toStr", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("float", "echo", newUnaryMethodInfo("void"))
+    // float binary
+    this.addBinaryMessageForType("float", "+", newBinaryMethodInfo("float"))
+    this.addBinaryMessageForType("float", "-", newBinaryMethodInfo("float"))
+    this.addBinaryMessageForType("float", "*", newBinaryMethodInfo("float"))
+    this.addBinaryMessageForType("float", "/", newBinaryMethodInfo("float"))
+    this.addBinaryMessageForType("float", ">", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("float", "<", newBinaryMethodInfo("bool"))
+    this.addBinaryMessageForType("float", "==", newBinaryMethodInfo("bool"))
+    //uint
 
     this.addDefaultType("uint")
 
@@ -209,7 +229,7 @@ export class CodeDB {
     // string unary
     this.addUnaryMessageForType("string", "echo", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("string", "print", newUnaryMethodInfo("void"))
-    this.addUnaryMessageForType("string", "toString", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("string", "toStr", newUnaryMethodInfo("string"))
     // string binary
     this.addBinaryMessageForType("string", "==", newBinaryMethodInfo("bool"))
     this.addBinaryMessageForType("string", "!=", newBinaryMethodInfo("bool"))
@@ -218,7 +238,7 @@ export class CodeDB {
 
     this.addDefaultType("bool")
     // bool unary
-    this.addUnaryMessageForType("bool", "toString", newUnaryMethodInfo("string"))
+    this.addUnaryMessageForType("bool", "toStr", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("bool", "echo", newUnaryMethodInfo("void"))
     // bool binary
     this.addBinaryMessageForType("bool", "==", newBinaryMethodInfo("bool"))
@@ -226,7 +246,6 @@ export class CodeDB {
     this.addBinaryMessageForType("bool", "||", newBinaryMethodInfo("bool"))
     this.addBinaryMessageForType("bool", "&&", newBinaryMethodInfo("bool"))
 
-    this.addDefaultType("float")
   }
 
   addNewType(typeName: string, fields: Map<string, TypeField>) {
@@ -350,8 +369,8 @@ export class CodeDB {
       case "unary":
         const unaryMethod = type.unaryMessages.get(methodName)
         if (!unaryMethod) {
-          console.log(`all known unaryMessages of type:  `, typeName," = ", type.unaryMessages)
-          throw new Error(`no such unary method: ${methodName} `)
+          console.log(`all known unaryMessages of type: `, typeName," = ", type.unaryMessages)
+          throw new Error(`no such unary method: ${methodName} for type ${typeName}`)
         }
         if (unaryMethod.returnType === "auto") {
           throw new Error(`Return type of: ${methodName}, is auto`)
@@ -369,13 +388,13 @@ export class CodeDB {
         return binaryMethod.returnType
       case "keyword":
         const keywordMethod = type.keywordMessages.get(methodName)
-        if (!keywordMethod) {
-          throw new Error(`no such unary method: ${methodName}, all known methods: ${type.keywordMessages}`)
-        }
-        if (keywordMethod.returnType === "auto") {
-          throw new Error(`Return type of: ${methodName}, is auto`)
-        }
-        return keywordMethod.returnType
+        // if (!keywordMethod) {
+        //   throw new Error(`no such unary method: ${methodName}, all known methods: ${type.keywordMessages}`)
+        // }
+        // if (keywordMethod.returnType === "auto") {
+        //   throw new Error(`Return type of: ${methodName}, is auto`)
+        // }
+        return keywordMethod?.returnType ?? "auto"
 
         case "__global__":
           throw new Error("TODO global");

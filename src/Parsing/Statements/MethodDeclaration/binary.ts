@@ -4,7 +4,7 @@ import { BinaryMethodDeclaration, BinaryMethodDeclarationArg, MethodDeclaration 
 import { BodyStatements } from "../../../AST_Nodes/Statements/Statement";
 import { newBinaryMethodInfo } from "../../../CodeDB/types";
 import { codeDB, state } from "../../../niva";
-import {getStatementType} from "../../../CodeDB/InferTypes/getStatementType";
+import {inferStatementType} from "../../../CodeDB/InferTypes/inferStatementType";
 
 export function binaryMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -46,7 +46,7 @@ export function binaryMethodDeclaration(
   if (!returnType){
     const lastBodyStatement = bodyStatements.statements.at(-1)
     if (lastBodyStatement){
-      returnType = getStatementType(lastBodyStatement);
+      returnType = inferStatementType(lastBodyStatement);
       if (!returnType){
         console.log("inferred return type of ", selectorName, " is auto")
 
