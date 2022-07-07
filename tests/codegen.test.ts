@@ -41,10 +41,10 @@ test('Expressions Unary messages', t => {
 });
 
 test('Expressions Unary messages two times', t => {
-  const code = '42 toString toString'
+  const code = '42 toStr toStr'
   const [_,nimCode] = generateNimCode(code)
 
-  t.is("42.`toString`().`toString`()", nimCode)
+  t.is("42.`toStr`().`toStr`()", nimCode)
 });
 
 // Binary
@@ -74,23 +74,23 @@ test('Expressions Keyword messages', t => {
 
 // Combined 
 test('Expressions Unary with Binary', t => {
-  const code = '1 toString & 2 toString'
+  const code = '1 toStr & 2 toStr'
   const [_s, nimCode] = generateNimCode(code)
-  t.is("1.`toString`().`&`(2.`toString`())", nimCode)
+  t.is("1.`toStr`().`&`(2.`toStr`())", nimCode)
 });
 
 test('Expressions two Unary with Binary', t => {
-  const code = '1 toString & 2 toString.\n1 toString & 2 toString.'
+  const code = '1 toStr & 2 toStr.\n1 toStr & 2 toStr.'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.`toString`().`&`(2.`toString`())\n1.`toString`().`&`(2.`toString`())", nimCode)
+  t.is("1.`toStr`().`&`(2.`toStr`())\n1.`toStr`().`&`(2.`toStr`())", nimCode)
 });
 
 test('Expressions Unary with Binary many', t => {
-  const code = `1 toString & 2 toString toString toString`
+  const code = `1 toStr & 2 toStr toStr toStr`
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("1.`toString`().`&`(2.`toString`().`toString`().`toString`())", nimCode)
+  t.is("1.`toStr`().`&`(2.`toStr`().`toStr`().`toStr`())", nimCode)
 });
 
 // TYPE DECLARATION
@@ -113,17 +113,17 @@ test('two Type Declaration', t => {
 // MESSAGE DECLARATION
 // unary
 test('Method Declaration Unary no retrun type', t => {
-  const code = '-Person sas = [ x echo ]' 
+  const code = 'int sas = [ self echo ]'
   const [_s, nimCode] = generateNimCode(code)
   
-  t.is("proc sas(self: Person): auto =\n  x.`echo`()", nimCode)
+  t.is("proc sas(self: int): void =\n  self.`echo`()", nimCode)
 });
 
 test('two Method Declaration Unary', t => {
-  const code = 'int sas = [ x echo ].\nint sus = [ x echo ].'
+  const code = 'int sas = [ self echo ].\nint sus = [ self echo ].'
   const [_s, nimCode] = generateNimCode(code)
   
-  t.is("proc sas(self: int): auto =\n  x.`echo`()\nproc sus(self: int): auto =\n  x.`echo`()", nimCode)
+  t.is("proc sas(self: int): void =\n  self.`echo`()\nproc sus(self: int): void =\n  self.`echo`()", nimCode)
 });
 
 test('Method Declaration Unary with retrun type', t => {
@@ -150,17 +150,17 @@ test('Method Declaration Binary untyped', t => {
 
 // Keyword
 test('Method Declaration Keyword typed', t => {
-  const code = '-Person from: x::int to: y::int -> void = [ x echo ]' 
+  const code = 'int from: x::int to: y::int -> void = [ x echo ]'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc from_to(self: Person, x: int, y: int): void =\n  x.`echo`()", nimCode)
+  t.is("proc from_to(self: int, x: int, y: int): void =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Keyword untyped', t => {
-  const code = '-Person from: x to: y = [ x echo ]' 
+  const code = 'int from: x to: y = [ 1 echo ]'
   const [_, nimCode] = generateNimCode(code)
 
-  t.is("proc from_to(self: Person, x: auto, y: auto): auto =\n  x.`echo`()", nimCode)
+  t.is("proc from_to(self: int, x: auto, y: auto): void =\n  1.`echo`()", nimCode)
 });
 
 // Brackets
@@ -223,7 +223,7 @@ test('to:do: loop', t => {
 square = 1. increment = 3. door = 0.
 
 1 to: 100 do: [
-  ("door №" & it toString) echo
+  ("door №" & it toStr) echo
   | it == square =>
     [
       square    add: increment.
@@ -237,7 +237,7 @@ square = 1. increment = 3. door = 0.
 var increment: int = 3
 var door: int = 0
 1.to_do(100):
-  ("door №".\`&\`(it.\`toString\`())).\`echo\`()
+  ("door №".\`&\`(it.\`toStr\`())).\`echo\`()
   if it.\`==\`(square):
     square.add(increment)
     increment.add(2)

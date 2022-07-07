@@ -15,7 +15,8 @@ export function generateSwitchStatement(s: SwitchStatement, identation: number) 
 	if (
 		receiver.atomReceiver.kindPrimary === 'bool' ||
 		receiver.atomReceiver.kindPrimary === 'int' ||
-		receiver.atomReceiver.kindPrimary === 'string'
+		receiver.atomReceiver.kindPrimary === 'string' ||
+		receiver.atomReceiver.kindPrimary === 'float'
 	) {
 		throw new Error('Receiver of switch statement must be identifier, not literal');
 	}

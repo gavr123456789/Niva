@@ -206,7 +206,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		decimalLiteral,
 		boolLiteral,
 
-
 	});
 
 	const matchResult = grammar.match(code);

@@ -20,7 +20,7 @@ Niva {
 
 
   // TYPE DECLARATION
-	typeDeclaration = "type" spaces untypedIdentifier spaces typedProperties
+	typeDeclaration = "type" spaces untypedIdentifier (spaces typedProperties)?
     typedProperties = typedProperty (spaces typedProperty)*
     typedProperty =
 	  untypedIdentifier ":" spaces (untypedIdentifier | nestedType)

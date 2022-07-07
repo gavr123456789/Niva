@@ -4,8 +4,12 @@ import {fillKeywordArgsAndReturnStatements} from "./messageCalls";
 
 export function generateConstructor(c: Constructor, indentation: number): string {
   const indent = " ".repeat(indentation)
-  const keyWordArgs = c.call.arguments
+  const keyWordArgs = c.call?.arguments ?? []
   const argsValuesCode: string[] = []
+
+  if (keyWordArgs.length === 0) {
+    return `${indent}${c.type}()`
+  }
 
   fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
   // const typeName = receiver.atomReceiver.value;
@@ -16,6 +20,7 @@ export function generateConstructor(c: Constructor, indentation: number): string
     return x.keyName + ": " + argsValuesCode[i];
   }).join(", ");
 
+  console.log("argNameColonArgVal = ", argNameColonArgVal)
   const code = `${indent}${c.type}(${argNameColonArgVal})`;
   return code;
 }

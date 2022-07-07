@@ -1,4 +1,7 @@
-int /++/ x::int -> string = self toString & x toString.
 
-x = 5 /++/ 3.
+
+
+int /++/ x = self toStr & x toStr.
+
+x = (5 * 3) /++/ (3 + (3 - 4)) .
 x echo

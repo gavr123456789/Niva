@@ -6,7 +6,7 @@ import {
 import {BodyStatements} from "../../../AST_Nodes/Statements/Statement";
 import {newBinaryMethodInfo, newUnaryMethodInfo} from "../../../CodeDB/types";
 import {codeDB, state} from "../../../niva";
-import {getStatementType} from "../../../CodeDB/InferTypes/getStatementType";
+import {inferStatementType} from "../../../CodeDB/InferTypes/inferStatementType";
 
 export function unaryMethodDeclaration(
   untypedIdentifier: NonterminalNode,
@@ -20,7 +20,7 @@ export function unaryMethodDeclaration(
   methodBody: NonterminalNode
 ): MethodDeclaration {
   // -Person sas = []
-
+  const isProc = _eq.sourceString === "="
   const extendableType = untypedIdentifier.sourceString
   const selectorName = unarySelector.sourceString
   state.enterMethodScope({
@@ -28,7 +28,7 @@ export function unaryMethodDeclaration(
     kind: "unary",
     withName: selectorName
   })
-  let returnType = returnTypeDeclaration.children.at(0)?.toAst()
+  let returnType: string | undefined = returnTypeDeclaration.children.at(0)?.toAst()
 
 
   codeDB.addUnaryMessageForType(extendableType, selectorName, newUnaryMethodInfo(returnType || "auto"))
@@ -37,17 +37,16 @@ export function unaryMethodDeclaration(
 
   const bodyStatements: BodyStatements = methodBody.toAst();
 
-  const isProc = _eq.sourceString === "="
-
 
 
   // Infer return type
   if (!returnType){
     const lastBodyStatement = bodyStatements.statements.at(-1)
     if (lastBodyStatement){
-      returnType = getStatementType(lastBodyStatement);
+      returnType = inferStatementType(lastBodyStatement);
       if (!returnType){
         console.log("inferred return type of ", selectorName, " is auto")
+        throw new Error(`cant infer return type of ${selectorName}`)
       } else {
         console.log("inferred return type of ", selectorName, " is ", returnType)
       }
