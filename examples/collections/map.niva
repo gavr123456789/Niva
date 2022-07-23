@@ -1,0 +1,22 @@
+
+x = #{"sas" 1, "sus" 2}
+x at: "ses" put: 3
+x echo
+
+(x at: "sas") echo
+(x at: "sos" or: 4) echo
+
+x has: "sos" orDo: [
+  "There no sos key" echo
+]
+
+x has: "sos" orDo: [
+  x at: "sos" put: 4
+]
+x echo
+
+x foreach: [
+  key echo
+  value echo
+]
+

@@ -3,7 +3,7 @@ import {IntLiteral} from "./IntLiteralNode";
 import {StringLiteral} from "./StringLiteralNode";
 import {DecimalLiteral} from "./DecimalLiteral";
 
-export type AnyLiteral =
+export type SimpleLiteral =
   | StringLiteral
   | IntLiteral
   | BoolLiteral

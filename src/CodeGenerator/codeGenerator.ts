@@ -15,6 +15,7 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
   let lines: string[] = [];
   if (includePrelude) {
     lines.push(`import "nivaPrelude"`)
+    // lines.push(`import "std/tables"`)
   }
 
   if (discardable) {

@@ -1,11 +1,22 @@
 
-x = 10 - (2 * 2)
-x echo
+//// declaration
+//type Person name: string age: int
+//// construction
+//person = Person name: "Bob" age: 42
+//// get fields
+//person name echo
+//person age echo
+//// set fields
+//person age: 23
 
-//int replaceWithOne = 1
 
-//int sas::int sus::int =
-//  self + sas + sus
 
-//x = 7 sas: 2 replaceWithOne + 2 replaceWithOne sus: 3 replaceWithOne + 3 replaceWithOne
-//x echo
+type Person name: string age: int
+type Wallet money: int
+
+// bad
+//Wallet person::Person = person name: "new Name"
+// good
+Person renameTo: newName::string = self name: newName
+
+Wallet kek: person::Person = person renameTo: "new Name"

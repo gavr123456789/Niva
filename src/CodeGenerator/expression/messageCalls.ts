@@ -1,10 +1,9 @@
 import {StatementList} from "../../AST_Nodes/AstNode";
-import {BracketExpression} from "../../AST_Nodes/Statements/Expressions/Expressions";
 import {BinaryArgument, KeywordArgument} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
-import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 import {generateNimFromAst} from "../codeGenerator";
 import {processExpression} from "./expression";
 import {checkForGetter} from "./callLikeExpression";
+import {processCollection} from "../collections";
 
 export function generateUnaryCall(unaryMessageName: string, isGetter: boolean): string {
   return !isGetter ?
@@ -29,6 +28,10 @@ export function generateBinaryCall(binaryMessageName: string, argument: BinaryAr
       const expressionInBracketsCode = processExpression(argument.value, 0)
       const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
       return codeWithArgumentInBrackets
+    case "ListLiteral":
+    case "MapLiteral":
+    case "SetLiteral":
+      return  processCollection(argument.value)
     default:
       const _never: never = argument.value
       throw new Error("Sound error")
@@ -75,10 +78,10 @@ export function generateKeywordCall(
     const keywordMessageCall = '.' + functionName + '(' + argumentsSeparatedByComma + ')'
     return keywordMessageCall
   } else {
-    // .sas:
-    //   blockOfCode
+    // one blockCode arg
     if (argsValuesCode.length === 1) {
-      const keywordMessageCall = `.${functionName}(${argsValuesCode[0]}):\n${lastKeyWordArgBody}`
+      
+      const keywordMessageCall = `.${functionName}():\n${lastKeyWordArgBody}`
       return keywordMessageCall
     }
     // .sas(1, 2):
@@ -135,12 +138,19 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
         break;
       //key: (...)
       case "BracketExpression":
-        const sus = processExpression(kwArg.receiver, indentation)
-        if (!sus) {
+        const expression = processExpression(kwArg.receiver, indentation)
+        if (!expression) {
           throw new Error(`error while process BracketExpression as KeywordMessageArgument: ${kwArg.keyName}`)
         }
-        console.log("Keyword bracket expression: ", sus)
-        args.push(sus)
+        // console.log("Keyword bracket expression: ", expression)
+        args.push(expression)
+        break;
+      case "SetLiteral":
+      case "MapLiteral":
+      case "ListLiteral":
+        const collection = processCollection(kwArg.receiver)
+        // console.log("kewWord arg collection: ", collection)
+        args.push(collection)
         break;
 
       default:

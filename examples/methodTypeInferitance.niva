@@ -12,10 +12,11 @@ fun string + string::string = self & string // string
 
 fun Person itSelf = self // Person
 
-fun Person from: x::int = [
-	"hello world" echo.
+Person from: x::int = [
+  "hello world" echo
   1
-] // int
+]
+// int
 
 fun int % x = [
   self mod: x

@@ -190,7 +190,10 @@ export class CodeDB {
     this.addDefaultType("__global__")
     this.addDefaultType("int")
     this.addDefaultType("auto")
+    this.addDefaultType("void") // temp
     this.addUnaryMessageForType("auto", "echo", newUnaryMethodInfo("void"))
+    this.addUnaryMessageForType("void", "echo", newUnaryMethodInfo("void")) // temp
+    this.addUnaryMessageForType("auto", "toStr", newUnaryMethodInfo("void"))
 
     // int unary
     this.addUnaryMessageForType("int", "toStr", newUnaryMethodInfo("string"))
@@ -229,6 +232,7 @@ export class CodeDB {
     // string unary
     this.addUnaryMessageForType("string", "echo", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("string", "print", newUnaryMethodInfo("void"))
+    this.addUnaryMessageForType("string", "printnln", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("string", "toStr", newUnaryMethodInfo("string"))
     // string binary
     this.addBinaryMessageForType("string", "==", newBinaryMethodInfo("bool"))
@@ -379,8 +383,12 @@ export class CodeDB {
       case "binary":
         const binaryMethod = type.binaryMessages.get(methodName)
         if (!binaryMethod) {
-          console.log("all known types = ", type.binaryMessages)
-          throw new Error(`no such binary method: ${methodName}`)
+          // console.log("all known methods of type", typeName, " = ", type.binaryMessages)
+          if (typeName !== "auto") {
+            throw new Error(`no such binary method: ${methodName}`)
+          } else {
+            return "auto"
+          }
         }
         if (binaryMethod.returnType === "auto") {
           throw new Error(`Return type of: ${methodName}, is auto`)

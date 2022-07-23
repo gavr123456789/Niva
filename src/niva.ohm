@@ -114,9 +114,9 @@ Niva {
 
   receiver =
   	| primary
-    | listLiteral
     | "(" whiteSpaces expression whiteSpaces ")" -- expressionInBrackets
     | blockConstructor
+    | collectionLiteral
 
 
   expression = messageCall | switchExpression
@@ -182,26 +182,24 @@ Niva {
   // LITERALS
   primary =
     | identifier
-    | anyLiteral
+    | simpleLiteral
 
-  anyLiteral
+  simpleLiteral
     = (stringLiteral | decimalLiteral | integerLiteral | boolLiteral)
 
+
+
     //
-  listLiteral =
-  	| "{" spaces "}" -- emptyList
-    | "{" listElements "}" -- notEmptyList
-  listElements = primary whiteSpaces (","? spaces primary)*
+  collectionLiteral = listLiteral | mapLiteral | hashSetLiteral
 
-  mapLiteral =
-  	| "{" spaces "}" -- emptyMap
-    | "{" mapElements "}" -- notEmptyList
-  mapElements = mapElement (","? spaces mapElement)*
-  mapElement = ":"primary whiteSpaces primary
+  listLiteral = "{" listElements "}"
+  listElements = primary? whiteSpaces (","? spaces primary)*
 
-  hashSetLiteral =
-  	| "#{" spaces "}" -- emptyHashSet
-    | "#{" listElements "}" -- notEmptyHashSet
+  mapLiteral = "#{" mapElements "}"
+  mapElements = mapElement? (","? spaces mapElement)*
+  mapElement = primary whiteSpaces primary
+
+  hashSetLiteral =   "#(" listElements ")"
 
   //
 

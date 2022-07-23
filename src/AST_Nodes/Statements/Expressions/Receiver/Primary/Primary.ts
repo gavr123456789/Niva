@@ -1,9 +1,9 @@
 import { Identifier } from "./Identifier";
-import { AnyLiteral } from "./Literals/AnyLiteral";
+import { SimpleLiteral } from "./Literals/SimpleLiteral";
 
 
 export interface Primary {
   kindStatement: "Primary"
-  type?: string // TODO: add type
-  atomReceiver: AnyLiteral | Identifier
+  type?: string
+  atomReceiver: SimpleLiteral | Identifier
 }
