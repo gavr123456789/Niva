@@ -12,11 +12,21 @@ import { expressionList } from './Parsing/Expression/expression';
 import { binaryArgument, binaryMessage, binarySelector, messages_binaryFirst } from './Parsing/Expression/MessageCall/binary';
 import { keywordArgument, keywordM, keywordMessage, messages_keywordFirst } from './Parsing/Expression/MessageCall/keyword';
 import { messageCall } from './Parsing/Expression/MessageCall/messageCall';
-import { primary, receiver, receiver_expressionInBrackets } from './Parsing/Expression/MessageCall/receiver';
+import {primary, receiver_expressionInBrackets} from './Parsing/Expression/MessageCall/receiver';
 import { messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/unaryCall';
 import { switchBranch, switchBranchElseStatement, switchExpression } from './Parsing/Expression/Switch/switchExpression';
 import {unaryTypedIdentifier, untypedIdentifier} from './Parsing/identifiers';
-import {anyLiteral, boolLiteral, decimalLiteral, integerLiteral, stringLiteral} from './Parsing/literals';
+import {
+	simpleLiteral,
+	boolLiteral,
+	decimalLiteral,
+	integerLiteral,
+	stringLiteral,
+	listLiteral,
+	mapLiteral,
+	hashSetLiteral,
+	listElements, mapElements, mapElement
+} from './Parsing/literals';
 import { assignment } from './Parsing/Statements/assignment';
 import { binaryMethodDeclaration, binaryMethodDeclarationArg } from './Parsing/Statements/MethodDeclaration/binary';
 import { methodBody, methodBodyFull, methodBodyShort } from './Parsing/Statements/MethodDeclaration/body';
@@ -27,7 +37,6 @@ import {
 	keywordNoTypeWithLocalName,
 	keywordWithTypeNoLocalName,
 	keywordWithTypeWithLocalName,
-	localNameKeywordArg
 } from './Parsing/Statements/MethodDeclaration/keyword';
 import { returnTypeDeclaration } from './Parsing/Statements/MethodDeclaration/returnTypeDeclaration';
 import { unaryMethodDeclaration } from './Parsing/Statements/MethodDeclaration/unary';
@@ -192,15 +201,22 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		blockBody,
 
 		assignment,
-
-		receiver,
+		// receiver,
 
 		primary,
 
 		untypedIdentifier,
 		unaryTypedIdentifier,
 
-		anyLiteral,
+		simpleLiteral,
+		// collectionLiteral,
+		listLiteral,
+		mapLiteral,
+		mapElements,
+		mapElement,
+		hashSetLiteral,
+		listElements,
+
 		stringLiteral,
 		integerLiteral,
 		decimalLiteral,

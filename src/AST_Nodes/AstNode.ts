@@ -11,13 +11,15 @@ import {
   MethodDeclaration
 } from "./Statements/MethodDeclaration/MethodDeclaration"
 import {Identifier} from "./Statements/Expressions/Receiver/Primary/Identifier"
-import {AnyLiteral} from "./Statements/Expressions/Receiver/Primary/Literals/AnyLiteral"
+import {SimpleLiteral} from "./Statements/Expressions/Receiver/Primary/Literals/SimpleLiteral"
 import {CallLikeExpression} from "../CodeGenerator/expression/callLikeExpression";
+import {CollectionLiteral, KeyValue} from "./Statements/Expressions/Receiver/Primary/Literals/CollectionLiteral";
 
 export type ASTNode =
   | StatementList
   | Assignment
-  | AnyLiteral
+  | SimpleLiteral
+  | CollectionLiteral
   | ReturnStatement
   | MessageCall
   | MessageCall[]
@@ -40,6 +42,9 @@ export type ASTNode =
   | ElseBranch
   | KeywordArgument
   | CallLikeExpression
+  | Primary[]
+  | KeyValue[]
+  | KeyValue
 
 export interface StatementList {
   kind: "StatementList"

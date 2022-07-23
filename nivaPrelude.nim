@@ -1,5 +1,10 @@
 import sequtils
+import print
+import std/tables
 
+from std/strutils import join
+
+# proc echo* = print
 ### Distinct type
 # type Path = distinct string
 # var sas: Path = "sas".Path
@@ -8,29 +13,79 @@ import sequtils
 # var nums = @[1, 2, 3, 4]
 # nums.applyIt(it * 3)
 
+### toStr
+proc toStr*[T](x: seq[T]): string =
+  let a = x.join(", ")
+  return "{ " & a & " }"    
+    
+template toStr*(self: auto): string =
+  self.`$`()
 ###
-# template array at: index = array[index]
+
+### Tables
+template at_put*[K, V](self: var Table[K, V], key: K, value: V) =
+  self[key] = value
+
+# since there are no error handling, there will be only safe table methods
+template at_or*[K, V](self: var Table[K, V], key: K, defaultValue: V): V =
+  self.getOrDefault(key, defaultValue)
+
+proc makeDiscardable[T](a: T): T {.discardable, inline.} = a
+
+template at_orDo*[K, V](self: Table[K, V], key: K, doBlock: typed): auto =
+  # when declaredInScope(doBlock):
+    try:
+      self[key]
+    except KeyError:
+      doBlock
+  # else:
+  #   try:
+  #     var kek = self[key]
+  #     makeDiscardable kek
+  #   except KeyError:
+  #     var kek = doBlock
+  #     makeDiscardable kek
+
+template has_orDo*[K, V](self: Table[K, V], key: K, doBlock: typed): auto =
+  if not self.hasKey(key):
+    doBlock
+
+
+
+# var tabl = {"as": 2}.toTable
+# var zxc = tabl.at_orDo("sas"):
+#   44
+# echo(tabl)
+
+template at*[K, V](self: var Table[K, V], key: K): V =
+  self.getOrDefault(key)
+
+template foreach*[K, V](self: var Table[K, V], doBlock: untyped) =
+  for x, y in self:
+    var key {.inject.} = x
+    var value {.inject.} = y
+    doBlock
+
+
+### Arrays
+template foreach*[T](self: seq[T], doBlock: untyped) =
+  for i in self:
+    var it {.inject.} = i
+    doBlock
+
+template at*[T](self: var seq[T], index: int): T =
+  self[index]
+
+template at_put*[T](self: var seq[T], index: int, put: T): void =
+  self[index] = put
+
+# var collection = @[1,2,3]
+# collection.foreach:
+#   echo it
+
 ###
-### getter setters generation 
-# type Person = object 
-#   name: string
-#   age: int
 
-# template name(self: Person, value: string) =
-#   self.name = value
-###
-# type
-#   Comparable = concept x, y
-#     (x < y) is bool
 
-# type Sas = seq[Comparable]
-
-# proc qwe(x: Sas) =
-#   echo(x)
-
-# qwe(@[1, 2, 3])
-
-###
 
 template whileTrue*(self: bool, body: typed) =
   while self:
@@ -62,7 +117,6 @@ template timesRepeat*(self: int, z: bool, body: typed) =
 
 # может сделать дирти чтобы как бы переменные проникали
 template to_do*(self: int, to: int, doBlock: untyped) =
-  var b {.inject.}: int = 4
   for i in self..to:
     var it {.inject.} = i
     doBlock
@@ -75,14 +129,13 @@ template to_do*(self: int, to: int, doBlock: untyped) =
 template add*(self: int, arg: int) =
   self += arg
 ###
-### print - echo withoud newline
-template print*(s: string) =
+### printnln - echo without newline
+template printnln*(s: string) =
   stdout.write(s)
 
-### toStr
-template toStr*(self: auto): string =
-  self.`$`()
-###
+# template print*(s: untyped) =
+#   print(s)
+
 
 
 func to*(x, y: int): HSlice[system.int, system.int] =
@@ -92,34 +145,12 @@ func to*(x, y: int): HSlice[system.int, system.int] =
 template invert*(self: bool) =
   self = !self
 
-template `not`*(self: bool) =
-  self = !self
-
 template `&&`*(self: bool, value: bool): bool =
   self and value
 
 template `||`*(self: bool, value: bool): bool =
   self or value
-### send proc as value
-# proc zzz(self: int, bloc: proc(x: int): int) =
-#   for i in 1..self:
-#     bloc(1).echo()
-
-# 1.zzz(
-#   proc(x: int): int = 
-#     3)
-
-#### While Bench
-
-# template whileTrue(f: typed, body: typed) =
-#   while f:
-#     body
 
 
 
-# echo x
-#############################
-# while x > 0:
-#   x = x - 1
-  
-# echo(x)
+export tables

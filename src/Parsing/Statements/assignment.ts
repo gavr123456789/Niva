@@ -44,7 +44,7 @@ export function assignment(
         const typeOfLastMessageCall = assignRightValue.messageCalls.at(-1)?.type.name
         if (typeOfLastMessageCall) {
           codeDB.setTypedValueToMethodScope(state.insideMessage, leftName, typeOfLastMessageCall)
-          console.log("assignment set type for ", leftName, ": ", typeOfLastMessageCall)
+          // console.log("assignment set type for ", leftName, ": ", typeOfLastMessageCall)
           astAssign.type = typeOfLastMessageCall
         }
       } else {
@@ -66,7 +66,8 @@ export function assignment(
       throw new Error(`You cant assign setter: ${assignRightValue.valueName} to value ${leftName}`)
     case "SwitchExpression":
     case "BracketExpression":
-      throw new Error("TODO")
+      // throw new Error("TODO")
+      break;
     default:
       const _never: never = assignRightValue
   }

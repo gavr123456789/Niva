@@ -2,10 +2,10 @@
 square = 1. increment = 3.
 
 1 to: 100 do: [
-  ("door №" & it toStr) print.
+  ("door №" & it toStr) printnln.
   | it == square => 
     [
-      " is open\n" print
+      " is open\n" printnln
       square    add: increment
       increment add: 2
     ]

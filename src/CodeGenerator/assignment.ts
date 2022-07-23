@@ -1,9 +1,14 @@
-import {Expression} from '../AST_Nodes/Statements/Expressions/Expressions';
 import {processExpression} from './expression/expression';
 import {generateSwitchExpression} from './expression/switchExpression';
 import {generateConstructor, generateCustomConstructor} from "./expression/constructor";
 import {generateSetter} from "./expression/setter";
 import {Assignment} from "../AST_Nodes/Statements/Statement";
+import {
+  ListLiteral,
+  MapLiteral,
+  SetLiteral
+} from "../AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/CollectionLiteral";
+import {generateListLiteral} from "./collections";
 
 
 export function generateAssigment(assignment: Assignment, indentation: number): string {
@@ -13,29 +18,40 @@ export function generateAssigment(assignment: Assignment, indentation: number): 
   switch (to.kindStatement) {
     case 'BracketExpression':
     case 'MessageCallExpression':
-      if (to.receiver.kindStatement === 'BracketExpression') {
-        const expressionCode = processExpression(to, 0)
-        if (type) {
-          return `${ident}var ${assignmentTarget}: ${type} = ${expressionCode}`;
-        } else {
-          return `${ident}var ${assignmentTarget} = ${expressionCode}`;
-        }
 
+      switch (to.receiver.kindStatement) {
+        case "Primary":
+          break;
+        case "BlockConstructor":
+          // const statemetList: StatementList = {
+          //   kind: "StatementList",
+          //   statements: to.receiver.statements
+          // }
+          // const statementsCode = generateNimFromAst(statemetList, indentation)
+          // return `${ident}var ${assignmentTarget} = ${statementsCode}`
+
+          throw new Error("BlockConstructor not implemented")
+
+        case "BracketExpression":
+          const expressionCode = processExpression(to, 0)
+          if (type) {
+            return `${ident}var ${assignmentTarget}: ${type} = ${expressionCode}`;
+          } else {
+            return `${ident}var ${assignmentTarget} = ${expressionCode}`;
+          }
+        case "ListLiteral":
+          const listLiteralCode: string = generateListLiteral(to.receiver)
+          return `${ident}var ${assignmentTarget} = ${listLiteralCode}`
+        case "MapLiteral":
+          break;
+        case "SetLiteral":
+          break;
+        default:
+          const _never: never = to.receiver
       }
 
-      if (to.receiver.kindStatement === 'BlockConstructor') {
-        // const statemetList: StatementList = {
-        //   kind: "StatementList",
-        //   statements: to.receiver.statements
-        // }
-        // const statementsCode = generateNimFromAst(statemetList, indentation)
-        // return `${ident}var ${assignmentTarget} = ${statementsCode}`
-
-        throw new Error("BlockConstructor not implemented")
-
-      }
-
-      if (to.messageCalls.length === 0) {
+      // has messages
+      if (to.messageCalls.length === 0 && to.receiver.kindStatement === "Primary") {
         const assignRightValue = to.receiver.atomReceiver.value;
         if (type) {
           return `${ident}var ${assignmentTarget}: ${type} = ${assignRightValue}`;

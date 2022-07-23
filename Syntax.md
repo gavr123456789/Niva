@@ -38,7 +38,7 @@ x = 1123 // error X already exist
 ### Expression blocks
 ```Smalltalk
 y = [ x::int | ^ x + 5 ]
-(y value: 5) print // value - run block of code with x = 5, result is 10
+(y value: 5) printnln // value - run block of code with x = 5, result is 10
 ```
 
 ### List
@@ -64,9 +64,9 @@ red = Red // x: Color = Color(kind: Red)
 // Matching
 SomeType someFunc: c: Color = [
   c 
-    Red: [ r | "its red!" print] // r is of type Red here
-    Blue: [ b | "its red!" print]
-    Green: [ g | "its red!" print]
+    Red: [ r | "its red!" printnln] // r is of type Red here
+    Blue: [ b | "its red!" printnln]
+    Green: [ g | "its red!" printnln]
 ]
 
 // Another example
@@ -93,7 +93,7 @@ union Menu  =
  // So check that T is pizza looks like
  t Pizza: [ pizza | "its pizza" pring ]
  // Nested check
- t Pizza [ pizza | pizza Pepperoni: [ pizzaWithPepperoni | "its pizza with pepperoni!" print ] ].
+ t Pizza [ pizza | pizza Pepperoni: [ pizzaWithPepperoni | "its pizza with pepperoni!" printnln ] ].
 
 
 // generated messages: 
@@ -107,8 +107,8 @@ there are no case statement, or I didnt manage how to implement it
 You can use if 
 ```Rust
 x = 65
-x > 2 ifTrue: ["> 2" print].
-x == 0 ifTrue: ["== 0" print].
+x > 2 ifTrue: ["> 2" printnln].
+x == 0 ifTrue: ["== 0" printnln].
 x switch
 
 

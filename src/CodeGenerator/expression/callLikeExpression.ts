@@ -24,7 +24,7 @@ export function checkForGetter(receiver: Receiver, unaryMessage: MessageCall, pr
   const isPrimaryReceiver = receiver.kindStatement === "Primary"
   const isMessageUnary = unaryMessage?.selectorKind === "unary"
   if (!unaryMessage || receiver.kindStatement !== "Primary" || !(unaryMessage?.selectorKind === "unary")) {
-    console.log("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
+    // console.error("false  receiver = ", receiver, " unaryMessage = ", unaryMessage)
     return false
   }
 

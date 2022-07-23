@@ -1,19 +1,20 @@
 import { StatementList } from '../../AST_Nodes/AstNode';
 import { BracketExpression, Constructor, MessageCallExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
 import { generateNimFromAst } from '../codeGenerator';
-import { fillKeywordArgsAndReturnStatements, generateBinaryCall, generateKeywordCall, generateUnaryCall } from './messageCalls';
+import {  generateBinaryCall, generateKeywordCall, generateUnaryCall } from './messageCalls';
 import { getAtomPrimary } from '../primary';
-import {generateConstructor} from "./constructor";
-import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
 import {MessageCall} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
 import {checkForGetter} from "./callLikeExpression";
 import {Receiver} from "../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
+import {Primary} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Primary";
+import {
+	CollectionLiteral,
+	ListLiteral,
+	MapLiteral, SetLiteral
+} from "../../AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/CollectionLiteral";
+import {processCollection} from "../collections";
 
 export type MessageSendExpression = MessageCallExpression | BracketExpression
-
-export function processManyExpressions(s: MessageSendExpression[], identation: number): string[] {
-	return s.map(x => processExpression(x, identation))
-}
 
 export function generateMessageCalls(messageCalls:  MessageCall[], indentation: number, receiver: Receiver): string[]  {
 	const messageLine: string[] = []
@@ -46,10 +47,34 @@ export function generateMessageCalls(messageCalls:  MessageCall[], indentation: 
 	return messageLine
 }
 
+export function getPrimaryCode(receiver: Primary | BracketExpression | CollectionLiteral, recursiveIndent: number): string {
+	switch (receiver.kindStatement) {
+		case "Primary":
+			return getAtomPrimary(receiver)
+		case "BracketExpression":
+			// the expression already has indent in its str, so we dont need to add more
+			// maybe this need to be done only in expression.ts
+			return processExpression(receiver, recursiveIndent > 0 ? 0: recursiveIndent)
+		case "ListLiteral":
+		case "MapLiteral":
+		case "SetLiteral":
+			return processCollection(receiver)
+		default:
+			const _n: never = receiver
+			console.error("receiver = ", receiver)
+			throw new Error("Sound error")
+	}
+
+
+}
+
 export function processExpression(s: MessageSendExpression, indentation: number): string {
-	// ident stacks if its already idented
-	const recurciveIdent = indentation >= 2 ? indentation - 2 : indentation
- 
+	// ident stacks if its already indented
+	// use only for recursive processExpression calls
+	// const recursiveIndent = indentation >= 2 ? indentation - 2 : indentation
+	// console.log("s  = ", s.receiver.kindStatement)
+	// console.log("recursiveIndent = ", recursiveIndent)
+	// console.log("indent = ", indentation)
 	const receiver = s.receiver;
 
 	if (receiver.kindStatement === "BlockConstructor") {
@@ -64,22 +89,21 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 		return statementsCode
 	}
 
-	const primaryName =
-		receiver.kindStatement === 'BracketExpression'
-			? processExpression(receiver, recurciveIdent)
-			: getAtomPrimary(receiver);
+	const primaryName = getPrimaryCode(receiver, indentation);
 	if (typeof primaryName === 'object') {
 		throw new Error('typeof primaryName === object');
 	}
 
 	const messageLine = [primaryName, ...generateMessageCalls(s.messageCalls, indentation, receiver)];
-
+	// console.log("messageLine = ", messageLine)
 	// generate ident
 	const identStr = ' '.repeat(indentation);
 	// пушим строку вызовов сообщений
 	const needBrackets = s.kindStatement === 'BracketExpression';
 
-	const messageCall = !needBrackets ? messageLine.join('') : '(' + messageLine.join('') + ')';
+	const messageCall = !needBrackets
+		? messageLine.join('')
+		: '(' + messageLine.join('') + ')';
 
 	return `${identStr}${messageCall}`
 

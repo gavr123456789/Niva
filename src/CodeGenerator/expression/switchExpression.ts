@@ -1,5 +1,5 @@
 import { ElseBranch, SwitchBranch, SwitchExpression } from '../../AST_Nodes/Statements/Expressions/Expressions';
-import { MessageSendExpression, processExpression, processManyExpressions } from './expression';
+import { MessageSendExpression, processExpression } from './expression';
 import {generateCallLikeExpression} from "./callLikeExpression";
 
 export function generateSwitchExpression(switchExp: SwitchExpression, identation: number): string {
@@ -36,7 +36,10 @@ export function generateSwitchExpression(switchExp: SwitchExpression, identation
 	return switchExpResult;
 }
 
-//
+function processManyExpressions(s: MessageSendExpression[], identation: number): string[] {
+	return s.map(x => processExpression(x, identation))
+}
+
 export function generateBranchExpressions(switchKind: 'if' | 'elif' | 'of', x: SwitchBranch, identation: number) {
 	if (x.thenDoExpression.kindStatement === 'SwitchExpression') {
 		throw new Error('nested SwitchExpression doesnt support yet');

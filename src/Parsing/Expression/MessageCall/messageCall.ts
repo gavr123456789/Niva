@@ -30,14 +30,13 @@ function checkIfAllKeysAreTypeFields(kwMsg: KeywordMessage, typeName: string): b
 export function messageCall(receiverNode: NonterminalNode, maymeMessages: IterationNode, cascadedMessages: IterationNode): CallLikeExpression {
   const receiver: Receiver = receiverNode.toAst();
   const receiverType = getReceiverType(receiver)
-
   const result: MessageCallExpression = {
     kindStatement: 'MessageCallExpression',
     receiver: receiver,
     selfTypeName: "",
     messageCalls: [],
   };
-  const selfTypeName = state.insideMessage.forType
+  const insideMessageOfType = state.insideMessage.forType
 
   // if no messages than its just a value
   // or constructor without fields
@@ -50,7 +49,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
     {
       const constructorWithNoFields: Constructor = {
         kindStatement: "Constructor",
-        selfTypeName,
+        selfTypeName: insideMessageOfType,
         type: receiver.atomReceiver.value
       }
       return constructorWithNoFields
@@ -65,12 +64,16 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
 
   const astMessages: MessageCall[] = messages.toAst();
   result.messageCalls = astMessages;
-  result.selfTypeName = selfTypeName
+  result.selfTypeName = insideMessageOfType
 
+  // TODO вот тут уже должен быть receiverType, как минимум если он и так указан
+  // console.log("!!вот тут уже должен быть receiverType, как минимум если он и так указан =", receiverType)
   if (receiverType) {
     fillMessageCallsWithTypes(receiverType, astMessages)
   }
   result.type = astMessages.at(-1)?.type.name
+
+
 
   const firstMessage = astMessages.at(0)
   /// Check for Setter
@@ -83,18 +86,36 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
   ) {
     const firstArg = firstMessage.arguments[0]
     const valueName = receiver.atomReceiver.value
+    const valueType = codeDB.getValueType(state.insideMessage, valueName)
 
-    const fieldType = codeDB.getFieldType(selfTypeName, firstArg.keyName)
+    if (insideMessageOfType === "__global__"){
+      const lineAndColumnMessage = messages.source.getLineAndColumnMessage()
+      // console.error(lineAndColumnMessage)
+      // console.error("You can't use setters in global scope, create a method to change the fields of an object.\nImagine that the objects are not boxes with fields, but virtual assistants.")
+
+
+      // throw new Error("cant call non local setter")
+    }
+    if (insideMessageOfType !== valueType) {
+      const lineAndColumnMessage = messages.source.getLineAndColumnMessage()
+      // console.error(lineAndColumnMessage)
+      // console.error(`You can't modify the fields of the ${valueType} inside method of type ${insideMessageOfType}.
+// Create a method for ${valueType} type that changes the fields and then call it here`)
+
+      // throw new Error("cant call non local setter")
+    }
+
+    const fieldType = codeDB.getFieldType(insideMessageOfType, firstArg.keyName)
     if (fieldType) {
       console.log("mutable effect added to ", state.insideMessage.withName);
 
-      codeDB.addEffectForMethod(selfTypeName, state.insideMessage.kind, state.insideMessage.withName, {kind: "mutatesFields"})
+      codeDB.addEffectForMethod(insideMessageOfType, state.insideMessage.kind, state.insideMessage.withName, {kind: "mutatesFields"})
       const setter: Setter = {
         // messageCalls: astMessages,
         kindStatement: "Setter",
         argument: firstArg,
         receiver,
-        selfTypeName,
+        selfTypeName: insideMessageOfType,
         type: fieldType,
         valueName
       }
@@ -122,7 +143,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
         const constructor: Constructor = {
           kindStatement: "Constructor",
           call: firstMessage,
-          selfTypeName,
+          selfTypeName: insideMessageOfType,
           type: receiver.atomReceiver.value
         }
         console.log("constructor detected type: ", constructor.type, " signature: ", constructor.call?.name ?? "---");
@@ -137,7 +158,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
 
     const unaryCustomConstructor: CustomConstructor = {
       call: firstMessage,
-      selfTypeName,
+      selfTypeName: insideMessageOfType,
       type: receiver.atomReceiver.value,
       kindStatement: "CustomConstructor",
     }

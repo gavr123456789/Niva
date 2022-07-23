@@ -1,14 +1,22 @@
-x = "niva"
+// switch expression
+y = 42.
+x =
+| y > 100            => "vala"
+| y == 7, y / 2 == 8 => "nim"
+| y / 7 == 6         => "niva"
+|=> "something else".
+x echo.
+
+// switch statement
 x
 | "nim", "pascal"    => "no" echo
 | "vala", "C#"       => "no" echo
 | "D", "C++"         => "no" echo
 | "ni", "va", "niva" => "yes!" echo
+|=> "I dont know" echo.
 
-
-
-
-
-
+// if else statement
+| y < 10, y / 5 == 4       => "foo" echo.
+| x == "niva" && (y == 42) => "yay!" echo.
 
 

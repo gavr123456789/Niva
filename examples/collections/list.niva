@@ -1,0 +1,8 @@
+x = {1 2 3}
+x toStr echo
+x add: 4
+x toStr echo
+
+x foreach: [
+  it echo
+]
