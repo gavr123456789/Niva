@@ -1,10 +1,15 @@
 import "nivaPrelude"
 {. push discardable .}
 {. push warning[ProveField]:on .}
-proc factorial(self: int): int =
-  case self:
-  of 0:
-    1
-  else:
-    self.`*`((self.`-`(1)).`factorial`())
-5.`factorial`().`echo`()
+type 
+
+  MalTypeKind* = enum True, False, Nil, Number, Symbol, String
+  MalType* = object
+    case kind*: MalTypeKind
+    of True, False, Nil:
+      discard
+    of Number:
+      number: int
+    of Symbol, String:
+      str: string
+      number2: int

@@ -43,7 +43,6 @@ export function keywordMethodDeclaration(
     if (lastBodyStatement){
       returnType = inferStatementType(lastBodyStatement);
       if (!returnType){
-        // console.log("inferred return type of ", selectorName, " is auto")
         throw new Error(`cant infer return type of ${selectorName}`)
       } else {
         console.log("inferred return type of ", selectorName, " is ", returnType)

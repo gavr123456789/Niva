@@ -1,0 +1,4 @@
+union MalType meta: MalType =
+| Nil, True, False
+| Number         => number: int
+| String, Symbol => str: string number2: int

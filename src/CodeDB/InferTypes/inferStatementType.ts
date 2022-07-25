@@ -22,11 +22,15 @@ export function inferStatementType(lastBodyStatement: Statement): string | undef
     // return lastBodyStatement.type
     case "Assignment":
       return "void"
+
     case "TypeDeclaration":
+    case "UnionDeclaration":
       return "void"
+
     case "MethodDeclaration":
       return "void"
     case "SwitchStatement":
+      // TODO
       return "void"
     case "ConstructorDeclaration":
       return "void"

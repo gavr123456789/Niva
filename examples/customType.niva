@@ -1,12 +1,12 @@
 type Person name: string age: int.
 
-fun string replaceToKek -> string = "Kek".
+string replaceToKek -> string = "Kek".
 
-fun Person renameTo: name -> void= [
+Person renameTo: name -> void= [
   self name: name replaceToKek.
 ].
 
-fun Person birthday -> void = [
+Person birthday -> void = [
   self age: 100
 ].
 
