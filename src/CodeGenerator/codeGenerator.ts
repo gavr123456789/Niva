@@ -4,10 +4,13 @@ import {generateAssigment} from './assignment';
 import {generateSwitchExpression} from './expression/switchExpression';
 import {generateSwitchStatement} from './expression/switchStatement';
 import {generateMethodDeclaration} from './methodDeclaration';
-import {generateTypeDeclaration} from './typeDeclaration';
+import {generateTypeDeclaration, generateUnionDeclaration} from './typeDeclaration';
 import {BracketExpression, Constructor, MessageCallExpression} from "../AST_Nodes/Statements/Expressions/Expressions";
 import {generateReturn} from "./return";
 import {generateCallLikeExpression} from "./expression/callLikeExpression";
+import {UnionDeclaration} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration";
+
+
 
 
 // То что может быть на первом уровне вложенности
@@ -44,6 +47,9 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
         break;
       case 'TypeDeclaration':
         lines.push(generateTypeDeclaration(s, identation))
+        break;
+      case 'UnionDeclaration':
+        lines.push(generateUnionDeclaration(s, identation))
         break;
       case 'MethodDeclaration':
       case "ConstructorDeclaration":

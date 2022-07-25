@@ -1,5 +1,5 @@
 import {Expression, SwitchStatement} from "./Expressions/Expressions"
-import {TypeDeclaration} from "./TypeDeclaration/TypeDeclaration"
+import {TypeDeclaration, UnionDeclaration} from "./TypeDeclaration/TypeDeclaration"
 import {ConstructorDeclaration, MethodDeclaration} from "./MethodDeclaration/MethodDeclaration"
 
 //TODO move
@@ -14,6 +14,7 @@ export type Statement =
   | ReturnStatement
   | Assignment
   | TypeDeclaration
+  | UnionDeclaration
   | MethodDeclaration
   | ConstructorDeclaration
   | SwitchStatement

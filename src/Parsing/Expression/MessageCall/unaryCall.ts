@@ -21,6 +21,5 @@ export function unarySelector(ident: NonterminalNode) {
     name: ident.sourceString,
     type: {name: ""}
   };
-  // console.log("set ", state.insideMessage, " for ", ident.sourceString)
   return result;
 }

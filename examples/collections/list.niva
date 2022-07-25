@@ -6,3 +6,16 @@ x toStr echo
 x foreach: [
   it echo
 ]
+
+y = x filter: [
+  it > 2
+]
+y toStr echo
+
+z = y map: [
+  it * 2
+]
+z toStr echo
+
+
+

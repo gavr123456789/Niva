@@ -14,10 +14,25 @@ Niva {
     | assignment -- assignmentStatement
     | switchStatement -- switchStatement
   	| expression  -- expressionStatement
-  //  | comment
+    | useStatement
+    | moduleStatement
+    | unionDeclaration -- unionDeclarationStatement
 
 
 
+enumDeclaration = "union" spaces  untypedIdentifier spaces "=" spaces enumBranchs
+enumBranch =  "|"? spaces untypedIdentifier spaces
+enumBranchs = enumBranch (spaces enumBranch)*
+
+
+
+unionDeclaration = "union" spaces  untypedIdentifier spaces typedProperties? spaces "=" spaces unionBranchs
+unionBranch =  "|"? spaces untypedIdentifier (whiteSpaces "," whiteSpaces  untypedIdentifier)* spaces ("=>" spaces typedProperties)?
+unionBranchs = unionBranch (spaces unionBranch)*
+
+
+useStatement = "use" whiteSpaces untypedIdentifier
+moduleStatement = "module" whiteSpaces untypedIdentifier
 
   // TYPE DECLARATION
 	typeDeclaration = "type" spaces untypedIdentifier (spaces typedProperties)?
@@ -28,8 +43,6 @@ Niva {
 
 
   // METHOD DECLARATION
-
-  //methodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces "=" spaces methodBody
 
   methodDeclarationKeyword = ("fun" | "-")
 
@@ -162,7 +175,9 @@ Niva {
 
   // IDENTEFIER
 
-  identifier = typedIdentifier | untypedIdentifier
+  moduleName = untypedIdentifier "."
+  identifier = moduleName? (typedIdentifier | untypedIdentifier)
+
   untypedIdentifier = ~reservedWord identifierName
   typeName = untypedIdentifier
   typedIdentifier = nestedTypedIdentifier | unaryTypedIdentifier
@@ -174,9 +189,10 @@ Niva {
   unaryType = typeName
   nonUnaryType = (nestedTypedIdentifier | typeName) ("," whiteSpaces (nestedTypedIdentifier | typeName))+
 
-  identifierName = identifierStart identifierPart*
-  identifierStart = letter | "$" | "_"
-  identifierPart = identifierStart | letter
+  identifierName = identifierStart identifierPart* identifierEnd?
+  identifierStart = letter
+  identifierPart = identifierStart | letter  | "_" | digit
+  identifierEnd = "?" | "!"
 
 
   // LITERALS
@@ -189,7 +205,7 @@ Niva {
 
 
 
-    //
+  // COLLECTIONS
   collectionLiteral = listLiteral | mapLiteral | hashSetLiteral
 
   listLiteral = "{" listElements "}"
@@ -201,7 +217,6 @@ Niva {
 
   hashSetLiteral =   "#(" listElements ")"
 
-  //
 
 
   // StringLiteral
@@ -258,17 +273,19 @@ Niva {
 
   // CONST
   reservedWord = keyword | nullLiteral | boolLiteral
-  keyword = "type" | "fun" | "construct"
+  keyword = "type" | "construct" | "use" | "module" | "union"
   separator = (comment | space)*
 
   // for binary messages
   binaryCharacter = "!" | "%" | "&" | "*" | "+" | "<" | "==" | ">" | "?" | "@" | "~" | "-" | "|>" | "<|" | "||" | "/" | "\\" //"|"   // | "," |
   binarySelector =  binaryCharacter+
 
-  
+
   assignmentOp= "="
   returnOp = "^"
-  dot = "." spaces
+  whiteSpaceOrEnd = " " | lineTerminator | end
+  dot = ";"  spaces
+
   
   whiteSpaces = whiteSpace*
   whiteSpace = " "

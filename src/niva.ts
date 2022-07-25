@@ -15,7 +15,7 @@ import { messageCall } from './Parsing/Expression/MessageCall/messageCall';
 import {primary, receiver_expressionInBrackets} from './Parsing/Expression/MessageCall/receiver';
 import { messages_unaryFirst, unaryMessage, unarySelector } from './Parsing/Expression/MessageCall/unaryCall';
 import { switchBranch, switchBranchElseStatement, switchExpression } from './Parsing/Expression/Switch/switchExpression';
-import {unaryTypedIdentifier, untypedIdentifier} from './Parsing/identifiers';
+import {identifier, moduleName, unaryTypedIdentifier, untypedIdentifier} from './Parsing/identifiers';
 import {
 	simpleLiteral,
 	boolLiteral,
@@ -42,7 +42,13 @@ import { returnTypeDeclaration } from './Parsing/Statements/MethodDeclaration/re
 import { unaryMethodDeclaration } from './Parsing/Statements/MethodDeclaration/unary';
 import { returnStatement } from './Parsing/Statements/return';
 import { statement, statements, switchStatement } from './Parsing/Statements/statements';
-import { typeDeclaration, typedProperties, typedProperty } from './Parsing/Statements/typeDeclaration';
+import {
+	typeDeclaration,
+	typedProperties,
+	typedProperty,
+	unionBranch, unionBranchs,
+	unionDeclaration
+} from './Parsing/Statements/typeDeclaration';
 import {ConstructorDeclaration, MethodDeclaration} from "./AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
 
 
@@ -193,6 +199,10 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		keywordArgument,
 
 		typeDeclaration,
+		unionDeclaration,
+		unionBranch,
+		unionBranchs,
+
 		typedProperties,
 		typedProperty,
 
@@ -205,6 +215,8 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 
 		primary,
 
+		identifier,
+		moduleName,
 		untypedIdentifier,
 		unaryTypedIdentifier,
 
@@ -222,6 +234,7 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 		decimalLiteral,
 		boolLiteral,
 
+
 	});
 
 	const matchResult = grammar.match(code);
@@ -236,17 +249,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
-// console.log(JSON.stringify(generateNimCode('int sas = [ x echo ].\nint sus = [ x echo ].'), undefined, 2) );
-// console.log(JSON.stringify(generateNimCode('1 from: 2 to: 3'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));
-// console.log(JSON.stringify(generateNimCode('type Person name: string. -Person sas = [ x echo ]')[0], undefined, 2));
-// const codeHas = `
-// int from: sas to: sus = [1 echo]
-// `
-// console.log(JSON.stringify(generateNimCode(codeHas)[1], undefined, 2));
-// const codeHasnt = `
-// int from to = [1 echo]
-// `
-// console.log(JSON.stringify(generateNimCode(codeHasnt)[1], undefined, 2));

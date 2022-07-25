@@ -1,5 +1,4 @@
-import sequtils
-import print
+# import print
 import std/tables
 
 from std/strutils import join
@@ -68,6 +67,20 @@ template foreach*[K, V](self: var Table[K, V], doBlock: untyped) =
 
 
 ### Arrays
+
+
+from std/sequtils import mapIt
+
+template filter*(self, pred: untyped): untyped =
+  var result = newSeq[typeof(self[0])]()
+  for it {.inject.} in items(self):
+    if pred: result.add(it)
+  result
+
+template map*(self, codeBlock: untyped): untyped =
+  mapIt(self, codeBlock)
+
+
 template foreach*[T](self: seq[T], doBlock: untyped) =
   for i in self:
     var it {.inject.} = i
@@ -79,7 +92,14 @@ template at*[T](self: var seq[T], index: int): T =
 template at_put*[T](self: var seq[T], index: int, put: T): void =
   self[index] = put
 
+
+
+  
 # var collection = @[1,2,3]
+# var col2 = collection.filter:
+#   it > 1
+
+# echo col2
 # collection.foreach:
 #   echo it
 

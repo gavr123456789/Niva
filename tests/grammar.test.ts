@@ -98,6 +98,14 @@ test('Nested Type declaration', t => {
   match(t, "type P x: int y: (type O z: int)", "typeDeclaration")
 });
 
+// Union type
+test('Union type declaration', t => {
+  match(t, `union Fig = 
+| a, r => x: string
+| q => s: qwe`)
+});
+
+
 
 // Message call
 
@@ -121,5 +129,13 @@ test('Block', t => {
 // Others
 test('Others typedProperties', t => {
   match(t, "age: int name: string", "typedProperties")
+});
+
+test('module statement', t => {
+  match(t, "module sas")
+});
+
+test('use statement', t => {
+  match(t, "use sas")
 });
 

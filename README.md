@@ -12,6 +12,67 @@ P.S. now realization written in ts, in future self ... are planned.
 ## Name
 I haven't decided on the final name yet, so far I've chosen niva because my 2 favorite static languages are nim and vala.
 
+# Examples
+
+#### Hello world
+```F#
+"Hello world" echo
+```
+
+#### Custom type
+```F#
+// Declaration
+type Person name: string age: int
+// Instantiation
+person = Person name: "Bob" age: 42
+// Unary method
+Person sleep = [...]
+// Method call
+person sleep
+```
+
+#### Factorial
+```F#
+int factorial -> int = self
+| 0 => 1
+|=> self * (self - 1) factorial.
+
+5 factorial echo
+```
+
+#### Fibonacci
+```F#
+int fib -> int = [
+  n = self.
+  | n < 2 => 1
+  |=> (n - 2) fib + (n - 1) fib
+].
+
+5 fib echo
+```
+
+#### Is even
+```F#
+int isEven = [
+  | self % 2 == 0 => true
+  |=> false
+].
+
+5 isEven echo.
+4 isEven echo.
+```
+
+#### Function call
+There 3 types
+```F#
+5 factorial //unary 
+5 + 5       // binary (only math symbols allowed)
+map at: "key" put: "value" // keyword
+```
+
+
+
+
 # Basic
 
 ### Type Declaration [Done]

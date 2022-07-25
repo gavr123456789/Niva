@@ -8,7 +8,7 @@ isDebug.isDebug = false
 
 // Assigment
 test('assignment statement', t => {
-  const code = 'x = 5. y = 6. z =  7'
+  const code = 'x = 5; y = 6; z =  7'
   const [_,nimCode] = generateNimCode(code)
 
   t.is("var x: int = 5\nvar y: int = 6\nvar z: int = 7", nimCode)
@@ -80,7 +80,7 @@ test('Expressions Unary with Binary', t => {
 });
 
 test('Expressions two Unary with Binary', t => {
-  const code = '1 toStr & 2 toStr.\n1 toStr & 2 toStr.'
+  const code = '1 toStr & 2 toStr;\n1 toStr & 2 toStr;'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("1.`toStr`().`&`(2.`toStr`())\n1.`toStr`().`&`(2.`toStr`())", nimCode)
@@ -103,7 +103,7 @@ test('Type Declaration', t => {
 
 
 test('two Type Declaration', t => {
-  const code = 'type Person name: string age: int.\ntype AnotherPerson name: string age: int' 
+  const code = 'type Person name: string age: int\ntype AnotherPerson name: string age: int'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("type Person = object\n  name: string\n  age: int\n\ntype AnotherPerson = object\n  name: string\n  age: int\n", nimCode)
@@ -120,14 +120,14 @@ test('Method Declaration Unary no retrun type', t => {
 });
 
 test('two Method Declaration Unary', t => {
-  const code = 'int sas = [ self echo ].\nint sus = [ self echo ].'
+  const code = 'int sas = [ self echo ]\nint sus = [ self echo ]'
   const [_s, nimCode] = generateNimCode(code)
   
   t.is("proc sas(self: int): void =\n  self.`echo`()\nproc sus(self: int): void =\n  self.`echo`()", nimCode)
 });
 
 test('Method Declaration Unary with retrun type', t => {
-  const code = '-int sas -> int = [ 5 ]'
+  const code = 'int sas -> int = [ 5 ]'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("proc sas(self: int): int =\n  5", nimCode)
@@ -135,14 +135,14 @@ test('Method Declaration Unary with retrun type', t => {
 
 
 test('Method Declaration Binary typed', t => {
-  const code = '-Person + x::int -> void = [ x echo ]' 
+  const code = 'Person + x::int -> void = [ x echo ]'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("proc `+`(self: Person, x: int): void =\n  x.`echo`()", nimCode)
 });
 
 test('Method Declaration Binary untyped', t => {
-  const code = '-Person + x = [ x echo ]' 
+  const code = 'Person + x = [ x echo ]'
   const [_, nimCode] = generateNimCode(code)
   codeDB
   t.is("proc `+`(self: Person, x: auto): auto =\n  x.`echo`()", nimCode)
@@ -166,7 +166,7 @@ test('Method Declaration Keyword untyped', t => {
 // Brackets
 
 test('Brackets expression', t => {
-  const code = '(1 + 2) echo.' 
+  const code = '(1 + 2) echo'
   const [_, nimCode] = generateNimCode(code)
 
   t.is("(1.`+`(2)).`echo`()", nimCode)
@@ -182,7 +182,7 @@ test('Brackets after expression', t => {
 // Switch
 test('Switch Expression assigment with else', t => {
   const code = `| x > 4 => "sas" echo
-  | x < 4 => "sus" echo.`
+  | x < 4 => "sus" echo;`
   const [_, nimCode] = generateNimCode(code)
   const result = 
 `if x.\`>\`(4):
@@ -220,17 +220,17 @@ else:
 test('to:do: loop', t => {
   const code =
     `
-square = 1. increment = 3. door = 0.
+square = 1; increment = 3; door = 0;
 
 1 to: 100 do: [
   ("door №" & it toStr) echo
   | it == square =>
     [
-      square    add: increment.
+      square    add: increment;
       increment add: 2
     ]
   |=> "is closed" echo
-].`
+]`
   const [_, nimCode] = generateNimCode(code)
   const result =
     `var square: int = 1

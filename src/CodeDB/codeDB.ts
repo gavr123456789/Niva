@@ -2,47 +2,17 @@ import {ContextInformation, TypeField} from "../niva"
 import {
   BinaryMethodInfo,
   EffectType,
-  KeywordMethodInfo, newBinaryMethodInfo,
+  KeywordMethodInfo,
+  newBinaryMethodInfo,
   newKeywordMethodInfo,
   newUnaryMethodInfo,
   UnaryMessageInfo
 } from "./types"
+import {TypeInfo} from "./TypeInfo";
+import {addDefaultType} from "./addHelpers";
 
 export type MethodKinds = "unary" | "binary" | "keyword" | "__global__"
 
-
-class TypeInfo {
-  // field name to info
-  constructor(public fields: Map<string, TypeField>) {
-    // fill getters and setters
-    fields.forEach((value, key) => {
-      // getter
-      const unaryInfo = newUnaryMethodInfo(value.type)
-      const unaryMessageInfo: UnaryMessageInfo = {
-        returnType: value.type,
-        effects: new Set(),
-        statements: [],
-        declaratedValueToType: new Map()
-      }
-      this.unaryMessages.set(key, unaryMessageInfo)
-
-      //setter
-      const setterInfo = newKeywordMethodInfo(value.type)
-      setterInfo.effects.add("mutatesFields")
-      this.keywordMessages.set(key, setterInfo)
-
-    })
-
-  }
-
-  structural: boolean = false
-  distinct: boolean = false
-
-  unaryMessages: Map<string, UnaryMessageInfo> = new Map()
-  binaryMessages: Map<string, BinaryMethodInfo> = new Map()
-  keywordMessages: Map<string, KeywordMethodInfo> = new Map()
-  
-}
 
 export class CodeDB {
   private globalDeclaratedValueToType: Map<string, string> = new Map();
@@ -174,23 +144,19 @@ export class CodeDB {
 
 
   private typeNameToInfo: Map<string, TypeInfo> = new Map()
+  // по дефолту все добавляется в typeNameToInfo
+  // если при добавлении там уже такой есть то считываем название модуля,
+  // если его нет у идентификатора то ошибка, если в данном модуле нет такого идентификатора то ошибка
 
-
-  private addDefaultType(name: string) {
-    if (this.typeNameToInfo.has(name)){
-      throw new Error(`Type ${name} already added`)
-    }
-    const fields = new Map<string, TypeField>()
-    fields.set("value", {type: name})
-    this.typeNameToInfo.set(name, new TypeInfo(fields))
-  }
+  // по дефолту название модуля это название файла
+  private modules: Map<string, CodeDB> = new Map()
 
   constructor() {
     // add default types and functions
-    this.addDefaultType("__global__")
-    this.addDefaultType("int")
-    this.addDefaultType("auto")
-    this.addDefaultType("void") // temp
+    addDefaultType(this.typeNameToInfo, "__global__")
+    addDefaultType(this.typeNameToInfo, "int")
+    addDefaultType(this.typeNameToInfo, "auto")
+    addDefaultType(this.typeNameToInfo, "void") // temp
     this.addUnaryMessageForType("auto", "echo", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("void", "echo", newUnaryMethodInfo("void")) // temp
     this.addUnaryMessageForType("auto", "toStr", newUnaryMethodInfo("void"))
@@ -212,7 +178,7 @@ export class CodeDB {
     this.addKeywordMessageForType("int", "mod", newKeywordMethodInfo("int"))
 
     // float
-    this.addDefaultType("float")
+    addDefaultType(this.typeNameToInfo, "float")
     // float unary
     this.addUnaryMessageForType("float", "toStr", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("float", "echo", newUnaryMethodInfo("void"))
@@ -226,9 +192,9 @@ export class CodeDB {
     this.addBinaryMessageForType("float", "==", newBinaryMethodInfo("bool"))
     //uint
 
-    this.addDefaultType("uint")
+    addDefaultType(this.typeNameToInfo,"uint")
 
-    this.addDefaultType("string")
+    addDefaultType(this.typeNameToInfo,"string")
     // string unary
     this.addUnaryMessageForType("string", "echo", newUnaryMethodInfo("void"))
     this.addUnaryMessageForType("string", "print", newUnaryMethodInfo("void"))
@@ -240,7 +206,7 @@ export class CodeDB {
     this.addBinaryMessageForType("string", "&", newBinaryMethodInfo("string"))
 
 
-    this.addDefaultType("bool")
+    addDefaultType(this.typeNameToInfo, "bool")
     // bool unary
     this.addUnaryMessageForType("bool", "toStr", newUnaryMethodInfo("string"))
     this.addUnaryMessageForType("bool", "echo", newUnaryMethodInfo("void"))
@@ -259,7 +225,6 @@ export class CodeDB {
     fields.forEach((v, fieldName) => {
       this.addUnaryMessageForType(typeName, fieldName, newUnaryMethodInfo(v.type))
       this.addKeywordMessageForType(typeName, fieldName, newUnaryMethodInfo("void"))
-      // console.log("added getter, setter for type ", typeName, " fieldName: ", fieldName, " with type ", v.type)
     })
 
   }
@@ -405,7 +370,7 @@ export class CodeDB {
         return keywordMethod?.returnType ?? "auto"
 
         case "__global__":
-          throw new Error("TODO global");
+          throw new Error("global cant have return type");
           
       default:
         const _never:never = kind
@@ -414,3 +379,4 @@ export class CodeDB {
     }
   }
 }
+

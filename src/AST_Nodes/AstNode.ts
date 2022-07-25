@@ -2,7 +2,12 @@ import {ElseBranch, SwitchBranch, SwitchExpression, SwitchStatement} from "./Sta
 import {Assignment, BodyStatements, ReturnStatement, Statement} from "./Statements/Statement"
 import {Primary} from "./Statements/Expressions/Receiver/Primary/Primary"
 import {BinaryArgument, KeywordArgument, MessageCall} from "./Statements/Expressions/Messages/Message"
-import {TypeDeclaration, TypedProperty} from "./Statements/TypeDeclaration/TypeDeclaration"
+import {
+  TypeDeclaration,
+  TypedProperty,
+  UnionBranch,
+  UnionDeclaration
+} from "./Statements/TypeDeclaration/TypeDeclaration"
 import {
   BinaryMethodDeclarationArg,
   ConstructorDeclaration,
@@ -24,9 +29,16 @@ export type ASTNode =
   | MessageCall
   | MessageCall[]
   | BinaryArgument
+
   | TypeDeclaration
+
+  | UnionDeclaration
+  | UnionBranch
+  | UnionBranch[]
+
   | TypedProperty
   | TypedProperty[]
+
   | Primary
   | Identifier
   | MethodDeclaration
