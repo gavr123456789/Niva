@@ -4,10 +4,14 @@ export interface TypedProperty {
   type?: string 
   // generic?
 }
+export function getTypedPropertiesNames(typedProperties: TypedProperty[]): string[] {
+  return typedProperties.map(x => x.identifier)
+}
 
+// TODO add getter setter booleans for readonly
 export interface TypeDeclaration {
   kindStatement: "TypeDeclaration"
-  typeName: string,
+  name: string,
   typedProperties: TypedProperty[]
   ref: boolean
 }
@@ -20,7 +24,6 @@ export type UnionBranch =
 export interface UnionBranchWithManyNames {
   unionKind: "ManyNames"
   names: string[]
-  // if there no typedProperty then discard
   propertyTypes: TypedProperty[]
 }
 

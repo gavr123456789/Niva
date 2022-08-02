@@ -1,4 +1,9 @@
-import {TypeDeclaration, TypedProperty, UnionDeclaration} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration"
+import {
+	getTypedPropertiesNames,
+	TypeDeclaration,
+	TypedProperty,
+	UnionDeclaration
+} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration"
 
 function processTypedProperties(typedProperties:  TypedProperty[], indentation: number): string {
 	const indent = " ".repeat(indentation)
@@ -9,16 +14,104 @@ function processTypedProperties(typedProperties:  TypedProperty[], indentation: 
 export function generateTypeDeclaration(typeDeclarationAst: TypeDeclaration, identation: number): string {
 	const ident = " ".repeat(identation) 
 
-	const {typeName, typedProperties, ref} = typeDeclarationAst
+	const {name, typedProperties, ref} = typeDeclarationAst
 	const objectType = ref? "ref": "object"
 	const typedArgPart = processTypedProperties(typedProperties, identation + 2)
 
 	
 
-	const result = `${ident}type ${typeName} = ${objectType}\n${typedArgPart}\n`
+	const result = `${ident}type ${name} = ${objectType}\n${typedArgPart}\n`
 	return  result
 }
 
+
+function generateBranchConstructors(u: UnionDeclaration): string[] {
+	/*
+	proc construct_Rectangle_defaultProp_width_height(defaultProp: int, width: int, height: int): Shape =
+    Shape(kind: Rectangle, defaultProp: defaultProp, width: width, height: height)
+	* */
+
+	const hasDefaultProps = u.defaultProperties.length > 0
+	const result: string[] = []
+	for (let branch of u.branches) {
+		if (branch.unionKind === "ManyNames"){
+			throw new Error("TODO")
+			// все шо снизу разбить на функции, и если неймов много запускать эту одну функцию в цикле
+		}
+
+		const branchHasProps = branch.propertyTypes.length > 0
+
+
+		// generate function name
+		// defaultProp
+		const defaultNames = getTypedPropertiesNames(u.defaultProperties)
+		// width_height
+		const branchNames = getTypedPropertiesNames(branch.propertyTypes)
+		const allPropertiesNames: string[] = [...defaultNames, ...branchNames ]
+		// defaultProp_width_height
+		const constructorNameArgs = allPropertiesNames.join("_")
+		const constructorName = `construct_${branch.name}_${constructorNameArgs}`
+
+
+
+		// generate function args
+		// defaultProp: int, width: int, height: int
+		const constructorArgsArray: string[] = []
+
+		u.defaultProperties.forEach(x => {
+			if (!x.type)
+				throw new Error(`Type of ${x.identifier} default property of union: ${u.name} not declarated`)
+			// defaultProp: int
+			constructorArgsArray.push(x.identifier + ": " + x.type)
+		})
+
+		branch.propertyTypes.forEach(x => {
+			const branchName = branch.unionKind === "OneNames"? branch.name: branch.names.join(", ")
+			if (!x.type) throw new Error(`Type of ${x.identifier} of ${branchName} branch of union: ${u.name} not declarated`)
+
+			constructorArgsArray.push(x.identifier + ": " + x.type)
+		})
+
+		const constructorArgs = constructorArgsArray.join(", ")
+
+
+		// generate body
+		//     Shape(kind: Rectangle, defaultProp: defaultProp, width: width, height: height)
+
+		let body: string | undefined = undefined
+
+		if (branch.unionKind === "OneNames"){
+
+			// body args kind: Rectangle, defaultProp: defaultProp, width: width, height: height
+			const kindArg = `kind: ${branch.name}`
+			const bodyArgsArray: string[] = []
+			// console.log("constructorArgsArray = ", constructorArgsArray)
+			allPropertiesNames.forEach(x => {
+				// defaultProp: defaultProp
+				bodyArgsArray.push(x + ": " + x)
+			})
+
+			const bodyArgs = bodyArgsArray.join(", ")
+
+
+			body = `  ${u.name}(${kindArg}, ${bodyArgs})`
+
+		} else {
+			throw new Error("TODO many constructors for one branch")
+		}
+
+
+		const procDeclaration = `\nproc ${constructorName}*(${constructorArgs}): ${u.name} = \n${body}`
+
+
+		result.push(procDeclaration)
+	}
+
+
+	return result
+
+
+}
 
 export function generateUnionDeclaration(s: UnionDeclaration, indentation: number) {
 	const indent = " ".repeat(indentation)
@@ -45,7 +138,6 @@ export function generateUnionDeclaration(s: UnionDeclaration, indentation: numbe
 
 	// branches part
 	const branches: string[] = []
-	console.log("indentation = ", indentation)
 	s.branches.forEach(x => {
 
 		const {propertyTypes} = x
@@ -53,6 +145,7 @@ export function generateUnionDeclaration(s: UnionDeclaration, indentation: numbe
 		const propertiesStr = processTypedProperties(propertyTypes, indentation + 6)
 		const propResult = hasProperties? `${propertiesStr}`: `${indentThreeMore}discard`
 
+		// generate branches
 		switch (x.unionKind) {
 			case "ManyNames":
 				const listOfNames = x.names.join(", ")
@@ -69,6 +162,17 @@ export function generateUnionDeclaration(s: UnionDeclaration, indentation: numbe
 	})
 	const branchesLines = branches.join("\n")
 
+	// generate default fields
+	const defaultFields: string[] = []
+	defaultProperties.forEach(x => {
+		if (!x.type){
+			throw new Error(`Default type of union: ${s.name} of field: ${x.identifier} not declarated`)
+		}
+		defaultFields.push(indentTwoMore + x.identifier + ": " + x.type)
+	})
+
+	const defaultFieldsLines = defaultFields.join("\n")
+
 	// main part
 	const kindEnumTypeName = name + "Kind"
 
@@ -79,8 +183,11 @@ export function generateUnionDeclaration(s: UnionDeclaration, indentation: numbe
 
 
 	const typeLine = `${indent}type \n`
-	const result = `${typeLine}\n${enumLine}\n${unionDeclarationLine}\n${caseKindLine}\n${branchesLines}`
+	const result = `${typeLine}\n${enumLine}\n${unionDeclarationLine}\n\n${defaultFieldsLines}\n\n${caseKindLine}\n${branchesLines}`
+
+	const constructors: string[] = generateBranchConstructors(s)
 
 
-	return result
+
+	return result + "\n" + constructors.join("\n") + "\n\n"
 }

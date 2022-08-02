@@ -2,14 +2,14 @@ int fizzbuzz -> string =
 | (self mod: 3 * 5) == 0 => "FizzBuzz"
 | (self mod: 3) == 0 => "Fizz"
 | (self mod: 5) == 0 => "Buzz"
-|=> self toStr.
+|=> self toStr
 
-5 fizzbuzz echo.
+5 fizzbuzz echo
 
 
 int fizzbuzzTo: x -> void = self to: x do: [
   it fizzbuzz echo
-].
+]
 
-1 fizzbuzzTo: 100.
+1 fizzbuzzTo: 100
 

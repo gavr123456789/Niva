@@ -1,20 +1,25 @@
 import {TypeField} from "../niva";
 import {BinaryMethodInfo, KeywordMethodInfo, newKeywordMethodInfo, newUnaryMethodInfo, UnaryMessageInfo} from "./types";
+import {TypedProperty} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration";
 
 export class TypeInfo {
-  // field name to info
-  constructor(public fields: Map<string, TypeField>) {
+
+  fields = new Map<string, TypeField>();
+
+  // in the future isUnion can be nullable case field name
+  // for now it always "kind"
+  constructor(typedProperties: TypedProperty[], public isUnion: boolean, public unionParentName?: string) {
+
+    typedProperties.forEach(x => {
+      this.fields.set(x.identifier, {type: x.type ?? "auto"})
+    })
+
+
     // fill getters and setters
-    fields.forEach((value, key) => {
+    this.fields.forEach((value, key) => {
       // getter
       const unaryInfo = newUnaryMethodInfo(value.type)
-      const unaryMessageInfo: UnaryMessageInfo = {
-        returnType: value.type,
-        effects: new Set(),
-        statements: [],
-        declaratedValueToType: new Map()
-      }
-      this.unaryMessages.set(key, unaryMessageInfo)
+      this.unaryMessages.set(key, unaryInfo)
 
       //setter
       const setterInfo = newKeywordMethodInfo(value.type)

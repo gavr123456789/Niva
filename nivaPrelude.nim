@@ -66,6 +66,7 @@ template foreach*[K, V](self: var Table[K, V], doBlock: untyped) =
     doBlock
 
 
+
 ### Arrays
 
 
@@ -138,6 +139,11 @@ template timesRepeat*(self: int, z: bool, body: typed) =
 # может сделать дирти чтобы как бы переменные проникали
 template to_do*(self: int, to: int, doBlock: untyped) =
   for i in self..to:
+    var it {.inject.} = i
+    doBlock
+
+template downto_do*(self: int, to: int, doBlock: untyped) =
+  for i in countdown(to, self):
     var it {.inject.} = i
     doBlock
 

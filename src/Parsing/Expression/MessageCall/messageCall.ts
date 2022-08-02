@@ -47,10 +47,15 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       && receiver.atomReceiver.kindPrimary === "Identifier"
       && codeDB.hasType(receiver.atomReceiver.value))
     {
+      const type = codeDB.getType(receiver.atomReceiver.value)!
+
+
       const constructorWithNoFields: Constructor = {
         kindStatement: "Constructor",
         selfTypeName: insideMessageOfType,
-        type: receiver.atomReceiver.value
+        type: receiver.atomReceiver.value,
+        isUnion: type.isUnion,
+        unionParentName: type.unionParentName
       }
       return constructorWithNoFields
     }
@@ -132,28 +137,44 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
     receiver.atomReceiver.kindPrimary === "Identifier" &&
     // firstMessage &&
     // firstMessage?.selectorKind === "keyword" &&
-    codeDB.hasType(receiver.atomReceiver.value)
+    codeDB.getType(receiver.atomReceiver.value)
+
 
   // если все кеи аргументов есть у поля типа то это обычный конструктор
   // иначе это кастомный конструктор
+
+  /// Usual constructor
   if (firstMessage?.selectorKind === "keyword" || firstMessage === undefined) {
     if (isThisIsTypeCall) {
-      const allKeysAreTypeFields: boolean = firstMessage? checkIfAllKeysAreTypeFields(firstMessage, receiver.atomReceiver.value): true
+      const allKeysAreTypeFields: boolean = firstMessage
+        ? checkIfAllKeysAreTypeFields(firstMessage, receiver.atomReceiver.value)
+        : true
+
+      const type = codeDB.getType(receiver.atomReceiver.value)!
+
+      // if (type.isUnion){
+      //   // TODO если это юнион, то добавляем аргумент kind типа значения енама
+      //   // но для этого сначала нужно добавить в Primary Enum значения помимо
+      //   firstMessage.arguments.push()
+      // }
+
+      // МОЖНО ПРОЩЕ, просто добавить конструктору поле is union
+
       if (allKeysAreTypeFields) {
         const constructor: Constructor = {
           kindStatement: "Constructor",
           call: firstMessage,
           selfTypeName: insideMessageOfType,
-          type: receiver.atomReceiver.value
+          type: receiver.atomReceiver.value,
+          isUnion: type.isUnion
         }
         console.log("constructor detected type: ", constructor.type, " signature: ", constructor.call?.name ?? "---");
         return constructor
       }
-    } else {
-      // вернуть кастомный кейворд конструктор
+
     }
   }
-  // проверяем на 2 оставшихся вида кастомных конструкторов
+  /// Custom Constructor
   if (isThisIsTypeCall && firstMessage) {
 
     const unaryCustomConstructor: CustomConstructor = {
@@ -161,6 +182,12 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       selfTypeName: insideMessageOfType,
       type: receiver.atomReceiver.value,
       kindStatement: "CustomConstructor",
+    }
+
+    // replace union branch type with union name, because of nim
+    const sass = codeDB.getType(receiver.atomReceiver.value)
+    if (sass && sass.unionParentName) {
+      unaryCustomConstructor.unionParentName = sass.unionParentName
     }
     return unaryCustomConstructor
 
