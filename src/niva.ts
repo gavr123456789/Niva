@@ -249,6 +249,8 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
+const code = ``
+
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('type Person name: string age: int'), undefined, 2));

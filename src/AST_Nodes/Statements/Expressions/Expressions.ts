@@ -19,13 +19,18 @@ export interface MessageCallExpression extends BaseMessageCallExpression {
   kindStatement: "MessageCallExpression" 
 }
 export interface Constructor {
+	kindStatement: "Constructor"
+
 	selfTypeName: string
 
 	// Person name: "sas" age: 34
 	type: string
 	// type can have zero fields
 	call?: KeywordMessage,
-  kindStatement: "Constructor"
+
+	isUnion: boolean
+	unionParentName?: string
+
 }
 
 export interface CustomConstructor {
@@ -34,6 +39,7 @@ export interface CustomConstructor {
 	type: string
 	call: MessageCall,
 	kindStatement: "CustomConstructor"
+	unionParentName?: string
 }
 
 export interface Setter {

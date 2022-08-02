@@ -8,7 +8,7 @@ import {
   MapLiteral,
   SetLiteral
 } from "../AST_Nodes/Statements/Expressions/Receiver/Primary/Literals/CollectionLiteral";
-import {generateListLiteral} from "./collections";
+import {generateListLiteral, generateMapLiteral} from "./collections";
 
 
 export function generateAssigment(assignment: Assignment, indentation: number): string {
@@ -43,9 +43,11 @@ export function generateAssigment(assignment: Assignment, indentation: number): 
           const listLiteralCode: string = generateListLiteral(to.receiver)
           return `${ident}var ${assignmentTarget} = ${listLiteralCode}`
         case "MapLiteral":
-          break;
+          const mapLiteralCode: string = generateMapLiteral(to.receiver)
+          return `${ident}var ${assignmentTarget} = ${mapLiteralCode}`
+
         case "SetLiteral":
-          break;
+          throw new Error("TODO")
         default:
           const _never: never = to.receiver
       }

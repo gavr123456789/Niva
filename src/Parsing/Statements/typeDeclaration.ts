@@ -32,6 +32,9 @@ export function unionDeclaration(
     defaultProperties: defaultProperties
   }
 
+  codeDB.addNewUnionType(result)
+
+
   return  result
 }
 
@@ -93,10 +96,7 @@ export function unionBranch(
     return result
   }
 
-
-
 }
-
 
 
 
@@ -109,7 +109,7 @@ export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untype
   const typeName = untypedIdentifier.sourceString
   const result: TypeDeclaration = {
     kindStatement: 'TypeDeclaration',
-    typeName,
+    name: typeName,
     typedProperties: typedPropertiesAst,
     ref: false // TODO
   };
@@ -124,12 +124,7 @@ export function typeDeclaration(_type: TerminalNode, _s: NonterminalNode, untype
     })
 
   } else {
-    const fields = new Map<string, TypeField>()
-    typedPropertiesAst.forEach(x => {
-      fields.set(x.identifier, {type: x.type ?? "auto"})
-    })
-  
-    codeDB.addNewType(typeName, fields)
+    codeDB.addNewType(typeName, typedPropertiesAst, false)
   }
 
   return result;

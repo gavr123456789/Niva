@@ -25,9 +25,10 @@ enumBranch =  "|"? spaces untypedIdentifier spaces
 enumBranchs = enumBranch (spaces enumBranch)*
 
 
-
 unionDeclaration = "union" spaces  untypedIdentifier spaces typedProperties? spaces "=" spaces unionBranchs
-unionBranch =  "|"? spaces untypedIdentifier (whiteSpaces "," whiteSpaces  untypedIdentifier)* spaces ("=>" spaces typedProperties)?
+
+
+unionBranch =  "|" spaces untypedIdentifier (whiteSpaces "," whiteSpaces  untypedIdentifier)* whiteSpaces ("=>" spaces typedProperties)?
 unionBranchs = unionBranch (spaces unionBranch)*
 
 

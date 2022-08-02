@@ -1,15 +1,17 @@
 import "nivaPrelude"
 {. push discardable .}
 {. push warning[ProveField]:on .}
-type 
-
-  MalTypeKind* = enum True, False, Nil, Number, Symbol, String
-  MalType* = object
-    case kind*: MalTypeKind
-    of True, False, Nil:
-      discard
-    of Number:
-      number: int
-    of Symbol, String:
-      str: string
-      number2: int
+proc fizzbuzz(self: int): string =
+  if (self.mod(3.`*`(5))).`==`(0):
+    "FizzBuzz"
+  elif (self.mod(3)).`==`(0):
+    "Fizz"
+  elif (self.mod(5)).`==`(0):
+    "Buzz"
+  else:
+    self.`toStr`()
+5.`fizzbuzz`().`echo`()
+proc fizzbuzzTo(self: int, x: auto): void =
+  self.to_do(x):
+    it.`fizzbuzz`().`echo`()
+1.fizzbuzzTo(100)

@@ -60,7 +60,8 @@ export function assignment(
     case "CustomConstructor":
       // x = Person name: "Bob" age: 42
       codeDB.setTypedValueToMethodScope(currentMessageInfo, leftName, assignRightValue.type)
-      astAssign.type = assignRightValue.type
+
+      astAssign.type = assignRightValue.unionParentName ?? assignRightValue.type
       break;
     case "Setter":
       throw new Error(`You cant assign setter: ${assignRightValue.valueName} to value ${leftName}`)

@@ -1,8 +1,6 @@
 import { Statement } from "../AST_Nodes/Statements/Statement"
 
-export interface MessageCallInfo {
-  callStack: string[]
-}
+
 
 export type EffectType = "mutatesFields"
 

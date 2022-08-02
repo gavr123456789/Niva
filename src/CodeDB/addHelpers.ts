@@ -1,13 +1,17 @@
 import {TypeField} from "../niva";
 import {TypeInfo} from "./TypeInfo";
+import {TypedProperty} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration";
 
 export function addDefaultType(typeNameToInfo: Map<string, TypeInfo>, name: string) {
   if (typeNameToInfo.has(name)){
     throw new Error(`Type ${name} already added`)
   }
-  const fields = new Map<string, TypeField>()
-  fields.set("value", {type: name})
-  typeNameToInfo.set(name, new TypeInfo(fields))
+
+  const defaultSimpleTypeProperty: TypedProperty = {
+    type: name,
+    identifier: "value"
+  }
+  typeNameToInfo.set(name, new TypeInfo([defaultSimpleTypeProperty], false))
 }
 
 

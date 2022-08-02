@@ -1,4 +1,4 @@
-import {ContextInformation, TypeField} from "../niva"
+import {codeDB, ContextInformation, TypeField} from "../niva"
 import {
   BinaryMethodInfo,
   EffectType,
@@ -10,6 +10,8 @@ import {
 } from "./types"
 import {TypeInfo} from "./TypeInfo";
 import {addDefaultType} from "./addHelpers";
+import {UnionInfo} from "./UnionInfo";
+import {TypedProperty, UnionDeclaration} from "../AST_Nodes/Statements/TypeDeclaration/TypeDeclaration";
 
 export type MethodKinds = "unary" | "binary" | "keyword" | "__global__"
 
@@ -144,6 +146,12 @@ export class CodeDB {
 
 
   private typeNameToInfo: Map<string, TypeInfo> = new Map()
+  private unionNameToInfo: Map<string, UnionInfo> = new Map()
+
+  hasUnion(unionName: string): boolean{
+    return this.unionNameToInfo.has(unionName)
+  }
+
   // по дефолту все добавляется в typeNameToInfo
   // если при добавлении там уже такой есть то считываем название модуля,
   // если его нет у идентификатора то ошибка, если в данном модуле нет такого идентификатора то ошибка
@@ -218,14 +226,50 @@ export class CodeDB {
 
   }
 
-  addNewType(typeName: string, fields: Map<string, TypeField>) {
-    const typeInfo = new TypeInfo(fields)
+  addNewType(typeName: string, typedProperties: TypedProperty[], isUnion: boolean, unionName?: string) {
+
+
+    const typeInfo = new TypeInfo(typedProperties, isUnion, unionName)
     this.typeNameToInfo.set(typeName, typeInfo)
+    // TODO не нужно, внутри конструктора TypeInfo это уже происходит
     // add getters and setters
-    fields.forEach((v, fieldName) => {
-      this.addUnaryMessageForType(typeName, fieldName, newUnaryMethodInfo(v.type))
-      this.addKeywordMessageForType(typeName, fieldName, newUnaryMethodInfo("void"))
+    // typeInfo.fields.forEach((v, fieldName) => {
+    //   this.addUnaryMessageForType(typeName, fieldName, newUnaryMethodInfo(v.type))
+    //   this.addKeywordMessageForType(typeName, fieldName, newUnaryMethodInfo("void"))
+    // })
+  }
+
+  addNewUnionType(union: UnionDeclaration) {
+    // register usual type for each branch
+    union.branches.forEach(branch => {
+
+      // combine with defaultTypes
+      const kindProp: TypedProperty = {
+        type: "string",
+        identifier: "kind"
+      }
+
+      const branchWithDefaultProps: TypedProperty[] = [...branch.propertyTypes, ...union.defaultProperties, kindProp]
+
+
+      switch (branch.unionKind) {
+        case "ManyNames":
+          // for each name own type created with same set of fields
+          branch.names.forEach(name => {
+            // TODO !!! Add not a only type, but a custom constructor for this branch
+
+            this.addNewType(name, branchWithDefaultProps, true, union.name)
+          })
+          break;
+        case "OneNames":
+          this.addNewType(branch.name, branchWithDefaultProps, true, union.name)
+          break;
+      }
     })
+
+    // register union itself with types
+    const unionInfo = new UnionInfo(union)
+    this.unionNameToInfo.set(union.name, unionInfo)
 
   }
 
@@ -313,6 +357,10 @@ export class CodeDB {
   hasType(typeName: string) {
     return this.typeNameToInfo.has(typeName)
   }
+  getType(typeName: string) {
+    return this.typeNameToInfo.get(typeName)
+  }
+
   getTypeFields(typeName: string): Map<string, TypeField> {
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
