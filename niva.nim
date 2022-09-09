@@ -1,17 +1,21 @@
 import "nivaPrelude"
 {. push discardable .}
 {. push warning[ProveField]:on .}
-proc fizzbuzz(self: int): string =
-  if (self.mod(3.`*`(5))).`==`(0):
-    "FizzBuzz"
-  elif (self.mod(3)).`==`(0):
-    "Fizz"
-  elif (self.mod(5)).`==`(0):
-    "Buzz"
+proc fib(self: int): int =
+  var n: int = self
+  if n.`<`(2):
+    1
   else:
-    self.`toStr`()
-5.`fizzbuzz`().`echo`()
-proc fizzbuzzTo(self: int, x: auto): void =
-  self.to_do(x):
-    it.`fizzbuzz`().`echo`()
-1.fizzbuzzTo(100)
+    (n.`-`(2)).`fib`().`+`((n.`-`(1)).`fib`())
+proc fib2(self: int): int =
+  case self:
+  of 0:
+    1
+  of 1:
+    1
+  else:
+    (self.`-`(2)).`fib`().`+`((self.`-`(1)).`fib`())
+5.`fib`().`echo`()
+6.`fib2`().`echo`()
+
+

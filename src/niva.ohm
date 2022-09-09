@@ -8,6 +8,7 @@ Niva {
   lineTerminatorsAndSpaces = lineTerminator+ whiteSpaces
   statement =
     | returnStatement  -- returnStatement
+    | importStatement
     | typeDeclaration -- typeDeclarationStatement
     | methodDeclaration -- methodDeclarationStatement
     | constructorDeclaration
@@ -19,6 +20,7 @@ Niva {
     | unionDeclaration -- unionDeclarationStatement
 
 
+importStatement = "import" whiteSpaces untypedIdentifier
 
 enumDeclaration = "union" spaces  untypedIdentifier spaces "=" spaces enumBranchs
 enumBranch =  "|"? spaces untypedIdentifier spaces
@@ -274,7 +276,7 @@ moduleStatement = "module" whiteSpaces untypedIdentifier
 
   // CONST
   reservedWord = keyword | nullLiteral | boolLiteral
-  keyword = "type" | "construct" | "use" | "module" | "union"
+  keyword = "type" | "construct" | "use" | "module" | "union" | "import"
   separator = (comment | space)*
 
   // for binary messages
@@ -287,8 +289,8 @@ moduleStatement = "module" whiteSpaces untypedIdentifier
   whiteSpaceOrEnd = " " | lineTerminator | end
   dot = ";"  spaces
 
-  
+
   whiteSpaces = whiteSpace*
   whiteSpace = " "
-  
+
 }
