@@ -50,6 +50,7 @@ import {
 	unionDeclaration
 } from './Parsing/Statements/typeDeclaration';
 import {ConstructorDeclaration, MethodDeclaration} from "./AST_Nodes/Statements/MethodDeclaration/MethodDeclaration";
+import {writeFileSync, writeSync} from "fs";
 
 
 export interface ContextInformation {
@@ -249,7 +250,6 @@ export function generateNimCode(code: string, discardable = false, includePrelud
 	return [Ast, generatedNimCode, state.errors];
 }
 
-const code = ``
 
 // console.log(JSON.stringify(generateNimCode('1 sas ses'), undefined, 2) );
 // console.log(JSON.stringify(generateNimCode('1 sas + 2 sas'), undefined, 2) );
