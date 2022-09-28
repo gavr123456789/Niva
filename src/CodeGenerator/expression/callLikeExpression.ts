@@ -11,7 +11,12 @@ import {codeDB} from "../../niva";
 import {MessageCall} from "../../AST_Nodes/Statements/Expressions/Messages/Message";
 import {Receiver} from "../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
 
-export type CallLikeExpression = MessageCallExpression | BracketExpression | Constructor | CustomConstructor | Setter //  Getter
+export type CallLikeExpression = 
+ | MessageCallExpression 
+ | BracketExpression 
+ | Constructor 
+ | CustomConstructor 
+ | Setter 
 
 function checkForConstructor(s: MessageCallExpression) {
 
