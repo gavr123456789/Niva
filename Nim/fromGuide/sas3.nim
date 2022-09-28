@@ -47,12 +47,6 @@ func initInterpreter(text: static string): Interpreter =
     current_char: text[0], 
     current_token: EofToken()
   )
-  # result = Interpreter(
-  #   pos: 0, 
-  #   text: text, 
-  #   current_char: text[0], 
-  #   current_token: EofToken()
-  # )
 
 
 proc error(self: Interpreter)  =

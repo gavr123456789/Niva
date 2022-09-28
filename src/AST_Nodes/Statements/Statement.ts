@@ -9,8 +9,6 @@ export interface BodyStatements {
 
 export type Statement =
   | Expression
-  // | MessageCallExpression 
-  // | BracketExpression
   | ReturnStatement
   | Assignment
   | TypeDeclaration

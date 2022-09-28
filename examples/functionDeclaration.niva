@@ -1,8 +1,8 @@
-type Person name: string age: int.
+"Hello World!" echo
 
-Person + x::int = [ x echo ]
+// Декларация бинарной функции
+int +++ y = self + y + 1
+a = 1 +++ 2
+a echo
 
-Person from: x::int -> int = [ 
-	"hello world" echo.
-  1
-]
+
