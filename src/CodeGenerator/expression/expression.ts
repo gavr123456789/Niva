@@ -71,21 +71,18 @@ export function getPrimaryCode(receiver: Primary | BracketExpression | Collectio
 export function processExpression(s: MessageSendExpression, indentation: number): string {
 	// ident stacks if its already indented
 	// use only for recursive processExpression calls
-	// const recursiveIndent = indentation >= 2 ? indentation - 2 : indentation
-	// console.log("s  = ", s.receiver.kindStatement)
-	// console.log("recursiveIndent = ", recursiveIndent)
-	// console.log("indent = ", indentation)
+
 	const receiver = s.receiver;
 
 	if (receiver.kindStatement === "BlockConstructor") {
-		const statemetList: StatementList = {
+		const statementList: StatementList = {
 			kind: "StatementList",
 			statements: receiver.statements
 		}
 		if (receiver.blockArguments.length === 1) {
 			// TODO  add it
 		}
-		const statementsCode = generateNimFromAst(statemetList, indentation)
+		const statementsCode = generateNimFromAst(statementList, indentation)
 		return statementsCode
 	}
 

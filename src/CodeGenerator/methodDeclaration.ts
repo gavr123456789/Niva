@@ -28,13 +28,10 @@ function generateUnary(
 ): string {
 
   const isSelfMutatingUnary: boolean = codeDB.hasMutateEffect(m.expandableType, m.name)
-  console.log("m.expandableType = ", m.expandableType)
-  console.log("m.name = ", m.name)
-  console.log("isSelfMutatingUnary = ", isSelfMutatingUnary)
-
-  // const selfArg = !isConstructorDeclaration? `self: var ${expandableType}`: ""expandableType
   const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingUnary ? "var " : ""}${expandableType}`: ""
-  return `${ident}${procOrTemplate} ${unaryName}(${selfArg}): ${returnType} =\n${methodBody}`
+  const result = `${ident}${procOrTemplate} ${unaryName}(${selfArg}): ${returnType} =\n${methodBody}`
+
+  return result
 }
 
 function generateBinary(
