@@ -1,34 +1,11 @@
-//type Wallet money: int
-//construct Wallet empty = Wallet money: 0
-//
-//emptyWallet = Wallet empty
-//emptyWallet money echo
-//
-//type Person name: string wallet: Wallet
-//type Personn name: string age: int
-//
-//sas = Personn name: (24 + 42) toStr age: 23 + 23
-//sas age echo
+// type declaration
+type Wallet money: int
+type Person name: string wallet: Wallet
+// custom constructor for type Wallet
+construct Wallet empty = Wallet money: 0
+// construct types
+emptyWallet = Wallet empty
+person = Person name: "bob" wallet: emptyWallet
 
-//type Wallet money: int
-//
-//wal = Wallet money: (1 + 1) toStr
+person wallet money echo
 
-int x::string = self echo
-
-1 x: (1 + 1) toStr
-
-//construct Person name: name = Person name: name wallet: Wallet empty
-//person = Person name: "Bob"
-
-
-
-
-//construct Person bob = Person name: "Bob"
-//construct Person fromName: name = Person name: name
-//y = Person bob
-//x = Person fromName: "qwe"
-//
-//y name echo
-//x name echo
-//x = Person bob

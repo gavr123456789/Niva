@@ -105,7 +105,7 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       const lineAndColumnMessage = messages.source.getLineAndColumnMessage()
       // console.error(lineAndColumnMessage)
       // console.error(`You can't modify the fields of the ${valueType} inside method of type ${insideMessageOfType}.
-// Create a method for ${valueType} type that changes the fields and then call it here`)
+      // Create a method for ${valueType} type that changes the fields and then call it here`)
 
       // throw new Error("cant call non local setter")
     }
