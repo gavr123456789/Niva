@@ -19,6 +19,13 @@ proc toStr*[T](x: seq[T]): string =
     
 template toStr*(self: auto): string =
   self.`$`()
+
+proc echo*[T](x: seq[T]) =
+  let a = x.join(", ")
+  echo "{ " & a & " }"    
+    
+template echo*(self: auto) =
+  system.echo self.`$`()
 ###
 
 ### Tables
@@ -180,3 +187,4 @@ template `||`*(self: bool, value: bool): bool =
 
 
 export tables
+export strutils

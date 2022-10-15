@@ -1,13 +1,23 @@
-type Wallet money: int
-construct Wallet empty = Wallet money: 0
+//type Wallet money: int
+//construct Wallet empty = Wallet money: 0
+//
+//emptyWallet = Wallet empty
+//emptyWallet money echo
+//
+//type Person name: string wallet: Wallet
+//type Personn name: string age: int
+//
+//sas = Personn name: (24 + 42) toStr age: 23 + 23
+//sas age echo
 
-emptyWallet = Wallet empty
-emptyWallet money echo
+//type Wallet money: int
+//
+//wal = Wallet money: (1 + 1) toStr
 
-type Person name: string wallet: Wallet
-type Personn name: string age: int
-sas = Personn name: (24 + 42) toStr toStr age: 23 + 23
-sas age echo
+int x::string = self echo
+
+1 x: (1 + 1) toStr
+
 //construct Person name: name = Person name: name wallet: Wallet empty
 //person = Person name: "Bob"
 

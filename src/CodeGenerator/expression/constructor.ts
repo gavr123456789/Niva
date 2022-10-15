@@ -16,6 +16,7 @@ export function generateConstructor(c: Constructor, indentation: number): string
   }
 
   fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
+  console.log("12")
   // const typeName = receiver.atomReceiver.value;
 
 
@@ -51,6 +52,7 @@ export function generateCustomConstructor(c: CustomConstructor, indentation: num
       const argsValuesCode: string[] = []
 
       fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
+      console.log("qweas")
       // const typeName = receiver.atomReceiver.value;
 
 
