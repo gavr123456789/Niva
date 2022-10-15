@@ -12,6 +12,7 @@ export function generateSetter(s: Setter, indentation: number): string {
   const argsValuesCode: string[] = []
   const keyWordArgs = [argument]
   fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, indentation)
+  console.log("123")
   const argumentCode = argsValuesCode[0]
   const fieldName = argument.keyName
   // fillKeywordArgsAndReturnStatements(messageCall.keyWordArgs, argsValuesCode, 0)

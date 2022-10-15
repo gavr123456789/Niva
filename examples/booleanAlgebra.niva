@@ -1,2 +1,2 @@
-(true || false) echo.
-(true && false) echo.
+(true || false) echo
+(true && false) echo
