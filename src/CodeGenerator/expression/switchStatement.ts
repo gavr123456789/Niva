@@ -1,5 +1,6 @@
 import {SwitchStatement} from '../../AST_Nodes/Statements/Expressions/Expressions';
 import {generateBranchExpressions, generateElseBranchExpression} from './switchExpression';
+import {codeDB} from "../../niva";
 
 export function generateSwitchStatement(s: SwitchStatement, identation: number) {
   const {receiver, switchExpression} = s;
@@ -31,8 +32,8 @@ export function generateSwitchStatement(s: SwitchStatement, identation: number) 
 
 
   const ident = ' '.repeat(identation);
-
   const identifier = receiver.atomReceiver.value;
+  console.log("switch receiver = ", receiver)
 
   const branchesCode: string[] = [];
 
@@ -41,6 +42,10 @@ export function generateSwitchStatement(s: SwitchStatement, identation: number) 
   }
   branchesCode.push(generateElseBranchExpression(elseBranch, ident, identation))
 
+  if (receiver.atomReceiver.kindPrimary === "Identifier" && receiver.atomReceiver.type && codeDB.hasUnion(receiver.atomReceiver.type)){
+    return `${ident}case ${identifier}.kind:\n${branchesCode.join("\n")}`;
+
+  }
 
   return `${ident}case ${identifier}:\n${branchesCode.join("\n")}`;
 }

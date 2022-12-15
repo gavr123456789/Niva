@@ -240,14 +240,16 @@ export class CodeDB {
   }
 
   addNewUnionType(union: UnionDeclaration) {
+    // combine with defaultTypes
+    const kindProp: TypedProperty = {
+      type: "string",
+      identifier: "kind"
+    }
+
     // register usual type for each branch
     union.branches.forEach(branch => {
 
-      // combine with defaultTypes
-      const kindProp: TypedProperty = {
-        type: "string",
-        identifier: "kind"
-      }
+
 
       const branchWithDefaultProps: TypedProperty[] = [...branch.propertyTypes, ...union.defaultProperties, kindProp]
 
@@ -270,6 +272,7 @@ export class CodeDB {
     // register union itself with types
     const unionInfo = new UnionInfo(union)
     this.unionNameToInfo.set(union.name, unionInfo)
+    this.addNewType(union.name, [kindProp], true)
 
   }
 
@@ -298,24 +301,26 @@ export class CodeDB {
   }
 
   hasMutateEffect(typeName: string, methodSelector: string): boolean {
+    // console.log(`trying to get mutate effects for type: ${typeName} selector: ${methodSelector}`)
     const type = this.typeNameToInfo.get(typeName)
     if (!type) {
       throw new Error("trying to check effect of non existing type");
     }
+    // console.log(`type keywordMessages = ${JSON.stringify(type, undefined, 2)}`)
 
     const unary = !!type.unaryMessages.get(methodSelector)?.effects.has("mutatesFields")
     const binary = !!type.binaryMessages.get(methodSelector)?.effects.has("mutatesFields")
     const keyword = !!type.keywordMessages.get(methodSelector)?.effects.has("mutatesFields")
-    // console.log("type.keywordMessages = ", type.keywordMessages)
+    // console.log(typeName, ".keywordMessages = ", type.keywordMessages)
     return unary || binary || keyword
   }
 
   addEffectForMethod(selfType: string, methodKind: MethodKinds, methodName: string, effect: { kind: EffectType; }) {
+    // console.log("2323 ", this.typeNameToInfo)
     const type = this.typeNameToInfo.get(selfType)
     if (!type) {
       throw new Error("trying to add effect to non existing type");
     }
-
     if (methodName.length === 0) {
       throw new Error("MethodName is Empty");
     }
@@ -325,10 +330,11 @@ export class CodeDB {
         const keywordMethod = type.keywordMessages.get(methodName)
         if (!keywordMethod) {
           console.error(`All known keywordMethods of type ${selfType}:`)
-
-          throw new Error(`trying to add effecto for non existing method: ${methodName}`);
+          throw new Error(`trying to add effect for non existing method: ${methodName}`);
         }
         keywordMethod.effects.add(effect.kind)
+        console.log("effect added to selfType =", selfType, " methodName = ", methodName)
+
         break;
       case "binary":
         const binaryMethod = type.binaryMessages.get(methodName)
@@ -386,7 +392,7 @@ export class CodeDB {
       case "unary":
         const unaryMethod = type.unaryMessages.get(methodName)
         if (!unaryMethod) {
-          console.log(`all known unaryMessages of type: `, typeName," = ", type.unaryMessages)
+          // console.log(`all known unaryMessages of type: `, typeName," = ", type.unaryMessages)
           throw new Error(`no such unary method: ${methodName} for type ${typeName}`)
         }
         if (unaryMethod.returnType === "auto") {

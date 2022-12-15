@@ -75,7 +75,6 @@ export function generateKeywordCall(
   if (!lastKeyWordArgBody) {
     const keywordMessageCall = '.' + functionName + '(' + argumentsSeparatedByComma + ')'
 
-    console.log("keywordMessageCall = ", keywordMessageCall)
 
     return keywordMessageCall
   } else {

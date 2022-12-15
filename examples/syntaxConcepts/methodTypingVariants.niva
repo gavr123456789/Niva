@@ -1,0 +1,28 @@
+// with pipes
+int from: x|string to: y|int = []
+// with backslashes
+int from: x\string to: y\int = []
+
+// Haskell like
+int int int -> int
+int from: x to: y = []
+
+-int from: int to: int -> int
+from: x to: y = []
+
+// No colons???
+int from-x :int to-y :int = []
+1 from: 2 to: 4 |> add: 2
+
+
+type Person name: string age: int = [
+  askName = [
+    name: Stdin readstr
+    salute
+  ]
+  salute = [
+    name == ""
+    | "hello!" echo
+    |=> "hello " + name |> echo
+  ]
+]

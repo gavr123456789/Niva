@@ -4,7 +4,7 @@
 import { NonterminalNode, IterationNode, TerminalNode } from "ohm-js";
 import { KeywordMessage, KeywordArgument, BinaryMessage, UnaryMessage } from "../../../AST_Nodes/Statements/Expressions/Messages/Message";
 import { Receiver } from "../../../AST_Nodes/Statements/Expressions/Receiver/Receiver";
-import { state } from "../../../niva";
+import {codeDB, state} from "../../../niva";
 
 export function messages_keywordFirst(keywordMessage: NonterminalNode) {
   return [keywordMessage.toAst()];
@@ -35,6 +35,8 @@ export function keywordMessage(_s1: NonterminalNode,
     arguments: resultArguments,
     type: {name: ""}
   };
+
+
   return result;
 }
 

@@ -58,12 +58,36 @@ export interface ContextInformation {
 	forType: string
 	withName: string
 }
+
+export interface BranchContextInformation {
+	valueName: string,
+	typeOfValue: string,
+}
 class State {
 	isInMethodBody = false
 	insideMessage: ContextInformation = {
 		forType: "__global__",
 		withName: "__global__",
 		kind: "__global__"
+	}
+
+	inPM_Branch = false
+	insideBranch: BranchContextInformation = {
+		valueName: "",
+		typeOfValue: ""
+	}
+
+	enterPM_Scope(valueName: string) {
+		this.insideBranch.valueName = valueName
+	}
+	enterBranchScope(typeOfValue: string) {
+		this.inPM_Branch = true
+		this.insideBranch.typeOfValue = typeOfValue
+	}
+	leavePM_Scope() {
+		this.inPM_Branch = false
+		this.insideBranch.typeOfValue = "__global__"
+		this.insideBranch.valueName = "__global__"
 	}
 	
 	enterMethodScope(x: ContextInformation){

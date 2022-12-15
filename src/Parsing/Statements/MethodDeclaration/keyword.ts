@@ -32,6 +32,10 @@ export function keywordMethodDeclaration(
 
   codeDB.addKeywordMessageForType(extendableType, selectorName, newKeywordMethodInfo(returnType || "auto"))
   codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
+  keyValueNames.forEach(x => {
+    codeDB.setTypedValueToMethodScope(state.insideMessage, x.keyName, x.identifier.type ?? "auto")
+    console.log("added variable with name: ", x.keyName, " and type: ", x.identifier.type)
+  })
 
 
   const bodyStatements: BodyStatements = methodBody.toAst();
@@ -60,6 +64,8 @@ export function keywordMethodDeclaration(
     keyValueNames,
     name: selectorName
   }
+
+
 
   const result: MethodDeclaration = {
     kindStatement: "MethodDeclaration",
