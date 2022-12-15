@@ -112,11 +112,16 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
 
     const fieldType = codeDB.getFieldType(insideMessageOfType, firstArg.keyName)
     if (fieldType) {
-      console.log("mutable effect added to ", state.insideMessage.withName);
-
-      codeDB.addEffectForMethod(insideMessageOfType, state.insideMessage.kind, state.insideMessage.withName, {kind: "mutatesFields"})
+      if (insideMessageOfType === "auto"){
+        throw new Error(`insideMessageOfType is always known, it cant be auto, ${state.insideMessage.withName}`)
+      }
+      console.log("mutable effect added to ", state.insideMessage.withName, "with self type: ", insideMessageOfType);
+      console.log("!!! insideMessageOfType = ", insideMessageOfType)
+      const selfType = insideMessageOfType
+      const methodKind = state.insideMessage.kind
+      const methodName = state.insideMessage.withName
+      codeDB.addEffectForMethod(selfType, methodKind, state.insideMessage.withName, {kind: "mutatesFields"})
       const setter: Setter = {
-        // messageCalls: astMessages,
         kindStatement: "Setter",
         argument: firstArg,
         receiver,

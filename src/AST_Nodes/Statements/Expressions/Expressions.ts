@@ -79,4 +79,5 @@ export interface SwitchStatement{
 	kindStatement: "SwitchStatement"
 	switchExpression: SwitchExpression
 	receiver: Receiver
+	sas: string
 }

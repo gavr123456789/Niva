@@ -73,7 +73,7 @@ export function processExpression(s: MessageSendExpression, indentation: number)
 	// use only for recursive processExpression calls
 
 	const receiver = s.receiver;
-
+	// console.log("!!! s = ", s)
 	if (receiver.kindStatement === "BlockConstructor") {
 		const statementList: StatementList = {
 			kind: "StatementList",

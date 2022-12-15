@@ -65,6 +65,7 @@ function generateKeyword(
   const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingKeyword ? "var " : ""}${expandableType}, `: ""
   // const selfArg = !isConstructorDeclaration? `self: var ${expandableType}, `: ""
 
+  console.log("isSelfMutatingKeyword = ", isSelfMutatingKeyword)
   const args = `${selfArg}${keyArgs}`
   return `${ident}${procOrTemplate} ${keywordProcName}(${args}): ${returnType} =\n${methodBody}`
 }
