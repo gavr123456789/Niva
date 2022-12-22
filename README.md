@@ -86,23 +86,23 @@ This is exactly the same as in Smalltalk.
 The first is an identifier of the type for which the method is declared, then the signature and the body.
 ```F#
 //Unary
--int factorial = []
+int factorial = []
 // 4 factrial
 
 //Binary
--string / pathPart  = []
+string / pathPart  = []
 // userName = "user"
 // "home"/userName/"Documents"
  
 //Keyword
--Random from: start to: end = []
+Random from: start to: end = []
 // random from: 1 to: 10
 ```
 Where the types? You can specify them for each argument as `::type` and return type as `-> type`
 ```F# 
--int factorial -> int = [ ]
--Circle + circle::Circle -> Circle = [ ]
--Person renameTo: name::string = [ ]
+int factorial -> int = [ ]
+Circle + circle::Circle -> Circle = [ ]
+Person renameTo: name::string = [ ]
 ```
 But this is not necessary. Types that are not specified will be deduced from the places of use. If a function is called from different places with different types, it will be monomorphized. So the absence of declared types is zero cost in runtime. There only one case when you need to declare type: return type of recurcive functions. 
 
@@ -111,24 +111,24 @@ Also body can be single expression declared without brackets.
 
 ### Return statement
 ```Smalltalk
--Math pi -> float = [
+Math pi -> float = [
   ^ 3.1415926
 ]
 // or
--Math pi -> float = [
+Math pi -> float = [
   3.1415926
 ]
 // or
--Math pi = 3.1415926
+Math pi = 3.1415926
 ```
 Last expresion returns, so return operator needed only for [early return](https://en.wikipedia.org/wiki/Guard_(computer_science)). 
 
 ### Protocols (WIP, need syntax design)
 So declarating many methods for same type can looks a bit ugly:
 ```Swift
--Person hasPassport -> bool = []
--Person == person::Person -> bool = []
--Person inRelationShip: relationType with: person = []
+Person hasPassport -> bool = []
+Person == person::Person -> bool = []
+Person inRelationShip: relationType with: person = []
 ```
 So there way to group methods declaration(just like protocoks in Smalltalk)  
 Maybe I will find a better syntax:
@@ -173,7 +173,7 @@ Here how to declare type of code block
 `[argsTypes | returnType]`  
 To 
 ```F#
--Foo do: code::[int string | int] -> int = [
+Foo do: code::[int string | int] -> int = [
   code value: 4 value: "string argument" // apply code block
 ]
 ```
