@@ -59,6 +59,7 @@ export function generateNimFromAst(x: StatementList, identation = 0, discardable
         lines.push(generateSwitchExpression(s, identation))
         break;
       case 'SwitchStatement':
+        console.log("!!!s = ", s)
         lines.push(generateSwitchStatement(s, identation))
         break;
 

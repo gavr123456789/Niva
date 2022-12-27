@@ -3,5 +3,5 @@ export interface Identifier {
   readonly value: string
   moduleName?: string
 
-  readonly type?: string
+  type?: string
 }

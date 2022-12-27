@@ -105,18 +105,23 @@ export function messageCall(receiverNode: NonterminalNode, maymeMessages: Iterat
       const lineAndColumnMessage = messages.source.getLineAndColumnMessage()
       // console.error(lineAndColumnMessage)
       // console.error(`You can't modify the fields of the ${valueType} inside method of type ${insideMessageOfType}.
-// Create a method for ${valueType} type that changes the fields and then call it here`)
+      // Create a method for ${valueType} type that changes the fields and then call it here`)
 
       // throw new Error("cant call non local setter")
     }
 
     const fieldType = codeDB.getFieldType(insideMessageOfType, firstArg.keyName)
     if (fieldType) {
-      console.log("mutable effect added to ", state.insideMessage.withName);
-
-      codeDB.addEffectForMethod(insideMessageOfType, state.insideMessage.kind, state.insideMessage.withName, {kind: "mutatesFields"})
+      if (insideMessageOfType === "auto"){
+        throw new Error(`insideMessageOfType is always known, it cant be auto, ${state.insideMessage.withName}`)
+      }
+      console.log("mutable effect added to ", state.insideMessage.withName, "with self type: ", insideMessageOfType);
+      console.log("!!! insideMessageOfType = ", insideMessageOfType)
+      const selfType = insideMessageOfType
+      const methodKind = state.insideMessage.kind
+      const methodName = state.insideMessage.withName
+      codeDB.addEffectForMethod(selfType, methodKind, state.insideMessage.withName, {kind: "mutatesFields"})
       const setter: Setter = {
-        // messageCalls: astMessages,
         kindStatement: "Setter",
         argument: firstArg,
         receiver,

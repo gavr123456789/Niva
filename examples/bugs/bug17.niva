@@ -1,0 +1,6 @@
+type Wallet money: int
+
+construct Wallet empty = Wallet money: 0
+
+int sas::Wallet = 1 echo
+1 sas: Wallet empty

@@ -12,4 +12,4 @@
   | 5 => "x = 5" echo
   | 7 => "x = 7" echo
   |=> "not 5, not 7" echo
-].
+]

@@ -34,10 +34,10 @@ export interface KeywordArgument {
 	unaryMessages: UnaryMessage[]
 	binaryMessages: BinaryMessage[]
 }
+
 export interface KeywordMessage {
 	selectorKind: 'keyword';
 	name: string
 	arguments: KeywordArgument[]
 	type: MessageType
-
 }
