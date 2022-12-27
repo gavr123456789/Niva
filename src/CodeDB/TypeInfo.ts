@@ -14,12 +14,18 @@ export class TypeInfo {
       this.fields.set(x.identifier, {type: x.type ?? "auto"})
     })
 
-
+    if (unionParentName) {
+      console.log("unionParentName = ", unionParentName)
+    }
     // fill getters and setters
     this.fields.forEach((value, key) => {
       // getter
       const unaryInfo = newUnaryMethodInfo(value.type)
       this.unaryMessages.set(key, unaryInfo)
+      // console.log("KEY = ", key)
+      if (key === "kind") {
+        console.log("KIND: ", value, "KEY: ")
+      }
 
       //setter
       const setterInfo = newKeywordMethodInfo(value.type)

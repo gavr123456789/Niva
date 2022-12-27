@@ -15,10 +15,3 @@ person renameTo: "new name!"
 // доступ к полям это тоже фукнкции
 person name echo
 
-
-
-  
-
-
-
-

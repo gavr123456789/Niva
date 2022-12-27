@@ -42,6 +42,7 @@ export interface CustomConstructor {
 	unionParentName?: string
 }
 
+// Example: person name: "bob"
 export interface Setter {
 	kindStatement: "Setter"
 	selfTypeName: string
@@ -78,4 +79,5 @@ export interface SwitchStatement{
 	kindStatement: "SwitchStatement"
 	switchExpression: SwitchExpression
 	receiver: Receiver
+	sas: string
 }

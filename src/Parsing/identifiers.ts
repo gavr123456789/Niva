@@ -19,7 +19,6 @@ export function moduleName(name: NonterminalNode, dot: TerminalNode): string{
 }
 
 export function unaryTypedIdentifier(untypedIdentifier: NonterminalNode, _twoColons: TerminalNode, unaryType: NonterminalNode): Identifier {
-
   const result: Identifier = {
     kindPrimary: "Identifier",
     value: untypedIdentifier.sourceString,

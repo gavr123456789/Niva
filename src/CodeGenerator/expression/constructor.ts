@@ -16,8 +16,6 @@ export function generateConstructor(c: Constructor, indentation: number): string
   }
 
   fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
-  // const typeName = receiver.atomReceiver.value;
-
 
   // create "key: val, key2: val2" pairs
   const argArray = keyWordArgs.map((x, i) => {
@@ -36,6 +34,7 @@ export function generateConstructor(c: Constructor, indentation: number): string
 }
 
 export function generateCustomConstructor(c: CustomConstructor, indentation: number): string {
+  console.log("generateCustomConstructor")
   const indent = " ".repeat(indentation)
   const type = c.type
   const constructorName = "construct_" + type + "_" + c.call.name
@@ -51,7 +50,6 @@ export function generateCustomConstructor(c: CustomConstructor, indentation: num
       const argsValuesCode: string[] = []
 
       fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, 0)
-      // const typeName = receiver.atomReceiver.value;
 
 
       // create "key: val, key2: val2" pairs

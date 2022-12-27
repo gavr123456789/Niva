@@ -37,6 +37,7 @@ export function binaryMethodDeclaration(
   codeDB.addBinaryMessageForType(extendableType, selectorName, newBinaryMethodInfo(returnType || "auto"))
   codeDB.setTypedValueToMethodScope(state.insideMessage, "self", extendableType)
 
+
   const bodyStatements: BodyStatements = methodBody.toAst();
   const isProc = _eq.sourceString === "="
 

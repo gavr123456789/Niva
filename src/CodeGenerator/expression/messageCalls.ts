@@ -24,7 +24,6 @@ export function generateBinaryCall(binaryMessageName: string, argument: BinaryAr
 
     case "BracketExpression":
       // example: 1 + (1 - 1)
-
       const expressionInBracketsCode = processExpression(argument.value, 0)
       const codeWithArgumentInBrackets = generateSimpleBinaryCall(binaryMessageName, argument, expressionInBracketsCode)
       return codeWithArgumentInBrackets
@@ -70,12 +69,13 @@ export function generateKeywordCall(
   const argsValuesCode: string[] = []
 
 
-  // generateArgs должна возвращать массив аргументов с вызовами у них унарных и бинарных функций
   const lastKeyWordArgBody = fillKeywordArgsAndReturnStatements(keyWordArgs, argsValuesCode, identation);
   const argumentsSeparatedByComma = argsValuesCode.join(", ")
 
   if (!lastKeyWordArgBody) {
     const keywordMessageCall = '.' + functionName + '(' + argumentsSeparatedByComma + ')'
+
+
     return keywordMessageCall
   } else {
     // one blockCode arg
@@ -98,20 +98,20 @@ export function generateKeywordCall(
 
 }
 
-// цель заполнить массив аргументов кодом для вычисления каждого аргумента
+// цель заполнить массив аргументов args кодом для вычисления каждого аргумента из keyWordArgs
+// there is a nice helper generateKeywordArgCalls() that generates all unary and binary message calls from kwArg
 export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[], args: string[], indentation: number): string | undefined {
   const keyWordArgsCount = keyWordArgs.length
   if(keyWordArgsCount === 0) {
     throw new Error("keyWordArgsCount cant be 0")
   }
-
   let lastKeyWordArgBody: undefined | string = undefined
   keyWordArgs.forEach((kwArg, i) => {
     switch (kwArg.receiver.kindStatement) {
       // Arg is just a simple thing(identifier or literal)
       case "Primary":
         const keyArgReceiverName = kwArg.receiver.atomReceiver.value
-        const receiverVal = kwArg.receiver.atomReceiver.value + generateKeywordArgCalls(keyArgReceiverName, kwArg);
+        const receiverVal = kwArg.receiver.atomReceiver.value + generateKeywordArgCalls(kwArg);
 
         args.push(receiverVal);
         break;
@@ -142,14 +142,13 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
         if (!expression) {
           throw new Error(`error while process BracketExpression as KeywordMessageArgument: ${kwArg.keyName}`)
         }
-        // console.log("Keyword bracket expression: ", expression)
-        args.push(expression)
+        const result = expression + generateKeywordArgCalls(kwArg)
+        args.push(result)
         break;
       case "SetLiteral":
       case "MapLiteral":
       case "ListLiteral":
         const collection = processCollection(kwArg.receiver)
-        // console.log("kewWord arg collection: ", collection)
         args.push(collection)
         break;
 
@@ -166,7 +165,7 @@ export function fillKeywordArgsAndReturnStatements(keyWordArgs: KeywordArgument[
   return lastKeyWordArgBody;
 }
 
-function generateKeywordArgCalls(receiverName: string, kwArg: KeywordArgument) {
+function generateKeywordArgCalls(kwArg: KeywordArgument) {
   let result = ""
   // if there any unary calls, call them first
 
@@ -178,7 +177,7 @@ function generateKeywordArgCalls(receiverName: string, kwArg: KeywordArgument) {
 
     result = result + unaryCallCode;
   }
-  // if there any binary calls, call them after
+  // if there are any binary calls, call them after
   for (const binaryMsg of kwArg.binaryMessages) {
     const binaryCallCode = generateBinaryCall(binaryMsg.name, binaryMsg.argument);
     result = result + binaryCallCode;

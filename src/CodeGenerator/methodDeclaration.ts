@@ -28,9 +28,10 @@ function generateUnary(
 ): string {
 
   const isSelfMutatingUnary: boolean = codeDB.hasMutateEffect(m.expandableType, m.name)
-  // const selfArg = !isConstructorDeclaration? `self: var ${expandableType}`: ""expandableType
   const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingUnary ? "var " : ""}${expandableType}`: ""
-  return `${ident}${procOrTemplate} ${unaryName}(${selfArg}): ${returnType} =\n${methodBody}`
+  const result = `${ident}${procOrTemplate} ${unaryName}(${selfArg}): ${returnType} =\n${methodBody}`
+
+  return result
 }
 
 function generateBinary(
@@ -61,8 +62,10 @@ function generateKeyword(
 
   const isSelfMutatingKeyword: boolean = codeDB.hasMutateEffect(m.expandableType, keywordProcName)
   // constructor doesn't need a self
-  // const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingKeyword ? "var " : ""}${expandableType}, `: ""
-  const selfArg = !isConstructorDeclaration? `self: var ${expandableType}, `: ""
+  const selfArg = !isConstructorDeclaration? `self: ${isSelfMutatingKeyword ? "var " : ""}${expandableType}, `: ""
+  // const selfArg = !isConstructorDeclaration? `self: var ${expandableType}, `: ""
+
+  console.log("isSelfMutatingKeyword = ", isSelfMutatingKeyword)
   const args = `${selfArg}${keyArgs}`
   return `${ident}${procOrTemplate} ${keywordProcName}(${args}): ${returnType} =\n${methodBody}`
 }

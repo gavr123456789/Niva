@@ -309,52 +309,33 @@ boxWidget
 ```
 
 
-# Tagged unions [WIP]
+# Tagged unions 
 Declaration:  
-```F#
-union Shape = 
-  | type Circle = radius: int
-  | type Square = side: int
-  | type Rectangle = height: int width: int.
-```
-Now shape has one method with next signature:
-```Smalltalk
--Shape Circle: [Circle | auto] Square: [Square | auto] Rectangle: [Rectangle | auto]
-```
-This means that you always check union for all possible tags (exhaustion). If you add a new tag, all the places in which you match will show an error, since now the signature of the method has changed.  
-```Smalltalk
--Shape getShapeWidth = [
-  self 
-    Circle:    [ circle | 2 * circle radius ]
-    Square:    [ square | square side ]
-    Rectangle: [ rectangle | rectangle width ].
-]
+```C
+union Shape area: int =
+| Something
+| Rectangle => width: int height: int
+| Circle    => radius: int
+
+rectangle = Rectangle area: 42 width: 7 height: 6
+
+rectangle area echo
+rectangle width echo
+rectangle height echo
 ```
 Every branch is usual type, so you can create them separately.
-```Smalltalk
-circle = Circle side: 4
+```C#
+Rectangle area: 42 width: 7 height: 6
 ```
-### Default values [WIP]
-You can create union with default values
-```F#
-union Person = name: string age: int // Default Person properties
-	| StrangePerson fumos: List::Fumo 
-	| NormalPerson
-```
+Every branch here has an area field.
 
-# Collections [WIP]
+# Collections 
 I almost stole Rich Hickey's syntax, I hope he won't be offended ^_^
 ```lua
 listLiteral = 
   | "{" spaces "}" -- emptyList
   | "{" listElements "}" -- notEmptyList
 listElements = primary whiteSpaces (","? spaces primary)*
-
-mapLiteral = 
-  | "{" spaces "}" -- emptyMap
-  | "{" mapElements "}" -- notEmptyList
-mapElements = mapElement (","? spaces mapElement)*
-mapElement = ":"primary whiteSpaces primary
 
 hashSetLiteral = 
   | "#{" spaces "}" -- emptyHashSet
@@ -372,9 +353,8 @@ list //! {1 2 3 4 5}
 ```
 ## Map
 ```C#
-map = {:"one" 1 :"two" 2 :"three" 3}
-map add: 5 //! {1 2 3 4 5}
-map get: 0 //! 1
+x = #{"sas" 1, "sus" 2}
+x at: "ses" put: 3
 ```
 ## Set
 ```Rust
