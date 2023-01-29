@@ -5,28 +5,17 @@ import frontend.lexer.isDigit
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.util.fillSymbolTable
 
 typealias StringToToken = HashMap<String, TokenType>
 
-class SymbolTable(val keywords: StringToToken = hashMapOf(), var symbols: StringToToken = hashMapOf())
+class SymbolTable(var keywords: StringToToken = hashMapOf(), var symbols: StringToToken = hashMapOf())
 
 fun SymbolTable.addSymbol(lexeme: String, tokenType: TokenType) =
     symbols.set(lexeme, tokenType)
 
-fun SymbolTable.removeSymbol(lexeme: String) =
-    symbols.remove(lexeme)
-
-fun SymbolTable.addKeyword(lexeme: String, token: TokenType) =
-    keywords.set(lexeme, token)
-
-fun SymbolTable.removeKeyword(keyword: String) =
-    symbols.remove(keyword)
-
 fun SymbolTable.existsKeyword(keyword: String) =
     keyword in keywords
-
-fun SymbolTable.existsSymbol(symbol: String) =
-    symbol in symbols
 
 fun SymbolTable.getMaxSymbolSize(): Int {
     var result = 0
@@ -47,7 +36,7 @@ class Lexer(
     var source: String,
     val file: String
 ) {
-    val symbols: SymbolTable = SymbolTable()
+    val symbolTable: SymbolTable = SymbolTable()
     val tokens: MutableList<Token> = mutableListOf()
     var line: Int = 1
     var start: Int = 0
@@ -59,11 +48,14 @@ class Lexer(
     var spaces: Int = 0
 
     init {
+        fillSymbolTable()
+
         while (!done()) {
             next()
             start = current
             lineCurrent = linePos
         }
+
         tokens.add(
             Token(
                 kind = TokenType.EndOfFile,
@@ -250,7 +242,7 @@ fun Lexer.stepWhileDigit() {
 }
 
 fun Lexer.stepWhileAlphaNumeric() {
-    while (peek().isAlphaNumeric() || check("_") && !done()) {
+    while ((peek().isAlphaNumeric() || check("_")) && !done()) {
         step()
     }
 }
@@ -287,8 +279,8 @@ fun Lexer.parseNumber() {
 fun Lexer.parseIdentifier() {
     stepWhileAlphaNumeric()
     val name = source.slice(start until current)
-    if (symbols.existsKeyword(name) && symbols.keywords[name] != null) {
-        symbols.keywords[name]?.let { createToken(it) }
+    if (symbolTable.existsKeyword(name)) {
+        symbolTable.keywords[name]?.let { createToken(it) }
     } else {
         createToken(TokenType.Identifier)
     }
@@ -297,7 +289,7 @@ fun Lexer.parseIdentifier() {
 
 fun Lexer.next() {
     fun Lexer.getToken(lexeme: String): Token? {
-        val table = symbols
+        val table = symbolTable
         val kind = table.symbols.getOrDefault(lexeme, table.keywords.getOrDefault(lexeme, TokenType.NoMatch))
         if (kind == TokenType.NoMatch) {
             return null
@@ -363,9 +355,9 @@ fun Lexer.next() {
         }
 
         else -> {
-            var n = symbols.getMaxSymbolSize()
+            var n = symbolTable.getMaxSymbolSize()
             while (n > 0) {
-                for (symbol in symbols.getSymbols(n)) {
+                for (symbol in symbolTable.getSymbols(n)) {
                     if (match(symbol)) {
                         getToken(symbol)?.let { tokens.add(it) }
                         return
