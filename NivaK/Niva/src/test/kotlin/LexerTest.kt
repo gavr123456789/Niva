@@ -2,10 +2,8 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.TokenType
 import frontend.meta.TokenType.*
-//import frontend.meta.TokenType.BinarySymbol
-//import frontend.meta.TokenType.EndOfFile
-import frontend.util.fillSymbolTable
-import org.testng.annotations.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class LexerTest {
     @Test
@@ -14,16 +12,40 @@ class LexerTest {
     }
 
     @Test
+    fun ifStatement() {
+        checkOnKinds("", mutableListOf(EndOfFile))
+    }
+
+    @Test
+    fun sasIdentifier() {
+        checkOnKinds("sas", mutableListOf(Identifier, EndOfFile))
+    }
+
+    @Test
     fun punctuation() {
         checkOnKinds("{}", mutableListOf(BinarySymbol, BinarySymbol, EndOfFile))
     }
 
-    fun checkOnKinds(source: String, tokens: MutableList<TokenType>) {
-        val lexer = Lexer(source,"sas")
-        lexer.fillSymbolTable()
+    @Test
+    fun typeKW() {
+        checkOnKinds("type", mutableListOf(Type, EndOfFile))
+    }
+
+    @Test
+    fun trueFalseKW() {
+        checkOnKinds("true", mutableListOf(True, EndOfFile))
+    }
+
+    fun checkOnKinds(source: String, tokens: MutableList<TokenType>, showTokens: Boolean = true) {
+        val lexer = Lexer(source, "sas")
+//        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
-        if (tokens != result) {
-            throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
+        assertEquals(tokens, result)
+        if (showTokens) {
+            println("$result")
         }
+//        if (tokens != result) {
+//            throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
+//        }
     }
 }

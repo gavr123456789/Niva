@@ -9,7 +9,7 @@ val POSSIBLE_BINARY_MESSAGES = setOf(">", "<", "=", "~", "/", "+", "-", "_", "*"
     ">>", "<<")
 
 fun Lexer.fillSymbolTable() {
-    this.symbols.symbols = hashMapOf(
+    this.symbolTable.symbols = hashMapOf(
         "{" to TokenType.LeftParen,
         "}" to TokenType.RightParen,
         "(" to TokenType.LeftBrace,
@@ -29,6 +29,8 @@ fun Lexer.fillSymbolTable() {
         "=" to TokenType.Equal,
 
         "^" to TokenType.Return,
+    )
+    this.symbolTable.keywords = hashMapOf(
         // Keywords
         "type" to TokenType.Type,
         "union" to TokenType.Union,
@@ -36,9 +38,12 @@ fun Lexer.fillSymbolTable() {
         "true" to TokenType.True,
         "false" to TokenType.False,
     )
+
+    println("Sas " + this.symbolTable.keywords)
+
     // add possible binary
     for (possibleBinaryMessage in POSSIBLE_BINARY_MESSAGES) {
-        this.symbols.addSymbol(possibleBinaryMessage, TokenType.BinarySymbol)
+        this.symbolTable.addSymbol(possibleBinaryMessage, TokenType.BinarySymbol)
     }
 
 }
