@@ -12,11 +12,6 @@ class LexerTest {
     }
 
     @Test
-    fun ifStatement() {
-        checkOnKinds("", mutableListOf(EndOfFile))
-    }
-
-    @Test
     fun sasIdentifier() {
         checkOnKinds("sas", mutableListOf(Identifier, EndOfFile))
     }

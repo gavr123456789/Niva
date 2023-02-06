@@ -160,12 +160,12 @@ fun Lexer.error(message: String) {
 }
 
 fun String.set(index: Int, char: Char): String {
-    return this.substring(0, index) + char + this.substring(index + 1)
+    return substring(0, index) + char + substring(index + 1)
 }
 
 fun Lexer.parseEscape() {
     when (peek()[0]) {
-        'n' -> source.set(current, '\n') // 0x0A
+        'n' -> source.set(current, '\n')
         '\'' -> source.set(current, '\'')
         '\\' -> source.set(current, '\\')
         else -> this.error("invalid escape sequence '\\${peek()}'")
@@ -317,7 +317,6 @@ fun Lexer.next() {
 
         match("\t") -> error("tabs are not allowed in identifiers")
         match("\n") -> incLine()
-
 
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
