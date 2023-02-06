@@ -1,5 +1,8 @@
 # Niva
-It will be Smalltlak like language, but statically typed.
+It will be Smalltalk like language, but statically typed.
+
+## What's going on
+The simple implementation is ready on TS, now I rewriting it on Kotlin without parser generator(ohm)
 
 ## Backend
 Now the backend is Nim. Yes it's quite fun `niva` -> `nim` -> `C`.  
@@ -19,22 +22,28 @@ I haven't decided on the final name yet, so far I've chosen niva because my 2 fa
 "Hello world" echo
 ```
 
-#### Custom type
+#### Type and methods declaration
 ```F#
-// Declaration
+// Declare type Person with 2 fields
 type Person name: string age: int
 // Instantiation
 person = Person name: "Bob" age: 42
-// Unary method
+// Unary method declaration for Person receiver
 Person sleep = [...]
 // Method call
 person sleep
 ```
 
 #### Factorial
+`|` -> if/switch expression/statement  
+`something | exp -> do` - expression, else branch is necessary  
+`x = y > 0 | true |-> false` - expression, every branch must return a value  
+`| exp -> do` - statement  
+`|-> do` - else branch
+
 ```F#
 int factorial -> int = self
-| 0 => 1
+| 0 => 1 // switch on self, self is int
 |=> self * (self - 1) factorial.
 
 5 factorial echo
