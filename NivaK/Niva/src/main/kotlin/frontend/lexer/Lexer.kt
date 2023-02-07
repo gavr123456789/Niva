@@ -100,7 +100,7 @@ fun Lexer.peek(distance: Int = 0, length: Int = 1): String =
             if (done() || current + i > source.lastIndex || current + i < 0) {
                 break
             } else {
-                append(source[current]) // + 1
+                append(source[current + i]) // + 1
             }
             i++
         }
@@ -141,6 +141,7 @@ fun Lexer.match(args: Array<String>): Boolean {
 
 fun Lexer.createToken(tokenType: TokenType) {
     val lexeme = source.slice(start until current)
+
     tokens.add(
         Token(
             kind = tokenType,
@@ -175,7 +176,8 @@ fun Lexer.parseEscape() {
 
 fun Lexer.parseString(delimiter: String, mode: String = "single") {
     var slen = 0
-    while (this.check(delimiter) && !this.done()) {
+    while (!this.check(delimiter) && !this.done()) {
+
         if (this.match("\n")) {
             if (mode == "multy") {
                 this.incLine()
@@ -218,9 +220,11 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
 
     }
 
+
+
     if (mode == "multi") {
         if (!match(delimiter.repeat(3))) {
-            error("unexpected EOL while parsing multi-line string literal")
+            error("unexpected EOL while parsing multi-line string literal, $delimiter must be repeated 3 times for multi strings")
         }
     } else if (done() && peek(-1) != delimiter) {
         error("unexpected EOF while parsing string literal")
@@ -228,8 +232,8 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         step()
     }
 
-    if (delimiter != "\"") {
-        createToken(TokenType.String)
+    if (delimiter == "\"") {
+        createToken(TokenType.StringToken)
     } else {
         createToken(TokenType.Char)
     }
@@ -305,21 +309,23 @@ fun Lexer.next() {
         spaces = 0
         return result
     }
-    if (done()) return
 
 
     when {
+        done() -> return
         match("\r") -> return
         match(" ") -> {
             spaces++
             start += 2
         }
 
-        match("\t") -> error("tabs are not allowed in identifiers")
+        match("\t") -> error("tabs are not allowed dud")
         match("\n") -> incLine()
 
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
+
+            // if "" then it must be multyline string
             if (peek(-1) != "'" && check(peek(-1)) && check(peek(-1), 1)) {
                 // Multiline strings start with 3 quotes
                 step(2)
@@ -332,8 +338,8 @@ fun Lexer.next() {
             step()
             parseNumber()
         }
-
         peek().isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
+
             //  Prefixed string literal (i.e. f"Hi {name}!")
             when (step()) {
                 "r" -> parseString(step(), "raw")

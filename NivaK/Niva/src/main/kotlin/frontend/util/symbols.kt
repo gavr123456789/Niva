@@ -39,8 +39,6 @@ fun Lexer.fillSymbolTable() {
         "false" to TokenType.False,
     )
 
-    println("Sas " + this.symbolTable.keywords)
-
     // add possible binary
     for (possibleBinaryMessage in POSSIBLE_BINARY_MESSAGES) {
         this.symbolTable.addSymbol(possibleBinaryMessage, TokenType.BinarySymbol)
