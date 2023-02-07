@@ -4,7 +4,7 @@ enum class TokenType {
     True, False,
 
     // Literal types
-    Integer, Float, String, Identifier,
+    Integer, Float, StringToken, Identifier,
     Binary, Octal, Hex, Char,
 
     // Keywords

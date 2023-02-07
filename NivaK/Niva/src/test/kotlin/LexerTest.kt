@@ -5,10 +5,20 @@ import frontend.meta.TokenType.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
+
+val helloWorldProgram = """
+"Hello w" echo
+""".trimIndent()
+
 class LexerTest {
     @Test
     fun emptySource() {
         checkOnKinds("", mutableListOf(EndOfFile))
+    }
+
+    @Test
+    fun helloWorld() {
+        checkOnKinds(helloWorldProgram, mutableListOf( StringToken, Identifier, EndOfFile))
     }
 
     @Test
@@ -18,7 +28,7 @@ class LexerTest {
 
     @Test
     fun punctuation() {
-        checkOnKinds("{}", mutableListOf(BinarySymbol, BinarySymbol, EndOfFile))
+        checkOnKinds("{}", mutableListOf(LeftParen, RightParen, EndOfFile))
     }
 
     @Test
@@ -31,7 +41,7 @@ class LexerTest {
         checkOnKinds("true", mutableListOf(True, EndOfFile))
     }
 
-    fun checkOnKinds(source: String, tokens: MutableList<TokenType>, showTokens: Boolean = true) {
+    private fun checkOnKinds(source: String, tokens: MutableList<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, "sas")
 //        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
