@@ -4,14 +4,14 @@ import frontend.meta.TokenType
 import frontend.util.fillSymbolTable
 
 fun emptySource() {
-    checkOnKinds("", mutableListOf(TokenType.EndOfFile))
+    check("", mutableListOf(TokenType.EndOfFile))
 }
 
 fun punctuation() {
-    checkOnKinds("{}", mutableListOf(TokenType.BinarySymbol, TokenType.BinarySymbol, TokenType.EndOfFile))
+    check("{}", mutableListOf(TokenType.BinarySymbol, TokenType.BinarySymbol, TokenType.EndOfFile))
 }
 
-fun checkOnKinds(source: String, tokens: MutableList<TokenType>) {
+fun check(source: String, tokens: MutableList<TokenType>) {
     val lexer = Lexer(source, "sas")
     lexer.fillSymbolTable()
     val result = lexer.lex().map { it.kind }

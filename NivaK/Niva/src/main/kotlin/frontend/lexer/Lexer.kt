@@ -140,19 +140,23 @@ fun Lexer.match(args: Array<String>): Boolean {
 }
 
 fun Lexer.createToken(tokenType: TokenType) {
-    val lexeme = source.slice(start until current)
-
-    tokens.add(
-        Token(
-            kind = tokenType,
-            lexeme = lexeme,
-            line = line,
-            spaces = spaces,
-            pos = Position(start = start, end = current - 1),
-            relPos = Position(start = linePos - lexeme.lastIndex - 1, end = linePos - 1)
+    try {
+        val lexeme = source.slice(start until current)
+        tokens.add(
+            Token(
+                kind = tokenType,
+                lexeme = lexeme,
+                line = line,
+                spaces = spaces,
+                pos = Position(start = start, end = current - 1),
+                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = linePos - 1)
+            )
         )
-    )
-    spaces = 0
+        spaces = 0
+
+    } catch (e: StringIndexOutOfBoundsException) {
+        error("cant create token: $tokenType, slice index out of bound: " + e.message + "\n ${source.slice(start until source.length)}")
+    }
 }
 
 fun Lexer.error(message: String) {
@@ -358,6 +362,11 @@ fun Lexer.next() {
             createToken(TokenType.Comment)
             incLine()
         }
+
+        match("^") -> createToken(TokenType.Return)
+        match("=") -> createToken(TokenType.Equal)
+        match("|=>") -> createToken(TokenType.Else)
+        match("|") -> createToken(TokenType.Pipe)
 
         else -> {
             var n = symbolTable.getMaxSymbolSize()

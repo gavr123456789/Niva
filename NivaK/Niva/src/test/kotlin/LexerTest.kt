@@ -10,38 +10,106 @@ val helloWorldProgram = """
 "Hello w" echo
 """.trimIndent()
 
+val functionDeclaration = """
+int to: x = [
+  x echo
+]
+""".trimIndent()
+
+val functionDeclarationWithType = """
+int to: x(int) = [
+  x echo
+]
+""".trimIndent()
+
+val rawString = """
+x = r"string"
+""".trimIndent()
+
 class LexerTest {
+
     @Test
     fun emptySource() {
-        checkOnKinds("", mutableListOf(EndOfFile))
+        check("", listOf(EndOfFile))
     }
 
     @Test
     fun helloWorld() {
-        checkOnKinds(helloWorldProgram, mutableListOf( StringToken, Identifier, EndOfFile))
+        check(helloWorldProgram, listOf(StringToken, Identifier, EndOfFile))
     }
 
     @Test
-    fun sasIdentifier() {
-        checkOnKinds("sas", mutableListOf(Identifier, EndOfFile))
+    fun singleIdentifier() {
+        check("sas", listOf(Identifier, EndOfFile))
+    }
+
+    @Test
+    fun rawString() {
+        check(rawString, listOf(Identifier, Equal, StringToken, EndOfFile))
+    }
+
+    @Test
+    fun functionDeclarationWithBody() {
+        check(
+            functionDeclaration,
+            listOf(
+                Identifier,
+                Identifier,
+                Colon,
+                Identifier,
+                Equal,
+                LeftBracket,
+                Identifier,
+                Identifier,
+                RightBracket,
+                EndOfFile
+            )
+        )
+    }
+
+    @Test
+    fun functionDeclarationWithBodyWithType() {
+        check(
+            functionDeclarationWithType,
+            listOf(
+                Identifier,
+                Identifier,
+                Colon,
+                Identifier,
+                LeftBrace,
+                Identifier,
+                RightBrace,
+                Equal,
+                LeftBracket,
+                Identifier,
+                Identifier,
+                RightBracket,
+                EndOfFile
+            )
+        )
+    }
+
+    @Test
+    fun brackets() {
+        check("{} () []", listOf(LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket, EndOfFile))
+    }
+
+    @Test
+    fun keywords() {
+        check("true false type use union ", listOf(True, False, Type, Use, Union, EndOfFile))
+    }
+
+    @Test
+    fun hardcodedBinarySymbols() {
+        check("^ |> | |=> =", listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, BinarySymbol, Equal, EndOfFile))
     }
 
     @Test
     fun punctuation() {
-        checkOnKinds("{}", mutableListOf(LeftParen, RightParen, EndOfFile))
+        check(". ; , : ", listOf(Dot, Semicolon, Comma, Colon, EndOfFile))
     }
 
-    @Test
-    fun typeKW() {
-        checkOnKinds("type", mutableListOf(Type, EndOfFile))
-    }
-
-    @Test
-    fun trueFalseKW() {
-        checkOnKinds("true", mutableListOf(True, EndOfFile))
-    }
-
-    private fun checkOnKinds(source: String, tokens: MutableList<TokenType>, showTokens: Boolean = true) {
+    private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, "sas")
 //        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
