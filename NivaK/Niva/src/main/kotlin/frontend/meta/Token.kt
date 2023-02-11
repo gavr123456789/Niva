@@ -16,13 +16,16 @@ enum class TokenType {
     Switch, // |
     Else, // |=>
 
+    // brackets
     LeftParen, RightParen, // ()
     LeftBrace, RightBrace, // {}
     LeftBracket, RightBracket, // []
+
+    // punctuation
     Dot, Semicolon, Comma, Colon, // . ; ,
 
 
-    EndOfFile, // Marks the end of the token stream
+    EndOfFile,
     NoMatch,   // Used internally by the symbol table
     Comment,   // Useful for documentation comments, pragmas, etc.
     BinarySymbol,    // A generic symbol
@@ -39,11 +42,20 @@ data class Token (
     val pos: Position,
     val relPos: Position,
     val spaces: Int = 0
-    )
-{
+    ) {
     fun kindToString() = this.kind.toString()
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind
+
+    override fun hashCode(): Int {
+        var result = kind.hashCode()
+        result = 31 * result + lexeme.hashCode()
+        result = 31 * result + line
+        result = 31 * result + pos.hashCode()
+        result = 31 * result + relPos.hashCode()
+        result = 31 * result + spaces
+        return result
+    }
 }
 

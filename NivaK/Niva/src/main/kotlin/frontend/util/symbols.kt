@@ -34,6 +34,7 @@ fun Lexer.fillSymbolTable() {
         // Keywords
         "type" to TokenType.Type,
         "union" to TokenType.Union,
+        "use" to TokenType.Use,
 
         "true" to TokenType.True,
         "false" to TokenType.False,
