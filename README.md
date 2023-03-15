@@ -18,30 +18,66 @@ I haven't decided on the final name yet, so far I've chosen niva because my 2 fa
 # Examples
 
 #### Hello world
+Everything is sending a message to an object. There no such things as `print(obj)`, only `object message`
 ```F#
 "Hello world" echo
 ```
+You can send as many messages as you want 
+```Scala
+"12.08.2009" asDate days echo 
+// 12
+```
+
+Okey, but what if out message has some arguments  
+Just separate them with colons, this is called a keyword message:  
+```Scala
+obj foo: argument
+
+1 to: 5 // oh we just created ranges
+```
+And what about many arguments?  
+Easy  
+```F#
+1 to: 5 do: [ it echo ] // 1 2 3 4 5
+```
+aand we dont need things like hardcoded for/while/do_while loops in language anymore, the second argument here is a code block
 
 #### Type and methods declaration
-```F#
+Niva is statically typed language, so we need a way to declare custom types, here it is, just the syntax of keyword messages with type keyword.  
+
+Each type automatically has a constructor that represents as the same keyword message, isn't it beautiful?
+```Scala
 // Declare type Person with 2 fields
 type Person name: string age: int
 // Instantiation
 person = Person name: "Bob" age: 42
-// Unary method declaration for Person receiver
-Person sleep = [...]
-// Method call
-person sleep
 ```
+To declare function for type just type `Type function_signature = body`
+```Scala
+// unary method declaration for Person receiver
+Person sleep = [...]
+// method call
+person sleep
+// with arguments(keyword message)
+TimeInterval from: x::Date to: y::Date = [ 
+  // using x and y
+]
+```
+
+In the last example you can see a problem, we dont need local names for from and to, because of that there are 3 different way to declare keyword messages: with locals and types, with locals only, with types only.  
+![image](https://user-images.githubusercontent.com/30507409/219905868-bcde0079-9c0c-443d-9bf3-41be072c491c.png)
+
+
+
 
 #### Factorial
 `|` -> if/switch expression/statement  
-`something | exp -> do` - expression, else branch is necessary  
+`something | exp -> do |=> else_do` - expression, else branch is necessary  
 `x = y > 0 | true |-> false` - expression, every branch must return a value  
 `| exp -> do` - statement  
 `|-> do` - else branch
 
-```F#
+```Scala
 int factorial -> int = self
 | 0 => 1 // switch on self, self is int
 |=> self * (self - 1) factorial.
@@ -80,7 +116,7 @@ map at: "key" put: "value" // keyword
 ```
 
 
-
+-----
 
 # Basic
 
