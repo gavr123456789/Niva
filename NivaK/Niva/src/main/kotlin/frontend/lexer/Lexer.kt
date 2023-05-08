@@ -79,39 +79,37 @@ fun Lexer.incLine() {
     linePos = 0
 }
 
-fun Lexer.step(n: Int = 1): String {
-    val result = StringBuilder()
-    while (result.length < n) {
-        if (done() || current > source.lastIndex) {
-            break
-        } else {
-            result.append(source[current])
+fun Lexer.step(n: Int = 1): String =
+    buildString {
+        while (length < n) {
+            if (done() || current > source.lastIndex)
+                break
+            else
+                append(source[current])
         }
+        current++
+        linePos++
     }
-    current++
-    linePos++
-    return result.toString()
-}
 
 fun Lexer.peek(distance: Int = 0, length: Int = 1): String =
     buildString {
         var i = distance
         while (this.length < length) {
-            if (done() || current + i > source.lastIndex || current + i < 0) {
+            if (done() || current + i > source.lastIndex || current + i < 0)
                 break
-            } else {
+            else
                 append(source[current + i]) // + 1
-            }
+
             i++
         }
     }
 
-fun Lexer.check(arg: String, distance: Int = 0): Boolean {
-    if (done()) {
-        return false
+fun Lexer.check(arg: String, distance: Int = 0): Boolean =
+    when {
+        done() -> false
+        else -> peek(distance, arg.length) == arg
     }
-    return peek(distance, arg.length) == arg
-}
+
 
 fun Lexer.check(args: Array<String>, distance: Int = 0): Boolean {
     for (arg in args) {
@@ -122,13 +120,18 @@ fun Lexer.check(args: Array<String>, distance: Int = 0): Boolean {
     return false
 }
 
-fun Lexer.match(s: String): Boolean {
-    if (!check(s)) {
-        return false
+fun Lexer.match(s: String): Boolean =
+    when {
+        !check(s) -> {
+            false
+        }
+
+        else -> {
+            step(s.length)
+            true
+        }
     }
-    step(s.length)
-    return true
-}
+
 
 fun Lexer.match(args: Array<String>): Boolean {
     for (arg in args) {

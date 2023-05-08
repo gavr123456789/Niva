@@ -1,6 +1,9 @@
 import frontend.Lexer
 import frontend.lex
+import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.parser.Parser
+import frontend.parser.parse
 import frontend.util.fillSymbolTable
 
 fun emptySource() {
@@ -20,7 +23,16 @@ fun check(source: String, tokens: MutableList<TokenType>) {
     }
 }
 
+fun lex(source: String): MutableList<Token> {
+    val lexer = Lexer(source, "sas")
+    lexer.fillSymbolTable()
+    return lexer.lex()
+}
+
 fun main() {
-    emptySource()
-    punctuation()
+    val source = "x = 1"
+    val tokens = lex(source)
+    val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+    val ast = parser.parse()
+    println()
 }

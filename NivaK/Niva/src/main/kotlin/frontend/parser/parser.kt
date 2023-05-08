@@ -12,18 +12,19 @@ import frontend.meta.TokenType
 data class Module(val name: String, var loaded: Boolean)
 
 class Parser(
-    var current: Int = 0,
     val file: String,
-    val tokens: MutableList<Token> = mutableListOf(),
-    val binaryMessages: MutableSet<String> = hashSetOf(),
-    val unaryMessages: MutableSet<String> = hashSetOf(),
-    val keywordMessages: MutableSet<String> = hashSetOf(),
+    val tokens: MutableList<Token>,
+    val source: String,
+//    val lines: MutableList<Position>,
+
+//    val binaryMessages: MutableSet<String> = hashSetOf(),
+//    val unaryMessages: MutableSet<String> = hashSetOf(),
+//    val keywordMessages: MutableSet<String> = hashSetOf(),
     val currentFunction: Declaration? = null,
     val scopeDepth: Int = 0,
 //    val operators: OperatorTable,
     val tree: MutableList<Declaration> = mutableListOf(),
-    val lines: MutableList<Position> = mutableListOf(),
-    val source: String,
+    var current: Int = 0,
     val modules: MutableList<Module> = mutableListOf(),
 )
 
@@ -67,7 +68,7 @@ fun Parser.step(n: Int = 1): Token {
     return result
 }
 
-fun Parser.error(message: String, token: Token? = null) {
+fun Parser.error(message: String, token: Token? = null): Nothing {
     var realToken = if (token == null) getCurrentToken() else token
     if (realToken.kind == TokenType.EndOfFile) {
         realToken = peek(-1)
@@ -90,7 +91,7 @@ fun Parser.check(kind: Iterable<TokenType>): Boolean {
     return false
 }
 
-fun Parser.check(kind: Iterable<String>): Boolean {
+fun Parser.checkString(kind: Iterable<String>): Boolean {
     kind.forEach {
         if (check(it)) {
             step()
@@ -107,6 +108,7 @@ fun Parser.match(kind: TokenType) =
     } else {
         false
     }
+
 fun Parser.match(kind: String) =
     if (check(kind)) {
         step()
@@ -123,7 +125,8 @@ fun Parser.match(kind: Iterable<TokenType>): Boolean {
     }
     return false
 }
-fun Parser.match(kind: Iterable<String>): Boolean {
+
+fun Parser.matchString(kind: Iterable<String>): Boolean {
     kind.forEach {
         if (match(it)) {
             return true
@@ -141,6 +144,7 @@ fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
         }
     }
 }
+
 fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
@@ -154,19 +158,81 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-
-
-
-
-fun Parser.addBinaryMessage(lexeme: String) {
-    binaryMessages.add(lexeme)
+fun Parser.primary(): Expression {
+    val x = this.peek().kind
+    when (x) {
+        TokenType.True -> TODO()
+        TokenType.False -> TODO()
+        TokenType.Integer -> return LiteralExpression.IntExpr(file, step())
+        TokenType.Float -> TODO()
+        TokenType.StringToken -> TODO()
+        TokenType.Identifier -> TODO()
+        TokenType.LeftParen -> TODO()
+        else -> this.error("expected primary, but got $x")
+    }
 }
 
-fun Parser.addUnaryMessage(lexeme: String) {
-    unaryMessages.add(lexeme)
+
+fun Parser.expression(): Expression {
+    // пока токо инты
+    if (peek().kind == TokenType.Integer) {
+        return primary()
+    } else {
+        TODO()
+    }
 }
 
-fun Parser.addKeywordMessage(lexeme: String) {
-    keywordMessages.add(lexeme)
+fun Parser.varDeclaration(): Declaration {
+    val tok = this.peek()
+    this.expect(TokenType.Identifier, "")
+    val identifierExpr = IdentifierExpr(file, tok, tok, 0)
+    val value: Expression
+    if (this.match("=")) {
+        value = this.expression()
+    } else {
+        error("!!")
+    }
+
+    val result = VarDeclaration(file, tok, identifierExpr, value)
+    return result
 }
+
+
+fun Parser.declaration(): Declaration {
+    val x = peek().kind
+    when (x) {
+        TokenType.Identifier -> {
+            // x = 1
+            return this.varDeclaration()
+        }
+
+        TokenType.Type -> TODO()
+        TokenType.Union -> TODO()
+        TokenType.Use -> TODO()
+        TokenType.Return -> TODO()
+        TokenType.Pragma -> TODO()
+        else -> TODO()
+    }
+}
+
+fun Parser.parse(): List<Declaration> {
+
+    while (!this.done()) {
+        this.tree.add(this.declaration())
+    }
+
+    return this.tree
+}
+
+//fun Parser.addBinaryMessage(lexeme: String) {
+//    binaryMessages.add(lexeme)
+//}
+//
+//fun Parser.addUnaryMessage(lexeme: String) {
+//    unaryMessages.add(lexeme)
+//}
+//
+//fun Parser.addKeywordMessage(lexeme: String) {
+//    keywordMessages.add(lexeme)
+//}
 
