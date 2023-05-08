@@ -2,8 +2,10 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.TokenType
 import frontend.meta.TokenType.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import org.testng.Assert.assertEquals
+//import org.junit.jupiter.api.Assertions.assertEquals
+//import org.junit.jupiter.api.Test
+import org.testng.annotations.Test
 
 
 val helloWorldProgram = """
@@ -18,7 +20,7 @@ int to: x = [
 
 val functionDeclarationWithType = """
 int to: x(int) = [
-  x echo
+  code
 ]
 """.trimIndent()
 
@@ -36,6 +38,11 @@ class LexerTest {
     @Test
     fun helloWorld() {
         check(helloWorldProgram, listOf(StringToken, Identifier, EndOfFile))
+    }
+
+    @Test
+    fun createVariable() {
+        check("x = 42", listOf(Identifier, Equal, Integer, EndOfFile))
     }
 
     @Test
@@ -81,7 +88,6 @@ class LexerTest {
                 RightBrace,
                 Equal,
                 LeftBracket,
-                Identifier,
                 Identifier,
                 RightBracket,
                 EndOfFile
