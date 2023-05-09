@@ -29,6 +29,7 @@ sealed class Statement(
 
 // assignment | cascade | keywordSend | binarySend | primitive
 sealed class Expression(
+    val type: String?,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
@@ -54,59 +55,59 @@ class VarDeclaration(
 //  | BlockConstructor
 //  | BracketExpression
 //  | CollectionLiteral
-sealed class Receiver(token: Token) : Expression(token)
+sealed class Receiver(type: String?, token: Token) : Expression(type, token)
 
 
 // PRIMARY
 // identifier | LiteralExpression
-sealed class Primary(token: Token) : Receiver(token)
+sealed class Primary(type: String?, token: Token) : Receiver(type, token)
 
 // LITERALS
-sealed class LiteralExpression(literal: Token) : Primary(literal) {
-    class IntExpr(literal: Token) : LiteralExpression(literal)
-    class StringExpr(literal: Token) : LiteralExpression(literal)
-    class FalseExpr(literal: Token) : LiteralExpression(literal)
-    class TrueExpr(literal: Token) : LiteralExpression(literal)
-    class FloatExpr(literal: Token) : LiteralExpression(literal)
+sealed class LiteralExpression(type: String?, literal: Token) : Primary(type, literal) {
+    class IntExpr(literal: Token) : LiteralExpression("int", literal)
+    class StringExpr(literal: Token) : LiteralExpression("string", literal)
+    class FalseExpr(literal: Token) : LiteralExpression("bool", literal)
+    class TrueExpr(literal: Token) : LiteralExpression("bool", literal)
+    class FloatExpr(literal: Token) : LiteralExpression("float", literal)
 }
 
 class IdentifierExpr(
+    type: String?,
     token: Token,
-    val name: Token,
     val depth: Int,
-) : Primary(token)
+) : Primary(type, token)
 
 
 // MESSAGES
 
 
 // binaryMessage | unaryMessage | keywordMessage
-sealed class Message(val receiver: Receiver, val selectorName: String, token: Token) :
-    Expression(token)
+sealed class Message(val receiver: Receiver, val selectorName: String, type: String?, token: Token) :
+    Expression(type, token)
 
 class UnaryMsg(
     receiver: Receiver,
     selectorName: String,
-    file: String,
+    type: String?,
     token: Token,
-) : Message(receiver, selectorName, token)
+) : Message(receiver, selectorName, type, token)
 
 class BinaryMsg(
     val unaryMsgs: List<UnaryMsg> = listOf(),
     receiver: Receiver,
     selectorName: String,
-    file: String,
+    type: String?,
     token: Token,
-) : Message(receiver, selectorName, token)
+) : Message(receiver, selectorName, type, token)
 
 class KeywordMsg(
     val unaryMsgs: List<UnaryMsg> = listOf(),
     val binaryMsgs: List<BinaryMsg> = listOf(),
     receiver: Receiver,
     selectorName: String,
-    file: String,
+    type: String?,
     token: Token,
-) : Message(receiver, selectorName, token)
+) : Message(receiver, selectorName, type, token)
 
 
 class Pragma(
