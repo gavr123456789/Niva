@@ -30,9 +30,9 @@ fun lex(source: String): MutableList<Token> {
 }
 
 fun main() {
-    val source = "x = 1"
+    val source = "x::int = 1"
     val tokens = lex(source)
     val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
     val ast = parser.parse()
-    println()
+    println(ast)
 }

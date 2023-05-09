@@ -44,7 +44,6 @@ data class Token (
     val relPos: Position,
     val spaces: Int = 0
     ) {
-    fun kindToString() = this.kind.toString()
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind

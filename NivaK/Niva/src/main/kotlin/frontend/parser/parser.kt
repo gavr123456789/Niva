@@ -64,12 +64,12 @@ fun Parser.step(n: Int = 1): Token {
             peek()
         else
             tokens[current]
-    current++
+    current += n
     return result
 }
 
 fun Parser.error(message: String, token: Token? = null): Nothing {
-    var realToken = if (token == null) getCurrentToken() else token
+    var realToken = token ?: getCurrentToken()
     if (realToken.kind == TokenType.EndOfFile) {
         realToken = peek(-1)
     }
@@ -111,7 +111,7 @@ fun Parser.match(kind: TokenType) =
 
 fun Parser.match(kind: String) =
     if (check(kind)) {
-        step()
+        step() // TODO тут наверн надо делать степ на kind.length
         true
     } else {
         false
@@ -158,12 +158,12 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-fun Parser.primary(): Expression =
+fun Parser.primary(): Primary =
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
-        TokenType.Float -> TODO()
+        TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.StringToken -> LiteralExpression.StringExpr(step())
         TokenType.Identifier -> TODO()
         TokenType.LeftParen -> TODO()
@@ -172,17 +172,17 @@ fun Parser.primary(): Expression =
 
 
 // messageCall | switchExpression
-fun Parser.expression(): Expression {
-    // пока токо инты
-    if (peek().kind == TokenType.Integer) {
-        return primary()
-    } else {
-        TODO()
-    }
-}
+//fun Parser.expression(): Expression {
+//    // пока токо инты
+//    if (peek().kind == TokenType.Integer) {
+//        return primary()
+//    } else {
+//        TODO()
+//    }
+//}
 
 // messageCall | switchExpression
-fun Parser.expression2(): Expression {
+fun Parser.expression(): Expression {
     // сначала чекаем это messageCall или switch
     val tok = peek()
     if (tok.kind == TokenType.Pipe) {
@@ -191,33 +191,46 @@ fun Parser.expression2(): Expression {
     }
     // this is message call
     val receiver = receiver()
-
-    TODO()
-
+    return receiver
 }
 
 // for now only primary is recievers, no indentifiers or expressions
 fun Parser.receiver(): Receiver {
+    return primary()
     TODO()
 }
 
-fun Parser.assign(): Declaration {
-    val tok = this.peek()
+fun Parser.assign(): VarDeclaration {
+
+    val tok = this.step()
     assert(tok.kind == TokenType.Identifier)
 
 
     val value: Expression
+    val valueType: String?
 
+    val typeOrEqual = step()
 
-    if (this.match("=")) {
-        value = this.expression()
-    } else {
-        error("!!")
+    when (typeOrEqual.kind) {
+        TokenType.Equal -> {
+            valueType = null
+            value = this.expression()
+        }
+        // ::^int
+        TokenType.DoubleColon -> {
+            valueType = step().lexeme
+            // x::int^ =
+            match(TokenType.Equal)
+            value = this.expression()
+        }
+
+        else -> {
+            TODO()
+        }
     }
 
-
     val identifierExpr = IdentifierExpr(tok, tok, 0)
-    val result = VarDeclaration(tok, identifierExpr, value)
+    val result = VarDeclaration(tok, identifierExpr, value, valueType)
     return result
 }
 
