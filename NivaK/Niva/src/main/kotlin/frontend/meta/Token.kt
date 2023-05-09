@@ -31,6 +31,7 @@ enum class TokenType {
     BinarySymbol,    // A generic symbol
     Pragma,
     Equal,
+    DoubleColon,
 }
 
 data class Position(val start: Int, val end: Int)

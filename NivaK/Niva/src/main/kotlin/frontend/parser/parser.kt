@@ -158,21 +158,20 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-fun Parser.primary(): Expression {
-    val x = this.peek().kind
-    when (x) {
-        TokenType.True -> TODO()
-        TokenType.False -> TODO()
-        TokenType.Integer -> return LiteralExpression.IntExpr(file, step())
+fun Parser.primary(): Expression =
+    when (peek().kind) {
+        TokenType.True -> LiteralExpression.TrueExpr(step())
+        TokenType.False -> LiteralExpression.FalseExpr(step())
+        TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> TODO()
-        TokenType.StringToken -> TODO()
+        TokenType.StringToken -> LiteralExpression.StringExpr(step())
         TokenType.Identifier -> TODO()
         TokenType.LeftParen -> TODO()
-        else -> this.error("expected primary, but got $x")
+        else -> this.error("expected primary, but got ${peek().kind}")
     }
-}
 
 
+// messageCall | switchExpression
 fun Parser.expression(): Expression {
     // пока токо инты
     if (peek().kind == TokenType.Integer) {
@@ -182,18 +181,43 @@ fun Parser.expression(): Expression {
     }
 }
 
-fun Parser.varDeclaration(): Declaration {
+// messageCall | switchExpression
+fun Parser.expression2(): Expression {
+    // сначала чекаем это messageCall или switch
+    val tok = peek()
+    if (tok.kind == TokenType.Pipe) {
+        // Switch expr
+        TODO()
+    }
+    // this is message call
+    val receiver = receiver()
+
+    TODO()
+
+}
+
+// for now only primary is recievers, no indentifiers or expressions
+fun Parser.receiver(): Receiver {
+    TODO()
+}
+
+fun Parser.assign(): Declaration {
     val tok = this.peek()
-    this.expect(TokenType.Identifier, "")
-    val identifierExpr = IdentifierExpr(file, tok, tok, 0)
+    assert(tok.kind == TokenType.Identifier)
+
+
     val value: Expression
+
+
     if (this.match("=")) {
         value = this.expression()
     } else {
         error("!!")
     }
 
-    val result = VarDeclaration(file, tok, identifierExpr, value)
+
+    val identifierExpr = IdentifierExpr(tok, tok, 0)
+    val result = VarDeclaration(tok, identifierExpr, value)
     return result
 }
 
@@ -203,7 +227,7 @@ fun Parser.declaration(): Declaration {
     when (x) {
         TokenType.Identifier -> {
             // x = 1
-            return this.varDeclaration()
+            return this.assign()
         }
 
         TokenType.Type -> TODO()
