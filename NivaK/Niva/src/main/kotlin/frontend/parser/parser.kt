@@ -213,8 +213,8 @@ fun Parser.assign(): VarDeclaration {
 
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
-            valueType = null
             value = this.expression()
+            valueType = value.type
         }
         // ::^int
         TokenType.DoubleColon -> {
@@ -229,7 +229,7 @@ fun Parser.assign(): VarDeclaration {
         }
     }
 
-    val identifierExpr = IdentifierExpr(tok, tok, 0)
+    val identifierExpr = IdentifierExpr(null, tok, 0)
     val result = VarDeclaration(tok, identifierExpr, value, valueType)
     return result
 }
