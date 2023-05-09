@@ -46,6 +46,16 @@ class LexerTest {
     }
 
     @Test
+    fun typedVar() {
+        check("x::int", listOf(Identifier, DoubleColon, Identifier, EndOfFile))
+    }
+
+    @Test
+    fun sass() {
+        check("|=>", listOf(Else, EndOfFile))
+    }
+
+    @Test
     fun singleIdentifier() {
         check("sas", listOf(Identifier, EndOfFile))
     }

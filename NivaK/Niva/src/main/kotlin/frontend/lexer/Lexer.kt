@@ -18,13 +18,15 @@ fun SymbolTable.existsKeyword(keyword: String) =
     keyword in keywords
 
 fun SymbolTable.getMaxSymbolSize(): Int {
-    var result = 0
-    for (key in symbols.keys) {
-        if (key.length > result) {
-            result = key.length
-        }
-    }
+    var result = symbols.maxOf { it.key.length }
+
     return result
+//    for (key in symbols.keys) {
+//        if (key.length > result) {
+//            result = key.length
+//        }
+//    }
+//    return result
 }
 //    symbols.keys.max().length
 
@@ -86,8 +88,9 @@ fun Lexer.step(n: Int = 1): String =
                 break
             else
                 append(source[current])
+
+            current++
         }
-        current++
         linePos++
     }
 
@@ -107,7 +110,10 @@ fun Lexer.peek(distance: Int = 0, length: Int = 1): String =
 fun Lexer.check(arg: String, distance: Int = 0): Boolean =
     when {
         done() -> false
-        else -> peek(distance, arg.length) == arg
+        else -> {
+            val x = peek(distance, arg.length)
+            x == arg
+        }
     }
 
 
@@ -145,6 +151,9 @@ fun Lexer.match(args: Array<String>): Boolean {
 fun Lexer.createToken(tokenType: TokenType) {
     try {
         val lexeme = source.slice(start until current)
+        if (lexeme == "|=>") {
+            println()
+        }
         tokens.add(
             Token(
                 kind = tokenType,
@@ -366,9 +375,13 @@ fun Lexer.next() {
             incLine()
         }
 
+        match("::") -> createToken(TokenType.DoubleColon)
         match("^") -> createToken(TokenType.Return)
         match("=") -> createToken(TokenType.Equal)
-        match("|=>") -> createToken(TokenType.Else)
+        match("|=>") -> {
+            createToken(TokenType.Else)
+        }
+
         match("|") -> createToken(TokenType.Pipe)
 
         else -> {
