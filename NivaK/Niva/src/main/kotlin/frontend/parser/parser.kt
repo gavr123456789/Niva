@@ -158,7 +158,7 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-fun Parser.primary(): Primary =
+fun Parser.primary(): Primary? =
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
@@ -167,7 +167,7 @@ fun Parser.primary(): Primary =
         TokenType.StringToken -> LiteralExpression.StringExpr(step())
         TokenType.Identifier -> TODO()
         TokenType.LeftParen -> TODO()
-        else -> this.error("expected primary, but got ${peek().kind}")
+        else -> null //this.error("expected primary, but got ${peek().kind}")
     }
 
 
@@ -191,13 +191,18 @@ fun Parser.expression(): Expression {
     }
     // this is message call
     val receiver = receiver()
+
     return receiver
 }
 
 // for now only primary is recievers, no indentifiers or expressions
 fun Parser.receiver(): Receiver {
-    return primary()
-    TODO()
+    fun blockConstructor() = null
+    fun collectionLiteral() = null
+
+    val tryPrimary = primary() ?: blockConstructor() ?: collectionLiteral() ?: throw Error("bruh")
+
+    return tryPrimary
 }
 
 fun Parser.assign(): VarDeclaration {
@@ -205,10 +210,8 @@ fun Parser.assign(): VarDeclaration {
     val tok = this.step()
     assert(tok.kind == TokenType.Identifier)
 
-
     val value: Expression
     val valueType: String?
-
     val typeOrEqual = step()
 
     when (typeOrEqual.kind) {
@@ -225,31 +228,82 @@ fun Parser.assign(): VarDeclaration {
         }
 
         else -> {
-            TODO()
+            error("after ${peek(-1)} needed type or expression")
         }
     }
 
-    val identifierExpr = IdentifierExpr(null, tok, 0)
+    val identifierExpr = IdentifierExpr(valueType, tok, 0)
     val result = VarDeclaration(tok, identifierExpr, value, valueType)
     return result
 }
 
+fun Parser.messageCall(): MessageCall {
+    TODO()
+}
 
-fun Parser.declaration(): Declaration {
-    val x = peek().kind
-    when (x) {
-        TokenType.Identifier -> {
-            // x = 1
-            return this.assign()
-        }
+fun Parser.message(): Message {
+    // x echo // identifier
+    // 1 echo // primary
+    // (1 + 1) echo // parens
+    //  [1 2 3] // data structure
 
-        TokenType.Type -> TODO()
-        TokenType.Union -> TODO()
-        TokenType.Use -> TODO()
-        TokenType.Return -> TODO()
-        TokenType.Pragma -> TODO()
-        else -> TODO()
+    val tok = peek()
+
+    fun selector(): String {
+        // unary binary or keyword
+
+
+        return step().lexeme
     }
+
+    val receiver: Receiver = receiver()
+    val selector: String = selector()
+
+    val message: Message = UnaryMsg(receiver, selector, null, tok) // TODO inference type from function table here
+
+    return message
+}
+
+fun TokenType.isPrimeToken() =
+    when (this) {
+        TokenType.Identifier,
+        TokenType.Float,
+        TokenType.StringToken,
+        TokenType.Integer,
+        TokenType.True,
+        TokenType.False -> true
+
+        else -> false
+    }
+
+
+// all top level declarations
+// type
+// messageDecl
+// message x echo
+// assign x = 1
+fun Parser.declaration(): Declaration {
+    val tok = peek()
+    val kind = tok.kind
+
+    // it could be assignment like x = 1
+    // or just message like x echo
+    // x = 1
+    if (check(TokenType.Equal, 1)) {
+        // this is assign
+        return assign()
+    }
+
+
+
+    if (kind == TokenType.Type) TODO()
+    // int sas = []
+    // messageDecl()
+
+    // this is message call
+    return message()
+
+
 }
 
 fun Parser.parse(): List<Declaration> {

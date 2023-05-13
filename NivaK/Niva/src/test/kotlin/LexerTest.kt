@@ -36,6 +36,11 @@ class LexerTest {
     }
 
     @Test
+    fun string() {
+        check("\"sas\"", listOf(StringToken, EndOfFile))
+    }
+
+    @Test
     fun helloWorld() {
         check(helloWorldProgram, listOf(StringToken, Identifier, EndOfFile))
     }
@@ -117,7 +122,10 @@ class LexerTest {
 
     @Test
     fun hardcodedBinarySymbols() {
-        check("^ |> | |=> =", listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, BinarySymbol, Equal, EndOfFile))
+        check(
+            "^ |> | |=> = ::",
+            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, BinarySymbol, Equal, DoubleColon, EndOfFile)
+        )
     }
 
     @Test

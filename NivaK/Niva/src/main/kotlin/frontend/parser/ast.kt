@@ -80,6 +80,9 @@ class IdentifierExpr(
 
 // MESSAGES
 
+// x sas + y sus
+sealed class MessageCall(val receiver: Receiver, messages: List<Message>, type: String?, token: Token) :
+    Expression(type, token)
 
 // binaryMessage | unaryMessage | keywordMessage
 sealed class Message(val receiver: Receiver, val selectorName: String, type: String?, token: Token) :
