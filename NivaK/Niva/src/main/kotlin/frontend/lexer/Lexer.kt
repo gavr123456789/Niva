@@ -151,9 +151,7 @@ fun Lexer.match(args: Array<String>): Boolean {
 fun Lexer.createToken(tokenType: TokenType) {
     try {
         val lexeme = source.slice(start until current)
-        if (lexeme == "|=>") {
-            println()
-        }
+
         tokens.add(
             Token(
                 kind = tokenType,
@@ -268,7 +266,7 @@ fun Lexer.stepWhileAlphaNumeric() {
 }
 
 fun Lexer.parseNumber() {
-    var kind: TokenType = TokenType.Integer // TODO support for b, x, o numbers
+    var kind: TokenType = TokenType.Integer
     peek()
     stepWhileDigit()
 
@@ -354,6 +352,7 @@ fun Lexer.next() {
             step()
             parseNumber()
         }
+        // String
         peek().isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
 
             //  Prefixed string literal (i.e. f"Hi {name}!")
@@ -364,8 +363,9 @@ fun Lexer.next() {
                 else -> error("unknown string prefix '${peek(-1)}'")
             }
         }
-
+        // Identifier
         peek().isAlphaNumeric() || check("_") -> parseIdentifier()
+        // Comment
         match("//") -> {
             // inline comments
             while (!match("\n") || done()) {
@@ -378,9 +378,7 @@ fun Lexer.next() {
         match("::") -> createToken(TokenType.DoubleColon)
         match("^") -> createToken(TokenType.Return)
         match("=") -> createToken(TokenType.Equal)
-        match("|=>") -> {
-            createToken(TokenType.Else)
-        }
+        match("|=>") -> createToken(TokenType.Else)
 
         match("|") -> createToken(TokenType.Pipe)
 
