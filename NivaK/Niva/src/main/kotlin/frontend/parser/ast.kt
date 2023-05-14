@@ -74,7 +74,7 @@ sealed class LiteralExpression(type: String?, literal: Token) : Primary(type, li
 class IdentifierExpr(
     type: String?,
     token: Token,
-    val depth: Int,
+//    val depth: Int,
 ) : Primary(type, token)
 
 

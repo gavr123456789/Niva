@@ -124,7 +124,7 @@ class LexerTest {
     fun hardcodedBinarySymbols() {
         check(
             "^ |> | |=> = ::",
-            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, BinarySymbol, Equal, DoubleColon, EndOfFile)
+            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, DoubleColon, EndOfFile)
         )
     }
 
