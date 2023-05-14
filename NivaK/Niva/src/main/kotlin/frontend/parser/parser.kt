@@ -165,7 +165,7 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.StringToken -> LiteralExpression.StringExpr(step())
-        TokenType.Identifier -> TODO()
+        TokenType.Identifier -> IdentifierExpr(file, step())
         TokenType.LeftParen -> TODO()
         else -> null //this.error("expected primary, but got ${peek().kind}")
     }
@@ -232,7 +232,7 @@ fun Parser.assign(): VarDeclaration {
         }
     }
 
-    val identifierExpr = IdentifierExpr(valueType, tok, 0)
+    val identifierExpr = IdentifierExpr(valueType, tok)
     val result = VarDeclaration(tok, identifierExpr, value, valueType)
     return result
 }
@@ -289,11 +289,16 @@ fun Parser.declaration(): Declaration {
     // it could be assignment like x = 1
     // or just message like x echo
     // x = 1
-    if (check(TokenType.Equal, 1)) {
-        // this is assign
-        return assign()
+    if (tok.kind == TokenType.Identifier) {
+        if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
+            return assign()
+        }
     }
 
+//    if (check(TokenType.Equal, 1)) {
+//        // this is assign
+//        return assign()
+//    }
 
 
     if (kind == TokenType.Type) TODO()

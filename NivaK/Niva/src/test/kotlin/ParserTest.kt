@@ -1,4 +1,7 @@
-import frontend.parser.*
+import frontend.parser.Parser
+import frontend.parser.UnaryMsg
+import frontend.parser.VarDeclaration
+import frontend.parser.parse
 import org.testng.annotations.Test
 
 class ParserTest {
@@ -8,13 +11,15 @@ class ParserTest {
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
         val ast = parser.parse()
+        println("ast.count = ${ast.count()}")
         assert(ast.count() == 1)
+        println("ast = $ast")
+        println("ast[0] = ${ast[0]}")
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name.str == "x")
         assert(declaration.value.type == "int")
         assert(declaration.value.str == "1")
-
     }
 
     @Test
@@ -39,8 +44,9 @@ class ParserTest {
         val ast = parser.parse()
         assert(ast.count() == 1)
 
-        val declaration = ast[0] as LiteralExpression
-        assert(declaration.type == "string")
+        val declaration = ast[0] as UnaryMsg
+//        println("declaration.type = ${declaration.type}")
+//        assert(declaration.type == "string")
         assert(declaration.str == "\"sas\"")
     }
 
@@ -54,7 +60,7 @@ class ParserTest {
         assert(ast.count() == 1)
 
         val declaration = ast[0]
-        assert(declaration is Message)
+        assert(declaration is UnaryMsg)
         val decl = declaration as UnaryMsg
 
         assert(decl.selectorName == "echo")
