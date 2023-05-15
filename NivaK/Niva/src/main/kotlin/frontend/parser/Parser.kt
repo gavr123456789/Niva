@@ -165,9 +165,29 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.StringToken -> LiteralExpression.StringExpr(step())
-        TokenType.Identifier -> IdentifierExpr(file, step())
+        TokenType.Identifier -> {
+            val x = step()
+            val isTyped = check(TokenType.DoubleColon)
+            if (isTyped) {
+                step() // skip double colon
+                val type = step().lexeme
+                IdentifierExpr(x.lexeme, type, x)
+            } else {
+                IdentifierExpr(x.lexeme, null, x)
+            }
+        }
+
+//        TokenType.Identifier2Colon -> {
+//            val x = step()
+//            val q = x.lexeme.split("::")
+//            assert(q.count() == 2)
+//            val name = q[0]
+//            val type = step().lexeme
+//            IdentifierExpr(name, type, x)
+//        }
+
         TokenType.LeftParen -> TODO()
-        else -> null //this.error("expected primary, but got ${peek().kind}")
+        else -> this.error("expected primary, but got ${peek().kind}")
     }
 
 
@@ -208,12 +228,10 @@ fun Parser.receiver(): Receiver {
 fun Parser.assign(): VarDeclaration {
 
     val tok = this.step()
-    assert(tok.kind == TokenType.Identifier)
+    val typeOrEqual = step()
 
     val value: Expression
     val valueType: String?
-    val typeOrEqual = step()
-
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
             value = this.expression()
@@ -227,17 +245,30 @@ fun Parser.assign(): VarDeclaration {
             value = this.expression()
         }
 
-        else -> {
-            error("after ${peek(-1)} needed type or expression")
-        }
+        else -> error("after ${peek(-1)} needed type or expression")
     }
 
-    val identifierExpr = IdentifierExpr(valueType, tok)
+    val identifierExpr = IdentifierExpr(tok.lexeme, valueType, tok)
     val result = VarDeclaration(tok, identifierExpr, value, valueType)
     return result
 }
 
-fun Parser.messageCall(): MessageCall {
+
+// тк кк у кейвордов у аргументов могут быть бинарные или унарные, а у бинарных могут быть унарные
+// то нужно сначала попробовать распарсить кейвордное
+// если не выйдет то бинарное
+// если не выйдет то унарное
+
+fun Parser.keywordCall(receiver: Receiver) {
+    // key1: expr
+    check(TokenType.Colon, 1)
+
+//    val keywordMsg: KeywordMsg = KeywordMsg(receiver,)
+}
+
+fun Parser.messageCall(receiver: Receiver): MessageCall {
+    // tryParse keyword
+    keywordCall(receiver)
     TODO()
 }
 
@@ -245,23 +276,30 @@ fun Parser.message(): Message {
     // x echo // identifier
     // 1 echo // primary
     // (1 + 1) echo // parens
-    //  [1 2 3] // data structure
+    // [1 2 3] // data structure
+
 
     val tok = peek()
 
-    fun selector(): String {
-        // unary binary or keyword
+    val receiver: Receiver = receiver()
 
+    val tok2 = step()
 
-        return step().lexeme
+    if (tok2.kind == TokenType.BinarySymbol) {
+        return BinaryMsg(receiver, tok2.lexeme, null, tok)
     }
 
-    val receiver: Receiver = receiver()
-    val selector: String = selector()
+    if (check(TokenType.Colon)) {
+        // Keyword
+        // parse keyword
+        TODO()
+    } else {
+        // unary
+        return UnaryMsg(receiver, tok2.lexeme, null, tok) // TODO inference type from function table here
+    }
 
-    val message: Message = UnaryMsg(receiver, selector, null, tok) // TODO inference type from function table here
+//    error("cant parse message selector ${tok2.lexeme}")
 
-    return message
 }
 
 fun TokenType.isPrimeToken() =
@@ -294,27 +332,24 @@ fun Parser.declaration(): Declaration {
             return assign()
         }
     }
-
-//    if (check(TokenType.Equal, 1)) {
-//        // this is assign
-//        return assign()
+//    if (tok.kind == TokenType.Identifier) {
+//        if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
+//            return assign()
+//        }
 //    }
 
-
     if (kind == TokenType.Type) TODO()
-    // int sas = []
-    // messageDecl()
 
-    // this is message call
+//    if (kind == end)
     return message()
-
-
 }
 
 fun Parser.parse(): List<Declaration> {
 
     while (!this.done()) {
         this.tree.add(this.declaration())
+        if (check(TokenType.EndOfLine))
+            step()
     }
 
     return this.tree

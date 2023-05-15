@@ -74,11 +74,14 @@ fun Lexer.lex() = tokens
 
 fun Lexer.done() = current >= source.length
 
-fun Lexer.incLine() {
+fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
     lines.add(Position(start = lastLine, end = current))
     lastLine = current
     line += 1
     linePos = 0
+    if (!done() && needAddNewLineToken && getfirstAfterSpaces() != ".") {
+        createToken(TokenType.EndOfLine)
+    }
 }
 
 fun Lexer.step(n: Int = 1): String =
@@ -194,7 +197,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
 
         if (this.match("\n")) {
             if (mode == "multy") {
-                this.incLine()
+                this.incLine(false)
             } else {
                 this.error("unexpected EOL while parsing string literal")
             }
@@ -250,6 +253,18 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         createToken(TokenType.StringToken)
     } else {
         createToken(TokenType.Char)
+    }
+}
+
+fun Lexer.getfirstAfterSpaces(): String {
+    var x = 0
+    while (true) {
+        val symbol = peek(x)
+        if (symbol == " ") {
+            x += 1
+        } else {
+            return symbol
+        }
     }
 }
 
@@ -330,11 +345,11 @@ fun Lexer.next() {
         match("\r") -> return
         match(" ") -> {
             spaces++
-            start += 2
+            start += 2 // 1 to go to space, 2 to skip spase
         }
 
         match("\t") -> error("tabs are not allowed dud")
-        match("\n") -> incLine()
+        match("\n") -> incLine(true)
 
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
@@ -372,14 +387,14 @@ fun Lexer.next() {
                 step()
             }
             createToken(TokenType.Comment)
-            incLine()
+            incLine(false)
         }
+
 
         match("::") -> createToken(TokenType.DoubleColon)
         match("^") -> createToken(TokenType.Return)
         match("=") -> createToken(TokenType.Equal)
         match("|=>") -> createToken(TokenType.Else)
-
         match("|") -> createToken(TokenType.Pipe)
 
         else -> {
