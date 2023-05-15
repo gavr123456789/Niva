@@ -12,11 +12,7 @@ val helloWorldProgram = """
 "Hello w" echo
 """.trimIndent()
 
-val functionDeclaration = """
-int to: x = [
-  x echo
-]
-""".trimIndent()
+
 
 val functionDeclarationWithType = """
 int to: x(int) = [
@@ -29,6 +25,48 @@ x = r"string"
 """.trimIndent()
 
 class LexerTest {
+
+    @Test
+    fun identifierColon() {
+        val manyExpr = "sas:"
+        check(manyExpr, listOf(Identifier, Colon, EndOfFile))
+    }
+
+
+    @Test
+    fun manyExpr() {
+        val manyExpr = """
+            x sas
+            y sus
+        """.trimIndent()
+        check(manyExpr, listOf(Identifier, Identifier, EndOfLine, Identifier, Identifier, EndOfFile))
+    }
+
+    @Test
+    fun oneManyLinesExpr() {
+        val oneExpr = """x sas: 1
+  .ses: 2
+x sas
+"""
+        // there no end of line after "sas" because there end of file
+        check(
+            oneExpr,
+            listOf(
+                Identifier,
+                Identifier,
+                Colon,
+                Integer,
+                Dot,
+                Identifier,
+                Colon,
+                Integer,
+                EndOfLine,
+                Identifier,
+                Identifier,
+                EndOfFile
+            )
+        )
+    }
 
     @Test
     fun emptySource() {
@@ -72,38 +110,17 @@ class LexerTest {
 
     @Test
     fun functionDeclarationWithBody() {
+
+        val functionDeclaration = """
+int to: x = [
+  x echo
+]
+""".trimIndent()
         check(
             functionDeclaration,
             listOf(
-                Identifier,
-                Identifier,
-                Colon,
-                Identifier,
-                Equal,
-                LeftBracket,
-                Identifier,
-                Identifier,
-                RightBracket,
-                EndOfFile
-            )
-        )
-    }
-
-    @Test
-    fun functionDeclarationWithBodyWithType() {
-        check(
-            functionDeclarationWithType,
-            listOf(
-                Identifier,
-                Identifier,
-                Colon,
-                Identifier,
-                LeftBrace,
-                Identifier,
-                RightBrace,
-                Equal,
-                LeftBracket,
-                Identifier,
+                Identifier, Identifier, Colon, Identifier, Equal, LeftBracket, EndOfLine,
+                Identifier, Identifier, EndOfLine,
                 RightBracket,
                 EndOfFile
             )

@@ -32,6 +32,7 @@ enum class TokenType {
     Pragma,
     Equal,
     DoubleColon,
+    EndOfLine // \n and next line starts not from the dot
 }
 
 data class Position(val start: Int, val end: Int)

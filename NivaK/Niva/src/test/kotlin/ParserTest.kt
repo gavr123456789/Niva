@@ -71,16 +71,32 @@ class ParserTest {
         assert(declaration.value.str == "1")
 
         assert(unaryMsg.selectorName == "echo")
-//        assert(unaryMsg.receiver.type == "string")
+//        assert(unaryMsg.receiver.type == "int")
         assert(unaryMsg.receiver.str == "x")
-
-
     }
 
-    private fun declarationList(source: String): List<Declaration> {
-        val tokens = lex(source)
-        val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
-        val ast = parser.parse()
-        return ast
-    }
+
+//    @Test
+//    fun binaryMsg() {
+//        val source = "2 + 1 - 3"
+//        val ast = declarationList(source)
+//        assert(ast.count() == 2)
+//
+//        val binaryMsg = ast[0] as BinaryMsg
+//
+//        assert(binaryMsg.selectorName == "+")
+//        assert(binaryMsg.receiver.type == "int")
+//        assert(binaryMsg.receiver.str == "2")
+//
+//        val binaryMsg2 = ast[0] as BinaryMsg
+//    }
+
+
+}
+
+fun declarationList(source: String): List<Declaration> {
+    val tokens = lex(source)
+    val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+    val ast = parser.parse()
+    return ast
 }

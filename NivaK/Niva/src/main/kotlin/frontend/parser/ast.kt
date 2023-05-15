@@ -72,6 +72,7 @@ sealed class LiteralExpression(type: String?, literal: Token) : Primary(type, li
 }
 
 class IdentifierExpr(
+    name: String,
     type: String?,
     token: Token,
 //    val depth: Int,
@@ -96,20 +97,20 @@ class UnaryMsg(
 ) : Message(receiver, selectorName, type, token)
 
 class BinaryMsg(
-    val unaryMsgs: List<UnaryMsg> = listOf(),
     receiver: Receiver,
     selectorName: String,
     type: String?,
     token: Token,
+    val unaryMsgs: List<UnaryMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
 
 class KeywordMsg(
-    val unaryMsgs: List<UnaryMsg> = listOf(),
-    val binaryMsgs: List<BinaryMsg> = listOf(),
     receiver: Receiver,
     selectorName: String,
     type: String?,
     token: Token,
+    val unaryMsgs: List<UnaryMsg> = listOf(),
+    val binaryMsgs: List<BinaryMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
 
 
