@@ -5,7 +5,7 @@ class ParserTest {
     @Test
     fun varDeclaration() {
         val source = "x::int = 1"
-        val ast = declarationList(source)
+        val ast = getAst(source)
         println("ast.count = ${ast.count()}")
         assert(ast.count() == 1)
         println("ast = $ast")
@@ -20,7 +20,7 @@ class ParserTest {
     @Test
     fun varDeclWithTypeInfer() {
         val source = "x = 1"
-        val ast = declarationList(source)
+        val ast = getAst(source)
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
@@ -32,7 +32,7 @@ class ParserTest {
     @Test
     fun string() {
         val source = "\"sas\""
-        val ast = declarationList(source)
+        val ast = getAst(source)
         assert(ast.count() == 1)
 
         val declaration = ast[0] as UnaryMsg
@@ -44,7 +44,7 @@ class ParserTest {
     @Test
     fun helloWorld() {
         val source = "\"sas\" echo"
-        val ast = declarationList(source)
+        val ast = getAst(source)
         assert(ast.count() == 1)
 
         val unaryMsg = ast[0] as UnaryMsg
@@ -61,7 +61,7 @@ class ParserTest {
         x = 1
         x echo
     """.trimIndent()
-        val ast = declarationList(source)
+        val ast = getAst(source)
         assert(ast.count() == 2)
 
         val declaration = ast[0] as VarDeclaration
@@ -75,6 +75,18 @@ class ParserTest {
         assert(unaryMsg.receiver.str == "x")
     }
 
+    @Test
+    fun twoUnary() {
+        val source = "3 inc inc"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val unary: UnaryMsg = ast[0] as UnaryMsg
+
+//        assert(unary == "x")
+//        assert(unary.value.type == "int")
+//        assert(unary.value.str == "1")
+    }
 
 //    @Test
 //    fun binaryMsg() {
@@ -94,9 +106,9 @@ class ParserTest {
 
 }
 
-fun declarationList(source: String): List<Declaration> {
+fun getAst(source: String): List<Declaration> {
     val tokens = lex(source)
     val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
-    val ast = parser.parse()
+    val ast = parser.declarations()
     return ast
 }
