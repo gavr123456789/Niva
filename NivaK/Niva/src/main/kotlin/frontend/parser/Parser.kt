@@ -26,7 +26,11 @@ class Parser(
     val tree: MutableList<Declaration> = mutableListOf(),
     var current: Int = 0,
     val modules: MutableList<Module> = mutableListOf(),
-)
+) {
+    val lookahead: TokenType
+        get() = peek().kind
+
+}
 
 
 fun Parser.getCurrent() = current
@@ -201,19 +205,6 @@ fun Parser.primary(): Primary? =
 //    }
 //}
 
-// messageCall | switchExpression
-fun Parser.expression(): Expression {
-    // сначала чекаем это messageCall или switch
-    val tok = peek()
-    if (tok.kind == TokenType.Pipe) {
-        // Switch expr
-        TODO()
-    }
-    // this is message call
-    val receiver = receiver()
-
-    return receiver
-}
 
 // for now only primary is recievers, no indentifiers or expressions
 fun Parser.receiver(): Receiver {
@@ -225,7 +216,7 @@ fun Parser.receiver(): Receiver {
     return tryPrimary
 }
 
-fun Parser.assign(): VarDeclaration {
+fun Parser.varDeclaration(): VarDeclaration {
 
     val tok = this.step()
     val typeOrEqual = step()
@@ -234,7 +225,7 @@ fun Parser.assign(): VarDeclaration {
     val valueType: String?
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
-            value = this.expression()
+            value = this.receiver()
             valueType = value.type
         }
         // ::^int
@@ -242,7 +233,7 @@ fun Parser.assign(): VarDeclaration {
             valueType = step().lexeme
             // x::int^ =
             match(TokenType.Equal)
-            value = this.expression()
+            value = this.receiver()
         }
 
         else -> error("after ${peek(-1)} needed type or expression")
@@ -272,6 +263,7 @@ fun Parser.messageCall(receiver: Receiver): MessageCall {
     TODO()
 }
 
+
 fun Parser.message(): Message {
     // x echo // identifier
     // 1 echo // primary
@@ -280,9 +272,7 @@ fun Parser.message(): Message {
 
 
     val tok = peek()
-
     val receiver: Receiver = receiver()
-
     val tok2 = step()
 
     if (tok2.kind == TokenType.BinarySymbol) {
@@ -320,34 +310,28 @@ fun TokenType.isPrimeToken() =
 // messageDecl
 // message x echo
 // assign x = 1
-fun Parser.declaration(): Declaration {
+fun Parser.statement(): Declaration {
     val tok = peek()
     val kind = tok.kind
 
-    // it could be assignment like x = 1
-    // or just message like x echo
-    // x = 1
+    // Checks for declarations that starts from keyword like type/fn
+
     if (tok.kind == TokenType.Identifier) {
         if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
-            return assign()
+            return varDeclaration()
         }
     }
-//    if (tok.kind == TokenType.Identifier) {
-//        if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
-//            return assign()
-//        }
-//    }
-
     if (kind == TokenType.Type) TODO()
 
-//    if (kind == end)
+    // replace with expression which is switch or message
     return message()
 }
 
-fun Parser.parse(): List<Declaration> {
+
+fun Parser.declarations(): List<Declaration> {
 
     while (!this.done()) {
-        this.tree.add(this.declaration())
+        this.tree.add(this.statement())
         if (check(TokenType.EndOfLine))
             step()
     }
