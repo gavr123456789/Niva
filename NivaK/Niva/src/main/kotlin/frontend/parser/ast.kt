@@ -82,8 +82,12 @@ class IdentifierExpr(
 // MESSAGES
 
 // x sas + y sus
-sealed class MessageCall(val receiver: Receiver, messages: List<Message>, type: String?, token: Token) :
-    Expression(type, token)
+class MessageCall(val receiver: Receiver, val messages: List<Message>, type: String?, token: Token) :
+    Expression(type, token) {
+    override fun toString(): String {
+        return "MessageCall(${token.lexeme} ${messages.map { it.token.lexeme }} )"
+    }
+}
 
 // binaryMessage | unaryMessage | keywordMessage
 sealed class Message(val receiver: Receiver, val selectorName: String, type: String?, token: Token) :
@@ -101,7 +105,7 @@ class BinaryMsg(
     selectorName: String,
     type: String?,
     token: Token,
-    val unaryMsgs: List<UnaryMsg> = listOf(),
+//    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
 
 class KeywordMsg(
@@ -109,8 +113,8 @@ class KeywordMsg(
     selectorName: String,
     type: String?,
     token: Token,
-    val unaryMsgs: List<UnaryMsg> = listOf(),
-    val binaryMsgs: List<BinaryMsg> = listOf(),
+//    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
+//    val binaryMsgs: List<BinaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
 
 

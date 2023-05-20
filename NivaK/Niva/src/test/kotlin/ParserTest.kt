@@ -81,11 +81,35 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val unary: UnaryMsg = ast[0] as UnaryMsg
+        val unary: MessageCall = ast[0] as MessageCall
+        assert(unary.messages.count() == 2)
+        assert(unary.messages[0].selectorName == "inc")
+        assert(unary.messages[1].selectorName == "inc")
+        assert(unary.messages[1].receiver.type == "int")
+    }
 
-//        assert(unary == "x")
-//        assert(unary.value.type == "int")
-//        assert(unary.value.str == "1")
+    @Test
+    fun binaryWithUnary() {
+        // inc(inc(3)) + dec(dec(2))
+        val source = "3 inc inc + 2 dec dec"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val unary: MessageCall = ast[0] as MessageCall
+        val messages = unary.messages
+        assert(messages.count() == 5)
+
+        assert(messages[0].selectorName == "inc")
+        assert(messages[1].selectorName == "inc")
+        assert(messages[2].selectorName == "dec")
+        assert(messages[3].selectorName == "dec")
+        assert(messages[4].selectorName == "+")
+
+        assert(messages[0].receiver.str == "3")
+        assert(messages[1].receiver.str == "3")
+        assert(messages[2].receiver.str == "2")
+        assert(messages[3].receiver.str == "2")
+        assert(messages[4].receiver.str == "2")
     }
 
 //    @Test

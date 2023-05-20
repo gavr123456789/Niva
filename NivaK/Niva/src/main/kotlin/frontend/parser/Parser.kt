@@ -28,7 +28,7 @@ class Parser(
     val modules: MutableList<Module> = mutableListOf(),
 ) {
     val lookahead: TokenType
-        get() = peek().kind
+        get() = peekKind()
 
 }
 
@@ -59,8 +59,11 @@ fun Parser.peek(distance: Int = 0): Token =
     else
         tokens[current + distance]
 
+inline fun Parser.peekKind(distance: Int = 0) =
+    peek(distance).kind
+
 fun Parser.done(): Boolean =
-    peek().kind == TokenType.EndOfFile
+    peekKind() == TokenType.EndOfFile
 
 fun Parser.step(n: Int = 1): Token {
     val result =
@@ -142,7 +145,7 @@ fun Parser.matchString(kind: Iterable<String>): Boolean {
 fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}", token)
+            error("expecting token of kind $kind, found ${peekKind()}", token)
         } else {
             error(message)
         }
@@ -152,7 +155,7 @@ fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
 fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}", token)
+            error("expecting token of kind $kind, found ${peekKind()}", token)
         } else {
             error(message)
         }
@@ -162,8 +165,8 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-fun Parser.primary(): Primary? =
-    when (peek().kind) {
+fun Parser.primary(): Primary =
+    when (peekKind()) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
@@ -177,28 +180,19 @@ fun Parser.primary(): Primary? =
                 val type = step().lexeme
                 IdentifierExpr(x.lexeme, type, x)
             } else {
-                IdentifierExpr(x.lexeme, null, x)
+                IdentifierExpr(x.lexeme, null, x) // look for type in table
             }
         }
 
-//        TokenType.Identifier2Colon -> {
-//            val x = step()
-//            val q = x.lexeme.split("::")
-//            assert(q.count() == 2)
-//            val name = q[0]
-//            val type = step().lexeme
-//            IdentifierExpr(name, type, x)
-//        }
-
         TokenType.LeftParen -> TODO()
-        else -> this.error("expected primary, but got ${peek().kind}")
+        else -> this.error("expected primary, but got ${peekKind()}")
     }
 
 
 // messageCall | switchExpression
 //fun Parser.expression(): Expression {
 //    // пока токо инты
-//    if (peek().kind == TokenType.Integer) {
+//    if (peekKind() == TokenType.Integer) {
 //        return primary()
 //    } else {
 //        TODO()
@@ -264,32 +258,69 @@ fun Parser.messageCall(receiver: Receiver): MessageCall {
 }
 
 
-fun Parser.message(): Message {
+fun Parser.message(): MessageCall {
     // x echo // identifier
     // 1 echo // primary
     // (1 + 1) echo // parens
     // [1 2 3] // data structure
 
 
-    val tok = peek()
+    val receiverTok = peek()
     val receiver: Receiver = receiver()
-    val tok2 = step()
+    val tok2 = peek()
+
+    // check for keyword
+    if (tok2.kind == TokenType.Identifier && check(TokenType.Colon, 1)) {
+        println("KeywordMessage starts")
+    }
+
 
     if (tok2.kind == TokenType.BinarySymbol) {
-        return BinaryMsg(receiver, tok2.lexeme, null, tok)
-    }
-
-    if (check(TokenType.Colon)) {
-        // Keyword
-        // parse keyword
         TODO()
-    } else {
-        // unary
-        return UnaryMsg(receiver, tok2.lexeme, null, tok) // TODO inference type from function table here
+//        return BinaryFirstMsg(receiver, tok2.lexeme, null, receiverTok)
     }
 
-//    error("cant parse message selector ${tok2.lexeme}")
 
+    if (tok2.kind == TokenType.Identifier) {
+        val x: MessageCall = unaryFirstMessage(receiver)
+        return x
+    }
+//    return UnaryFirstMsg(receiver, tok2.lexeme, null, receiverTok) // TODO inference type from function table here
+
+
+    error("cant parse message selector ${tok2.lexeme}")
+
+}
+
+fun Parser.getAllUnaries(receiver: Receiver): MutableList<Message> {
+    val unaryMessages = mutableListOf<Message>()
+    val firstTok = peek()
+    while (peekKind() == TokenType.Identifier) {
+        val tok = step()
+        val unaryFirstMsg = UnaryMsg(receiver, tok.lexeme, null, tok)
+        unaryMessages.add(unaryFirstMsg)
+    }
+
+    return unaryMessages
+}
+
+fun Parser.unaryFirstMessage(receiver: Receiver): MessageCall {
+
+    // 3 inc inc + 2 dec dec + ...
+    val unaryMessages = getAllUnaries(receiver) // inc inc
+    val binaryMessages = mutableListOf<BinaryMsg>()
+    while (check(TokenType.BinarySymbol)) {
+        val binarySymbol = step()
+        val receiver2 = receiver() // 2
+        val otherUnary = getAllUnaries(receiver2)
+        unaryMessages.addAll(otherUnary)
+        val binaryMsg = BinaryMsg(receiver2, binarySymbol.lexeme, null, binarySymbol)
+        binaryMessages.add(binaryMsg)
+    }
+
+    // all messages
+    unaryMessages.addAll(binaryMessages)
+    return MessageCall(receiver, unaryMessages, null, receiver.token)
 }
 
 fun TokenType.isPrimeToken() =
@@ -310,7 +341,7 @@ fun TokenType.isPrimeToken() =
 // messageDecl
 // message x echo
 // assign x = 1
-fun Parser.statement(): Declaration {
+fun Parser.declaration(): Declaration {
     val tok = peek()
     val kind = tok.kind
 
@@ -331,7 +362,7 @@ fun Parser.statement(): Declaration {
 fun Parser.declarations(): List<Declaration> {
 
     while (!this.done()) {
-        this.tree.add(this.statement())
+        this.tree.add(this.declaration())
         if (check(TokenType.EndOfLine))
             step()
     }
