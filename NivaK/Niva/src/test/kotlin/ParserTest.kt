@@ -95,8 +95,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val unary: MessageCall = ast[0] as MessageCall
-        val messages = unary.messages
+        val messageCall: MessageCall = ast[0] as MessageCall
+        val messages = messageCall.messages
         assert(messages.count() == 5)
 
         assert(messages[0].selectorName == "inc")
@@ -109,7 +109,23 @@ class ParserTest {
         assert(messages[1].receiver.str == "3")
         assert(messages[2].receiver.str == "2")
         assert(messages[3].receiver.str == "2")
-        assert(messages[4].receiver.str == "2")
+        assert(messages[4].receiver.str == "3")
+        val binary = messages[4] as BinaryMsg
+
+
+        assert(binary.argument.str == "2")
+    }
+
+    @Test
+    fun keywordMessage() {
+        // inc(inc(3)) + dec(dec(2))
+        val source = "x from: 3 inc inc + 2 dec dec to: 5"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val unary: MessageCall = ast[0] as MessageCall
+        val messages = unary.messages
+        assert(messages.count() == 6)
     }
 
 //    @Test

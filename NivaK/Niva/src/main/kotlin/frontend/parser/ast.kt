@@ -105,6 +105,7 @@ class BinaryMsg(
     selectorName: String,
     type: String?,
     token: Token,
+    val argument: Expression
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
 
@@ -113,6 +114,7 @@ class KeywordMsg(
     selectorName: String,
     type: String?,
     token: Token,
+    val args: List<Expression>
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 //    val binaryMsgs: List<BinaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
