@@ -275,14 +275,10 @@ fun Parser.message(): MessageCall {
     }
 
 
-    if (tok2.kind == TokenType.BinarySymbol) {
-        TODO()
-//        return BinaryFirstMsg(receiver, tok2.lexeme, null, receiverTok)
-    }
 
 
     if (tok2.kind == TokenType.Identifier) {
-        val x: MessageCall = unaryFirstMessage(receiver)
+        val x: MessageCall = anyMessageCall(receiver)
         return x
     }
 //    return UnaryFirstMsg(receiver, tok2.lexeme, null, receiverTok) // TODO inference type from function table here
@@ -295,7 +291,7 @@ fun Parser.message(): MessageCall {
 fun Parser.getAllUnaries(receiver: Receiver): MutableList<Message> {
     val unaryMessages = mutableListOf<Message>()
     val firstTok = peek()
-    while (peekKind() == TokenType.Identifier) {
+    while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val tok = step()
         val unaryFirstMsg = UnaryMsg(receiver, tok.lexeme, null, tok)
         unaryMessages.add(unaryFirstMsg)
@@ -304,23 +300,57 @@ fun Parser.getAllUnaries(receiver: Receiver): MutableList<Message> {
     return unaryMessages
 }
 
-fun Parser.unaryFirstMessage(receiver: Receiver): MessageCall {
+//data class UnaryAndBinaryMessages(val unaryMessages: MutableList<UnaryMsg>,
+//                                  val binaryMessages: MutableList<BinaryMsg>)
+
+fun Parser.unaryAndBinary(receiver: Receiver): MutableList<Message> {
 
     // 3 inc inc + 2 dec dec + ...
     val unaryMessages = getAllUnaries(receiver) // inc inc
     val binaryMessages = mutableListOf<BinaryMsg>()
     while (check(TokenType.BinarySymbol)) {
         val binarySymbol = step()
-        val receiver2 = receiver() // 2
-        val otherUnary = getAllUnaries(receiver2)
+        val binaryArgument = receiver() // 2
+        val otherUnary = getAllUnaries(binaryArgument)
         unaryMessages.addAll(otherUnary)
-        val binaryMsg = BinaryMsg(receiver2, binarySymbol.lexeme, null, binarySymbol)
+        val binaryMsg = BinaryMsg(receiver, binarySymbol.lexeme, null, binarySymbol, binaryArgument)
         binaryMessages.add(binaryMsg)
     }
 
     // all messages
     unaryMessages.addAll(binaryMessages)
-    return MessageCall(receiver, unaryMessages, null, receiver.token)
+    return unaryMessages
+}
+
+
+// возможно стоит хранить сообщения предназначенные для аргументов кейводр сообщения вместе
+fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
+
+    // keyword
+    if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+        val stringBuilder = StringBuilder()
+        val unaryAndBinaryMessages = mutableListOf<Message>()
+        val keyWordArguments = mutableListOf<Expression>()
+        while (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+            val keywordPart = step()
+            step()// skip colon
+            // x from: ^3 inc to: 2 inc
+            val keyArg = receiver()
+            keyWordArguments.add(keyArg)
+            // x from: 3 ^inc to: 2 inc
+            val unaryAndBinary = unaryAndBinary(receiver)
+            unaryAndBinaryMessages.addAll(unaryAndBinary)
+            stringBuilder.append(keywordPart.lexeme, ":")
+        }
+
+        val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
+        unaryAndBinaryMessages.add(keywordMsg)
+        return MessageCall(receiver, unaryAndBinaryMessages, null, receiver.token)
+    }
+    // unary/binary
+
+    val unaryAndBinaryMessage = unaryAndBinary(receiver)
+    return MessageCall(receiver, unaryAndBinaryMessage, null, receiver.token)
 }
 
 fun TokenType.isPrimeToken() =
