@@ -102,21 +102,56 @@ class UnaryMsg(
 
 class BinaryMsg(
     receiver: Receiver,
+    val unaryMsgsForReceiver: List<UnaryMsg>,
     selectorName: String,
     type: String?,
     token: Token,
-    val argument: Expression
+    val argument: Expression,
+    val unaryMsgsForArg: List<UnaryMsg>,
+
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, type, token)
+
+
+data class KeywordArgAndItsMessages(
+    val keywordArg: Receiver,
+    // there can't be unary AND binary messages in one time, binary will contain unary
+    val unaryOrBinaryMsgsForArg: List<Message>
+) {
+    override fun toString(): String {
+        if (!unaryOrBinaryMsgsForArg.isEmpty()) {
+            val firstMsg = unaryOrBinaryMsgsForArg[0]
+            if (firstMsg is BinaryMsg) {
+//                val u = unaryOrBinaryMessagesForArg.filterIsInstance<UnaryMsg>()
+                val receiver = firstMsg.receiver.str
+                val unaryForReceiver =
+                    if (firstMsg.unaryMsgsForReceiver.isNotEmpty())
+                        firstMsg.unaryMsgsForReceiver.map { it.selectorName }.toString()
+                    else ""
+                val unaryForArg =
+                    if (firstMsg.unaryMsgsForArg.isNotEmpty())
+                        firstMsg.unaryMsgsForArg.map { it.selectorName }.toString()
+                    else ""
+                val binaryOperator = firstMsg.selectorName
+                val arg = firstMsg.argument.str
+                return "$receiver $unaryForReceiver $binaryOperator $arg $unaryForArg "
+
+            } else {
+                // unary
+                return "${keywordArg.str} ${unaryOrBinaryMsgsForArg.map { it.selectorName }}"
+            }
+
+        }
+        return keywordArg.str
+    }
+}
 
 class KeywordMsg(
     receiver: Receiver,
     selectorName: String,
     type: String?,
     token: Token,
-    val args: List<Expression>
-//    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-//    val binaryMsgs: List<BinaryFirstMsg> = listOf(),
+    val args: List<KeywordArgAndItsMessages>
 ) : Message(receiver, selectorName, type, token)
 
 
