@@ -85,7 +85,7 @@ class IdentifierExpr(
 class MessageCall(val receiver: Receiver, val messages: List<Message>, type: String?, token: Token) :
     Expression(type, token) {
     override fun toString(): String {
-        return "MessageCall(${token.lexeme} ${messages.map { it.token.lexeme }} )"
+        return "${messages.map { it.toString() }}"
     }
 }
 
@@ -114,12 +114,13 @@ class BinaryMsg(
 
 
 data class KeywordArgAndItsMessages(
+    val selectorName: String,
     val keywordArg: Receiver,
     // there can't be unary AND binary messages in one time, binary will contain unary
     val unaryOrBinaryMsgsForArg: List<Message>
 ) {
     override fun toString(): String {
-        if (!unaryOrBinaryMsgsForArg.isEmpty()) {
+        if (unaryOrBinaryMsgsForArg.isNotEmpty()) {
             val firstMsg = unaryOrBinaryMsgsForArg[0]
             if (firstMsg is BinaryMsg) {
 //                val u = unaryOrBinaryMessagesForArg.filterIsInstance<UnaryMsg>()
@@ -142,7 +143,7 @@ data class KeywordArgAndItsMessages(
             }
 
         }
-        return keywordArg.str
+        return "$selectorName: ${keywordArg.str}"
     }
 }
 
@@ -152,7 +153,14 @@ class KeywordMsg(
     type: String?,
     token: Token,
     val args: List<KeywordArgAndItsMessages>
-) : Message(receiver, selectorName, type, token)
+) : Message(receiver, selectorName, type, token) {
+    override fun toString(): String {
+
+        val receiverName = receiver.str
+
+        return "KeywordCall($receiverName ${args.map { it.toString() }})"
+    }
+}
 
 
 class Pragma(

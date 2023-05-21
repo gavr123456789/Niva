@@ -265,25 +265,18 @@ fun Parser.message(): MessageCall {
     // [1 2 3] // data structure
 
 
-//    val receiverTok = peek()
     val receiver: Receiver = receiver()
-//    val tok2 = peek()
 
 
-//    if (tok2.kind == TokenType.Identifier) {
     val x: MessageCall = anyMessageCall(receiver)
     return x
-//    }
-//    return UnaryFirstMsg(receiver, tok2.lexeme, null, receiverTok) // TODO inference type from function table here
-
-
-//    error("cant parse message selector ${tok2.lexeme}")
 
 }
 
+
+
 fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
-    val firstTok = peek()
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val tok = step()
         val unaryFirstMsg = UnaryMsg(receiver, tok.lexeme, null, tok)
@@ -293,10 +286,8 @@ fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
     return unaryMessages
 }
 
-//data class UnaryAndBinaryMessages(val unaryMessages: MutableList<UnaryMsg>,
-//                                  val binaryMessages: MutableList<BinaryMsg>)
 
-fun Parser.unaryesOrBinary(receiver: Receiver): MutableList<out Message> {
+fun Parser.unaryOrBinary(receiver: Receiver): MutableList<out Message> {
     // 3 ^inc inc + 2 dec dec + ...
     val unaryMessagesForReceiver = getAllUnaries(receiver) // inc inc
     val binaryMessages = mutableListOf<BinaryMsg>()
@@ -328,6 +319,7 @@ fun Parser.unaryesOrBinary(receiver: Receiver): MutableList<out Message> {
 // возможно стоит хранить сообщения предназначенные для аргументов кейводр сообщения вместе
 fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
 
+
     // keyword
     if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
         val stringBuilder = StringBuilder()
@@ -341,15 +333,23 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
             val keyArg = receiver()
 //            keyWordArguments.add(keyArg)
             // x from: 3 ^inc to: 2 inc
-            val unaryOrBinary = unaryesOrBinary(receiver)
+            val unaryOrBinary = unaryOrBinary(receiver)
 //            unaryAndBinaryMessages.addAll(unaryOrBinary)
             stringBuilder.append(keywordPart.lexeme, ":")
 
             val x = KeywordArgAndItsMessages(
+                selectorName = keywordPart.lexeme,
                 keywordArg = keyArg,
                 unaryOrBinaryMsgsForArg = unaryOrBinary
             )
             keyWordArguments.add(x)
+
+            // if keyword was split to 2 lines
+            if (check(TokenType.EndOfLine)) {
+                if (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
+                    step()
+            }
+
         } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
 
         val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
@@ -357,7 +357,7 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
         return MessageCall(receiver, unaryAndBinaryMessages, null, receiver.token)
     }
     // unary/binary
-    val unaryAndBinaryMessage = unaryesOrBinary(receiver)
+    val unaryAndBinaryMessage = unaryOrBinary(receiver)
     return MessageCall(receiver, unaryAndBinaryMessage, null, receiver.token)
 }
 
@@ -392,6 +392,7 @@ fun Parser.declaration(): Declaration {
     }
     if (kind == TokenType.Type) TODO()
 
+
     // replace with expression which is switch or message
     return message()
 }
@@ -401,8 +402,10 @@ fun Parser.declarations(): List<Declaration> {
 
     while (!this.done()) {
         this.tree.add(this.declaration())
-        if (check(TokenType.EndOfLine))
+        if (check(TokenType.EndOfLine)) {
             step()
+
+        }
     }
 
     return this.tree

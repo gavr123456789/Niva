@@ -35,9 +35,11 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration = ast[0] as UnaryMsg
+        val declaration = ast[0] as MessageCall
 
         assert(declaration.str == "\"sas\"")
+        assert(declaration.receiver.str == "\"sas\"")
+        assert(declaration.messages.isEmpty())
     }
 
 
@@ -47,7 +49,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val unaryMsg = ast[0] as UnaryMsg
+        val messageCall = ast[0] as MessageCall
+        val unaryMsg = messageCall.messages[0]
 
         assert(unaryMsg.selectorName == "echo")
         assert(unaryMsg.receiver.type == "string")
@@ -65,7 +68,8 @@ class ParserTest {
         assert(ast.count() == 2)
 
         val declaration = ast[0] as VarDeclaration
-        val unaryMsg = ast[1] as UnaryMsg
+        val messageCall = ast[1] as MessageCall
+        val unaryMsg = messageCall.messages[0]
         assert(declaration.name.str == "x")
         assert(declaration.value.type == "int")
         assert(declaration.value.str == "1")
@@ -86,6 +90,82 @@ class ParserTest {
         assert(unary.messages[0].selectorName == "inc")
         assert(unary.messages[1].selectorName == "inc")
         assert(unary.messages[1].receiver.type == "int")
+    }
+
+    @Test
+    fun twoUnaryExpressions() {
+        val source = """
+            3 inc inc
+            1 dec dec
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 2)
+
+        val firstUnary: MessageCall = ast[0] as MessageCall
+        assert(firstUnary.messages.count() == 2)
+        assert(firstUnary.messages[0].selectorName == "inc")
+        assert(firstUnary.messages[1].selectorName == "inc")
+        assert(firstUnary.messages[1].receiver.type == "int")
+        assert(firstUnary.messages[1].receiver.str == "3")
+
+        val secondUnary: MessageCall = ast[1] as MessageCall
+        assert(secondUnary.messages.count() == 2)
+        assert(secondUnary.messages[0].selectorName == "dec")
+        assert(secondUnary.messages[1].selectorName == "dec")
+        assert(secondUnary.messages[1].receiver.type == "int")
+        assert(secondUnary.messages[1].receiver.str == "1")
+    }
+
+    @Test
+    fun allTypeOfMessages() {
+        val source = """
+            3 inc inc
+            1 + 2
+            x from: 1 to: 2
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 3)
+        val unary = (ast[0] as MessageCall).messages[0]
+        val binary = (ast[1] as MessageCall).messages[0]
+        val keyword = (ast[2] as MessageCall).messages[0]
+        assert(unary.receiver.str == "3")
+        assert(binary.receiver.str == "1")
+        assert(keyword.receiver.str == "x")
+        assert(unary is UnaryMsg)
+        assert(binary is BinaryMsg)
+        assert(keyword is KeywordMsg)
+    }
+
+    @Test
+    fun keywordOn2lines() {
+        val source = """
+            x from: 1 
+              to: 2
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val keyword = (ast[0] as MessageCall).messages[0] as KeywordMsg
+        assert(keyword.receiver.str == "x")
+    }
+
+    @Test
+    fun twoKeywordOn2lines() {
+        val source = """
+            x from: 1 
+            to: 2
+            q do: this
+        and: that
+                  and: that
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 2)
+
+        val keyword = (ast[0] as MessageCall).messages[0] as KeywordMsg
+        assert(keyword.receiver.str == "x")
+
+        val keyword2 = (ast[1] as MessageCall).messages[0] as KeywordMsg
+        assert(keyword2.receiver.str == "q")
     }
 
     @Test
