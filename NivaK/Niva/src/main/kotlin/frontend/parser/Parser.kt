@@ -3,6 +3,7 @@ package frontend.parser
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.parser.types.*
 
 // Unari messages
 //class OperatorTable (
@@ -244,35 +245,19 @@ fun Parser.varDeclaration(): VarDeclaration {
 // если не выйдет то бинарное
 // если не выйдет то унарное
 
-fun Parser.keywordCall(receiver: Receiver) {
-    // key1: expr
-    check(TokenType.Colon, 1)
-
-//    val keywordMsg: KeywordMsg = KeywordMsg(receiver,)
-}
-
-fun Parser.messageCall(receiver: Receiver): MessageCall {
-    // tryParse keyword
-    keywordCall(receiver)
-    TODO()
-}
-
 
 fun Parser.message(): MessageCall {
     // x echo // identifier
     // 1 echo // primary
     // (1 + 1) echo // parens
     // [1 2 3] // data structure
-
-
     val receiver: Receiver = receiver()
 
-
     val x: MessageCall = anyMessageCall(receiver)
+
     return x
 
 }
-
 
 
 fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
@@ -331,10 +316,8 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
             step()// skip colon
             // x from: ^3 inc to: 2 inc
             val keyArg = receiver()
-//            keyWordArguments.add(keyArg)
             // x from: 3 ^inc to: 2 inc
             val unaryOrBinary = unaryOrBinary(receiver)
-//            unaryAndBinaryMessages.addAll(unaryOrBinary)
             stringBuilder.append(keywordPart.lexeme, ":")
 
             val x = KeywordArgAndItsMessages(
@@ -348,6 +331,12 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
             if (check(TokenType.EndOfLine)) {
                 if (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
                     step()
+            }
+
+            if (check(TokenType.Equal)) {
+                println()
+//                return keywordMessageDeclaration
+                TODO()
             }
 
         } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
@@ -374,6 +363,42 @@ fun TokenType.isPrimeToken() =
     }
 
 
+fun Parser.tryToParseKeywordDeclaration(): Boolean {
+    var isThereIdentColon = false
+    var isThereEqualAfterThat = false
+    var peekCounter = 0
+//    var keywordArguments = listOf<KeywordDeclarationArg>()
+//    val listOfKeywords = mutableListOf<String>()
+//    val listOfKeywords2 = mutableListOf<String>()
+    // is there ident: and = after that before end of line?
+    while (!(check(TokenType.EndOfLine, peekCounter) || check(TokenType.EndOfFile, peekCounter))) {
+        val q = peek(peekCounter)
+        if (q.kind == TokenType.Identifier && check(TokenType.Colon, peekCounter + 1)) {
+            isThereIdentColon = true
+            // Person ^from: x::int
+//            listOfKeywords.add(q.lexeme)
+//            val argument = peek(peekCounter + 2)
+//            val thereIsArg = argument.kind == TokenType.Identifier
+//            val colon = peek(peekCounter + 3)
+//            val thereIsDoubleColon = colon.kind == TokenType.DoubleColon
+//            val type = peek(peekCounter + 4)
+//            val thereIsType = type.kind == TokenType.Identifier
+//
+//            if (thereIsArg && thereIsDoubleColon) {
+//
+//            }
+        }
+
+        if (isThereIdentColon && check(TokenType.Equal, peekCounter)) {
+            isThereEqualAfterThat = true
+            break
+        }
+        peekCounter++
+
+    }
+    return isThereIdentColon && isThereEqualAfterThat
+}
+
 // all top level declarations
 // type
 // messageDecl
@@ -386,17 +411,76 @@ fun Parser.declaration(): Declaration {
     // Checks for declarations that starts from keyword like type/fn
 
     if (tok.kind == TokenType.Identifier) {
+        // can be with "x::int =" or "x ="
         if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
             return varDeclaration()
         }
     }
     if (kind == TokenType.Type) TODO()
 
+    val methodDeclaration = tryToParseKeywordDeclaration()
+    if (tryToParseKeywordDeclaration()) {
+        return keywordDeclaration()
+    }
+    println(methodDeclaration)
 
     // replace with expression which is switch or message
     return message()
 }
 
+fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
+    val receiverTypeNameToken = match(TokenType.Identifier)
+    val args = mutableListOf<KeywordDeclarationArg>()
+    do {
+        // it can be no type no local name :key
+        // type, no local name key::int      key2::string
+        // type and local name: to: x::int   from: y::int
+
+        val noLocalNameNoType = check(TokenType.Colon)
+        val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
+        // :foo
+        if (noLocalNameNoType) {
+            step() //skip colon
+            val argName = step()
+            if (argName.kind != TokenType.Identifier) {
+                error("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
+            }
+            args.add(KeywordDeclarationArg(name = argName.lexeme))
+        }
+        // arg::int
+        else if (noLocalName) {
+            val argName = step()
+            if (argName.kind != TokenType.Identifier) {
+                error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
+            }
+            match(TokenType.DoubleColon)
+            val typeName = step()
+            if (typeName.kind != TokenType.Identifier) {
+                error("You tried to declare keyword message with arg without local name, type expected after colon double foobar::type")
+            }
+            args.add(KeywordDeclarationArg(name = argName.lexeme, type = typeName.lexeme))
+        }
+        // key: localName(::int)?
+        else {
+            val key = step()
+            match(TokenType.Colon)
+            val local = step()
+            val typename: String? = if (check(TokenType.DoubleColon)) {
+                step()// skip doubleColon
+                step().lexeme
+            } else {
+                null
+            }
+
+            args.add(KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = typename))
+
+        }
+
+
+    } while (!check(TokenType.Equal))
+
+    TODO()
+}
 
 fun Parser.declarations(): List<Declaration> {
 
@@ -404,22 +488,8 @@ fun Parser.declarations(): List<Declaration> {
         this.tree.add(this.declaration())
         if (check(TokenType.EndOfLine)) {
             step()
-
         }
     }
 
     return this.tree
 }
-
-//fun Parser.addBinaryMessage(lexeme: String) {
-//    binaryMessages.add(lexeme)
-//}
-//
-//fun Parser.addUnaryMessage(lexeme: String) {
-//    unaryMessages.add(lexeme)
-//}
-//
-//fun Parser.addKeywordMessage(lexeme: String) {
-//    keywordMessages.add(lexeme)
-//}
-
