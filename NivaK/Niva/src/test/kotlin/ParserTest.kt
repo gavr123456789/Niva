@@ -1,4 +1,6 @@
-import frontend.parser.*
+import frontend.parser.Parser
+import frontend.parser.declarations
+import frontend.parser.types.*
 import org.testng.annotations.Test
 
 class ParserTest {
@@ -136,6 +138,21 @@ class ParserTest {
         assert(keyword is KeywordMsg)
     }
 
+
+    @Test
+    fun manyBinary() {
+        val source = """
+            1 + 2 - 2 / 4
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val messages = (ast[0] as MessageCall).messages
+        assert(messages.count() == 3)
+        assert(messages[0].selectorName == "+")
+        assert(messages[1].selectorName == "-")
+        assert(messages[2].selectorName == "/")
+    }
+
     @Test
     fun keywordOn2lines() {
         val source = """
@@ -221,20 +238,15 @@ class ParserTest {
         assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
 
-//    @Test
-//    fun binaryMsg() {
-//        val source = "2 + 1 - 3"
-//        val ast = declarationList(source)
-//        assert(ast.count() == 2)
-//
-//        val binaryMsg = ast[0] as BinaryMsg
-//
-//        assert(binaryMsg.selectorName == "+")
-//        assert(binaryMsg.receiver.type == "int")
-//        assert(binaryMsg.receiver.str == "2")
-//
-//        val binaryMsg2 = ast[0] as BinaryMsg
-//    }
+    @Test
+    fun keywordMessageDeclaration() {
+        val source = """
+            Person noTypeLocalName: q typeAndLocalName: w::int :nothing noLocalNameButType::int = []
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+    }
 
 
 }
