@@ -3,6 +3,7 @@ It will be Smalltalk like language, but statically typed.
 
 ## What's going on
 The simple implementation is ready on TS, now I rewriting it on Kotlin without parser generator(ohm)
+To check TS version run `yarn` and `yarn ohm generateBundles --withTypes src/niva.ohm` and to run code `yarn ts-node ./src/main.ts ./examples/controlFlow.niva`
 
 ## Backend
 Now the backend is Nim. Yes it's quite fun `niva` -> `nim` -> `C`.  
