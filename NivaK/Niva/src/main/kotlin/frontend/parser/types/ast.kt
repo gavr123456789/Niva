@@ -37,14 +37,14 @@ sealed class Expression(
 
 class VarDeclaration(
     token: Token,
-    val name: IdentifierExpr,
+    val name: String,
     val value: Expression,
     val valueType: String? = null,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "VarDeclaration(${name.token.lexeme} = ${value.str}, valueType=$valueType)"
+        return "VarDeclaration(${name} = ${value.str}, valueType=$valueType)"
     }
 }
 

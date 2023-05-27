@@ -117,6 +117,17 @@ fun Parser.match(kind: TokenType) =
         false
     }
 
+fun Parser.matchAssert(kind: TokenType, errorMessage: String): Token {
+    val tok = peek()
+
+    return if (tok.kind == kind) {
+        step()
+        tok
+    } else {
+        error(errorMessage)
+    }
+}
+
 fun Parser.match(kind: String) =
     if (check(kind)) {
         step() // TODO тут наверн надо делать степ на kind.length
@@ -234,8 +245,8 @@ fun Parser.varDeclaration(): VarDeclaration {
         else -> error("after ${peek(-1)} needed type or expression")
     }
 
-    val identifierExpr = IdentifierExpr(tok.lexeme, valueType, tok)
-    val result = VarDeclaration(tok, identifierExpr, value, valueType)
+//    val identifierExpr = IdentifierExpr(tok.lexeme, valueType, tok)
+    val result = VarDeclaration(tok, tok.lexeme, value, valueType)
     return result
 }
 
@@ -333,11 +344,11 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
                     step()
             }
 
-            if (check(TokenType.Equal)) {
-                println()
-//                return keywordMessageDeclaration
-                TODO()
-            }
+//            if (check(TokenType.Equal)) {
+//                println()
+////                return keywordMessageDeclaration
+//                TODO()
+//            }
 
         } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
 
@@ -399,37 +410,50 @@ fun Parser.tryToParseKeywordDeclaration(): Boolean {
     return isThereIdentColon && isThereEqualAfterThat
 }
 
-// all top level declarations
-// type
-// messageDecl
-// message x echo
-// assign x = 1
-fun Parser.declaration(): Declaration {
+
+// Declaration without end of line
+fun Parser.declarationOnly(): Declaration {
     val tok = peek()
     val kind = tok.kind
-
+    val result: Declaration
     // Checks for declarations that starts from keyword like type/fn
 
-    if (tok.kind == TokenType.Identifier) {
-        // can be with "x::int =" or "x ="
-        if (check(TokenType.DoubleColon, 1) || (check(TokenType.Equal, 1))) {
-            return varDeclaration()
-        }
+    if (tok.kind == TokenType.Identifier &&
+        (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
+    ) {
+        return varDeclaration()
     }
     if (kind == TokenType.Type) TODO()
 
-    val methodDeclaration = tryToParseKeywordDeclaration()
     if (tryToParseKeywordDeclaration()) {
         return keywordDeclaration()
     }
-    println(methodDeclaration)
 
     // replace with expression which is switch or message
     return message()
 }
 
+fun Parser.messageOrVarDeclaration(): Declaration {
+    val result = if (check(TokenType.Identifier) &&
+        (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
+    ) {
+        varDeclaration()
+    } else {
+        message()
+    }
+
+    if (check(TokenType.EndOfLine)) {
+        step()
+    }
+    return result
+}
+
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
-    val receiverTypeNameToken = match(TokenType.Identifier)
+    var isSingleExpression = true
+
+    val receiverTypeNameToken =
+        matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
+
     val args = mutableListOf<KeywordDeclarationArg>()
     do {
         // it can be no type no local name :key
@@ -479,16 +503,55 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
     } while (!check(TokenType.Equal))
 
-    TODO()
+    ///// BODY PARSING
+    // TODO вынести в отдельную функцию
+
+
+    val messagesOrVarDeclarations = mutableListOf<Declaration>()
+    // Person from: x ^= []
+    match(TokenType.Equal)
+    // many expressions in body
+    if (match(TokenType.LeftBracket)) {
+        isSingleExpression = false
+
+        match(TokenType.EndOfLine)
+        do {
+            messagesOrVarDeclarations.add(messageOrVarDeclaration())
+        } while (!check(TokenType.RightBracket))
+    } else {
+        isSingleExpression = true
+        // one expression in body
+        messagesOrVarDeclarations.add(messageOrVarDeclaration())
+    }
+    // end of body parsing
+
+    if (!isSingleExpression) {
+        match(TokenType.RightBracket)
+    }
+
+    val keywordMessageName = args.map { it.name }.joinToString("_") { it }
+    val result = MessageDeclarationKeyword(
+        name = keywordMessageName,
+        token = receiverTypeNameToken,
+        args = args,
+        body = messagesOrVarDeclarations,
+        isSingleExpression = isSingleExpression
+    )
+    return result
+}
+
+fun Parser.declaration(): Declaration {
+    val result = this.declarationOnly()
+    if (check(TokenType.EndOfLine)) {
+        step()
+    }
+    return result
 }
 
 fun Parser.declarations(): List<Declaration> {
 
     while (!this.done()) {
         this.tree.add(this.declaration())
-        if (check(TokenType.EndOfLine)) {
-            step()
-        }
     }
 
     return this.tree
