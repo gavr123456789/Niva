@@ -24,6 +24,8 @@ class MessageDeclarationBinary(
     pragmas: List<Pragma> = listOf()
 ) : MessageDeclaration(name, token, isPrivate, pragmas)
 
+
+// key: localName::type
 class KeywordDeclarationArg(
     val name: String,
     val localName: String? = null,
@@ -33,8 +35,9 @@ class KeywordDeclarationArg(
 class MessageDeclarationKeyword(
     name: String,
     token: Token,
-    isPrivate: Boolean = false,
     val args: List<KeywordDeclarationArg>,
-    val body: List<Expression>,
+    val body: List<Declaration>,
+    val isSingleExpression: Boolean,
+    isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
 ) : MessageDeclaration(name, token, isPrivate, pragmas)

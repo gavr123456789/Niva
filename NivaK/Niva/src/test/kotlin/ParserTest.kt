@@ -14,7 +14,7 @@ class ParserTest {
         println("ast[0] = ${ast[0]}")
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
-        assert(declaration.name.str == "x")
+        assert(declaration.name == "x")
         assert(declaration.value.type == "int")
         assert(declaration.value.str == "1")
     }
@@ -26,7 +26,7 @@ class ParserTest {
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
-        assert(declaration.name.str == "x")
+        assert(declaration.name == "x")
         assert(declaration.value.type == "int")
         assert(declaration.value.str == "1")
     }
@@ -72,7 +72,7 @@ class ParserTest {
         val declaration = ast[0] as VarDeclaration
         val messageCall = ast[1] as MessageCall
         val unaryMsg = messageCall.messages[0]
-        assert(declaration.name.str == "x")
+        assert(declaration.name == "x")
         assert(declaration.value.type == "int")
         assert(declaration.value.str == "1")
 
@@ -238,13 +238,46 @@ class ParserTest {
         assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
 
+
+    fun unaryMessageDeclaration() {
+
+    }
+
     @Test
     fun keywordMessageDeclaration() {
         val source = """
-            Person noTypeLocalName: q typeAndLocalName: w::int :nothing noLocalNameButType::int = []
+            Person noTypeLocalName: q typeAndLocalName: w::int :nothing noLocalNameButType::int = [
+              x = 1
+              x sas
+            ]
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
+        val msgDecl = (ast[0] as MessageDeclarationKeyword)
+        assert(msgDecl.name == "noTypeLocalName_typeAndLocalName_nothing_noLocalNameButType")
+        assert(msgDecl.args.count() == 4)
+        assert(msgDecl.body.count() == 2)
+
+        // args
+        assert(msgDecl.args[0].name == "noTypeLocalName")
+        assert(msgDecl.args[0].localName == "q")
+        assert(msgDecl.args[1].name == "typeAndLocalName")
+        assert(msgDecl.args[1].localName == "w")
+        assert(msgDecl.args[2].name == "nothing")
+        assert(msgDecl.args[2].localName == null)
+        assert(msgDecl.args[3].name == "noLocalNameButType")
+        assert(msgDecl.args[3].localName == null)
+        assert(msgDecl.args[3].type == "int")
+
+        // body
+        val body = msgDecl.body
+        val varDecl = body[0] as VarDeclaration
+        val msgCall = body[1] as MessageCall
+        assert(varDecl.name == "x")
+        assert(varDecl.valueType == "int")
+        assert(msgCall.receiver.str == "x")
+        assert(msgCall.messages[0].selectorName == "sas")
+        assert(msgCall.messages[0].receiver.str == "x")
 
     }
 
