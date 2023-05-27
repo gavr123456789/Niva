@@ -11,6 +11,8 @@ elif y.`/`(7).`==`(6):
 else:
   "something else"
 x.`echo`()
+
+
 case x:
 of "nim", "pascal":
   "no".`echo`()
@@ -22,7 +24,12 @@ of "ni", "va", "niva":
   "yes!".`echo`()
 else:
   "I dont know".`echo`()
+
+
 if y.`<`(10) or y.`/`(5).`==`(4):
   "foo".`echo`()
 elif x.`==`("niva").`&&`((y.`==`(42))):
   "yay!".`echo`()
+
+
+  
