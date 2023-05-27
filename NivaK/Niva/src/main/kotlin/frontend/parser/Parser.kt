@@ -374,40 +374,66 @@ fun TokenType.isPrimeToken() =
     }
 
 
-fun Parser.tryToParseKeywordDeclaration(): Boolean {
+enum class MessageDeclarationType {
+    Unary,
+    Binary,
+    Keyword
+}
+
+// returns null if it's not a message declaration
+fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
+    // receiver is first
+    if (!check(TokenType.Identifier)) {
+        return null
+    }
+    // flags for keyword
+    // from[:] ... [=]
     var isThereIdentColon = false
     var isThereEqualAfterThat = false
+    // unary
+    var isThereEqual = false
+    var identifiersCounter = 0
+
     var peekCounter = 0
-//    var keywordArguments = listOf<KeywordDeclarationArg>()
-//    val listOfKeywords = mutableListOf<String>()
-//    val listOfKeywords2 = mutableListOf<String>()
+
     // is there ident: and = after that before end of line?
     while (!(check(TokenType.EndOfLine, peekCounter) || check(TokenType.EndOfFile, peekCounter))) {
         val q = peek(peekCounter)
+
+
+        // keyword checks
         if (q.kind == TokenType.Identifier && check(TokenType.Colon, peekCounter + 1)) {
             isThereIdentColon = true
-            // Person ^from: x::int
-//            listOfKeywords.add(q.lexeme)
-//            val argument = peek(peekCounter + 2)
-//            val thereIsArg = argument.kind == TokenType.Identifier
-//            val colon = peek(peekCounter + 3)
-//            val thereIsDoubleColon = colon.kind == TokenType.DoubleColon
-//            val type = peek(peekCounter + 4)
-//            val thereIsType = type.kind == TokenType.Identifier
-//
-//            if (thereIsArg && thereIsDoubleColon) {
-//
-//            }
         }
 
         if (isThereIdentColon && check(TokenType.Equal, peekCounter)) {
             isThereEqualAfterThat = true
             break
         }
+        if (check(TokenType.Equal)) {
+            isThereEqual = true
+        }
         peekCounter++
 
     }
-    return isThereIdentColon && isThereEqualAfterThat
+    if (isThereIdentColon && isThereEqualAfterThat) {
+        return MessageDeclarationType.Keyword
+    }
+
+    // unary and binary
+    // Identifier checked already
+
+    // int inc = []
+    if (check(TokenType.Identifier, 1) && check(TokenType.Equal, 2)) {
+        return MessageDeclarationType.Unary
+    }
+
+    // int + arg =
+    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier) && check(TokenType.Equal, 2)) {
+        return MessageDeclarationType.Binary
+    }
+
+    return null
 }
 
 
@@ -425,12 +451,12 @@ fun Parser.declarationOnly(): Declaration {
     }
     if (kind == TokenType.Type) TODO()
 
-    if (tryToParseKeywordDeclaration()) {
-        return keywordDeclaration()
+    when (isItKeywordDeclaration()) {
+        MessageDeclarationType.Unary -> return unaryDeclaration()
+        MessageDeclarationType.Binary -> TODO()
+        MessageDeclarationType.Keyword -> return keywordDeclaration()
+        else -> return message() // replace with expression which is switch or message
     }
-
-    // replace with expression which is switch or message
-    return message()
 }
 
 fun Parser.messageOrVarDeclaration(): Declaration {
@@ -448,8 +474,65 @@ fun Parser.messageOrVarDeclaration(): Declaration {
     return result
 }
 
+fun Parser.unaryDeclaration(): MessageDeclarationUnary {
+
+    val receiverTypeNameToken =
+        matchAssert(TokenType.Identifier, "Its unary message Declaration, name of type expected")
+
+    // int^ inc = []
+
+    val unarySelector = matchAssert(TokenType.Identifier, "Its unary message declaration, unary selector expected")
+
+    ///// BODY PARSING
+
+    val pair = body() // (body, is single expression)
+    val messagesOrVarDeclarations = pair.first
+    val isSingleExpression = pair.second
+    // end of body parsing
+
+    if (!isSingleExpression) {
+        match(TokenType.RightBracket)
+    }
+
+    val result = MessageDeclarationUnary(
+        name = unarySelector.lexeme,
+        token = receiverTypeNameToken,
+        body = messagesOrVarDeclarations,
+        isSingleExpression = isSingleExpression
+    )
+    return result
+}
+
+fun Parser.binaryDeclaration(): MessageDeclarationUnary {
+
+    val receiverTypeNameToken =
+        matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
+
+    // int^ inc = []
+
+    val unarySelector = matchAssert(TokenType.Identifier, "Its unary message declaration, unary selector expected")
+
+    ///// BODY PARSING
+
+    val pair = body() // (body, is single expression)
+    val messagesOrVarDeclarations = pair.first
+    val isSingleExpression = pair.second
+    // end of body parsing
+
+    if (!isSingleExpression) {
+        match(TokenType.RightBracket)
+    }
+
+    val result = MessageDeclarationUnary(
+        name = unarySelector.lexeme,
+        token = receiverTypeNameToken,
+        body = messagesOrVarDeclarations,
+        isSingleExpression = isSingleExpression
+    )
+    return result
+}
+
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
-    var isSingleExpression = true
 
     val receiverTypeNameToken =
         matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
@@ -503,10 +586,30 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
     } while (!check(TokenType.Equal))
 
-    ///// BODY PARSING
-    // TODO вынести в отдельную функцию
+    // BODY PARSING
 
+    val pair = body()
+    val messagesOrVarDeclarations = pair.first
+    val isSingleExpression = pair.second
+    // end of body parsing
 
+    if (!isSingleExpression) {
+        match(TokenType.RightBracket)
+    }
+
+    val keywordMessageName = args.map { it.name }.joinToString("_") { it }
+    val result = MessageDeclarationKeyword(
+        name = keywordMessageName,
+        token = receiverTypeNameToken,
+        args = args,
+        body = messagesOrVarDeclarations,
+        isSingleExpression = isSingleExpression
+    )
+    return result
+}
+
+private fun Parser.body(): Pair<MutableList<Declaration>, Boolean> {
+    val isSingleExpression: Boolean
     val messagesOrVarDeclarations = mutableListOf<Declaration>()
     // Person from: x ^= []
     match(TokenType.Equal)
@@ -523,21 +626,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         // one expression in body
         messagesOrVarDeclarations.add(messageOrVarDeclaration())
     }
-    // end of body parsing
-
-    if (!isSingleExpression) {
-        match(TokenType.RightBracket)
-    }
-
-    val keywordMessageName = args.map { it.name }.joinToString("_") { it }
-    val result = MessageDeclarationKeyword(
-        name = keywordMessageName,
-        token = receiverTypeNameToken,
-        args = args,
-        body = messagesOrVarDeclarations,
-        isSingleExpression = isSingleExpression
-    )
-    return result
+    return Pair(messagesOrVarDeclarations, isSingleExpression)
 }
 
 fun Parser.declaration(): Declaration {
