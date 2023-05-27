@@ -6,6 +6,8 @@ import frontend.meta.Token
 sealed class MessageDeclaration(
     val name: String,
     token: Token,
+    val isSingleExpression: Boolean,
+    val body: List<Declaration>,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Declaration(token, isPrivate, pragmas)
@@ -13,16 +15,20 @@ sealed class MessageDeclaration(
 class MessageDeclarationUnary(
     name: String,
     token: Token,
+    isSingleExpression: Boolean,
+    body: List<Declaration>,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : MessageDeclaration(name, token, isPrivate, pragmas)
+) : MessageDeclaration(name, token, isSingleExpression, body, isPrivate, pragmas)
 
 class MessageDeclarationBinary(
     name: String,
     token: Token,
+    body: List<Declaration>,
+    isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : MessageDeclaration(name, token, isPrivate, pragmas)
+) : MessageDeclaration(name, token, isSingleExpression, body, isPrivate, pragmas)
 
 
 // key: localName::type
@@ -36,8 +42,8 @@ class MessageDeclarationKeyword(
     name: String,
     token: Token,
     val args: List<KeywordDeclarationArg>,
-    val body: List<Declaration>,
-    val isSingleExpression: Boolean,
+    body: List<Declaration>,
+    isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
-) : MessageDeclaration(name, token, isPrivate, pragmas)
+) : MessageDeclaration(name, token, isSingleExpression, body, isPrivate, pragmas)

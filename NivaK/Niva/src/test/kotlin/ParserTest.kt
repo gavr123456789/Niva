@@ -238,9 +238,16 @@ class ParserTest {
         assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
 
-
+    @Test
     fun unaryMessageDeclaration() {
-
+        val source = """
+            int inc = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
     }
 
     @Test
