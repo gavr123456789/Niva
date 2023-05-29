@@ -87,11 +87,11 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val unary: MessageCall = ast[0] as MessageCall
-        assert(unary.messages.count() == 2)
-        assert(unary.messages[0].selectorName == "inc")
-        assert(unary.messages[1].selectorName == "inc")
-        assert(unary.messages[1].receiver.type == "int")
+        val messageCall: MessageCall = ast[0] as MessageCall
+        assert(messageCall.messages.count() == 2)
+        assert(messageCall.messages[0].selectorName == "inc")
+        assert(messageCall.messages[1].selectorName == "inc")
+        assert(messageCall.messages[1].receiver.type == "int")
     }
 
     @Test
@@ -212,6 +212,32 @@ class ParserTest {
     }
 
     @Test
+    fun binaryWithUnary2() {
+        // inc(inc(3)) + dec(dec(2))
+        val source = "3 inc inc + 2 dec dec + 4 sas inc"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val messageCall: MessageCall = ast[0] as MessageCall
+        val messages = messageCall.messages
+        assert(messages.count() == 2)
+
+        val binaryMsg = messages[0] as BinaryMsg
+        assert(binaryMsg.receiver.str == "3")
+        assert(binaryMsg.argument.str == "2")
+
+        assert(binaryMsg.unaryMsgsForReceiver.count() == 2)
+        assert(binaryMsg.unaryMsgsForArg.count() == 2)
+
+        assert(binaryMsg.unaryMsgsForReceiver[0].selectorName == "inc")
+        assert(binaryMsg.unaryMsgsForReceiver[1].selectorName == "inc")
+
+        assert(binaryMsg.unaryMsgsForArg[0].selectorName == "dec")
+        assert(binaryMsg.unaryMsgsForArg[1].selectorName == "dec")
+
+    }
+
+    @Test
     fun keywordMessage() {
         // inc(inc(3)) + dec(dec(2))
         val source = "x from: 3 inc inc + 2 dec dec to: 5"
@@ -242,6 +268,41 @@ class ParserTest {
     fun unaryMessageDeclaration() {
         val source = """
             int inc = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun unaryMessageDeclarationWithReturnType() {
+        val source = """
+            int inc -> int = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+    @Test
+    fun binaryMessageDeclaration() {
+        val source = """
+            int + x = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun binaryMessageDeclarationWithReturnType() {
+        val source = """
+            int + x -> int = [
               x = 1
               y sas
             ]
@@ -287,6 +348,19 @@ class ParserTest {
         assert(msgCall.messages[0].receiver.str == "x")
 
     }
+
+    @Test
+    fun keywordMessageDeclarationWithReturnType() {
+        val source = """
+            int from: x::int -> int = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
 
 
 }

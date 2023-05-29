@@ -4,6 +4,7 @@ import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.types.*
+import frontend.util.capitalizeFirstLetter
 
 // Unari messages
 //class OperatorTable (
@@ -283,17 +284,21 @@ fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
 }
 
 
-fun Parser.unaryOrBinary(receiver: Receiver): MutableList<out Message> {
+fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, MessageDeclarationType> {
     // 3 ^inc inc + 2 dec dec + ...
     val unaryMessagesForReceiver = getAllUnaries(receiver) // inc inc
     val binaryMessages = mutableListOf<BinaryMsg>()
+    // if we have more than one binary message, we don't wand unary duplicates like
+    // 2 inc + 3 dec + 4 sas // first have inc and dec, second have dec and sas, we don't want dec duplicate
+    var needAddMessagesForReceiverForBinary = true
     while (check(TokenType.BinarySymbol)) {
+
         val binarySymbol = step()
         val binaryArgument = receiver() // 2
         val unaryForArg = getAllUnaries(binaryArgument)
         val binaryMsg = BinaryMsg(
             receiver,
-            unaryMessagesForReceiver,
+            if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else listOf(),
             binarySymbol.lexeme,
             null,
             binarySymbol,
@@ -301,14 +306,15 @@ fun Parser.unaryOrBinary(receiver: Receiver): MutableList<out Message> {
             unaryForArg
         )
         binaryMessages.add(binaryMsg)
+        needAddMessagesForReceiverForBinary = false
     }
 
     // if there is no binary message, that's mean there is only unary
     if (binaryMessages.isEmpty()) {
-        return unaryMessagesForReceiver //as MutableList<Message>
+        return Pair(unaryMessagesForReceiver, MessageDeclarationType.Unary)  //as MutableList<Message>
     }
     // its binary msg
-    return binaryMessages
+    return Pair(binaryMessages, MessageDeclarationType.Binary)
 }
 
 
@@ -321,6 +327,7 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
         val stringBuilder = StringBuilder()
         val unaryAndBinaryMessages = mutableListOf<Message>()
         val keyWordArguments = mutableListOf<KeywordArgAndItsMessages>()
+        var firstCicle = true
 
         do {
             val keywordPart = step()
@@ -328,14 +335,16 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
             // x from: ^3 inc to: 2 inc
             val keyArg = receiver()
             // x from: 3 ^inc to: 2 inc
-            val unaryOrBinary = unaryOrBinary(receiver)
-            stringBuilder.append(keywordPart.lexeme, ":")
+            val unaryOrBinaryPair = unaryOrBinary(receiver)
+            val unaryOrBinary = unaryOrBinaryPair.first
+            stringBuilder.append(if (firstCicle) keywordPart.lexeme else keywordPart.lexeme.capitalizeFirstLetter())
 
             val x = KeywordArgAndItsMessages(
                 selectorName = keywordPart.lexeme,
                 keywordArg = keyArg,
                 unaryOrBinaryMsgsForArg = unaryOrBinary
             )
+
             keyWordArguments.add(x)
 
             // if keyword was split to 2 lines
@@ -343,22 +352,18 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
                 if (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
                     step()
             }
-
-//            if (check(TokenType.Equal)) {
-//                println()
-////                return keywordMessageDeclaration
-//                TODO()
-//            }
-
+            firstCicle = false
         } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
 
         val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
         unaryAndBinaryMessages.add(keywordMsg)
-        return MessageCall(receiver, unaryAndBinaryMessages, null, receiver.token)
+        return MessageCall(receiver, unaryAndBinaryMessages, MessageDeclarationType.Keyword,null, receiver.token)
     }
     // unary/binary
-    val unaryAndBinaryMessage = unaryOrBinary(receiver)
-    return MessageCall(receiver, unaryAndBinaryMessage, null, receiver.token)
+    val unaryAndBinaryMessagePair = unaryOrBinary(receiver)
+    val unaryAndBinaryMessage = unaryAndBinaryMessagePair.first
+    val type = unaryAndBinaryMessagePair.second
+    return MessageCall(receiver, unaryAndBinaryMessage, type, null, receiver.token)
 }
 
 fun TokenType.isPrimeToken() =
@@ -410,7 +415,7 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
             isThereEqualAfterThat = true
             break
         }
-        if (check(TokenType.Equal)) {
+        if (check(TokenType.Equal, peekCounter)) {
             isThereEqual = true
         }
         peekCounter++
@@ -424,12 +429,13 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
     // Identifier checked already
 
     // int inc = []
-    if (check(TokenType.Identifier, 1) && check(TokenType.Equal, 2)) {
+    if (check(TokenType.Identifier, 1) && isThereEqual) {
         return MessageDeclarationType.Unary
     }
 
     // int + arg =
-    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier) && check(TokenType.Equal, 2)) {
+
+    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier, 2) && isThereEqual) {
         return MessageDeclarationType.Binary
     }
 
@@ -451,11 +457,11 @@ fun Parser.declarationOnly(): Declaration {
     }
     if (kind == TokenType.Type) TODO()
 
-    when (isItKeywordDeclaration()) {
-        MessageDeclarationType.Unary -> return unaryDeclaration()
-        MessageDeclarationType.Binary -> TODO()
-        MessageDeclarationType.Keyword -> return keywordDeclaration()
-        else -> return message() // replace with expression which is switch or message
+    return when (isItKeywordDeclaration()) {
+        MessageDeclarationType.Unary -> unaryDeclaration()
+        MessageDeclarationType.Binary -> binaryDeclaration()
+        MessageDeclarationType.Keyword -> keywordDeclaration()
+        else -> message() // replace with expression which is switch or message
     }
 }
 
@@ -474,6 +480,14 @@ fun Parser.messageOrVarDeclaration(): Declaration {
     return result
 }
 
+fun Parser.returnType(): String? {
+    if (!match(TokenType.ReturnArrow)) {
+        return null
+    }
+    val returnType = matchAssert(TokenType.Identifier, "after arrow return type expected")
+    return returnType.lexeme
+}
+
 fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
     val receiverTypeNameToken =
@@ -483,6 +497,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
     val unarySelector = matchAssert(TokenType.Identifier, "Its unary message declaration, unary selector expected")
 
+    val returnType = returnType()
     ///// BODY PARSING
 
     val pair = body() // (body, is single expression)
@@ -498,22 +513,34 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
         name = unarySelector.lexeme,
         token = receiverTypeNameToken,
         body = messagesOrVarDeclarations,
+        returnType = returnType,
         isSingleExpression = isSingleExpression
     )
     return result
 }
 
-fun Parser.binaryDeclaration(): MessageDeclarationUnary {
+fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
     val receiverTypeNameToken =
         matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
 
-    // int^ inc = []
+    // int^ + x = []
 
-    val unarySelector = matchAssert(TokenType.Identifier, "Its unary message declaration, unary selector expected")
+    val binarySelector = matchAssert(TokenType.BinarySymbol, "Its unary message declaration, unary selector expected")
+    // int + ^x = []
+    // int + ^x::int = []
 
-    ///// BODY PARSING
+    // arg
 
+    val argName = matchAssert(TokenType.Identifier, "in binary message identifier after operator expected")
+    val typeName =
+        if (match(TokenType.DoubleColon))
+            matchAssert(TokenType.Identifier, "after double colon type expected").lexeme
+        else null
+    val arg = (KeywordDeclarationArg(name = argName.lexeme, type = typeName))
+    val returnType = returnType()
+
+    // BODY PARSING
     val pair = body() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
@@ -523,10 +550,12 @@ fun Parser.binaryDeclaration(): MessageDeclarationUnary {
         match(TokenType.RightBracket)
     }
 
-    val result = MessageDeclarationUnary(
-        name = unarySelector.lexeme,
+    val result = MessageDeclarationBinary(
+        name = binarySelector.lexeme,
         token = receiverTypeNameToken,
+        arg = arg,
         body = messagesOrVarDeclarations,
+        returnType = returnType,
         isSingleExpression = isSingleExpression
     )
     return result
@@ -543,51 +572,15 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         // type, no local name key::int      key2::string
         // type and local name: to: x::int   from: y::int
 
-        val noLocalNameNoType = check(TokenType.Colon)
-        val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
-        // :foo
-        if (noLocalNameNoType) {
-            step() //skip colon
-            val argName = step()
-            if (argName.kind != TokenType.Identifier) {
-                error("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
-            }
-            args.add(KeywordDeclarationArg(name = argName.lexeme))
-        }
-        // arg::int
-        else if (noLocalName) {
-            val argName = step()
-            if (argName.kind != TokenType.Identifier) {
-                error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
-            }
-            match(TokenType.DoubleColon)
-            val typeName = step()
-            if (typeName.kind != TokenType.Identifier) {
-                error("You tried to declare keyword message with arg without local name, type expected after colon double foobar::type")
-            }
-            args.add(KeywordDeclarationArg(name = argName.lexeme, type = typeName.lexeme))
-        }
-        // key: localName(::int)?
-        else {
-            val key = step()
-            match(TokenType.Colon)
-            val local = step()
-            val typename: String? = if (check(TokenType.DoubleColon)) {
-                step()// skip doubleColon
-                step().lexeme
-            } else {
-                null
-            }
-
-            args.add(KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = typename))
-
-        }
+        args.add(keyArg())
 
 
     } while (!check(TokenType.Equal))
 
-    // BODY PARSING
 
+    val returnType = returnType()
+
+    // BODY PARSING
     val pair = body()
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
@@ -603,9 +596,53 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         token = receiverTypeNameToken,
         args = args,
         body = messagesOrVarDeclarations,
+        returnType = returnType,
         isSingleExpression = isSingleExpression
     )
     return result
+}
+
+// x::int or x: local::int or x: local or :x
+private fun Parser.keyArg(): KeywordDeclarationArg {
+    val noLocalNameNoType = check(TokenType.Colon)
+    val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
+    // :foo
+    if (noLocalNameNoType) {
+        step() //skip colon
+        val argName = step()
+        if (argName.kind != TokenType.Identifier) {
+            error("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
+        }
+        return (KeywordDeclarationArg(name = argName.lexeme))
+    }
+    // arg::int
+    else if (noLocalName) {
+        val argName = step()
+        if (argName.kind != TokenType.Identifier) {
+            error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
+        }
+        match(TokenType.DoubleColon)
+        val typeName = step()
+        if (typeName.kind != TokenType.Identifier) {
+            error("You tried to declare keyword message with arg without local name, type expected after colon double foobar::type")
+        }
+        return (KeywordDeclarationArg(name = argName.lexeme, type = typeName.lexeme))
+    }
+    // key: localName(::int)?
+    else {
+        val key = step()
+        match(TokenType.Colon)
+        val local = step()
+        val typename: String? = if (check(TokenType.DoubleColon)) {
+            step()// skip doubleColon
+            step().lexeme
+        } else {
+            null
+        }
+
+        return (KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = typename))
+
+    }
 }
 
 private fun Parser.body(): Pair<MutableList<Declaration>, Boolean> {

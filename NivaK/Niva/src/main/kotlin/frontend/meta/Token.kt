@@ -10,6 +10,7 @@ enum class TokenType {
     // Keywords
     Type, Union, Use,
     Return, // ^
+    ReturnArrow, // -> for return types
 
     Pipe, // |>
 
