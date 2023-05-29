@@ -3,8 +3,6 @@ import frontend.lex
 import frontend.meta.TokenType
 import frontend.meta.TokenType.*
 import org.testng.Assert.assertEquals
-//import org.junit.jupiter.api.Assertions.assertEquals
-//import org.junit.jupiter.api.Test
 import org.testng.annotations.Test
 
 

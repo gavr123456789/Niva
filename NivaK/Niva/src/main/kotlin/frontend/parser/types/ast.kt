@@ -1,6 +1,7 @@
 package frontend.parser.types
 
 import frontend.meta.Token
+import frontend.parser.MessageDeclarationType
 
 // https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
 sealed class ASTNode2(
@@ -10,7 +11,7 @@ sealed class ASTNode2(
         get() = this.token.lexeme
 }
 
-open class Declaration(
+sealed class Declaration(
     token: Token,
     val isPrivate: Boolean,
     val pragmas: List<Pragma>,
@@ -27,7 +28,6 @@ sealed class Statement(
     pragmas: List<Pragma> = listOf()
 ) : Declaration(token, isPrivate, pragmas)
 
-// assignment | cascade | keywordSend | binarySend | primitive
 sealed class Expression(
     val type: String?,
     token: Token,
@@ -82,7 +82,13 @@ class IdentifierExpr(
 // MESSAGES
 
 // x sas + y sus
-class MessageCall(val receiver: Receiver, val messages: List<Message>, type: String?, token: Token) :
+class MessageCall(
+    val receiver: Receiver,
+    val messages: List<Message>,
+    val mainMessageType: MessageDeclarationType, // это нужно превратить в union тип
+    type: String?,
+    token: Token
+) :
     Expression(type, token) {
     override fun toString(): String {
         return "${messages.map { it.toString() }}"
@@ -90,8 +96,12 @@ class MessageCall(val receiver: Receiver, val messages: List<Message>, type: Str
 }
 
 // binaryMessage | unaryMessage | keywordMessage
-sealed class Message(val receiver: Receiver, val selectorName: String, type: String?, token: Token) :
-    Expression(type, token)
+sealed class Message(
+    val receiver: Receiver,
+    val selectorName: String,
+    type: String?,
+    token: Token
+) : Expression(type, token)
 
 class UnaryMsg(
     receiver: Receiver,
@@ -106,7 +116,7 @@ class BinaryMsg(
     selectorName: String,
     type: String?,
     token: Token,
-    val argument: Expression,
+    val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
@@ -124,7 +134,7 @@ data class KeywordArgAndItsMessages(
             val firstMsg = unaryOrBinaryMsgsForArg[0]
             if (firstMsg is BinaryMsg) {
 //                val u = unaryOrBinaryMessagesForArg.filterIsInstance<UnaryMsg>()
-                val receiver = firstMsg.receiver.str
+                val receiver = firstMsg.receiver
                 val unaryForReceiver =
                     if (firstMsg.unaryMsgsForReceiver.isNotEmpty())
                         firstMsg.unaryMsgsForReceiver.map { it.selectorName }.toString()
@@ -156,7 +166,7 @@ class KeywordMsg(
 ) : Message(receiver, selectorName, type, token) {
     override fun toString(): String {
 
-        val receiverName = receiver.str
+        val receiverName = receiver
 
         return "KeywordCall($receiverName ${args.map { it.toString() }})"
     }

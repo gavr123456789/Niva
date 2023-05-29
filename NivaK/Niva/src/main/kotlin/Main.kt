@@ -1,7 +1,11 @@
+import codogen.codogen
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.parser.Parser
+import frontend.parser.declarations
+import frontend.parser.types.Declaration
 import frontend.util.fillSymbolTable
 
 fun emptySource() {
@@ -27,8 +31,23 @@ fun lex(source: String): MutableList<Token> {
     return lexer.lex()
 }
 
-fun main() {
 
+fun main() {
+    fun getAst(source: String): List<Declaration> {
+        val tokens = lex(source)
+        val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+        val ast = parser.declarations()
+        return ast
+    }
+    fun generateKotlin(source: String): String {
+        val ast = getAst(source)
+        val codogenerator = codogen(ast)
+        return codogenerator
+    }
+
+    val source = "6 from: 3 inc dec sas + 2 dec sas to: 3 sus"
+    val ktCode = generateKotlin(source)
+    println(ktCode)
 //    val source = "x::int = 1"
 //    val tokens = lex(source)
 //    val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
