@@ -253,11 +253,22 @@ fun Parser.varDeclaration(): VarDeclaration {
     return result
 }
 
+fun Token.isPrimaryToken(): Boolean =
+    when (kind) {
+        TokenType.Identifier,
+        TokenType.True,
+        TokenType.False,
+        TokenType.Integer,
+        TokenType.Float,
+        TokenType.StringToken -> true
+
+        else -> false
+    }
 
 // checks is next thing is receiver
 // needed for var declaration to know what to parse - message or value
 fun Parser.isNextReceiver(): Boolean {
-    if (check(TokenType.Identifier)) {
+    if (peek().isPrimaryToken()) {
         when {
             // x = 1
             check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
