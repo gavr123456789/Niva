@@ -1,0 +1,11 @@
+/usr/lib/jvm/java-17-openjdk/bin/java -Dfile.encoding=UTF-8
+-classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva:
+/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar:
+/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar:
+/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar:
+/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar:
+/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
+
+/usr/lib/jvm/java-17-openjdk/bin/java -Dfile.encoding=UTF-8 -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
+
+/usr/lib/jvm/java-17-openjdk/bin/java -Dfile.encoding=UTF-8 -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar:/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar:/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt

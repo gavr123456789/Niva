@@ -3,7 +3,7 @@ package codogen
 import frontend.parser.MessageDeclarationType
 import frontend.parser.types.*
 
-fun codogen(declarations: List<Declaration>): String = buildString {
+fun codogenKt(declarations: List<Declaration>): String = buildString {
     declarations.forEach {
         append(getStringFromDeclaration(it))
     }
@@ -14,6 +14,7 @@ fun codogen(declarations: List<Declaration>): String = buildString {
 fun getStringFromDeclaration(declaration: Declaration): String = buildString {
     when (declaration) {
         is MessageCall -> append(declaration.generateMessageCall())
+        is VarDeclaration -> append(declaration.generateVarDeclaration())
         is IdentifierExpr -> TODO()
         is LiteralExpression.FalseExpr -> TODO()
         is LiteralExpression.FloatExpr -> TODO()
@@ -23,11 +24,28 @@ fun getStringFromDeclaration(declaration: Declaration): String = buildString {
         is MessageDeclarationBinary -> TODO()
         is MessageDeclarationKeyword -> TODO()
         is MessageDeclarationUnary -> TODO()
-        is VarDeclaration -> TODO()
         else -> {
             TODO()
         }
     }
+}
+
+private fun VarDeclaration.generateVarDeclaration(): String {
+    val valueCode = value.generateKotlinCode()
+    return "${this.name} = $valueCode"
+}
+
+fun Expression.generateKotlinCode(): String {
+    return when (this) {
+        is MessageCall -> this.generateMessageCall()
+        is IdentifierExpr -> this.str
+        is LiteralExpression.FalseExpr -> "false"
+        is LiteralExpression.TrueExpr -> "true"
+        is LiteralExpression.FloatExpr -> this.str
+        is LiteralExpression.IntExpr -> this.str
+        is LiteralExpression.StringExpr -> this.str
+    }
+
 }
 
 fun MessageCall.generateMessageCall(): String {
@@ -55,7 +73,6 @@ fun generateKeywordCall(receiver: Receiver, messages: List<Message>): String {
         assert(messages.count() == 1)
         val keywordMsg = messages[0] as KeywordMsg
 
-        val functionName = keywordMsg.args.map { it.selectorName }
         append(receiver.str, ".")
 
         // 1 from: 2 inc to: 3
@@ -67,28 +84,31 @@ fun generateKeywordCall(receiver: Receiver, messages: List<Message>): String {
         // 1.fromTo
 
         append("(")
-        
+
         keywordMsg.args.forEachIndexed { i, it ->
             if (it.unaryOrBinaryMsgsForArg.isNotEmpty()) {
                 append(it.selectorName, " = ")
                 if (it.unaryOrBinaryMsgsForArg[0] is BinaryMsg) {
+                    val q = this.toString()
                     append(generateBinaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
+                    val w = this.toString()
+
                 } else if (it.unaryOrBinaryMsgsForArg[0] is UnaryMsg) {
                     append(generateUnaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
                 }
-                
-                if (i != keywordMsg.args.count() - 1) 
+
+                if (i != keywordMsg.args.count() - 1)
                     append(", ")
-                
+
             } else {
                 // no unaryOrBinary args
                 append(it.generateCallPair())
-                if (i != keywordMsg.args.count() - 1) 
+                if (i != keywordMsg.args.count() - 1)
                     append(", ")
             }
-            
+
         }
-        
+
         append(")")
     }
 }
@@ -131,7 +151,7 @@ fun generateBinaryCall(receiver: Receiver, messages: List<Message>): String {
             if (i == 0) {
                 // 1 inc + 2 dec + 3 sas
                 // 1 inc^ + 2 dec + 3 sas
-                append(generateUnaryCall(it.receiver, it.unaryMsgsForReceiver))
+                append(generateUnaryCall(receiver, it.unaryMsgsForReceiver))
                 append(" ${it.selectorName} ")
                 append(generateUnaryCall(it.argument, it.unaryMsgsForArg))
             } else {

@@ -1,4 +1,4 @@
-import codogen.codogen
+import codogen.codogenKt
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
@@ -32,20 +32,22 @@ fun lex(source: String): MutableList<Token> {
 }
 
 
-fun main() {
+fun main(args: Array<String>) {
+    println(args.count())
     fun getAst(source: String): List<Declaration> {
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
         val ast = parser.declarations()
         return ast
     }
+
     fun generateKotlin(source: String): String {
         val ast = getAst(source)
-        val codogenerator = codogen(ast)
+        val codogenerator = codogenKt(ast)
         return codogenerator
     }
 
-    val source = "6 from: 3 inc dec sas + 2 dec sas to: 3 sus"
+    val source = "x = 1 + 1"
     val ktCode = generateKotlin(source)
     println(ktCode)
 //    val source = "x::int = 1"
