@@ -34,7 +34,6 @@ sealed class Expression(
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Declaration(token, isPrivate, pragmas)
-
 class VarDeclaration(
     token: Token,
     val name: String,
@@ -99,9 +98,9 @@ class MessageCall(
 sealed class Message(
     val receiver: Receiver,
     val selectorName: String,
-    type: String?,
-    token: Token
-) : Expression(type, token)
+    val type: String?,
+    val token: Token
+)
 
 class UnaryMsg(
     receiver: Receiver,
