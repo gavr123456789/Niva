@@ -32,7 +32,7 @@ fun getStringFromDeclaration(declaration: Declaration): String = buildString {
 
 private fun VarDeclaration.generateVarDeclaration(): String {
     val valueCode = value.generateKotlinCode()
-    return "${this.name} = $valueCode"
+    return "val ${this.name} = $valueCode"
 }
 
 fun Expression.generateKotlinCode(): String {
