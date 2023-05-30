@@ -223,6 +223,7 @@ fun Parser.receiver(): Receiver {
     return tryPrimary
 }
 
+
 fun Parser.varDeclaration(): VarDeclaration {
 
     val tok = this.step()
@@ -232,7 +233,8 @@ fun Parser.varDeclaration(): VarDeclaration {
     val valueType: String?
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
-            value = this.receiver()
+            val isNextReceiver = isNextReceiver()
+            value = if (isNextReceiver) receiver() else message()
             valueType = value.type
         }
         // ::^int
@@ -249,6 +251,24 @@ fun Parser.varDeclaration(): VarDeclaration {
 //    val identifierExpr = IdentifierExpr(tok.lexeme, valueType, tok)
     val result = VarDeclaration(tok, tok.lexeme, value, valueType)
     return result
+}
+
+
+// checks is next thing is receiver
+// needed for var declaration to know what to parse - message or value
+fun Parser.isNextReceiver(): Boolean {
+    if (check(TokenType.Identifier)) {
+        when {
+            // x = 1
+            check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
+            // x = [code]
+            check(TokenType.LeftBracket, 1) -> return true
+            check(TokenType.LeftParen, 1) -> return true
+            check(TokenType.LeftBrace, 1) -> return true
+        }
+    }
+
+    return false
 }
 
 
@@ -450,6 +470,10 @@ fun Parser.declarationOnly(): Declaration {
     val result: Declaration
     // Checks for declarations that starts from keyword like type/fn
 
+    val w = tok.kind == TokenType.Identifier
+    val w2 = check(TokenType.DoubleColon, 1)
+    val w3 = check(TokenType.Equal, 1)
+
     if (tok.kind == TokenType.Identifier &&
         (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
     ) {
@@ -457,6 +481,7 @@ fun Parser.declarationOnly(): Declaration {
     }
     if (kind == TokenType.Type) TODO()
 
+    val q = isItKeywordDeclaration()
     return when (isItKeywordDeclaration()) {
         MessageDeclarationType.Unary -> unaryDeclaration()
         MessageDeclarationType.Binary -> binaryDeclaration()

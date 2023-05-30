@@ -32,6 +32,20 @@ class ParserTest {
     }
 
     @Test
+    fun varDeclWithBinary() {
+        val source = "x = 1 + 1"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val declaration: VarDeclaration = ast[0] as VarDeclaration
+        assert(declaration.name == "x")
+        val messages = (declaration.value as MessageCall).messages
+        assert(messages.count() == 1)
+        val binaryMsg = messages[0] as BinaryMsg
+        assert(binaryMsg.selectorName == "+")
+    }
+
+    @Test
     fun string() {
         val source = "\"sas\""
         val ast = getAst(source)
