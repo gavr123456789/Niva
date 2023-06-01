@@ -178,7 +178,7 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //
 //}
 
-fun Parser.primary(): Primary =
+fun Parser.primary(): Primary? =
     when (peekKind()) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
@@ -198,25 +198,47 @@ fun Parser.primary(): Primary =
         }
 
         TokenType.LeftParen -> TODO()
-        else -> this.error("expected primary, but got ${peekKind()}")
+        else -> null //this.error("expected primary, but got ${peekKind()}")
     }
-
-
-// messageCall | switchExpression
-//fun Parser.expression(): Expression {
-//    // пока токо инты
-//    if (peekKind() == TokenType.Integer) {
-//        return primary()
-//    } else {
-//        TODO()
-//    }
-//}
 
 
 // for now only primary is recievers, no indentifiers or expressions
 fun Parser.receiver(): Receiver {
     fun blockConstructor() = null
-    fun collectionLiteral() = null
+    fun collectionLiteral(): Receiver? {
+
+        val result: ListCollection
+        val initElements = mutableListOf<Primary>()
+        // {1, 2 3}
+        val leftBraceTok = peek()
+        if (leftBraceTok.kind != TokenType.LeftBrace) {
+            return null
+        }
+
+        step() // skip leftBrace
+
+        // cycle that eats primary with optional commas
+        // for now, messages inside collection literals are impossible
+
+        var lastPrimary: Primary? = null
+        do {
+            val primaryTok = primary()
+            match(TokenType.Comma)
+            if (primaryTok != null) {
+                if (lastPrimary != null && primaryTok.type != lastPrimary.type) {
+                    error("Heterogeneous collections are not supported")
+                }
+                initElements.add(primaryTok)
+            }
+            lastPrimary = primaryTok
+        } while (primaryTok != null)
+
+        match(TokenType.RightBrace)
+
+        val type = if (initElements.isNotEmpty()) "{${initElements[0].type}}" else null
+        result = ListCollection(initElements, type, leftBraceTok)
+        return result
+    }
 
     val tryPrimary = primary() ?: blockConstructor() ?: collectionLiteral() ?: throw Error("bruh")
 

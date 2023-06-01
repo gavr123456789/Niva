@@ -32,6 +32,21 @@ class ParserTest {
     }
 
     @Test
+    fun collectionList() {
+        val source = "{1 2 3}"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val declaration: MessageCall = ast[0] as MessageCall
+        val messages = declaration.messages
+        assert(messages.isEmpty())
+        val list = declaration.receiver as ListCollection
+        assert(list.type == "{int}")
+        assert(list.initElements.count() == 3)
+    }
+
+
+    @Test
     fun varDeclWithBinary() {
         val source = "x = 1 + 1"
         val ast = getAst(source)
