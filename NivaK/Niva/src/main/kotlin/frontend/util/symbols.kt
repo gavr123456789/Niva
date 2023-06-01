@@ -10,10 +10,10 @@ val POSSIBLE_BINARY_MESSAGES = setOf(">", "<", "=", "~", "/", "+", "-", "_", "*"
 
 fun Lexer.fillSymbolTable() {
     this.symbolTable.symbols = hashMapOf(
-        "{" to TokenType.LeftParen,
-        "}" to TokenType.RightParen,
-        "(" to TokenType.LeftBrace,
-        ")" to TokenType.RightBrace,
+        "(" to TokenType.LeftParen,
+        ")" to TokenType.RightParen,
+        "{" to TokenType.LeftBrace,
+        "}" to TokenType.RightBrace,
         "[" to TokenType.LeftBracket,
         "]" to TokenType.RightBracket,
 

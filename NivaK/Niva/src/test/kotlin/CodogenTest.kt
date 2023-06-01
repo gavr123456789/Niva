@@ -53,10 +53,24 @@ class CodogenTest {
     }
 
     @Test
-    fun varDeclarationWithMessageCall() {
+    fun varDeclarationWithBinaryMessageCall() {
         val source = "x = 1 + 41"
         val ktCode = generateKotlin(source)
         assert(ktCode == "val x = 1 + 41")
+    }
+
+    @Test
+    fun varDeclarationWithUnaryMessageCall() {
+        val source = "x = 1 inc"
+        val ktCode = generateKotlin(source)
+        assert(ktCode == "val x = 1.inc()")
+    }
+
+    @Test
+    fun varDeclarationWithKeywordMessageCall() {
+        val source = "x = 1 from: 1 inc + 2"
+        val ktCode = generateKotlin(source)
+        assert(ktCode == "val x = 1.from(from = 1.inc() + 2)")
     }
 
 }

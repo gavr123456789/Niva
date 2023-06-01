@@ -77,6 +77,14 @@ class IdentifierExpr(
 //    val depth: Int,
 ) : Primary(type, token)
 
+sealed class Collection(type: String?, token: Token) : Receiver(type, token)
+
+class ListCollection(
+    val initElements: List<Primary>,
+    type: String?,
+    token: Token,
+) : Collection(type, token)
+
 
 // MESSAGES
 

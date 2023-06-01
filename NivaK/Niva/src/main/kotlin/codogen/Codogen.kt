@@ -44,6 +44,7 @@ fun Expression.generateKotlinCode(): String {
         is LiteralExpression.FloatExpr -> this.str
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
+        is ListCollection -> TODO()
     }
 
 }
