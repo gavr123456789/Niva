@@ -7,17 +7,17 @@ sealed class MessageDeclaration(
     val name: String,
     token: Token,
     val isSingleExpression: Boolean,
-    val body: List<Declaration>,
+    val body: List<Statement>,
     val returnType: String?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : Declaration(token, isPrivate, pragmas)
+) : Statement(token, isPrivate, pragmas)
 
 class MessageDeclarationUnary(
     name: String,
     token: Token,
     isSingleExpression: Boolean,
-    body: List<Declaration>,
+    body: List<Statement>,
     returnType: String?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
@@ -27,7 +27,7 @@ class MessageDeclarationBinary(
     name: String,
     token: Token,
     val arg: KeywordDeclarationArg,
-    body: List<Declaration>,
+    body: List<Statement>,
     returnType: String?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
@@ -46,7 +46,7 @@ class MessageDeclarationKeyword(
     name: String,
     token: Token,
     val args: List<KeywordDeclarationArg>,
-    body: List<Declaration>,
+    body: List<Statement>,
     returnType: String?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
