@@ -3,18 +3,18 @@ package codogen
 import frontend.parser.MessageDeclarationType
 import frontend.parser.types.*
 
-fun codogenKt(declarations: List<Declaration>): String = buildString {
-    declarations.forEach {
+fun codogenKt(statements: List<Statement>): String = buildString {
+    statements.forEach {
         append(getStringFromDeclaration(it))
     }
 
 
 }
 
-fun getStringFromDeclaration(declaration: Declaration): String = buildString {
-    when (declaration) {
-        is MessageCall -> append(declaration.generateMessageCall())
-        is VarDeclaration -> append(declaration.generateVarDeclaration())
+fun getStringFromDeclaration(statement: Statement): String = buildString {
+    when (statement) {
+        is MessageCall -> append(statement.generateMessageCall())
+        is VarDeclaration -> append(statement.generateVarDeclaration())
         is IdentifierExpr -> TODO()
         is LiteralExpression.FalseExpr -> TODO()
         is LiteralExpression.FloatExpr -> TODO()

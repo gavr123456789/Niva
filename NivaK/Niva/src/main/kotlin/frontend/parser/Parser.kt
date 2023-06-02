@@ -6,33 +6,19 @@ import frontend.meta.TokenType
 import frontend.parser.types.*
 import frontend.util.capitalizeFirstLetter
 
-// Unari messages
-//class OperatorTable (
-//    val tokens: List<String> =
-//)
-
 data class Module(val name: String, var loaded: Boolean)
 
 class Parser(
     val file: String,
     val tokens: MutableList<Token>,
     val source: String,
-//    val lines: MutableList<Position>,
-
-//    val binaryMessages: MutableSet<String> = hashSetOf(),
-//    val unaryMessages: MutableSet<String> = hashSetOf(),
-//    val keywordMessages: MutableSet<String> = hashSetOf(),
-    val currentFunction: Declaration? = null,
+    val currentFunction: Statement? = null,
     val scopeDepth: Int = 0,
 //    val operators: OperatorTable,
-    val tree: MutableList<Declaration> = mutableListOf(),
+    val tree: MutableList<Statement> = mutableListOf(),
     var current: Int = 0,
     val modules: MutableList<Module> = mutableListOf(),
-) {
-    val lookahead: TokenType
-        get() = peekKind()
-
-}
+)
 
 
 fun Parser.getCurrent() = current
@@ -270,7 +256,6 @@ fun Parser.varDeclaration(): VarDeclaration {
         else -> error("after ${peek(-1)} needed type or expression")
     }
 
-//    val identifierExpr = IdentifierExpr(tok.lexeme, valueType, tok)
     val result = VarDeclaration(tok, tok.lexeme, value, valueType)
     return result
 }
@@ -305,11 +290,6 @@ fun Parser.isNextReceiver(): Boolean {
 }
 
 
-// тк кк у кейвордов у аргументов могут быть бинарные или унарные, а у бинарных могут быть унарные
-// то нужно сначала попробовать распарсить кейвордное
-// если не выйдет то бинарное
-// если не выйдет то унарное
-
 
 fun Parser.message(): MessageCall {
     // x echo // identifier
@@ -317,15 +297,11 @@ fun Parser.message(): MessageCall {
     // (1 + 1) echo // parens
     // [1 2 3] // data structure
     val receiver: Receiver = receiver()
-
-    val x: MessageCall = anyMessageCall(receiver)
-
-    return x
-
+    return anyMessageCall(receiver)
 }
 
 
-fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
+fun Parser.getAllUnary(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val tok = step()
@@ -339,7 +315,7 @@ fun Parser.getAllUnaries(receiver: Receiver): MutableList<UnaryMsg> {
 
 fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, MessageDeclarationType> {
     // 3 ^inc inc + 2 dec dec + ...
-    val unaryMessagesForReceiver = getAllUnaries(receiver) // inc inc
+    val unaryMessagesForReceiver = getAllUnary(receiver) // inc inc
     val binaryMessages = mutableListOf<BinaryMsg>()
     // if we have more than one binary message, we don't wand unary duplicates like
     // 2 inc + 3 dec + 4 sas // first have inc and dec, second have dec and sas, we don't want dec duplicate
@@ -348,7 +324,7 @@ fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, Mes
 
         val binarySymbol = step()
         val binaryArgument = receiver() // 2
-        val unaryForArg = getAllUnaries(binaryArgument)
+        val unaryForArg = getAllUnary(binaryArgument)
         val binaryMsg = BinaryMsg(
             receiver,
             if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else listOf(),
@@ -371,7 +347,6 @@ fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, Mes
 }
 
 
-// возможно стоит хранить сообщения предназначенные для аргументов кейводр сообщения вместе
 fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
 
 
@@ -390,7 +365,11 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
             // x from: 3 ^inc to: 2 inc
             val unaryOrBinaryPair = unaryOrBinary(receiver)
             val unaryOrBinary = unaryOrBinaryPair.first
-            stringBuilder.append(if (firstCicle) keywordPart.lexeme else keywordPart.lexeme.capitalizeFirstLetter())
+            // making fun name camelCase
+            stringBuilder.append(
+                if (firstCicle) keywordPart.lexeme
+                else keywordPart.lexeme.capitalizeFirstLetter()
+            )
 
             val x = KeywordArgAndItsMessages(
                 selectorName = keywordPart.lexeme,
@@ -402,7 +381,10 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
 
             // if keyword was split to 2 lines
             if (check(TokenType.EndOfLine)) {
-                if (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
+                if (check(TokenType.EndOfLine) &&
+                    check(TokenType.Identifier, 1) &&
+                    check(TokenType.Colon, 2)
+                )
                     step()
             }
             firstCicle = false
@@ -419,18 +401,6 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
     return MessageCall(receiver, unaryAndBinaryMessage, type, null, receiver.token)
 }
 
-fun TokenType.isPrimeToken() =
-    when (this) {
-        TokenType.Identifier,
-        TokenType.Float,
-        TokenType.StringToken,
-        TokenType.Integer,
-        TokenType.True,
-        TokenType.False -> true
-
-        else -> false
-    }
-
 
 enum class MessageDeclarationType {
     Unary,
@@ -439,6 +409,7 @@ enum class MessageDeclarationType {
 }
 
 // returns null if it's not a message declaration
+// very bad function
 fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
     // receiver is first
     if (!check(TokenType.Identifier)) {
@@ -448,9 +419,8 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
     // from[:] ... [=]
     var isThereIdentColon = false
     var isThereEqualAfterThat = false
-    // unary
+    // for unary
     var isThereEqual = false
-    var identifiersCounter = 0
 
     var peekCounter = 0
 
@@ -496,25 +466,69 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
 }
 
 
+fun Parser.matchType(): String {
+    // todo make better
+    return matchAssert(TokenType.Identifier, "type expected").lexeme
+}
+
+
+fun Parser.typeDeclaration(): TypeDeclaration {
+    // type Person name: string generic age: int
+
+    // type Person
+    //   name: string
+
+    val typeToken = step() // skip type
+    val typeName = matchAssert(TokenType.Identifier, "after \"type\" type identifier expected")
+    // type Person^ name: string age: int
+
+    // if type decl separated
+    if (check(TokenType.EndOfLine) && check(TokenType.Identifier, 1) && check(TokenType.Colon, 2)) {
+        step()
+    }
+
+
+    val typeFields = mutableListOf<TypeField>()
+
+    do {
+        val name = step()
+        val notGeneric = match(TokenType.Colon)
+        val type: String? = if (notGeneric) {
+            matchType()
+        } else {
+            null
+        }
+
+        // type declaration can be separated on many lines
+        match(TokenType.EndOfFile)
+        match(TokenType.EndOfLine)
+
+        typeFields.add(TypeField(name = name.lexeme, type = type, token = name))
+    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+
+    val result = TypeDeclaration(
+        typeName = typeName.lexeme,
+        fields = typeFields,
+        token = typeToken
+    )
+    return result
+}
+
 // Declaration without end of line
-fun Parser.declarationOnly(): Declaration {
+fun Parser.statement(): Statement {
     val tok = peek()
     val kind = tok.kind
-    val result: Declaration
     // Checks for declarations that starts from keyword like type/fn
-
-    val w = tok.kind == TokenType.Identifier
-    val w2 = check(TokenType.DoubleColon, 1)
-    val w3 = check(TokenType.Equal, 1)
 
     if (tok.kind == TokenType.Identifier &&
         (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
     ) {
         return varDeclaration()
     }
-    if (kind == TokenType.Type) TODO()
+    if (kind == TokenType.Type) {
+        return typeDeclaration()
+    }
 
-    val q = isItKeywordDeclaration()
     return when (isItKeywordDeclaration()) {
         MessageDeclarationType.Unary -> unaryDeclaration()
         MessageDeclarationType.Binary -> binaryDeclaration()
@@ -523,7 +537,7 @@ fun Parser.declarationOnly(): Declaration {
     }
 }
 
-fun Parser.messageOrVarDeclaration(): Declaration {
+fun Parser.messageOrVarDeclaration(): Statement {
     val result = if (check(TokenType.Identifier) &&
         (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
     ) {
@@ -558,7 +572,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
     val returnType = returnType()
     ///// BODY PARSING
 
-    val pair = body() // (body, is single expression)
+    val pair = methodBody() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
     // end of body parsing
@@ -599,7 +613,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     val returnType = returnType()
 
     // BODY PARSING
-    val pair = body() // (body, is single expression)
+    val pair = methodBody() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
     // end of body parsing
@@ -639,7 +653,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
     val returnType = returnType()
 
     // BODY PARSING
-    val pair = body()
+    val pair = methodBody()
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
     // end of body parsing
@@ -703,9 +717,9 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
     }
 }
 
-private fun Parser.body(): Pair<MutableList<Declaration>, Boolean> {
+private fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
-    val messagesOrVarDeclarations = mutableListOf<Declaration>()
+    val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
     match(TokenType.Equal)
     // many expressions in body
@@ -714,28 +728,29 @@ private fun Parser.body(): Pair<MutableList<Declaration>, Boolean> {
 
         match(TokenType.EndOfLine)
         do {
-            messagesOrVarDeclarations.add(messageOrVarDeclaration())
+            messagesOrVarStatements.add(messageOrVarDeclaration())
         } while (!check(TokenType.RightBracket))
     } else {
         isSingleExpression = true
         // one expression in body
-        messagesOrVarDeclarations.add(messageOrVarDeclaration())
+        messagesOrVarStatements.add(messageOrVarDeclaration())
     }
-    return Pair(messagesOrVarDeclarations, isSingleExpression)
+    return Pair(messagesOrVarStatements, isSingleExpression)
 }
 
-fun Parser.declaration(): Declaration {
-    val result = this.declarationOnly()
+
+fun Parser.statementWithEndLine(): Statement {
+    val result = this.statement()
     if (check(TokenType.EndOfLine)) {
         step()
     }
     return result
 }
 
-fun Parser.declarations(): List<Declaration> {
+fun Parser.statements(): List<Statement> {
 
     while (!this.done()) {
-        this.tree.add(this.declaration())
+        this.tree.add(this.statementWithEndLine())
     }
 
     return this.tree

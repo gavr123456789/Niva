@@ -11,7 +11,7 @@ sealed class ASTNode2(
         get() = this.token.lexeme
 }
 
-sealed class Declaration(
+sealed class Statement(
     token: Token,
     val isPrivate: Boolean,
     val pragmas: List<Pragma>,
@@ -21,19 +21,13 @@ sealed class Declaration(
     }
 }
 
-sealed class Statement(
-    file: String,
-    token: Token,
-    isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
-) : Declaration(token, isPrivate, pragmas)
-
 sealed class Expression(
     val type: String?,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : Declaration(token, isPrivate, pragmas)
+) : Statement(token, isPrivate, pragmas)
+
 class VarDeclaration(
     token: Token,
     val name: String,
@@ -41,7 +35,7 @@ class VarDeclaration(
     val valueType: String? = null,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : Declaration(token, isPrivate, pragmas) {
+) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "VarDeclaration(${name} = ${value.str}, valueType=$valueType)"
     }
@@ -187,3 +181,18 @@ class Pragma(
 
 @JvmInline
 value class LiteralExpr(val literal: Token)
+
+
+class TypeField(
+    val name: String,
+    val type: String?,
+    val token: Token
+)
+
+class TypeDeclaration(
+    val typeName: String,
+    val fields: List<TypeField>,
+    token: Token,
+    pragmas: List<Pragma> = listOf(),
+    isPrivate: Boolean = false,
+) : Statement(token, isPrivate, pragmas)

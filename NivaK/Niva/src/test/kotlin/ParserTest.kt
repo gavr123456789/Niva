@@ -1,5 +1,5 @@
 import frontend.parser.Parser
-import frontend.parser.declarations
+import frontend.parser.statements
 import frontend.parser.types.*
 import org.testng.annotations.Test
 
@@ -45,6 +45,19 @@ class ParserTest {
         assert(list.initElements.count() == 3)
     }
 
+    @Test
+    fun literalInt() {
+        val source = "1.1"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val declaration: MessageCall = ast[0] as MessageCall
+        val messages = declaration.messages
+        assert(messages.isEmpty())
+//        val list = declaration.receiver as ListCollection
+//        assert(list.type == "{int}")
+//        assert(list.initElements.count() == 3)
+    }
 
     @Test
     fun varDeclWithBinary() {
@@ -390,13 +403,28 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun typeDeclaration() {
+        val source = "type Person name: string age: int"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val typeDeclaration = ast[0] as TypeDeclaration
+        assert(typeDeclaration.typeName == "Person")
+        assert(typeDeclaration.fields.count() == 2)
+        val fields = typeDeclaration.fields
+
+        assert(fields[0].name == "name")
+        assert(fields[0].type == "string")
+        assert(fields[1].name == "age")
+        assert(fields[1].type == "int")
+    }
 
 
 }
 
-fun getAst(source: String): List<Declaration> {
+fun getAst(source: String): List<Statement> {
     val tokens = lex(source)
     val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
-    val ast = parser.declarations()
+    val ast = parser.statements()
     return ast
 }

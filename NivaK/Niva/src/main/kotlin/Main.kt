@@ -4,8 +4,8 @@ import frontend.lex
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.Parser
-import frontend.parser.declarations
-import frontend.parser.types.Declaration
+import frontend.parser.statements
+import frontend.parser.types.Statement
 import frontend.util.fillSymbolTable
 
 fun emptySource() {
@@ -34,10 +34,10 @@ fun lex(source: String): MutableList<Token> {
 
 fun main(args: Array<String>) {
     println(args.count())
-    fun getAst(source: String): List<Declaration> {
+    fun getAst(source: String): List<Statement> {
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
-        val ast = parser.declarations()
+        val ast = parser.statements()
         return ast
     }
 
