@@ -419,6 +419,60 @@ class ParserTest {
         assert(fields[1].type == "int")
     }
 
+    @Test
+    fun typeDeclarationManyLines() {
+        val source = """
+            type Person 
+              name: string 
+              age: int
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val typeDeclaration = ast[0] as TypeDeclaration
+        assert(typeDeclaration.typeName == "Person")
+        assert(typeDeclaration.fields.count() == 2)
+        val fields = typeDeclaration.fields
+
+        assert(fields[0].name == "name")
+        assert(fields[0].type == "string")
+        assert(fields[1].name == "age")
+        assert(fields[1].type == "int")
+    }
+
+    @Test
+    fun typeDeclarationManyLinesSemi() {
+        val source = """
+            type Person name: string 
+              age: int
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val typeDeclaration = ast[0] as TypeDeclaration
+        assert(typeDeclaration.typeName == "Person")
+        assert(typeDeclaration.fields.count() == 2)
+        val fields = typeDeclaration.fields
+
+        assert(fields[0].name == "name")
+        assert(fields[0].type == "string")
+        assert(fields[1].name == "age")
+        assert(fields[1].type == "int")
+    }
+
+    @Test
+    fun typeDeclarationManyLinesGeneric() {
+        val source = """
+            type Person name: string 
+              age: int
+              `generic
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val typeDeclaration = ast[0] as TypeDeclaration
+        assert(typeDeclaration.typeName == "Person")
+        assert(typeDeclaration.fields.count() == 3)
+        assert(typeDeclaration.fields[2].name == "generic")
+    }
+
 
 }
 

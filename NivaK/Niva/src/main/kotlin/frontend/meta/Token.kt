@@ -23,7 +23,7 @@ enum class TokenType {
     LeftBracket, RightBracket, // []
 
     // punctuation
-    Dot, Semicolon, Comma, Colon, // . ; ,
+    Dot, Semicolon, Comma, Colon, Apostrophe,// . ; , `
 
 
     EndOfFile,
