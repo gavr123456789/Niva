@@ -397,6 +397,8 @@ fun Lexer.next() {
         match("=") -> createToken(TokenType.Equal)
         match("|=>") -> createToken(TokenType.Else)
         match("|") -> createToken(TokenType.Pipe)
+        match("`") -> createToken(TokenType.Apostrophe)
+
 
         else -> {
             var n = symbolTable.getMaxSymbolSize()

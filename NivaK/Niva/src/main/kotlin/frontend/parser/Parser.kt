@@ -483,7 +483,9 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     // type Person^ name: string age: int
 
     // if type decl separated
-    if (check(TokenType.EndOfLine) && check(TokenType.Identifier, 1) && check(TokenType.Colon, 2)) {
+    val apostropheOrIdentWithColon = check(TokenType.Apostrophe) ||
+            (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
+    if (check(TokenType.EndOfLine) && apostropheOrIdentWithColon) {
         step()
     }
 
@@ -491,9 +493,10 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     val typeFields = mutableListOf<TypeField>()
 
     do {
+        val isGeneric = match(TokenType.Apostrophe)
         val name = step()
-        val notGeneric = match(TokenType.Colon)
-        val type: String? = if (notGeneric) {
+        val type: String? = if (!isGeneric) {
+            matchAssert(TokenType.Colon, "colon before type name expected")
             matchType()
         } else {
             null
@@ -504,7 +507,7 @@ fun Parser.typeDeclaration(): TypeDeclaration {
         match(TokenType.EndOfLine)
 
         typeFields.add(TypeField(name = name.lexeme, type = type, token = name))
-    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))
 
     val result = TypeDeclaration(
         typeName = typeName.lexeme,
