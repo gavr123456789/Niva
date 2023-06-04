@@ -483,7 +483,41 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
+        val unionDeclaration = ast[0] as UnionDeclaration
+        val branches = unionDeclaration.branches
 
+        assert(unionDeclaration.typeName == "Shape")
+        assert(branches.count() == 2)
+        assert(branches[0].typeName == "Rectangle")
+        assert(branches[0].fields.count() == 2)
+        assert(branches[0].fields[0].name == "width")
+        assert(branches[0].fields[1].name == "height")
+        assert(branches[1].fields.count() == 1)
+        assert(branches[1].fields[0].name == "radius")
+
+        assert(branches[0].typeName == "Rectangle")
+        assert(branches[1].typeName == "Circle")
+    }
+
+    @Test
+    fun ifStatement() {
+        val source = """
+        | 5 > 3 => 1 echo
+        | 7 < 6 => [
+          someVal asString echo
+        ]
+        |=> else branch sas
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val iF = ast[0] as If.Statement
+        val elseBranches = iF.elseBranch
+        val ifBranches = iF.ifBranches
+        assert(ifBranches.count() == 2)
+        val firstIfExpression = ifBranches[0] as IfBranch.IfBranchSingleExpr
+        val secondIfBody = ifBranches[1] as IfBranch.IfBranchWithBody
+//        assert(firstIfExpression.thenDoExpression is MessageCall && firstIfExpression.thenDoExpression.messages[0].selectorName == "echo")
+        assert(elseBranches != null && elseBranches.count() == 1)
     }
 
 }

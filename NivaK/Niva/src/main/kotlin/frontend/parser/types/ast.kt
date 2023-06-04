@@ -22,10 +22,10 @@ sealed class Statement(
 }
 
 sealed class Expression(
-    val type: String?,
+    val type: String? = null,
     token: Token,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: List<Pragma> = listOf(),
 ) : Statement(token, isPrivate, pragmas)
 
 class VarDeclaration(
@@ -217,3 +217,46 @@ class UnionDeclaration(
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
 ) : Statement(token, isPrivate, pragmas), ITypeDeclaration
+
+
+sealed class IfBranch(
+    val ifExpression: Expression,
+) {
+    class IfBranchSingleExpr(
+        ifExpression: Expression,
+        val thenDoExpression: Expression
+    ) : IfBranch(ifExpression)
+
+    class IfBranchWithBody(
+        ifExpression: Expression,
+        val body: List<Statement>
+    ) : IfBranch(ifExpression)
+}
+
+
+sealed class If(
+    val ifBranches: List<IfBranch>,
+    val elseBranch: List<frontend.parser.types.Statement>?,
+    token: Token,
+    type: String?,
+    pragmas: List<Pragma> = listOf(),
+    isPrivate: Boolean = false,
+) : Expression(type, token, isPrivate, pragmas) {
+
+    class Expression(
+        type: String?,
+        branches: List<IfBranch>,
+        elseBranch: List<frontend.parser.types.Statement>?,
+        token: Token
+    ) : If(branches, elseBranch, token, type)
+
+    class Statement(
+        type: String?,
+        branches: List<IfBranch>,
+        elseBranch: List<frontend.parser.types.Statement>?,
+        token: Token
+
+    ) : If(branches, elseBranch, token, type)
+
+}
+
