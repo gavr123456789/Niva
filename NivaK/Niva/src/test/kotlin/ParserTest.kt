@@ -474,6 +474,18 @@ class ParserTest {
     }
 
 
+    @Test
+    fun typeDeclarationManyLinesGeneric2() {
+        val source = """
+        union Shape area: int =
+            | Rectangle => width: int height: int
+            | Circle    => radius: int
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+    }
+
 }
 
 fun getAst(source: String): List<Statement> {

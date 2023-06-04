@@ -14,6 +14,7 @@ enum class TokenType {
 
     Pipe, // |>
 
+    Then, // =>
     Switch, // |
     Else, // |=>
 

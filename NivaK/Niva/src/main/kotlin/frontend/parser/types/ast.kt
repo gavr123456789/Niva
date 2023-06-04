@@ -189,10 +189,31 @@ class TypeField(
     val token: Token
 )
 
+interface ITypeDeclaration {
+    val typeName: String
+    val fields: List<TypeField>
+}
+
 class TypeDeclaration(
-    val typeName: String,
-    val fields: List<TypeField>,
+    override val typeName: String,
+    override val fields: List<TypeField>,
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Statement(token, isPrivate, pragmas)
+) : Statement(token, isPrivate, pragmas), ITypeDeclaration
+
+
+class UnionBranch(
+    override val typeName: String,
+    override val fields: List<TypeField>,
+    val token: Token,
+) : ITypeDeclaration
+
+class UnionDeclaration(
+    override val typeName: String,
+    val branches: List<UnionBranch>,
+    override val fields: List<TypeField>,
+    token: Token,
+    pragmas: List<Pragma> = listOf(),
+    isPrivate: Boolean = false,
+) : Statement(token, isPrivate, pragmas), ITypeDeclaration
