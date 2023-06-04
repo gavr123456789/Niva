@@ -47,11 +47,8 @@ fun Parser.peek(distance: Int = 0): Token =
     else
         tokens[current + distance]
 
-inline fun Parser.peekKind(distance: Int = 0) =
-    peek(distance).kind
-
 fun Parser.done(): Boolean =
-    peekKind() == TokenType.EndOfFile
+    check(TokenType.EndOfFile)
 
 fun Parser.step(n: Int = 1): Token {
     val result =
@@ -144,7 +141,7 @@ fun Parser.matchString(kind: Iterable<String>): Boolean {
 fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peekKind()}", token)
+            error("expecting token of kind $kind, found ${peek().kind}", token)
         } else {
             error(message)
         }
@@ -154,7 +151,7 @@ fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
 fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peekKind()}", token)
+            error("expecting token of kind $kind, found ${peek().kind}", token)
         } else {
             error(message)
         }
@@ -165,7 +162,7 @@ fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
 //}
 
 fun Parser.primary(): Primary? =
-    when (peekKind()) {
+    when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
@@ -242,7 +239,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
             val isNextReceiver = isNextReceiver()
-            value = if (isNextReceiver) receiver() else message()
+            value = if (isNextReceiver) receiver() else messageOrControlFlow()
             valueType = value.type
         }
         // ::^int
@@ -290,14 +287,23 @@ fun Parser.isNextReceiver(): Boolean {
 }
 
 
-
-fun Parser.message(): MessageCall {
+fun Parser.messageCall(): MessageCall {
     // x echo // identifier
     // 1 echo // primary
     // (1 + 1) echo // parens
     // [1 2 3] // data structure
     val receiver: Receiver = receiver()
     return anyMessageCall(receiver)
+}
+
+fun Parser.messageOrControlFlow(): Expression {
+    if (check(TokenType.Pipe)) {
+        val isExpression =
+            current != 0 && (check(TokenType.Equal, -1) || check(TokenType.Return, -1))
+
+        return ifStatementOrExpression(isExpression)
+    }
+    return messageCall()
 }
 
 
@@ -392,7 +398,7 @@ fun Parser.anyMessageCall(receiver: Receiver): MessageCall {
 
         val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
         unaryAndBinaryMessages.add(keywordMsg)
-        return MessageCall(receiver, unaryAndBinaryMessages, MessageDeclarationType.Keyword,null, receiver.token)
+        return MessageCall(receiver, unaryAndBinaryMessages, MessageDeclarationType.Keyword, null, receiver.token)
     }
     // unary/binary
     val unaryAndBinaryMessagePair = unaryOrBinary(receiver)
@@ -494,7 +500,7 @@ fun Parser.statement(): Statement {
         MessageDeclarationType.Unary -> unaryDeclaration()
         MessageDeclarationType.Binary -> binaryDeclaration()
         MessageDeclarationType.Keyword -> keywordDeclaration()
-        else -> message() // replace with expression which is switch or message
+        else -> messageOrControlFlow() // replace with expression which is switch or message
     }
 }
 
@@ -504,7 +510,7 @@ fun Parser.messageOrVarDeclaration(): Statement {
     ) {
         varDeclaration()
     } else {
-        message()
+        messageOrControlFlow()
     }
 
     if (check(TokenType.EndOfLine)) {
@@ -678,6 +684,8 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
     }
 }
 
+
+// returns true if it's single expression
 private fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
@@ -690,7 +698,7 @@ private fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
         match(TokenType.EndOfLine)
         do {
             messagesOrVarStatements.add(messageOrVarDeclaration())
-        } while (!check(TokenType.RightBracket))
+        } while (!match(TokenType.RightBracket))
     } else {
         isSingleExpression = true
         // one expression in body
@@ -793,6 +801,70 @@ fun Parser.unionDeclaration(): UnionDeclaration {
         token = unionTok,
         fields = localFields
     )
+
+    return result
+}
+
+
+fun Parser.ifBranches(): List<IfBranch> {
+    val result = mutableListOf<IfBranch>()
+
+    do {
+
+        step() // skip Pipe
+        val messageCall = messageCall()
+
+        matchAssert(TokenType.Then, "\"=>\" expected")
+        val (body, isSingleExpression) = methodBody()
+
+        result.add(
+            if (isSingleExpression) {
+                IfBranch.IfBranchSingleExpr(
+                    ifExpression = messageCall,
+                    body[0] as Expression
+                )
+            } else {
+                IfBranch.IfBranchWithBody(
+                    ifExpression = messageCall,
+                    body = body
+                )
+            }
+        )
+
+
+        match(TokenType.EndOfLine)
+        match(TokenType.EndOfFile)
+    } while (check(TokenType.Pipe))
+
+    return result
+}
+
+fun Parser.ifStatementOrExpression(isExpression: Boolean): If {
+
+    val pipeTok = peek()
+
+    val ifBranches = ifBranches()
+
+    val elseBranch = if (match(TokenType.Else)) {
+        methodBody().first.toList()
+    } else null
+
+
+    val result = if (isExpression) {
+        If.Expression(
+            type = null,
+            branches = ifBranches,
+            elseBranch = elseBranch,
+            token = pipeTok
+        )
+    } else {
+        If.Statement(
+            type = null,
+            branches = ifBranches,
+            elseBranch = elseBranch,
+            token = pipeTok
+        )
+    }
 
     return result
 }
