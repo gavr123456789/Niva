@@ -392,11 +392,14 @@ fun Lexer.next() {
 
 
         match("::") -> createToken(TokenType.DoubleColon)
+
+        match("=>") -> createToken(TokenType.Then)
+        match("|=>") -> createToken(TokenType.Else)
+        match("|") -> createToken(TokenType.Pipe)
+
         match("->") -> createToken(TokenType.ReturnArrow)
         match("^") -> createToken(TokenType.Return)
         match("=") -> createToken(TokenType.Equal)
-        match("|=>") -> createToken(TokenType.Else)
-        match("|") -> createToken(TokenType.Pipe)
         match("`") -> createToken(TokenType.Apostrophe)
 
 
