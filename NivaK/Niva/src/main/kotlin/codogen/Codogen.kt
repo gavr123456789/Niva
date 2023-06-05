@@ -46,8 +46,10 @@ fun Expression.generateKotlinCode(): String {
         is LiteralExpression.StringExpr -> this.str
 
         is ListCollection -> TODO()
-        is If.Expression -> TODO()
-        is If.Statement -> TODO()
+        is ControlFlow.IfExpression -> TODO()
+        is ControlFlow.IfStatement -> TODO()
+        is ControlFlow.SwitchExpression -> TODO()
+        is ControlFlow.SwitchStatement -> TODO()
     }
 
 }

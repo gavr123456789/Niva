@@ -301,11 +301,29 @@ fun Parser.messageOrControlFlow(): Expression {
         val isExpression =
             current != 0 && (check(TokenType.Equal, -1) || check(TokenType.Return, -1))
 
-        return ifStatementOrExpression(isExpression)
+
+        return ifOrSwitch(isExpression)
     }
     return messageCall()
 }
 
+fun Parser.ifOrSwitch(isExpression: Boolean): ControlFlow {
+
+    val wasFirstPipe = check(TokenType.Pipe)
+    var wasSecondPipe = false
+    var x = 1 // because first is pipe already
+    do {
+        if (check(TokenType.Then, x)) {
+            return ifStatementOrExpression(isExpression)
+        }
+        // oneline switch
+        if (wasFirstPipe && check(TokenType.Pipe, x)) {
+            return switchStatementOrExpression(isExpression)
+        }
+        x++
+    } while (!check(TokenType.EndOfLine, x))
+    return switchStatementOrExpression(isExpression)
+}
 
 fun Parser.getAllUnary(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
@@ -839,10 +857,9 @@ fun Parser.ifBranches(): List<IfBranch> {
     return result
 }
 
-fun Parser.ifStatementOrExpression(isExpression: Boolean): If {
+fun Parser.ifStatementOrExpression(isExpression: Boolean): ControlFlow.If {
 
     val pipeTok = peek()
-
     val ifBranches = ifBranches()
 
     val elseBranch = if (match(TokenType.Else)) {
@@ -851,14 +868,17 @@ fun Parser.ifStatementOrExpression(isExpression: Boolean): If {
 
 
     val result = if (isExpression) {
-        If.Expression(
+        if (elseBranch == null) {
+            error("else branch is required in control flow expression")
+        }
+        ControlFlow.IfExpression(
             type = null,
             branches = ifBranches,
             elseBranch = elseBranch,
             token = pipeTok
         )
     } else {
-        If.Statement(
+        ControlFlow.IfStatement(
             type = null,
             branches = ifBranches,
             elseBranch = elseBranch,
@@ -867,6 +887,32 @@ fun Parser.ifStatementOrExpression(isExpression: Boolean): If {
     }
 
     return result
+}
+
+fun Parser.switchStatementOrExpression(isExpression: Boolean): ControlFlow.Switch {
+    val pipeTok = matchAssert(TokenType.Pipe, "")
+
+    val switchExpression = messageCall()
+
+    match(TokenType.EndOfLine)
+    val otherPart = ifStatementOrExpression(isExpression)
+
+
+    return if (isExpression) {
+        val result = ControlFlow.SwitchExpression(
+            switch = switchExpression,
+            iF = otherPart
+        )
+        result
+    } else {
+        val result = ControlFlow.SwitchStatement(
+            switch = switchExpression,
+            iF = otherPart
+        )
+        result
+    }
+
+
 }
 
 
