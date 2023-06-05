@@ -510,15 +510,35 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val iF = ast[0] as If.Statement
+        val iF = ast[0] as ControlFlow.IfStatement
         val elseBranches = iF.elseBranch
         val ifBranches = iF.ifBranches
         assert(ifBranches.count() == 2)
         val firstIfExpression = ifBranches[0] as IfBranch.IfBranchSingleExpr
         val secondIfBody = ifBranches[1] as IfBranch.IfBranchWithBody
-//        assert(firstIfExpression.thenDoExpression is MessageCall && firstIfExpression.thenDoExpression.messages[0].selectorName == "echo")
         assert(elseBranches != null && elseBranches.count() == 1)
     }
+
+    @Test
+    fun switchStatement() {
+        val source = """
+        | y
+        | 6 => 8 to: 7
+        | 9 inc => "sas" echo
+        |=> else branch sas
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is ControlFlow.SwitchStatement)
+        val switchStatement = ast[0] as ControlFlow.SwitchStatement
+        val msgCall = switchStatement.switch as MessageCall
+        val receiver = msgCall.receiver
+        assert(receiver.str == "y")
+        assert(msgCall.messages.isEmpty())
+
+
+    }
+
 
 }
 

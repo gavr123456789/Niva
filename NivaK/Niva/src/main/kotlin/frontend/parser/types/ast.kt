@@ -234,29 +234,52 @@ sealed class IfBranch(
 }
 
 
-sealed class If(
+sealed class ControlFlow(
     val ifBranches: List<IfBranch>,
-    val elseBranch: List<frontend.parser.types.Statement>?,
+    val elseBranch: List<Statement>?,
     token: Token,
     type: String?,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
 ) : Expression(type, token, isPrivate, pragmas) {
 
-    class Expression(
+    sealed class If(
+        ifBranches: List<IfBranch>,
+        elseBranch: List<Statement>?,
+        token: Token,
+        type: String?
+    ) : ControlFlow(ifBranches, elseBranch, token, type)
+
+    class IfExpression(
         type: String?,
         branches: List<IfBranch>,
-        elseBranch: List<frontend.parser.types.Statement>?,
+        elseBranch: List<Statement>,
         token: Token
     ) : If(branches, elseBranch, token, type)
 
-    class Statement(
+    class IfStatement(
         type: String?,
         branches: List<IfBranch>,
-        elseBranch: List<frontend.parser.types.Statement>?,
+        elseBranch: List<Statement>?,
         token: Token
-
     ) : If(branches, elseBranch, token, type)
+
+
+    sealed class Switch(
+        val switch: Expression,
+        iF: If
+    ) : ControlFlow(iF.ifBranches, iF.elseBranch, iF.token, iF.type)
+
+    class SwitchStatement(
+        switch: Expression,
+        iF: If
+    ) : Switch(switch, iF)
+
+    class SwitchExpression(
+        switch: Expression,
+        iF: If
+    ) : Switch(switch, iF)
+
 
 }
 
