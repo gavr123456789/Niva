@@ -73,12 +73,12 @@ x sas
 
     @Test
     fun string() {
-        check("\"sas\"", listOf(StringToken, EndOfFile))
+        check("\"sas\"", listOf(TokenType.String, EndOfFile))
     }
 
     @Test
     fun helloWorld() {
-        check(helloWorldProgram, listOf(StringToken, Identifier, EndOfFile))
+        check(helloWorldProgram, listOf(TokenType.String, Identifier, EndOfFile))
     }
 
     @Test
@@ -103,7 +103,7 @@ x sas
 
     @Test
     fun rawString() {
-        check(rawString, listOf(Identifier, Equal, StringToken, EndOfFile))
+        check(rawString, listOf(Identifier, Equal, TokenType.String, EndOfFile))
     }
 
     @Test
