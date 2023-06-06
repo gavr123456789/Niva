@@ -5,6 +5,7 @@ import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.types.*
 import frontend.util.capitalizeFirstLetter
+import frontend.util.isSimpleTypes
 
 data class Module(val name: String, var loaded: Boolean)
 
@@ -167,13 +168,13 @@ fun Parser.primary(): Primary? =
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
-        TokenType.StringToken -> LiteralExpression.StringExpr(step())
+        TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Identifier -> {
             val x = step()
             val isTyped = check(TokenType.DoubleColon)
             if (isTyped) {
                 step() // skip double colon
-                val type = step().lexeme
+                val type = parseType()
                 IdentifierExpr(x.lexeme, type, x)
             } else {
                 IdentifierExpr(x.lexeme, null, x) // look for type in table
@@ -181,7 +182,9 @@ fun Parser.primary(): Primary? =
         }
 
         TokenType.LeftParen -> TODO()
-        else -> null //this.error("expected primary, but got ${peekKind()}")
+        TokenType.LeftBraceHash -> TODO() // set or map
+        TokenType.LeftParenHash -> TODO() // ?
+        else -> null
     }
 
 
@@ -208,7 +211,7 @@ fun Parser.receiver(): Receiver {
             val primaryTok = primary()
             match(TokenType.Comma)
             if (primaryTok != null) {
-                if (lastPrimary != null && primaryTok.type != lastPrimary.type) {
+                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
                     error("Heterogeneous collections are not supported")
                 }
                 initElements.add(primaryTok)
@@ -218,7 +221,7 @@ fun Parser.receiver(): Receiver {
 
         match(TokenType.RightBrace)
 
-        val type = if (initElements.isNotEmpty()) "{${initElements[0].type}}" else null
+        val type = if (initElements.isNotEmpty()) initElements[0].type else null
         result = ListCollection(initElements, type, leftBraceTok)
         return result
     }
@@ -235,7 +238,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     val typeOrEqual = step()
 
     val value: Expression
-    val valueType: String?
+    val valueType: Type?
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
             val isNextReceiver = isNextReceiver()
@@ -244,7 +247,7 @@ fun Parser.varDeclaration(): VarDeclaration {
         }
         // ::^int
         TokenType.DoubleColon -> {
-            valueType = step().lexeme
+            valueType = parseType()
             // x::int^ =
             match(TokenType.Equal)
             value = this.receiver()
@@ -264,7 +267,7 @@ fun Token.isPrimaryToken(): Boolean =
         TokenType.False,
         TokenType.Integer,
         TokenType.Float,
-        TokenType.StringToken -> true
+        TokenType.String -> true
 
         else -> false
     }
@@ -490,12 +493,6 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
 }
 
 
-fun Parser.matchType(): String {
-    // todo make better
-    return matchAssert(TokenType.Identifier, "type expected").lexeme
-}
-
-
 // Declaration without end of line
 fun Parser.statement(): Statement {
     val tok = peek()
@@ -512,6 +509,9 @@ fun Parser.statement(): Statement {
     }
     if (kind == TokenType.Union) {
         return unionDeclaration()
+    }
+    if (kind == TokenType.Constructor) {
+        return constructorDeclaration()
     }
 
     return when (isItKeywordDeclaration()) {
@@ -537,12 +537,12 @@ fun Parser.messageOrVarDeclaration(): Statement {
     return result
 }
 
-fun Parser.returnType(): String? {
+fun Parser.returnType(): Type? {
     if (!match(TokenType.ReturnArrow)) {
         return null
     }
-    val returnType = matchAssert(TokenType.Identifier, "after arrow return type expected")
-    return returnType.lexeme
+    val returnType = parseType()
+    return returnType
 }
 
 fun Parser.unaryDeclaration(): MessageDeclarationUnary {
@@ -592,7 +592,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     val argName = matchAssert(TokenType.Identifier, "in binary message identifier after operator expected")
     val typeName =
         if (match(TokenType.DoubleColon))
-            matchAssert(TokenType.Identifier, "after double colon type expected").lexeme
+            parseType()
         else null
     val arg = (KeywordDeclarationArg(name = argName.lexeme, type = typeName))
     val returnType = returnType()
@@ -679,25 +679,22 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
             error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
         }
         match(TokenType.DoubleColon)
-        val typeName = step()
-        if (typeName.kind != TokenType.Identifier) {
-            error("You tried to declare keyword message with arg without local name, type expected after colon double foobar::type")
-        }
-        return (KeywordDeclarationArg(name = argName.lexeme, type = typeName.lexeme))
+        val type = parseType()
+        return (KeywordDeclarationArg(name = argName.lexeme, type = type))
     }
     // key: localName(::int)?
     else {
         val key = step()
         match(TokenType.Colon)
         val local = step()
-        val typename: String? = if (check(TokenType.DoubleColon)) {
+        val type: Type? = if (check(TokenType.DoubleColon)) {
             step()// skip doubleColon
-            step().lexeme
+            parseType()
         } else {
             null
         }
 
-        return (KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = typename))
+        return (KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = type))
 
     }
 }
@@ -759,9 +756,9 @@ private fun Parser.typeFields(): MutableList<TypeField> {
     do {
         val isGeneric = match(TokenType.Apostrophe)
         val name = step()
-        val type: String? = if (!isGeneric) {
+        val type: Type? = if (!isGeneric) {
             matchAssert(TokenType.Colon, "colon before type name expected")
-            matchType()
+            parseType()
         } else {
             null
         }
@@ -911,8 +908,99 @@ fun Parser.switchStatementOrExpression(isExpression: Boolean): ControlFlow.Switc
         )
         result
     }
+}
 
 
+// use only after ::
+fun Parser.parseType(): Type {
+    // {int} - list of int
+    // #{int: string} - map
+    // Person - identifier
+    // List<Map<int, string>> - generic
+    // List(Map(int, string))
+    // List::Map::(int, string)
+    // Person from: x::List::Map::(int, string)
+
+    val tok = peek()
+
+    // set or map
+    if (tok.kind == TokenType.LeftBraceHash) {
+        TODO()
+    }
+    // list
+    if (tok.kind == TokenType.LeftBrace) {
+        TODO()
+    }
+
+
+    // check for basic type
+    when (tok.kind) {
+        TokenType.True, TokenType.False -> return Type.InternalType(InternalTypes.boolean, tok)
+        TokenType.Float -> return Type.InternalType(InternalTypes.float, tok)
+        TokenType.Integer -> return Type.InternalType(InternalTypes.int, tok)
+        TokenType.String -> return Type.InternalType(InternalTypes.string, tok)
+        else -> {}
+    }
+
+    fun parseGenericType(): Type {
+
+        // identifier ("(" | "::")
+
+        // x::List::Map(int, string)
+        val identifier = matchAssert(TokenType.Identifier, "in type declaration identifier expected")
+
+        // Map^::(int, string)
+
+        val simpleTypeMaybe = identifier.lexeme.isSimpleTypes()
+        // if there is simple type, there cant be any other types like int:: is impossible
+        return if (simpleTypeMaybe != null) {
+            // int string float or bool
+            Type.InternalType(simpleTypeMaybe, identifier)
+        } else {
+            if (match(TokenType.DoubleColon)) {
+//                    need recursion
+                return Type.UserType(identifier.lexeme, listOf(parseGenericType()), identifier)
+            }
+            // Map(Int, String)
+            if (match(TokenType.LeftParen)) {
+                val typeArgumentList: MutableList<Type> = mutableListOf()
+                do {
+                    typeArgumentList.add(parseGenericType())
+                } while (match(TokenType.Comma))
+                matchAssert(TokenType.RightParen, "closing paren in generic type expected")
+
+                return Type.UserType(identifier.lexeme, typeArgumentList, identifier)
+
+            }
+            // ::Person
+
+            Type.UserType(identifier.lexeme, listOf(), identifier)
+        }
+
+    }
+
+    // tok already eaten so check on distance 0
+    if (tok.kind == TokenType.Identifier && (check(TokenType.DoubleColon, 1)) || check(TokenType.LeftParen, 1)) {
+        // generic
+        // x::List::Map::(int, string)
+        return parseGenericType()
+    } else if (tok.kind == TokenType.Identifier) {
+        step() // skip ident
+        // one identifier
+        return Type.UserType(
+            name = tok.lexeme,
+            typeArgumentList = listOf(),
+            token = tok
+        )
+    }
+
+
+    error("type declaration expected")
+}
+
+
+fun Parser.constructorDeclaration(): ConstructorDeclaration {
+    TODO()
 }
 
 

@@ -22,7 +22,7 @@ sealed class Statement(
 }
 
 sealed class Expression(
-    val type: String? = null,
+    val type: Type? = null,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
@@ -32,12 +32,12 @@ class VarDeclaration(
     token: Token,
     val name: String,
     val value: Expression,
-    val valueType: String? = null,
+    val valueType: Type? = null,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "VarDeclaration(${name} = ${value.str}, valueType=$valueType)"
+        return "VarDeclaration(${name} = ${value.str}, valueType=${valueType?.name})"
     }
 }
 
@@ -48,34 +48,34 @@ class VarDeclaration(
 //  | BlockConstructor
 //  | BracketExpression
 //  | CollectionLiteral
-sealed class Receiver(type: String?, token: Token) : Expression(type, token)
+sealed class Receiver(type: Type?, token: Token) : Expression(type, token)
 
 
 // PRIMARY
 // identifier | LiteralExpression
-sealed class Primary(type: String?, token: Token) : Receiver(type, token)
+sealed class Primary(type: Type?, token: Token) : Receiver(type, token)
 
 // LITERALS
-sealed class LiteralExpression(type: String?, literal: Token) : Primary(type, literal) {
-    class IntExpr(literal: Token) : LiteralExpression("int", literal)
-    class StringExpr(literal: Token) : LiteralExpression("string", literal)
-    class FalseExpr(literal: Token) : LiteralExpression("bool", literal)
-    class TrueExpr(literal: Token) : LiteralExpression("bool", literal)
-    class FloatExpr(literal: Token) : LiteralExpression("float", literal)
+sealed class LiteralExpression(type: Type?, literal: Token) : Primary(type, literal) {
+    class IntExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.int, literal), literal)
+    class StringExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.string, literal), literal)
+    class FalseExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.boolean, literal), literal)
+    class TrueExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.boolean, literal), literal)
+    class FloatExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.float, literal), literal)
 }
 
 class IdentifierExpr(
     name: String,
-    type: String?,
+    type: Type?,
     token: Token,
 //    val depth: Int,
 ) : Primary(type, token)
 
-sealed class Collection(type: String?, token: Token) : Receiver(type, token)
+sealed class Collection(type: Type?, token: Token) : Receiver(type, token)
 
 class ListCollection(
     val initElements: List<Primary>,
-    type: String?,
+    type: Type?,
     token: Token,
 ) : Collection(type, token)
 
@@ -87,7 +87,7 @@ class MessageCall(
     val receiver: Receiver,
     val messages: List<Message>,
     val mainMessageType: MessageDeclarationType, // это нужно превратить в union тип
-    type: String?,
+    type: Type?,
     token: Token
 ) :
     Expression(type, token) {
@@ -100,14 +100,14 @@ class MessageCall(
 sealed class Message(
     val receiver: Receiver,
     val selectorName: String,
-    val type: String?,
+    val type: Type?,
     val token: Token
 )
 
 class UnaryMsg(
     receiver: Receiver,
     selectorName: String,
-    type: String?,
+    type: Type?,
     token: Token,
 ) : Message(receiver, selectorName, type, token)
 
@@ -115,7 +115,7 @@ class BinaryMsg(
     receiver: Receiver,
     val unaryMsgsForReceiver: List<UnaryMsg>,
     selectorName: String,
-    type: String?,
+    type: Type?,
     token: Token,
     val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
@@ -134,7 +134,6 @@ data class KeywordArgAndItsMessages(
         if (unaryOrBinaryMsgsForArg.isNotEmpty()) {
             val firstMsg = unaryOrBinaryMsgsForArg[0]
             if (firstMsg is BinaryMsg) {
-//                val u = unaryOrBinaryMessagesForArg.filterIsInstance<UnaryMsg>()
                 val receiver = firstMsg.receiver
                 val unaryForReceiver =
                     if (firstMsg.unaryMsgsForReceiver.isNotEmpty())
@@ -161,7 +160,7 @@ data class KeywordArgAndItsMessages(
 class KeywordMsg(
     receiver: Receiver,
     selectorName: String,
-    type: String?,
+    type: Type?,
     token: Token,
     val args: List<KeywordArgAndItsMessages>
 ) : Message(receiver, selectorName, type, token) {
@@ -172,7 +171,6 @@ class KeywordMsg(
         return "KeywordCall($receiverName ${args.map { it.toString() }})"
     }
 }
-
 
 class Pragma(
     val name: IdentifierExpr,
@@ -185,7 +183,7 @@ value class LiteralExpr(val literal: Token)
 
 class TypeField(
     val name: String,
-    val type: String?,
+    val type: Type?,
     val token: Token
 )
 
@@ -238,7 +236,7 @@ sealed class ControlFlow(
     val ifBranches: List<IfBranch>,
     val elseBranch: List<Statement>?,
     token: Token,
-    type: String?,
+    type: Type?,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
 ) : Expression(type, token, isPrivate, pragmas) {
@@ -247,23 +245,22 @@ sealed class ControlFlow(
         ifBranches: List<IfBranch>,
         elseBranch: List<Statement>?,
         token: Token,
-        type: String?
+        type: Type?
     ) : ControlFlow(ifBranches, elseBranch, token, type)
 
     class IfExpression(
-        type: String?,
+        type: Type?,
         branches: List<IfBranch>,
         elseBranch: List<Statement>,
         token: Token
     ) : If(branches, elseBranch, token, type)
 
     class IfStatement(
-        type: String?,
+        type: Type?,
         branches: List<IfBranch>,
         elseBranch: List<Statement>?,
         token: Token
     ) : If(branches, elseBranch, token, type)
-
 
     sealed class Switch(
         val switch: Expression,
@@ -283,3 +280,33 @@ sealed class ControlFlow(
 
 }
 
+@Suppress("EnumEntryName")
+enum class InternalTypes {
+    int, string, float, boolean
+}
+
+sealed class Type
+    (
+    val name: String,
+    token: Token,
+    isPrivate: Boolean,
+    pragmas: List<Pragma>
+) : Statement(token, isPrivate, pragmas) {
+
+
+    class InternalType(
+        typeName: InternalTypes,
+        token: Token,
+        isPrivate: Boolean = false,
+        pragmas: List<Pragma> = listOf()
+    ) : Type(typeName.name, token, isPrivate, pragmas)
+
+    class UserType(
+        name: String,
+        val typeArgumentList: List<Type>,
+        token: Token,
+        isPrivate: Boolean = false,
+        pragmas: List<Pragma> = listOf()
+    ) : Type(name, token, isPrivate, pragmas)
+
+}

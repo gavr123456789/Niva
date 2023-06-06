@@ -4,11 +4,11 @@ enum class TokenType {
     True, False,
 
     // Literal types
-    Integer, Float, StringToken, Identifier,
+    Integer, Float, String, Identifier,
     Binary, Octal, Hex, Char,
 
     // Keywords
-    Type, Union, Use,
+    Type, Union, Use, Constructor,
     Return, // ^
     ReturnArrow, // -> for return types
 
@@ -22,6 +22,9 @@ enum class TokenType {
     LeftParen, RightParen, // ()
     LeftBrace, RightBrace, // {}
     LeftBracket, RightBracket, // []
+
+    LeftBraceHash, // #{
+    LeftParenHash, // #(
 
     // punctuation
     Dot, Semicolon, Comma, Colon, Apostrophe,// . ; , `

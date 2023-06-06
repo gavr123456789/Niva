@@ -250,7 +250,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
     }
 
     if (delimiter == "\"") {
-        createToken(TokenType.StringToken)
+        createToken(TokenType.String)
     } else {
         createToken(TokenType.Char)
     }
@@ -396,6 +396,9 @@ fun Lexer.next() {
         match("=>") -> createToken(TokenType.Then)
         match("|=>") -> createToken(TokenType.Else)
         match("|") -> createToken(TokenType.Pipe)
+
+        match("#{") -> createToken(TokenType.LeftBraceHash)
+        match("#(") -> createToken(TokenType.LeftParenHash)
 
         match("->") -> createToken(TokenType.ReturnArrow)
         match("^") -> createToken(TokenType.Return)

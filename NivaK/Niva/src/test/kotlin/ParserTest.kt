@@ -15,7 +15,7 @@ class ParserTest {
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
-        assert(declaration.value.type == "int")
+        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
     }
 
@@ -27,7 +27,7 @@ class ParserTest {
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
-        assert(declaration.value.type == "int")
+        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
     }
 
@@ -41,7 +41,7 @@ class ParserTest {
         val messages = declaration.messages
         assert(messages.isEmpty())
         val list = declaration.receiver as ListCollection
-        assert(list.type == "{int}")
+        assert(list.type?.name == "int")
         assert(list.initElements.count() == 3)
     }
 
@@ -55,7 +55,7 @@ class ParserTest {
         val messages = declaration.messages
         assert(messages.isEmpty())
 //        val list = declaration.receiver as ListCollection
-//        assert(list.type == "{int}")
+//        assert(list.type?.name == "{int}")
 //        assert(list.initElements.count() == 3)
     }
 
@@ -97,7 +97,7 @@ class ParserTest {
         val unaryMsg = messageCall.messages[0]
 
         assert(unaryMsg.selectorName == "echo")
-        assert(unaryMsg.receiver.type == "string")
+        assert(unaryMsg.receiver.type?.name == "string")
         assert(unaryMsg.receiver.str == "\"sas\"")
     }
 
@@ -115,11 +115,11 @@ class ParserTest {
         val messageCall = ast[1] as MessageCall
         val unaryMsg = messageCall.messages[0]
         assert(declaration.name == "x")
-        assert(declaration.value.type == "int")
+        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
 
         assert(unaryMsg.selectorName == "echo")
-//        assert(unaryMsg.receiver.type == "int")
+//        assert(unaryMsg.receiver.type?.name == "int")
         assert(unaryMsg.receiver.str == "x")
     }
 
@@ -133,7 +133,7 @@ class ParserTest {
         assert(messageCall.messages.count() == 2)
         assert(messageCall.messages[0].selectorName == "inc")
         assert(messageCall.messages[1].selectorName == "inc")
-        assert(messageCall.messages[1].receiver.type == "int")
+        assert(messageCall.messages[1].receiver.type?.name == "int")
     }
 
     @Test
@@ -149,14 +149,14 @@ class ParserTest {
         assert(firstUnary.messages.count() == 2)
         assert(firstUnary.messages[0].selectorName == "inc")
         assert(firstUnary.messages[1].selectorName == "inc")
-        assert(firstUnary.messages[1].receiver.type == "int")
+        assert(firstUnary.messages[1].receiver.type?.name == "int")
         assert(firstUnary.messages[1].receiver.str == "3")
 
         val secondUnary: MessageCall = ast[1] as MessageCall
         assert(secondUnary.messages.count() == 2)
         assert(secondUnary.messages[0].selectorName == "dec")
         assert(secondUnary.messages[1].selectorName == "dec")
-        assert(secondUnary.messages[1].receiver.type == "int")
+        assert(secondUnary.messages[1].receiver.type?.name == "int")
         assert(secondUnary.messages[1].receiver.str == "1")
     }
 
@@ -292,7 +292,7 @@ class ParserTest {
         val keywordMsg = messages[0] as KeywordMsg
 
         assert(keywordMsg.args.count() == 2)
-        assert(keywordMsg.args[0].keywordArg.type == "int")
+        assert(keywordMsg.args[0].keywordArg.type?.name == "int")
         assert(keywordMsg.args[0].keywordArg.str == "3")
         assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg.count() == 1)
         assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] is BinaryMsg)
@@ -301,7 +301,7 @@ class ParserTest {
         assert(binaryFromKeyword.unaryMsgsForArg.count() == 2)
         assert(binaryFromKeyword.unaryMsgsForReceiver.count() == 2)
 
-        assert(keywordMsg.args[1].keywordArg.type == "int")
+        assert(keywordMsg.args[1].keywordArg.type?.name == "int")
         assert(keywordMsg.args[1].keywordArg.str == "5")
         assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
@@ -377,14 +377,14 @@ class ParserTest {
         assert(msgDecl.args[2].localName == null)
         assert(msgDecl.args[3].name == "noLocalNameButType")
         assert(msgDecl.args[3].localName == null)
-        assert(msgDecl.args[3].type == "int")
+        assert(msgDecl.args[3].type?.name == "int")
 
         // body
         val body = msgDecl.body
         val varDecl = body[0] as VarDeclaration
         val msgCall = body[1] as MessageCall
         assert(varDecl.name == "x")
-        assert(varDecl.valueType == "int")
+        assert(varDecl.valueType?.name == "int")
         assert(msgCall.receiver.str == "x")
         assert(msgCall.messages[0].selectorName == "sas")
         assert(msgCall.messages[0].receiver.str == "x")
@@ -414,9 +414,9 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-        assert(fields[0].type == "string")
+        assert(fields[0].type?.name == "string")
         assert(fields[1].name == "age")
-        assert(fields[1].type == "int")
+        assert(fields[1].type?.name == "int")
     }
 
     @Test
@@ -434,9 +434,9 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-        assert(fields[0].type == "string")
+        assert(fields[0].type?.name == "string")
         assert(fields[1].name == "age")
-        assert(fields[1].type == "int")
+        assert(fields[1].type?.name == "int")
     }
 
     @Test
@@ -453,9 +453,9 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-        assert(fields[0].type == "string")
+        assert(fields[0].type?.name == "string")
         assert(fields[1].name == "age")
-        assert(fields[1].type == "int")
+        assert(fields[1].type?.name == "int")
     }
 
     @Test
@@ -535,10 +535,61 @@ class ParserTest {
         val receiver = msgCall.receiver
         assert(receiver.str == "y")
         assert(msgCall.messages.isEmpty())
-
-
     }
 
+    // TODO need design
+    @Test
+    fun genericTypeDeclaration() {
+        val source = """
+        x::List::int = 1
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+
+    // x::Map(int, string)
+    @Test
+    fun genericTypeDeclarationWith2Types() {
+        val source = """
+        x::List::Map(int, string) = 1
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun genericTypeDeclarationWithMapOfMap() {
+        val source = """
+        x::Map(int, Map(int, string)) = 1
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun genericTypeDeclarationWithListOfListOfPerson() {
+        val source = """
+        x::List::List::Person = 1
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun constructor() {
+        val source = """
+        constructor Person default = Person name: "" age: 0 
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is ControlFlow.SwitchStatement)
+        val switchStatement = ast[0] as ControlFlow.SwitchStatement
+        val msgCall = switchStatement.switch as MessageCall
+        val receiver = msgCall.receiver
+        assert(receiver.str == "y")
+        assert(msgCall.messages.isEmpty())
+    }
 
 }
 
