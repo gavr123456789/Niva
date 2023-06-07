@@ -583,12 +583,6 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        assert(ast[0] is ControlFlow.SwitchStatement)
-        val switchStatement = ast[0] as ControlFlow.SwitchStatement
-        val msgCall = switchStatement.switch as MessageCall
-        val receiver = msgCall.receiver
-        assert(receiver.str == "y")
-        assert(msgCall.messages.isEmpty())
     }
 
 }

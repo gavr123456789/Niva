@@ -493,6 +493,14 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
 }
 
 
+fun Parser.messageDeclaration(type: MessageDeclarationType): MessageDeclaration {
+    return when (type) {
+        MessageDeclarationType.Unary -> unaryDeclaration()
+        MessageDeclarationType.Binary -> binaryDeclaration()
+        MessageDeclarationType.Keyword -> keywordDeclaration()
+    }
+}
+
 // Declaration without end of line
 fun Parser.statement(): Statement {
     val tok = peek()
@@ -514,12 +522,14 @@ fun Parser.statement(): Statement {
         return constructorDeclaration()
     }
 
-    return when (isItKeywordDeclaration()) {
-        MessageDeclarationType.Unary -> unaryDeclaration()
-        MessageDeclarationType.Binary -> binaryDeclaration()
-        MessageDeclarationType.Keyword -> keywordDeclaration()
-        else -> messageOrControlFlow() // replace with expression which is switch or message
+
+    val isItKeywordDeclaration = isItKeywordDeclaration()
+    if (isItKeywordDeclaration != null) {
+        return messageDeclaration(isItKeywordDeclaration)
     }
+
+
+    return messageOrControlFlow()
 }
 
 fun Parser.messageOrVarDeclaration(): Statement {
@@ -1000,7 +1010,22 @@ fun Parser.parseType(): Type {
 
 
 fun Parser.constructorDeclaration(): ConstructorDeclaration {
-    TODO()
+    val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
+
+    val isItKeywordDeclaration = isItKeywordDeclaration()
+    val msgDecl = if (isItKeywordDeclaration != null) {
+        messageDeclaration(isItKeywordDeclaration)
+    } else null
+
+    if (msgDecl == null) {
+        error("message declaration after constructor expected")
+    }
+
+    val result = ConstructorDeclaration(
+        msgDeclarationKeyword = msgDecl,
+        constructorKeyword
+    )
+    return result
 }
 
 
