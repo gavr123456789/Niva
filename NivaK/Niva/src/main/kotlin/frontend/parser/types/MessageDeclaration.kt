@@ -54,10 +54,11 @@ class MessageDeclarationKeyword(
 ) : MessageDeclaration(name, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class ConstructorDeclaration(
-    val msgDeclarationKeyword: MessageDeclarationKeyword,
+    val msgDeclarationKeyword: MessageDeclaration,
+    token: Token
 ) : MessageDeclaration(
     msgDeclarationKeyword.name,
-    msgDeclarationKeyword.token,
+    token,
     msgDeclarationKeyword.isSingleExpression,
     msgDeclarationKeyword.body,
     msgDeclarationKeyword.returnType,

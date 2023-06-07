@@ -310,3 +310,4 @@ sealed class Type
     ) : Type(name, token, isPrivate, pragmas)
 
 }
+
