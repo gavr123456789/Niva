@@ -4,7 +4,7 @@ enum class TokenType {
     True, False,
 
     // Literal types
-    Integer, Float, String, Identifier,
+    Integer, Float, String, Identifier, NullableIdentifier,
     Binary, Octal, Hex, Char,
 
     // Keywords
@@ -12,16 +12,16 @@ enum class TokenType {
     Return, // ^
     ReturnArrow, // -> for return types
 
-    Pipe, // |>
+    Pipe, // |
 
     Then, // =>
     Switch, // |
     Else, // |=>
 
     // brackets
-    LeftParen, RightParen, // ()
-    LeftBrace, RightBrace, // {}
-    LeftBracket, RightBracket, // []
+    OpenParen, CloseParen, // ()
+    OpenBrace, CloseBrace, // {}
+    OpenBracket, CloseBracket, // []
 
     LeftBraceHash, // #{
     LeftParenHash, // #(
@@ -65,3 +65,5 @@ data class Token (
     }
 }
 
+fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
+fun Token.isNullable() = this.kind == TokenType.NullableIdentifier

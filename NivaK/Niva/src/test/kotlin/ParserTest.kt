@@ -585,6 +585,16 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun nullableValue() {
+
+        val source = """
+            x::int? = null
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
 }
 
 fun getAst(source: String): List<Statement> {
