@@ -19,3 +19,15 @@ fun String.isSimpleTypes(): InternalTypes? {
         else -> null
     }
 }
+
+fun String.addIdentationForEachString(ident: Int): String {
+    val realIdent = ident * 4
+    val realIdentString = " ".repeat(realIdent)
+    val splitted = this.split("\n")
+    return buildString {
+        splitted.forEach {
+            append(realIdentString, it, "\n")
+        }
+    }
+
+}

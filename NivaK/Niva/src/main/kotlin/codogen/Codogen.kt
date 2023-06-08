@@ -5,7 +5,7 @@ import frontend.parser.types.*
 
 fun codogenKt(statements: List<Statement>): String = buildString {
     statements.forEach {
-        append(getStringFromDeclaration(it))
+        append(getStringFromDeclaration(it), "\n")
     }
 
 
