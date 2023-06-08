@@ -1,8 +1,6 @@
 package frontend.parser
 
-import frontend.meta.Position
-import frontend.meta.Token
-import frontend.meta.TokenType
+import frontend.meta.*
 import frontend.parser.types.*
 import frontend.util.capitalizeFirstLetter
 import frontend.util.isSimpleTypes
@@ -102,6 +100,18 @@ fun Parser.match(kind: TokenType) =
         false
     }
 
+
+fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
+    val tok = peek()
+
+    return if (tok.isIdentifier() || tok.kind == TokenType.NullableIdentifier) {
+        step()
+        tok
+    } else {
+        error(errorMessage)
+    }
+}
+
 fun Parser.matchAssert(kind: TokenType, errorMessage: String): Token {
     val tok = peek()
 
@@ -169,7 +179,7 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
-        TokenType.Identifier -> {
+        TokenType.Identifier, TokenType.NullableIdentifier -> {
             val x = step()
             val isTyped = check(TokenType.DoubleColon)
             if (isTyped) {
@@ -181,7 +191,7 @@ fun Parser.primary(): Primary? =
             }
         }
 
-        TokenType.LeftParen -> TODO()
+        TokenType.OpenParen -> TODO()
         TokenType.LeftBraceHash -> TODO() // set or map
         TokenType.LeftParenHash -> TODO() // ?
         else -> null
@@ -197,7 +207,7 @@ fun Parser.receiver(): Receiver {
         val initElements = mutableListOf<Primary>()
         // {1, 2 3}
         val leftBraceTok = peek()
-        if (leftBraceTok.kind != TokenType.LeftBrace) {
+        if (leftBraceTok.kind != TokenType.OpenBrace) {
             return null
         }
 
@@ -219,7 +229,7 @@ fun Parser.receiver(): Receiver {
             lastPrimary = primaryTok
         } while (primaryTok != null)
 
-        match(TokenType.RightBrace)
+        match(TokenType.CloseBrace)
 
         val type = if (initElements.isNotEmpty()) initElements[0].type else null
         result = ListCollection(initElements, type, leftBraceTok)
@@ -280,9 +290,9 @@ fun Parser.isNextReceiver(): Boolean {
             // x = 1
             check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
             // x = [code]
-            check(TokenType.LeftBracket, 1) -> return true
-            check(TokenType.LeftParen, 1) -> return true
-            check(TokenType.LeftBrace, 1) -> return true
+            check(TokenType.OpenBracket, 1) -> return true
+            check(TokenType.OpenParen, 1) -> return true
+            check(TokenType.OpenBrace, 1) -> return true
         }
     }
 
@@ -457,7 +467,7 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
 
 
         // keyword checks
-        if (q.kind == TokenType.Identifier && check(TokenType.Colon, peekCounter + 1)) {
+        if (q.isIdentifier() && check(TokenType.Colon, peekCounter + 1)) {
             isThereIdentColon = true
         }
 
@@ -507,7 +517,7 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
     // Checks for declarations that starts from keyword like type/fn
 
-    if (tok.kind == TokenType.Identifier &&
+    if (tok.isIdentifier() &&
         (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
     ) {
         return varDeclaration()
@@ -558,11 +568,11 @@ fun Parser.returnType(): Type? {
 fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
     val receiverTypeNameToken =
-        matchAssert(TokenType.Identifier, "Its unary message Declaration, name of type expected")
+        matchAssertAnyIdent("Its unary message Declaration, name of type expected")
 
     // int^ inc = []
 
-    val unarySelector = matchAssert(TokenType.Identifier, "Its unary message declaration, unary selector expected")
+    val unarySelector = matchAssertAnyIdent("Its unary message declaration, unary selector expected")
 
     val returnType = returnType()
     ///// BODY PARSING
@@ -573,7 +583,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
     // end of body parsing
 
     if (!isSingleExpression) {
-        match(TokenType.RightBracket)
+        match(TokenType.CloseBracket)
     }
 
     val result = MessageDeclarationUnary(
@@ -589,7 +599,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
     val receiverTypeNameToken =
-        matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
+        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
 
     // int^ + x = []
 
@@ -599,7 +609,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
     // arg
 
-    val argName = matchAssert(TokenType.Identifier, "in binary message identifier after operator expected")
+    val argName = matchAssertAnyIdent("in binary message identifier after operator expected")
     val typeName =
         if (match(TokenType.DoubleColon))
             parseType()
@@ -614,7 +624,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     // end of body parsing
 
     if (!isSingleExpression) {
-        match(TokenType.RightBracket)
+        match(TokenType.CloseBracket)
     }
 
     val result = MessageDeclarationBinary(
@@ -631,7 +641,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
     val receiverTypeNameToken =
-        matchAssert(TokenType.Identifier, "Its Keyword message Declaration, name of type expected")
+        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
 
     val args = mutableListOf<KeywordDeclarationArg>()
     do {
@@ -654,7 +664,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
     // end of body parsing
 
     if (!isSingleExpression) {
-        match(TokenType.RightBracket)
+        match(TokenType.CloseBracket)
     }
 
     val keywordMessageName = args.map { it.name }.joinToString("_") { it }
@@ -717,13 +727,13 @@ private fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     // Person from: x ^= []
     match(TokenType.Equal)
     // many expressions in body
-    if (match(TokenType.LeftBracket)) {
+    if (match(TokenType.OpenBracket)) {
         isSingleExpression = false
 
         match(TokenType.EndOfLine)
         do {
             messagesOrVarStatements.add(messageOrVarDeclaration())
-        } while (!match(TokenType.RightBracket))
+        } while (!match(TokenType.CloseBracket))
     } else {
         isSingleExpression = true
         // one expression in body
@@ -740,7 +750,7 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     //   name: string
 
     val typeToken = step() // skip type
-    val typeName = matchAssert(TokenType.Identifier, "after \"type\" type identifier expected")
+    val typeName = matchAssertAnyIdent("after \"type\" type identifier expected")
     // type Person^ name: string age: int
 
     // if type decl separated
@@ -784,7 +794,7 @@ private fun Parser.typeFields(): MutableList<TypeField> {
 
 fun Parser.unionDeclaration(): UnionDeclaration {
     val unionTok = matchAssert(TokenType.Union, "")
-    val unionName = matchAssert(TokenType.Identifier, "name of the union expected")
+    val unionName = matchAssertAnyIdent("name of the union expected")
     val localFields = typeFields()
 
     matchAssert(TokenType.Equal, "Equal expected")
@@ -796,7 +806,7 @@ fun Parser.unionDeclaration(): UnionDeclaration {
         do {
             // | Rectangle => width: int height: int
             val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
-            val branchName = matchAssert(TokenType.Identifier, "Name of the union branch expected")
+            val branchName = matchAssertAnyIdent("Name of the union branch expected")
 
             matchAssert(TokenType.Then, "=> expected")
 
@@ -930,6 +940,7 @@ fun Parser.parseType(): Type {
     // List(Map(int, string))
     // List::Map::(int, string)
     // Person from: x::List::Map::(int, string)
+    // x::int?
 
     val tok = peek()
 
@@ -938,17 +949,17 @@ fun Parser.parseType(): Type {
         TODO()
     }
     // list
-    if (tok.kind == TokenType.LeftBrace) {
+    if (tok.kind == TokenType.OpenBrace) {
         TODO()
     }
 
 
     // check for basic type
     when (tok.kind) {
-        TokenType.True, TokenType.False -> return Type.InternalType(InternalTypes.boolean, tok)
-        TokenType.Float -> return Type.InternalType(InternalTypes.float, tok)
-        TokenType.Integer -> return Type.InternalType(InternalTypes.int, tok)
-        TokenType.String -> return Type.InternalType(InternalTypes.string, tok)
+        TokenType.True, TokenType.False -> return Type.InternalType(InternalTypes.boolean, false, tok)
+        TokenType.Float -> return Type.InternalType(InternalTypes.float, false, tok)
+        TokenType.Integer -> return Type.InternalType(InternalTypes.int, false, tok)
+        TokenType.String -> return Type.InternalType(InternalTypes.string, false, tok)
         else -> {}
     }
 
@@ -957,49 +968,48 @@ fun Parser.parseType(): Type {
         // identifier ("(" | "::")
 
         // x::List::Map(int, string)
-        val identifier = matchAssert(TokenType.Identifier, "in type declaration identifier expected")
-
-        // Map^::(int, string)
-
+        val identifier = matchAssertAnyIdent("in type declaration identifier expected")
+        val isIdentifierNullable = identifier.kind == TokenType.NullableIdentifier
         val simpleTypeMaybe = identifier.lexeme.isSimpleTypes()
         // if there is simple type, there cant be any other types like int:: is impossible
         return if (simpleTypeMaybe != null) {
             // int string float or bool
-            Type.InternalType(simpleTypeMaybe, identifier)
+            Type.InternalType(simpleTypeMaybe, isIdentifierNullable, identifier)
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
-                return Type.UserType(identifier.lexeme, listOf(parseGenericType()), identifier)
+                return Type.UserType(identifier.lexeme, listOf(parseGenericType()), isIdentifierNullable, identifier)
             }
             // Map(Int, String)
-            if (match(TokenType.LeftParen)) {
+            if (match(TokenType.OpenParen)) {
                 val typeArgumentList: MutableList<Type> = mutableListOf()
                 do {
                     typeArgumentList.add(parseGenericType())
                 } while (match(TokenType.Comma))
-                matchAssert(TokenType.RightParen, "closing paren in generic type expected")
+                matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
-                return Type.UserType(identifier.lexeme, typeArgumentList, identifier)
+                return Type.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
 
             }
             // ::Person
 
-            Type.UserType(identifier.lexeme, listOf(), identifier)
+            Type.UserType(identifier.lexeme, listOf(), isIdentifierNullable, identifier)
         }
 
     }
 
     // tok already eaten so check on distance 0
-    if (tok.kind == TokenType.Identifier && (check(TokenType.DoubleColon, 1)) || check(TokenType.LeftParen, 1)) {
+    if (tok.isIdentifier() && (check(TokenType.DoubleColon, 1)) || check(TokenType.OpenParen, 1)) {
         // generic
         // x::List::Map::(int, string)
         return parseGenericType()
-    } else if (tok.kind == TokenType.Identifier) {
+    } else if (tok.isIdentifier()) {
         step() // skip ident
         // one identifier
         return Type.UserType(
             name = tok.lexeme,
             typeArgumentList = listOf(),
+            isNullable = tok.isNullable(),
             token = tok
         )
     }

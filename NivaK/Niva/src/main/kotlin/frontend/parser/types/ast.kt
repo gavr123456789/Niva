@@ -57,11 +57,18 @@ sealed class Primary(type: Type?, token: Token) : Receiver(type, token)
 
 // LITERALS
 sealed class LiteralExpression(type: Type?, literal: Token) : Primary(type, literal) {
-    class IntExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.int, literal), literal)
-    class StringExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.string, literal), literal)
-    class FalseExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.boolean, literal), literal)
-    class TrueExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.boolean, literal), literal)
-    class FloatExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.float, literal), literal)
+
+    class IntExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.int, false, literal), literal)
+    class StringExpr(literal: Token) :
+        LiteralExpression(Type.InternalType(InternalTypes.string, false, literal), literal)
+
+    class FalseExpr(literal: Token) :
+        LiteralExpression(Type.InternalType(InternalTypes.boolean, false, literal), literal)
+
+    class TrueExpr(literal: Token) :
+        LiteralExpression(Type.InternalType(InternalTypes.boolean, false, literal), literal)
+
+    class FloatExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.float, false, literal), literal)
 }
 
 class IdentifierExpr(
@@ -288,6 +295,7 @@ enum class InternalTypes {
 sealed class Type
     (
     val name: String,
+    val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
     pragmas: List<Pragma>
@@ -296,18 +304,20 @@ sealed class Type
 
     class InternalType(
         typeName: InternalTypes,
+        isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
         pragmas: List<Pragma> = listOf()
-    ) : Type(typeName.name, token, isPrivate, pragmas)
+    ) : Type(typeName.name, isNullable, token, isPrivate, pragmas)
 
     class UserType(
         name: String,
         val typeArgumentList: List<Type>,
+        isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
         pragmas: List<Pragma> = listOf()
-    ) : Type(name, token, isPrivate, pragmas)
+    ) : Type(name, isNullable, token, isPrivate, pragmas)
 
 }
 

@@ -117,9 +117,9 @@ int to: x = [
         check(
             functionDeclaration,
             listOf(
-                Identifier, Identifier, Colon, Identifier, Equal, LeftBracket, EndOfLine,
+                Identifier, Identifier, Colon, Identifier, Equal, OpenBracket, EndOfLine,
                 Identifier, Identifier, EndOfLine,
-                RightBracket,
+                CloseBracket,
                 EndOfFile
             )
         )
@@ -127,7 +127,7 @@ int to: x = [
 
     @Test
     fun brackets() {
-        check("{} () []", listOf(LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket, EndOfFile))
+        check("{} () []", listOf(OpenParen, CloseParen, OpenBrace, CloseBrace, OpenBracket, CloseBracket, EndOfFile))
     }
 
     @Test
