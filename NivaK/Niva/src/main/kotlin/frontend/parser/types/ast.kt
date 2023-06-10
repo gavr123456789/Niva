@@ -28,6 +28,7 @@ sealed class Expression(
     pragmas: List<Pragma> = listOf(),
 ) : Statement(token, isPrivate, pragmas)
 
+
 class VarDeclaration(
     token: Token,
     val name: String,
@@ -94,6 +95,7 @@ class MessageCall(
     val receiver: Receiver,
     val messages: List<Message>,
     val mainMessageType: MessageDeclarationType, // это нужно превратить в union тип
+    val inBracket: Boolean,
     type: Type?,
     token: Token
 ) :
