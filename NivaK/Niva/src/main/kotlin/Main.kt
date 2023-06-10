@@ -3,9 +3,9 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
 import frontend.meta.TokenType
-import frontend.parser.Parser
-import frontend.parser.statements
-import frontend.parser.types.Statement
+import frontend.parser.parsing.Parser
+import frontend.parser.parsing.statements
+import frontend.parser.types.ast.Statement
 import frontend.util.fillSymbolTable
 import java.io.File
 import java.util.concurrent.TimeUnit

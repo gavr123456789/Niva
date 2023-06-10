@@ -1,7 +1,7 @@
 package codogen
 
-import frontend.parser.MessageDeclarationType
-import frontend.parser.types.*
+import frontend.parser.parsing.MessageDeclarationType
+import frontend.parser.types.ast.*
 
 fun codogenKt(statements: List<Statement>): String = buildString {
     statements.forEach {
