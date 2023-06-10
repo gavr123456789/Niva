@@ -123,6 +123,18 @@ class ParserTest {
         assert(unaryMsg.receiver.str == "x")
     }
 
+
+    @Test
+    fun binaryFirst() {
+        val source = "1 + 1 to: 2"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val messageCall: MessageCall = ast[0] as MessageCall
+        assert(messageCall.messages.count() == 2)
+
+    }
+
     @Test
     fun twoUnary() {
         val source = "3 inc inc"
@@ -594,6 +606,20 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun bracketExpression() {
+
+        val source = """
+            (3 + 5)
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+//        assert(ast[0])
+        // (3 + 5) - экспрешон ин брекетс, 3 + 5
+        // 9 * (3 + 5)
+    }
+
 
 }
 

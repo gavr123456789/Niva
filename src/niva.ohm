@@ -142,8 +142,8 @@ moduleStatement = "module" whiteSpaces untypedIdentifier
 
   // MESSAGES
   messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
-  					  | (binaryMessage+ keywordMessage?) -- binaryFirst
-              | (keywordMessage) -- keywordFirst
+  		   | (binaryMessage+ keywordMessage?) -- binaryFirst
+           | (keywordMessage) -- keywordFirst
 
 
   keywordArgSeparation = whiteSpace+ | lineTerminatorAndSpaces
