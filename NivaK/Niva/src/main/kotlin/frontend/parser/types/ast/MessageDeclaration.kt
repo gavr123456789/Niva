@@ -1,4 +1,4 @@
-package frontend.parser.types
+package frontend.parser.types.ast
 
 import frontend.meta.Token
 

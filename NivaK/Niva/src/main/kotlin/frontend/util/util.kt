@@ -1,6 +1,6 @@
 package frontend.util
 
-import frontend.parser.types.InternalTypes
+import frontend.parser.types.ast.InternalTypes
 
 fun String.capitalizeFirstLetter(): String {
     if (isEmpty()) {

@@ -1,6 +1,6 @@
-import frontend.parser.Parser
-import frontend.parser.statements
-import frontend.parser.types.*
+import frontend.parser.parsing.Parser
+import frontend.parser.parsing.statements
+import frontend.parser.types.ast.*
 import org.testng.annotations.Test
 
 class ParserTest {
