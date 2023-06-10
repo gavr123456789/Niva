@@ -44,7 +44,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
             val isNextReceiver = isNextReceiver()
-            value = if (isNextReceiver) receiver() else messageOrControlFlow()
+            value = if (isNextReceiver) primaryReceiver() else messageOrControlFlow()
             valueType = value.type
         }
         // ::^int
@@ -52,7 +52,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Equal)
-            value = this.receiver()
+            value = this.primaryReceiver()
         }
 
         else -> error("after ${peek(-1)} needed type or expression")

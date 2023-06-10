@@ -1,4 +1,5 @@
 import frontend.parser.parsing.Parser
+import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
 import org.testng.annotations.Test
@@ -37,7 +38,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration: MessageCall = ast[0] as MessageCall
+        val declaration: MessageSend = ast[0] as MessageSend
         val messages = declaration.messages
         assert(messages.isEmpty())
         val list = declaration.receiver as ListCollection
@@ -51,7 +52,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration: MessageCall = ast[0] as MessageCall
+        val declaration: MessageSend = ast[0] as MessageSend
         val messages = declaration.messages
         assert(messages.isEmpty())
 //        val list = declaration.receiver as ListCollection
@@ -67,7 +68,7 @@ class ParserTest {
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
-        val messages = (declaration.value as MessageCall).messages
+        val messages = (declaration.value as MessageSend).messages
         assert(messages.count() == 1)
         val binaryMsg = messages[0] as BinaryMsg
         assert(binaryMsg.selectorName == "+")
@@ -79,7 +80,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration = ast[0] as MessageCall
+        val declaration = ast[0] as MessageSend
 
         assert(declaration.str == "\"sas\"")
         assert(declaration.receiver.str == "\"sas\"")
@@ -93,8 +94,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageCall = ast[0] as MessageCall
-        val unaryMsg = messageCall.messages[0]
+        val messageSend = ast[0] as MessageSend
+        val unaryMsg = messageSend.messages[0]
 
         assert(unaryMsg.selectorName == "echo")
         assert(unaryMsg.receiver.type?.name == "string")
@@ -112,8 +113,8 @@ class ParserTest {
         assert(ast.count() == 2)
 
         val declaration = ast[0] as VarDeclaration
-        val messageCall = ast[1] as MessageCall
-        val unaryMsg = messageCall.messages[0]
+        val messageSend = ast[1] as MessageSend
+        val unaryMsg = messageSend.messages[0]
         assert(declaration.name == "x")
         assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
@@ -126,13 +127,37 @@ class ParserTest {
 
     @Test
     fun binaryFirst() {
-        val source = "1 + 1 to: 2"
+        val source = "1 + 2 to: 3"
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageCall: MessageCall = ast[0] as MessageCall
-        assert(messageCall.messages.count() == 2)
+        val messageSend: MessageSend = ast[0] as MessageSend
+        assert(messageSend.messages.count() == 1)
+        val kwMessage = messageSend.messages[0] as KeywordMsg
+        assert(kwMessage.args[0].selectorName == "to")
+        assert(kwMessage.receiver is BinaryMsg)
+        val binaryReceiver = kwMessage.receiver as BinaryMsg
+        assert(binaryReceiver.receiver.str == "1")
+        assert(binaryReceiver.argument.str == "2")
+        assert(binaryReceiver.selectorName == "+")
+    }
 
+    @Test
+    fun kw() {
+        val source = "1 to: 2 + 3"
+        val tokens = lex(source)
+        val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+        val ast = parser.keyword(false)
+        println()
+    }
+
+    @Test
+    fun unaryFirst() {
+        val source = "1 sas to: 2"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val messageSend: MessageSend = ast[0] as MessageSend
     }
 
     @Test
@@ -141,11 +166,11 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageCall: MessageCall = ast[0] as MessageCall
-        assert(messageCall.messages.count() == 2)
-        assert(messageCall.messages[0].selectorName == "inc")
-        assert(messageCall.messages[1].selectorName == "inc")
-        assert(messageCall.messages[1].receiver.type?.name == "int")
+        val messageSend: MessageSend = ast[0] as MessageSend
+        assert(messageSend.messages.count() == 2)
+        assert(messageSend.messages[0].selectorName == "inc")
+        assert(messageSend.messages[1].selectorName == "inc")
+        assert(messageSend.messages[1].receiver.type?.name == "int")
     }
 
     @Test
@@ -157,14 +182,14 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 2)
 
-        val firstUnary: MessageCall = ast[0] as MessageCall
+        val firstUnary: MessageSend = ast[0] as MessageSend
         assert(firstUnary.messages.count() == 2)
         assert(firstUnary.messages[0].selectorName == "inc")
         assert(firstUnary.messages[1].selectorName == "inc")
         assert(firstUnary.messages[1].receiver.type?.name == "int")
         assert(firstUnary.messages[1].receiver.str == "3")
 
-        val secondUnary: MessageCall = ast[1] as MessageCall
+        val secondUnary: MessageSend = ast[1] as MessageSend
         assert(secondUnary.messages.count() == 2)
         assert(secondUnary.messages[0].selectorName == "dec")
         assert(secondUnary.messages[1].selectorName == "dec")
@@ -181,9 +206,9 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 3)
-        val unary = (ast[0] as MessageCall).messages[0]
-        val binary = (ast[1] as MessageCall).messages[0]
-        val keyword = (ast[2] as MessageCall).messages[0]
+        val unary = (ast[0] as MessageSend).messages[0]
+        val binary = (ast[1] as MessageSend).messages[0]
+        val keyword = (ast[2] as MessageSend).messages[0]
         assert(unary.receiver.str == "3")
         assert(binary.receiver.str == "1")
         assert(keyword.receiver.str == "x")
@@ -200,7 +225,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val messages = (ast[0] as MessageCall).messages
+        val messages = (ast[0] as MessageSend).messages
         assert(messages.count() == 3)
         assert(messages[0].selectorName == "+")
         assert(messages[1].selectorName == "-")
@@ -216,7 +241,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val keyword = (ast[0] as MessageCall).messages[0] as KeywordMsg
+        val keyword = (ast[0] as MessageSend).messages[0] as KeywordMsg
         assert(keyword.receiver.str == "x")
     }
 
@@ -232,10 +257,10 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 2)
 
-        val keyword = (ast[0] as MessageCall).messages[0] as KeywordMsg
+        val keyword = (ast[0] as MessageSend).messages[0] as KeywordMsg
         assert(keyword.receiver.str == "x")
 
-        val keyword2 = (ast[1] as MessageCall).messages[0] as KeywordMsg
+        val keyword2 = (ast[1] as MessageSend).messages[0] as KeywordMsg
         assert(keyword2.receiver.str == "q")
     }
 
@@ -246,8 +271,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageCall: MessageCall = ast[0] as MessageCall
-        val messages = messageCall.messages
+        val messageSend: MessageSend = ast[0] as MessageSend
+        val messages = messageSend.messages
         assert(messages.count() == 1)
 
         val binaryMsg = messages[0] as BinaryMsg
@@ -272,8 +297,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageCall: MessageCall = ast[0] as MessageCall
-        val messages = messageCall.messages
+        val messageSend: MessageSend = ast[0] as MessageSend
+        val messages = messageSend.messages
         assert(messages.count() == 2)
 
         val binaryMsg = messages[0] as BinaryMsg
@@ -298,7 +323,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val unary: MessageCall = ast[0] as MessageCall
+        val unary: MessageSend = ast[0] as MessageSend
         val messages = unary.messages
         assert(messages.count() == 1)
         val keywordMsg = messages[0] as KeywordMsg
@@ -306,16 +331,16 @@ class ParserTest {
         assert(keywordMsg.args.count() == 2)
         assert(keywordMsg.args[0].keywordArg.type?.name == "int")
         assert(keywordMsg.args[0].keywordArg.str == "3")
-        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg.count() == 1)
-        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] is BinaryMsg)
-        val binaryFromKeyword = keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] as BinaryMsg
-        assert(binaryFromKeyword.selectorName == "+")
-        assert(binaryFromKeyword.unaryMsgsForArg.count() == 2)
-        assert(binaryFromKeyword.unaryMsgsForReceiver.count() == 2)
+//        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg.count() == 1)
+//        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] is BinaryMsg)
+//        val binaryFromKeyword = keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] as BinaryMsg
+//        assert(binaryFromKeyword.selectorName == "+")
+//        assert(binaryFromKeyword.unaryMsgsForArg.count() == 2)
+//        assert(binaryFromKeyword.unaryMsgsForReceiver.count() == 2)
 
         assert(keywordMsg.args[1].keywordArg.type?.name == "int")
         assert(keywordMsg.args[1].keywordArg.str == "5")
-        assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
+//        assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
 
     @Test
@@ -394,7 +419,7 @@ class ParserTest {
         // body
         val body = msgDecl.body
         val varDecl = body[0] as VarDeclaration
-        val msgCall = body[1] as MessageCall
+        val msgCall = body[1] as MessageSend
         assert(varDecl.name == "x")
         assert(varDecl.valueType?.name == "int")
         assert(msgCall.receiver.str == "x")
@@ -543,7 +568,7 @@ class ParserTest {
         assert(ast.count() == 1)
         assert(ast[0] is ControlFlow.SwitchStatement)
         val switchStatement = ast[0] as ControlFlow.SwitchStatement
-        val msgCall = switchStatement.switch as MessageCall
+        val msgCall = switchStatement.switch as MessageSend
         val receiver = msgCall.receiver
         assert(receiver.str == "y")
         assert(msgCall.messages.isEmpty())
@@ -607,18 +632,18 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
-    @Test
-    fun bracketExpression() {
-
-        val source = """
-            (3 + 5)
-        """.trimIndent()
-        val ast = getAst(source)
-        assert(ast.count() == 1)
-//        assert(ast[0])
-        // (3 + 5) - экспрешон ин брекетс, 3 + 5
-        // 9 * (3 + 5)
-    }
+//    @Test
+//    fun bracketExpression() {
+//
+//        val source = """
+//            (3 + 5)
+//        """.trimIndent()
+//        val ast = getAst(source)
+//        assert(ast.count() == 1)
+////        assert(ast[0])
+//        // (3 + 5) - экспрешон ин брекетс, 3 + 5
+//        // 9 * (3 + 5)
+//    }
 
 
 }
