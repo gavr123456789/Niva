@@ -13,7 +13,7 @@ fun codogenKt(statements: List<Statement>): String = buildString {
 
 fun getStringFromDeclaration(statement: Statement): String = buildString {
     when (statement) {
-        is MessageCall -> append(statement.generateMessageCall())
+        is MessageSend -> append(statement.generateMessageCall())
         is VarDeclaration -> append(statement.generateVarDeclaration())
         is IdentifierExpr -> TODO()
         is LiteralExpression.FalseExpr -> TODO()
@@ -37,7 +37,7 @@ private fun VarDeclaration.generateVarDeclaration(): String {
 
 fun Expression.generateKotlinCode(): String {
     return when (this) {
-        is MessageCall -> this.generateMessageCall()
+        is MessageSend -> this.generateMessageCall()
         is IdentifierExpr -> this.str
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"
@@ -51,11 +51,15 @@ fun Expression.generateKotlinCode(): String {
         is ControlFlow.SwitchExpression -> TODO()
         is ControlFlow.SwitchStatement -> TODO()
 
+        // when receiver
+        is BinaryMsg -> TODO()
+        is KeywordMsg -> TODO()
+        is UnaryMsg -> TODO()
     }
 
 }
 
-fun MessageCall.generateMessageCall(): String {
+fun MessageSend.generateMessageCall(): String {
 
     return when (this.mainMessageType) {
         MessageDeclarationType.Unary -> generateUnaryCall(receiver, messages)
@@ -91,30 +95,31 @@ fun generateKeywordCall(receiver: Receiver, messages: List<Message>): String {
         // 1.fromTo
 
         append("(")
-
-        keywordMsg.args.forEachIndexed { i, it ->
-            if (it.unaryOrBinaryMsgsForArg.isNotEmpty()) {
-                append(it.selectorName, " = ")
-                if (it.unaryOrBinaryMsgsForArg[0] is BinaryMsg) {
-                    val q = this.toString()
-                    append(generateBinaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
-                    val w = this.toString()
-
-                } else if (it.unaryOrBinaryMsgsForArg[0] is UnaryMsg) {
-                    append(generateUnaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
-                }
-
-                if (i != keywordMsg.args.count() - 1)
-                    append(", ")
-
-            } else {
-                // no unaryOrBinary args
-                append(it.generateCallPair())
-                if (i != keywordMsg.args.count() - 1)
-                    append(", ")
-            }
-
-        }
+        TODO()
+//
+//        keywordMsg.args.forEachIndexed { i, it ->
+//            if (it.unaryOrBinaryMsgsForArg.isNotEmpty()) {
+//                append(it.selectorName, " = ")
+//                if (it.unaryOrBinaryMsgsForArg[0] is BinaryMsg) {
+//                    val q = this.toString()
+//                    append(generateBinaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
+//                    val w = this.toString()
+//
+//                } else if (it.unaryOrBinaryMsgsForArg[0] is UnaryMsg) {
+//                    append(generateUnaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
+//                }
+//
+//                if (i != keywordMsg.args.count() - 1)
+//                    append(", ")
+//
+//            } else {
+//                // no unaryOrBinary args
+//                append(it.generateCallPair())
+//                if (i != keywordMsg.args.count() - 1)
+//                    append(", ")
+//            }
+//
+//        }
 
         append(")")
     }

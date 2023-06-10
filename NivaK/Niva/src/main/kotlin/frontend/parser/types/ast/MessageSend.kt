@@ -9,16 +9,20 @@ import frontend.parser.parsing.MessageDeclarationType
 //  | CollectionLiteral
 sealed class Receiver(type: Type?, token: Token) : Expression(type, token)
 
-// x sas + y sus
-class MessageCall(
+
+// Message send is for pipe operations
+// a to: 2 |> sas: 6 == (a to: 2) sas: 6
+// 4 + 5 |> + 6 == useless
+// x sas |> sus == useless
+// a to: 2 |> + 2 == add 2 to result of to:
+class MessageSend(
     val receiver: Receiver,
     val messages: List<Message>,
     val mainMessageType: MessageDeclarationType, // это нужно превратить в union тип
     val inBracket: Boolean,
     type: Type?,
     token: Token
-) :
-    Expression(type, token) {
+) : Expression(type, token) {
     override fun toString(): String {
         return "${messages.map { it.toString() }}"
     }
@@ -28,9 +32,9 @@ class MessageCall(
 sealed class Message(
     val receiver: Receiver,
     val selectorName: String,
-    val type: Type?,
-    val token: Token
-)
+    type: Type?,
+    token: Token
+) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
 
 class BinaryMsg(
     receiver: Receiver,
@@ -48,34 +52,8 @@ data class KeywordArgAndItsMessages(
     val selectorName: String,
     val keywordArg: Receiver,
     // there can't be unary AND binary messages in one time, binary will contain unary
-    val unaryOrBinaryMsgsForArg: List<Message>
-) {
-    override fun toString(): String {
-        if (unaryOrBinaryMsgsForArg.isNotEmpty()) {
-            val firstMsg = unaryOrBinaryMsgsForArg[0]
-            if (firstMsg is BinaryMsg) {
-                val receiver = firstMsg.receiver
-                val unaryForReceiver =
-                    if (firstMsg.unaryMsgsForReceiver.isNotEmpty())
-                        firstMsg.unaryMsgsForReceiver.map { it.selectorName }.toString()
-                    else ""
-                val unaryForArg =
-                    if (firstMsg.unaryMsgsForArg.isNotEmpty())
-                        firstMsg.unaryMsgsForArg.map { it.selectorName }.toString()
-                    else ""
-                val binaryOperator = firstMsg.selectorName
-                val arg = firstMsg.argument.str
-                return "$receiver $unaryForReceiver $binaryOperator $arg $unaryForArg "
-
-            } else {
-                // unary
-                return "${keywordArg.str} ${unaryOrBinaryMsgsForArg.map { it.selectorName }}"
-            }
-
-        }
-        return "$selectorName: ${keywordArg.str}"
-    }
-}
+    val unaryOrBinaryMsgForArg: Message?
+)
 
 class KeywordMsg(
     receiver: Receiver,
@@ -97,3 +75,14 @@ class UnaryMsg(
     type: Type?,
     token: Token,
 ) : Message(receiver, selectorName, type, token)
+
+
+enum class MessageOrder {
+    UnaryFirst,
+    BinaryFirst,
+    KeywordFirst
+}
+
+
+
+

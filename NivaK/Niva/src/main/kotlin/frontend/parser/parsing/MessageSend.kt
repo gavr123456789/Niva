@@ -8,7 +8,7 @@ import frontend.util.capitalizeFirstLetter
 //  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
 //  		 | (binaryMessage+ keywordMessage?) -- binaryFirst
 //           | (keywordMessage) -- keywordFirst
-fun Parser.messageCall(): MessageCall {
+fun Parser.messageCall(): MessageSend {
     // x echo // identifier
     // 1 echo // primary
     // (1 + 1) echo // parens
@@ -19,25 +19,54 @@ fun Parser.messageCall(): MessageCall {
     // 3 + 8 to: 7
 
 
+//    if (match(TokenType.OpenParen)) {
+//        val receiver: Receiver = receiver()
+//        val result = anyMessageCall(receiver, true)
+//        matchAssert(TokenType.CloseParen, "Close paren expected")
+//        return result
+//    }
+//
+//
+
+
+    return anyMessageCall(false)
+
+
     // first check what first
 
-    // if unary then run parse unary first parser
-    // if unary then run parse binaryFirst parser
-    // if keyword then run parse keyword parser
+//    fun checkMessgeOrderType(): MessageOrder {
+//        // x sas - unary first, second token is Identifier
+//        // 1 + - binary first, second token is BinarySymbol
+//        // x to: - keyword first, third token is Colon
+//
+//        val tok2 = peek(1) // take second
+//        val tok3 = peek(2) // take third
+//        if (tok2.isIdentifier()) {
+//            return MessageOrder.UnaryFirst
+//        } else if (tok2.kind == TokenType.BinarySymbol) {
+//            return MessageOrder.BinaryFirst
+//        } else if (tok3.kind == TokenType.Colon) {
+//            return MessageOrder.KeywordFirst
+//        }
+//
+//        error("Can't check message order")
+//    }
 
 
-    if (match(TokenType.OpenParen)) {
-        val receiver: Receiver = receiver()
-        val result = anyMessageCall(receiver, true)
-        matchAssert(TokenType.CloseParen, "Close paren expected")
-        return result
-    }
+//    val orderType = checkMessgeOrderType()
+//    when (orderType) {
+//        MessageOrder.UnaryFirst -> unaryFirst()
+//        MessageOrder.BinaryFirst -> TODO()
+//        MessageOrder.KeywordFirst -> TODO()
+//    }
 
 
-    val receiver: Receiver = receiver()
-    return anyMessageCall(receiver, false)
+    TODO()
+
 }
 
+
+// 1^ sas sus sos -> {sas sus sos}
 fun Parser.getAllUnary(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
@@ -49,7 +78,10 @@ fun Parser.getAllUnary(receiver: Receiver): MutableList<UnaryMsg> {
     return unaryMessages
 }
 
-fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, MessageDeclarationType> {
+fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null): MessageSend {
+    val receiver: Receiver = customReceiver ?: primaryReceiver()
+
+
     // 3 ^inc inc + 2 dec dec + ...
     val unaryMessagesForReceiver = getAllUnary(receiver) // inc inc
     val binaryMessages = mutableListOf<BinaryMsg>()
@@ -59,7 +91,7 @@ fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, Mes
     while (check(TokenType.BinarySymbol)) {
 
         val binarySymbol = step()
-        val binaryArgument = receiver() // 2
+        val binaryArgument = primaryReceiver() // 2
         val unaryForArg = getAllUnary(binaryArgument)
         val binaryMsg = BinaryMsg(
             receiver,
@@ -74,54 +106,78 @@ fun Parser.unaryOrBinary(receiver: Receiver): Pair<MutableList<out Message>, Mes
         needAddMessagesForReceiverForBinary = false
     }
 
+
     // if there is no binary message, that's mean there is only unary
     if (binaryMessages.isEmpty()) {
-        return Pair(unaryMessagesForReceiver, MessageDeclarationType.Unary)
+        return MessageSend(
+            receiver,
+            unaryMessagesForReceiver,
+            MessageDeclarationType.Unary,
+            inBrackets,
+            null,
+            receiver.token
+        )
     }
     // its binary msg
-    return Pair(binaryMessages, MessageDeclarationType.Binary)
+    return MessageSend(receiver, binaryMessages, MessageDeclarationType.Binary, inBrackets, null, receiver.token)
 }
 
-fun Parser.anyMessageCall(receiver: Receiver, inBrackets: Boolean): MessageCall {
+fun Parser.anyMessageCall(inBrackets: Boolean): MessageSend {
+    // TODO сначала пробовать парсить коллекцию или блок кода, это добавить в новый вид парсинга симпл ресиверов
 
-    // keyword
+
+    // сначала попробовать унарное или бинарное
+    val q = messageOrPrimaryReceiver()
+    // если ресивер вернул сообщение значит дальше идет кейворд
+    // если после парсинга унарно/бинарного дальше идет идент с колоном
+    if (q is UnaryMsg || q is BinaryMsg) {
+        return keyword(inBrackets, q)
+    }
+
+    // keyword, 1 and 2 because identifier skip, this will broke if receiver takes more than one token
     if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
-        return keyword(receiver, inBrackets)
+        return keyword(inBrackets, q)
     }
     // unary/binary
-    val unaryAndBinaryMessagePair = unaryOrBinary(receiver)
-    val unaryAndBinaryMessage = unaryAndBinaryMessagePair.first
-    val type = unaryAndBinaryMessagePair.second
-    return MessageCall(receiver, unaryAndBinaryMessage, type, inBrackets, null, receiver.token)
+    return unaryOrBinary(inBrackets, q)
 }
 
-private fun Parser.keyword(
-    receiver: Receiver,
-    inBrackets: Boolean
-): MessageCall {
+fun Parser.keyword(
+    inBrackets: Boolean,
+    customReceiver: Receiver? = null
+): MessageSend {
+    // if unary/binary message receiver then we already parsed it somewhere on a higher level
+    val receiver: Receiver = customReceiver ?: primaryReceiver()
+
     val stringBuilder = StringBuilder()
     val unaryAndBinaryMessages = mutableListOf<Message>()
     val keyWordArguments = mutableListOf<KeywordArgAndItsMessages>()
     var firstCycle = true
 
     do {
-        val keywordPart = step()
-        step()// skip colon
+        val keywordPart = matchAssert(TokenType.Identifier, "Identifier expected inside keyword message send")
+        matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
         // x from: ^3 inc to: 2 inc
-        val keyArg = receiver()
         // x from: 3 ^inc to: 2 inc
-        val unaryOrBinaryPair = unaryOrBinary(receiver)
-        val unaryOrBinary = unaryOrBinaryPair.first
+        val unaryOrBinary = unaryOrBinary(inBrackets) // Тут может понядобится все таки передать ресивер
+        val keyArg = unaryOrBinary.receiver
+
+
         // making fun name camelCase
         stringBuilder.append(
             if (firstCycle) keywordPart.lexeme
             else keywordPart.lexeme.capitalizeFirstLetter()
         )
 
+//        assert(unaryOrBinary.messages.isNotEmpty())
+        val unaryOrBinaryMsgForArg =
+            if (unaryOrBinary.messages.isEmpty()) null
+            else unaryOrBinary.messages[0]
+
         val x = KeywordArgAndItsMessages(
             selectorName = keywordPart.lexeme,
             keywordArg = keyArg,
-            unaryOrBinaryMsgsForArg = unaryOrBinary
+            unaryOrBinaryMsgForArg = unaryOrBinaryMsgForArg
         )
 
         keyWordArguments.add(x)
@@ -139,7 +195,7 @@ private fun Parser.keyword(
 
     val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
     unaryAndBinaryMessages.add(keywordMsg)
-    return MessageCall(
+    return MessageSend(
         receiver,
         unaryAndBinaryMessages,
         MessageDeclarationType.Keyword,

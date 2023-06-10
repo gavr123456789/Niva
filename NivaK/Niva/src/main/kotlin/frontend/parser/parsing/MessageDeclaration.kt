@@ -5,7 +5,47 @@ import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 
 // also recevier can be unary or binary message
-fun Parser.receiver(): Receiver {
+
+// receiver examples - (receiver)
+// (1) sas // simple unary
+// (1) + 2 // simple binary
+// (1) to: 2 // simple keyword
+// (1 sas) to: 2 // keyword with unary receiver
+// (1 + 2) to: 2 // keyword with binary receiver
+// (1 inc + 2 inc) to: 2 // keyword with binary receiver
+// So unary and binary messages can be the receiver,
+// also collections
+// also code blocks
+
+
+//
+fun Parser.messageOrPrimaryReceiver(): Receiver {
+
+    val safePoint = current
+    try {
+        val q = unaryOrBinary(false)
+        if (q.messages.isNotEmpty()) {
+            assert(q.messages.count() == 1)
+            val unaryOrBinaryMsg = q.messages[0]
+            assert(unaryOrBinaryMsg is BinaryMsg || unaryOrBinaryMsg is UnaryMsg)
+
+            // if followed by keyword
+            if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+                return unaryOrBinaryMsg
+            }
+        }
+
+    } catch (e: Throwable) {
+        current = safePoint
+    }
+    current = safePoint
+    return primaryReceiver()
+
+}
+
+
+// receiver like collection, code block, identifier,
+fun Parser.primaryReceiver(): Receiver {
     fun blockConstructor() = null
     fun collectionLiteral(): Receiver? {
 
@@ -43,7 +83,10 @@ fun Parser.receiver(): Receiver {
     }
 
 
-    val tryPrimary = primary() ?: blockConstructor() ?: collectionLiteral() ?: throw Error("bruh")
+    val tryPrimary = primary()
+        ?: blockConstructor()
+        ?: collectionLiteral()
+        ?: throw Error("bruh")
 
     return tryPrimary
 }
