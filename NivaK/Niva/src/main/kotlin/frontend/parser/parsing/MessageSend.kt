@@ -128,14 +128,14 @@ fun Parser.keyword(
 
         val isUnaryOrIsBinary = unaryOrBinary is MessageSendUnary || unaryOrBinary is MessageSendBinary
         val unaryOrBinaryMsgForArg =
-            if (isUnaryOrIsBinary && unaryOrBinary.messages.isNotEmpty()) unaryOrBinary.messages[0]
+            if (isUnaryOrIsBinary && unaryOrBinary.messages.isNotEmpty()) unaryOrBinary.messages
             else null
 
 
         val x = KeywordArgAndItsMessages(
             selectorName = keywordPart.lexeme,
             keywordArg = keyArg,
-            unaryOrBinaryMsgForArg = unaryOrBinaryMsgForArg
+            unaryOrBinaryMsgsForArg = unaryOrBinaryMsgForArg
         )
 
         keyWordArguments.add(x)
