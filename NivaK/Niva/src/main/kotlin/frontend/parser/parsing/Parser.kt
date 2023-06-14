@@ -99,7 +99,7 @@ fun Parser.messageOrControlFlow(): Expression {
         return ifOrSwitch(isExpression)
     }
 
-    return messageCall()
+    return messageSend()
 }
 
 
