@@ -1,6 +1,5 @@
 package codogen
 
-import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 
 fun codogenKt(statements: List<Statement>): String = buildString {
@@ -61,11 +60,12 @@ fun Expression.generateKotlinCode(): String {
 
 fun MessageSend.generateMessageCall(): String {
 
-    return when (this.mainMessageType) {
-        MessageDeclarationType.Unary -> generateUnaryCall(receiver, messages)
-        MessageDeclarationType.Binary -> generateBinaryCall(receiver, messages)
-        MessageDeclarationType.Keyword -> generateKeywordCall(receiver, messages)
+    return when (this) {
+        is MessageSendUnary -> generateUnarySend(receiver, messages)
+        is MessageSendBinary -> generateBinarySend(receiver, messages)
+        is MessageSendKeyword -> generateKeywordSend(receiver, messages)
     }
+
 
     // Unary
     // 4 inc = 4.inc()
@@ -74,15 +74,14 @@ fun MessageSend.generateMessageCall(): String {
     // Binary
     // 4 + 4 = 4 + 4
     // 4 inc + 4 dec = 4.inc() + 4.dec()
-
 }
 
 
-fun generateKeywordCall(receiver: Receiver, messages: List<Message>): String {
+fun generateKeywordSend(receiver: Receiver, messages: List<KeywordMsg>): String {
     return buildString {
         // when there will be cascade, it will fail
         assert(messages.count() == 1)
-        val keywordMsg = messages[0] as KeywordMsg
+        val keywordMsg = messages[0]
 
         append(receiver.str, ".")
 
@@ -95,31 +94,33 @@ fun generateKeywordCall(receiver: Receiver, messages: List<Message>): String {
         // 1.fromTo
 
         append("(")
-        TODO()
-//
-//        keywordMsg.args.forEachIndexed { i, it ->
-//            if (it.unaryOrBinaryMsgsForArg.isNotEmpty()) {
-//                append(it.selectorName, " = ")
-//                if (it.unaryOrBinaryMsgsForArg[0] is BinaryMsg) {
-//                    val q = this.toString()
-//                    append(generateBinaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
-//                    val w = this.toString()
-//
-//                } else if (it.unaryOrBinaryMsgsForArg[0] is UnaryMsg) {
-//                    append(generateUnaryCall(it.keywordArg, it.unaryOrBinaryMsgsForArg))
-//                }
-//
-//                if (i != keywordMsg.args.count() - 1)
-//                    append(", ")
-//
-//            } else {
-//                // no unaryOrBinary args
-//                append(it.generateCallPair())
-//                if (i != keywordMsg.args.count() - 1)
-//                    append(", ")
-//            }
-//
-//        }
+
+
+
+        keywordMsg.args.forEachIndexed { i, it ->
+
+            val messageForArg = it.unaryOrBinaryMsgForArg
+
+
+            if (messageForArg != null) {
+                append(it.selectorName, " = ")
+                if (messageForArg is BinaryMsg) {
+                    append(generateBinarySend(it.keywordArg, listOf(messageForArg)))
+
+                } else if (messageForArg is UnaryMsg) {
+                    append(generateUnarySend(it.keywordArg, listOf(messageForArg)))
+                }
+
+                if (i != keywordMsg.args.count() - 1)
+                    append(", ")
+            } else {
+                // no unaryOrBinary args
+                append(it.generateCallPair())
+                if (i != keywordMsg.args.count() - 1)
+                    append(", ")
+            }
+
+        }
 
         append(")")
     }
@@ -132,7 +133,7 @@ private fun KeywordArgAndItsMessages.generateCallPair(): String {
 }
 
 
-fun generateUnaryCall(receiver: Receiver, messages: List<Message>): String {
+fun generateUnarySend(receiver: Receiver, messages: List<UnaryMsg>): String {
 
     return if (messages.count() == 1) {
         val unaryMsg = messages[0]
@@ -150,28 +151,23 @@ fun generateUnaryCall(receiver: Receiver, messages: List<Message>): String {
     }
 }
 
-fun generateBinaryCall(receiver: Receiver, messages: List<Message>): String {
-    // 1 inc dec + 2 inc dec + 5 sas
-    // 1.inc().dec() + 2.inc().dec() + 5.sas()
-    // 1             + 2             + 5
-    //  .inc().dec()    .inc().dec()    .sas()
 
+fun generateBinarySend(receiver: Receiver, messages: List<BinaryMsg>): String {
     return buildString {
 
         // TODO make messageCall Union
-        (messages as List<BinaryMsg>).forEachIndexed { i, it ->
+        messages.forEachIndexed { i, it ->
             if (i == 0) {
+
                 // 1 inc + 2 dec + 3 sas
                 // 1 inc^ + 2 dec + 3 sas
-                append(generateUnaryCall(receiver, it.unaryMsgsForReceiver))
+                append(generateUnarySend(receiver, it.unaryMsgsForReceiver))
                 append(" ${it.selectorName} ")
-                append(generateUnaryCall(it.argument, it.unaryMsgsForArg))
+                append(generateUnarySend(it.argument, it.unaryMsgsForArg))
             } else {
                 append(" ${it.selectorName} ")
-                append(generateUnaryCall(it.argument, it.unaryMsgsForArg))
+                append(generateUnarySend(it.argument, it.unaryMsgsForArg))
             }
         }
     }
-
 }
-

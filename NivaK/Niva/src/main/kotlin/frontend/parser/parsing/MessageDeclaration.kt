@@ -24,17 +24,26 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
     val safePoint = current
     try {
         val q = unaryOrBinary(false)
-        if (q.messages.isNotEmpty()) {
-            assert(q.messages.count() == 1)
-            val unaryOrBinaryMsg = q.messages[0]
-            assert(unaryOrBinaryMsg is BinaryMsg || unaryOrBinaryMsg is UnaryMsg)
 
-            // if followed by keyword
-            if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
-                return unaryOrBinaryMsg
+        val nextIsKeywordSend = { check(TokenType.Identifier) && check(TokenType.Colon, 1) }
+
+        when (q) {
+            is MessageSendUnary, is MessageSendBinary -> {
+                if (q.messages.isNotEmpty() && nextIsKeywordSend()) {
+                    assert(q.messages.count() == 1)
+                    // if followed by keyword
+                    return q.messages[0]
+                }
             }
+//            is MessageSendBinary -> {
+//                if (q.messages.isNotEmpty() && nextIsKeywordSend()) {
+//                    assert(q.messages.count() == 1)
+//                    // if followed by keyword
+//                    return q.messages[0]
+//                }
+//            }
+            is MessageSendKeyword -> error("keyword cant be a receiver, for now")// need pipe operator
         }
-
     } catch (e: Throwable) {
         current = safePoint
     }

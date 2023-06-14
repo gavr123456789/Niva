@@ -1,7 +1,6 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.MessageDeclarationType
 
 //  | Primary
 //  | BlockConstructor
@@ -15,10 +14,9 @@ sealed class Receiver(type: Type?, token: Token) : Expression(type, token)
 // 4 + 5 |> + 6 == useless
 // x sas |> sus == useless
 // a to: 2 |> + 2 == add 2 to result of to:
-class MessageSend(
+sealed class MessageSend(
     val receiver: Receiver,
-    val messages: List<Message>,
-    val mainMessageType: MessageDeclarationType, // это нужно превратить в union тип
+    open val messages: List<Message>,
     val inBracket: Boolean,
     type: Type?,
     token: Token
@@ -27,6 +25,31 @@ class MessageSend(
         return "${messages.map { it.toString() }}"
     }
 }
+
+class MessageSendUnary(
+    receiver: Receiver,
+    override val messages: List<UnaryMsg>,
+    inBracket: Boolean,
+    type: Type?,
+    token: Token
+) : MessageSend(receiver, messages, inBracket, type, token)
+
+class MessageSendBinary(
+    receiver: Receiver,
+    override val messages: List<BinaryMsg>,
+    inBracket: Boolean,
+    type: Type?,
+    token: Token
+) : MessageSend(receiver, messages, inBracket, type, token)
+
+class MessageSendKeyword(
+    receiver: Receiver,
+    override val messages: List<KeywordMsg>,
+    inBracket: Boolean,
+    type: Type?,
+    token: Token
+) : MessageSend(receiver, messages, inBracket, type, token)
+
 
 // binaryMessage | unaryMessage | keywordMessage
 sealed class Message(
@@ -75,14 +98,5 @@ class UnaryMsg(
     type: Type?,
     token: Token,
 ) : Message(receiver, selectorName, type, token)
-
-
-enum class MessageOrder {
-    UnaryFirst,
-    BinaryFirst,
-    KeywordFirst
-}
-
-
 
 
