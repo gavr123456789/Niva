@@ -99,16 +99,16 @@ fun generateKeywordSend(receiver: Receiver, messages: List<KeywordMsg>): String 
 
         keywordMsg.args.forEachIndexed { i, it ->
 
-            val messageForArg = it.unaryOrBinaryMsgForArg
+            val messageForArg = it.unaryOrBinaryMsgsForArg
 
 
-            if (messageForArg != null) {
+            if (messageForArg != null && messageForArg.isNotEmpty()) {
                 append(it.selectorName, " = ")
-                if (messageForArg is BinaryMsg) {
-                    append(generateBinarySend(it.keywordArg, listOf(messageForArg)))
+                if (messageForArg[0] is BinaryMsg) {
+                    append(generateBinarySend(it.keywordArg, messageForArg as List<BinaryMsg>))
 
-                } else if (messageForArg is UnaryMsg) {
-                    append(generateUnarySend(it.keywordArg, listOf(messageForArg)))
+                } else if (messageForArg[0] is UnaryMsg) {
+                    append(generateUnarySend(it.keywordArg, messageForArg as List<UnaryMsg>))
                 }
 
                 if (i != keywordMsg.args.count() - 1)

@@ -75,7 +75,8 @@ data class KeywordArgAndItsMessages(
     val selectorName: String,
     val keywordArg: Receiver,
     // there can't be unary AND binary messages in one time, binary will contain unary
-    val unaryOrBinaryMsgForArg: Message?
+    // but there can be many unary messages for one arg duuud
+    val unaryOrBinaryMsgsForArg: List<Message>?
 )
 
 class KeywordMsg(

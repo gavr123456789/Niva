@@ -235,7 +235,7 @@ class ParserTest {
     @Test
     fun keywordOn2lines() {
         val source = """
-            x from: 1 
+            x from: 1 inc inc
               to: 2
         """.trimIndent()
         val ast = getAst(source)
