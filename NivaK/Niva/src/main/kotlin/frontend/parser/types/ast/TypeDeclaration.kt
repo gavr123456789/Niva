@@ -2,8 +2,7 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 
-sealed class Type
-    (
+sealed class Type(
     val name: String,
     val isNullable: Boolean,
     token: Token,
@@ -29,6 +28,16 @@ sealed class Type
         pragmas: List<Pragma> = listOf()
     ) : Type(name, isNullable, token, isPrivate, pragmas)
 
+    // [anyType, anyType -> anyType]?
+    class Lambda(
+        name: String,
+        val inputTypesList: List<Type>,
+        val returnType: Type,
+        isNullable: Boolean,
+        token: Token,
+        isPrivate: Boolean = false,
+        pragmas: List<Pragma> = listOf()
+    ) : Type(name, isNullable, token, isPrivate, pragmas)
 }
 
 class TypeField(

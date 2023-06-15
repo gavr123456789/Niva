@@ -632,6 +632,41 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun codeBlockType() {
+        val source = """
+            x::[int, bool -> string]? = null
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val varDecl = ast[0] as VarDeclaration
+        val lambdaType = varDecl.valueType as Type.Lambda
+        assert(lambdaType.inputTypesList.count() == 2)
+        assert(lambdaType.inputTypesList[0].name == "int")
+        assert(lambdaType.inputTypesList[1].name == "bool")
+        assert(lambdaType.returnType.name == "string")
+    }
+
+    @Test
+    fun codeBlock() {
+        val source = """
+            x = [x, y -> x + y]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val varDecl = ast[0] as VarDeclaration
+    }
+
+    @Test
+    fun codeBlockShort() {
+        val source = """
+            x = [x + y]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val varDecl = ast[0] as VarDeclaration
+    }
+
 //    @Test
 //    fun bracketExpression() {
 //

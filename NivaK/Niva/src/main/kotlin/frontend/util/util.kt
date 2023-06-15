@@ -1,5 +1,8 @@
 package frontend.util
 
+import frontend.meta.TokenType
+import frontend.parser.parsing.Parser
+import frontend.parser.parsing.check
 import frontend.parser.types.ast.InternalTypes
 
 fun String.capitalizeFirstLetter(): String {
@@ -30,4 +33,21 @@ fun String.addIdentationForEachString(ident: Int): String {
         }
     }
 
+}
+
+
+fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
+    var c = 0
+    do {
+        if (check(tok, c)) {
+            return true
+        }
+        c++
+
+        val q = check(TokenType.EndOfLine, c)
+        val w = check(TokenType.EndOfFile, c)
+
+        println()
+    } while (!(check(TokenType.EndOfLine, c) || check(TokenType.EndOfFile, c)))
+    return false
 }

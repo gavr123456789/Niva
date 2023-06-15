@@ -18,7 +18,6 @@ import frontend.parser.types.ast.*
 // also code blocks
 
 
-//
 fun Parser.messageOrPrimaryReceiver(): Receiver {
 
     val safePoint = current
@@ -48,14 +47,21 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
         current = safePoint
     }
     current = safePoint
-    return primaryReceiver()
+    return receiver()
 
 }
 
 
 // receiver like collection, code block, identifier,
-fun Parser.primaryReceiver(): Receiver {
-    fun blockConstructor() = null
+
+// this is also expression
+fun Parser.receiver(): Receiver {
+
+    if (check(TokenType.OpenBracket)) {
+        return codeBlock()
+    }
+
+
     fun collectionLiteral(): Receiver? {
 
         val result: ListCollection
@@ -93,7 +99,6 @@ fun Parser.primaryReceiver(): Receiver {
 
 
     val tryPrimary = primary()
-        ?: blockConstructor()
         ?: collectionLiteral()
         ?: throw Error("bruh")
 

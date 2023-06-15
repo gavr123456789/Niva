@@ -7,6 +7,17 @@ import frontend.parser.types.ast.*
 
 data class Module(val name: String, var loaded: Boolean)
 
+fun Parser.identifierMayBeTyped(): IdentifierExpr {
+    val x = step()
+    val isTyped = check(TokenType.DoubleColon)
+    return if (isTyped) {
+        step() // skip double colon
+        val type = parseType()
+        IdentifierExpr(x.lexeme, type, x)
+    } else {
+        IdentifierExpr(x.lexeme, null, x) // look for type in table
+    }
+}
 
 fun Parser.primary(): Primary? =
     when (peek().kind) {
@@ -15,21 +26,12 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
-        TokenType.Identifier, TokenType.NullableIdentifier -> {
-            val x = step()
-            val isTyped = check(TokenType.DoubleColon)
-            if (isTyped) {
-                step() // skip double colon
-                val type = parseType()
-                IdentifierExpr(x.lexeme, type, x)
-            } else {
-                IdentifierExpr(x.lexeme, null, x) // look for type in table
-            }
-        }
+        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
+
 
         TokenType.OpenParen -> TODO()
-        TokenType.LeftBraceHash -> TODO() // set or map
-        TokenType.LeftParenHash -> TODO() // ?
+        TokenType.OpenBraceHash -> TODO() // set or map
+        TokenType.OpenParenHash -> TODO() // ?
         else -> null
     }
 
@@ -44,7 +46,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     when (typeOrEqual.kind) {
         TokenType.Equal -> {
             val isNextReceiver = isNextReceiver()
-            value = if (isNextReceiver) primaryReceiver() else messageOrControlFlow()
+            value = if (isNextReceiver) receiver() else messageOrControlFlow()
             valueType = value.type
         }
         // ::^int
@@ -52,7 +54,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Equal)
-            value = this.primaryReceiver()
+            value = this.receiver()
         }
 
         else -> error("after ${peek(-1)} needed type or expression")
@@ -124,6 +126,10 @@ fun Parser.statement(): Statement {
         return constructorDeclaration()
     }
 
+    if (kind == TokenType.OpenBracket) {
+        return codeBlock()
+    }
+
 
     val isItKeywordDeclaration = isItKeywordDeclaration()
     if (isItKeywordDeclaration != null) {
@@ -137,9 +143,7 @@ fun Parser.statement(): Statement {
 
 fun Parser.statementWithEndLine(): Statement {
     val result = this.statement()
-    if (check(TokenType.EndOfLine)) {
-        step()
-    }
+    match(TokenType.EndOfLine)
     return result
 }
 

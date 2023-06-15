@@ -36,11 +36,11 @@ fun Parser.getAllUnary(receiver: Receiver): MutableList<UnaryMsg> {
 }
 
 fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null): MessageSend {
-    val receiver: Receiver = customReceiver ?: primaryReceiver()
+    val receiver: Receiver = customReceiver ?: receiver()
 
 
     // 3 ^inc inc + 2 dec dec + ...
-    val unaryMessagesForReceiver = getAllUnary(receiver) // inc inc
+    val unaryMessagesForReceiver = getAllUnary(receiver)
     val binaryMessages = mutableListOf<BinaryMsg>()
     // if we have more than one binary message, we don't wand unary duplicates like
     // 2 inc + 3 dec + 4 sas // first have inc and dec, second have dec and sas, we don't want dec duplicate
@@ -48,7 +48,7 @@ fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null):
     while (check(TokenType.BinarySymbol)) {
 
         val binarySymbol = step()
-        val binaryArgument = primaryReceiver() // 2
+        val binaryArgument = receiver() // 2
         val unaryForArg = getAllUnary(binaryArgument)
         val binaryMsg = BinaryMsg(
             receiver,
@@ -78,10 +78,8 @@ fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null):
     return MessageSendBinary(receiver, binaryMessages, inBrackets, null, receiver.token)
 }
 
+
 fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
-    // TODO сначала пробовать парсить коллекцию или блок кода, это добавить в новый вид парсинга симпл ресиверов
-
-
     // сначала попробовать унарное или бинарное
     val q = messageOrPrimaryReceiver()
     // если ресивер вернул сообщение значит дальше идет кейворд
@@ -103,7 +101,7 @@ fun Parser.keyword(
     customReceiver: Receiver? = null
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
-    val receiver: Receiver = customReceiver ?: primaryReceiver()
+    val receiver: Receiver = customReceiver ?: receiver()
 
     val stringBuilder = StringBuilder()
     val unaryAndBinaryMessages = mutableListOf<KeywordMsg>()

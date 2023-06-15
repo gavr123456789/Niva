@@ -54,6 +54,9 @@ fun Expression.generateKotlinCode(): String {
         is BinaryMsg -> TODO()
         is KeywordMsg -> TODO()
         is UnaryMsg -> TODO()
+
+
+        is CodeBlock -> TODO()
     }
 
 }

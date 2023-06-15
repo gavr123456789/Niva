@@ -21,12 +21,45 @@ fun Parser.parseType(): Type {
     val tok = peek()
 
     // set or map
-    if (tok.kind == TokenType.LeftBraceHash) {
+    if (match(TokenType.OpenBraceHash)) {
         TODO()
     }
     // list
-    if (tok.kind == TokenType.OpenBrace) {
+    if (match(TokenType.OpenBrace)) {
         TODO()
+    }
+
+    // lambda
+    if (match(TokenType.OpenBracket)) {
+
+        fun listOfInputTypes(): List<Type> {
+            val result = mutableListOf<Type>()
+            // anyType, anyType, ...
+            do {
+                result.add(parseType())
+            } while (match(TokenType.Comma))
+
+            return result
+        }
+
+
+        // [int -> string]?
+        // [anyType, anyType -> anyType]?
+        val listOfInputTypes = listOfInputTypes()
+        matchAssert(TokenType.ReturnArrow, "-> expected after list of input types in lambda type declaration")
+
+        val returnType = parseType()
+        matchAssert(TokenType.CloseBracket, "closing paren expected in lambda type declaration")
+        val isNullable = match("?")
+
+
+        return Type.Lambda(
+            name = "",
+            inputTypesList = listOfInputTypes,
+            returnType,
+            isNullable,
+            token = tok,
+        )
     }
 
 
