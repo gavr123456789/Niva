@@ -23,8 +23,8 @@ enum class TokenType {
     OpenBrace, CloseBrace, // {}
     OpenBracket, CloseBracket, // []
 
-    LeftBraceHash, // #{
-    LeftParenHash, // #(
+    OpenBraceHash, // #{
+    OpenParenHash, // #(
 
     // punctuation
     Dot, Semicolon, Comma, Colon, Apostrophe,// . ; , `
