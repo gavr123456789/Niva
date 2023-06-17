@@ -103,10 +103,14 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration() = buildString {
     append(name)
     // operator fun int.sas
     append("(")
-    args.forEach { arg ->
-        append(arg.name)
+    val c = args.count() - 1
+    args.forEachIndexed { i, arg ->
+        append(arg.localName)
         if (arg.type != null) {
-            append(": ", arg.type.name, ",")
+            append(": ", arg.type.name)
+            if (i != c) {
+                append(", ")
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package frontend.parser.parsing
 import frontend.meta.TokenType
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import frontend.util.capitalizeFirstLetter
 
 // also recevier can be unary or binary message
 
@@ -197,6 +198,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
     val forType = parseType()
 
     val args = mutableListOf<KeywordDeclarationArg>()
+
     do {
         // it can be no type no local name :key
         // type, no local name key::int      key2::string
@@ -205,7 +207,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         args.add(keyArg())
 
 
-    } while (!check(TokenType.Equal))
+    } while (!(check(TokenType.Equal) || check(TokenType.ReturnArrow)))
 
 
     val returnType = returnType()
@@ -220,7 +222,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         match(TokenType.CloseBracket)
     }
 
-    val keywordMessageName = args.map { it.name }.joinToString("_") { it }
+    val keywordMessageName = args[0].name + args.drop(1).map { it.name.capitalizeFirstLetter() }.joinToString("") { it }
     val result = MessageDeclarationKeyword(
         name = keywordMessageName,
         forType = forType,
