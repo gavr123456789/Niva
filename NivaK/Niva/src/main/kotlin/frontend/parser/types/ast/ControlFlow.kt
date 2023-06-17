@@ -35,7 +35,7 @@ sealed class ControlFlow(
     class IfExpression(
         type: Type?,
         branches: List<IfBranch>,
-        elseBranch: List<Statement>,
+        elseBranch: List<Statement>?,
         token: Token
     ) : If(branches, elseBranch, token, type)
 
