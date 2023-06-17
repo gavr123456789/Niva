@@ -44,10 +44,10 @@ fun Expression.generateExpression(): String {
         is LiteralExpression.StringExpr -> "\"${this.str}\""
 
         is ListCollection -> TODO()
-        is ControlFlow.IfExpression -> this.generateIfStatement()
-        is ControlFlow.IfStatement -> this.generateIfStatement()
-        is ControlFlow.SwitchExpression -> TODO()
-        is ControlFlow.SwitchStatement -> TODO()
+        is ControlFlow.IfExpression -> this.generateIf()
+        is ControlFlow.IfStatement -> this.generateIf()
+        is ControlFlow.SwitchExpression -> this.generateSwitch()
+        is ControlFlow.SwitchStatement -> this.generateSwitch()
 
         // when receiver
         is BinaryMsg -> TODO()
@@ -59,5 +59,6 @@ fun Expression.generateExpression(): String {
     }
 
 }
+
 
 
