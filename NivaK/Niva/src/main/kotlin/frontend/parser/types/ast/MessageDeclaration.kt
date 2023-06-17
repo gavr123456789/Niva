@@ -5,6 +5,7 @@ import frontend.meta.Token
 
 sealed class MessageDeclaration(
     val name: String,
+    val forType: Type,
     token: Token,
     val isSingleExpression: Boolean,
     val body: List<Statement>,
@@ -15,16 +16,18 @@ sealed class MessageDeclaration(
 
 class MessageDeclarationUnary(
     name: String,
+    forType: Type,
     token: Token,
     isSingleExpression: Boolean,
     body: List<Statement>,
     returnType: Type?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : MessageDeclaration(name, token, isSingleExpression, body,returnType, isPrivate, pragmas)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class MessageDeclarationBinary(
     name: String,
+    forType: Type,
     token: Token,
     val arg: KeywordDeclarationArg,
     body: List<Statement>,
@@ -32,7 +35,7 @@ class MessageDeclarationBinary(
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : MessageDeclaration(name, token, isSingleExpression, body, returnType,isPrivate, pragmas)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 
 // key: localName::type
@@ -44,6 +47,7 @@ class KeywordDeclarationArg(
 
 class MessageDeclarationKeyword(
     name: String,
+    forType: Type,
     token: Token,
     val args: List<KeywordDeclarationArg>,
     body: List<Statement>,
@@ -51,13 +55,15 @@ class MessageDeclarationKeyword(
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
-) : MessageDeclaration(name, token, isSingleExpression, body, returnType, isPrivate, pragmas)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class ConstructorDeclaration(
     val msgDeclarationKeyword: MessageDeclaration,
+    forType: Type,
     token: Token
 ) : MessageDeclaration(
     msgDeclarationKeyword.name,
+    forType,
     token,
     msgDeclarationKeyword.isSingleExpression,
     msgDeclarationKeyword.body,

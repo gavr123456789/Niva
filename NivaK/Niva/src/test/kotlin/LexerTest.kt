@@ -2,8 +2,8 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.TokenType
 import frontend.meta.TokenType.*
-import org.testng.Assert.assertEquals
-import org.testng.annotations.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 
 val helloWorldProgram = """

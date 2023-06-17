@@ -115,9 +115,10 @@ fun Parser.returnType(): Type? {
 
 fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
-    val receiverTypeNameToken =
-        matchAssertAnyIdent("Its unary message Declaration, name of type expected")
-
+//    val receiverTypeNameToken =
+//        matchAssertAnyIdent("Its unary message Declaration, name of type expected")
+    val receiverTypeNameToken = peek()
+    val forType = parseType()
     // int^ inc = []
 
     val unarySelector = matchAssertAnyIdent("Its unary message declaration, unary selector expected")
@@ -136,6 +137,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
     val result = MessageDeclarationUnary(
         name = unarySelector.lexeme,
+        forType = forType,
         token = receiverTypeNameToken,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -146,8 +148,9 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
 fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
-    val receiverTypeNameToken =
-        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
+    val receiverTypeNameToken = peek()
+//        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
+    val forType = parseType()
 
     // int^ + x = []
 
@@ -177,6 +180,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
     val result = MessageDeclarationBinary(
         name = binarySelector.lexeme,
+        forType = forType,
         token = receiverTypeNameToken,
         arg = arg,
         body = messagesOrVarDeclarations,
@@ -188,8 +192,9 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
-    val receiverTypeNameToken =
-        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
+    val receiverTypeNameToken = peek()
+//        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
+    val forType = parseType()
 
     val args = mutableListOf<KeywordDeclarationArg>()
     do {
@@ -218,6 +223,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
     val keywordMessageName = args.map { it.name }.joinToString("_") { it }
     val result = MessageDeclarationKeyword(
         name = keywordMessageName,
+        forType = forType,
         token = receiverTypeNameToken,
         args = args,
         body = messagesOrVarDeclarations,
@@ -375,6 +381,7 @@ fun Parser.messageOrVarDeclaration(): Statement {
     return result
 }
 
+// constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
@@ -389,6 +396,7 @@ fun Parser.constructorDeclaration(): ConstructorDeclaration {
 
     val result = ConstructorDeclaration(
         msgDeclarationKeyword = msgDecl,
+        forType = msgDecl.forType,
         constructorKeyword
     )
     return result

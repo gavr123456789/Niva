@@ -23,13 +23,17 @@ fun String.isSimpleTypes(): InternalTypes? {
     }
 }
 
-fun String.addIdentationForEachString(ident: Int): String {
+fun String.addIndentationForEachString(ident: Int): String {
+    if (ident == 0) return this
+
     val realIdent = ident * 4
     val realIdentString = " ".repeat(realIdent)
     val splitted = this.split("\n")
+    val lastElem = splitted.count() - 1
     return buildString {
-        splitted.forEach {
-            append(realIdentString, it, "\n")
+        splitted.filter { it != "\n" }.forEachIndexed { i, it ->
+                append(realIdentString, it)
+            if (i != lastElem) append("\n")
         }
     }
 

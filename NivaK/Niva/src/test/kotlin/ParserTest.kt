@@ -2,7 +2,7 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
-import org.testng.annotations.Test
+import org.junit.jupiter.api.Test
 
 class ParserTest {
     @Test
