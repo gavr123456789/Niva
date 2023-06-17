@@ -35,13 +35,6 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
                     return q.messages[0]
                 }
             }
-//            is MessageSendBinary -> {
-//                if (q.messages.isNotEmpty() && nextIsKeywordSend()) {
-//                    assert(q.messages.count() == 1)
-//                    // if followed by keyword
-//                    return q.messages[0]
-//                }
-//            }
             is MessageSendKeyword -> error("keyword cant be a receiver, for now")// need pipe operator
         }
     } catch (e: Throwable) {
@@ -49,7 +42,6 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
     }
     current = safePoint
     return receiver()
-
 }
 
 
@@ -207,7 +199,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         args.add(keyArg())
 
 
-    } while (!(check(TokenType.Equal) || check(TokenType.ReturnArrow)))
+    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
 
 
     val returnType = returnType()
@@ -280,7 +272,7 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    match(TokenType.Equal)
+    match(TokenType.Assign)
     // many expressions in body
     if (match(TokenType.OpenBracket)) {
         isSingleExpression = false
@@ -323,11 +315,11 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
             isThereIdentColon = true
         }
 
-        if (isThereIdentColon && check(TokenType.Equal, peekCounter)) {
+        if (isThereIdentColon && check(TokenType.Assign, peekCounter)) {
             isThereEqualAfterThat = true
             break
         }
-        if (check(TokenType.Equal, peekCounter)) {
+        if (check(TokenType.Assign, peekCounter)) {
             isThereEqual = true
         }
         peekCounter++
@@ -370,7 +362,7 @@ fun Parser.messageDeclaration(type: MessageDeclarationType): MessageDeclaration 
 
 fun Parser.messageOrVarDeclaration(): Statement {
     val result = if (check(TokenType.Identifier) &&
-        (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
+        (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1))
     ) {
         varDeclaration()
     } else {

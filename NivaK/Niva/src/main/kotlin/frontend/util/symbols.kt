@@ -26,7 +26,7 @@ fun Lexer.fillSymbolTable() {
         "|=>" to TokenType.Else,
         "|>" to TokenType.Pipe,
 
-        "=" to TokenType.Equal,
+        "=" to TokenType.Assign,
 
         "^" to TokenType.Return,
     )

@@ -83,7 +83,7 @@ x sas
 
     @Test
     fun createVariable() {
-        check("x = 42", listOf(Identifier, Equal, Integer, EndOfFile))
+        check("x = 42", listOf(Identifier, Assign, Integer, EndOfFile))
     }
 
     @Test
@@ -103,7 +103,7 @@ x sas
 
     @Test
     fun rawString() {
-        check(rawString, listOf(Identifier, Equal, TokenType.String, EndOfFile))
+        check(rawString, listOf(Identifier, Assign, TokenType.String, EndOfFile))
     }
 
     @Test
@@ -117,7 +117,7 @@ int to: x = [
         check(
             functionDeclaration,
             listOf(
-                Identifier, Identifier, Colon, Identifier, Equal, OpenBracket, EndOfLine,
+                Identifier, Identifier, Colon, Identifier, Assign, OpenBracket, EndOfLine,
                 Identifier, Identifier, EndOfLine,
                 CloseBracket,
                 EndOfFile
@@ -139,7 +139,7 @@ int to: x = [
     fun hardcodedBinarySymbols() {
         check(
             "^ |> | |=> = ::",
-            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Equal, DoubleColon, EndOfFile)
+            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Assign, DoubleColon, EndOfFile)
         )
     }
 

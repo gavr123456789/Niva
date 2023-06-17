@@ -6,6 +6,7 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
+import frontend.util.addIndentationForEachString
 import frontend.util.fillSymbolTable
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -92,16 +93,26 @@ fun String.addNivaStd(): String {
 fun main(args: Array<String>) {
 
 
-//    val source = """
-//        x = "Hello" + " World" + " from Niva!"
-//        x echo
-//    """.trimIndent()
-//    val ktCode = kotlinCodeFromNiva(source)
-//    val code1 = ktCode.addIdentationForEachString(1)
-//    val code2 = putInMainKotlinCode(code1)
-//    val code3 = code2.addNivaStd()
+    val source = """
+        type Person name: String age: Int
+        person = Person name: "sas" age: 56
+        
+        
+        x = "Hello" + " World" + " from Niva!"
+        x echo
+        | x count > 10 => x count echo
+        | x count == 22 => [
+          y = x count + 10
+          y echo
+        ]
+        |=> "count < 10" echo
+    """.trimIndent()
+    val ktCode = kotlinCodeFromNiva(source)
+    val code1 = ktCode.addIndentationForEachString(1)
+    val code2 = putInMainKotlinCode(code1)
+    val code3 = code2.addNivaStd()
 
-//    runKotlin(code3)
+    runKotlin(code3)
 
 
 }
