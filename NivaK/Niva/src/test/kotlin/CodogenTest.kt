@@ -188,4 +188,27 @@ class CodogenTest {
         """.trimIndent().trim()
         assert(ktCode == expect)
     }
+
+    @Test
+    fun switchManyBranch() {
+        val source = """
+            x = 3
+            | x
+            | 1 => 1 echo 
+            | 2 => 2 echo 
+            | 3 => 3 echo 
+            |=> "something else" echo 
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            val x = 3
+            when (x) {
+                1 -> 1.echo()
+                2 -> 2.echo()
+                3 -> 3.echo()
+                else -> "something else".echo()
+            }
+        """.trimIndent().trim()
+        assert(ktCode == expect)
+    }
 }

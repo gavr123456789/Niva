@@ -20,11 +20,14 @@ sealed class Statement(
     }
 }
 
+sealed class Metadata()
+
 sealed class Expression(
     val type: Type? = null,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
+    metadata: Metadata? = null
 ) : Statement(token, isPrivate, pragmas)
 
 
