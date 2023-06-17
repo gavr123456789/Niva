@@ -406,7 +406,11 @@ fun Lexer.next() {
 
         match("->") -> createToken(TokenType.ReturnArrow)
         match("^") -> createToken(TokenType.Return)
-        match("=") -> createToken(TokenType.Equal)
+
+        match("==") -> createToken(TokenType.BinarySymbol)
+        match("!=") -> createToken(TokenType.BinarySymbol)
+
+        match("=") -> createToken(TokenType.Assign)
         match("`") -> createToken(TokenType.Apostrophe)
 
 //        match("?") -> createToken(TokenType.NullableOp)

@@ -57,7 +57,7 @@ fun Parser.unionDeclaration(): UnionDeclaration {
     val unionName = matchAssertAnyIdent("name of the union expected")
     val localFields = typeFields()
 
-    matchAssert(TokenType.Equal, "Equal expected")
+    matchAssert(TokenType.Assign, "Equal expected")
     match(TokenType.EndOfLine)
 
     fun unionFields(): List<UnionBranch> {

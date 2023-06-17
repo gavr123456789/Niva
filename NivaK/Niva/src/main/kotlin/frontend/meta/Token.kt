@@ -35,7 +35,7 @@ enum class TokenType {
     Comment,   // Useful for documentation comments, pragmas, etc.
     BinarySymbol,    // A generic symbol
     Pragma,
-    Equal,
+    Assign, Equal, NotEqual, // =, ==, !=
     DoubleColon,
     EndOfLine // \n and next line starts not from the dot
 }

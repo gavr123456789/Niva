@@ -401,7 +401,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
         val msgDecl = (ast[0] as MessageDeclarationKeyword)
-        assert(msgDecl.name == "noTypeLocalName_typeAndLocalName_nothing_noLocalNameButType")
+        assert(msgDecl.name == "noTypeLocalNameTypeAndLocalNameNothingNoLocalNameButType")
         assert(msgDecl.args.count() == 4)
         assert(msgDecl.body.count() == 2)
 
@@ -539,9 +539,10 @@ class ParserTest {
     @Test
     fun ifStatement() {
         val source = """
-        | 5 > 3 => 1 echo
+        | x count == 22 => 1 echo
         | 7 < 6 => [
-          someVal asString echo
+          y = x count + 10
+          y echo
         ]
         |=> else branch sas
         """.trimIndent()

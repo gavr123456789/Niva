@@ -44,7 +44,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     val value: Expression
     val valueType: Type?
     when (typeOrEqual.kind) {
-        TokenType.Equal -> {
+        TokenType.Assign -> {
             val isNextReceiver = isNextReceiver()
             value = if (isNextReceiver) receiver() else messageOrControlFlow()
             valueType = value.type
@@ -53,7 +53,7 @@ fun Parser.varDeclaration(): VarDeclaration {
         TokenType.DoubleColon -> {
             valueType = parseType()
             // x::int^ =
-            match(TokenType.Equal)
+            match(TokenType.Assign)
             value = this.receiver()
         }
 
@@ -97,7 +97,7 @@ fun Parser.isNextReceiver(): Boolean {
 fun Parser.messageOrControlFlow(): Expression {
     if (check(TokenType.Pipe)) {
         val isExpression =
-            current != 0 && (check(TokenType.Equal, -1) || check(TokenType.Return, -1))
+            current != 0 && (check(TokenType.Assign, -1) || check(TokenType.Return, -1))
         return ifOrSwitch(isExpression)
     }
 
@@ -112,7 +112,7 @@ fun Parser.statement(): Statement {
     // Checks for declarations that starts from keyword like type/fn
 
     if (tok.isIdentifier() &&
-        (check(TokenType.DoubleColon, 1) || check(TokenType.Equal, 1))
+        (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1))
     ) {
         return varDeclaration()
     }
@@ -143,7 +143,9 @@ fun Parser.statement(): Statement {
 
 fun Parser.statementWithEndLine(): Statement {
     val result = this.statement()
-    match(TokenType.EndOfLine)
+//    match(TokenType.EndOfLine)
+    while (match(TokenType.EndOfLine)) {
+    }
     return result
 }
 
