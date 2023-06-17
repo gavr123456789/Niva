@@ -1,5 +1,4 @@
 import codogen.codogenKt
-import codogen.int
 import org.junit.jupiter.api.Test
 
 fun generateKotlin(source: String): String {
@@ -71,15 +70,21 @@ class CodogenTest {
     fun varDeclarationWithKeywordMessageCall() {
         val source = "x = 1 from: 1 inc + 2"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "val x = 1.from(from = 1.inc() + 2)\n")
+        assert(ktCode == "val x = 1.from(1.inc() + 2)\n")
     }
 
     @Test
     fun unaryDeclaration() {
-        val source = "int sas -> unit = [ self echo ]"
+        val source = """
+            int sas -> unit = [
+              q = 1
+              self echo
+            ]
+        """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
             fun int.sas(): unit {
+                val q = 1
                 self.echo()
             }
         """.trimIndent()
@@ -87,11 +92,27 @@ class CodogenTest {
     }
 
     @Test
+    fun unaryDeclarationSingle() {
+        val source = "int sas -> unit = self echo "
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            fun int.sas(): unit = self.echo()
+        """.trimIndent()
+        assert(ktCode == expect)
+    }
+
+    @Test
     fun binaryDeclaration() {
-        val source = "int + x::int -> unit = [ self + x - 1 ]"
+        val source = """
+            int + x::int -> unit = [
+                q = 1               
+                self + x - 1 
+            ]
+        """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
             operator fun int.plus(x: int): unit {
+                val q = 1
                 self + x - 1
             }
         """.trimIndent().trim()
@@ -100,14 +121,71 @@ class CodogenTest {
 
     @Test
     fun keywordDeclaration() {
-        val source = "int from: x::float to: y::string -> bool = [ self + x - 1 > 0]"
+        val source = """
+            int from: x::float to: y::string -> bool = [
+              q = 1
+              self + x - 1 > 0
+            ]
+        """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
             fun int.fromTo(x: float, y: string): bool {
+                val q = 1
                 self + x - 1 > 0
             }
         """.trimIndent().trim()
         assert(ktCode == expect)
     }
 
+
+    @Test
+    fun typeDeclaration() {
+        val source = "type Person name: String age: Int"
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            class Person(val name: String, val age: Int)
+        """.trimIndent().trim()
+        assert(ktCode == expect)
+    }
+
+    @Test
+    fun ifDeclaration() {
+        val source = "| 1 > 5 => 1 echo |=> 2 echo"
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            if (1 > 5) {
+                1.echo()
+            } else {
+                2.echo()
+            }
+        """.trimIndent().trim()
+        assert(ktCode == expect)
+    }
+
+    @Test
+    fun ifDeclarationNoElse() {
+        val source = "| 1 > 5 => 1 echo"
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            if (1 > 5) {
+                1.echo()
+            }
+        """.trimIndent().trim()
+        assert(ktCode == expect)
+    }
+    @Test
+    fun ifDeclarationManyBranch() {
+        val source = "| 1 > 5 => 1 echo | 2 < 5 => 2 echo | 3 + 1 > 3 => 3 echo"
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            if (1 > 5) {
+                1.echo()
+            } else if (2 < 5) {
+                2.echo()
+            } else if (3 + 1 > 3) {
+                3.echo()
+            }
+        """.trimIndent().trim()
+        assert(ktCode == expect)
+    }
 }
