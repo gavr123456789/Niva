@@ -15,10 +15,10 @@ fun String.capitalizeFirstLetter(): String {
 
 fun String.isSimpleTypes(): InternalTypes? {
     return when (this) {
-        "int" -> InternalTypes.int
-        "bool" -> InternalTypes.boolean
-        "float" -> InternalTypes.float
-        "string" -> InternalTypes.string
+        "int" -> InternalTypes.Int
+        "bool" -> InternalTypes.Boolean
+        "float" -> InternalTypes.Float
+        "string" -> InternalTypes.String
         else -> null
     }
 }

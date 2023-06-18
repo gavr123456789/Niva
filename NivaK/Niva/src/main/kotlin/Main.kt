@@ -91,18 +91,29 @@ fun String.addNivaStd(): String {
 
 
 fun main(args: Array<String>) {
+    val commantd = """
+        /usr/lib/jvm/java-17-openjdk/bin/java 
+        -javaagent:/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/lib/idea_rt.jar=46715
+        :/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/bin 
+        -Dfile.encoding=UTF-8 
+        -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
 
+    """.trimIndent()
 
     val source = """
-        type Person name: String age: Int
-        person = Person name: "sas" age: 56
-        
+        Int sas = this echo
+        1 sas
         
         x = "Hello" + " World" + " from Niva!"
         x echo
-        | x count > 10 => x count echo
+        | x count < 5 => x count echo
         | x count == 22 => [
-          y = x count + 10
+          y = x count + 20
           y echo
         ]
         |=> "count < 10" echo

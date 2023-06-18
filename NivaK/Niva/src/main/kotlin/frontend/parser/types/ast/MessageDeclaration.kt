@@ -5,33 +5,33 @@ import frontend.meta.Token
 
 sealed class MessageDeclaration(
     val name: String,
-    val forType: Type,
+    val forType: TypeAST,
     token: Token,
     val isSingleExpression: Boolean,
     val body: List<Statement>,
-    val returnType: Type?,
+    val returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Statement(token, isPrivate, pragmas)
 
 class MessageDeclarationUnary(
     name: String,
-    forType: Type,
+    forType: TypeAST,
     token: Token,
     isSingleExpression: Boolean,
     body: List<Statement>,
-    returnType: Type?,
+    returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class MessageDeclarationBinary(
     name: String,
-    forType: Type,
+    forType: TypeAST,
     token: Token,
     val arg: KeywordDeclarationArg,
     body: List<Statement>,
-    returnType: Type?,
+    returnType: TypeAST?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
@@ -42,16 +42,16 @@ class MessageDeclarationBinary(
 class KeywordDeclarationArg(
     val name: String,
     val localName: String? = null,
-    val type: Type? = null,
+    val type: TypeAST? = null,
 )
 
 class MessageDeclarationKeyword(
     name: String,
-    forType: Type,
+    forType: TypeAST,
     token: Token,
     val args: List<KeywordDeclarationArg>,
     body: List<Statement>,
-    returnType: Type?,
+    returnType: TypeAST?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
@@ -59,7 +59,7 @@ class MessageDeclarationKeyword(
 
 class ConstructorDeclaration(
     val msgDeclarationKeyword: MessageDeclaration,
-    forType: Type,
+    forType: TypeAST,
     token: Token
 ) : MessageDeclaration(
     msgDeclarationKeyword.name,

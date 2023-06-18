@@ -98,7 +98,7 @@ fun Parser.receiver(): Receiver {
     return tryPrimary
 }
 
-fun Parser.returnType(): Type? {
+fun Parser.returnType(): TypeAST? {
     if (!match(TokenType.ReturnArrow)) {
         return null
     }
@@ -255,7 +255,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val key = step()
         match(TokenType.Colon)
         val local = step()
-        val type: Type? = if (check(TokenType.DoubleColon)) {
+        val type: TypeAST? = if (check(TokenType.DoubleColon)) {
             step()// skip doubleColon
             parseType()
         } else {

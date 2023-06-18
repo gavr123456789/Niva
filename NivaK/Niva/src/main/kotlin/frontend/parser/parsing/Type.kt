@@ -4,11 +4,11 @@ import frontend.meta.TokenType
 import frontend.meta.isIdentifier
 import frontend.meta.isNullable
 import frontend.parser.types.ast.InternalTypes
-import frontend.parser.types.ast.Type
+import frontend.parser.types.ast.TypeAST
 import frontend.util.isSimpleTypes
 
 // use only after ::
-fun Parser.parseType(): Type {
+fun Parser.parseType(): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
@@ -32,8 +32,8 @@ fun Parser.parseType(): Type {
     // lambda
     if (match(TokenType.OpenBracket)) {
 
-        fun listOfInputTypes(): List<Type> {
-            val result = mutableListOf<Type>()
+        fun listOfInputTypes(): List<TypeAST> {
+            val result = mutableListOf<TypeAST>()
             // anyType, anyType, ...
             do {
                 result.add(parseType())
@@ -53,26 +53,26 @@ fun Parser.parseType(): Type {
         val isNullable = match("?")
 
 
-        return Type.Lambda(
-            name = "",
+        return TypeAST.Lambda(
+            name = listOfInputTypes.map { it.name }.joinToString { it } + returnType.name,
             inputTypesList = listOfInputTypes,
-            returnType,
-            isNullable,
             token = tok,
+            returnType = returnType,
+            isNullable = isNullable,
         )
     }
 
 
     // check for basic type
     when (tok.kind) {
-        TokenType.True, TokenType.False -> return Type.InternalType(InternalTypes.boolean, false, tok)
-        TokenType.Float -> return Type.InternalType(InternalTypes.float, false, tok)
-        TokenType.Integer -> return Type.InternalType(InternalTypes.int, false, tok)
-        TokenType.String -> return Type.InternalType(InternalTypes.string, false, tok)
+        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, false, tok)
+        TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, false, tok)
+        TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, false, tok)
+        TokenType.String -> return TypeAST.InternalType(InternalTypes.String, false, tok)
         else -> {}
     }
 
-    fun parseGenericType(): Type {
+    fun parseGenericType(): TypeAST {
 
         // identifier ("(" | "::")
 
@@ -83,26 +83,26 @@ fun Parser.parseType(): Type {
         // if there is simple type, there cant be any other types like int:: is impossible
         return if (simpleTypeMaybe != null) {
             // int string float or bool
-            Type.InternalType(simpleTypeMaybe, isIdentifierNullable, identifier)
+            TypeAST.InternalType(simpleTypeMaybe, isIdentifierNullable, identifier)
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
-                return Type.UserType(identifier.lexeme, listOf(parseGenericType()), isIdentifierNullable, identifier)
+                return TypeAST.UserType(identifier.lexeme, listOf(parseGenericType()), isIdentifierNullable, identifier)
             }
             // Map(Int, String)
             if (match(TokenType.OpenParen)) {
-                val typeArgumentList: MutableList<Type> = mutableListOf()
+                val typeArgumentList: MutableList<TypeAST> = mutableListOf()
                 do {
                     typeArgumentList.add(parseGenericType())
                 } while (match(TokenType.Comma))
                 matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
-                return Type.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
+                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
 
             }
             // ::Person
 
-            Type.UserType(identifier.lexeme, listOf(), isIdentifierNullable, identifier)
+            TypeAST.UserType(identifier.lexeme, listOf(), isIdentifierNullable, identifier)
         }
 
     }
@@ -115,7 +115,7 @@ fun Parser.parseType(): Type {
     } else if (tok.isIdentifier()) {
         step() // skip ident
         // one identifier
-        return Type.UserType(
+        return TypeAST.UserType(
             name = tok.lexeme,
             typeArgumentList = listOf(),
             isNullable = tok.isNullable(),
