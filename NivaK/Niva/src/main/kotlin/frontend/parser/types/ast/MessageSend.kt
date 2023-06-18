@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.typer.Type
 
 //  | Primary
 //  | BlockConstructor

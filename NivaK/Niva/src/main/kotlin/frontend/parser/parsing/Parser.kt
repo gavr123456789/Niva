@@ -42,12 +42,12 @@ fun Parser.varDeclaration(): VarDeclaration {
     val typeOrEqual = step()
 
     val value: Expression
-    val valueType: Type?
+    val valueType: TypeAST?
     when (typeOrEqual.kind) {
         TokenType.Assign -> {
             val isNextReceiver = isNextReceiver()
             value = if (isNextReceiver) receiver() else messageOrControlFlow()
-            valueType = value.type
+            valueType = null
         }
         // ::^int
         TokenType.DoubleColon -> {

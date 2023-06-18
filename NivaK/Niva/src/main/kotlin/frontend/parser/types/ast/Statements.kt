@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.typer.Type
 
 // https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
 sealed class ASTNode2(
@@ -35,7 +36,7 @@ class VarDeclaration(
     token: Token,
     val name: String,
     val value: Expression,
-    val valueType: Type? = null,
+    val valueType: TypeAST? = null,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Statement(token, isPrivate, pragmas) {

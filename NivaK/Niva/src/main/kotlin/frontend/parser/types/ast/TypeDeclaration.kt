@@ -2,47 +2,52 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 
-sealed class Type(
+
+sealed class TypeAST(
     val name: String,
     val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
     pragmas: List<Pragma>
 ) : Statement(token, isPrivate, pragmas) {
+//    val name: String
+//        get() = this.type.name
 
+    // [anyType, anyType -> anyType]?
 
-    class InternalType(
-        typeName: InternalTypes,
-        isNullable: Boolean,
-        token: Token,
-        isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf()
-    ) : Type(typeName.name, isNullable, token, isPrivate, pragmas)
 
     class UserType(
         name: String,
-        val typeArgumentList: List<Type>,
+        val typeArgumentList: List<TypeAST>,
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
         pragmas: List<Pragma> = listOf()
-    ) : Type(name, isNullable, token, isPrivate, pragmas)
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 
-    // [anyType, anyType -> anyType]?
+    class InternalType(
+        name: InternalTypes,
+        isNullable: Boolean,
+        token: Token,
+        isPrivate: Boolean = false,
+        pragmas: List<Pragma> = listOf()
+    ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
+
     class Lambda(
         name: String,
-        val inputTypesList: List<Type>,
-        val returnType: Type,
+        val inputTypesList: List<TypeAST>,
+        val returnType: TypeAST,
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
         pragmas: List<Pragma> = listOf()
-    ) : Type(name, isNullable, token, isPrivate, pragmas)
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 }
+
 
 class TypeField(
     val name: String,
-    val type: Type?,
+    val type: TypeAST?,
     val token: Token
 )
 
@@ -76,5 +81,5 @@ class UnionDeclaration(
 
 @Suppress("EnumEntryName")
 enum class InternalTypes {
-    int, string, float, boolean
+    Int, String, Float, Boolean
 }

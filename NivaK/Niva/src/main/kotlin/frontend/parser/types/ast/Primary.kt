@@ -1,30 +1,32 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.typer.Type
 
 // PRIMARY
 // identifier | LiteralExpression
-sealed class Primary(type: Type?, token: Token) : Receiver(type, token)
+sealed class Primary(val typeAST: TypeAST?, token: Token) : Receiver(null, token)
 
 // LITERALS
-sealed class LiteralExpression(type: Type?, literal: Token) : Primary(type, literal) {
+sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, literal) {
 
-    class IntExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.int, false, literal), literal)
+    class IntExpr(literal: Token) : LiteralExpression(TypeAST.InternalType(InternalTypes.Int, false, literal), literal)
     class StringExpr(literal: Token) :
-        LiteralExpression(Type.InternalType(InternalTypes.string, false, literal), literal)
+        LiteralExpression(TypeAST.InternalType(InternalTypes.String, false, literal), literal)
 
     class FalseExpr(literal: Token) :
-        LiteralExpression(Type.InternalType(InternalTypes.boolean, false, literal), literal)
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, false, literal), literal)
 
     class TrueExpr(literal: Token) :
-        LiteralExpression(Type.InternalType(InternalTypes.boolean, false, literal), literal)
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, false, literal), literal)
 
-    class FloatExpr(literal: Token) : LiteralExpression(Type.InternalType(InternalTypes.float, false, literal), literal)
+    class FloatExpr(literal: Token) :
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Float, false, literal), literal)
 }
 
 class IdentifierExpr(
     name: String,
-    type: Type?,
+    type: TypeAST?,
     token: Token,
 //    val depth: Int,
 ) : Primary(type, token)
