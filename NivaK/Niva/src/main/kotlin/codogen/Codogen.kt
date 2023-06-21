@@ -56,6 +56,11 @@ fun Expression.generateExpression(): String {
 
 
         is CodeBlock -> TODO()
+
+        // message like
+//        is ConstructorMsg -> TODO()
+//        is SetterMsg -> TODO()
+//        is GetterMsg -> TODO()
     }
 
 }

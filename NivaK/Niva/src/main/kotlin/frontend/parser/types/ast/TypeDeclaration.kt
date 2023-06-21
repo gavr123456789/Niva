@@ -45,7 +45,7 @@ sealed class TypeAST(
 }
 
 
-class TypeField(
+class TypeFieldAST(
     val name: String,
     val type: TypeAST?,
     val token: Token
@@ -53,12 +53,12 @@ class TypeField(
 
 interface ITypeDeclaration {
     val typeName: String
-    val fields: List<TypeField>
+    val fields: List<TypeFieldAST>
 }
 
 class TypeDeclaration(
     override val typeName: String,
-    override val fields: List<TypeField>,
+    override val fields: List<TypeFieldAST>,
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
@@ -66,14 +66,14 @@ class TypeDeclaration(
 
 class UnionBranch(
     override val typeName: String,
-    override val fields: List<TypeField>,
+    override val fields: List<TypeFieldAST>,
     val token: Token,
 ) : ITypeDeclaration
 
 class UnionDeclaration(
     override val typeName: String,
     val branches: List<UnionBranch>,
-    override val fields: List<TypeField>,
+    override val fields: List<TypeFieldAST>,
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
@@ -81,5 +81,5 @@ class UnionDeclaration(
 
 @Suppress("EnumEntryName")
 enum class InternalTypes {
-    Int, String, Float, Boolean
+    Int, String, Float, Boolean, Unit
 }
