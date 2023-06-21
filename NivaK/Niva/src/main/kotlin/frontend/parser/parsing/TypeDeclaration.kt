@@ -30,8 +30,8 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     return result
 }
 
-private fun Parser.typeFields(): MutableList<TypeField> {
-    val typeFields = mutableListOf<TypeField>()
+private fun Parser.typeFields(): MutableList<TypeFieldAST> {
+    val typeFields = mutableListOf<TypeFieldAST>()
 
     do {
         val isGeneric = match(TokenType.Apostrophe)
@@ -47,7 +47,7 @@ private fun Parser.typeFields(): MutableList<TypeField> {
         match(TokenType.EndOfFile)
         match(TokenType.EndOfLine)
 
-        typeFields.add(TypeField(name = name.lexeme, type = type, token = name))
+        typeFields.add(TypeFieldAST(name = name.lexeme, type = type, token = name))
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))
     return typeFields
 }

@@ -24,7 +24,7 @@ sealed class Statement(
 sealed class Metadata()
 
 sealed class Expression(
-    val type: Type? = null,
+    var type: Type? = null,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
@@ -36,7 +36,7 @@ class VarDeclaration(
     token: Token,
     val name: String,
     val value: Expression,
-    val valueType: TypeAST? = null,
+    var valueType: TypeAST? = null,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Statement(token, isPrivate, pragmas) {

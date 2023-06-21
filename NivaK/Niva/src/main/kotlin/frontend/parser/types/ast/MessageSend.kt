@@ -80,25 +80,78 @@ data class KeywordArgAndItsMessages(
     val unaryOrBinaryMsgsForArg: List<Message>?
 )
 
+//sealed class KeywordLike(
+//    receiver: Receiver,
+//    selectorName: String,
+//    type: Type?,
+//    token: Token,
+//    val args: List<KeywordArgAndItsMessages>
+//) : Message(receiver, selectorName, type, token) {
+//    override fun toString(): String {
+//        val receiverName = receiver
+//        return "KeywordCall($receiverName ${args.map { it.toString() }})"
+//    }
+//}
+
+enum class KeywordLikeType {
+    Keyword, Constructor, Setter
+}
+
 class KeywordMsg(
     receiver: Receiver,
     selectorName: String,
     type: Type?,
     token: Token,
-    val args: List<KeywordArgAndItsMessages>
+    val args: List<KeywordArgAndItsMessages>,
+    var kind: KeywordLikeType = KeywordLikeType.Keyword
 ) : Message(receiver, selectorName, type, token) {
     override fun toString(): String {
-
         val receiverName = receiver
         return "KeywordCall($receiverName ${args.map { it.toString() }})"
     }
 }
 
+//class SetterMsg(
+//    receiver: Receiver,
+//    selectorName: String,
+//    type: Type?,
+//    token: Token,
+//    args: List<KeywordArgAndItsMessages>
+//) : KeywordLike(receiver, selectorName, type, token, args)
+//
+//class ConstructorMsg(
+//    receiver: Receiver,
+//    selectorName: String,
+//    type: Type?,
+//    token: Token,
+//    args: List<KeywordArgAndItsMessages>
+//) : KeywordLike(receiver, selectorName, type, token, args)
+
+
+//sealed class UnaryLike(
+//    receiver: Receiver,
+//    selectorName: String,
+//    type: Type?,
+//    token: Token,
+//) : Message(receiver, selectorName, type, token)
+
+enum class UnaryMsgKind {
+    Unary, Getter
+}
 class UnaryMsg(
     receiver: Receiver,
     selectorName: String,
     type: Type?,
     token: Token,
+    var kind: UnaryMsgKind = UnaryMsgKind.Unary
 ) : Message(receiver, selectorName, type, token)
+
+//class GetterMsg(
+//    receiver: Receiver,
+//    selectorName: String,
+//    type: Type?,
+//    token: Token,
+//) : UnaryLike(receiver, selectorName, type, token)
+
 
 
