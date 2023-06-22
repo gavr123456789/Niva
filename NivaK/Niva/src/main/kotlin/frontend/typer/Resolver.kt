@@ -130,32 +130,51 @@ fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, MutableLis
 
 fun Resolver.resolve(
     statements: List<Statement>,
-    currentNode: Int,
-    depth: Int,
+//    currentNode: Int,
+//    depth: Int,
     previousScope: MutableMap<String, Type>,
     currentSelf: Type = Resolver.defaultBasicTypes[InternalTypes.Unit]!!
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
+
     statements.forEachIndexed { i, statement ->
-        resolveStatement(statement, currentNode, depth, currentScope, previousScope, i)
+
+        resolveStatement(
+            statement,
+//            currentNode,
+//            depth,
+            currentScope,
+            previousScope,
+            i
+        )
     }
     return statements
 }
 
 private fun Resolver.resolveStatement(
     statement: Statement,
-    currentNode: Int,
-    depth: Int,
+//    currentNode: Int,
+//    depth: Int,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     i: Int
 ) {
+
+    val resolveForMessageSend = { statement2: MessageSend ->
+        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+        this.resolve(
+            statement2.messages,
+            previousAndCurrentScope
+        )
+        statement2.type = statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+    }
+
     when (statement) {
 
         is VarDeclaration -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-
-            resolve(listOf(statement.value), currentNode, depth + 1, previousAndCurrentScope)
+            // currentNode, depth + 1
+            resolve(listOf(statement.value), previousAndCurrentScope)
             val valueType = statement.value.type
             val statementDeclaredType = statement.valueType
             if (valueType == null) {
@@ -212,10 +231,10 @@ private fun Resolver.resolveStatement(
             // register unary
             unaryForType[statement.name] = statement
 
-            val realI = if (depth == 0) i else currentNode
+//            val realI = if (depth == 0) i else currentNode
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             previousAndCurrentScope["self"] = forType
-            this.resolve(statement.body, realI, depth + 1, previousAndCurrentScope, forType)
+            this.resolve(statement.body, previousAndCurrentScope, forType)
 
         }
 
@@ -236,6 +255,7 @@ private fun Resolver.resolveStatement(
                     if (receiverArgWithSameName != null) {
                         // this is setter
                         statement.kind = KeywordLikeType.Setter
+                        statement.type = receiverArgWithSameName.type
                         true
                     } else {
                         false
@@ -247,9 +267,9 @@ private fun Resolver.resolveStatement(
 
             // check for constructor
             if (statement.receiver.type == null) {
-                val realI = if (depth == 0) i else currentNode
+//                val realI = if (depth == 0) i else currentNode
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-                resolve(listOf(statement.receiver), 0, realI, previousAndCurrentScope)
+                resolve(listOf(statement.receiver), previousAndCurrentScope)
             }
             val receiverType =
                 statement.receiver.type ?: throw Exception("Can't infer receiver ${statement.receiver.str} type")
@@ -327,38 +347,34 @@ private fun Resolver.resolveStatement(
         }
 
         is MessageSendBinary -> {
-            val realI = if (depth == 0) i else currentNode
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             this.resolve(
                 statement.messages,
-                realI,
-                depth + 1,
                 previousAndCurrentScope
             )
 
             statement.type = statement.messages.last().type
+
         }
 
         is MessageSendKeyword -> {
-            val realI = if (depth == 0) i else currentNode
+//            val realI = if (depth == 0) i else currentNode
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             this.resolve(
                 statement.messages,
-                realI,
-                depth + 1,
+//                realI,
+//                depth + 1,
                 previousAndCurrentScope
             )
             statement.type = statement.messages.last().type
+            resolveForMessageSend(statement)
         }
 
         is MessageSendUnary -> {
-            val realI = if (depth == 0) i else currentNode
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             this.resolve(
                 statement.messages,
-                realI,
-                depth + 1,
                 previousAndCurrentScope
             )
             statement.type = statement.messages.last().type
