@@ -11,7 +11,7 @@ fun resolve(source: String): List<Statement> {
         statements = ast.toMutableList(),
     )
 
-    return resolver.resolve(resolver.statements, 0, 0, mutableMapOf())
+    return resolver.resolve(resolver.statements, mutableMapOf())
 }
 
 
