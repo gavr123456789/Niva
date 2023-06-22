@@ -54,7 +54,7 @@ class MessageSendKeyword(
 
 // binaryMessage | unaryMessage | keywordMessage
 sealed class Message(
-    val receiver: Receiver,
+    var receiver: Receiver,
     val selectorName: String,
     type: Type?,
     token: Token
