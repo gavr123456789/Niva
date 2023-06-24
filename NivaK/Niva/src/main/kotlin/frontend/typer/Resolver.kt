@@ -1,6 +1,6 @@
 package frontend.typer
 
-import frontend.parser.parsing.MessageDeclarationType
+import frontend.meta.TokenType
 import frontend.parser.types.ast.*
 
 typealias TypeName = String
@@ -12,7 +12,7 @@ class Resolver(
     val projects: MutableMap<String, Project> = mutableMapOf(),
 
     // reload when package changed
-    val typeTable: MutableMap<TypeName, MutableList<Type>> = mutableMapOf(),
+    val typeTable: MutableMap<TypeName, Type> = mutableMapOf(),
     val unaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
     val binaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
     val keywordForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
@@ -54,7 +54,13 @@ class Resolver(
                 isPrivate = false,
                 `package` = "common",
                 protocols = mutableListOf()
-            )
+            ),
+            InternalTypes.Project to Type.InternalType(
+                typeName = InternalTypes.Project,
+                isPrivate = false,
+                `package` = "common",
+                protocols = mutableListOf()
+            ),
         )
 
         init {
@@ -73,61 +79,18 @@ class Resolver(
 
     init {
         Resolver.defaultBasicTypes.forEach { k, v ->
-            typeTable[k.name] = mutableListOf(v)
+            typeTable[k.name] = v
         }
 
         val defaultProject = Project()
-        defaultProject.packages["main"] = Package()
-        defaultProject.packages["niva.core"] = Package()
+        defaultProject.packages["common"] = Package("common")
+//        defaultProject.packages["niva.core"] = Package()
         projects[projectName] = defaultProject
     }
 }
 
-fun TypeAST.toType(typeTable: Map<TypeName, MutableList<Type>>): Type {
-    return when (name) {
-        "Int" ->
-            Resolver.defaultBasicTypes[InternalTypes.Int]!!
 
-        "String" ->
-            Resolver.defaultBasicTypes[InternalTypes.String]!!
-
-        "Float" ->
-            Resolver.defaultBasicTypes[InternalTypes.Float]!!
-
-        "Boolean" ->
-            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-
-        "Unit" ->
-            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-
-        else -> {
-            typeTable[name]?.first() ?: throw Exception("type $name not registered")
-        }
-    }
-}
-
-fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, MutableList<Type>>): TypeField {
-    val result = TypeField(
-        name = name,
-        type = type!!.toType(typeTable)
-    )
-    return result
-}
-
-fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, MutableList<Type>>): Type {
-
-    val result = Type.UserType(
-        name = typeName,
-        typeArgumentList = listOf(), // for now it's impossible to declare msg for List<Int>
-        fields = fields.map { it.toTypeField(typeTable) },
-        isPrivate = isPrivate,
-        `package` = packagge,
-        protocols = mutableListOf()
-    )
-
-    return result
-}
-
+// нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
     statements: List<Statement>,
 //    currentNode: Int,
@@ -161,12 +124,15 @@ private fun Resolver.resolveStatement(
 ) {
 
     val resolveForMessageSend = { statement2: MessageSend ->
-        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-        this.resolve(
-            statement2.messages,
-            previousAndCurrentScope
-        )
-        statement2.type = statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+        if (statement2.receiver.str != "Project") {
+            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+            this.resolve(
+                statement2.messages,
+                previousAndCurrentScope
+            )
+            statement2.type =
+                statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+        }
     }
 
     when (statement) {
@@ -201,8 +167,9 @@ private fun Resolver.resolveStatement(
                 throw Exception("type $typeName is already added")
             }
             // if not then add
-            typeTable[typeName] = mutableListOf(statement.toType(currentPackageName, typeTable))
-            println()
+            val newType = statement.toType(currentPackageName, typeTable)
+            typeTable[typeName] = newType
+            addNewType(newType)
         }
 
         is UnionDeclaration -> {}
@@ -211,7 +178,7 @@ private fun Resolver.resolveStatement(
         is MessageDeclarationUnary -> {
             // check if the type already registered
             // if no then error
-            val forType = typeTable[statement.forType.name]?.first()
+            val forType = typeTable[statement.forType.name]
                 ?: throw Exception("type ${statement.forType.name} is not registered")
 
             // if yes, check for register in unaryTable
@@ -279,18 +246,31 @@ private fun Resolver.resolveStatement(
             // Person name: "sas"
             val receiverText = statement.receiver.str
             val q = typeTable[receiverText]
-            if (q == null) {
-                // this is usual message or setter
-                // check for setter
-
+            if (receiverText == "Project") {
+                // this is project setter
+                statement.args.forEach {
+                    if (it.keywordArg.token.kind == TokenType.String) {
+                        val substring = it.keywordArg.token.lexeme.substring(1, it.keywordArg.token.lexeme.count() - 1)
+                        when (it.selectorName) {
+                            "name" ->
+                                currentProjectName = substring
+                            "package" ->
+                                currentPackageName = substring
+                            "protocol" ->
+                                currentProtocolName = substring
+                        }
+                    } else throw Exception("Only string arguments for Project allowed")
+                }
+            }
+            else if (q == null) {
+                // this is the usual message or setter
                 checkForSetter(receiverType)
                 if (statement.kind != KeywordLikeType.Setter) {
                     statement.kind = KeywordLikeType.Keyword
                 }
-
-
             } else {
-                // this is constructor
+                // this is a constructor
+
                 // check that all fields are filled
                 if (receiverType is Type.UserType) {
                     val receiverFields = receiverType.fields
@@ -358,17 +338,14 @@ private fun Resolver.resolveStatement(
         }
 
         is MessageSendKeyword -> {
-//            val realI = if (depth == 0) i else currentNode
-
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            this.resolve(
-                statement.messages,
-//                realI,
-//                depth + 1,
-                previousAndCurrentScope
-            )
-            statement.type = statement.messages.last().type
-            resolveForMessageSend(statement)
+//            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+//            this.resolve(
+//                statement.messages,
+//                previousAndCurrentScope
+//            )
+//            statement.type = statement.messages.last().type
+//
+                resolveForMessageSend(statement)
         }
 
         is MessageSendUnary -> {
@@ -382,7 +359,9 @@ private fun Resolver.resolveStatement(
         }
 
         is IdentifierExpr -> {
-            statement.type = typeTable[statement.str]?.first() ?: previousScope[statement.str]  ?: currentScope[statement.str]!!
+            statement.type = typeTable[statement.str]
+                ?: previousScope[statement.str]
+                ?: currentScope[statement.str]!!
         }
 
         is CodeBlock -> {}
@@ -403,150 +382,46 @@ private fun Resolver.resolveStatement(
     }
 }
 
+fun Resolver.addNewPackageToProject(projectName: String, packageName: String) {
+    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
+    if (p.packages.containsKey(packageName)) {
+        throw Exception("package: $packageName already exists")
+    }
+    val newPackage = Package(packageName)
+    p.packages[packageName] = newPackage
+}
+
+fun Resolver.addNewType(type: Type) {
+    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
+    val pack = p.packages[currentPackageName] ?: throw Exception("there are no such package: $currentPackageName")
+    if (pack.types.containsKey(type.name)) {
+        throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
+    }
+
+    pack.types[type.name] = type
+    typeTable[type.name] = type
+}
+
+fun Resolver.changeProject(newCurrentProject: String) {
+    // clear all current, load project
+}
+fun Resolver.changePackage(newCurrentPackage: String) {
+
+}
+fun Resolver.registerNewMethod(type: Type) {
+    // register method in a current project, package, protocol
+}
+
+fun Resolver.lookForTypeInImportedProjects(): Type {
+    TODO()
+}
+
 fun Resolver.getTypeForIdentifier(
     x: IdentifierExpr,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ): Type =
-   typeTable[x.str]?.first() ?: currentScope[x.str] ?: previousScope[x.str] ?: throw Exception("Can't find type ${x.str}")
-
-
-
-data class MsgSend(
-    val `package`: String,
-    val selector: String,
-    val project: String,
-    val type: MessageDeclarationType
-)
-
-sealed class MessageMetadata(
-    val name: String,
-    val returnType: Type,
-    val msgSends: List<MsgSend>
-)
-
-class UnaryMsgMetaData(
-    name: String,
-    returnType: Type,
-    msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
-
-class BinaryMsgMetaData(
-    name: String,
-    returnType: Type,
-    msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
-
-class KeywordMsgMetaData(
-    name: String,
-    returnType: Type,
-    msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
-
-
-////////////
-
-data class TypeField(
-    val name: String,
-    val type: Type
-)
-
-sealed class Type(
-    val name: String,
-    val `package`: String,
-    val isPrivate: Boolean,
-    val protocols: MutableList<Protocol> = mutableListOf(),
-) {
-
-    class InternalType(
-        typeName: InternalTypes,
-        isPrivate: Boolean = false,
-        `package`: String,
-        protocols: MutableList<Protocol>
-    ) : Type(typeName.name, `package`, isPrivate, protocols)
-
-    class UserType(
-        name: String,
-        val typeArgumentList: List<Type>,
-        val fields: List<TypeField>,
-        isPrivate: Boolean = false,
-        `package`: String,
-        protocols: MutableList<Protocol>
-    ) : Type(name, `package`, isPrivate, protocols)
-
-}
-
-data class Protocol(
-    val unaryMsgs: MutableMap<String, UnaryMsgMetaData> = mutableMapOf(),
-    val binaryMsgs: MutableMap<String, BinaryMsgMetaData> = mutableMapOf(),
-    val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
-)
-
-class Package(
-    // TODO add protocols
-    val types: MutableMap<String, Type> = mutableMapOf(),
-    val usingPackages: MutableList<Package> = mutableListOf()
-)
-
-
-class Project(
-    val packages: MutableMap<String, Package> = mutableMapOf(),
-    val usingProjects: MutableList<Project> = mutableListOf()
-) {
-    init {
-//        packages["NivaCore"] = createNivaCorePackage()
-    }
-}
-
-fun createIntProtocols(
-    intType: Type.InternalType,
-    stringType: Type.InternalType,
-    unitType: Type.InternalType
-): MutableList<Protocol> {
-    val result = mutableListOf<Protocol>()
-
-    val arithmeticProtocol = Protocol(
-        unaryMsgs = mutableMapOf(
-            "str" to UnaryMsgMetaData(
-                name = "str",
-                returnType = stringType
-            ),
-            "echo" to UnaryMsgMetaData(
-                name = "echo",
-                returnType = unitType
-            ),
-            "inc" to UnaryMsgMetaData(
-                name = "inc",
-                returnType = intType
-            ),
-            "dec" to UnaryMsgMetaData(
-                name = "dec",
-                returnType = intType
-            )
-
-        ),
-        binaryMsgs = mutableMapOf(
-            "+" to BinaryMsgMetaData(
-                name = "+",
-                returnType = intType
-            ),
-            "-" to BinaryMsgMetaData(
-                name = "-",
-                returnType = intType
-            ),
-            "*" to BinaryMsgMetaData(
-                name = "*",
-                returnType = intType
-            ),
-            "/" to BinaryMsgMetaData(
-                name = "/",
-                returnType = intType
-            )
-        ),
-        keywordMsgs = mutableMapOf(),
-    )
-    result.add(arithmeticProtocol)
-
-
-    return result
-}
+   typeTable[x.str]
+       ?: currentScope[x.str]
+       ?: previousScope[x.str]
+       ?: throw Exception("Can't find type ${x.str}")

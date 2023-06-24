@@ -90,6 +90,8 @@ fun String.addNivaStd(): String {
 }
 
 
+
+
 fun main(args: Array<String>) {
     val commantd = """
         /usr/lib/jvm/java-17-openjdk/bin/java 
@@ -108,7 +110,7 @@ fun main(args: Array<String>) {
     val source = """
         Int sas = this echo
         1 sas
-        
+
         x = "Hello" + " World" + " from Niva!"
         x echo
         | x count < 5 => x count echo
