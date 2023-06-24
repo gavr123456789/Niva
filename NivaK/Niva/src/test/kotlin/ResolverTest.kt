@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 fun resolve(source: String): List<Statement> {
     val ast = getAst(source)
     val resolver = Resolver(
-        projectName = "sas",
+        projectName = "common",
         statements = ast.toMutableList(),
     )
 
@@ -31,6 +31,7 @@ class ResolverTest {
         val getter = q.messages[0]
         assert(getter.type?.name == "String")
         assert(getter.kind == UnaryMsgKind.Getter)
+
     }
 
     @Test
@@ -98,5 +99,22 @@ class ResolverTest {
         assert(msg.kind == UnaryMsgKind.Getter)
     }
 
+    @Test
+    fun projectSetting() {
+        val source = """
+            Project name: "projName" package: "files" protocol: "path"
+            type Person name: String age: Int
+        """.trimIndent()
 
+        val ktCode = resolve(source)
+        assert(ktCode.count() == 2)
+
+//        val q = ktCode[2] as MessageDeclarationUnary
+//        val firstOfBody = q.body.first() as MessageSendUnary
+//        val msg = firstOfBody.messages[0]
+//        val receiver = msg.receiver
+//        assert(receiver.type?.name == "Person")
+//        assert(receiver.str == "self")
+//        assert(msg.kind == UnaryMsgKind.Getter)
+    }
 }

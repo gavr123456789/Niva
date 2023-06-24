@@ -183,6 +183,14 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     return result
 }
 
+/**
+ * Parses a keyword message declaration, which follows the format:
+ *  - Receiver type, followed by arguments.
+ *  - Optional return type.
+ *  - Body with messages or variable declarations.
+ * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
+ * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
+ */
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
     val receiverTypeNameToken = peek()

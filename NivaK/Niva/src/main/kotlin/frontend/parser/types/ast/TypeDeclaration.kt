@@ -81,5 +81,5 @@ class UnionDeclaration(
 
 @Suppress("EnumEntryName")
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit
+    Int, String, Float, Boolean, Unit, Project
 }
