@@ -1,10 +1,7 @@
 package frontend.typer
 
 import frontend.parser.parsing.MessageDeclarationType
-import frontend.parser.types.ast.InternalTypes
-import frontend.parser.types.ast.TypeAST
-import frontend.parser.types.ast.TypeDeclaration
-import frontend.parser.types.ast.TypeFieldAST
+import frontend.parser.types.ast.*
 
 data class MsgSend(
     val `package`: String,
@@ -37,6 +34,12 @@ class KeywordMsgMetaData(
     msgSends: List<MsgSend> = listOf()
 ) : MessageMetadata(name, returnType, msgSends)
 
+class ConstructorMsgMetaData(
+    name: String,
+    returnType: Type,
+    msgSends: List<MsgSend> = listOf()
+) : MessageMetadata(name, returnType, msgSends)
+
 data class TypeField(
     val name: String,
     val type: Type
@@ -48,27 +51,27 @@ sealed class Type(
     val name: String,
     val `package`: String,
     val isPrivate: Boolean,
-    val protocols: MutableList<Protocol> = mutableListOf(),
+    val protocols: MutableMap<String, Protocol> = mutableMapOf(),
 ) {
 
     sealed class InternalLike(
         typeName: InternalTypes,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol>
     ) : Type(typeName.name, `package`, isPrivate, protocols)
 
     class InternalType(
         typeName: InternalTypes,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : InternalLike(typeName, isPrivate, `package`, protocols)
     class NullableInternalType(
         typeName: InternalTypes,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol>
     ) : InternalLike(typeName, isPrivate, `package`, protocols)
 
     sealed class UserLike(
@@ -77,7 +80,7 @@ sealed class Type(
         val fields: List<TypeField>,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol>
     ) : Type(name, `package`, isPrivate, protocols)
 
     class UserType(
@@ -86,7 +89,7 @@ sealed class Type(
         fields: List<TypeField>,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol>
     ) : UserLike(name, typeArgumentList, fields, isPrivate,`package`, protocols)
 
     class NullableUserType(
@@ -95,12 +98,13 @@ sealed class Type(
         fields: List<TypeField>,
         isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableList<Protocol>
+        protocols: MutableMap<String, Protocol>
     ) : UserLike(name, typeArgumentList, fields, isPrivate,`package`, protocols)
 
 }
 
 data class Protocol(
+    val name: String,
     val unaryMsgs: MutableMap<String, UnaryMsgMetaData> = mutableMapOf(),
     val binaryMsgs: MutableMap<String, BinaryMsgMetaData> = mutableMapOf(),
     val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
@@ -114,13 +118,10 @@ class Package(
 )
 
 class Project(
+    val name: String,
     val packages: MutableMap<String, Package> = mutableMapOf(),
     val usingProjects: MutableList<Project> = mutableListOf()
-) {
-    init {
-//        packages["NivaCore"] = createNivaCorePackage()
-    }
-}
+)
 
 fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
     return when (name) {
@@ -161,8 +162,42 @@ fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, Type>): Ty
         fields = fields.map { it.toTypeField(typeTable) },
         isPrivate = isPrivate,
         `package` = packagge,
-        protocols = mutableListOf()
+        protocols = mutableMapOf()
     )
 
+    return result
+}
+
+
+fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>): UnaryMsgMetaData {
+    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val result = UnaryMsgMetaData(
+        name = this.name,
+        returnType = returnType,
+        )
+    return result
+}
+fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>): BinaryMsgMetaData {
+    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val result = BinaryMsgMetaData(
+        name = this.name,
+        returnType = returnType
+    )
+    return result
+}
+fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>): KeywordMsgMetaData {
+    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val result = KeywordMsgMetaData(
+        name = this.name,
+        returnType = returnType
+    )
+    return result
+}
+fun ConstructorDeclaration.toMessageData(typeTable: MutableMap<TypeName, Type>): ConstructorMsgMetaData {
+    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val result = ConstructorMsgMetaData(
+        name = this.name,
+        returnType = returnType
+    )
     return result
 }

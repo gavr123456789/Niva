@@ -2,6 +2,7 @@ package frontend.typer
 
 import frontend.meta.TokenType
 import frontend.parser.types.ast.*
+import frontend.util.removeDoubleQuotes
 
 typealias TypeName = String
 
@@ -29,37 +30,31 @@ class Resolver(
                 typeName = InternalTypes.Int,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
             InternalTypes.String to Type.InternalType(
                 typeName = InternalTypes.String,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
             InternalTypes.Float to Type.InternalType(
                 typeName = InternalTypes.Float,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
             InternalTypes.Boolean to Type.InternalType(
                 typeName = InternalTypes.Boolean,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
             InternalTypes.Unit to Type.InternalType(
                 typeName = InternalTypes.Unit,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
             InternalTypes.Project to Type.InternalType(
                 typeName = InternalTypes.Project,
                 isPrivate = false,
                 `package` = "common",
-                protocols = mutableListOf()
             ),
         )
 
@@ -71,8 +66,8 @@ class Resolver(
             val unitType = defaultBasicTypes[InternalTypes.Unit]!!
 
 
-            intType.protocols.addAll(createIntProtocols(intType, stringType, unitType))
-            // TODO add default protocols
+            intType.protocols.putAll(createIntProtocols(intType, stringType, unitType))
+            // TODO add default protocols for other types
         }
 
     }
@@ -82,9 +77,16 @@ class Resolver(
             typeTable[k.name] = v
         }
 
-        val defaultProject = Project()
+        val defaultProject = Project("common")
         defaultProject.packages["common"] = Package("common")
-//        defaultProject.packages["niva.core"] = Package()
+        val corePackage = Package("core")
+        defaultProject.packages["core"] = corePackage
+
+        // add all default types to core package
+        defaultBasicTypes.forEach { (k, v) ->
+            corePackage.types[k.name] = v
+        }
+
         projects[projectName] = defaultProject
     }
 }
@@ -93,10 +95,7 @@ class Resolver(
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
     statements: List<Statement>,
-//    currentNode: Int,
-//    depth: Int,
     previousScope: MutableMap<String, Type>,
-    currentSelf: Type = Resolver.defaultBasicTypes[InternalTypes.Unit]!!
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
 
@@ -104,8 +103,6 @@ fun Resolver.resolve(
 
         resolveStatement(
             statement,
-//            currentNode,
-//            depth,
             currentScope,
             previousScope,
             i
@@ -116,14 +113,12 @@ fun Resolver.resolve(
 
 private fun Resolver.resolveStatement(
     statement: Statement,
-//    currentNode: Int,
-//    depth: Int,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     i: Int
 ) {
 
-    val resolveForMessageSend = { statement2: MessageSend ->
+    val resolveTypeForMessageSend = { statement2: MessageSend ->
         if (statement2.receiver.str != "Project") {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             this.resolve(
@@ -132,6 +127,20 @@ private fun Resolver.resolveStatement(
             )
             statement2.type =
                 statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+        } else {
+            // add to current project
+            val keyword = statement2.messages[0] as KeywordMsg
+
+            keyword.args.forEach {
+                if (it.keywordArg.token.kind == TokenType.String) {
+                    val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
+                    when (it.selectorName) {
+                        "name" -> changeProject(substring)
+                        "package" -> changePackage(substring)
+                        "protocol" -> changeProtocol(substring)
+                    }
+                } else throw Exception("Only string arguments for Project allowed")
+            }
         }
     }
 
@@ -155,7 +164,6 @@ private fun Resolver.resolveStatement(
             }
 
             currentScope[statement.name] = valueType
-
         }
 
         is TypeDeclaration -> {
@@ -168,18 +176,16 @@ private fun Resolver.resolveStatement(
             }
             // if not then add
             val newType = statement.toType(currentPackageName, typeTable)
-            typeTable[typeName] = newType
+//            typeTable[typeName] = newType
             addNewType(newType)
         }
 
         is UnionDeclaration -> {}
-
-        // in the top side, like msg declaration, send i, in other case currentNode
-        is MessageDeclarationUnary -> {
+        is MessageDeclaration -> {
             // check if the type already registered
             // if no then error
             val forType = typeTable[statement.forType.name]
-                ?: throw Exception("type ${statement.forType.name} is not registered")
+                    ?: throw Exception("type ${statement.forType.name} is not registered")
 
             // if yes, check for register in unaryTable
             val isUnaryRegistered = unaryForType.containsKey(statement.name)
@@ -195,46 +201,28 @@ private fun Resolver.resolveStatement(
                 }
             }
 
-            // register unary
-            unaryForType[statement.name] = statement
-
-//            val realI = if (depth == 0) i else currentNode
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            previousAndCurrentScope["self"] = forType
-            this.resolve(statement.body, previousAndCurrentScope, forType)
-
-        }
-
-        is MessageDeclarationBinary -> {}
-        is MessageDeclarationKeyword -> {}
-
-        is ConstructorDeclaration -> {}
-
-
-        is KeywordMsg -> {
-            val checkForSetter = { receiverType: Type ->
-                // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
-
-                if (statement.args.count() == 1 && receiverType is Type.UserType) {
-                    val keyArgText = statement.args[0].selectorName
-                    // find receiver arg same as keyArgText
-                    val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
-                    if (receiverArgWithSameName != null) {
-                        // this is setter
-                        statement.kind = KeywordLikeType.Setter
-                        statement.type = receiverArgWithSameName.type
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
+            when (statement) {
+                is ConstructorDeclaration -> TODO()
+                is MessageDeclarationBinary -> TODO()
+                is MessageDeclarationKeyword -> TODO()
+                is MessageDeclarationUnary -> {
+                    // register unary
+                    addNewUnaryMessage(statement)
                 }
             }
 
+            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+            previousAndCurrentScope["self"] = forType
+            this.resolve(statement.body, previousAndCurrentScope)
+
+
+        }
+
+        is KeywordMsg -> {
+
+
             // check for constructor
             if (statement.receiver.type == null) {
-//                val realI = if (depth == 0) i else currentNode
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 resolve(listOf(statement.receiver), previousAndCurrentScope)
             }
@@ -248,21 +236,28 @@ private fun Resolver.resolveStatement(
             val q = typeTable[receiverText]
             if (receiverText == "Project") {
                 // this is project setter
-                statement.args.forEach {
-                    if (it.keywordArg.token.kind == TokenType.String) {
-                        val substring = it.keywordArg.token.lexeme.substring(1, it.keywordArg.token.lexeme.count() - 1)
-                        when (it.selectorName) {
-                            "name" ->
-                                currentProjectName = substring
-                            "package" ->
-                                currentPackageName = substring
-                            "protocol" ->
-                                currentProtocolName = substring
-                        }
-                    } else throw Exception("Only string arguments for Project allowed")
-                }
+                throw Error("We cant get here, type Project are ignored")
             }
             else if (q == null) {
+                val checkForSetter = { receiverType2: Type ->
+                    // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
+
+                    if (statement.args.count() == 1 && receiverType2 is Type.UserType) {
+                        val keyArgText = statement.args[0].selectorName
+                        // find receiver arg same as keyArgText
+                        val receiverArgWithSameName = receiverType2.fields.find { it.name == keyArgText }
+                        if (receiverArgWithSameName != null) {
+                            // this is setter
+                            statement.kind = KeywordLikeType.Setter
+                            statement.type = receiverArgWithSameName.type
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
                 // this is the usual message or setter
                 checkForSetter(receiverType)
                 if (statement.kind != KeywordLikeType.Setter) {
@@ -326,37 +321,8 @@ private fun Resolver.resolveStatement(
             }
         }
 
-        is MessageSendBinary -> {
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            this.resolve(
-                statement.messages,
-                previousAndCurrentScope
-            )
+        is MessageSend -> resolveTypeForMessageSend(statement)
 
-            statement.type = statement.messages.last().type
-
-        }
-
-        is MessageSendKeyword -> {
-//            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-//            this.resolve(
-//                statement.messages,
-//                previousAndCurrentScope
-//            )
-//            statement.type = statement.messages.last().type
-//
-                resolveForMessageSend(statement)
-        }
-
-        is MessageSendUnary -> {
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            this.resolve(
-                statement.messages,
-                previousAndCurrentScope
-            )
-            statement.type = statement.messages.last().type
-
-        }
 
         is IdentifierExpr -> {
             statement.type = typeTable[statement.str]
@@ -382,18 +348,43 @@ private fun Resolver.resolveStatement(
     }
 }
 
-fun Resolver.addNewPackageToProject(projectName: String, packageName: String) {
-    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
-    if (p.packages.containsKey(packageName)) {
-        throw Exception("package: $packageName already exists")
-    }
-    val newPackage = Package(packageName)
-    p.packages[packageName] = newPackage
-}
-
-fun Resolver.addNewType(type: Type) {
+fun Resolver.getCurrentPackage(): Package {
     val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
     val pack = p.packages[currentPackageName] ?: throw Exception("there are no such package: $currentPackageName")
+    return pack
+}
+
+fun Resolver.getCurrentProtocol(typeName: String): Protocol {
+    val pack = getCurrentPackage()
+    val type2 = pack.types[typeName] ?: throw Exception("there are no such type: ${typeName} in package $currentPackageName in project: $currentProjectName")
+    val protocol = type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
+    if (protocol == null) {
+        val newProtocol = Protocol(currentProtocolName)
+        type2.protocols[currentProtocolName] = newProtocol
+        return newProtocol
+    }
+    return protocol
+}
+
+
+
+
+
+
+fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
+    unaryForType[statement.name] = statement // will be reloaded when package changed
+
+    val protocol = getCurrentProtocol(statement.forType.name)
+    val messageData = statement.toMessageData(typeTable)
+    protocol.unaryMsgs[statement.name] = messageData
+
+
+    println()
+}
+
+
+fun Resolver.addNewType(type: Type) {
+    val pack = getCurrentPackage()
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
     }
@@ -402,12 +393,60 @@ fun Resolver.addNewType(type: Type) {
     typeTable[type.name] = type
 }
 
+
 fun Resolver.changeProject(newCurrentProject: String) {
     // clear all current, load project
+    currentProjectName = newCurrentProject
+    // check that there are no such project already
+
+    if (projects[newCurrentProject] != null) {
+        throw Exception("Project with name: $newCurrentProject already exists")
+    }
+    val commonProject = projects["common"] ?: throw Exception("Can't find common project")
+
+
+    projects[newCurrentProject] = Project(
+        name = newCurrentProject,
+        usingProjects = mutableListOf(commonProject)
+    )
+
+    TODO()
 }
+
 fun Resolver.changePackage(newCurrentPackage: String) {
+    currentPackageName = newCurrentPackage
+
+    val currentProject = projects[currentProjectName] ?: throw Exception("Can't find project: $currentProjectName")
+
+    val alreadyExistsPack = currentProject.packages[newCurrentPackage]
+
+    // check that this package not exits already
+    if (alreadyExistsPack != null) {
+        // load table of types
+        typeTable.clear()
+        typeTable.putAll(alreadyExistsPack.types)
+//        throw Exception("package: $newCurrentPackage already exists")
+    } else {
+        // create this new package
+        val pack = Package(
+            packageName = newCurrentPackage
+        )
+        currentProject.packages[newCurrentPackage] = pack
+    }
 
 }
+
+fun Resolver.changeProtocol(protocolName: String) {
+        currentProtocolName = protocolName
+//    val pack = getCurrentPackage()
+//    val type = pack.types[typeName] ?: throw Exception("Can't find $typeName for protocol $protocolName")
+//
+//    val alreadyExistsProtocol = type.protocols[protocolName]
+//    if (alreadyExistsProtocol == null) {
+//        type.protocols[protocolName] =  Protocol(name = protocolName)
+//    }
+}
+
 fun Resolver.registerNewMethod(type: Type) {
     // register method in a current project, package, protocol
 }

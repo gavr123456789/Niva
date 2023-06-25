@@ -1,6 +1,6 @@
-import codogen.codogenKt
 import frontend.parser.types.ast.*
 import frontend.typer.Resolver
+import frontend.typer.Type
 import frontend.typer.resolve
 import org.junit.jupiter.api.Test
 
@@ -77,6 +77,7 @@ class ResolverTest {
         assert(msg.kind == KeywordLikeType.Setter)
     }
 
+
     @Test
     fun selfCall() {
         val source = """
@@ -102,19 +103,75 @@ class ResolverTest {
     @Test
     fun projectSetting() {
         val source = """
-            Project name: "projName" package: "files" protocol: "path"
+            Project package: "files" protocol: "path"
             type Person name: String age: Int
         """.trimIndent()
 
-        val ktCode = resolve(source)
-        assert(ktCode.count() == 2)
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        val proj = resolver.projects["common"]!!
+        val pack = proj.packages["files"]!!
+        val protocol = (pack.types["Person"]!!) as Type.UserType //!!.protocols["path"]!!
 
-//        val q = ktCode[2] as MessageDeclarationUnary
-//        val firstOfBody = q.body.first() as MessageSendUnary
-//        val msg = firstOfBody.messages[0]
-//        val receiver = msg.receiver
-//        assert(receiver.type?.name == "Person")
-//        assert(receiver.str == "self")
-//        assert(msg.kind == UnaryMsgKind.Getter)
+        assert(resolver.currentProtocolName == "path")
+        assert(resolver.currentPackageName == "files")
+        assert(pack.packageName == "files")
+        assert(protocol.fields[0].name == "name")
+        assert(protocol.fields[1].name == "age")
+    }
+
+    @Test
+    fun defaultTypesInCorePackage() {
+        val resolver = Resolver(
+            projectName = "common",
+            statements = mutableListOf()
+        )
+
+        val q = resolver.projects["common"]!!
+        val w = q.packages["core"]!!
+        val e = w.types
+        assert(e["Int"] != null)
+        assert(e["String"] != null)
+        assert(e["Float"] != null)
+        assert(e["Boolean"] != null)
+        assert(e["Unit"] != null)
+        assert(e["Project"] != null)
+
+    }
+
+    @Test
+    fun registerUnary() {
+
+        val source = """
+            Project package: "files" protocol: "path"
+            type Person name: String age: Int
+            Person filePath -> Unit = [1 echo]
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+
+        assert(statements.count() == 3)
+        assert(resolver.currentPackageName == "files")
+        assert(resolver.currentProjectName == "projName")
+        assert(resolver.currentProtocolName == "path")
+
+        val proj = resolver.projects["projName"]!!
+        val pack = proj.packages["files"]!!
+        val protocol = pack.types["Person"]!!.protocols["path"]!!
+        val unary = protocol.unaryMsgs["filePath"]!!
+        assert(unary.name == "filePath")
+
+
+
     }
 }

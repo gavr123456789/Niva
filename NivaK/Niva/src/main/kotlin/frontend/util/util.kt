@@ -13,6 +13,8 @@ fun String.capitalizeFirstLetter(): String {
     return result
 }
 
+fun String.removeDoubleQuotes(): String = this.substring(1, this.count() - 1)
+
 fun String.isSimpleTypes(): InternalTypes? {
     return when (this) {
         "int" -> InternalTypes.Int
