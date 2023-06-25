@@ -308,7 +308,7 @@ private fun Resolver.resolveStatement(
                 is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
                 is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
             }
-            val receiverType = receiver.type
+            val receiverType = receiver.type!!
             // check for getter
             if (receiverType is Type.UserType) {
 
@@ -318,7 +318,14 @@ private fun Resolver.resolveStatement(
                     statement.kind = UnaryMsgKind.Getter
                     statement.type = fieldWithSameName.type
                 }
+            } else {
+                // find this message
+                val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName)
+                statement.kind = UnaryMsgKind.Unary
+                statement.type = messageReturnType
             }
+
+            println()
         }
 
         is MessageSend -> resolveTypeForMessageSend(statement)
@@ -346,6 +353,18 @@ private fun Resolver.resolveStatement(
 
         }
     }
+}
+
+private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
+//    val currPackage = getCurrentPackage()
+//    currPackage.types
+    receiverType.protocols.forEach { (k, v) ->
+        val q = v.unaryMsgs[selectorName]
+        if (q != null) {
+            return q.returnType
+        }
+    }
+    throw Error("Cant find unary message: $selectorName")
 }
 
 fun Resolver.getCurrentPackage(): Package {
