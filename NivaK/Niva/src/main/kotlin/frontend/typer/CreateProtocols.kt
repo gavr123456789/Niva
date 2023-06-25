@@ -4,10 +4,11 @@ fun createIntProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
     unitType: Type.InternalType
-): MutableList<Protocol> {
-    val result = mutableListOf<Protocol>()
+): MutableMap<String, Protocol> {
+    val result = mutableMapOf<String, Protocol>()
 
     val arithmeticProtocol = Protocol(
+        name = "arithmetic",
         unaryMsgs = mutableMapOf(
             "str" to UnaryMsgMetaData(
                 name = "str",
@@ -47,8 +48,6 @@ fun createIntProtocols(
         ),
         keywordMsgs = mutableMapOf(),
     )
-    result.add(arithmeticProtocol)
-
-
+    result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }
