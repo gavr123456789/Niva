@@ -162,10 +162,10 @@ class ResolverTest {
 
         assert(statements.count() == 3)
         assert(resolver.currentPackageName == "files")
-        assert(resolver.currentProjectName == "projName")
+        assert(resolver.currentProjectName == "common")
         assert(resolver.currentProtocolName == "path")
 
-        val proj = resolver.projects["projName"]!!
+        val proj = resolver.projects["common"]!!
         val pack = proj.packages["files"]!!
         val protocol = pack.types["Person"]!!.protocols["path"]!!
         val unary = protocol.unaryMsgs["filePath"]!!
