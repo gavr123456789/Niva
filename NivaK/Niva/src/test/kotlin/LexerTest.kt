@@ -127,7 +127,7 @@ int to: x = [
 
     @Test
     fun brackets() {
-        check("{} () []", listOf(OpenParen, CloseParen, OpenBrace, CloseBrace, OpenBracket, CloseBracket, EndOfFile))
+        check("{} () []", listOf(OpenBrace, CloseBrace, OpenParen, CloseParen, OpenBracket, CloseBracket, EndOfFile))
     }
 
     @Test
@@ -148,6 +148,12 @@ int to: x = [
         check(". ; , : ", listOf(Dot, Semicolon, Comma, Colon, EndOfFile))
     }
 
+    @Test
+    fun pipeOperator() {
+        check("|>", listOf(PipeOperator, EndOfFile))
+        check("|||", listOf(Pipe, Pipe, Pipe, EndOfFile))
+    }
+
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, "sas")
 //        lexer.fillSymbolTable()
@@ -156,8 +162,5 @@ int to: x = [
         if (showTokens) {
             println("$result")
         }
-//        if (tokens != result) {
-//            throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
-//        }
     }
 }

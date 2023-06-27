@@ -90,8 +90,6 @@ fun String.addNivaStd(): String {
 }
 
 
-
-
 fun main(args: Array<String>) {
     val commantd = """
         /usr/lib/jvm/java-17-openjdk/bin/java 

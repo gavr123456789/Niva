@@ -3,13 +3,13 @@ fun main() {
     fun Int.sas() = this.echo()
 
     1.sas()
-    val x = "Hello" + " World" + " from Niva!"
+    val x = ++
     x.echo()
-    if (x.count() < 5) {
+    if (x.count() <) {
         x.count().echo()
-    } else if (x.count() == 22) {
-        val y = x.count() + 20
-        y.echo()
+    } else if (x.count() ==) {
+        val y = x.count() +
+                y.echo()
 
     } else {
         "count < 10".echo()

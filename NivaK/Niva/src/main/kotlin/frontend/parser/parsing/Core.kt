@@ -95,10 +95,15 @@ fun Parser.match(kind: TokenType) =
         false
     }
 
+fun Parser.checkIdentifier(): Boolean {
+    val tok = peek()
+    return tok.isIdentifier()
+}
+
 fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
     val tok = peek()
 
-    return if (tok.isIdentifier() || tok.kind == TokenType.NullableIdentifier) {
+    return if (tok.isIdentifier()) {
         step()
         tok
     } else {
