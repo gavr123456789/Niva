@@ -51,7 +51,7 @@ class ResolverTest {
         assert(value.receiver.type?.name == "Person")
 
         val message = value.messages[0]
-        assert(message.kind == KeywordLikeType.Constructor)
+        assert((message as KeywordMsg).kind == KeywordLikeType.Constructor)
         assert(message.type?.name == "Person")
     }
 
@@ -60,7 +60,7 @@ class ResolverTest {
         val source = """
             type Person name: String age: Int
             person = Person name: "sas" age: 5
-            Person sas = [
+            Person sas -> Unit = [
               self name: "sus"
             ]
         """.trimIndent()
@@ -74,7 +74,7 @@ class ResolverTest {
         val receiver = msg.receiver
         assert(receiver.type?.name == "Person")
         assert(receiver.str == "self")
-        assert(msg.kind == KeywordLikeType.Setter)
+        assert((msg as KeywordMsg).kind == KeywordLikeType.Setter)
     }
 
 
@@ -83,7 +83,7 @@ class ResolverTest {
         val source = """
             type Person name: String age: Int
             person = Person name: "sas" age: 5
-            Person sas = [
+            Person sas -> Unit = [
               self name
             ]
         """.trimIndent()

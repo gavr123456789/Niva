@@ -37,7 +37,7 @@ class MessageSendUnary(
 
 class MessageSendBinary(
     receiver: Receiver,
-    override val messages: List<BinaryMsg>,
+    override val messages: List<Message>, // can be unary after keyword
     inBracket: Boolean,
     type: Type?,
     token: Token
@@ -45,7 +45,7 @@ class MessageSendBinary(
 
 class MessageSendKeyword(
     receiver: Receiver,
-    override val messages: List<KeywordMsg>,
+    override val messages: List<Message>, // can be unary or binary after keyword
     inBracket: Boolean,
     type: Type?,
     token: Token
@@ -138,6 +138,7 @@ class KeywordMsg(
 enum class UnaryMsgKind {
     Unary, Getter
 }
+
 class UnaryMsg(
     receiver: Receiver,
     selectorName: String,

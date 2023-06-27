@@ -668,6 +668,23 @@ class ParserTest {
         val varDecl = ast[0] as VarDeclaration
     }
 
+    @Test
+    fun pipeOperator() {
+        val source = """
+        1 to: 2 |> to: 3
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun pipeOperator2() {
+        val source = """
+        1 + 1 |> inc
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun bracketExpression() {
 //

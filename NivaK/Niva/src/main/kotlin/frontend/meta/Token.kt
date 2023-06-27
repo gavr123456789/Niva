@@ -13,6 +13,7 @@ enum class TokenType {
     ReturnArrow, // -> for return types
 
     Pipe, // |
+    PipeOperator, // |>
 
     Then, // =>
     Switch, // |
