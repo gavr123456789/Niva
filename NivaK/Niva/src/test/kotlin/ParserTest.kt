@@ -671,7 +671,7 @@ class ParserTest {
     @Test
     fun pipeOperator() {
         val source = """
-        1 to: 2 |> to: 3
+        1 to: 2 |> from: 3
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
