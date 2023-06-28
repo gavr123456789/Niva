@@ -30,7 +30,7 @@ class ResolverTest {
 
         val getter = q.messages[0]
         assert(getter.type?.name == "String")
-        assert(getter.kind == UnaryMsgKind.Getter)
+        assert((getter as UnaryMsg).kind == UnaryMsgKind.Getter)
 
     }
 
@@ -97,7 +97,7 @@ class ResolverTest {
         val receiver = msg.receiver
         assert(receiver.type?.name == "Person")
         assert(receiver.str == "self")
-        assert(msg.kind == UnaryMsgKind.Getter)
+        assert((msg as UnaryMsg).kind == UnaryMsgKind.Getter)
     }
 
     @Test

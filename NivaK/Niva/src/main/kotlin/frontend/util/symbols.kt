@@ -20,7 +20,7 @@ fun Lexer.fillSymbolTable() {
         "." to TokenType.Dot,
         "," to TokenType.Comma,
         ":" to TokenType.Colon,
-        ";" to TokenType.Semicolon,
+        ";" to TokenType.Cascade,
 
         "|" to TokenType.Switch,
         "|=>" to TokenType.Else,
