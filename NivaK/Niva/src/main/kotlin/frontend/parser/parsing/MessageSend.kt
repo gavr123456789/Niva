@@ -69,19 +69,22 @@ fun Parser.binaryMessagesMatching(
     return binaryMessages
 }
 
-fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null, usePipe: Boolean = true): MessageSend {
-    val receiver: Receiver = customReceiver ?: receiver()
+fun Parser.unaryOrBinary(
+    inBrackets: Boolean,
+    customReceiver: Receiver? = null,
+    parsePipeAndCascade: Boolean = true
+): MessageSend {
+    var wasPipe = false
+    var wasCascade = false
+
+    val firstReceiver: Receiver = customReceiver ?: receiver()
 
 
     // 3 ^inc inc + 2 dec dec + ...
-    val unaryMessagesForReceiver = unaryMessagesMatching(receiver)
-
-//    if (match(TokenType.PipeOperator)) {
-//        error("It's useless, unary always evaluates first")
-//    }
+    val unaryMessages = unaryMessagesMatching(firstReceiver)
 
     // 3 inc inc^ + 2 dec dec + ...
-    var binaryMessages: List<Message> = binaryMessagesMatching(receiver, unaryMessagesForReceiver)
+    var binaryMessages: List<Message> = binaryMessagesMatching(firstReceiver, unaryMessages)
 
 
     // 1 inc |> inc useless!
@@ -90,7 +93,11 @@ fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null, 
 
     // Pipe operator
     // 1 + 2 |> inc inc inc
-    if (usePipe && match(TokenType.PipeOperator)) {
+    if (parsePipeAndCascade && match(TokenType.PipeOperator)) {
+        wasPipe = true
+        if (wasCascade) {
+            error("Dont use cascade with pipe operator, better create different variables")
+        }
         if (check(TokenType.BinarySymbol)) {
             // binary after binary
             error("It's useless, binary always evaluates after another binary")
@@ -101,19 +108,46 @@ fun Parser.unaryOrBinary(inBrackets: Boolean, customReceiver: Receiver? = null, 
         }
     }
 
+    var cascadedMsgs = mutableListOf<Message>()
+    // Cascade operator
+    while (parsePipeAndCascade && match(TokenType.Cascade)) {
+        wasCascade = true
+        if (wasPipe) {
+            error("Dont use pipe with cascade operator, better create different variables")
+        }
+        val tok = peek()
+        val kind = tok.kind
+        when {
+            check(TokenType.BinarySymbol) -> {
+                val binary = binaryMessagesMatching(firstReceiver, mutableListOf())
+                cascadedMsgs.addAll(binary)
+            }
+
+            check(TokenType.Identifier) && check(TokenType.Colon, 1) -> {
+                val keyword = keywordMessageParsing(false, firstReceiver)
+                cascadedMsgs.add(keyword)
+            }
+
+            check(TokenType.Identifier) -> {
+                val unary = unaryMessagesMatching(firstReceiver)
+                cascadedMsgs.addAll(unary)
+            }
+        }
+    }
+
 
     // if there is no binary message, that's mean there is only unary
     if (binaryMessages.isEmpty()) {
         return MessageSendUnary(
-            receiver,
-            messages = unaryMessagesForReceiver,
+            firstReceiver,
+            messages = unaryMessages + cascadedMsgs,
             inBrackets,
             null,
-            receiver.token
+            firstReceiver.token
         )
     }
     // its binary msg
-    return MessageSendBinary(receiver, binaryMessages, inBrackets, null, receiver.token)
+    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs, inBrackets, null, firstReceiver.token)
 }
 
 
@@ -143,57 +177,7 @@ fun Parser.keyword(
 
 
     val keyColonCycle = {
-        val stringBuilder = StringBuilder()
-
-        val keyWordArguments = mutableListOf<KeywordArgAndItsMessages>()
-        var firstCycle = true
-        do {
-            val keywordPart = matchAssert(TokenType.Identifier, "Identifier expected inside keyword message send")
-            matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
-            // x from: ^3 inc to: 2 inc
-            // x from: 3 ^inc to: 2 inc
-
-
-            // trying to eat unary or binary, if there are non, then we got receiver
-            val unaryOrBinaryForArgument =
-                unaryOrBinary(inBrackets, null, false) // Тут может понядобится все таки передать ресивер
-            val keyArg = unaryOrBinaryForArgument.receiver
-
-
-            // making fun name camelCase
-            stringBuilder.append(
-                if (firstCycle) keywordPart.lexeme
-                else keywordPart.lexeme.capitalizeFirstLetter()
-            )
-
-
-            val isUnaryOrIsBinary =
-                unaryOrBinaryForArgument is MessageSendUnary || unaryOrBinaryForArgument is MessageSendBinary
-            val unaryOrBinaryMsgForArg =
-                if (isUnaryOrIsBinary && unaryOrBinaryForArgument.messages.isNotEmpty()) unaryOrBinaryForArgument.messages
-                else null
-
-
-            val x = KeywordArgAndItsMessages(
-                selectorName = keywordPart.lexeme,
-                keywordArg = keyArg,
-                unaryOrBinaryMsgsForArg = unaryOrBinaryMsgForArg
-            )
-
-            keyWordArguments.add(x)
-
-            // if the keyword was split to 2 lines
-            if (check(TokenType.EndOfLine)) {
-                if (check(TokenType.EndOfLine) &&
-                    check(TokenType.Identifier, 1) &&
-                    check(TokenType.Colon, 2)
-                )
-                    step()
-            }
-            firstCycle = false
-        } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
-        val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
-        keywordMsg
+        keywordMessageParsing(inBrackets, receiver)
     }
 
     val w = mutableListOf<Message>()
@@ -210,4 +194,61 @@ fun Parser.keyword(
         null,
         receiver.token
     )
+}
+
+fun Parser.keywordMessageParsing(
+    inBrackets: Boolean,
+    receiver: Receiver
+): KeywordMsg {
+    val stringBuilder = StringBuilder()
+
+    val keyWordArguments = mutableListOf<KeywordArgAndItsMessages>()
+    var firstCycle = true
+    do {
+        val keywordPart = matchAssert(TokenType.Identifier, "Identifier expected inside keyword message send")
+        matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
+        // x from: ^3 inc to: 2 inc
+        // x from: 3 ^inc to: 2 inc
+
+
+        // trying to eat unary or binary, if there are non, then we got receiver
+        val unaryOrBinaryForArgument =
+            unaryOrBinary(inBrackets, null, false) // Тут может понядобится все таки передать ресивер
+        val keyArg = unaryOrBinaryForArgument.receiver
+
+
+        // making fun name camelCase
+        stringBuilder.append(
+            if (firstCycle) keywordPart.lexeme
+            else keywordPart.lexeme.capitalizeFirstLetter()
+        )
+
+
+        val isUnaryOrIsBinary =
+            unaryOrBinaryForArgument is MessageSendUnary || unaryOrBinaryForArgument is MessageSendBinary
+        val unaryOrBinaryMsgForArg =
+            if (isUnaryOrIsBinary && unaryOrBinaryForArgument.messages.isNotEmpty()) unaryOrBinaryForArgument.messages
+            else null
+
+
+        val x = KeywordArgAndItsMessages(
+            selectorName = keywordPart.lexeme,
+            keywordArg = keyArg,
+            unaryOrBinaryMsgsForArg = unaryOrBinaryMsgForArg
+        )
+
+        keyWordArguments.add(x)
+
+        // if the keyword was split to 2 lines
+        if (check(TokenType.EndOfLine)) {
+            if (check(TokenType.EndOfLine) &&
+                check(TokenType.Identifier, 1) &&
+                check(TokenType.Colon, 2)
+            )
+                step()
+        }
+        firstCycle = false
+    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+    val keywordMsg = KeywordMsg(receiver, stringBuilder.toString(), null, receiver.token, keyWordArguments)
+    return keywordMsg
 }

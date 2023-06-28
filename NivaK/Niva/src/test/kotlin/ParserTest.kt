@@ -671,7 +671,7 @@ class ParserTest {
     @Test
     fun pipeOperator() {
         val source = """
-        1 to: 2 |> from: 3
+        1 to: 2 |> from: 3 |> kek: 5
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
@@ -680,10 +680,23 @@ class ParserTest {
     @Test
     fun pipeOperator2() {
         val source = """
-        1 + 1 |> inc
+        1 + 1 |> inc 
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
+    }
+
+
+    @Test
+    fun cascadeOperator() {
+        val source = """
+        1 inc ; + 2; dec; + 5; from: "sas"
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSend
+        assert(q.messages.count() == 5)
+
     }
 //    @Test
 //    fun bracketExpression() {

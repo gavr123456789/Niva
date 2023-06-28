@@ -145,7 +145,7 @@ int to: x = [
 
     @Test
     fun punctuation() {
-        check(". ; , : ", listOf(Dot, Semicolon, Comma, Colon, EndOfFile))
+        check(". ; , : ", listOf(Dot, Cascade, Comma, Colon, EndOfFile))
     }
 
     @Test

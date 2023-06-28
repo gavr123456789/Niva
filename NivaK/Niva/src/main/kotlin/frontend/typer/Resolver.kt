@@ -125,10 +125,14 @@ private fun Resolver.resolveStatement(
                 statement2.messages,
                 previousAndCurrentScope
             )
+
+            // TODO check then return parameter of each send match the next input parameter
             statement2.type =
                 statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+
         } else {
-            // add to current project
+            // add to the current project
+            assert(statement2.messages.count() == 1)
             val keyword = statement2.messages[0] as KeywordMsg
 
             keyword.args.forEach {
@@ -167,16 +171,8 @@ private fun Resolver.resolveStatement(
         }
 
         is TypeDeclaration -> {
-            val typeName = statement.typeName
-            // check if it was already added
-            val isAlreadyAdded = typeTable.containsKey(typeName)
-            // if it was then error
-            if (isAlreadyAdded) {
-                throw Exception("type $typeName is already added")
-            }
             // if not then add
             val newType = statement.toType(currentPackageName, typeTable)
-//            typeTable[typeName] = newType
             addNewType(newType)
         }
 
@@ -213,8 +209,9 @@ private fun Resolver.resolveStatement(
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             previousAndCurrentScope["self"] = forType
-            this.resolve(statement.body, previousAndCurrentScope)
+            val body = this.resolve(statement.body, previousAndCurrentScope)
 
+            // TODO check that return type is the same as declared return type, or if it not declared -> assign it
 
         }
 

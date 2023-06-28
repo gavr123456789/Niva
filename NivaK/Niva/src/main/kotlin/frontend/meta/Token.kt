@@ -15,6 +15,7 @@ enum class TokenType {
     Pipe, // |
     PipeOperator, // |>
 
+
     Then, // =>
     Switch, // |
     Else, // |=>
@@ -28,7 +29,7 @@ enum class TokenType {
     OpenParenHash, // #(
 
     // punctuation
-    Dot, Semicolon, Comma, Colon, Apostrophe,// . ; , `
+    Dot, Cascade, Comma, Colon, Apostrophe,// . ; , `
 
 
     EndOfFile,

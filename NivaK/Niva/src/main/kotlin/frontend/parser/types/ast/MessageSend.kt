@@ -29,7 +29,7 @@ sealed class MessageSend(
 
 class MessageSendUnary(
     receiver: Receiver,
-    override val messages: List<UnaryMsg>,
+    override val messages: List<Message>,
     inBracket: Boolean,
     type: Type?,
     token: Token
