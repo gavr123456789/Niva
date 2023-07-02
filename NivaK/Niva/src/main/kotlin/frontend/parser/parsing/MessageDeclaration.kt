@@ -25,7 +25,12 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
     try {
         val q = unaryOrBinary(false)
 
-        val nextIsKeywordSend = { check(TokenType.Identifier) && check(TokenType.Colon, 1) }
+        val nextIsKeywordSend = {
+            val q = check(TokenType.Identifier)
+            val w = check(TokenType.Colon, 1)
+//            check(TokenType.Identifier) && check(TokenType.Colon, 1)
+            checkForKeyword()
+        }
 
         when (q) {
             is MessageSendUnary, is MessageSendBinary -> {

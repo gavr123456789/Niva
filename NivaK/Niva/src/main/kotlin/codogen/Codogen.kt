@@ -36,7 +36,7 @@ fun getStringFromDeclaration(statement: Statement, ident: Int): String = buildSt
 fun Expression.generateExpression(): String {
     return when (this) {
         is MessageSend -> this.generateMessageCall()
-        is IdentifierExpr -> this.str
+        is IdentifierExpr -> this.name
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"
         is LiteralExpression.FloatExpr -> this.str

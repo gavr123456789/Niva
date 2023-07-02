@@ -56,6 +56,7 @@ class MessageSendKeyword(
 sealed class Message(
     var receiver: Receiver,
     val selectorName: String,
+    val path: List<String>,
     type: Type?,
     token: Token
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
@@ -68,9 +69,10 @@ class BinaryMsg(
     token: Token,
     val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
+    path: List<String>,
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-) : Message(receiver, selectorName, type, token)
+) : Message(receiver, selectorName, path, type, token)
 
 data class KeywordArgAndItsMessages(
     val selectorName: String,
@@ -103,8 +105,9 @@ class KeywordMsg(
     type: Type?,
     token: Token,
     val args: List<KeywordArgAndItsMessages>,
-    var kind: KeywordLikeType = KeywordLikeType.Keyword
-) : Message(receiver, selectorName, type, token) {
+    path: List<String>,
+    var kind: KeywordLikeType = KeywordLikeType.Keyword,
+) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
         val receiverName = receiver
         return "KeywordCall($receiverName ${args.map { it.toString() }})"
@@ -142,10 +145,11 @@ enum class UnaryMsgKind {
 class UnaryMsg(
     receiver: Receiver,
     selectorName: String,
+    identifier: List<String>,
     type: Type?,
     token: Token,
     var kind: UnaryMsgKind = UnaryMsgKind.Unary
-) : Message(receiver, selectorName, type, token)
+) : Message(receiver, selectorName, identifier, type, token)
 
 //class GetterMsg(
 //    receiver: Receiver,
