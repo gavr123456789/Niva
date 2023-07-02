@@ -25,7 +25,8 @@ sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, l
 }
 
 class IdentifierExpr(
-    name: String,
+    val name: String,
+    val names: List<String>,
     type: TypeAST?,
     token: Token,
 //    val depth: Int,

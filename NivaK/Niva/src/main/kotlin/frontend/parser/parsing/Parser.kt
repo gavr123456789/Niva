@@ -9,13 +9,23 @@ data class Module(val name: String, var loaded: Boolean)
 
 fun Parser.identifierMayBeTyped(): IdentifierExpr {
     val x = step()
+    val dotMatched = match(TokenType.Dot)
+    val listOfIdentifiersPath = mutableListOf<String>(x.lexeme)
+    if (dotMatched) {
+        do {
+            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot")
+            listOfIdentifiersPath.add(q.lexeme)
+        } while (match(TokenType.Dot))
+    }
+
+
     val isTyped = check(TokenType.DoubleColon)
     return if (isTyped) {
         step() // skip double colon
         val type = parseType()
-        IdentifierExpr(x.lexeme, type, x)
+        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
     } else {
-        IdentifierExpr(x.lexeme, null, x) // look for type in table
+        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x) // look for type in table
     }
 }
 
@@ -142,6 +152,8 @@ fun Parser.statement(): Statement {
 
 
 fun Parser.statementWithEndLine(): Statement {
+    while (match(TokenType.EndOfLine)) {
+    }
     val result = this.statement()
 //    match(TokenType.EndOfLine)
     while (match(TokenType.EndOfLine)) {
