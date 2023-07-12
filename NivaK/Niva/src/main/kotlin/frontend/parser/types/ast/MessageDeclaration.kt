@@ -12,7 +12,7 @@ sealed class MessageDeclaration(
     val returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : Statement(token, isPrivate, pragmas)
+) : Declaration(token, isPrivate, pragmas)
 
 class MessageDeclarationUnary(
     name: String,

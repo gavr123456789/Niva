@@ -21,14 +21,24 @@ sealed class Statement(
     }
 }
 
-sealed class Metadata()
+sealed class Declaration(
+    token: Token,
+    isPrivate: Boolean,
+    pragmas: List<Pragma>,
+) : Statement(token, isPrivate, pragmas) {
+    override fun toString(): String {
+        return "Declaration(${token.lexeme})"
+    }
+}
+
+//sealed class Metadata()
 
 sealed class Expression(
     var type: Type? = null,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
-    metadata: Metadata? = null
+//    metadata: Metadata? = null
 ) : Statement(token, isPrivate, pragmas)
 
 

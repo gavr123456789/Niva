@@ -18,6 +18,8 @@ class Resolver(
     val binaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
     val keywordForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
 
+    val mainStatements: MutableList<Statement> = mutableListOf(),
+
 //    var currentSelf: Type = Resolver.defaultBasicTypes[InternalTypes.Unit]!!,
 
     var currentProjectName: String = "common",
@@ -173,7 +175,7 @@ private fun Resolver.resolveStatement(
         is TypeDeclaration -> {
             // if not then add
             val newType = statement.toType(currentPackageName, typeTable)
-            addNewType(newType)
+            addNewType(newType, statement)
         }
 
         is UnionDeclaration -> {}
@@ -399,11 +401,13 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
 }
 
 
-fun Resolver.addNewType(type: Type) {
+fun Resolver.addNewType(type: Type, statement: TypeDeclaration) {
     val pack = getCurrentPackage()
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
     }
+
+    pack.declarations.add(statement)
 
     pack.types[type.name] = type
     typeTable[type.name] = type
