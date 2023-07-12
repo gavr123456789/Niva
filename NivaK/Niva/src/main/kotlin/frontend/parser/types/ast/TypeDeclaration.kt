@@ -62,7 +62,7 @@ class TypeDeclaration(
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Statement(token, isPrivate, pragmas), ITypeDeclaration
+) : Declaration(token, isPrivate, pragmas), ITypeDeclaration
 
 class UnionBranch(
     override val typeName: String,
@@ -77,9 +77,9 @@ class UnionDeclaration(
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Statement(token, isPrivate, pragmas), ITypeDeclaration
+) : Declaration(token, isPrivate, pragmas), ITypeDeclaration
 
-@Suppress("EnumEntryName")
+
 enum class InternalTypes {
     Int, String, Float, Boolean, Unit, Project
 }

@@ -1,0 +1,60 @@
+<component name="libraryTable">
+  <library name="Permanent Script Dependencies">
+    <CLASSES>
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlinx-serialization-core-jvm-1.4.1.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-jupyter-api-0.11.0-381.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-jupyter-common-dependencies-0.11.0-381.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/http4k-core-4.34.3.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlinx-serialization-json-jvm-1.4.1.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-stdlib-jdk7-1.8.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/httpcore5-h2-5.2.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-jupyter-lib-0.11.0-381.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-stdlib-jdk8-1.8.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/httpcore5-5.2.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/slf4j-api-1.7.36.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/httpclient5-5.2.1.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-stdlib-common-1.8.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/kotlin-stdlib-1.8.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/annotations-13.0.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/ideLib/http4k-client-apache-4.34.3.0.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/plotlykt-jupyter/0.5.3/plotlykt-jupyter-0.5.3.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/plotlykt-core-jvm/0.5.3/plotlykt-core-jvm-0.5.3.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/dataforge-meta-jvm/0.6.1/dataforge-meta-jvm-0.6.1.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-serialization-core-jvm/1.4.1/kotlinx-serialization-core-jvm-1.4.1.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-serialization-json-jvm/1.4.1/kotlinx-serialization-json-jvm-1.4.1.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-html-jvm/0.8.0/kotlinx-html-jvm-0.8.0.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.20/kotlin-stdlib-common-1.8.20.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/1.8.20/kotlin-stdlib-1.8.20.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20.jar" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-stdlib-1.8.20-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-jupyter-lib-0.11.0-381-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlinx-serialization-core-1.4.1-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlinx-serialization-core-jvm-1.4.1-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-reflect-1.8.20-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlinx-serialization-json-jvm-1.4.1-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/http4k-client-apache-4.34.3.0-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/httpcore5-h2-5.2-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-jupyter-common-dependencies-0.11.0-381-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlinx-serialization-json-1.4.1-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-stdlib-jdk8-1.8.0-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/httpclient5-5.2.1-sources.jar" />
+      <root url="file://$USER_HOME$/.cache/JetBrains/IntelliJIdea2023.1/kotlin-jupyter/kernelProcess/libSources/kotlin-jupyter-api-0.11.0-381-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/plotlykt-jupyter/0.5.3/plotlykt-jupyter-0.5.3-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/plotlykt-core-jvm/0.5.3/plotlykt-core-jvm-0.5.3-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/space/kscience/dataforge-meta-jvm/0.6.1/dataforge-meta-jvm-0.6.1-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-serialization-core-jvm/1.4.1/kotlinx-serialization-core-jvm-1.4.1-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-serialization-json-jvm/1.4.1/kotlinx-serialization-json-jvm-1.4.1-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlinx/kotlinx-html-jvm/0.8.0/kotlinx-html-jvm-0.8.0-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.20/kotlin-stdlib-common-1.8.20-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/1.8.20/kotlin-stdlib-1.8.20-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar" />
+      <root url="file://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20-sources.jar" />
+    </SOURCES>
+  </library>
+</component>

@@ -6,6 +6,7 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
+import frontend.util.addIndentationForEachString
 import frontend.util.fillSymbolTable
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -92,39 +93,39 @@ fun String.addNivaStd(): String {
 
 fun main(args: Array<String>) {
 
-//    val commantd = """
-//        /usr/lib/jvm/java-17-openjdk/bin/java
-//        -javaagent:/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/lib/idea_rt.jar=46715
-//        :/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/bin
-//        -Dfile.encoding=UTF-8
-//        -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva
-//        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar
-//        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar
-//        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar
-//        :/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar
-//        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
-//
-//    """.trimIndent()
-//
-//    val source = """
-//        Int sas = this echo
-//        1 sas
-//
-//        x = "Hello" + " World" + " from Niva!"
-//        x echo
-//        | x count < 5 => x count echo
-//        | x count == 22 => [
-//          y = x count + 20
-//          y echo
-//        ]
-//        |=> "count < 10" echo
-//    """.trimIndent()
-//    val ktCode = kotlinCodeFromNiva(source)
-//    val code1 = ktCode.addIndentationForEachString(1)
-//    val code2 = putInMainKotlinCode(code1)
-//    val code3 = code2.addNivaStd()
-//
-//    runKotlin(code3)
+    val commantd = """
+        /usr/lib/jvm/java-17-openjdk/bin/java
+        -javaagent:/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/lib/idea_rt.jar=46715
+        :/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/bin
+        -Dfile.encoding=UTF-8
+        -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar
+        :/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar
+        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
+
+    """.trimIndent()
+
+    val source = """
+        Int sas = this echo
+        1 sas
+
+        x = "Hello" + " World" + " from Niva!"
+        x echo
+        | x count < 5 => x count echo
+        | x count == 22 => [
+          y = x count + 20
+          y echo
+        ]
+        |=> "count < 10" echo
+    """.trimIndent()
+    val ktCode = kotlinCodeFromNiva(source)
+    val code1 = ktCode.addIndentationForEachString(1)
+    val code2 = putInMainKotlinCode(code1)
+    val code3 = code2.addNivaStd()
+
+    runKotlin(code3)
 
 
 }

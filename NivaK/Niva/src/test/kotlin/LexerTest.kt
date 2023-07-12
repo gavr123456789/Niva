@@ -139,7 +139,7 @@ int to: x = [
     fun hardcodedBinarySymbols() {
         check(
             "^ |> | |=> = ::",
-            listOf(Return, Pipe, BinarySymbol, Pipe, Else, Assign, DoubleColon, EndOfFile)
+            listOf(Return, PipeOperator, Pipe, Else, Assign, DoubleColon, EndOfFile)
         )
     }
 
