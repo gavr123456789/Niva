@@ -170,8 +170,43 @@ class ResolverTest {
         val protocol = pack.types["Person"]!!.protocols["path"]!!
         val unary = protocol.unaryMsgs["filePath"]!!
         assert(unary.name == "filePath")
+    }
+
+    @Test
+    fun registerTopLevelStatements() {
+
+        val source = """
+            1 echo
+            9 echo
+            Project package: "files" protocol: "path"
+            x = 8
+            type Person name: String age: Int
+            Person filePath -> Unit = [1 echo]
+        """.trimIndent()
 
 
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+
+//        assert(statements.count() == 3)
+        assert(resolver.currentPackageName == "files")
+        assert(resolver.currentProjectName == "common")
+        assert(resolver.currentProtocolName == "path")
+
+        val proj = resolver.projects["common"]!!
+        val pack = proj.packages["files"]!!
+        val protocol = pack.types["Person"]!!.protocols["path"]!!
+        val unary = protocol.unaryMsgs["filePath"]!!
+        assert(unary.name == "filePath")
+
+
+        assert(resolver.topLevelStatements.isNotEmpty())
+        assert(resolver.topLevelStatements.count() == 3)
 
     }
+
 }

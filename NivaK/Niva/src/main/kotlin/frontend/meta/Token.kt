@@ -8,7 +8,7 @@ enum class TokenType {
     Binary, Octal, Hex, Char,
 
     // Keywords
-    Type, Union, Use, Constructor,
+    Alias, Type, Union, Use, Constructor,
     Return, // ^
     ReturnArrow, // -> for return types
 

@@ -15,10 +15,11 @@ class Resolver(
     // reload when package changed
     val typeTable: MutableMap<TypeName, Type> = mutableMapOf(),
     val unaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
-    val binaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
-    val keywordForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
+    val binaryForType: MutableMap<TypeName, MessageDeclarationBinary> = mutableMapOf(),
+    val keywordForType: MutableMap<TypeName, MessageDeclarationKeyword> = mutableMapOf(),
 
-    val mainStatements: MutableList<Statement> = mutableListOf(),
+    val topLevelStatements: MutableList<Statement> = mutableListOf(),
+    var currentLevel: Int = 0,
 
 //    var currentSelf: Type = Resolver.defaultBasicTypes[InternalTypes.Unit]!!,
 
@@ -27,6 +28,7 @@ class Resolver(
     var currentProtocolName: String = "common",
 ) {
     companion object {
+
         val defaultBasicTypes: Map<InternalTypes, Type.InternalType> = mapOf(
             InternalTypes.Int to Type.InternalType(
                 typeName = InternalTypes.Int,
@@ -113,6 +115,67 @@ fun Resolver.resolve(
     return statements
 }
 
+fun Resolver.resolveDeclarations(
+    statement: Declaration,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>,
+) {
+    currentLevel += 1
+
+    when (statement) {
+        is TypeDeclaration -> {
+            // if not then add
+            val newType = statement.toType(currentPackageName, typeTable)
+            addNewType(newType, statement)
+        }
+
+        is UnionDeclaration -> TODO()
+        is AliasDeclaration -> TODO()
+        is ConstructorDeclaration -> TODO()
+
+        is MessageDeclaration -> {
+            // check if the type already registered
+            // if no then error
+            val forType = typeTable[statement.forType.name]
+                ?: throw Exception("type ${statement.forType.name} is not registered")
+
+            // if yes, check for register in unaryTable
+            val isUnaryRegistered = unaryForType.containsKey(statement.name)
+            if (isUnaryRegistered) {
+                throw Exception("Unary ${statement.name} for type ${statement.forType.name} is already registered")
+            }
+            // check that there is no field with the same name (because of getter has the same signature)
+
+            if (forType is Type.UserType) {
+                val q = forType.fields.find { it.name == statement.name }
+                if (q != null) {
+                    throw Exception("Type ${statement.forType.name} already has field with name ${statement.name}")
+                }
+            }
+
+            when (statement) {
+                is MessageDeclarationUnary -> addNewUnaryMessage(statement)
+                is MessageDeclarationBinary -> addNewBinaryMessage(statement)
+                is MessageDeclarationKeyword -> addNewKeywordMessage(statement)
+
+                is ConstructorDeclaration -> TODO()
+
+            }
+
+            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+            previousAndCurrentScope["self"] = forType
+            val body = this.resolve(statement.body, previousAndCurrentScope)
+
+            // TODO check that return type is the same as declared return type, or if it not declared -> assign it
+
+        }
+//        is MessageDeclarationBinary -> TODO()
+//        is MessageDeclarationKeyword -> TODO()
+//        is MessageDeclarationUnary -> TODO()
+    }
+    currentLevel -= 1
+}
+
 private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
@@ -130,7 +193,8 @@ private fun Resolver.resolveStatement(
 
             // TODO check then return parameter of each send match the next input parameter
             statement2.type =
-                statement2.messages.last().type ?: throw Exception("Not all messages of ${statement2.str} has types")
+                statement2.messages.last().type
+                    ?: throw Exception("Not all messages of ${statement2.str} has types")
 
         } else {
             // add to the current project
@@ -151,17 +215,17 @@ private fun Resolver.resolveStatement(
     }
 
     when (statement) {
-
+        is Declaration -> resolveDeclarations(statement, currentScope, previousScope)
         is VarDeclaration -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             // currentNode, depth + 1
             resolve(listOf(statement.value), previousAndCurrentScope)
-            val valueType = statement.value.type
-            val statementDeclaredType = statement.valueType
-            if (valueType == null) {
-                throw Exception("In var declaration ${statement.name} value doesn't got type")
-            }
 
+            val valueType = statement.value.type
+                ?: throw Exception("Line: ${statement.token.line} In var declaration ${statement.name} value doesn't got type")
+            val statementDeclaredType = statement.valueType
+
+            // check that declared type == inferred type
             if (statementDeclaredType != null) {
                 if (statementDeclaredType.name != valueType.name) {
                     val text = "${statementDeclaredType.name} != ${valueType.name}"
@@ -170,52 +234,11 @@ private fun Resolver.resolveStatement(
             }
 
             currentScope[statement.name] = valueType
-        }
 
-        is TypeDeclaration -> {
-            // if not then add
-            val newType = statement.toType(currentPackageName, typeTable)
-            addNewType(newType, statement)
-        }
-
-        is UnionDeclaration -> {}
-        is MessageDeclaration -> {
-            // check if the type already registered
-            // if no then error
-            val forType = typeTable[statement.forType.name]
-                    ?: throw Exception("type ${statement.forType.name} is not registered")
-
-            // if yes, check for register in unaryTable
-            val isUnaryRegistered = unaryForType.containsKey(statement.name)
-            if (isUnaryRegistered) {
-                throw Exception("Unary ${statement.name} for type ${statement.forType.name} is already registered")
-            }
-            // check that there is no field with the same name (because of getter has the same signature)
-
-            if (forType is Type.UserType) {
-                val q = forType.fields.find { it.name == statement.name }
-                if (q != null) {
-                    throw Exception("Type ${statement.forType.name} already has field with name ${statement.name}")
-                }
-            }
-
-            when (statement) {
-                is ConstructorDeclaration -> TODO()
-                is MessageDeclarationBinary -> TODO()
-                is MessageDeclarationKeyword -> TODO()
-                is MessageDeclarationUnary -> {
-                    // register unary
-                    addNewUnaryMessage(statement)
-                }
-            }
-
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            previousAndCurrentScope["self"] = forType
-            val body = this.resolve(statement.body, previousAndCurrentScope)
-
-            // TODO check that return type is the same as declared return type, or if it not declared -> assign it
+            if (currentLevel == 0) topLevelStatements.add(statement)
 
         }
+
 
         is KeywordMsg -> {
 
@@ -236,8 +259,7 @@ private fun Resolver.resolveStatement(
             if (receiverText == "Project") {
                 // this is project setter
                 throw Error("We cant get here, type Project are ignored")
-            }
-            else if (q == null) {
+            } else if (q == null) {
                 val checkForSetter = { receiverType2: Type ->
                     // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
 
@@ -285,7 +307,8 @@ private fun Resolver.resolveStatement(
 
         }
 
-        is BinaryMsg -> {}
+        is BinaryMsg -> {
+        }
 
         is UnaryMsg -> {
 
@@ -324,25 +347,50 @@ private fun Resolver.resolveStatement(
                 statement.type = messageReturnType
             }
 
-            println()
+
         }
 
-        is MessageSend -> resolveTypeForMessageSend(statement)
+        is MessageSend -> {
+            resolveTypeForMessageSend(statement)
+            if (currentLevel == 0) topLevelStatements.add(statement)
+
+        }
 
 
         is IdentifierExpr -> {
             statement.type = typeTable[statement.str]
                 ?: previousScope[statement.str]
-                ?: currentScope[statement.str]!!
+                        ?: currentScope[statement.str]!!
+
         }
 
-        is CodeBlock -> {}
-        is ListCollection -> {}
-        is LiteralExpression.FalseExpr -> {}
-        is LiteralExpression.FloatExpr -> {}
-        is LiteralExpression.IntExpr -> {}
-        is LiteralExpression.StringExpr -> {}
-        is LiteralExpression.TrueExpr -> {}
+        is CodeBlock -> {
+
+
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
+            }
+        }
+
+        is ListCollection -> {
+
+
+        }
+
+        is LiteralExpression.FloatExpr ->
+            statement.type = Resolver.defaultBasicTypes[InternalTypes.Float]
+
+        is LiteralExpression.IntExpr ->
+            statement.type = Resolver.defaultBasicTypes[InternalTypes.Int]
+
+        is LiteralExpression.StringExpr ->
+            statement.type = Resolver.defaultBasicTypes[InternalTypes.String]
+
+        is LiteralExpression.TrueExpr ->
+            statement.type = Resolver.defaultBasicTypes[InternalTypes.Boolean]
+
+        is LiteralExpression.FalseExpr ->
+            statement.type = Resolver.defaultBasicTypes[InternalTypes.Boolean]
 
         is TypeAST.InternalType -> {}
         is TypeAST.Lambda -> {}
@@ -355,15 +403,13 @@ private fun Resolver.resolveStatement(
 }
 
 private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
-//    val currPackage = getCurrentPackage()
-//    currPackage.types
     receiverType.protocols.forEach { (k, v) ->
         val q = v.unaryMsgs[selectorName]
         if (q != null) {
             return q.returnType
         }
     }
-    throw Error("Cant find unary message: $selectorName")
+    throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
 fun Resolver.getCurrentPackage(): Package {
@@ -374,8 +420,10 @@ fun Resolver.getCurrentPackage(): Package {
 
 fun Resolver.getCurrentProtocol(typeName: String): Protocol {
     val pack = getCurrentPackage()
-    val type2 = pack.types[typeName] ?: throw Exception("there are no such type: ${typeName} in package $currentPackageName in project: $currentProjectName")
-    val protocol = type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
+    val type2 = pack.types[typeName]
+        ?: throw Exception("there are no such type: ${typeName} in package $currentPackageName in project: $currentProjectName")
+    val protocol =
+        type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
     if (protocol == null) {
         val newProtocol = Protocol(currentProtocolName)
         type2.protocols[currentProtocolName] = newProtocol
@@ -385,10 +433,6 @@ fun Resolver.getCurrentProtocol(typeName: String): Protocol {
 }
 
 
-
-
-
-
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
@@ -396,8 +440,24 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     val messageData = statement.toMessageData(typeTable)
     protocol.unaryMsgs[statement.name] = messageData
 
+}
 
-    println()
+fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
+    binaryForType[statement.name] = statement // will be reloaded when package changed
+
+    val protocol = getCurrentProtocol(statement.forType.name)
+    val messageData = statement.toMessageData(typeTable)
+    protocol.binaryMsgs[statement.name] = messageData
+
+}
+
+fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
+    keywordForType[statement.name] = statement // will be reloaded when package changed
+
+    val protocol = getCurrentProtocol(statement.forType.name)
+    val messageData = statement.toMessageData(typeTable)
+    protocol.keywordMsgs[statement.name] = messageData
+
 }
 
 
@@ -457,7 +517,7 @@ fun Resolver.changePackage(newCurrentPackage: String) {
 }
 
 fun Resolver.changeProtocol(protocolName: String) {
-        currentProtocolName = protocolName
+    currentProtocolName = protocolName
 //    val pack = getCurrentPackage()
 //    val type = pack.types[typeName] ?: throw Exception("Can't find $typeName for protocol $protocolName")
 //
@@ -480,7 +540,7 @@ fun Resolver.getTypeForIdentifier(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ): Type =
-   typeTable[x.str]
-       ?: currentScope[x.str]
-       ?: previousScope[x.str]
-       ?: throw Exception("Can't find type ${x.str}")
+    typeTable[x.str]
+        ?: currentScope[x.str]
+        ?: previousScope[x.str]
+        ?: throw Exception("Can't find type ${x.str}")

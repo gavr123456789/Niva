@@ -33,6 +33,7 @@ fun Lexer.fillSymbolTable() {
     this.symbolTable.keywords = hashMapOf(
         // Keywords
         "type" to TokenType.Type,
+        "alias" to TokenType.Alias,
         "union" to TokenType.Union,
         "constructor" to TokenType.Constructor,
         "use" to TokenType.Use,

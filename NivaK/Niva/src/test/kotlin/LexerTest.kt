@@ -153,6 +153,10 @@ int to: x = [
         check("|>", listOf(PipeOperator, EndOfFile))
         check("|||", listOf(Pipe, Pipe, Pipe, EndOfFile))
     }
+    @Test
+    fun typeAlias() {
+        check("alias", listOf(Alias, EndOfFile))
+    }
 
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, "sas")

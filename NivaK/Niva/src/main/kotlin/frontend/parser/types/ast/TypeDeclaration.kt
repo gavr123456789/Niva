@@ -79,6 +79,14 @@ class UnionDeclaration(
     isPrivate: Boolean = false,
 ) : Declaration(token, isPrivate, pragmas), ITypeDeclaration
 
+class AliasDeclaration(
+    val typeName: String,
+    val matchedTypeName: String,
+    token: Token,
+    pragmas: List<Pragma> = listOf(),
+    isPrivate: Boolean = false,
+) : Declaration(token, isPrivate, pragmas)
+
 
 enum class InternalTypes {
     Int, String, Float, Boolean, Unit, Project

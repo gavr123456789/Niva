@@ -99,3 +99,18 @@ fun Parser.unionDeclaration(): UnionDeclaration {
 
     return result
 }
+
+fun Parser.typeAliasDeclaration(): AliasDeclaration {
+    val tok = matchAssert(TokenType.Alias)
+    val x = identifierMayBeTyped()
+    val equal = matchAssert(TokenType.Assign)
+    val y = identifierMayBeTyped()
+    val result = AliasDeclaration(
+        x.name,
+        y.name,
+        tok
+    )
+
+    return result
+
+}
