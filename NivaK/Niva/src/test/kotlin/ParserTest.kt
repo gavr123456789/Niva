@@ -366,6 +366,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
     }
+
     @Test
     fun binaryMessageDeclaration() {
         val source = """
@@ -722,7 +723,18 @@ class ParserTest {
         val r = ((ast[3] as MessageSendKeyword).messages[0] as KeywordMsg)
         assert(r.selectorName == "fromTo")
         assert(r.path.last() == "from")
+    }
 
+    @Test
+    fun typeAlias() {
+        val source = """
+        alias MyInt = Int
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as AliasDeclaration
+        assert(q.typeName == "MyInt")
+        assert(q.matchedTypeName == "Int")
     }
 //    @Test
 //    fun bracketExpression() {

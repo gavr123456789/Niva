@@ -92,7 +92,7 @@ fun String.addNivaStd(): String {
 
 
 fun main(args: Array<String>) {
-
+    
     val commantd = """
         /usr/lib/jvm/java-17-openjdk/bin/java
         -javaagent:/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/lib/idea_rt.jar=46715

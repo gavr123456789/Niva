@@ -129,6 +129,9 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Type) {
         return typeDeclaration()
     }
+    if (kind == TokenType.Alias) {
+        return typeAliasDeclaration()
+    }
     if (kind == TokenType.Union) {
         return unionDeclaration()
     }
