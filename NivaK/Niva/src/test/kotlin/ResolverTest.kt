@@ -1,6 +1,8 @@
+import com.sun.jdi.event.StepEvent
 import frontend.parser.types.ast.*
 import frontend.typer.Resolver
 import frontend.typer.Type
+import frontend.typer.generateKtProject
 import frontend.typer.resolve
 import org.junit.jupiter.api.Test
 
@@ -206,7 +208,33 @@ class ResolverTest {
 
         assert(resolver.topLevelStatements.isNotEmpty())
         assert(resolver.topLevelStatements.count() == 3)
+    }
 
+    @Test
+    fun recreateKtFolder(){
+        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+
+        val source = """
+            1 echo
+            9 echo
+            Project package: "files" protocol: "path"
+            x = 8
+            type Person name: String age: Int
+            Person filePath -> Unit = [1 echo]
+        """.trimIndent()
+
+
+        val ast = getAst(source).toMutableList()
+
+        val resolver = Resolver(
+            projectName = "common",
+            statements = ast
+        )
+        resolver.resolve(resolver.statements, mutableMapOf())
+
+        resolver.generateKtProject(path)
     }
 
 }
+
+

@@ -18,7 +18,7 @@ class Resolver(
     val binaryForType: MutableMap<TypeName, MessageDeclarationBinary> = mutableMapOf(),
     val keywordForType: MutableMap<TypeName, MessageDeclarationKeyword> = mutableMapOf(),
 
-    val topLevelStatements: MutableList<Statement> = mutableListOf(),
+    var topLevelStatements: MutableList<Statement> = mutableListOf(),
     var currentLevel: Int = 0,
 
 //    var currentSelf: Type = Resolver.defaultBasicTypes[InternalTypes.Unit]!!,
@@ -112,6 +112,12 @@ fun Resolver.resolve(
             i
         )
     }
+
+    topLevelStatements = topLevelStatements.filter {
+        !(it is MessageSendKeyword && it.receiver.str == "Project")
+    }.toMutableList()
+
+
     return statements
 }
 
@@ -182,7 +188,6 @@ private fun Resolver.resolveStatement(
     previousScope: MutableMap<String, Type>,
     i: Int
 ) {
-
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         if (statement2.receiver.str != "Project") {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -421,7 +426,7 @@ fun Resolver.getCurrentPackage(): Package {
 fun Resolver.getCurrentProtocol(typeName: String): Protocol {
     val pack = getCurrentPackage()
     val type2 = pack.types[typeName]
-        ?: throw Exception("there are no such type: ${typeName} in package $currentPackageName in project: $currentProjectName")
+        ?: throw Exception("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
     val protocol =
         type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
     if (protocol == null) {
