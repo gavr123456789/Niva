@@ -6,8 +6,11 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
-import frontend.util.addIndentationForEachString
+import frontend.typer.Resolver
+import frontend.typer.generateKtProject
+import frontend.util.OS_Type
 import frontend.util.fillSymbolTable
+import frontend.util.getOSType
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -53,8 +56,58 @@ fun runKotlin(kotlinCode: String) {
     file.writeText(kotlinCode)
     "kotlinc sas.kt -language-version 2.0 -include-runtime -d sas.jar".runCommand(parent)
     "java -jar sas.jar".runCommand(parent, true)
+}
+
+
+fun runGradleRunInProject(path: String) {
+    val file = File(path)
+    when (getOSType()) {
+        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run".runCommand(file, true)
+        OS_Type.LINUX -> TODO()
+        OS_Type.MAC -> TODO()
+    }
+}
+
+fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String) {
+    fun listFilesRecursively(directory: File): List<File> {
+        val fileList = mutableListOf<File>()
+
+        // Получаем все файлы и поддиректории в данной директории
+        val filesAndDirs = directory.listFiles()
+
+        if (filesAndDirs != null) {
+            for (file in filesAndDirs) {
+                if (file.isFile) {
+                    // Если это файл, добавляем его в список
+                    fileList.add(file)
+                } else if (file.isDirectory) {
+                    // Если это директория, рекурсивно вызываем эту же функцию для нее
+                    fileList.addAll(listFilesRecursively(file))
+                }
+            }
+        }
+
+        return fileList
+    }
+
+
+    val mainFile = File(pathToProjectRootFile)
+    val projectFolder = mainFile.absoluteFile.parentFile
+    val otherFilesPaths = listFilesRecursively(projectFolder).filter { it.name != mainFile.name }
+    // we have main file, and all other files, so we can create resolver now
+
+    val resolver = Resolver(
+        projectName = "common",
+        mainFilePath = mainFile,
+        otherFilesPaths = otherFilesPaths,
+        statements = mutableListOf()
+    )
+
+    resolver.generateKtProject(pathWhereToGenerateKt)
+
 
 }
+
 
 fun putInMainKotlinCode(code: String) = buildString {
     append("fun main() {\n")
@@ -92,40 +145,12 @@ fun String.addNivaStd(): String {
 
 
 fun main(args: Array<String>) {
-    
-    val commantd = """
-        /usr/lib/jvm/java-17-openjdk/bin/java
-        -javaagent:/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/lib/idea_rt.jar=46715
-        :/home/gavr/.local/share/JetBrains/Toolbox/apps/IDEA-U/ch-0/231.9011.34/bin
-        -Dfile.encoding=UTF-8
-        -classpath /home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/production/Niva
-        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar
-        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar
-        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.21/kotlin-stdlib-common-1.8.21.jar
-        :/home/gavr/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar
-        :/home/gavr/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar MainKt
 
-    """.trimIndent()
-
-    val source = """
-        Int sas = this echo
-        1 sas
-
-        x = "Hello" + " World" + " from Niva!"
-        x echo
-        | x count < 5 => x count echo
-        | x count == 22 => [
-          y = x count + 20
-          y echo
-        ]
-        |=> "count < 10" echo
-    """.trimIndent()
-    val ktCode = kotlinCodeFromNiva(source)
-    val code1 = ktCode.addIndentationForEachString(1)
-    val code2 = putInMainKotlinCode(code1)
-    val code3 = code2.addNivaStd()
-
-    runKotlin(code3)
+    val pathWhereToGenerateKt = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+    val pathToNivaProjectRootFile = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\nivaExamplepProject\\main.niva"
+    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
 
 
+    val pathToProjectRoot = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj"
+    runGradleRunInProject(pathToProjectRoot)
 }

@@ -1,15 +1,16 @@
-import com.sun.jdi.event.StepEvent
 import frontend.parser.types.ast.*
 import frontend.typer.Resolver
 import frontend.typer.Type
 import frontend.typer.generateKtProject
 import frontend.typer.resolve
 import org.junit.jupiter.api.Test
+import java.io.File
 
 fun resolve(source: String): List<Statement> {
     val ast = getAst(source)
     val resolver = Resolver(
         projectName = "common",
+        mainFilePath = File("sas.niva"),
         statements = ast.toMutableList(),
     )
 
@@ -112,6 +113,7 @@ class ResolverTest {
         val ast = getAst(source)
         val resolver = Resolver(
             projectName = "common",
+            mainFilePath = File("sas.niva"),
             statements = ast.toMutableList()
         )
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
@@ -130,6 +132,7 @@ class ResolverTest {
     fun defaultTypesInCorePackage() {
         val resolver = Resolver(
             projectName = "common",
+            mainFilePath = File("sas.niva"),
             statements = mutableListOf()
         )
 
@@ -158,6 +161,7 @@ class ResolverTest {
         val ast = getAst(source)
         val resolver = Resolver(
             projectName = "common",
+            mainFilePath = File("sas.niva"),
             statements = ast.toMutableList()
         )
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
@@ -190,6 +194,7 @@ class ResolverTest {
         val ast = getAst(source)
         val resolver = Resolver(
             projectName = "common",
+            mainFilePath = File("sas.niva"),
             statements = ast.toMutableList()
         )
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
@@ -228,8 +233,57 @@ class ResolverTest {
 
         val resolver = Resolver(
             projectName = "common",
+            mainFilePath = File("sas.niva"),
             statements = ast
         )
+        resolver.resolve(resolver.statements, mutableMapOf())
+
+        resolver.generateKtProject(path)
+    }
+
+    @Test
+    fun manySources(){
+        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+
+        val source1 = """
+            1 echo
+            9 echo
+            Project package: "files" protocol: "path"
+            x = 8
+            type Person name: String age: Int
+            Person filePath -> Unit = [1 echo]
+        """.trimIndent()
+
+        val source2 = """
+            1 echo
+            9 echo
+            Project package: "collections" 
+            x = 8
+            type MegaMassive count: Int
+            MegaMassive add -> Unit = [1 echo]
+        """.trimIndent()
+
+        val source3 = """
+            1 echo
+            9 echo
+            Project package: "collectionsUnlim" 
+            x = 8
+            type MegaMassive2 count: Int
+            MegaMassive2 add -> Unit = [1 echo]
+        """.trimIndent()
+
+        val ast1 = getAst(source1).toMutableList()
+        val ast2 = getAst(source2).toMutableList()
+        val ast3 = getAst(source3).toMutableList()
+
+        val ast = ast3 + ast2
+
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast1.toMutableList(),
+        )
+
         resolver.resolve(resolver.statements, mutableMapOf())
 
         resolver.generateKtProject(path)

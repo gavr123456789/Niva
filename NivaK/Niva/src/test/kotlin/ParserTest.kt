@@ -146,7 +146,7 @@ class ParserTest {
     fun kw() {
         val source = "1 to: 2 + 3"
         val tokens = lex(source)
-        val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+        val parser = Parser(file = "", tokens = tokens, source = source)
         val ast = parser.keyword(false)
         println()
     }
@@ -754,7 +754,7 @@ class ParserTest {
 
 fun getAst(source: String): List<Statement> {
     val tokens = lex(source)
-    val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
+    val parser = Parser(file = "", tokens = tokens, source = source)
     val ast = parser.statements()
     return ast
 }

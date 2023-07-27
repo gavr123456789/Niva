@@ -56,7 +56,8 @@ fun Resolver.generatePackages(pathToSource: Path) {
         w.mkdir()
         // generate file with code
         createCodeKtFile(w, v.packageName + ".kt", q)
-        // put code
+
+
     }
 
 }
