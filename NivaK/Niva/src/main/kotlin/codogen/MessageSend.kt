@@ -105,8 +105,12 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
 }
 
 fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildString {
+
     messages.forEachIndexed { i, it ->
         append(generateSingleUnary(i, receiver, it))
+    }
+    if (messages.isEmpty()) {
+        append(receiver.str)
     }
 
 //    return if (messages.count() == 1) {
@@ -141,6 +145,7 @@ fun generateSingleBinary(
     if (i == 0) {
         // 1 inc + 2 dec + 3 sas
         // 1 inc^ + 2 dec + 3 sas
+
         append(generateUnarySends(receiver, it.unaryMsgsForReceiver))
         append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))

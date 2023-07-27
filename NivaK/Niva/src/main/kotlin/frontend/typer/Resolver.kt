@@ -1,15 +1,27 @@
 package frontend.typer
 
 import frontend.meta.TokenType
+import frontend.parser.parsing.Parser
+import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
+import frontend.util.checkIfAllStringsEqual
 import frontend.util.removeDoubleQuotes
+import lex
+import java.io.File
 
 typealias TypeName = String
 
 
 class Resolver(
     val projectName: String,
+
+    // statements from all files
+    // if there cycle types then just remember the unresolved types and then try to resolve them again in the end
     val statements: MutableList<Statement>,
+
+    val mainFilePath: File,
+    val otherFilesPaths: List<File> = listOf(),
+
     val projects: MutableMap<String, Project> = mutableMapOf(),
 
     // reload when package changed
@@ -26,7 +38,14 @@ class Resolver(
     var currentProjectName: String = "common",
     var currentPackageName: String = "common",
     var currentProtocolName: String = "common",
-) {
+
+    var currentFile: String = "",
+
+
+    val notResolvedStatements: MutableList<Statement> = mutableListOf()
+
+
+    ) {
     companion object {
 
         val defaultBasicTypes: Map<InternalTypes, Type.InternalType> = mapOf(
@@ -70,14 +89,34 @@ class Resolver(
             val unitType = defaultBasicTypes[InternalTypes.Unit]!!
 
 
-            intType.protocols.putAll(createIntProtocols(intType, stringType, unitType))
+            intType.protocols.putAll(createIntProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType
+            ))
+            stringType.protocols.putAll(createStringProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType
+            ))
+
+            boolType.protocols.putAll(createBoolProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType
+            ))
+
             // TODO add default protocols for other types
         }
 
     }
 
     init {
-        Resolver.defaultBasicTypes.forEach { k, v ->
+        /////init packages/////
+        Resolver.defaultBasicTypes.forEach { (k, v) ->
             typeTable[k.name] = v
         }
 
@@ -92,8 +131,38 @@ class Resolver(
         }
 
         projects[projectName] = defaultProject
+        ///////generate ast from files////////
+        if (statements.isEmpty()) {
+            fun getAst(source: String, fileName: String): List<Statement> {
+                val tokens = lex(source)
+                val parser = Parser(file = fileName, tokens = tokens, source = "sas.niva")
+                val ast = parser.statements()
+                return ast
+            }
+            // generate ast for main file with filling topLevelStatements
+            // 1) read content of mainFilePath
+            // 2) generate ast
+            val mainSourse = mainFilePath.readText()
+            val mainAST = getAst(source = mainSourse, fileName = mainFilePath.name)
+            // generate ast for others
+            val otherASTs = otherFilesPaths.map {
+                val src = it.readText()
+                getAst(source = src, fileName = it.name)
+            }
+
+            ////resolve all the AST////
+            resolve(mainAST, mutableMapOf())
+            otherASTs.forEach {
+                resolve(it, mutableMapOf())
+            }
+
+        }
     }
 }
+
+
+
+
 
 
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
@@ -246,8 +315,6 @@ private fun Resolver.resolveStatement(
 
 
         is KeywordMsg -> {
-
-
             // check for constructor
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -401,6 +468,11 @@ private fun Resolver.resolveStatement(
         is TypeAST.Lambda -> {}
         is TypeAST.UserType -> {}
 
+        is ControlFlow -> {
+
+            if (currentLevel == 0) topLevelStatements.add(statement)
+        }
+
         else -> {
 
         }
@@ -417,16 +489,70 @@ private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: Stri
     throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
-fun Resolver.getCurrentPackage(): Package {
+
+fun Resolver.getPackage(packageName: String): Package {
     val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
-    val pack = p.packages[currentPackageName] ?: throw Exception("there are no such package: $currentPackageName")
+    val pack = p.packages[packageName] ?: throw Exception("there are no such package: $packageName")
     return pack
 }
 
+// @isThisTheLastTypeCheck if it is the last, then we throw errors, if not
+fun Resolver.findTypeInAllPackages(
+    typeName: String,
+    expectedTypeName: String? = null,
+    isThisTheLastTypeCheck: Boolean = false,
+): String? {
+    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
+    var result: String? = null
+    val foundResults = mutableListOf<String>()
+
+    p.packages.forEach { (k, v) ->
+        val foundType = v.types[typeName]
+        if (foundType == null) {
+            result = k
+            foundResults.add(k)
+        }
+    }
+
+    if (result == null){
+        if (isThisTheLastTypeCheck)
+            throw Exception("Can't find $typeName in all packages")
+        else
+            return null // need to add statement to unresolved list
+    }
+
+    if (foundResults.count() == 1) {
+        return result
+    }
+    // found more than one result
+    // need to check them for equality
+    val q = checkIfAllStringsEqual(foundResults)
+    if (isThisTheLastTypeCheck) {
+        if (q) {
+            throw Exception("There is more than one $typeName in all packages")
+        } else {
+            result = null
+        }
+    }
+
+    if (foundResults.count() > 1) {
+        if (expectedTypeName != null && foundResults.contains(expectedTypeName)) {
+            return expectedTypeName
+        } else {
+            result = null
+        }
+    }
+
+    return result
+}
+
 fun Resolver.getCurrentProtocol(typeName: String): Protocol {
-    val pack = getCurrentPackage()
+    val pack = getPackage(currentPackageName)
     val type2 = pack.types[typeName]
+        ?: getPackage("common").types[typeName]
+        ?: getPackage("core").types[typeName]
         ?: throw Exception("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
+
     val protocol =
         type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
     if (protocol == null) {
@@ -445,6 +571,8 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     val messageData = statement.toMessageData(typeTable)
     protocol.unaryMsgs[statement.name] = messageData
 
+    addMsgToPackageDeclarations(statement)
+
 }
 
 fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
@@ -454,6 +582,7 @@ fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
     val messageData = statement.toMessageData(typeTable)
     protocol.binaryMsgs[statement.name] = messageData
 
+    addMsgToPackageDeclarations(statement)
 }
 
 fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
@@ -463,11 +592,18 @@ fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
     val messageData = statement.toMessageData(typeTable)
     protocol.keywordMsgs[statement.name] = messageData
 
+    // add msg to package declarations
+    addMsgToPackageDeclarations(statement)
+}
+
+fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
+    val pack = getPackage(currentPackageName)
+    pack.declarations.add(statement)
 }
 
 
 fun Resolver.addNewType(type: Type, statement: TypeDeclaration) {
-    val pack = getCurrentPackage()
+    val pack = getPackage(currentPackageName)
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
     }

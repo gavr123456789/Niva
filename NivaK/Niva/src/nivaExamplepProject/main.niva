@@ -1,0 +1,9 @@
+1 echo
+99 echo
+
+x = 8
+type Person name: String age: Int
+Person hello -> Unit = [1 echo]
+
+| x > 9 => 11 echo
+|=> 12 echo
