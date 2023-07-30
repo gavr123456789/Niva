@@ -148,7 +148,6 @@ class ParserTest {
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = source)
         val ast = parser.keyword(false)
-        println()
     }
 
     @Test
@@ -452,9 +451,9 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-//        assert(fields[0].type?.name == "string")
+        assert(fields[0].type?.name == "string")
         assert(fields[1].name == "age")
-//        assert(fields[1].type?.name == "int")
+        assert(fields[1].type?.name == "int")
     }
 
     @Test
@@ -687,6 +686,17 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun pipeOperator3() {
+        val source = """
+        this - 1 |> factorial * this
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
 
     @Test
     fun cascadeOperator() {
@@ -697,6 +707,17 @@ class ParserTest {
         assert(ast.count() == 1)
         val q = ast[0] as MessageSend
         assert(q.messages.count() == 5)
+    }
+
+    @Test
+    fun cascadeOperator2() {
+        val source = """
+        1 inc; inc + 2
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSend
+        assert(q.messages.count() == 2)
     }
 
     @Test
@@ -736,19 +757,24 @@ class ParserTest {
         assert(q.typeName == "MyInt")
         assert(q.matchedTypeName == "Int")
     }
-//    @Test
-//    fun bracketExpression() {
-//
-//        val source = """
-//            (3 + 5)
-//        """.trimIndent()
-//        val ast = getAst(source)
-//        assert(ast.count() == 1)
-////        assert(ast[0])
-//        // (3 + 5) - экспрешон ин брекетс, 3 + 5
-//        // 9 * (3 + 5)
-//    }
+    @Test
+    fun bracketExpression() {
 
+        val source = """
+            (3 + 5)
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+    @Test
+    fun returnStatementSimple() {
+
+        val source = """
+            ^ 5
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
 
 }
 

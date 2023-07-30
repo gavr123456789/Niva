@@ -26,6 +26,9 @@ fun getStringFromDeclaration(statement: Statement, ident: Int): String = buildSt
             is MessageDeclarationKeyword -> statement.generateKeywordDeclaration()
             is TypeDeclaration -> statement.generateTypeDeclaration()
             is Expression -> statement.generateExpression()
+            is ReturnStatement -> {
+                "return ${statement.expression.generateExpression()}"
+            }
             else -> {
                 TODO()
             }

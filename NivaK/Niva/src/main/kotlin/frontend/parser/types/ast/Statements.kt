@@ -38,9 +38,14 @@ sealed class Expression(
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
-//    metadata: Metadata? = null
 ) : Statement(token, isPrivate, pragmas)
 
+class ReturnStatement(
+    var expression: Expression,
+    token: Token,
+    isPrivate: Boolean = false,
+    pragmas: List<Pragma> = listOf(),
+) : Statement(token, isPrivate, pragmas)
 
 class VarDeclaration(
     token: Token,

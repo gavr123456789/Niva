@@ -23,7 +23,7 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
 
     val safePoint = current
     try {
-        val q = unaryOrBinary(false)
+        val q = unaryOrBinary(match(TokenType.OpenParen))
 
         val nextIsKeywordSend = {
             val q = check(TokenType.Identifier)
@@ -46,19 +46,18 @@ fun Parser.messageOrPrimaryReceiver(): Receiver {
         current = safePoint
     }
     current = safePoint
-    return receiver()
+    return simpleReceiver()
 }
 
 
 // receiver like collection, code block, identifier,
 
-// this is also expression
-fun Parser.receiver(): Receiver {
+// simple means not message
+fun Parser.simpleReceiver(): Receiver {
 
     if (check(TokenType.OpenBracket)) {
         return codeBlock()
     }
-
 
     fun collectionLiteral(): Receiver? {
 
@@ -95,10 +94,68 @@ fun Parser.receiver(): Receiver {
         return result
     }
 
+//    var inParens = false
+//
+//    if (match(TokenType.OpenParen)) {
+//        inParens = true
+//
+//    }
 
     val tryPrimary = primary()
         ?: collectionLiteral()
-        ?: throw Error("bruh")
+        ?: throw Error("expected primary but found ${peek().kind} on line ${peek().line}")
+
+//    if (inParens) {
+//        matchAssert(TokenType.CloseParen, "You forgot to close parens - ')'")
+//    }
+//    tryPrimary.inBracket = inParens
+
+    return tryPrimary
+}
+
+fun Parser.nullableSimpleReceiver(): Receiver? {
+
+    if (check(TokenType.OpenBracket)) {
+        return codeBlock()
+    }
+
+    fun collectionLiteral(): Receiver? {
+
+        val result: ListCollection
+        val initElements = mutableListOf<Primary>()
+        // {1, 2 3}
+        val leftBraceTok = peek()
+        if (leftBraceTok.kind != TokenType.OpenBrace) {
+            return null
+        }
+
+        step() // skip leftBrace
+
+        // cycle that eats primary with optional commas
+        // for now, messages inside collection literals are impossible
+
+        var lastPrimary: Primary? = null
+        do {
+            val primaryTok = primary()
+            match(TokenType.Comma)
+            if (primaryTok != null) {
+                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
+                    error("Heterogeneous collections are not supported")
+                }
+                initElements.add(primaryTok)
+            }
+            lastPrimary = primaryTok
+        } while (primaryTok != null)
+
+        match(TokenType.CloseBrace)
+
+        val type = if (initElements.isNotEmpty()) initElements[0].type else null
+        result = ListCollection(initElements, type, leftBraceTok)
+        return result
+    }
+
+    val tryPrimary = primary()
+        ?: collectionLiteral()
 
     return tryPrimary
 }
@@ -280,6 +337,11 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
     }
 }
 
+
+fun Parser.skipNewLines() {
+    while (match(TokenType.EndOfLine)){}
+}
+
 // returns true if it's single expression
 fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
@@ -290,14 +352,18 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     if (match(TokenType.OpenBracket)) {
         isSingleExpression = false
 
-        match(TokenType.EndOfLine)
+//        match(TokenType.EndOfLine)
+        skipNewLines()
         do {
-            messagesOrVarStatements.add(messageOrVarDeclaration())
+//            messagesOrVarStatements.add(messageOrVarDeclarationOrReturn())
+            messagesOrVarStatements.add(statementWithEndLine())
+
         } while (!match(TokenType.CloseBracket))
     } else {
         isSingleExpression = true
         // one expression in body
-        messagesOrVarStatements.add(messageOrVarDeclaration())
+//        messagesOrVarStatements.add(messageOrVarDeclarationOrReturn())
+        messagesOrVarStatements.add(statementWithEndLine())
     }
     return Pair(messagesOrVarStatements, isSingleExpression)
 }
@@ -373,18 +439,19 @@ fun Parser.messageDeclaration(type: MessageDeclarationType): MessageDeclaration 
     }
 }
 
-fun Parser.messageOrVarDeclaration(): Statement {
+fun Parser.messageOrVarDeclarationOrReturn(): Statement {
     val result = if (check(TokenType.Identifier) &&
         (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1))
     ) {
         varDeclaration()
     } else {
-        messageOrControlFlow()
+        expression()
     }
 
-    if (check(TokenType.EndOfLine)) {
-        step()
-    }
+    skipNewLines()
+//    if (check(TokenType.EndOfLine)) {
+//        step()
+//    }
     return result
 }
 

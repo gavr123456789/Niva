@@ -7,3 +7,16 @@ Person hello -> Unit = [1 echo]
 
 | x > 9 => 11 echo
 |=> 12 echo
+
+Int factorial -> Int = [
+  min = this - 1
+
+  ^| this
+   | 0 => 1
+   |=> min factorial * this
+]
+
+5 factorial echo
+
+
+

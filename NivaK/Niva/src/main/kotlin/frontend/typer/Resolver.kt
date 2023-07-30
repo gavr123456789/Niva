@@ -45,7 +45,7 @@ class Resolver(
     val notResolvedStatements: MutableList<Statement> = mutableListOf()
 
 
-    ) {
+) {
     companion object {
 
         val defaultBasicTypes: Map<InternalTypes, Type.InternalType> = mapOf(
@@ -56,6 +56,11 @@ class Resolver(
             ),
             InternalTypes.String to Type.InternalType(
                 typeName = InternalTypes.String,
+                isPrivate = false,
+                `package` = "common",
+            ),
+            InternalTypes.Char to Type.InternalType(
+                typeName = InternalTypes.Char,
                 isPrivate = false,
                 `package` = "common",
             ),
@@ -84,30 +89,39 @@ class Resolver(
         init {
             val intType = defaultBasicTypes[InternalTypes.Int]!!
             val stringType = defaultBasicTypes[InternalTypes.String]!!
+            val charType = defaultBasicTypes[InternalTypes.Char]!!
             val floatType = defaultBasicTypes[InternalTypes.Float]!!
             val boolType = defaultBasicTypes[InternalTypes.Boolean]!!
             val unitType = defaultBasicTypes[InternalTypes.Unit]!!
 
 
-            intType.protocols.putAll(createIntProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType
-            ))
-            stringType.protocols.putAll(createStringProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType
-            ))
+            intType.protocols.putAll(
+                createIntProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    floatType = floatType
+                )
+            )
+            stringType.protocols.putAll(
+                createStringProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    charType = charType
+                )
+            )
 
-            boolType.protocols.putAll(createBoolProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType
-            ))
+            boolType.protocols.putAll(
+                createBoolProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType
+                )
+            )
 
             // TODO add default protocols for other types
         }
@@ -161,10 +175,6 @@ class Resolver(
 }
 
 
-
-
-
-
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
     statements: List<Statement>,
@@ -213,6 +223,9 @@ fun Resolver.resolveDeclarations(
             // if no then error
             val forType = typeTable[statement.forType.name]
                 ?: throw Exception("type ${statement.forType.name} is not registered")
+
+            // add this
+            currentScope["this"] = forType
 
             // if yes, check for register in unaryTable
             val isUnaryRegistered = unaryForType.containsKey(statement.name)
@@ -266,9 +279,11 @@ private fun Resolver.resolveStatement(
             )
 
             // TODO check then return parameter of each send match the next input parameter
-            statement2.type =
-                statement2.messages.last().type
-                    ?: throw Exception("Not all messages of ${statement2.str} has types")
+            if (statement2.messages.isNotEmpty()) {
+                statement2.type =
+                    statement2.messages.last().type
+                        ?: throw Exception("Not all messages of ${statement2.str} has types")
+            }
 
         } else {
             // add to the current project
@@ -380,6 +395,27 @@ private fun Resolver.resolveStatement(
         }
 
         is BinaryMsg -> {
+            val forType =
+                statement.receiver.type?.name
+            val receiver = statement.receiver
+
+            receiver.type = when (receiver) {
+                is CodeBlock -> TODO()
+                is ListCollection -> TODO()
+                is BinaryMsg -> TODO()
+                is KeywordMsg -> TODO()
+                is UnaryMsg -> TODO()
+                is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
+                is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
+                is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
+                is LiteralExpression.FloatExpr -> Resolver.defaultBasicTypes[InternalTypes.Float]
+                is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
+                is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
+            }
+            val receiverType = receiver.type!!
+            // find message for this type
+            val messageReturnType = findBinaryMessageType(receiverType, statement.selectorName)
+            statement.type = messageReturnType
         }
 
         is UnaryMsg -> {
@@ -430,9 +466,7 @@ private fun Resolver.resolveStatement(
 
 
         is IdentifierExpr -> {
-            statement.type = typeTable[statement.str]
-                ?: previousScope[statement.str]
-                        ?: currentScope[statement.str]!!
+            resolveIdentifier(statement, previousScope, currentScope)
 
         }
 
@@ -479,6 +513,16 @@ private fun Resolver.resolveStatement(
     }
 }
 
+private fun Resolver.resolveIdentifier(
+    statement: IdentifierExpr,
+    previousScope: MutableMap<String, Type>,
+    currentScope: MutableMap<String, Type>
+) {
+    statement.type = typeTable[statement.str]
+        ?: previousScope[statement.str]
+                ?: currentScope[statement.str]!!
+}
+
 private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.unaryMsgs[selectorName]
@@ -489,6 +533,15 @@ private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: Stri
     throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
+private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String): Type {
+    receiverType.protocols.forEach { (k, v) ->
+        val q = v.binaryMsgs[selectorName]
+        if (q != null) {
+            return q.returnType
+        }
+    }
+    throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
+}
 
 fun Resolver.getPackage(packageName: String): Package {
     val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
@@ -514,7 +567,7 @@ fun Resolver.findTypeInAllPackages(
         }
     }
 
-    if (result == null){
+    if (result == null) {
         if (isThisTheLastTypeCheck)
             throw Exception("Can't find $typeName in all packages")
         else
