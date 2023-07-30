@@ -7,7 +7,7 @@ import frontend.typer.Type
 //  | BlockConstructor
 //  | BracketExpression
 //  | CollectionLiteral
-sealed class Receiver(type: Type?, token: Token) : Expression(type, token)
+sealed class Receiver(type: Type?, token: Token, var inBracket: Boolean = false) : Expression(type, token)
 
 
 // Message send is for pipe operations
@@ -18,7 +18,6 @@ sealed class Receiver(type: Type?, token: Token) : Expression(type, token)
 sealed class MessageSend(
     val receiver: Receiver,
     open val messages: List<Message>,
-    val inBracket: Boolean,
     type: Type?,
     token: Token
 ) : Expression(type, token) {
@@ -30,26 +29,23 @@ sealed class MessageSend(
 class MessageSendUnary(
     receiver: Receiver,
     override val messages: List<Message>,
-    inBracket: Boolean,
     type: Type?,
     token: Token
-) : MessageSend(receiver, messages, inBracket, type, token)
+) : MessageSend(receiver, messages, type, token)
 
 class MessageSendBinary(
     receiver: Receiver,
     override val messages: List<Message>, // can be unary after keyword
-    inBracket: Boolean,
     type: Type?,
     token: Token
-) : MessageSend(receiver, messages, inBracket, type, token)
+) : MessageSend(receiver, messages, type, token)
 
 class MessageSendKeyword(
     receiver: Receiver,
     override val messages: List<Message>, // can be unary or binary after keyword
-    inBracket: Boolean,
     type: Type?,
     token: Token
-) : MessageSend(receiver, messages, inBracket, type, token)
+) : MessageSend(receiver, messages, type, token)
 
 
 // binaryMessage | unaryMessage | keywordMessage

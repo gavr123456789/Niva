@@ -54,7 +54,6 @@ fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
         val q = check(TokenType.EndOfLine, c)
         val w = check(TokenType.EndOfFile, c)
 
-        println()
     } while (!(check(TokenType.EndOfLine, c) || check(TokenType.EndOfFile, c)))
     return false
 }

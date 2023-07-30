@@ -15,18 +15,33 @@ fun Parser.messageSend(): MessageSend {
     // [1 2 3] // data structure
 
     // 3 + (1 / 2)
-
     // 3 + 8 to: 7
 
-//    val q = anyMessageSend(false)
-//    do {
-//        val w = anyMessageSend(false)
-//        val e = w.messages[0]
-//        q.messages.add(e)
-//    } while (match(TokenType.PipeOperator))
+
+//    return newMessageSend()
 
     return anyMessageSend(false)
 }
+
+
+fun Parser.newMessageSend(): MessageSend {
+
+    // parsing (receiver message?)+
+
+//    val q = nullableSimpleReceiver() ?: throw Exception("bruh!")
+
+    val q = step()
+    val k = q.kind
+//    when (k) {
+//        TokenType.OpenBrace -> {
+//
+//        }
+//
+//    }
+
+    TODO()
+}
+
 
 
 // 1^ sas sus sos -> {sas sus sos}
@@ -41,6 +56,7 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     return unaryMessages
 }
 
+// 1^ + 2 + 3
 fun Parser.binaryMessagesMatching(
     receiver: Receiver,
     unaryMessagesForReceiver: MutableList<UnaryMsg>
@@ -52,7 +68,7 @@ fun Parser.binaryMessagesMatching(
     while (check(TokenType.BinarySymbol)) {
 
         val binarySymbol = identifierMayBeTyped()
-        val binaryArgument = receiver() // 2
+        val binaryArgument = simpleReceiver() // 2
         val unaryForArg = unaryMessagesMatching(binaryArgument)
         val binaryMsg = BinaryMsg(
             receiver,
@@ -78,36 +94,72 @@ fun Parser.unaryOrBinary(
     var wasPipe = false
     var wasCascade = false
 
-    val firstReceiver: Receiver = customReceiver ?: receiver()
+    val firstReceiver: Receiver = customReceiver ?: simpleReceiver()
+
 
 
     // 3 ^inc inc + 2 dec dec + ...
     val unaryMessages = unaryMessagesMatching(firstReceiver)
 
     // 3 inc inc^ + 2 dec dec + ...
-    var binaryMessages: List<Message> = binaryMessagesMatching(firstReceiver, unaryMessages)
+    val binaryMessages = binaryMessagesMatching(firstReceiver, unaryMessages)
 
+    val takeLastMessage = {
+        if (binaryMessages.isNotEmpty()) {
+            binaryMessages.last()
+        } else {
+            unaryMessages.last()
+        }
+    }
 
     // 1 inc |> inc useless!
     // 1 + 2 to: 3 useless!
     // 1 + 2 |> inc to: 3
 
     // Pipe operator
-    // 1 + 2 |> inc inc inc
-    if (parsePipeAndCascade && match(TokenType.PipeOperator)) {
+
+    while (parsePipeAndCascade && match(TokenType.PipeOperator)) {
         wasPipe = true
-//        if (wasCascade) {
-//            error("Dont use cascade with pipe operator, better create different variables")
-//        }
-        if (check(TokenType.BinarySymbol)) {
-            // binary after binary
-            error("It's useless, binary always evaluates after another binary")
-        } else if (check(TokenType.Identifier) && binaryMessages.isNotEmpty()) {
-            // unary after binary
-            val unary = unaryMessagesMatching(receiver = binaryMessages.last())
-            binaryMessages = (binaryMessages + unary).toMutableList()
+        val tok = peek()
+        val kind = tok.kind
+        when {
+
+            check(TokenType.Identifier) -> {
+                val lastMsg = takeLastMessage()
+                val unary = unaryMessagesMatching(lastMsg)
+                binaryMessages.forEach {
+                    it.inBracket = true
+                }
+                unaryMessages.forEach {
+                    it.inBracket = true
+                }
+                unaryMessages.addAll(unary)
+
+                if (check(TokenType.BinarySymbol)) {
+                    val binary = binaryMessagesMatching(takeLastMessage(), mutableListOf())
+                    binaryMessages.addAll(binary)
+                }
+            }
+
+            check(TokenType.BinarySymbol) -> {
+                val binary = binaryMessagesMatching(takeLastMessage(), mutableListOf())
+                binaryMessages.forEach {
+                    it.inBracket = true
+                }
+                binaryMessages.addAll(binary)
+            }
+
+            checkForKeyword() -> {
+//                val keyword = keywordMessageParsing(false, firstReceiver)
+//                pipedMsgs.add(keyword)
+                error("sas!")
+            }
+
+
         }
     }
+
+
 
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
@@ -137,18 +189,18 @@ fun Parser.unaryOrBinary(
     }
 
 
+
     // if there is no binary message, that's mean there is only unary
     if (binaryMessages.isEmpty()) {
         return MessageSendUnary(
             firstReceiver,
             messages = unaryMessages + cascadedMsgs,
-            inBrackets,
             null,
             firstReceiver.token
         )
     }
     // its binary msg
-    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs, inBrackets, null, firstReceiver.token)
+    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs, null, firstReceiver.token)
 }
 
 fun Parser.checkForKeyword(): Boolean {
@@ -177,20 +229,24 @@ fun Parser.checkForKeyword(): Boolean {
     return result
 }
 
+
+
+
+
 fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
     // сначала попробовать унарное или бинарное
-    val q = messageOrPrimaryReceiver()
+    val receiver = messageOrPrimaryReceiver()
 
     // если ресивер вернул сообщение значит дальше идет кейворд
     // если после парсинга унарно/бинарного дальше идет идент с колоном
-    return if (q is UnaryMsg || q is BinaryMsg) {
-        keyword(inBrackets, q)
+    return if (receiver is UnaryMsg || receiver is BinaryMsg) {
+        keyword(inBrackets, receiver)
     } else if (checkForKeyword()) {
         // keyword, 1 and 2 because identifier skip, this will break if the receiver takes more than one token
-        keyword(inBrackets, q)
+        keyword(inBrackets, receiver)
     } else
     // unary/binary
-        unaryOrBinary(inBrackets, q)
+        unaryOrBinary(inBrackets, receiver)
 }
 
 fun Parser.keyword(
@@ -198,7 +254,7 @@ fun Parser.keyword(
     customReceiver: Receiver? = null
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
-    val receiver: Receiver = customReceiver ?: receiver()
+    val receiver: Receiver = customReceiver ?: simpleReceiver()
 
 
 
@@ -206,17 +262,16 @@ fun Parser.keyword(
         keywordMessageParsing(inBrackets, receiver)
     }
 
-    val w = mutableListOf<Message>()
-    w.add(keyColonCycle())
+    val messages = mutableListOf<Message>()
+    messages.add(keyColonCycle())
     while (match(TokenType.PipeOperator)) {
-        w.add(keyColonCycle())
+        messages.add(keyColonCycle())
     }
 
 
     return MessageSendKeyword(
         receiver,
-        w,
-        inBrackets,
+        messages,
         null,
         receiver.token
     )

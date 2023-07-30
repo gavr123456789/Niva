@@ -158,6 +158,16 @@ int to: x = [
         check("alias", listOf(Alias, EndOfFile))
     }
 
+    @Test
+    fun nn() {
+        check("""
+                min
+
+                ^
+        """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile))
+    }
+
+
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, "sas")
 //        lexer.fillSymbolTable()

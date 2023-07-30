@@ -56,7 +56,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     when (typeOrEqual.kind) {
         TokenType.Assign -> {
             val isNextReceiver = isNextReceiver()
-            value = if (isNextReceiver) receiver() else messageOrControlFlow()
+            value = if (isNextReceiver) simpleReceiver() else expression()
             valueType = null
         }
         // ::^int
@@ -64,7 +64,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Assign)
-            value = this.receiver()
+            value = this.simpleReceiver()
         }
 
         else -> error("after ${peek(-1)} needed type or expression")
@@ -104,12 +104,18 @@ fun Parser.isNextReceiver(): Boolean {
 }
 
 
-fun Parser.messageOrControlFlow(): Expression {
-    if (check(TokenType.Pipe)) {
-        val isExpression =
-            current != 0 && (check(TokenType.Assign, -1) || check(TokenType.Return, -1))
-        return ifOrSwitch(isExpression)
+// message or control flow
+fun Parser.expression(): Expression {
+
+    when {
+        check(TokenType.Pipe) -> {
+            val isExpression =
+                current != 0 && (check(TokenType.Assign, -1) || check(TokenType.Return, -1))
+            return ifOrSwitch(isExpression)
+        }
     }
+
+
 
     return messageSend()
 }
@@ -143,6 +149,15 @@ fun Parser.statement(): Statement {
         return codeBlock()
     }
 
+    if (kind == TokenType.Return) {
+        val returnTok = step()
+        val expression = expression()
+        return ReturnStatement(
+            expression = expression,
+            token = returnTok,
+        )
+    }
+
 
     val isItKeywordDeclaration = isItKeywordDeclaration()
     if (isItKeywordDeclaration != null) {
@@ -150,17 +165,16 @@ fun Parser.statement(): Statement {
     }
 
 
-    return messageOrControlFlow()
+
+    return expression()
 }
 
 
 fun Parser.statementWithEndLine(): Statement {
-    while (match(TokenType.EndOfLine)) {
-    }
+    skipNewLines()
     val result = this.statement()
-//    match(TokenType.EndOfLine)
-    while (match(TokenType.EndOfLine)) {
-    }
+    skipNewLines()
+
     return result
 }
 

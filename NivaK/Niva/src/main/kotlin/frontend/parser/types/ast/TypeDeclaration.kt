@@ -89,5 +89,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project
+    Int, String, Float, Boolean, Unit, Project, Char
 }

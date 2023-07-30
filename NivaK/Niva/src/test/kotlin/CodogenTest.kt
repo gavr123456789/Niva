@@ -1,4 +1,6 @@
 import codogen.codogenKt
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 fun generateKotlin(source: String): String {
@@ -209,6 +211,6 @@ class CodogenTest {
                 else -> "something else".echo()
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(ktCode, expect)
     }
 }

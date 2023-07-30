@@ -6,6 +6,9 @@ fun MessageSend.generateMessageCall(): String {
 
     val b = StringBuilder()
 
+    if (this.messages.isEmpty()) {
+        return receiver.str
+    }
     this.messages.forEachIndexed { i, it ->
         when (it) {
             is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
@@ -102,6 +105,10 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
         append(receiver.str)
     }
     append(".${it.selectorName}()")
+}
+
+
+fun Int.factorial() {
 }
 
 fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildString {

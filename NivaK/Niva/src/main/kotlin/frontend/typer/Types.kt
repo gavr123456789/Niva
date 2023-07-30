@@ -24,12 +24,19 @@ class UnaryMsgMetaData(
 
 class BinaryMsgMetaData(
     name: String,
+    argType: Type,
     returnType: Type,
     msgSends: List<MsgSend> = listOf()
 ) : MessageMetadata(name, returnType, msgSends)
 
+class KeywordArg(
+    val name: String,
+    val type: Type,
+)
+
 class KeywordMsgMetaData(
     name: String,
+    val argTypes: List<KeywordArg>,
     returnType: Type,
     msgSends: List<MsgSend> = listOf()
 ) : MessageMetadata(name, returnType, msgSends)
@@ -44,7 +51,6 @@ data class TypeField(
     val name: String,
     val type: Type
 )
-
 
 
 sealed class Type(
@@ -67,6 +73,7 @@ sealed class Type(
         `package`: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : InternalLike(typeName, isPrivate, `package`, protocols)
+
     class NullableInternalType(
         typeName: InternalTypes,
         isPrivate: Boolean = false,
@@ -90,7 +97,7 @@ sealed class Type(
         isPrivate: Boolean = false,
         `package`: String,
         protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate,`package`, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
 
     class NullableUserType(
         name: String,
@@ -99,7 +106,7 @@ sealed class Type(
         isPrivate: Boolean = false,
         `package`: String,
         protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate,`package`, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
 
 }
 
@@ -170,32 +177,59 @@ fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, Type>): Ty
 }
 
 
+//fun <T: MessageDeclaration, G: MessageMetadata> T.toMessageData(typeTable: MutableMap<TypeName, Type>): G {
+//    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("return type of unary message ${this.name} not registered")
+//    val result = UnaryMsgMetaData(
+//        name = this.name,
+//        returnType = returnType,
+//    )
+//    return result
+//}
 fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>): UnaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val returnType = this.returnType?.toType(typeTable)
+        ?: throw Exception("return type of unary message ${this.name} not registered")
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
-        )
+    )
     return result
 }
+
 fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>): BinaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val returnType = this.returnType?.toType(typeTable)
+        ?: throw Exception("return type of binary message ${this.name} not registered")
+
+    val argType = this.forType.toType(typeTable)
+
     val result = BinaryMsgMetaData(
         name = this.name,
+        argType = argType,
         returnType = returnType
     )
     return result
 }
+
 fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>): KeywordMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val returnType = this.returnType?.toType(typeTable)
+        ?: throw Exception("return type of keyword message ${this.name} not registered")
+    val keywordArgs = this.args.map {
+        KeywordArg(
+            name = it.name,
+            type = it.type?.toType(typeTable)
+                ?: throw Exception("type of keyword message ${this.name}'s arg ${it.name} not registered")
+        )
+    }
     val result = KeywordMsgMetaData(
         name = this.name,
+        argTypes = keywordArgs,
         returnType = returnType
     )
     return result
 }
+
 fun ConstructorDeclaration.toMessageData(typeTable: MutableMap<TypeName, Type>): ConstructorMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("retrun type of unary message ${this.name} not registered")
+    val returnType = this.returnType?.toType(typeTable)
+        ?: throw Exception("return type of constructor message ${this.name} not registered")
     val result = ConstructorMsgMetaData(
         name = this.name,
         returnType = returnType
