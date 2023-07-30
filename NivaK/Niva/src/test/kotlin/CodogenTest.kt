@@ -33,9 +33,9 @@ class CodogenTest {
 
     @Test
     fun keywordCall() {
-        val source = "6 from: 3 inc dec sas + 2 dec sas + 5 to: 3 sus"
+        val source = "6 from: 3 inc dec sas + 2 dec sas + 5 to: 4 sus"
         val ktCode = generateKotlin(source)
-        assertEquals("6.fromTo(3.inc().dec().sas() + 2.dec().sas() + 5, 3.sus())\n", ktCode)
+        assertEquals("6.fromTo(3.inc().dec().sas() + 2.dec().sas() + 5, 4.sus())\n", ktCode)
     }
 
     @Test
