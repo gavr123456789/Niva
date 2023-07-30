@@ -1,6 +1,5 @@
 package frontend.typer
 
-import frontend.parser.types.ast.KeywordDeclarationArg
 
 fun createIntProtocols(
     intType: Type.InternalType,
@@ -42,42 +41,52 @@ val createUnary = { name: String, returnType: Type.InternalType ->
 val createBinary = { name: String, argType: Type, returnType: Type.InternalType ->
     name to BinaryMsgMetaData(name, argType, returnType)
 }
-val createKeyword = { name: String, returnType: Type.InternalType, args: List<KeywordArg> ->
+val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type.InternalType ->
     name to KeywordMsgMetaData(name, args, returnType)
 }
 
-fun createKeyword(name: String, returnType: Type.InternalType, arg: KeywordArg): Pair<String, KeywordMsgMetaData> {
+fun createKeyword(name: String, arg: KeywordArg, returnType: Type.InternalType): Pair<String, KeywordMsgMetaData> {
     return name to KeywordMsgMetaData(name, listOf(arg), returnType)
 }
 
 fun createStringProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
+    @Suppress("UNUSED_PARAMETER")
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     charType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
     val result = mutableMapOf<String, Protocol>()
-
     val arithmeticProtocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("get", charType),
             createUnary("length", stringType),
+            createUnary("isDigit", boolType),
+            createUnary("isBlank", boolType),
+            createUnary("isEmpty", boolType),
+            createUnary("isAlphaNumeric", boolType),
+            createUnary("isNotBlank", boolType),
+            createUnary("isNotEmpty", boolType),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("+", stringType, stringType),
             createBinary("==", stringType, boolType),
             createBinary("!=", stringType, boolType),
         ),
-        keywordMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword("drop", KeywordArg("drop", intType), stringType),
+            createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
+        ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }
 
 
+@Suppress("UNUSED_PARAMETER")
 fun createBoolProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
@@ -98,9 +107,9 @@ fun createBoolProtocols(
             createBinary("||", boolType, boolType),
         ),
         keywordMsgs = mutableMapOf(
-            createKeyword("or", boolType, KeywordArg("or", boolType)),
-            createKeyword("and", boolType, KeywordArg("or", boolType)),
-            createKeyword("xor", boolType, KeywordArg("or", boolType)),
+            createKeyword("or", KeywordArg("or", boolType), boolType),
+            createKeyword("and", KeywordArg("and", boolType), boolType),
+            createKeyword("xor", KeywordArg("xor", boolType), boolType),
         ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol

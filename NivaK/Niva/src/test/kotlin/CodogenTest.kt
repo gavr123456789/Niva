@@ -1,5 +1,4 @@
 import codogen.codogenKt
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -36,14 +35,14 @@ class CodogenTest {
     fun keywordCall() {
         val source = "6 from: 3 inc dec sas + 2 dec sas + 5 to: 3 sus"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "6.fromTo(3.inc().dec().sas() + 2.dec().sas() + 5, 3.sus())\n")
+        assertEquals("6.fromTo(3.inc().dec().sas() + 2.dec().sas() + 5, 3.sus())\n", ktCode)
     }
 
     @Test
     fun keywordCall2() {
         val source = "1 from: 2 to: 3"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "1.fromTo(2, 3)\n")
+        assertEquals("1.fromTo(2, 3)\n", ktCode)
     }
 
 
@@ -175,6 +174,7 @@ class CodogenTest {
         """.trimIndent().trim()
         assert(ktCode == expect)
     }
+
     @Test
     fun ifDeclarationManyBranch() {
         val source = "| 1 > 5 => 1 echo | 2 < 5 => 2 echo | 3 + 1 > 3 => 3 echo"
