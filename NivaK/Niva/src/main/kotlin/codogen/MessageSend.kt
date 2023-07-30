@@ -50,11 +50,9 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         if (messagesForArg != null && messagesForArg.isNotEmpty()) {
             val messageForArg = messagesForArg[0]
             if (messageForArg is BinaryMsg) {
-                append(generateBinarySend(receiver, messagesForArg as List<BinaryMsg>))
-//                    append(generateSingleBinary(i, receiver,messageForArg))
+                append(generateBinarySend(messageForArg.receiver, messagesForArg as List<BinaryMsg>))
             } else if (messageForArg is UnaryMsg) {
-                append(generateUnarySends(receiver, messagesForArg as List<UnaryMsg>))
-//                    append(generateSingleUnary(i, receiver,messageForArg))
+                append(generateUnarySends(messageForArg.receiver, messagesForArg as List<UnaryMsg>))
             }
 
             if (i != keywordMsg.args.count() - 1)
@@ -88,7 +86,7 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
 fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildString {
 
     messages.forEachIndexed { i, it ->
-        append(generateSingleUnary(i, receiver, it))
+        append(generateSingleUnary(i, it.receiver, it))
     }
     if (messages.isEmpty()) {
         append(receiver.str)
@@ -114,8 +112,11 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
 // can be unary after binary
 fun generateBinarySend(receiver: Receiver, messages: List<BinaryMsg>) = buildString {
     messages.forEachIndexed { i, it ->
-        append(generateSingleBinary(i, receiver, it))
+        append(generateSingleBinary(i, it.receiver, it))
     }
+//    if (messages.isEmpty()) {
+//        append(receiver.str)
+//    }
 }
 
 fun generateSingleBinary(
