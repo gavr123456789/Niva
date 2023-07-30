@@ -42,55 +42,33 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     }
     append(keywordMsg.selectorName)
     append("(")
+    keywordMsg.args.forEachIndexed { i, it ->
 
-}
-
-fun generateKeywordSend(receiver: Receiver, messages: List<KeywordMsg>): String {
-    return buildString {
-        // when there will be cascade, it will fail
-        assert(messages.count() == 1)
-        val keywordMsg = messages[0]
-
-        append(receiver.str, ".")
-
-        // 1 from: 2 inc to: 3
-        // 1.fromTo(from = 2.inc(), to = 3)
-
-        // 1.^
-        // generate function name
-        append(keywordMsg.selectorName)
-        // 1.fromTo
-
-        append("(")
-        keywordMsg.args.forEachIndexed { i, it ->
-
-            val messagesForArg = it.unaryOrBinaryMsgsForArg
+        val messagesForArg = it.unaryOrBinaryMsgsForArg
 
 
-            if (messagesForArg != null && messagesForArg.isNotEmpty()) {
-                val messageForArg = messagesForArg[0]
-                if (messageForArg is BinaryMsg) {
-                    append(generateBinarySend(receiver, messagesForArg as List<BinaryMsg>))
+        if (messagesForArg != null && messagesForArg.isNotEmpty()) {
+            val messageForArg = messagesForArg[0]
+            if (messageForArg is BinaryMsg) {
+                append(generateBinarySend(receiver, messagesForArg as List<BinaryMsg>))
 //                    append(generateSingleBinary(i, receiver,messageForArg))
-                } else if (messageForArg is UnaryMsg) {
-                    append(generateUnarySends(receiver, messagesForArg as List<UnaryMsg>))
+            } else if (messageForArg is UnaryMsg) {
+                append(generateUnarySends(receiver, messagesForArg as List<UnaryMsg>))
 //                    append(generateSingleUnary(i, receiver,messageForArg))
-                }
-
-                if (i != keywordMsg.args.count() - 1)
-                    append(", ")
-            } else {
-                // no unaryOrBinary args
-                append(it.generateCallPair())
-                if (i != keywordMsg.args.count() - 1)
-                    append(", ")
             }
 
+            if (i != keywordMsg.args.count() - 1)
+                append(", ")
+        } else {
+            // no unaryOrBinary args
+            append(it.generateCallPair())
+            if (i != keywordMsg.args.count() - 1)
+                append(", ")
         }
 
-        append(")")
-
     }
+
+    append(")")
 }
 
 private fun KeywordArgAndItsMessages.generateCallPair(): String {
@@ -105,10 +83,6 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
         append(receiver.str)
     }
     append(".${it.selectorName}()")
-}
-
-
-fun Int.factorial() {
 }
 
 fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildString {

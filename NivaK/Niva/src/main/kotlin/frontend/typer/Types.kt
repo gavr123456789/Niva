@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package frontend.typer
 
 import frontend.parser.parsing.MessageDeclarationType
@@ -13,6 +15,7 @@ data class MsgSend(
 sealed class MessageMetadata(
     val name: String,
     val returnType: Type,
+    @Suppress("unused")
     val msgSends: List<MsgSend>
 )
 
@@ -59,6 +62,14 @@ sealed class Type(
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
 ) {
+    sealed class Lambda(
+        name: String,
+        val args: List<TypeField>,
+        val returnType: Type,
+        isPrivate: Boolean = false,
+        `package`: String,
+        protocols: MutableMap<String, Protocol>
+    ) : Type(name, `package`, isPrivate, protocols)
 
     sealed class InternalLike(
         typeName: InternalTypes,
