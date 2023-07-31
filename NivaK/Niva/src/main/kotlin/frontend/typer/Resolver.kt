@@ -425,32 +425,40 @@ private fun Resolver.resolveStatement(
                 statement.receiver.type?.name// ?: throw Exception("${statement.selectorName} hasn't type")
             val receiver = statement.receiver
 
-            receiver.type = when (receiver) {
-                is CodeBlock -> TODO()
-                is ListCollection -> TODO()
-                is BinaryMsg -> TODO()
-                is KeywordMsg -> TODO()
-                is UnaryMsg -> receiver.type
+            if (receiver.type == null)
+                receiver.type = when (receiver) {
+                    is CodeBlock -> TODO()
+                    is ListCollection -> TODO()
+                    is BinaryMsg -> TODO()
+                    is KeywordMsg -> TODO()
+                    is UnaryMsg -> receiver.type
 
 
-                is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
-                is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                is LiteralExpression.FloatExpr -> Resolver.defaultBasicTypes[InternalTypes.Float]
-                is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
-                is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
-            }
-            val receiverType = receiver.type!!
-            // check for getter
-            if (receiverType is Type.UserType) {
-
-                val fieldWithSameName = receiverType.fields.find { it.name == statement.selectorName }
-
-                if (fieldWithSameName != null) {
-                    statement.kind = UnaryMsgKind.Getter
-                    statement.type = fieldWithSameName.type
+                    is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
+                    is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
+                    is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
+                    is LiteralExpression.FloatExpr -> Resolver.defaultBasicTypes[InternalTypes.Float]
+                    is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
+                    is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
                 }
+
+            val receiverType = receiver.type!!
+
+
+            val checkForGetter = {
+                if (receiverType is Type.UserType) {
+                    val fieldWithSameName = receiverType.fields.find { it.name == statement.selectorName }
+                    Pair(fieldWithSameName != null, fieldWithSameName)
+                } else Pair(false, null)
+            }
+
+            val (isGetter, w) = checkForGetter()
+            if (isGetter) {
+                statement.kind = UnaryMsgKind.Getter
+                statement.type = w!!.type
+
             } else {
+                // usual message
                 // find this message
                 val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName)
                 statement.kind = UnaryMsgKind.Unary

@@ -2,8 +2,11 @@
 type Person name: String age: Int
 Person hello -> Unit = [1 echo]
 
-person = Person name: "Sas" age: 4
+person = Person name: "Bob" age: 42
 person name echo
+person age echo
+
+person hello
 
 
 x = 8
