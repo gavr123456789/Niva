@@ -37,11 +37,28 @@ fun MessageSend.generateMessageCall(): String {
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
-    if (i == 0) {
-        append(receiver.str, ".")
+
+    when (keywordMsg.kind) {
+        KeywordLikeType.Keyword -> {
+            if (i == 0) {
+                append(receiver.str, ".")
+            }
+            append(keywordMsg.selectorName)
+        }
+
+        KeywordLikeType.Constructor -> {
+            if (i == 0) {
+                append(receiver.str)
+            }
+//            append(keywordMsg.receiver.str)
+        }
+
+        KeywordLikeType.Setter -> TODO()
     }
-    append(keywordMsg.selectorName)
+
     append("(")
+
+    // generate args
     keywordMsg.args.forEachIndexed { i, it ->
 
         val messagesForArg = it.unaryOrBinaryMsgsForArg
@@ -80,7 +97,10 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
     if (i == 0) {
         append(receiver.str)
     }
-    append(".${it.selectorName}()")
+    when (it.kind) {
+        UnaryMsgKind.Unary -> append(".${it.selectorName}()")
+        UnaryMsgKind.Getter -> append(".${it.selectorName}")
+    }
 }
 
 fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildString {

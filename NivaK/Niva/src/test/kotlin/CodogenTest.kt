@@ -1,10 +1,20 @@
 import codogen.codogenKt
+import frontend.typer.Resolver
+import frontend.typer.resolve
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.io.File
 
 fun generateKotlin(source: String): String {
     val ast = getAst(source)
-    val codogenerator = codogenKt(ast)
+    val resolver = Resolver(
+        projectName = "common",
+        mainFilePath = File("sas.niva"),
+        statements = ast.toMutableList()
+    )
+    resolver.resolve(resolver.statements, mutableMapOf())
+    val codogenerator = codogenKt(resolver.statements)
+
     return codogenerator
 }
 
@@ -212,5 +222,22 @@ class CodogenTest {
             }
         """.trimIndent().trim()
         assertEquals(ktCode, expect)
+    }
+
+    @Test
+    fun getter() {
+        val source = """
+            type Person name: String age: Int
+            person = Person name: "Sas" age: 4
+            person name
+          
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            class Person(val name: String, val age: Int)
+            val person = Person("Sas", 4)
+            person.name
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
     }
 }

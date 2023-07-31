@@ -2,6 +2,7 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class ParserTest {
@@ -148,6 +149,19 @@ class ParserTest {
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = source)
         val ast = parser.keyword(false)
+    }
+
+    @Test
+    fun unaryEachReceiverIsPrevious() {
+        val source = "person name first"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val messageSend: MessageSend = ast[0] as MessageSend
+        val q = messageSend.messages
+        val name = q[0]
+        val first = q[1]
+        Assertions.assertEquals(first.receiver.str, "name")
     }
 
     @Test
@@ -757,6 +771,7 @@ class ParserTest {
         assert(q.typeName == "MyInt")
         assert(q.matchedTypeName == "Int")
     }
+
     @Test
     fun bracketExpression() {
 
@@ -766,6 +781,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
     }
+
     @Test
     fun returnStatementSimple() {
 
