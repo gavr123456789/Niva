@@ -130,10 +130,16 @@ class ResolverTest {
 
     @Test
     fun defaultTypesInCorePackage() {
+        val source = """
+            Project package: "files" protocol: "path"
+            type Person name: String age: Int
+        """.trimIndent()
+        val ast = getAst(source)
+
         val resolver = Resolver(
             projectName = "common",
             mainFilePath = File("sas.niva"),
-            statements = mutableListOf()
+            statements = ast.toMutableList()
         )
 
         val q = resolver.projects["common"]!!
@@ -216,7 +222,7 @@ class ResolverTest {
     }
 
     @Test
-    fun recreateKtFolder(){
+    fun recreateKtFolder() {
         val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
 
         val source = """
@@ -242,7 +248,7 @@ class ResolverTest {
     }
 
     @Test
-    fun manySources(){
+    fun manySources() {
         val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
 
         val source1 = """

@@ -43,13 +43,21 @@ fun Parser.newMessageSend(): MessageSend {
 }
 
 
-
 // 1^ sas sus sos -> {sas sus sos}
 fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
-        val unaryFirstMsg = UnaryMsg(receiver, identifier.name, identifier.names, null, identifier.token)
+        // each unary message must have previous unary as receiver because
+        // person name echo -- receiver of echo is name
+        val receiver2 = if (unaryMessages.isNotEmpty()) unaryMessages.last() else receiver
+        val unaryFirstMsg = UnaryMsg(
+            receiver2,
+            identifier.name,
+            identifier.names,
+            null,
+            identifier.token
+        )
         unaryMessages.add(unaryFirstMsg)
     }
 
@@ -95,7 +103,6 @@ fun Parser.unaryOrBinary(
     var wasCascade = false
 
     val firstReceiver: Receiver = customReceiver ?: simpleReceiver()
-
 
 
     // 3 ^inc inc + 2 dec dec + ...
@@ -160,7 +167,6 @@ fun Parser.unaryOrBinary(
     }
 
 
-
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
     while (parsePipeAndCascade && match(TokenType.Cascade)) {
@@ -187,7 +193,6 @@ fun Parser.unaryOrBinary(
             }
         }
     }
-
 
 
     // if there is no binary message, that's mean there is only unary
@@ -230,9 +235,6 @@ fun Parser.checkForKeyword(): Boolean {
 }
 
 
-
-
-
 fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
     // сначала попробовать унарное или бинарное
     val receiver = messageOrPrimaryReceiver()
@@ -255,7 +257,6 @@ fun Parser.keyword(
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
     val receiver: Receiver = customReceiver ?: simpleReceiver()
-
 
 
     val keyColonCycle = {
@@ -300,7 +301,6 @@ fun Parser.keywordMessageParsing(
         val unaryOrBinaryForArgument =
             unaryOrBinary(inBrackets, null, false) // Тут может понядобится все таки передать ресивер
         val keyArg = unaryOrBinaryForArgument.receiver
-
 
 
         // making fun name camelCase

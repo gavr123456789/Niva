@@ -430,7 +430,9 @@ private fun Resolver.resolveStatement(
                 is ListCollection -> TODO()
                 is BinaryMsg -> TODO()
                 is KeywordMsg -> TODO()
-                is UnaryMsg -> TODO()
+                is UnaryMsg -> receiver.type
+
+
                 is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
                 is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
                 is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]

@@ -70,7 +70,9 @@ fun createStringProtocols(
             createUnary("isAlphaNumeric", boolType),
             createUnary("isNotBlank", boolType),
             createUnary("isNotEmpty", boolType),
-        ),
+            createUnary("echo", unitType),
+
+            ),
         binaryMsgs = mutableMapOf(
             createBinary("+", stringType, stringType),
             createBinary("==", stringType, boolType),
@@ -99,7 +101,9 @@ fun createBoolProtocols(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
             createUnary("not", boolType),
-        ),
+            createUnary("echo", unitType),
+
+            ),
         binaryMsgs = mutableMapOf(
             createBinary("==", boolType, boolType),
             createBinary("!=", boolType, boolType),
