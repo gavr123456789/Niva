@@ -115,9 +115,13 @@ fun Parser.expression(): Expression {
         }
     }
 
-
-
-    return messageSend()
+    val messageSend = messageSend()
+    // unwrap unnecessary MessageSend
+    return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
+        messageSend.receiver
+    } else {
+        messageSend
+    }
 }
 
 
