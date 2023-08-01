@@ -166,6 +166,7 @@ class Resolver(
 fun Resolver.resolve(
     statements: List<Statement>,
     previousScope: MutableMap<String, Type>,
+    rootStatement: Statement? = null, // since we in recursion, and can't define on what level of it, its the only way to know previous statement
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
 
@@ -175,7 +176,8 @@ fun Resolver.resolve(
             statement,
             currentScope,
             previousScope,
-            i
+            i,
+            rootStatement
         )
     }
 
@@ -239,7 +241,7 @@ fun Resolver.resolveDeclarations(
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             previousAndCurrentScope["self"] = forType
-            val body = this.resolve(statement.body, previousAndCurrentScope)
+            val body = this.resolve(statement.body, previousAndCurrentScope, statement)
 
             // TODO check that return type is the same as declared return type, or if it not declared -> assign it
 
@@ -255,23 +257,29 @@ private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
-    i: Int
+    i: Int,
+    rootStatement: Statement?
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         if (statement2.receiver.str != "Project") {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            this.resolve(
-                statement2.messages,
-                previousAndCurrentScope
-            )
+            this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
             // TODO check then return parameter of each send match the next input parameter
             if (statement2.messages.isNotEmpty()) {
                 statement2.type =
                     statement2.messages.last().type
                         ?: throw Exception("Not all messages of ${statement2.str} has types")
+            } else {
+                // every single expressions is unary message without messages
+                if (statement2.type == null) {
+                    currentLevel++
+                    resolve(listOf(statement2.receiver), previousAndCurrentScope, statement2)
+                    currentLevel--
+                }
+                statement2.type = statement2.receiver.type
+                    ?: throw Exception("Can't find type for ${statement2.str} on line ${statement2.token.line}")
             }
-
         } else {
             // add to the current project
             assert(statement2.messages.count() == 1)
@@ -288,6 +296,7 @@ private fun Resolver.resolveStatement(
                 } else throw Exception("Only string arguments for Project allowed")
             }
         }
+
     }
 
     when (statement) {
@@ -296,7 +305,7 @@ private fun Resolver.resolveStatement(
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             // currentNode, depth + 1
             currentLevel++
-            resolve(listOf(statement.value), previousAndCurrentScope)
+            resolve(listOf(statement.value), previousAndCurrentScope, statement)
             currentLevel--
 
             val valueType = statement.value.type
@@ -325,7 +334,7 @@ private fun Resolver.resolveStatement(
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
-                resolve(listOf(statement.receiver), previousAndCurrentScope)
+                resolve(listOf(statement.receiver), previousAndCurrentScope, statement)
                 currentLevel--
             }
             val receiverType =
@@ -475,8 +484,8 @@ private fun Resolver.resolveStatement(
         }
 
         is CodeBlock -> {
-            val q = statements[i - 1]
-            if (q != null && q !is VarDeclaration) {
+
+            if (rootStatement != null && rootStatement !is VarDeclaration || rootStatement == null) {
                 statement.isSingle = true
             }
 
@@ -498,7 +507,7 @@ private fun Resolver.resolveStatement(
 
 //            previousAndCurrentScope["self"] = forType
             currentLevel++
-            resolve(statement.statements, previousAndCurrentScope)
+            resolve(statement.statements, previousAndCurrentScope, statement)
             currentLevel--
             val lastExpression = statement.statements.last()
             if (lastExpression !is Expression) {
