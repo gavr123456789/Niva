@@ -12,6 +12,13 @@ import java.io.File
 typealias TypeName = String
 
 
+inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.InternalType> {
+    return type to Type.InternalType(
+        typeName = type,
+        `package` = "common",
+    )
+}
+
 class Resolver(
     val projectName: String,
 
@@ -49,42 +56,17 @@ class Resolver(
     companion object {
 
         val defaultBasicTypes: Map<InternalTypes, Type.InternalType> = mapOf(
-            InternalTypes.Int to Type.InternalType(
-                typeName = InternalTypes.Int,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.String to Type.InternalType(
-                typeName = InternalTypes.String,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.Char to Type.InternalType(
-                typeName = InternalTypes.Char,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.Float to Type.InternalType(
-                typeName = InternalTypes.Float,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.Boolean to Type.InternalType(
-                typeName = InternalTypes.Boolean,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.Unit to Type.InternalType(
-                typeName = InternalTypes.Unit,
-                isPrivate = false,
-                `package` = "common",
-            ),
-            InternalTypes.Project to Type.InternalType(
-                typeName = InternalTypes.Project,
-                isPrivate = false,
-                `package` = "common",
-            ),
-        )
+
+            createDefaultType(InternalTypes.Int),
+            createDefaultType(InternalTypes.String),
+            createDefaultType(InternalTypes.Char),
+            createDefaultType(InternalTypes.Float),
+            createDefaultType(InternalTypes.Boolean),
+            createDefaultType(InternalTypes.Unit),
+            createDefaultType(InternalTypes.Project),
+            createDefaultType(InternalTypes.IntRange),
+
+            )
 
         init {
             val intType = defaultBasicTypes[InternalTypes.Int]!!
@@ -93,6 +75,7 @@ class Resolver(
             val floatType = defaultBasicTypes[InternalTypes.Float]!!
             val boolType = defaultBasicTypes[InternalTypes.Boolean]!!
             val unitType = defaultBasicTypes[InternalTypes.Unit]!!
+            val intRangeType = defaultBasicTypes[InternalTypes.IntRange]!!
 
 
             intType.protocols.putAll(
@@ -101,7 +84,8 @@ class Resolver(
                     stringType = stringType,
                     unitType = unitType,
                     boolType = boolType,
-                    floatType = floatType
+                    floatType = floatType,
+                    intRangeType = intRangeType
                 )
             )
             stringType.protocols.putAll(
@@ -336,7 +320,8 @@ private fun Resolver.resolveStatement(
                 resolve(listOf(statement.receiver), previousAndCurrentScope)
             }
             val receiverType =
-                statement.receiver.type ?: throw Exception("Can't infer receiver ${statement.receiver.str} type")
+                statement.receiver.type
+                    ?: throw Exception("Can't infer receiver ${statement.receiver.str} type on line ${statement.token.line}")
 
 
             // check that receiver is real type
@@ -429,9 +414,9 @@ private fun Resolver.resolveStatement(
                 receiver.type = when (receiver) {
                     is CodeBlock -> TODO()
                     is ListCollection -> TODO()
+                    is UnaryMsg -> receiver.type
                     is BinaryMsg -> TODO()
                     is KeywordMsg -> TODO()
-                    is UnaryMsg -> receiver.type
 
 
                     is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
@@ -476,11 +461,49 @@ private fun Resolver.resolveStatement(
 
 
         is IdentifierExpr -> {
-            resolveIdentifier(statement, previousScope, currentScope)
+            getTypeForIdentifier(statement, previousScope, currentScope)
 
         }
 
         is CodeBlock -> {
+            val variables = statement.inputList
+            variables.forEach {
+                if (it.typeAST != null) {
+                    it.type = it.typeAST.toType(typeTable)
+                } else {
+                    it.type = getTypeForIdentifier(it, previousScope, currentScope)
+                }
+
+            }
+
+            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+            variables.forEach {
+                previousAndCurrentScope[it.name] = it.type!!
+            }
+
+//            previousAndCurrentScope["self"] = forType
+            resolve(statement.statements, previousAndCurrentScope)
+            val lastExpression = statement.statements.last()
+            if (lastExpression !is Expression) {
+                throw Exception("last statement of code block must be expression on line ${statement.token.line}")
+            }
+
+            // Add lambda type to code-block itself
+
+            val returnType = lastExpression.type!!
+
+            val args = statement.inputList.map {
+                TypeField(name = it.name, type = it.type!!)
+            }
+
+
+            statement.type = Type.Lambda(
+                args = args,
+                returnType = returnType,
+                `package` = currentPackageName
+            )
+
+
 
 
             if (currentLevel == 0) {
@@ -488,10 +511,8 @@ private fun Resolver.resolveStatement(
             }
         }
 
-        is ListCollection -> {
+        is ListCollection -> TODO()
 
-
-        }
 
         is LiteralExpression.FloatExpr ->
             statement.type = Resolver.defaultBasicTypes[InternalTypes.Float]
@@ -523,15 +544,6 @@ private fun Resolver.resolveStatement(
     }
 }
 
-private fun Resolver.resolveIdentifier(
-    statement: IdentifierExpr,
-    previousScope: MutableMap<String, Type>,
-    currentScope: MutableMap<String, Type>
-) {
-    statement.type = typeTable[statement.str]
-        ?: previousScope[statement.str]
-                ?: currentScope[statement.str]!!
-}
 
 private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
     receiverType.protocols.forEach { (k, v) ->
@@ -731,20 +743,15 @@ fun Resolver.changeProtocol(protocolName: String) {
 //    }
 }
 
-fun Resolver.registerNewMethod(type: Type) {
-    // register method in a current project, package, protocol
-}
-
-fun Resolver.lookForTypeInImportedProjects(): Type {
-    TODO()
-}
-
 fun Resolver.getTypeForIdentifier(
     x: IdentifierExpr,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
-): Type =
-    typeTable[x.str]
+): Type {
+    val type = typeTable[x.str]
         ?: currentScope[x.str]
         ?: previousScope[x.str]
-        ?: throw Exception("Can't find type ${x.str}")
+        ?: throw Exception("Can't find type ${x.str} on line ${x.token.line}")
+    x.type = type
+    return type
+}

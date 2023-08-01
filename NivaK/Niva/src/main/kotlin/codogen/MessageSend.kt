@@ -18,12 +18,6 @@ fun MessageSend.generateMessageCall(): String {
     }
     return b.toString()
 
-//    return when (this) {
-//        is MessageSendUnary -> generateUnarySend(receiver, messages)
-//        is MessageSendBinary -> generateBinarySend(receiver, messages)
-//        is MessageSendKeyword -> generateKeywordSend(receiver, messages)
-//    }
-
 
     // Unary
     // 4 inc = 4.inc()
@@ -36,7 +30,6 @@ fun MessageSend.generateMessageCall(): String {
 
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
-
 
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword -> {
