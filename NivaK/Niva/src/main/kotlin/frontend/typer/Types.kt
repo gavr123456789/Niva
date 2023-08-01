@@ -62,14 +62,12 @@ sealed class Type(
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
 ) {
-    sealed class Lambda(
-        name: String,
+    class Lambda(
         val args: List<TypeField>,
         val returnType: Type,
-        isPrivate: Boolean = false,
         `package`: String,
-        protocols: MutableMap<String, Protocol>
-    ) : Type(name, `package`, isPrivate, protocols)
+        isPrivate: Boolean = false,
+    ) : Type("codeblock${args.map { it.name }} -> ${returnType.name}", `package`, isPrivate)
 
     sealed class InternalLike(
         typeName: InternalTypes,
@@ -143,26 +141,31 @@ class Project(
 )
 
 fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
-    return when (name) {
-        "Int" ->
-            Resolver.defaultBasicTypes[InternalTypes.Int]!!
-
-        "String" ->
-            Resolver.defaultBasicTypes[InternalTypes.String]!!
-
-        "Float" ->
-            Resolver.defaultBasicTypes[InternalTypes.Float]!!
-
-        "Boolean" ->
-            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-
-        "Unit" ->
-            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-
-        else -> {
-            typeTable[name] ?: throw Exception("type $name not registered")
-        }
-    }
+    return Resolver.defaultBasicTypes[InternalTypes.valueOf(name)]
+        ?: (typeTable[name]
+            ?: throw Exception("Can't find type $name ")
+                // TODO better inference, depend on context
+                )
+//    return when (name) {
+//        "Int" ->
+//            Resolver.defaultBasicTypes[InternalTypes.Int]!!
+//
+//        "String" ->
+//            Resolver.defaultBasicTypes[InternalTypes.String]!!
+//
+//        "Float" ->
+//            Resolver.defaultBasicTypes[InternalTypes.Float]!!
+//
+//        "Boolean" ->
+//            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
+//
+//        "Unit" ->
+//            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
+//
+//        else -> {
+//            typeTable[name] ?: throw Exception("Can't find type $name ")
+//        }
+//    }
 }
 
 fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {

@@ -683,6 +683,16 @@ class ParserTest {
     }
 
     @Test
+    fun codeBlockWithType() {
+        val source = """
+            x = [x::Int, y::Int -> x + y]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val varDecl = ast[0] as VarDeclaration
+    }
+
+    @Test
     fun pipeOperator() {
         val source = """
         1 to: 2 |> from: 3 |> kek: 5

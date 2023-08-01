@@ -29,6 +29,7 @@ fun getStringFromDeclaration(statement: Statement, ident: Int): String = buildSt
             is ReturnStatement -> {
                 "return ${statement.expression.generateExpression()}"
             }
+
             else -> {
                 TODO()
             }
@@ -58,13 +59,34 @@ fun Expression.generateExpression(): String {
         is UnaryMsg -> TODO()
 
 
-        is CodeBlock -> TODO()
+        is CodeBlock ->
+            // [x::Int, y::Int -> x + y] == {x: Int, y: Int -> x + y}
+            this.generateCodeBlock()
+
 
         // message like
 //        is ConstructorMsg -> TODO()
 //        is SetterMsg -> TODO()
 //        is GetterMsg -> TODO()
     }
+
+}
+
+private fun CodeBlock.generateCodeBlock() = buildString {
+    // {x: Int, y: Int -> x + y}
+    append("{")
+
+
+    inputList.forEach {
+        append(it.name, ": ", it.type!!.name, ", ")
+    }
+
+    append("-> \n")
+    val statementsCode = codogenKt(statements, 1)
+    append(statementsCode)
+
+    
+    append("}")
 
 }
 

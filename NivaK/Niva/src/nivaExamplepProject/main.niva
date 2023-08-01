@@ -1,6 +1,6 @@
 
 type Person name: String age: Int
-Person hello -> Unit = [1 echo]
+Person hello -> Unit = ["hello from function" echo]
 
 person = Person name: "Bob" age: 42
 person name echo
@@ -8,6 +8,7 @@ person age echo
 
 person hello
 
+[x::Int, y::Int -> x + y]
 
 x = 8
 | x > 9 => 11 echo

@@ -7,9 +7,13 @@ fun createIntProtocols(
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     floatType: Type.InternalType,
+    intRangeType: Type.InternalType,
 
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
+
+    val q = 1..2
+
 
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
@@ -27,6 +31,7 @@ fun createIntProtocols(
             createBinary("-", intType, intType),
             createBinary("*", intType, intType),
             createBinary("/", intType, intType),
+            createBinary("..", intType, intRangeType),
         ),
         keywordMsgs = mutableMapOf(),
     )
