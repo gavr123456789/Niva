@@ -24,7 +24,7 @@ class Resolver(
 
     // statements from all files
     // if there cycle types then just remember the unresolved types and then try to resolve them again in the end
-    val statements: MutableList<Statement>,
+    var statements: MutableList<Statement>,
 
     val mainFilePath: File,
     val otherFilesPaths: List<File> = listOf(),
@@ -149,8 +149,11 @@ class Resolver(
             }
 
             ////resolve all the AST////
+            statements = mainAST.toMutableList()
             resolve(mainAST, mutableMapOf())
+
             otherASTs.forEach {
+                statements = it.toMutableList()
                 resolve(it, mutableMapOf())
             }
 
@@ -292,7 +295,9 @@ private fun Resolver.resolveStatement(
         is VarDeclaration -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             // currentNode, depth + 1
+            currentLevel++
             resolve(listOf(statement.value), previousAndCurrentScope)
+            currentLevel--
 
             val valueType = statement.value.type
                 ?: throw Exception("Line: ${statement.token.line} In var declaration ${statement.name} value doesn't got type")
@@ -308,7 +313,9 @@ private fun Resolver.resolveStatement(
 
             currentScope[statement.name] = valueType
 
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
+            }
 
         }
 
@@ -317,7 +324,9 @@ private fun Resolver.resolveStatement(
             // check for constructor
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                currentLevel++
                 resolve(listOf(statement.receiver), previousAndCurrentScope)
+                currentLevel--
             }
             val receiverType =
                 statement.receiver.type
@@ -466,6 +475,12 @@ private fun Resolver.resolveStatement(
         }
 
         is CodeBlock -> {
+            val q = statements[i - 1]
+            if (q != null && q !is VarDeclaration) {
+                statement.isSingle = true
+            }
+
+
             val variables = statement.inputList
             variables.forEach {
                 if (it.typeAST != null) {
@@ -482,7 +497,9 @@ private fun Resolver.resolveStatement(
             }
 
 //            previousAndCurrentScope["self"] = forType
+            currentLevel++
             resolve(statement.statements, previousAndCurrentScope)
+            currentLevel--
             val lastExpression = statement.statements.last()
             if (lastExpression !is Expression) {
                 throw Exception("last statement of code block must be expression on line ${statement.token.line}")
