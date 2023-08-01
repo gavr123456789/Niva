@@ -53,7 +53,7 @@ fun Expression.generateExpression(): String {
         is ControlFlow.SwitchExpression -> this.generateSwitch()
         is ControlFlow.SwitchStatement -> this.generateSwitch()
 
-        // when receiver
+        // when message is receiver
         is BinaryMsg -> TODO()
         is KeywordMsg -> TODO()
         is UnaryMsg -> TODO()
@@ -74,6 +74,11 @@ fun Expression.generateExpression(): String {
 
 private fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}
+    
+    if (isSingle) {
+        append(";")
+    }
+
     append("{")
 
 
@@ -85,9 +90,8 @@ private fun CodeBlock.generateCodeBlock() = buildString {
     val statementsCode = codogenKt(statements, 1)
     append(statementsCode)
 
-    
-    append("}")
 
+    append("}")
 }
 
 
