@@ -40,14 +40,15 @@ class ResolverTest {
     @Test
     fun constructorCall() {
         val source = """
+            x = "sas"
             type Person name: String age: Int
-            person = Person name: "sas" age: 5
+            person = Person name: x age: 5
         """.trimIndent()
 
-        val ktCode = resolve(source)
-        assert(ktCode.count() == 2)
+        val ast = resolve(source)
+        assert(ast.count() == 3)
 
-        val q = ktCode[1] as VarDeclaration
+        val q = ast[2] as VarDeclaration
 
         val value = q.value as MessageSendKeyword
         assert(value.type?.name == "Person")
@@ -56,6 +57,11 @@ class ResolverTest {
         val message = value.messages[0]
         assert((message as KeywordMsg).kind == KeywordLikeType.Constructor)
         assert(message.type?.name == "Person")
+        val firstArg = message.args[0]
+        val secondArg = message.args[1]
+
+        assert(firstArg.keywordArg.type!!.name == "String")
+        assert(secondArg.keywordArg.type!!.name == "Int")
     }
 
     @Test
@@ -293,6 +299,30 @@ class ResolverTest {
         resolver.resolve(resolver.statements, mutableMapOf())
 
         resolver.generateKtProject(path)
+    }
+
+
+    @Test
+    fun codeBlockEval() {
+
+        val source = """
+            x = [x::Int, y::Int -> x + y]
+            x x: 1 y: 2
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+        lambdaCall.args.forEach {
+            assert(it.keywordArg.type != null)
+        }
     }
 
 }

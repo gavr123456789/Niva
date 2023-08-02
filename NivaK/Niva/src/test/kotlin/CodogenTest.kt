@@ -240,4 +240,20 @@ class CodogenTest {
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
     }
+
+    @Test
+    fun lambdaCall() {
+        val source = """
+            x = [x::Int, y::Int -> x + y]
+            x x: 1 y: 2
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            val x = {x: Int, y: Int, -> 
+                x + y
+            }
+            x(1, 2)
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
 }

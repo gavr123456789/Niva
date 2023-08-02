@@ -47,6 +47,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         }
 
         KeywordLikeType.Setter -> TODO()
+
+        KeywordLikeType.ForCodeBlock -> {
+            append(receiver.str)
+        }
     }
 
     append("(")

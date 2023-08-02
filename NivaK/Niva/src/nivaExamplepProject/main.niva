@@ -8,7 +8,9 @@ person age echo
 
 person hello
 
-[x::Int, y::Int -> x + y]
+codeBlock = [x::String, y::String -> x + " " + y]
+textSum = codeBlock x: "Hello from" y: "lambda"
+textSum echo
 
 x = 8
 | x > 9 => 11 echo
