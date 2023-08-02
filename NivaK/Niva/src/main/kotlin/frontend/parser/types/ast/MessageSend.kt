@@ -92,7 +92,7 @@ data class KeywordArgAndItsMessages(
 //}
 
 enum class KeywordLikeType {
-    Keyword, Constructor, Setter
+    Keyword, Constructor, Setter, ForCodeBlock
 }
 
 class KeywordMsg(

@@ -342,6 +342,43 @@ private fun Resolver.resolveStatement(
                     ?: throw Exception("Can't infer receiver ${statement.receiver.str} type on line ${statement.token.line}")
 
 
+            // resolve args types
+            val args = statement.args
+            args.forEach {
+                if (it.keywordArg.type == null) {
+                    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                    currentLevel++
+                    resolve(listOf(it.keywordArg), previousAndCurrentScope)
+                    currentLevel--
+                }
+            }
+
+
+            // if receiverType is lambda then we need to check does it have same argument names and types
+
+            if (receiverType is Type.Lambda) {
+
+
+                if (receiverType.args.count() != statement.args.count()) {
+                    throw Exception("you need to use  on Line ${statement.token.line}")
+                }
+
+                statement.args.forEachIndexed { ii, it ->
+                    // name check
+                    if (it.selectorName != receiverType.args[ii].name) {
+                        throw Exception("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
+                    }
+                    // type check
+                    if (it.keywordArg.type != receiverType.args[ii].type) {
+                        throw Exception("${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }} on Line ${statement.token.line}")
+                    }
+                }
+                statement.type = receiverType.returnType
+                statement.kind = KeywordLikeType.ForCodeBlock
+                return
+            }
+
+
             // check that receiver is real type
             // Person name: "sas"
             val receiverText = statement.receiver.str
