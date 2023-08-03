@@ -38,10 +38,9 @@ fun Parser.primary(): Primary? =
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
 
-
-        TokenType.OpenParen -> TODO()
-        TokenType.OpenBraceHash -> TODO() // set or map
-        TokenType.OpenParenHash -> TODO() // ?
+//        TokenType.OpenParen -> TODO()
+//        TokenType.OpenBraceHash -> TODO() // set or map
+//        TokenType.OpenParenHash -> TODO() // ?
         else -> null
     }
 

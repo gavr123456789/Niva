@@ -134,7 +134,10 @@ fun kotlinCodeFromNiva(nivaCode: String): String {
 
 fun String.addNivaStd(): String {
     val nivaStd = """
-    fun Any?.echo() = println(this)
+        fun Any?.echo() = println(this)
+        inline fun IntRange.forEach(action: (Int) -> Unit) {
+            for (element in this) action(element)
+        }
     """.trimIndent()
     return buildString {
         append(nivaStd, "\n")
@@ -143,11 +146,12 @@ fun String.addNivaStd(): String {
 }
 
 
-
 fun main(args: Array<String>) {
 
-    val pathWhereToGenerateKt = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
-    val pathToNivaProjectRootFile = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\nivaExamplepProject\\main.niva"
+    val pathWhereToGenerateKt =
+        "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+    val pathToNivaProjectRootFile =
+        "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\nivaExamplepProject\\main.niva"
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
 
 

@@ -256,4 +256,16 @@ class CodogenTest {
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
     }
+
+    @Test
+    fun addBracketsToReceivers() {
+        val source = """
+            1 + 1 plus: 5
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            (1 + 1).plus: 5
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
 }

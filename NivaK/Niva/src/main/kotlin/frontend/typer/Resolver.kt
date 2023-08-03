@@ -373,6 +373,7 @@ private fun Resolver.resolveStatement(
                         throw Exception("${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }} on Line ${statement.token.line}")
                     }
                 }
+
                 statement.type = receiverType.returnType
                 statement.kind = KeywordLikeType.ForCodeBlock
                 return
@@ -384,9 +385,9 @@ private fun Resolver.resolveStatement(
             val receiverText = statement.receiver.str
             val q = typeTable[receiverText]
             if (receiverText == "Project") {
-                // this is project setter
                 throw Error("We cant get here, type Project are ignored")
-            } else if (q == null) {
+            }
+            if (q == null) {
                 val checkForSetter = { receiverType2: Type ->
                     // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
 
@@ -410,6 +411,8 @@ private fun Resolver.resolveStatement(
                 checkForSetter(receiverType)
                 if (statement.kind != KeywordLikeType.Setter) {
                     statement.kind = KeywordLikeType.Keyword
+                    val q = findKeywordMessageType(receiverType, statement.selectorName)
+                    statement.type = q
                 }
             } else {
                 // this is a constructor
@@ -440,6 +443,7 @@ private fun Resolver.resolveStatement(
             val receiver = statement.receiver
 
             receiver.type = when (receiver) {
+                is MessageSend -> TODO()
                 is CodeBlock -> TODO()
                 is ListCollection -> TODO()
                 is BinaryMsg -> TODO()
@@ -467,11 +471,17 @@ private fun Resolver.resolveStatement(
 
             if (receiver.type == null)
                 receiver.type = when (receiver) {
+
+
                     is CodeBlock -> TODO()
                     is ListCollection -> TODO()
+                    // receiver
                     is UnaryMsg -> receiver.type
                     is BinaryMsg -> TODO()
                     is KeywordMsg -> TODO()
+
+                    // receiver
+                    is MessageSend -> TODO()
 
 
                     is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
@@ -625,8 +635,19 @@ private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: Str
             return q.returnType
         }
     }
-    throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
+    throw Error("Cant find binary message: $selectorName for type ${receiverType.name}")
 }
+
+private fun Resolver.findKeywordMessageType(receiverType: Type, selectorName: String): Type {
+    receiverType.protocols.forEach { (k, v) ->
+        val q = v.keywordMsgs[selectorName]
+        if (q != null) {
+            return q.returnType
+        }
+    }
+    throw Error("Cant find keyword message: $selectorName for type ${receiverType.name}")
+}
+
 
 fun Resolver.getPackage(packageName: String): Package {
     val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")

@@ -18,26 +18,41 @@ fun Parser.messageSend(): MessageSend {
     // 3 + 8 to: 7
 
 
-//    return newMessageSend()
-
+//    return anyMessageSend2()
     return anyMessageSend(false)
 }
 
 
-fun Parser.newMessageSend(): MessageSend {
+fun Parser.anyMessageSend2(): MessageSend {
 
     // parsing (receiver message?)+
 
 //    val q = nullableSimpleReceiver() ?: throw Exception("bruh!")
 
-    val q = step()
-    val k = q.kind
-//    when (k) {
-//        TokenType.OpenBrace -> {
-//
-//        }
-//
-//    }
+    val t = step()
+    val k = t.kind
+
+    val primaryReceiver = primary()
+
+    if (primaryReceiver != null) {
+
+    }
+
+    when {
+        k == TokenType.OpenBrace -> {
+            val q = anyMessageSend2()
+            // put it in brace, so make it messageSend
+        }
+
+        primaryReceiver != null -> {
+
+        }
+
+        else -> {
+            TODO()
+        }
+    }
+
 
     TODO()
 }

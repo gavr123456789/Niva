@@ -4,6 +4,7 @@ import frontend.parser.types.ast.*
 
 fun Receiver.toNivaStr(): String {
     return when (this) {
+        is MessageSend -> TODO()
         is CodeBlock -> TODO()
         is ListCollection -> TODO()
         is BinaryMsg -> TODO()
@@ -15,6 +16,7 @@ fun Receiver.toNivaStr(): String {
         is LiteralExpression.FloatExpr -> this.str
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
+
     }
 }
 
