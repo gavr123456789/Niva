@@ -12,8 +12,6 @@ fun createIntProtocols(
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
-    val q = 1..2
-
 
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
@@ -33,7 +31,9 @@ fun createIntProtocols(
             createBinary("/", intType, intType),
             createBinary("..", intType, intRangeType),
         ),
-        keywordMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword("plus", KeywordArg("plus", intType), intType),
+        ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result

@@ -11,7 +11,6 @@ val helloWorldProgram = """
 """.trimIndent()
 
 
-
 val functionDeclarationWithType = """
 int to: x(int) = [
   code
@@ -153,6 +152,7 @@ int to: x = [
         check("|>", listOf(PipeOperator, EndOfFile))
         check("|||", listOf(Pipe, Pipe, Pipe, EndOfFile))
     }
+
     @Test
     fun typeAlias() {
         check("alias", listOf(Alias, EndOfFile))
@@ -160,11 +160,18 @@ int to: x = [
 
     @Test
     fun nn() {
-        check("""
+        check(
+            """
                 min
 
                 ^
-        """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile))
+        """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile)
+        )
+    }
+
+    @Test
+    fun dotDotOp() {
+        check("1..2", listOf(Integer, BinarySymbol, Integer, EndOfFile))
     }
 
 

@@ -20,7 +20,7 @@ sealed class MessageSend(
     open val messages: List<Message>,
     type: Type?,
     token: Token
-) : Expression(type, token) {
+) : Receiver(type, token) {
     override fun toString(): String {
         return "${messages.map { it.toString() }}"
     }

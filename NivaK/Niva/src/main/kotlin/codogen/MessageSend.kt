@@ -7,8 +7,9 @@ fun MessageSend.generateMessageCall(): String {
     val b = StringBuilder()
 
     if (this.messages.isEmpty()) {
-        return receiver.str
+        throw Exception("Message list for ${this.str}  can't be empty on Line: ${this.token.line}")
     }
+
     this.messages.forEachIndexed { i, it ->
         when (it) {
             is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
@@ -31,17 +32,19 @@ fun MessageSend.generateMessageCall(): String {
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
+    val receiverCode = "(" + receiver.generateExpression() + ")"
+
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword -> {
             if (i == 0) {
-                append(receiver.str, ".")
+                append(receiverCode, ".")
             }
             append(keywordMsg.selectorName)
         }
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                append(receiver.str)
+                append(receiverCode)
             }
 //            append(keywordMsg.receiver.str)
         }
@@ -49,7 +52,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         KeywordLikeType.Setter -> TODO()
 
         KeywordLikeType.ForCodeBlock -> {
-            append(receiver.str)
+            append(receiverCode)
         }
     }
 

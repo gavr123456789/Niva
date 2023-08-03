@@ -144,6 +144,20 @@ class ParserTest {
     }
 
     @Test
+    fun manyBinaryFirstBeforeKeyword() {
+        val source = "1 + 2 + 2 to: 3"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val messageSend: MessageSend = ast[0] as MessageSend
+        assert(messageSend.messages.count() == 1)
+        val kwMessage = messageSend.messages[0] as KeywordMsg
+        assert(kwMessage.args[0].selectorName == "to")
+        assert(kwMessage.receiver is MessageSend)
+ 
+    }
+
+    @Test
     fun kw() {
         val source = "1 to: 2 + 3"
         val tokens = lex(source)

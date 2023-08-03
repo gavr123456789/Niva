@@ -27,4 +27,7 @@ Int factorial -> Int = [
 5 factorial echo
 
 
+u = 1..2
+
+
 

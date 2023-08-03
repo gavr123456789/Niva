@@ -70,6 +70,7 @@ class Lexer(
         incLine()
     }
 }
+
 fun Lexer.lex() = tokens
 
 fun Lexer.done() = current >= source.length
@@ -143,6 +144,8 @@ fun Lexer.match(s: String): Boolean =
 
 
 fun Lexer.match(args: Array<String>): Boolean {
+
+
     for (arg in args) {
         if (match(arg)) {
             return true
@@ -285,6 +288,20 @@ fun Lexer.parseNumber() {
     peek()
     stepWhileDigit()
 
+    // .. operator
+    if (check("..")) {
+
+        createToken(TokenType.Integer)
+        start += 1
+
+        match("..")
+//        step()
+//        step()
+
+        createToken(TokenType.BinarySymbol)
+        return
+    }
+
     if (check(arrayOf("e", "E"))) {
         kind = TokenType.Float
         step()
@@ -292,6 +309,9 @@ fun Lexer.parseNumber() {
 
     } else if (check(".")) {
         step()
+
+
+
         if (!peek().isDigit()) {
             error("invalid float number literal")
         }
@@ -366,6 +386,9 @@ fun Lexer.next() {
             }
             parseString(peek(-1), mode)
         }
+
+
+        match("..") -> createToken(TokenType.BinarySymbol)
 
         peek().isDigit() -> {
             step()

@@ -59,22 +59,14 @@ fun Expression.generateExpression(): String {
         is UnaryMsg -> TODO()
 
 
-        is CodeBlock ->
-            // [x::Int, y::Int -> x + y] == {x: Int, y: Int -> x + y}
-            this.generateCodeBlock()
-
-
-        // message like
-//        is ConstructorMsg -> TODO()
-//        is SetterMsg -> TODO()
-//        is GetterMsg -> TODO()
+        is CodeBlock -> this.generateCodeBlock()
     }
 
 }
 
 private fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}
-    
+
     if (isSingle) {
         append(";")
     }
