@@ -12,7 +12,9 @@ import frontend.util.OS_Type
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
 import java.io.File
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+import kotlin.reflect.KVisibility
 
 fun emptySource() {
     check("", mutableListOf(TokenType.EndOfFile))
@@ -147,6 +149,7 @@ fun String.addNivaStd(): String {
 
 
 fun main(args: Array<String>) {
+
 
     val pathWhereToGenerateKt =
         "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"

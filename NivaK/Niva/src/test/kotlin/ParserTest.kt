@@ -39,11 +39,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration: MessageSend = ast[0] as MessageSend
-        val messages = declaration.messages
-        assert(messages.isEmpty())
-        val list = declaration.receiver as ListCollection
-//        assert(list.type?.name == "int")
+        val list = ast[0] as ListCollection
         assert(list.initElements.count() == 3)
     }
 
@@ -53,12 +49,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration: MessageSend = ast[0] as MessageSend
-        val messages = declaration.messages
-        assert(messages.isEmpty())
-//        val list = declaration.receiver as ListCollection
-//        assert(list.type?.name == "{int}")
-//        assert(list.initElements.count() == 3)
+        val declaration = ast[0] as LiteralExpression
     }
 
     @Test
@@ -81,11 +72,8 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration = ast[0] as MessageSend
-
+        val declaration = ast[0] as LiteralExpression
         assert(declaration.str == "\"sas\"")
-        assert(declaration.receiver.str == "\"sas\"")
-        assert(declaration.messages.isEmpty())
     }
 
 
@@ -117,11 +105,8 @@ class ParserTest {
         val messageSend = ast[1] as MessageSend
         val unaryMsg = messageSend.messages[0]
         assert(declaration.name == "x")
-//        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
-
         assert(unaryMsg.selectorName == "echo")
-//        assert(unaryMsg.receiver.type?.name == "int")
         assert(unaryMsg.receiver.str == "x")
     }
 
@@ -132,15 +117,16 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageSend: MessageSend = ast[0] as MessageSend
+        val messageSend = ast[0] as MessageSendKeyword
         assert(messageSend.messages.count() == 1)
         val kwMessage = messageSend.messages[0] as KeywordMsg
         assert(kwMessage.args[0].selectorName == "to")
-        assert(kwMessage.receiver is BinaryMsg)
-        val binaryReceiver = kwMessage.receiver as BinaryMsg
-        assert(binaryReceiver.receiver.str == "1")
-        assert(binaryReceiver.argument.str == "2")
-        assert(binaryReceiver.selectorName == "+")
+        assert(kwMessage.receiver is MessageSendBinary)
+        val binaryReceiver = kwMessage.receiver as MessageSendBinary
+        val binMsg = binaryReceiver.messages[0] as BinaryMsg
+        assert(binMsg.receiver.str == "1")
+        assert(binMsg.argument.str == "2")
+        assert(binMsg.selectorName == "+")
     }
 
     @Test
@@ -154,7 +140,7 @@ class ParserTest {
         val kwMessage = messageSend.messages[0] as KeywordMsg
         assert(kwMessage.args[0].selectorName == "to")
         assert(kwMessage.receiver is MessageSend)
- 
+
     }
 
     @Test
@@ -213,15 +199,13 @@ class ParserTest {
         assert(firstUnary.messages.count() == 2)
         assert(firstUnary.messages[0].selectorName == "inc")
         assert(firstUnary.messages[1].selectorName == "inc")
-//        assert(firstUnary.messages[1].receiver.type?.name == "int")
-        assert(firstUnary.messages[1].receiver.str == "3")
+        assert(firstUnary.messages[1].receiver.str == "inc")
 
         val secondUnary: MessageSend = ast[1] as MessageSend
         assert(secondUnary.messages.count() == 2)
         assert(secondUnary.messages[0].selectorName == "dec")
         assert(secondUnary.messages[1].selectorName == "dec")
-//        assert(secondUnary.messages[1].receiver.type?.name == "int")
-        assert(secondUnary.messages[1].receiver.str == "1")
+        assert(secondUnary.messages[1].receiver.str == "dec")
     }
 
     @Test
@@ -757,6 +741,27 @@ class ParserTest {
         val q = ast[0] as MessageSend
         assert(q.messages.count() == 2)
     }
+
+    @Test
+    fun asdas() {
+        val source = """
+        1 from: 1 to: 2 
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSend
+    }
+
+    @Test
+    fun qwea() {
+        val source = """
+        1 Sas.from: 1 to: 2 
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSend
+    }
+
 
     @Test
     fun dotOperator() {
