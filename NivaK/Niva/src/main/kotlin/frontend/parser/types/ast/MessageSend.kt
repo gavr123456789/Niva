@@ -29,21 +29,21 @@ sealed class MessageSend(
 class MessageSendUnary(
     receiver: Receiver,
     override val messages: List<Message>,
-    type: Type?,
+    type: Type? = null,
     token: Token
 ) : MessageSend(receiver, messages, type, token)
 
 class MessageSendBinary(
     receiver: Receiver,
     override val messages: List<Message>, // can be unary after keyword
-    type: Type?,
+    type: Type? = null,
     token: Token
 ) : MessageSend(receiver, messages, type, token)
 
 class MessageSendKeyword(
     receiver: Receiver,
     override val messages: List<Message>, // can be unary or binary after keyword
-    type: Type?,
+    type: Type? = null,
     token: Token
 ) : MessageSend(receiver, messages, type, token)
 

@@ -18,44 +18,68 @@ fun Parser.messageSend(): MessageSend {
     // 3 + 8 to: 7
 
 
-//    return anyMessageSend2()
+//    return anyMessageSend2(mutableListOf())
     return anyMessageSend(false)
 }
 
 
-fun Parser.anyMessageSend2(): MessageSend {
-
-    // parsing (receiver message?)+
-
-//    val q = nullableSimpleReceiver() ?: throw Exception("bruh!")
-
-    val t = step()
-    val k = t.kind
-
-    val primaryReceiver = primary()
-
-    if (primaryReceiver != null) {
-
-    }
-
-    when {
-        k == TokenType.OpenBrace -> {
-            val q = anyMessageSend2()
-            // put it in brace, so make it messageSend
-        }
-
-        primaryReceiver != null -> {
-
-        }
-
-        else -> {
-            TODO()
-        }
-    }
-
-
-    TODO()
-}
+//fun Parser.anyMessageSend2(messages: MutableList<Message>): MessageSend {
+//
+//    // parsing (receiver message?)+
+//
+////    val q = nullableSimpleReceiver() ?: throw Exception("bruh!")
+//
+//
+//    val primaryReceiver = primary()
+//
+////    val t = step()
+////    val k = t.kind
+//
+//    when {
+//        check(TokenType.OpenBrace) -> {
+//            val q = anyMessageSend2(messages)
+//            // put it in brace, so make it messageSend
+//        }
+//
+//        primaryReceiver != null -> {
+//            when {
+//                // 1 inc
+//                // 1 +
+//                // 1 to:
+//                check(TokenType.BinarySymbol) -> {
+//                    // binary
+//                    println()
+//                }
+//
+//                check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) -> {
+//                    // keyword
+//                }
+//
+//                check(TokenType.Identifier) -> {
+//                    // unary
+//
+//                    println()
+//                    val unaryMessages = unaryMessagesMatching(primaryReceiver)
+//                    val unaryMsgSend = MessageSendUnary(
+//                        receiver = primaryReceiver,
+//                        messages = unaryMessages,
+//                        token = primaryReceiver.token
+//                    )
+//                    val possibleBinary = possibleBinary(unaryMessages, unaryMsgSend)
+//                }
+//
+//                else -> {
+//                    TODO()
+//                }
+//            }
+//        }
+//
+//        else -> {
+//            TODO()
+//        }
+//    }
+//    TODO()
+//}
 
 
 // 1^ sas sus sos -> {sas sus sos}
@@ -252,19 +276,49 @@ fun Parser.checkForKeyword(): Boolean {
 
 fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
     // сначала попробовать унарное или бинарное
-    val receiver = messageOrPrimaryReceiver()
 
+    val receiver = unaryOrBinaryMessageOrPrimaryReceiver()
+    val isNextKeyword = checkForKeyword()
+
+
+    val isReceiverUnaryOrBinary = receiver is MessageSendBinary || receiver is MessageSendUnary
+
+    return when {
+        isReceiverUnaryOrBinary && isNextKeyword -> {
+            keyword(inBrackets, receiver)
+        }
+
+        isNextKeyword -> {
+            keyword(inBrackets, receiver)
+        }
+
+        !isNextKeyword && (receiver is MessageSendBinary || receiver is MessageSendBinary) -> {
+            receiver
+        }
+
+        else -> {
+            MessageSendUnary(
+                receiver,
+                listOf(),
+                token = receiver.token
+            )
+//            throw Exception("bruh!")
+        }
+    }
     // если ресивер вернул сообщение значит дальше идет кейворд
     // если после парсинга унарно/бинарного дальше идет идент с колоном
-    return if (receiver is UnaryMsg || receiver is BinaryMsg) {
+    return if ((receiver is UnaryMsg || receiver is BinaryMsg) && isNextKeyword) {
         keyword(inBrackets, receiver)
     } else if (checkForKeyword()) {
         // keyword, 1 and 2 because identifier skip, this will break if the receiver takes more than one token
         keyword(inBrackets, receiver)
     } else
     // unary/binary
+    //!!
         unaryOrBinary(inBrackets, receiver)
+//        receiver
 }
+
 
 fun Parser.keyword(
     inBrackets: Boolean,

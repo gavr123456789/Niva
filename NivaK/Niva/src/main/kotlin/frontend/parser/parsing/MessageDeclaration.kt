@@ -19,33 +19,29 @@ import frontend.util.capitalizeFirstLetter
 // also code blocks
 
 
-fun Parser.messageOrPrimaryReceiver(): Receiver {
+fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
 
     val safePoint = current
     try {
         val q = unaryOrBinary(match(TokenType.OpenParen))
 
-        val nextIsKeywordSend = {
-            val q = check(TokenType.Identifier)
-            val w = check(TokenType.Colon, 1)
-//            check(TokenType.Identifier) && check(TokenType.Colon, 1)
-            checkForKeyword()
-        }
-
         when (q) {
             is MessageSendUnary, is MessageSendBinary -> {
-                if (q.messages.isNotEmpty() && nextIsKeywordSend()) {
-                    assert(q.messages.count() == 1)
+                if (q.messages.isNotEmpty()) {
+
+//                    assert(q.messages.count() == 1)
                     // if followed by keyword
-                    return q.messages[0]
+                    return q//.messages[0]
                 }
             }
+
             is MessageSendKeyword -> error("keyword cant be a receiver, for now")// need pipe operator
         }
     } catch (e: Throwable) {
         current = safePoint
     }
     current = safePoint
+    // no messages as receiver
     return simpleReceiver()
 }
 
@@ -339,7 +335,8 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 
 fun Parser.skipNewLines() {
-    while (match(TokenType.EndOfLine)){}
+    while (match(TokenType.EndOfLine)) {
+    }
 }
 
 // returns true if it's single expression
