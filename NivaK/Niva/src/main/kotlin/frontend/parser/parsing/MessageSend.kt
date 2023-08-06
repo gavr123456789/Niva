@@ -87,6 +87,9 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
+        if (check(TokenType.Colon)) {
+            throw Exception("This is not unary, but a keyword with path")
+        }
         // each unary message must have previous unary as receiver because
         // person name echo -- receiver of echo is name
         val receiver2 = if (unaryMessages.isNotEmpty()) unaryMessages.last() else receiver
