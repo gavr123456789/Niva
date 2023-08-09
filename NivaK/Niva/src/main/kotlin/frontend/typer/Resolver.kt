@@ -55,7 +55,7 @@ class Resolver(
 ) {
     companion object {
 
-        val defaultBasicTypes: Map<InternalTypes, Type.InternalType> = mapOf(
+        val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
 
             createDefaultType(InternalTypes.Int),
             createDefaultType(InternalTypes.String),
@@ -65,17 +65,19 @@ class Resolver(
             createDefaultType(InternalTypes.Unit),
             createDefaultType(InternalTypes.Project),
             createDefaultType(InternalTypes.IntRange),
+            createDefaultType(InternalTypes.Any),
 
             )
 
         init {
-            val intType = defaultBasicTypes[InternalTypes.Int]!!
-            val stringType = defaultBasicTypes[InternalTypes.String]!!
-            val charType = defaultBasicTypes[InternalTypes.Char]!!
-            val floatType = defaultBasicTypes[InternalTypes.Float]!!
-            val boolType = defaultBasicTypes[InternalTypes.Boolean]!!
-            val unitType = defaultBasicTypes[InternalTypes.Unit]!!
-            val intRangeType = defaultBasicTypes[InternalTypes.IntRange]!!
+            val intType = defaultTypes[InternalTypes.Int]!!
+            val stringType = defaultTypes[InternalTypes.String]!!
+            val charType = defaultTypes[InternalTypes.Char]!!
+            val floatType = defaultTypes[InternalTypes.Float]!!
+            val boolType = defaultTypes[InternalTypes.Boolean]!!
+            val unitType = defaultTypes[InternalTypes.Unit]!!
+            val intRangeType = defaultTypes[InternalTypes.IntRange]!!
+            val any = defaultTypes[InternalTypes.Any]!!
 
 
             intType.protocols.putAll(
@@ -85,7 +87,8 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
-                    intRangeType = intRangeType
+                    intRangeType = intRangeType,
+                    anyType = any
                 )
             )
             stringType.protocols.putAll(
@@ -94,7 +97,9 @@ class Resolver(
                     stringType = stringType,
                     unitType = unitType,
                     boolType = boolType,
-                    charType = charType
+                    charType = charType,
+                    any = any
+
                 )
             )
 
@@ -103,7 +108,8 @@ class Resolver(
                     intType = intType,
                     stringType = stringType,
                     unitType = unitType,
-                    boolType = boolType
+                    boolType = boolType,
+                    any = any
                 )
             )
 
@@ -114,7 +120,7 @@ class Resolver(
 
     init {
         /////init packages/////
-        Resolver.defaultBasicTypes.forEach { (k, v) ->
+        Resolver.defaultTypes.forEach { (k, v) ->
             typeTable[k.name] = v
         }
 
@@ -124,7 +130,7 @@ class Resolver(
         defaultProject.packages["core"] = corePackage
 
         // add all default types to core package
-        defaultBasicTypes.forEach { (k, v) ->
+        defaultTypes.forEach { (k, v) ->
             corePackage.types[k.name] = v
         }
 
@@ -348,7 +354,7 @@ private fun Resolver.resolveStatement(
                 if (it.keywordArg.type == null) {
                     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                     currentLevel++
-                    resolve(listOf(it.keywordArg), previousAndCurrentScope)
+                    resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
                     currentLevel--
                 }
             }
@@ -450,11 +456,11 @@ private fun Resolver.resolveStatement(
                 is KeywordMsg -> TODO()
                 is UnaryMsg -> TODO()
                 is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
-                is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                is LiteralExpression.FloatExpr -> Resolver.defaultBasicTypes[InternalTypes.Float]
-                is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
-                is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
+                is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
+                is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
+                is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
             }
             val receiverType = receiver.type!!
             // find message for this type
@@ -485,14 +491,32 @@ private fun Resolver.resolveStatement(
 
 
                     is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
-                    is LiteralExpression.FalseExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                    is LiteralExpression.TrueExpr -> Resolver.defaultBasicTypes[InternalTypes.Boolean]
-                    is LiteralExpression.FloatExpr -> Resolver.defaultBasicTypes[InternalTypes.Float]
-                    is LiteralExpression.IntExpr -> Resolver.defaultBasicTypes[InternalTypes.Int]
-                    is LiteralExpression.StringExpr -> Resolver.defaultBasicTypes[InternalTypes.String]
+                    is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
+                    is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
+                    is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
+                    is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
+                    is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
                 }
 
             val receiverType = receiver.type!!
+
+            if (receiverType is Type.Lambda) {
+                if (statement.selectorName != "exe") {
+                    if (receiverType.args.isNotEmpty())
+                        throw Exception("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                    else
+                        throw Exception("For lambda ${statement.str} on Line ${statement.token.line} you can use only unary 'exe' message")
+                }
+
+
+                if (receiverType.args.isNotEmpty()) {
+                    throw Exception("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                }
+
+                statement.type = receiverType.returnType
+                statement.kind = UnaryMsgKind.ForCodeBlock
+                return
+            }
 
 
             val checkForGetter = {
@@ -532,7 +556,8 @@ private fun Resolver.resolveStatement(
 
         is CodeBlock -> {
 
-            if (rootStatement != null && rootStatement !is VarDeclaration || rootStatement == null) {
+            // [] vs x = []
+            if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message)) || rootStatement == null) {
                 statement.isSingle = true
             }
 
@@ -548,6 +573,7 @@ private fun Resolver.resolveStatement(
             }
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+
             variables.forEach {
                 previousAndCurrentScope[it.name] = it.type!!
             }
@@ -588,19 +614,19 @@ private fun Resolver.resolveStatement(
 
 
         is LiteralExpression.FloatExpr ->
-            statement.type = Resolver.defaultBasicTypes[InternalTypes.Float]
+            statement.type = Resolver.defaultTypes[InternalTypes.Float]
 
         is LiteralExpression.IntExpr ->
-            statement.type = Resolver.defaultBasicTypes[InternalTypes.Int]
+            statement.type = Resolver.defaultTypes[InternalTypes.Int]
 
         is LiteralExpression.StringExpr ->
-            statement.type = Resolver.defaultBasicTypes[InternalTypes.String]
+            statement.type = Resolver.defaultTypes[InternalTypes.String]
 
         is LiteralExpression.TrueExpr ->
-            statement.type = Resolver.defaultBasicTypes[InternalTypes.Boolean]
+            statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
         is LiteralExpression.FalseExpr ->
-            statement.type = Resolver.defaultBasicTypes[InternalTypes.Boolean]
+            statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
         is TypeAST.InternalType -> {}
         is TypeAST.Lambda -> {}

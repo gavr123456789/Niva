@@ -1,3 +1,7 @@
+q = ["lambda without args" echo]
+q exe
+
+
 
 type Person name: String age: Int
 Person hello -> Unit = ["hello from function" echo]

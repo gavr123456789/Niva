@@ -32,7 +32,10 @@ fun MessageSend.generateMessageCall(): String {
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
-    val receiverCode = "(" + receiver.generateExpression() + ")"
+    val receiverCode = if (keywordMsg.kind == KeywordLikeType.Constructor)
+        receiver.generateExpression()
+    else
+        "(" + receiver.generateExpression() + ")"
 
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword -> {
@@ -89,7 +92,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 private fun KeywordArgAndItsMessages.generateCallPair(): String {
     // from: 1 to: 2
     // from = 1, to = 2
-    return keywordArg.str
+    return keywordArg.generateExpression()
+//    return keywordArg.str
 //    return "$selectorName = ${keywordArg.str}"
 }
 
@@ -100,6 +104,7 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
     when (it.kind) {
         UnaryMsgKind.Unary -> append(".${it.selectorName}()")
         UnaryMsgKind.Getter -> append(".${it.selectorName}")
+        UnaryMsgKind.ForCodeBlock -> append("()")
     }
 }
 

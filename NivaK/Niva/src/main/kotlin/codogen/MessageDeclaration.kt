@@ -55,7 +55,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration() = buildString {
     }
     append(")")
     // operator fun int.sas(...)
-   bodyPart(this@generateBinaryDeclaration, this)
+    bodyPart(this@generateBinaryDeclaration, this)
 }
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration() = buildString {
@@ -65,9 +65,9 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration() = buildString {
     append("fun ", forType.name, ".", name, "(")
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
-        append(arg.localName)
+        append(arg.name())
         if (arg.type != null) {
-            append(": ", arg.type.name)
+            append(": ", arg.type.toKotlinStr())
             if (i != c) {
                 append(", ")
             }
@@ -76,9 +76,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration() = buildString {
 
     append(")")
     // operator fun int.sas(...)
-  bodyPart(this@generateKeywordDeclaration, this)
+    bodyPart(this@generateKeywordDeclaration, this)
 }
-
 
 
 private fun bodyPart(

@@ -325,6 +325,101 @@ class ResolverTest {
         }
     }
 
+    @Test
+    fun codeBlockEvalTopLevel() {
+
+        val source = """
+            [x::Int, y::Int -> x + y]
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+//        assert(statements.count() == 2)
+//        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+//        lambdaCall.args.forEach {
+//            assert(it.keywordArg.type != null)
+//        }
+    }
+
+    @Test
+    fun doCycle() {
+
+        val source = """
+            1 to: 3 do: [ 1 echo ]
+        """.trimIndent()
+
+        val q: (Int) -> Int = { it }
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+        val lambdaCall = ((statements[0]) as MessageSendKeyword).messages[0] as KeywordMsg
+        lambdaCall.args.forEach {
+            assert(it.keywordArg.type != null)
+        }
+    }
+
+    @Test
+    fun exeLambda() {
+
+        val source = """
+            x = [1 echo]
+            x exe 
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+//        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+//        lambdaCall.args.forEach {
+//            assert(it.keywordArg.type != null)
+//        }
+    }
+
+    @Test
+    fun lambdaArgument() {
+
+        val source = """
+            Int to: x::Int doo::[Int -> Int] = [
+              1 echo
+            ]
+            1 to: 2 doo: [5 + 5]
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = Resolver(
+            projectName = "common",
+            mainFilePath = File("sas.niva"),
+            statements = ast.toMutableList()
+        )
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+//        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+//        lambdaCall.args.forEach {
+//            assert(it.keywordArg.type != null)
+//        }
+    }
+
+
 }
 
 

@@ -91,7 +91,7 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
             throw Exception("This is not unary, but a keyword with path")
         }
         // each unary message must have previous unary as receiver because
-        // person name echo -- receiver of echo is name
+        // person name echo -- receiver of echo is name, not person
         val receiver2 = if (unaryMessages.isNotEmpty()) unaryMessages.last() else receiver
         val unaryFirstMsg = UnaryMsg(
             receiver2,
@@ -308,18 +308,6 @@ fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
 //            throw Exception("bruh!")
         }
     }
-    // если ресивер вернул сообщение значит дальше идет кейворд
-    // если после парсинга унарно/бинарного дальше идет идент с колоном
-    return if ((receiver is UnaryMsg || receiver is BinaryMsg) && isNextKeyword) {
-        keyword(inBrackets, receiver)
-    } else if (checkForKeyword()) {
-        // keyword, 1 and 2 because identifier skip, this will break if the receiver takes more than one token
-        keyword(inBrackets, receiver)
-    } else
-    // unary/binary
-    //!!
-        unaryOrBinary(inBrackets, receiver)
-//        receiver
 }
 
 
