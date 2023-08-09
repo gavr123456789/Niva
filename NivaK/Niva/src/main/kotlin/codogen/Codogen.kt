@@ -77,10 +77,17 @@ private fun CodeBlock.generateCodeBlock() = buildString {
     inputList.forEach {
         append(it.name, ": ", it.type!!.name, ", ")
     }
-
-    append("-> \n")
-    val statementsCode = codogenKt(statements, 1)
+    val isThereArgs = inputList.isNotEmpty()
+    // generate single line lambda or not
+    val statementsCode = if (statements.count() == 1) {
+        append(if (isThereArgs) "->" else "")
+        codogenKt(statements, 0).removeSuffix("\n")
+    } else {
+        append(if (isThereArgs) "->" else "", "\n")
+        codogenKt(statements, 1)
+    }
     append(statementsCode)
+
 
 
     append("}")

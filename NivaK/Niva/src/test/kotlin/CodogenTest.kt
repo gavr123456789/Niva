@@ -242,6 +242,21 @@ class CodogenTest {
     }
 
     @Test
+    fun constructorWithoutBrackets() {
+        val source = """
+            type Person name: String age: Int
+            person = Person name: "Bob" age: 42
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            class Person(val name: String, val age: Int)
+            val person = Person("Bob", 42)
+        """.trimIndent().trim()
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
     fun lambdaCall() {
         val source = """
             x = [x::Int, y::Int -> x + y]
@@ -252,8 +267,43 @@ class CodogenTest {
             val x = {x: Int, y: Int, -> 
                 x + y
             }
-            x(1, 2)
+            (x)(1, 2)
         """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun lambdaCallExe() {
+        val source = """
+            x = [1 echo]
+            x exe
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            val x = {
+                1.echo()
+            }
+            x()
+        """.trimIndent().trim()
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun lambdaArgument() {
+        val source = """
+            Int to: x::Int doo::[Int -> Int] = [
+              1 echo
+            ]
+            1 to: 2 doo: [5 + 5]
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            fun Int.toDoo(x: Int, doo: (Int,) -> Int) = 1.echo()
+
+            (1).toDoo(2, {5 + 5})
+        """.trimIndent().trim()
+
         assertEquals(expect, ktCode)
     }
 
@@ -264,7 +314,7 @@ class CodogenTest {
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            (1 + 1).plus: 5
+            (1 + 1).plus(5)
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
     }

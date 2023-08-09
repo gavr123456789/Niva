@@ -45,6 +45,9 @@ class KeywordDeclarationArg(
     val type: TypeAST? = null,
 )
 
+fun KeywordDeclarationArg.name() = localName ?: name
+
+
 class MessageDeclarationKeyword(
     name: String,
     forType: TypeAST,

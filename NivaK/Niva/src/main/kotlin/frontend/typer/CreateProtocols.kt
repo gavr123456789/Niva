@@ -8,6 +8,7 @@ fun createIntProtocols(
     boolType: Type.InternalType,
     floatType: Type.InternalType,
     intRangeType: Type.InternalType,
+    anyType: Type.InternalType,
 
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -33,6 +34,14 @@ fun createIntProtocols(
         ),
         keywordMsgs = mutableMapOf(
             createKeyword("plus", KeywordArg("plus", intType), intType),
+            createKeyword(
+                "toDo",
+                listOf(
+                    KeywordArg("to", intType),
+                    KeywordArg("do", Type.Lambda(listOf(), anyType))
+                ),
+                intType
+            ),
         ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
@@ -60,7 +69,8 @@ fun createStringProtocols(
     @Suppress("UNUSED_PARAMETER")
     unitType: Type.InternalType,
     boolType: Type.InternalType,
-    charType: Type.InternalType
+    charType: Type.InternalType,
+    any: Type.InternalType
 ): MutableMap<String, Protocol> {
 
     val result = mutableMapOf<String, Protocol>()
@@ -98,7 +108,8 @@ fun createBoolProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
     unitType: Type.InternalType,
-    boolType: Type.InternalType
+    boolType: Type.InternalType,
+    any: Type.InternalType
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 

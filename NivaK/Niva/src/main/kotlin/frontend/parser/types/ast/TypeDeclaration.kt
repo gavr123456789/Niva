@@ -45,6 +45,26 @@ sealed class TypeAST(
 }
 
 
+fun TypeAST.toKotlinStr(): String {
+//    val x: (String, Int) -> Int = {}
+    return when (this) {
+        is TypeAST.InternalType, is TypeAST.UserType -> name
+        is TypeAST.Lambda -> {
+            buildString {
+                append("(")
+                inputTypesList.forEach {
+                    append(it.toKotlinStr(), ",")
+                }
+                append(") -> ")
+
+                append(returnType.toKotlinStr())
+
+            }
+        }
+    }
+}
+
+
 class TypeFieldAST(
     val name: String,
     val type: TypeAST?,
@@ -89,5 +109,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project, Char, IntRange
+    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any
 }

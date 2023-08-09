@@ -108,8 +108,8 @@ fun Parser.expression(): Expression {
 
     when {
         check(TokenType.Pipe) -> {
-            val isExpression =
-                current != 0 && (check(TokenType.Assign, -1) || check(TokenType.Return, -1))
+            val lastIsReturnOrAssign = check(TokenType.Assign, -1) || check(TokenType.Return, -1)
+            val isExpression = current != 0 && lastIsReturnOrAssign
             return ifOrSwitch(isExpression)
         }
     }

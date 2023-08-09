@@ -29,7 +29,7 @@ fun Parser.ifBranches(): List<IfBranch> {
     do {
 
         step() // skip Pipe
-        val messageCall = messageSend()
+        val ifExpression = expression()
 
         matchAssert(TokenType.Then, "\"=>\" expected")
         val (body, isSingleExpression) = methodBody()
@@ -37,12 +37,12 @@ fun Parser.ifBranches(): List<IfBranch> {
         result.add(
             if (isSingleExpression) {
                 IfBranch.IfBranchSingleExpr(
-                    ifExpression = messageCall,
+                    ifExpression = ifExpression,
                     body[0] as Expression
                 )
             } else {
                 IfBranch.IfBranchWithBody(
-                    ifExpression = messageCall,
+                    ifExpression = ifExpression,
                     body = body
                 )
             }
@@ -91,7 +91,7 @@ fun Parser.ifStatementOrExpression(isExpression: Boolean): ControlFlow.If {
 fun Parser.switchStatementOrExpression(isExpression: Boolean): ControlFlow.Switch {
     val pipeTok = matchAssert(TokenType.Pipe, "")
 
-    val switchExpression = messageSend()
+    val switchExpression = expression()
 
     match(TokenType.EndOfLine)
     val otherPart = ifStatementOrExpression(isExpression)

@@ -61,11 +61,14 @@ sealed class Type(
     val `package`: String,
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
+    var parent: Type? = null // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
 ) {
+
+
     class Lambda(
         val args: List<TypeField>,
         val returnType: Type,
-        `package`: String,
+        `package`: String = "common",
         isPrivate: Boolean = false,
     ) : Type("codeblock${args.map { it.name }} -> ${returnType.name}", `package`, isPrivate)
 
@@ -141,11 +144,34 @@ class Project(
 )
 
 fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
-    return Resolver.defaultBasicTypes[InternalTypes.valueOf(name)]
-        ?: (typeTable[name]
-            ?: throw Exception("Can't find type $name ")
-                // TODO better inference, depend on context
-                )
+
+    when (this) {
+        is TypeAST.InternalType, is TypeAST.UserType -> {
+            return Resolver.defaultTypes[InternalTypes.valueOf(name)]
+                ?: (typeTable[name]
+                    ?: throw Exception("Can't find type $name ")
+                        // TODO better inference, depend on context
+                        )
+        }
+
+        is TypeAST.Lambda -> {
+            val lambdaType = Type.Lambda(
+                args = inputTypesList.map {
+                    TypeField(
+                        type = it.toType(typeTable),
+                        name = it.name
+                    )
+                },
+                returnType = this.returnType.toType(typeTable)
+            )
+//            typeTable[lambdaType.name] = lambdaType
+            return lambdaType
+
+        }
+
+    }
+
+
 //    return when (name) {
 //        "Int" ->
 //            Resolver.defaultBasicTypes[InternalTypes.Int]!!
@@ -225,7 +251,8 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
 
 fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>): KeywordMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
-        ?: throw Exception("return type of keyword message ${this.name} not registered")
+        ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+//        throw Exception("return type of keyword message ${this.name} not registered")
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,
