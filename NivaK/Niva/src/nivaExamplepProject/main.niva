@@ -1,7 +1,12 @@
+mut e = 42
+e echo
+e <- e dec
+e echo
+
+1 to: 5 do: [it echo]
+
 q = ["lambda without args" echo]
 q exe
-
-
 
 type Person name: String age: Int
 Person hello -> Unit = ["hello from function" echo]
@@ -9,7 +14,6 @@ Person hello -> Unit = ["hello from function" echo]
 person = Person name: "Bob" age: 42
 person name echo
 person age echo
-
 person hello
 
 codeBlock = [x::String, y::String -> x + " " + y]
@@ -22,16 +26,12 @@ x = 8
 
 Int factorial -> Int = [
   min = this - 1
-
   ^| this
    | 0 => 1
    |=> min factorial * this
 ]
-
 5 factorial echo
 
-
-u = 1..2
 
 
 

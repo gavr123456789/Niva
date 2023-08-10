@@ -52,11 +52,24 @@ class VarDeclaration(
     val name: String,
     val value: Expression,
     var valueType: TypeAST? = null,
+    val mutable: Boolean = false,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "VarDeclaration(${name} = ${value.str}, valueType=${valueType?.name})"
+    }
+}
+
+class Assign(
+    token: Token,
+    val name: String,
+    val value: Expression,
+    isPrivate: Boolean = false,
+    pragmas: List<Pragma> = listOf()
+) : Statement(token, isPrivate, pragmas) {
+    override fun toString(): String {
+        return "Assign(${name} = ${value.str})"
     }
 }
 

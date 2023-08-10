@@ -216,18 +216,10 @@ fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, Type>): Ty
     return result
 }
 
-
-//fun <T: MessageDeclaration, G: MessageMetadata> T.toMessageData(typeTable: MutableMap<TypeName, Type>): G {
-//    val returnType = this.returnType?.toType(typeTable) ?: throw Exception("return type of unary message ${this.name} not registered")
-//    val result = UnaryMsgMetaData(
-//        name = this.name,
-//        returnType = returnType,
-//    )
-//    return result
-//}
 fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>): UnaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
-        ?: throw Exception("return type of unary message ${this.name} not registered")
+        ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+//        throw Exception("return type of unary message ${this.name} not registered")
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
@@ -237,7 +229,8 @@ fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>)
 
 fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>): BinaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
-        ?: throw Exception("return type of binary message ${this.name} not registered")
+        ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+//        ?: throw Exception("return type of binary message ${this.name} not registered")
 
     val argType = this.forType.toType(typeTable)
 

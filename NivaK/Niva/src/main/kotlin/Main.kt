@@ -14,6 +14,7 @@ import frontend.util.getOSType
 import java.io.File
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KVisibility
 
 fun emptySource() {
@@ -134,11 +135,19 @@ fun kotlinCodeFromNiva(nivaCode: String): String {
     return generateKotlin(nivaCode)
 }
 
+
 fun String.addNivaStd(): String {
+
     val nivaStd = """
         fun Any?.echo() = println(this)
+        
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
+        }
+        
+        inline fun Int.toDo(to: Int, `do`: (Int) -> Unit) {
+            val range = this.rangeTo(to)
+            for (element in range) `do`(element)
         }
     """.trimIndent()
     return buildString {

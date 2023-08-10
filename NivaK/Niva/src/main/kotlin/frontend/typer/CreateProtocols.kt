@@ -38,7 +38,7 @@ fun createIntProtocols(
                 "toDo",
                 listOf(
                     KeywordArg("to", intType),
-                    KeywordArg("do", Type.Lambda(listOf(), anyType))
+                    KeywordArg("do", Type.Lambda(listOf(TypeField("do", intType)), anyType))
                 ),
                 intType
             ),

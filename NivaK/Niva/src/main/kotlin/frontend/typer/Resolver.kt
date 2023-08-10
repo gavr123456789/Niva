@@ -49,6 +49,9 @@ class Resolver(
     var currentFile: String = "",
 
 
+    var currentArgumentNumber: Int = -1,
+
+    // for recursive types
     val notResolvedStatements: MutableList<Statement> = mutableListOf()
 
 
@@ -350,14 +353,16 @@ private fun Resolver.resolveStatement(
 
             // resolve args types
             val args = statement.args
-            args.forEach {
+            args.forEachIndexed { argNum, it ->
                 if (it.keywordArg.type == null) {
                     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                     currentLevel++
+                    currentArgumentNumber = argNum
                     resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
                     currentLevel--
                 }
             }
+            currentArgumentNumber = -1
 
 
             // if receiverType is lambda then we need to check does it have same argument names and types
@@ -417,8 +422,8 @@ private fun Resolver.resolveStatement(
                 checkForSetter(receiverType)
                 if (statement.kind != KeywordLikeType.Setter) {
                     statement.kind = KeywordLikeType.Keyword
-                    val q = findKeywordMessageType(receiverType, statement.selectorName)
-                    statement.type = q
+                    val q = findKeywordMsgType(receiverType, statement.selectorName)
+                    statement.type = q.returnType
                 }
             } else {
                 // this is a constructor
@@ -578,6 +583,17 @@ private fun Resolver.resolveStatement(
                 previousAndCurrentScope[it.name] = it.type!!
             }
 
+            // if this is lambda with one arg, then add it to scope
+            if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
+//                val q = rootStatement.args[currentArgumentNumber]
+                val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
+                val currentArgType = metaData.argTypes[currentArgumentNumber]
+
+                if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
+                    previousAndCurrentScope["it"] = currentArgType.type.args[0].type
+                }
+            }
+
 //            previousAndCurrentScope["self"] = forType
             currentLevel++
             resolve(statement.statements, previousAndCurrentScope, statement)
@@ -588,7 +604,6 @@ private fun Resolver.resolveStatement(
             }
 
             // Add lambda type to code-block itself
-
             val returnType = lastExpression.type!!
 
             val args = statement.inputList.map {
@@ -601,9 +616,6 @@ private fun Resolver.resolveStatement(
                 returnType = returnType,
                 `package` = currentPackageName
             )
-
-
-
 
             if (currentLevel == 0) {
                 topLevelStatements.add(statement)
@@ -637,6 +649,15 @@ private fun Resolver.resolveStatement(
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
+        is Assign -> {
+            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+            resolve(listOf(statement.value), previousAndCurrentScope, statement)
+
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
+            }
+        }
+
         else -> {
 
         }
@@ -664,11 +685,11 @@ private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: Str
     throw Error("Cant find binary message: $selectorName for type ${receiverType.name}")
 }
 
-private fun Resolver.findKeywordMessageType(receiverType: Type, selectorName: String): Type {
+private fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String): KeywordMsgMetaData {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.keywordMsgs[selectorName]
         if (q != null) {
-            return q.returnType
+            return q
         }
     }
     throw Error("Cant find keyword message: $selectorName for type ${receiverType.name}")

@@ -4,9 +4,11 @@ import frontend.Lexer
 import frontend.addSymbol
 import frontend.meta.TokenType
 
-val POSSIBLE_BINARY_MESSAGES = setOf(">", "<", "=", "~", "/", "+", "-", "_", "*", "?", "@", "==", "!=",
+val POSSIBLE_BINARY_MESSAGES = setOf(
+    ">", "<", "=", "~", "/", "+", "-", "_", "*", "?", "@", "==", "!=",
     ">=", "<=", "+=", "-=", "/=", "*=", "**=", "!", "%", "&", "^",
-    ">>", "<<")
+    ">>", "<<"
+)
 
 fun Lexer.fillSymbolTable() {
     this.symbolTable.symbols = hashMapOf(
@@ -33,6 +35,7 @@ fun Lexer.fillSymbolTable() {
     this.symbolTable.keywords = hashMapOf(
         // Keywords
         "type" to TokenType.Type,
+        "mut" to TokenType.Mut,
         "alias" to TokenType.Alias,
         "union" to TokenType.Union,
         "constructor" to TokenType.Constructor,

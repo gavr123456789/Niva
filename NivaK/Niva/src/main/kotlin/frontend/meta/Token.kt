@@ -8,9 +8,11 @@ enum class TokenType {
     Binary, Octal, Hex, Char,
 
     // Keywords
-    Alias, Type, Union, Use, Constructor,
+    Alias, Type, Union, Use, Constructor, Mut,
     Return, // ^
     ReturnArrow, // -> for return types
+    AssignArrow, // <-
+
 
     Pipe, // |
     PipeOperator, // |>
@@ -40,18 +42,19 @@ enum class TokenType {
     Assign, Equal, NotEqual, // =, ==, !=
     DoubleColon,
     EndOfLine // \n and next line starts not from the dot
+    ,
 }
 
 data class Position(val start: Int, val end: Int)
 
-data class Token (
+data class Token(
     val kind: TokenType,
     val lexeme: String,
     val line: Int,
     val pos: Position,
     val relPos: Position,
     val spaces: Int = 0
-    ) {
+) {
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind

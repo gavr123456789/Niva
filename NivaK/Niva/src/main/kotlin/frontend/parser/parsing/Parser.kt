@@ -46,6 +46,11 @@ fun Parser.primary(): Primary? =
 
 
 fun Parser.varDeclaration(): VarDeclaration {
+    // skip mut
+    val isMutable = check(TokenType.Mut)
+    if (isMutable) {
+        step()
+    }
 
     val tok = this.step()
     val typeOrEqual = step()
@@ -69,9 +74,25 @@ fun Parser.varDeclaration(): VarDeclaration {
         else -> error("after ${peek(-1)} needed type or expression")
     }
 
-    val result = VarDeclaration(tok, tok.lexeme, value, valueType)
+    val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
     return result
 }
+
+fun Parser.assignVariableNewValue(): Assign {
+    // x <- expression
+    val identTok = this.step()
+    matchAssert(TokenType.AssignArrow)
+
+    val isNextReceiver = isNextReceiver()
+    val value = if (isNextReceiver) simpleReceiver() else expression()
+
+
+    val result = Assign(identTok, identTok.lexeme, value)
+
+    return result
+
+}
+
 
 fun Token.isPrimaryToken(): Boolean =
     when (kind) {
@@ -130,8 +151,7 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
     // Checks for declarations that starts from keyword like type/fn
 
-    if (tok.isIdentifier() &&
-        (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1))
+    if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
     ) {
         return varDeclaration()
     }
@@ -150,6 +170,10 @@ fun Parser.statement(): Statement {
 
     if (kind == TokenType.OpenBracket) {
         return codeBlock()
+    }
+
+    if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
+        return assignVariableNewValue()
     }
 
     if (kind == TokenType.Return) {
