@@ -430,6 +430,7 @@ fun Lexer.next() {
         match("#(") -> createToken(TokenType.OpenParenHash)
 
         match("->") -> createToken(TokenType.ReturnArrow)
+        match("<-") -> createToken(TokenType.AssignArrow)
         match("^") -> createToken(TokenType.Return)
 
         match("==") -> createToken(TokenType.BinarySymbol)

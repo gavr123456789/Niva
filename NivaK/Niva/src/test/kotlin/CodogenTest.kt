@@ -8,9 +8,7 @@ import java.io.File
 fun generateKotlin(source: String): String {
     val ast = getAst(source)
     val resolver = Resolver(
-        projectName = "common",
-        mainFilePath = File("sas.niva"),
-        statements = ast.toMutableList()
+        projectName = "common", mainFilePath = File("sas.niva"), statements = ast.toMutableList()
     )
     resolver.resolve(resolver.statements, mutableMapOf())
     val codogenerator = codogenKt(resolver.statements)
@@ -21,38 +19,45 @@ fun generateKotlin(source: String): String {
 class CodogenTest {
 
     @Test
+    fun stringLiteral() {
+        val source = "x = \"sas\""
+        val ktCode = generateKotlin(source)
+        assertEquals("val x = \"sas\"\n", ktCode)
+    }
+
+    @Test
     fun unaryCall() {
         val source = "3 inc dec sas"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "3.inc().dec().sas()\n")
+        assertEquals("3.inc().dec().sas()\n", ktCode)
     }
 
     @Test
     fun binaryCall() {
         val source = "3 inc dec sas + 2 dec sas - 3 sus"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "3.inc().dec().sas() + 2.dec().sas() - 3.sus()\n")
+        assertEquals("3.inc().dec().sas() + 2.dec().sas() - 3.sus()\n", ktCode)
     }
 
     @Test
     fun binaryCall2() {
         val source = "3 + 2 - 3"
         val ktCode = generateKotlin(source)
-        assert(ktCode == "3 + 2 - 3\n")
+        assertEquals(ktCode, "3 + 2 - 3\n")
     }
 
     @Test
     fun keywordCall() {
-        val source = "6 from: 3 inc dec sas + 2 dec sas + 5 to: 4 sus"
+        val source = "6 to: 3 inc dec sas + 2 dec sas + 5 do: [34]"
         val ktCode = generateKotlin(source)
-        assertEquals("6.fromTo(3.inc().dec().sas() + 2.dec().sas() + 5, 4.sus())\n", ktCode)
+        assertEquals("(6).toDo(3.inc().dec().sas() + 2.dec().sas() + 5, {34})\n", ktCode)
     }
 
     @Test
     fun keywordCall2() {
-        val source = "1 from: 2 to: 3"
+        val source = "1 to: 2 do: [56]"
         val ktCode = generateKotlin(source)
-        assertEquals("1.fromTo(2, 3)\n", ktCode)
+        assertEquals("(1).toDo(2, {56})\n", ktCode)
     }
 
 
@@ -87,65 +92,65 @@ class CodogenTest {
     @Test
     fun unaryDeclaration() {
         val source = """
-            int sas -> unit = [
+            Int sas -> Unit = [
               q = 1
               self echo
             ]
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            fun int.sas(): unit {
+            fun Int.sas(): Unit {
                 val q = 1
                 self.echo()
             }
         """.trimIndent()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
     fun unaryDeclarationSingle() {
-        val source = "int sas -> unit = self echo "
+        val source = "Int sas -> Unit = self echo "
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            fun int.sas(): unit = self.echo()
+            fun Int.sas(): Unit = self.echo()
         """.trimIndent()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
     fun binaryDeclaration() {
         val source = """
-            int + x::int -> unit = [
+            Int + x::Int = [
                 q = 1               
                 self + x - 1 
             ]
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            operator fun int.plus(x: int): unit {
+            operator fun Int.plus(x: Int) {
                 val q = 1
                 self + x - 1
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
     fun keywordDeclaration() {
         val source = """
-            int from: x::float to: y::string -> bool = [
+            Int from: x::Float to: y::String -> Boolean = [
               q = 1
-              self + x - 1 > 0
+              this + x - 1 - 0
             ]
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            fun int.fromTo(x: float, y: string): bool {
+            fun Int.fromTo(x: Float, y: String): Boolean {
                 val q = 1
-                self + x - 1 > 0
+                this + x - 1 - 0
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
 
@@ -156,7 +161,7 @@ class CodogenTest {
         val expect = """
             class Person(val name: String, val age: Int)
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
@@ -170,7 +175,7 @@ class CodogenTest {
                 2.echo()
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
@@ -182,7 +187,7 @@ class CodogenTest {
                 1.echo()
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
@@ -198,7 +203,7 @@ class CodogenTest {
                 3.echo()
             }
         """.trimIndent().trim()
-        assert(ktCode == expect)
+        assertEquals(expect, ktCode)
     }
 
     @Test
@@ -264,9 +269,7 @@ class CodogenTest {
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            val x = {x: Int, y: Int, -> 
-                x + y
-            }
+            val x = {x: Int, y: Int, -> x + y}
             (x)(1, 2)
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
@@ -280,9 +283,7 @@ class CodogenTest {
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            val x = {
-                1.echo()
-            }
+            val x = {1.echo()}
             x()
         """.trimIndent().trim()
 
@@ -308,6 +309,51 @@ class CodogenTest {
     }
 
     @Test
+    fun lambdaItArgument() {
+        val source = """
+            Int to: x::Int doo::[Int -> Int] = [
+              x echo
+            ]
+            1 to: 2 doo: [it + 5]
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            fun Int.toDoo(x: Int, doo: (Int,) -> Int) = 1.echo()
+
+            (1).toDoo(2, {it + 5})
+        """.trimIndent().trim()
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun cycle() {
+        val source = """
+            1 to: 2 do: [it echo]
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            (1).toDo(2, {it.echo()})
+        """.trimIndent().trim()
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun cycleWhileTrue() {
+        val source = """
+            x = 1
+            []1 to: 2 do: [it echo]
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            (1).toDo(2, {it.echo()})
+        """.trimIndent().trim()
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
     fun addBracketsToReceivers() {
         val source = """
             1 + 1 plus: 5
@@ -318,4 +364,37 @@ class CodogenTest {
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
     }
+
+    @Test
+    fun mutVar() {
+        val source = """
+            mut x = 6
+            x <- 7
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            var x = 6
+            x = 7
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun whileTrue() {
+        val source = """
+            mut x = 10
+            [x > 6] whileTrue: [ 
+                x <- x dec
+                e echo
+            ]
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            var x = 6
+            x = 7
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
+
+
 }

@@ -821,6 +821,22 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun mutableVariable() {
+
+        val source = """
+            mut x = 6
+            x <- 7
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 2)
+        val q = ast[1] as Assign
+
+        assert(q.name == "x")
+        assert(q.value is LiteralExpression.IntExpr)
+    }
+
+
 }
 
 fun getAst(source: String): List<Statement> {
