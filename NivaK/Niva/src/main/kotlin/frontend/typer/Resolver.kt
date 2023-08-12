@@ -369,7 +369,7 @@ private fun Resolver.resolveStatement(
 
             if (receiverType is Type.Lambda) {
 
-
+                // need
                 if (receiverType.args.count() != statement.args.count()) {
                     throw Exception("you need to use  on Line ${statement.token.line}")
                 }
@@ -380,7 +380,8 @@ private fun Resolver.resolveStatement(
                         throw Exception("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
                     }
                     // type check
-                    if (it.keywordArg.type != receiverType.args[ii].type) {
+                    val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
+                    if (!isTypesEqual) {
                         throw Exception("${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }} on Line ${statement.token.line}")
                     }
                 }
@@ -583,18 +584,19 @@ private fun Resolver.resolveStatement(
                 previousAndCurrentScope[it.name] = it.type!!
             }
 
-            // if this is lambda with one arg, then add it to scope
-            if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
-//                val q = rootStatement.args[currentArgumentNumber]
+            var isThisWhileCycle = true
+            // if this is lambda with one arg, then add "it" to scope
+            if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock) {
                 val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
                 val currentArgType = metaData.argTypes[currentArgumentNumber]
 
                 if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
                     previousAndCurrentScope["it"] = currentArgType.type.args[0].type
                 }
+
+                isThisWhileCycle = false
             }
 
-//            previousAndCurrentScope["self"] = forType
             currentLevel++
             resolve(statement.statements, previousAndCurrentScope, statement)
             currentLevel--
@@ -608,14 +610,37 @@ private fun Resolver.resolveStatement(
 
             val args = statement.inputList.map {
                 TypeField(name = it.name, type = it.type!!)
-            }
+            }.toMutableList()
 
-
-            statement.type = Type.Lambda(
+            val type = Type.Lambda(
                 args = args,
                 returnType = returnType,
                 `package` = currentPackageName
             )
+            statement.type = type
+
+
+            // add whileTrue argument of lambda type
+            if (isThisWhileCycle && rootStatement is KeywordMsg) {
+                val receiverType = rootStatement.receiver.type
+
+                // find if it is a whileTrue or whileFalse than add an argument of type lambda to receiver
+                if (receiverType is Type.Lambda && receiverType.args.isEmpty() &&
+                    (rootStatement.selectorName == "whileTrue" || rootStatement.selectorName == "whileFalse")
+
+                ) {
+                    receiverType.args.add(
+                        TypeField(
+                            name = rootStatement.selectorName,
+                            type = Type.Lambda(
+                                args = mutableListOf(),
+                                returnType = Resolver.defaultTypes[InternalTypes.Any]!!,
+                                `package` = currentPackageName
+                            )
+                        )
+                    )
+                }
+            }
 
             if (currentLevel == 0) {
                 topLevelStatements.add(statement)
@@ -664,6 +689,19 @@ private fun Resolver.resolveStatement(
     }
 }
 
+
+private fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
+    if (type1.name == "Any" && type2.name == "Any") {
+        return true
+    }
+    // temp
+    if (type1 is Type.Lambda || type2 is Type.Lambda) {
+        return true
+    }
+
+    return type1.name === type2.name
+
+}
 
 private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
     receiverType.protocols.forEach { (k, v) ->

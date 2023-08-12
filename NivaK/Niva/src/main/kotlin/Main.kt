@@ -12,10 +12,7 @@ import frontend.util.OS_Type
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
 import java.io.File
-import java.time.LocalDate
 import java.util.concurrent.TimeUnit
-import kotlin.reflect.KMutableProperty0
-import kotlin.reflect.KVisibility
 
 fun emptySource() {
     check("", mutableListOf(TokenType.EndOfFile))
@@ -145,9 +142,25 @@ fun String.addNivaStd(): String {
             for (element in this) action(element)
         }
         
+        // for cycle
         inline fun Int.toDo(to: Int, `do`: (Int) -> Unit) {
             val range = this.rangeTo(to)
             for (element in range) `do`(element)
+        }
+        
+        // while cycles
+        typealias WhileIf = () -> Boolean
+        
+        inline fun <T> WhileIf.whileTrue(x: () -> T) {
+            while (this()) {
+                x()
+            }
+        }
+        
+        inline fun <T> WhileIf.whileFalse(x: () -> T) {
+            while (!this()) {
+                x()
+            }
         }
     """.trimIndent()
     return buildString {

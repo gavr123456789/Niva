@@ -69,6 +69,22 @@ fun Expression.generateExpression(): String {
 
 }
 
+
+typealias WhileIf = () -> Boolean
+
+inline fun <T> WhileIf.whileTrue(x: () -> T) {
+    while (this()) {
+        x()
+    }
+}
+
+inline fun <T> WhileIf.whileFalse(x: () -> T) {
+    while (!this()) {
+        x()
+    }
+}
+
+
 private fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}
 
@@ -78,7 +94,7 @@ private fun CodeBlock.generateCodeBlock() = buildString {
 
     append("{")
 
-
+    // x: Int, ->
     inputList.forEach {
         append(it.name, ": ", it.type!!.name, ", ")
     }

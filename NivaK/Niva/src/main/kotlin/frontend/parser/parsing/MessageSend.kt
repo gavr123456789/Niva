@@ -284,10 +284,11 @@ fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
     val isNextKeyword = checkForKeyword()
 
 
-    val isReceiverUnaryOrBinary = receiver is MessageSendBinary || receiver is MessageSendUnary
+    val isReceiverUnaryOrBinaryOrCodeBlock =
+        receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
     return when {
-        isReceiverUnaryOrBinary && isNextKeyword -> {
+        isReceiverUnaryOrBinaryOrCodeBlock && isNextKeyword -> {
             keyword(inBrackets, receiver)
         }
 

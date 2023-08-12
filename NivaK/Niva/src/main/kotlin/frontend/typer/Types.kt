@@ -66,7 +66,7 @@ sealed class Type(
 
 
     class Lambda(
-        val args: List<TypeField>,
+        val args: MutableList<TypeField>,
         val returnType: Type,
         `package`: String = "common",
         isPrivate: Boolean = false,
@@ -161,7 +161,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
                         type = it.toType(typeTable),
                         name = it.name
                     )
-                },
+                }.toMutableList(),
                 returnType = this.returnType.toType(typeTable)
             )
 //            typeTable[lambdaType.name] = lambdaType

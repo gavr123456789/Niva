@@ -342,8 +342,7 @@ class CodogenTest {
     @Test
     fun cycleWhileTrue() {
         val source = """
-            x = 1
-            []1 to: 2 do: [it echo]
+            1 to: 2 do: [it echo]
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
@@ -385,16 +384,23 @@ class CodogenTest {
             mut x = 10
             [x > 6] whileTrue: [ 
                 x <- x dec
-                e echo
+                x echo
             ]
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            var x = 6
-            x = 7
+            var x = 10
+            ({x > 6}).whileTrue({
+                x = x.dec()
+                x.echo()
+            })
         """.trimIndent().trim()
+
+
         assertEquals(expect, ktCode)
     }
 
 
 }
+
+

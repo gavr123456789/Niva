@@ -55,7 +55,12 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         KeywordLikeType.Setter -> TODO()
 
         KeywordLikeType.ForCodeBlock -> {
-            append(receiverCode)
+            // if whileTrue we still need to add .name
+            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse") {
+                append(receiverCode, ".", keywordMsg.selectorName)
+            } else {
+                append(receiverCode)
+            }
         }
     }
 
