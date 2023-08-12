@@ -168,9 +168,9 @@ fun Parser.statement(): Statement {
         return constructorDeclaration()
     }
 
-    if (kind == TokenType.OpenBracket) {
-        return codeBlock()
-    }
+//    if (kind == TokenType.OpenBracket) {
+//        return codeBlock()
+//    }
 
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()

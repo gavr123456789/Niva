@@ -3,7 +3,18 @@ e echo
 e <- e dec
 e echo
 
+
+mut i = 100
+[i > 95] whileTrue: [
+    i <- i dec
+    i echo
+]
+
 1 to: 5 do: [it echo]
+
+
+
+
 
 q = ["lambda without args" echo]
 q exe

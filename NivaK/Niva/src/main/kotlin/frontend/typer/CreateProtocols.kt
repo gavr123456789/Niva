@@ -26,19 +26,24 @@ fun createIntProtocols(
         binaryMsgs = mutableMapOf(
             createBinary("==", intType, boolType),
             createBinary("!=", intType, boolType),
+            createBinary(">", intType, boolType),
+            createBinary("<", intType, boolType),
+            createBinary("<=", intType, boolType),
+            createBinary(">=", intType, boolType),
             createBinary("+", intType, intType),
             createBinary("-", intType, intType),
             createBinary("*", intType, intType),
             createBinary("/", intType, intType),
             createBinary("..", intType, intRangeType),
-        ),
+
+            ),
         keywordMsgs = mutableMapOf(
             createKeyword("plus", KeywordArg("plus", intType), intType),
             createKeyword(
                 "toDo",
                 listOf(
                     KeywordArg("to", intType),
-                    KeywordArg("do", Type.Lambda(listOf(TypeField("do", intType)), anyType))
+                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
                 ),
                 intType
             ),
