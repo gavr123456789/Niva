@@ -60,28 +60,33 @@ fun Parser.simpleReceiver(): Receiver {
         val result: ListCollection
         val initElements = mutableListOf<Primary>()
         // {1, 2 3}
-        val leftBraceTok = peek()
-        if (leftBraceTok.kind != TokenType.OpenBrace) {
-            return null
-        }
 
-        step() // skip leftBrace
+        val leftBraceTok = matchAssert(TokenType.OpenBrace)
 
         // cycle that eats primary with optional commas
         // for now, messages inside collection literals are impossible
 
-        var lastPrimary: Primary? = null
-        do {
-            val primaryTok = primary()
-            match(TokenType.Comma)
-            if (primaryTok != null) {
-                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
-                    error("Heterogeneous collections are not supported")
+
+        val readPrimaryCollection = {
+            var lastPrimary: Primary? = null
+            do {
+                val primaryTok = primary()
+                match(TokenType.Comma)
+                if (primaryTok != null) {
+                    if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
+                        error("Heterogeneous collections are not supported")
+                    }
+                    initElements.add(primaryTok)
                 }
-                initElements.add(primaryTok)
-            }
-            lastPrimary = primaryTok
-        } while (primaryTok != null)
+                lastPrimary = primaryTok
+            } while (primaryTok != null)
+        }
+
+        //if there are keyword call, then read collection of constructors
+        
+
+        readPrimaryCollection()
+
 
         match(TokenType.CloseBrace)
 

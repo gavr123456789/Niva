@@ -44,6 +44,16 @@ class ParserTest {
     }
 
     @Test
+    fun collectionListOfObjectConstructors() {
+        val source = "{Person age: 1, Person age: 2, Person age: 3}"
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+
+        val list = ast[0] as ListCollection
+        assert(list.initElements.count() == 3)
+    }
+
+    @Test
     fun literalInt() {
         val source = "1.1"
         val ast = getAst(source)
