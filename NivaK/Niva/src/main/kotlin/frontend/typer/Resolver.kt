@@ -19,6 +19,23 @@ inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.Inte
     )
 }
 
+//inline fun createCollectionType(type: InternalTypes): Pair<InternalTypes, Type.GenericType> {
+//
+//    return type to Type.GenericType(
+//        mainType = type,
+//        `package` = "common",
+//        typeArgumentList = listOf(InternalTypes.Unknown),
+//        fields = listOf(
+////            TypeField(
+////                name = "length",
+////                type = Resolver.defaultTypes[InternalTypes.Int]!!
+////            )
+//        ),
+//
+//
+//    )
+//}
+
 class Resolver(
     val projectName: String,
 
@@ -66,11 +83,23 @@ class Resolver(
             createDefaultType(InternalTypes.Float),
             createDefaultType(InternalTypes.Boolean),
             createDefaultType(InternalTypes.Unit),
+
             createDefaultType(InternalTypes.Project),
             createDefaultType(InternalTypes.IntRange),
-            createDefaultType(InternalTypes.Any),
 
-            )
+            createDefaultType(InternalTypes.Any),
+            createDefaultType(InternalTypes.Unknown),
+
+            createDefaultType(InternalTypes.List),
+            createDefaultType(InternalTypes.Map),
+            createDefaultType(InternalTypes.Set),
+
+//            createCollectionType(InternalTypes.List),
+//            createCollectionType(InternalTypes.Map),
+//            createCollectionType(InternalTypes.Set),
+//            createDefaultType(InternalTypes.Array),
+
+        )
 
         init {
             val intType = defaultTypes[InternalTypes.Int]!!
@@ -80,7 +109,10 @@ class Resolver(
             val boolType = defaultTypes[InternalTypes.Boolean]!!
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
-            val any = defaultTypes[InternalTypes.Any]!!
+            val anyType = defaultTypes[InternalTypes.Any]!!
+            val listType = defaultTypes[InternalTypes.List]!!
+            val unknownGenericType = defaultTypes[InternalTypes.Unknown]!!
+
 
 
             intType.protocols.putAll(
@@ -91,7 +123,7 @@ class Resolver(
                     boolType = boolType,
                     floatType = floatType,
                     intRangeType = intRangeType,
-                    anyType = any
+                    anyType = anyType
                 )
             )
             stringType.protocols.putAll(
@@ -101,7 +133,7 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     charType = charType,
-                    any = any
+                    any = anyType
 
                 )
             )
@@ -112,7 +144,19 @@ class Resolver(
                     stringType = stringType,
                     unitType = unitType,
                     boolType = boolType,
-                    any = any
+                    any = anyType
+                )
+            )
+
+            listType.protocols.putAll(
+                createListProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    listType = listType,
+                    anyType = anyType,
+                    unknownGenericType = unknownGenericType
                 )
             )
 
@@ -458,6 +502,7 @@ private fun Resolver.resolveStatement(
                 is MessageSend -> TODO()
                 is CodeBlock -> TODO()
                 is ListCollection -> TODO()
+                is MapCollection -> TODO()
                 is BinaryMsg -> TODO()
                 is KeywordMsg -> TODO()
                 is UnaryMsg -> TODO()
@@ -484,11 +529,11 @@ private fun Resolver.resolveStatement(
             if (receiver.type == null)
                 receiver.type = when (receiver) {
 
-
                     is CodeBlock -> TODO()
                     is ListCollection -> TODO()
+                    is MapCollection -> TODO()
                     // receiver
-                    is UnaryMsg -> receiver.type
+                    is UnaryMsg -> TODO() // TODO check why is that?
                     is BinaryMsg -> TODO()
                     is KeywordMsg -> TODO()
 
@@ -540,7 +585,8 @@ private fun Resolver.resolveStatement(
             } else {
                 // usual message
                 // find this message
-                val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName)
+
+                val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token.line)
                 statement.kind = UnaryMsgKind.Unary
                 statement.type = messageReturnType
             }
@@ -586,15 +632,26 @@ private fun Resolver.resolveStatement(
 
             var isThisWhileCycle = true
             // if this is lambda with one arg, then add "it" to scope
-            if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock) {
-                val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
-                val currentArgType = metaData.argTypes[currentArgumentNumber]
+            if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
+                if (rootStatement.receiver !is CodeBlock) {
+                    val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
+                    val currentArgType = metaData.argTypes[currentArgumentNumber]
 
-                if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
-                    previousAndCurrentScope["it"] = currentArgType.type.args[0].type
+                    if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
+
+                        val weew = currentArgType.type.args[0].type
+                        val receiverTypeArg = rootStatement.receiver.type
+                        val onlyArgOfLambdaType =
+                            if (weew.name == InternalTypes.Unknown.name && receiverTypeArg is Type.GenericType) {
+                                receiverTypeArg.typeArgumentList[0]
+                            } else weew
+
+                        previousAndCurrentScope["it"] = onlyArgOfLambdaType
+
+                    }
+
+                    isThisWhileCycle = false
                 }
-
-                isThisWhileCycle = false
             }
 
             currentLevel++
@@ -647,7 +704,40 @@ private fun Resolver.resolveStatement(
             }
         }
 
-        is ListCollection -> TODO()
+        is ListCollection -> {
+
+            if (statement.initElements.isNotEmpty()) {
+                val q = statement.initElements[0]
+                if (q.typeAST != null) {
+                    val w = q.typeAST.toType(typeTable)
+                    val listType = Resolver.defaultTypes[InternalTypes.List]!!
+
+                    // try to find list with the same generic type
+                    val typeName = "List::${w.name}"
+                    val currentPkg = getCurrentPackage()
+                    val alreadyExistsListType = currentPkg.types[typeName]
+
+                    val listProtocols = listType.protocols
+
+                    val genericType = alreadyExistsListType ?: Type.GenericType(
+                        mainType = listType,
+                        name = typeName,
+                        typeArgumentList = listOf(w),
+                        fields = listOf(),
+                        `package` = currentPackageName,
+                        protocols = listProtocols
+                    )
+
+                    if (alreadyExistsListType == null) {
+                        addNewType(genericType, null, currentPkg)
+                    }
+
+                    statement.type = genericType
+                } else {
+                    throw Exception("Cant get type of elements of list literal on line ${statement.token.line}")
+                }
+            }
+        }
 
 
         is LiteralExpression.FloatExpr ->
@@ -671,12 +761,15 @@ private fun Resolver.resolveStatement(
 
         is ControlFlow -> {
 
+            statement.type = Resolver.defaultTypes[InternalTypes.Unit]
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
         is Assign -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             resolve(listOf(statement.value), previousAndCurrentScope, statement)
+
+
 
             if (currentLevel == 0) {
                 topLevelStatements.add(statement)
@@ -703,14 +796,16 @@ private fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
 
 }
 
-private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String): Type {
+private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, line: Int? = null): Type {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.unaryMsgs[selectorName]
+
         if (q != null) {
             return q.returnType
         }
     }
-    throw Error("Cant find unary message: $selectorName for type ${receiverType.name}")
+    val lineMessagePart = if (line != null) "on Line: $line" else ""
+    throw Error("Cant find unary message: $selectorName for type ${receiverType.name} $lineMessagePart")
 }
 
 private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String): Type {
@@ -741,7 +836,7 @@ fun Resolver.getPackage(packageName: String): Package {
 }
 
 // @isThisTheLastTypeCheck if it is the last, then we throw errors, if not
-fun Resolver.findTypeInAllPackages(
+fun Resolver.findPackageWhereTypeDeclarated(
     typeName: String,
     expectedTypeName: String? = null,
     isThisTheLastTypeCheck: Boolean = false,
@@ -807,6 +902,8 @@ fun Resolver.getCurrentProtocol(typeName: String): Protocol {
     return protocol
 }
 
+fun Resolver.getCurrentPackage() = getPackage(currentPackageName)
+
 
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
@@ -846,13 +943,15 @@ fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
 }
 
 
-fun Resolver.addNewType(type: Type, statement: TypeDeclaration) {
-    val pack = getPackage(currentPackageName)
+fun Resolver.addNewType(type: Type, statement: TypeDeclaration?, pkg: Package? = null) {
+    val pack = pkg ?: getPackage(currentPackageName)
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
     }
 
-    pack.declarations.add(statement)
+    if (statement != null) {
+        pack.declarations.add(statement)
+    }
 
     pack.types[type.name] = type
     typeTable[type.name] = type

@@ -1,3 +1,12 @@
+
+littleList = {1 2 3 4 5}
+littleList count echo
+
+littleList forEach: [
+  it echo
+]
+
+
 mut e = 42
 e echo
 e <- e dec
@@ -11,7 +20,6 @@ mut i = 100
 ]
 
 1 to: 5 do: [it echo]
-
 
 
 

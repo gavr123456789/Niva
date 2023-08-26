@@ -7,10 +7,13 @@ fun Receiver.toNivaStr(): String {
         is MessageSend -> TODO()
         is CodeBlock -> TODO()
         is ListCollection -> TODO()
+        is MapCollection -> TODO()
+
         is BinaryMsg -> TODO()
         is KeywordMsg -> TODO()
         is UnaryMsg -> TODO()
         is IdentifierExpr -> TODO()
+
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"
         is LiteralExpression.FloatExpr -> this.str

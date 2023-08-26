@@ -109,5 +109,6 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any
+    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any, List, Map, Set,
+    Unknown // For generics like T
 }

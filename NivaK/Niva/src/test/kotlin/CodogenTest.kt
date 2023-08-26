@@ -179,6 +179,31 @@ class CodogenTest {
     }
 
     @Test
+    fun ifDeclarationWithBody() {
+        val source = """
+              | 5 == 6 => [
+                  " is open" echo
+                  5 echo
+                  
+                ]
+              |=> " is closed" echo
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            if (x.count() == 22) {
+                1.echo()
+            } else if (7 < 6) {
+                val y = x.count() + 10
+                y.echo()
+            
+            } else {
+                else.branch().sas()
+            }
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
     fun ifDeclarationNoElse() {
         val source = "| 1 > 5 => 1 echo"
         val ktCode = generateKotlin(source).trim()
@@ -394,6 +419,20 @@ class CodogenTest {
                 x = x.dec()
                 x.echo()
             })
+        """.trimIndent().trim()
+
+
+        assertEquals(expect, ktCode)
+    }
+
+    @Test
+    fun intListCollection() {
+        val source = """
+            {1 2 3}
+        """.trimIndent()
+        val ktCode = generateKotlin(source).trim()
+        val expect = """
+            listOf(1, 2, 3)
         """.trimIndent().trim()
 
 

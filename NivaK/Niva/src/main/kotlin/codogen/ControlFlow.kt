@@ -2,6 +2,7 @@ package codogen
 
 import frontend.parser.types.ast.ControlFlow
 import frontend.parser.types.ast.IfBranch
+import frontend.parser.types.ast.ListCollection
 
 
 fun ControlFlow.If.generateIf(): String = buildString {
@@ -62,4 +63,25 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
         append(codogenKt(elseBranch, 0))
         append("}\n")
     }
+}
+
+
+inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Unit) {
+    val c = count()
+    this.forEachIndexed { index, t ->
+        action(t)
+        if (index != c - 1) {
+            exceptLastDo(t)
+        }
+    }
+}
+
+fun ListCollection.generateList() = buildString {
+    append("listOf(")
+
+    initElements.forEach(exceptLastDo = { append(", ") }) {
+        append(it.generateExpression())
+    }
+
+    append(")")
 }
