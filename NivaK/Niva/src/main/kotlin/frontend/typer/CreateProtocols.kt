@@ -140,3 +140,36 @@ fun createBoolProtocols(
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }
+
+@Suppress("UNUSED_PARAMETER")
+fun createListProtocols(
+    intType: Type.InternalType,
+    stringType: Type.InternalType,
+    unitType: Type.InternalType,
+    boolType: Type.InternalType,
+    listType: Type.InternalType,
+    anyType: Type.InternalType,
+    unknownGenericType: Type.InternalType
+): MutableMap<String, Protocol> {
+    val result = mutableMapOf<String, Protocol>()
+
+    val arithmeticProtocol = Protocol(
+        name = "arithmetic",
+        unaryMsgs = mutableMapOf(
+            createUnary("count", intType),
+            createUnary("echo", unitType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword(
+                "forEach",
+                listOf(
+                    KeywordArg("forEach", Type.Lambda(mutableListOf(TypeField("forEach", unknownGenericType)), anyType))
+                ),
+                intType
+            ),
+        ),
+    )
+    result[arithmeticProtocol.name] = arithmeticProtocol
+    return result
+}

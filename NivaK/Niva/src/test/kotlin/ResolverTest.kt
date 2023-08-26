@@ -3,19 +3,22 @@ import frontend.typer.Resolver
 import frontend.typer.Type
 import frontend.typer.generateKtProject
 import frontend.typer.resolve
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 
 fun resolve(source: String): List<Statement> {
     val ast = getAst(source)
-    val resolver = Resolver(
-        projectName = "common",
-        mainFilePath = File("sas.niva"),
-        statements = ast.toMutableList(),
-    )
+    val resolver = createDefaultResolver(ast)
 
     return resolver.resolve(resolver.statements, mutableMapOf())
 }
+
+private fun createDefaultResolver(statements: List<Statement>) = Resolver(
+    projectName = "common",
+    mainFilePath = File("sas.niva"),
+    statements = statements.toMutableList()
+)
 
 
 class ResolverTest {
@@ -117,11 +120,7 @@ class ResolverTest {
         """.trimIndent()
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         val proj = resolver.projects["common"]!!
         val pack = proj.packages["files"]!!
@@ -142,11 +141,7 @@ class ResolverTest {
         """.trimIndent()
         val ast = getAst(source)
 
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
 
         val q = resolver.projects["common"]!!
         val w = q.packages["core"]!!
@@ -171,11 +166,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 
         assert(statements.count() == 3)
@@ -204,11 +195,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 
 //        assert(statements.count() == 3)
@@ -243,11 +230,7 @@ class ResolverTest {
 
         val ast = getAst(source).toMutableList()
 
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast
-        )
+        val resolver = createDefaultResolver(ast)
         resolver.resolve(resolver.statements, mutableMapOf())
 
         resolver.generateKtProject(path)
@@ -290,11 +273,7 @@ class ResolverTest {
 
         val ast = ast3 + ast2
 
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast1.toMutableList(),
-        )
+        val resolver = createDefaultResolver(ast)
 
         resolver.resolve(resolver.statements, mutableMapOf())
 
@@ -312,11 +291,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
         val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
@@ -334,11 +309,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 //        assert(statements.count() == 2)
 //        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
@@ -358,11 +329,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
         val lambdaCall = ((statements[0]) as MessageSendKeyword).messages[0] as KeywordMsg
@@ -381,11 +348,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
 //        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
@@ -406,11 +369,7 @@ class ResolverTest {
 
 
         val ast = getAst(source)
-        val resolver = Resolver(
-            projectName = "common",
-            mainFilePath = File("sas.niva"),
-            statements = ast.toMutableList()
-        )
+        val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
 //        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
@@ -419,7 +378,25 @@ class ResolverTest {
 //        }
     }
 
+    @Test
+    fun intListCollection() {
+
+        val source = """
+            {1 2 3}
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+        val listCollection = statements[0] as ListCollection
+        assert(listCollection.type != null)
+        assertEquals("List::Int", listCollection.type?.name)
+    }
+
 
 }
+
 
 

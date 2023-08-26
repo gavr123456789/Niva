@@ -11,6 +11,7 @@ sealed class Primary(val typeAST: TypeAST?, token: Token) : Receiver(null, token
 sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, literal) {
 
     class IntExpr(literal: Token) : LiteralExpression(TypeAST.InternalType(InternalTypes.Int, false, literal), literal)
+
     class StringExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.String, false, literal), literal)
 
@@ -38,6 +39,13 @@ class ListCollection(
     type: Type?,
     token: Token,
 ) : Collection(type, token)
+
+class MapCollection(
+    val initElements: List<Pair<Receiver, Receiver>>,
+    type: Type?,
+    token: Token,
+) : Collection(type, token)
+
 
 @JvmInline
 value class LiteralExpr(val literal: Token)

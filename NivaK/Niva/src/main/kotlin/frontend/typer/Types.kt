@@ -74,24 +74,24 @@ sealed class Type(
 
     sealed class InternalLike(
         typeName: InternalTypes,
-        isPrivate: Boolean = false,
         `package`: String,
+        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
     ) : Type(typeName.name, `package`, isPrivate, protocols)
 
     class InternalType(
         typeName: InternalTypes,
-        isPrivate: Boolean = false,
         `package`: String,
+        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : InternalLike(typeName, isPrivate, `package`, protocols)
+    ) : InternalLike(typeName, `package`, isPrivate, protocols)
 
     class NullableInternalType(
         typeName: InternalTypes,
-        isPrivate: Boolean = false,
         `package`: String,
+        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
-    ) : InternalLike(typeName, isPrivate, `package`, protocols)
+    ) : InternalLike(typeName, `package`, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,
@@ -110,6 +110,26 @@ sealed class Type(
         `package`: String,
         protocols: MutableMap<String, Protocol>
     ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
+
+    class GenericType(
+        val mainType: Type,
+        name: String,
+        typeArgumentList: List<Type>,
+        fields: List<TypeField>,
+        isPrivate: Boolean = false,
+        `package`: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
+
+    // like List::T
+    // not sure if it is needed
+//    class UnknownGenericType(
+//        `package`: String,
+//        typeName: InternalTypes = InternalTypes.Unknown,
+//        isPrivate: Boolean = false,
+//        protocols: MutableMap<String, Protocol> = mutableMapOf()
+//    ) : InternalLike(typeName, `package`, isPrivate, protocols)
+
 
     class NullableUserType(
         name: String,
@@ -164,34 +184,12 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
                 }.toMutableList(),
                 returnType = this.returnType.toType(typeTable)
             )
-//            typeTable[lambdaType.name] = lambdaType
             return lambdaType
 
         }
 
     }
 
-
-//    return when (name) {
-//        "Int" ->
-//            Resolver.defaultBasicTypes[InternalTypes.Int]!!
-//
-//        "String" ->
-//            Resolver.defaultBasicTypes[InternalTypes.String]!!
-//
-//        "Float" ->
-//            Resolver.defaultBasicTypes[InternalTypes.Float]!!
-//
-//        "Boolean" ->
-//            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-//
-//        "Unit" ->
-//            Resolver.defaultBasicTypes[InternalTypes.Boolean]!!
-//
-//        else -> {
-//            typeTable[name] ?: throw Exception("Can't find type $name ")
-//        }
-//    }
 }
 
 fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {

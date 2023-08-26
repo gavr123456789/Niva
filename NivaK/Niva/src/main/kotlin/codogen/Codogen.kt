@@ -5,22 +5,24 @@ import frontend.util.addIndentationForEachString
 
 fun codogenKt(statements: List<Statement>, ident: Int = 0): String = buildString {
     statements.forEach {
-        append(getStringFromDeclaration(it, ident), "\n")
+        append(generateKtStatement(it, ident), "\n")
     }
 
 }
 
-fun getStringFromDeclaration(statement: Statement, ident: Int): String = buildString {
+fun generateKtStatement(statement: Statement, ident: Int): String = buildString {
     append(
         when (statement) {
             is MessageSend -> statement.generateMessageCall()
             is VarDeclaration -> statement.generateVarDeclaration()
             is IdentifierExpr -> TODO()
+
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.FloatExpr -> statement.str
             is LiteralExpression.IntExpr -> statement.str
             is LiteralExpression.StringExpr -> "\"" + statement.str + "\""
+
             is MessageDeclarationUnary -> statement.generateUnaryDeclaration()
             is MessageDeclarationBinary -> statement.generateBinaryDeclaration()
             is MessageDeclarationKeyword -> statement.generateKeywordDeclaration()
@@ -52,7 +54,11 @@ fun Expression.generateExpression(): String {
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
 
-        is ListCollection -> TODO()
+        is ListCollection -> {
+            this.generateList()
+        }
+
+        is MapCollection -> TODO()
         is ControlFlow.IfExpression -> this.generateIf()
         is ControlFlow.IfStatement -> this.generateIf()
         is ControlFlow.SwitchExpression -> this.generateSwitch()

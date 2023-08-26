@@ -72,7 +72,17 @@ template foreach*[K, V](self: var Table[K, V], doBlock: untyped) =
     var value {.inject.} = y
     doBlock
 
+template foreach*[T](self: seq[T], doBlock: untyped) =
+  for i, j in self:
+    var isLast {.inject.} = i == self.len - 1
+    doBlock
 
+let q = @[1, 2, 3]
+q.foreach:
+  echo "sas"
+  if isLast:
+    echo "sus"
+    
 
 ### Arrays
 

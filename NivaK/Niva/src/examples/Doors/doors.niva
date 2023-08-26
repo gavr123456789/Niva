@@ -1,0 +1,13 @@
+mut square = 1
+mut increment = 3
+
+1 to: 100 do: [
+  text = "door number " + it
+  text echo
+  | it == square => [
+      " is open" echo
+      square <- square + increment
+      increment <- increment + 2
+    ]
+  |=> " is closed" echo
+]
