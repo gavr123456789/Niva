@@ -77,7 +77,7 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 }
 
 fun ListCollection.generateList() = buildString {
-    append("listOf(")
+    append("mutableListOf(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())

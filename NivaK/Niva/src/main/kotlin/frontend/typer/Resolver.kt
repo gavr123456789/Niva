@@ -436,7 +436,7 @@ private fun Resolver.resolveStatement(
             }
 
 
-            // check that receiver is real type
+            // check if receiver is type
             // Person name: "sas"
             val receiverText = statement.receiver.str
             val q = typeTable[receiverText]
@@ -468,7 +468,12 @@ private fun Resolver.resolveStatement(
                 if (statement.kind != KeywordLikeType.Setter) {
                     statement.kind = KeywordLikeType.Keyword
                     val q = findKeywordMsgType(receiverType, statement.selectorName)
-                    statement.type = q.returnType
+
+                    // KOSTЫL для list2 = list.map...
+                    statement.type =
+                        if (q.returnType.name == InternalTypes.List.name && receiverType is Type.GenericType && receiverType.mainType.name == "List") {
+                            receiverType
+                        } else q.returnType
                 }
             } else {
                 // this is a constructor
@@ -551,6 +556,8 @@ private fun Resolver.resolveStatement(
 
             val receiverType = receiver.type!!
 
+
+
             if (receiverType is Type.Lambda) {
                 if (statement.selectorName != "exe") {
                     if (receiverType.args.isNotEmpty())
@@ -632,6 +639,7 @@ private fun Resolver.resolveStatement(
 
             var isThisWhileCycle = true
             // if this is lambda with one arg, then add "it" to scope
+            // TODO don't add it if this lambda has named arg
             if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
                 if (rootStatement.receiver !is CodeBlock) {
                     val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
@@ -1019,7 +1027,7 @@ fun Resolver.getTypeForIdentifier(
     val type = typeTable[x.str]
         ?: currentScope[x.str]
         ?: previousScope[x.str]
-        ?: throw Exception("Can't find type ${x.str} on line ${x.token.line}")
+        ?: throw Exception("Can't find type for identifier: ${x.str} on line ${x.token.line}")
     x.type = type
     return type
 }

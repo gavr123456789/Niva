@@ -395,6 +395,27 @@ class ResolverTest {
         assertEquals("List::Int", listCollection.type?.name)
     }
 
+    @Test
+    fun intListMap() {
+
+        val source = """
+            littleList = {1 2 3 4 5}
+            
+            newList = littleList map: [
+              it + 1
+            ]
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+        val listCollection = statements[0] as ListCollection
+        assert(listCollection.type != null)
+        assertEquals("List::Int", listCollection.type?.name)
+    }
+
 
 }
 
