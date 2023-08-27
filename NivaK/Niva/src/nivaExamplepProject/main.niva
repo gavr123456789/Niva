@@ -1,8 +1,16 @@
 
 littleList = {1 2 3 4 5}
+littleList add: 6
+littleList removeAt: 2
+littleList addAll: {11 22 33}
+
 littleList count echo
 
-littleList forEach: [
+mappedList = littleList map: [it + 1]
+filteredList = mappedList filter: [it % 2 == 0]
+
+
+filteredList forEach: [
   it echo
 ]
 

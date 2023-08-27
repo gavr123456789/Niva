@@ -33,6 +33,7 @@ fun createIntProtocols(
             createBinary("+", intType, intType),
             createBinary("-", intType, intType),
             createBinary("*", intType, intType),
+            createBinary("%", intType, intType),
             createBinary("/", intType, intType),
             createBinary("..", intType, intRangeType),
 
@@ -153,6 +154,10 @@ fun createListProtocols(
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
+    val w = mutableListOf(1)
+    w.map { }
+
+
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
@@ -164,12 +169,38 @@ fun createListProtocols(
             createKeyword(
                 "forEach",
                 listOf(
-                    KeywordArg("forEach", Type.Lambda(mutableListOf(TypeField("forEach", unknownGenericType)), anyType))
+                    KeywordArg(
+                        "forEach",
+                        Type.Lambda(mutableListOf(TypeField("forEach", unknownGenericType)), unknownGenericType)
+                    )
                 ),
                 intType
             ),
-        ),
+            createKeyword(
+                "map",
+                listOf(
+                    KeywordArg(
+                        "map", Type.Lambda(mutableListOf(TypeField("map", unknownGenericType)), unknownGenericType)
+                    )
+                ),
+                listType
+            ),
+            createKeyword(
+                "filter",
+                listOf(
+                    KeywordArg("filter", Type.Lambda(mutableListOf(TypeField("filter", unknownGenericType)), boolType))
+                ),
+                listType
+            ),
+
+            createKeyword("add", KeywordArg("add", unknownGenericType), unitType),
+            createKeyword("removeAt", KeywordArg("removeAt", intType), unknownGenericType),
+            createKeyword("addAll", KeywordArg("addAll", listType), boolType),
+
+
+            )
     )
+
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }
