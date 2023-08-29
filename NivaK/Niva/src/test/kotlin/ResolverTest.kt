@@ -395,6 +395,27 @@ class ResolverTest {
         assertEquals("List::Int", listCollection.type?.name)
     }
 
+
+    @Test
+    fun ifBranchesReturnSameType() {
+
+        val source = """
+            x = | 7
+            | 6 => 6
+            | 9 => 5
+            |=> 7
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+//        val listCollection = statements[0] as ListCollection
+
+    }
+
+
     @Test
     fun intListMap() {
 
