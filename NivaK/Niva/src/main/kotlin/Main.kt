@@ -9,6 +9,7 @@ import frontend.parser.types.ast.Statement
 import frontend.typer.Resolver
 import frontend.typer.generateKtProject
 import frontend.util.OS_Type
+import frontend.util.div
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
 import java.io.File
@@ -174,16 +175,15 @@ fun String.addNivaStd(): String {
 
 
 fun main(args: Array<String>) {
+    // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\main.niva
 
+    val isThereArgs = args.count() == 2
 
-    val pathWhereToGenerateKt =
-        "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+    val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
+    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathToNivaProjectRootFile =
-        "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\nivaExamplepProject\\main.niva"
-    val doorsExample =
-        "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Doors\\doors.niva"
-    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
+        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Factorial\\factorial.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
 
-    val pathToProjectRoot = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj"
+    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
     runGradleRunInProject(pathToProjectRoot)
 }

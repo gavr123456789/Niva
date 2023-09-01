@@ -23,7 +23,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
 
     val safePoint = current
     try {
-        val q = unaryOrBinary(match(TokenType.OpenParen))
+        val q = unaryOrBinary(false)
 
         when (q) {
             is MessageSendUnary, is MessageSendBinary -> {
@@ -54,8 +54,11 @@ fun Parser.simpleReceiver(): Receiver {
     if (check(TokenType.OpenBracket)) {
         return codeBlock()
     }
+    if (check(TokenType.OpenParen)) {
+        return bracketExpression()
+    }
 
-    fun collectionLiteral(): Receiver? {
+    fun collectionLiteral(): Receiver {
 
         val result: ListCollection
         val initElements = mutableListOf<Primary>()
@@ -83,11 +86,7 @@ fun Parser.simpleReceiver(): Receiver {
         }
 
         //if there are keyword call, then read collection of constructors
-        
-
         readPrimaryCollection()
-
-
         match(TokenType.CloseBrace)
 
         val type = if (initElements.isNotEmpty()) initElements[0].type else null
@@ -95,12 +94,6 @@ fun Parser.simpleReceiver(): Receiver {
         return result
     }
 
-//    var inParens = false
-//
-//    if (match(TokenType.OpenParen)) {
-//        inParens = true
-//
-//    }
 
     val tryPrimary = primary()
         ?: collectionLiteral()
@@ -114,52 +107,6 @@ fun Parser.simpleReceiver(): Receiver {
     return tryPrimary
 }
 
-fun Parser.nullableSimpleReceiver(): Receiver? {
-
-    if (check(TokenType.OpenBracket)) {
-        return codeBlock()
-    }
-
-    fun collectionLiteral(): Receiver? {
-
-        val result: ListCollection
-        val initElements = mutableListOf<Primary>()
-        // {1, 2 3}
-        val leftBraceTok = peek()
-        if (leftBraceTok.kind != TokenType.OpenBrace) {
-            return null
-        }
-
-        step() // skip leftBrace
-
-        // cycle that eats primary with optional commas
-        // for now, messages inside collection literals are impossible
-
-        var lastPrimary: Primary? = null
-        do {
-            val primaryTok = primary()
-            match(TokenType.Comma)
-            if (primaryTok != null) {
-                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
-                    error("Heterogeneous collections are not supported")
-                }
-                initElements.add(primaryTok)
-            }
-            lastPrimary = primaryTok
-        } while (primaryTok != null)
-
-        match(TokenType.CloseBrace)
-
-        val type = if (initElements.isNotEmpty()) initElements[0].type else null
-        result = ListCollection(initElements, type, leftBraceTok)
-        return result
-    }
-
-    val tryPrimary = primary()
-        ?: collectionLiteral()
-
-    return tryPrimary
-}
 
 fun Parser.returnType(): TypeAST? {
     if (!match(TokenType.ReturnArrow)) {

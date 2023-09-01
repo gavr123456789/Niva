@@ -15,3 +15,11 @@ class CodeBlock(
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
 ) : Receiver(type, token)
+
+class ExpressionInBrackets(
+    val statements: List<Statement>,
+    type: Type?,
+    token: Token,
+    pragmas: List<Pragma> = listOf(),
+    isPrivate: Boolean = false,
+) : Receiver(type, token)

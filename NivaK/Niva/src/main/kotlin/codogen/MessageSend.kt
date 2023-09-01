@@ -34,9 +34,12 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
     val receiverCode = if (keywordMsg.kind == KeywordLikeType.Constructor)
         receiver.generateExpression()
-    else
-        "(" + receiver.generateExpression() + ")"
-
+    else {
+        if (receiver !is ExpressionInBrackets)
+            "(" + receiver.generateExpression() + ")"
+        else
+            receiver.generateExpression()
+    }
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword -> {
             if (i == 0) {
@@ -104,7 +107,8 @@ private fun KeywordArgAndItsMessages.generateCallPair(): String {
 
 fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString {
     if (i == 0) {
-        append(receiver.str)
+        val receiverCode = receiver.generateExpression()
+        append(receiverCode)
     }
     when (it.kind) {
         UnaryMsgKind.Unary -> append(".${it.selectorName}()")

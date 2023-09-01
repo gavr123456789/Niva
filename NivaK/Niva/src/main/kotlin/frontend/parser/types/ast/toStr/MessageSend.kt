@@ -1,9 +1,13 @@
 package frontend.parser.types.ast.toStr
 
+import codogen.generateExpressionInBrackets
 import frontend.parser.types.ast.*
 
 fun Receiver.toNivaStr(): String {
     return when (this) {
+
+        is ExpressionInBrackets -> this.generateExpressionInBrackets()
+
         is MessageSend -> TODO()
         is CodeBlock -> TODO()
         is ListCollection -> TODO()

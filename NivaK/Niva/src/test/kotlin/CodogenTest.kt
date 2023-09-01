@@ -16,6 +16,17 @@ fun generateKotlin(source: String): String {
     return codogenerator
 }
 
+fun generateKotlinWithoutResolve(source: String): String {
+    val ast = getAst(source)
+    val resolver = Resolver(
+        projectName = "common", mainFilePath = File("sas.niva"), statements = ast.toMutableList()
+    )
+//    resolver.resolve(resolver.statements, mutableMapOf())
+    val codogenerator = codogenKt(resolver.statements)
+
+    return codogenerator
+}
+
 class CodogenTest {
 
     @Test
@@ -432,14 +443,34 @@ class CodogenTest {
         """.trimIndent()
         val ktCode = generateKotlin(source).trim()
         val expect = """
-            listOf(1, 2, 3)
+            mutableListOf(1, 2, 3)
         """.trimIndent().trim()
-
-
         assertEquals(expect, ktCode)
     }
 
+    @Test
+    fun expressionInBracketsWithKeyword() {
+        val source = """
+            (1 + 3) add: 4
+        """.trimIndent()
+        val ktCode = generateKotlinWithoutResolve(source).trim()
+        val expect = """
+            (1 + 3).add(4)
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
 
+    @Test
+    fun expressionInBracketsWithUnary() {
+        val source = """
+            (1 + 3) sas
+        """.trimIndent()
+        val ktCode = generateKotlinWithoutResolve(source).trim()
+        val expect = """
+            (1 + 3).sas()
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
 }
 
 
