@@ -88,7 +88,7 @@ private fun bodyPart(
         stringBuilder.append(": ", messageDeclaration.returnType.name)
     }
 
-    if (messageDeclaration.body.count() == 1) {
+    if (messageDeclaration.body.count() == 1 && messageDeclaration.body[0] !is ReturnStatement) {
         stringBuilder.append(" = ", codogenKt(messageDeclaration.body, 0))
     } else {
         stringBuilder.append(" {\n")

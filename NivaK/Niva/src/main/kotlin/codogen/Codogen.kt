@@ -46,6 +46,8 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
 
 fun Expression.generateExpression(): String {
     return when (this) {
+        is ExpressionInBrackets -> this.generateExpressionInBrackets()
+        
         is MessageSend -> this.generateMessageCall()
         is IdentifierExpr -> if (name != "do") this.name else "`do`"
         is LiteralExpression.FalseExpr -> "false"
@@ -88,6 +90,15 @@ inline fun <T> WhileIf.whileFalse(x: () -> T) {
     while (!this()) {
         x()
     }
+
+
+}
+
+fun ExpressionInBrackets.generateExpressionInBrackets() = buildString {
+    append("(")
+    val statementsCode = codogenKt(statements, 0).removeSuffix("\n")
+    append(statementsCode)
+    append(")")
 }
 
 

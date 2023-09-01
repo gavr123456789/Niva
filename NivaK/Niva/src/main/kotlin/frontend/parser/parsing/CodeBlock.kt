@@ -2,19 +2,22 @@ package frontend.parser.parsing
 
 import frontend.meta.TokenType
 import frontend.parser.types.ast.CodeBlock
+import frontend.parser.types.ast.ExpressionInBrackets
 import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.Statement
 import frontend.util.checkTokUntilEndOfLine
 
-fun Parser.codeBlock(): CodeBlock {
-    fun statementsUntilCloseBracket(): List<Statement> {
-        val result = mutableListOf<Statement>()
-        do {
-            result.add(statementWithEndLine())
-        } while (!match(TokenType.CloseBracket))
+fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
+    val result = mutableListOf<Statement>()
+    do {
+        result.add(statementWithEndLine())
+    } while (!match(bracketType))
 
-        return result
-    }
+    return result
+}
+
+fun Parser.codeBlock(): CodeBlock {
+
 
     fun beforeStatementsPart(): List<IdentifierExpr> {
         val result = mutableListOf<IdentifierExpr>()
@@ -42,7 +45,7 @@ fun Parser.codeBlock(): CodeBlock {
             listOf()
 
 
-    val statements = statementsUntilCloseBracket()
+    val statements = statementsUntilCloseBracket(TokenType.CloseBracket)
 
 
     val result = CodeBlock(
@@ -52,6 +55,23 @@ fun Parser.codeBlock(): CodeBlock {
         token = openBracket
     )
     // whileTrue
+
+
+    return result
+}
+
+fun Parser.bracketExpression(): ExpressionInBrackets {
+    val openBracket = matchAssert(TokenType.OpenParen)
+
+    val statements = statementsUntilCloseBracket(TokenType.CloseParen)
+
+    val result = ExpressionInBrackets(
+        statements = statements,
+        type = null,
+        token = openBracket
+    )
+
+//    val closeBracket = matchAssert(TokenType.CloseBracket)
 
 
     return result

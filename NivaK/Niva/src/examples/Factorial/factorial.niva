@@ -1,0 +1,5 @@
+Int factorial -> Int = |this
+| 0 => 1
+|=> (this - 1) factorial * this
+
+5 factorial echo
