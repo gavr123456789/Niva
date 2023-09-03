@@ -50,9 +50,15 @@ class Resolver(
 
     // reload when package changed
     val typeTable: MutableMap<TypeName, Type> = mutableMapOf(),
+
     val unaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
     val binaryForType: MutableMap<TypeName, MessageDeclarationBinary> = mutableMapOf(),
     val keywordForType: MutableMap<TypeName, MessageDeclarationKeyword> = mutableMapOf(),
+
+    val staticUnaryForType: MutableMap<TypeName, MessageDeclarationUnary> = mutableMapOf(),
+    val staticBinaryForType: MutableMap<TypeName, MessageDeclarationBinary> = mutableMapOf(),
+    val staticKeywordForType: MutableMap<TypeName, MessageDeclarationKeyword> = mutableMapOf(),
+
 
     var topLevelStatements: MutableList<Statement> = mutableListOf(),
     var currentLevel: Int = 0,
@@ -64,14 +70,10 @@ class Resolver(
     var currentProtocolName: String = "common",
 
     var currentFile: String = "",
-
-
     var currentArgumentNumber: Int = -1,
 
     // for recursive types
     val notResolvedStatements: MutableList<Statement> = mutableListOf()
-
-
 ) {
     companion object {
 
@@ -258,7 +260,15 @@ fun Resolver.resolveDeclarations(
 
         is UnionDeclaration -> TODO()
         is AliasDeclaration -> TODO()
-        is ConstructorDeclaration -> TODO()
+//        is ConstructorDeclaration -> {
+//
+//            if (statement.body.count() != 1) {
+//                throw Exception("Constructor must contain only one expression, line: ${statement.token.line}")
+//            }
+//
+//            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+//            resolve(statement.body, previousAndCurrentScope, statement)
+//        }
 
         is MessageDeclaration -> {
             // check if the type already registered
@@ -288,12 +298,12 @@ fun Resolver.resolveDeclarations(
                 is MessageDeclarationBinary -> addNewBinaryMessage(statement)
                 is MessageDeclarationKeyword -> addNewKeywordMessage(statement)
 
-                is ConstructorDeclaration -> TODO()
-
+                is ConstructorDeclaration -> addStaticDeclaration(statement)
             }
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            previousAndCurrentScope["self"] = forType
+            previousAndCurrentScope["this"] = forType
+
             val body = this.resolve(statement.body, previousAndCurrentScope, statement)
 
             // TODO check that return type is the same as declared return type, or if it not declared -> assign it
@@ -506,7 +516,7 @@ private fun Resolver.resolveStatement(
             receiver.type = when (receiver) {
                 is MessageSend -> TODO()
                 is CodeBlock -> TODO()
-                is ExpressionInBrackets -> TODO()
+                is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, previousScope, currentScope)
                 is ListCollection -> TODO()
                 is MapCollection -> TODO()
                 is BinaryMsg -> TODO()
@@ -532,10 +542,13 @@ private fun Resolver.resolveStatement(
                 statement.receiver.type?.name// ?: throw Exception("${statement.selectorName} hasn't type")
             val receiver = statement.receiver
 
+            // for constructors
+            var isStaticCall = false
+
             if (receiver.type == null)
                 receiver.type = when (receiver) {
 
-                    is ExpressionInBrackets -> TODO()
+                    is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, currentScope, previousScope)
                     is CodeBlock -> TODO()
                     is ListCollection -> TODO()
                     is MapCollection -> TODO()
@@ -548,7 +561,13 @@ private fun Resolver.resolveStatement(
                     is MessageSend -> TODO()
 
 
-                    is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
+                    is IdentifierExpr -> {
+                        if (typeTable[receiver.str] != null) {
+                            isStaticCall = true
+                        }
+                        getTypeForIdentifier(receiver, currentScope, previousScope)
+                    }
+
                     is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
                     is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
                     is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
@@ -595,7 +614,12 @@ private fun Resolver.resolveStatement(
                 // usual message
                 // find this message
 
-                val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token.line)
+                val messageReturnType =
+                    if (!isStaticCall)
+                        findUnaryMessageType(receiverType, statement.selectorName, statement.token.line)
+                    else
+                        findStaticMessageType(receiverType, statement.selectorName, statement.token.line)
+
                 statement.kind = UnaryMsgKind.Unary
                 statement.type = messageReturnType
             }
@@ -615,17 +639,7 @@ private fun Resolver.resolveStatement(
         }
 
         is ExpressionInBrackets -> {
-            if (statement.statements.isEmpty()) {
-                throw Exception("Parens must contain expression, line: ${statement.token.line}")
-            }
-            val lastExpr = statement.statements.last()
-            if (lastExpr !is Expression) {
-                throw Exception("Last statement inside parens must be expression, line: ${statement.token.line}")
-            }
-            
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            resolve(statement.statements, previousAndCurrentScope, statement)
-            statement.type = lastExpr.type
+            resolveExpressionInBrackets(statement, previousScope, currentScope)
         }
 
         is CodeBlock -> {
@@ -970,6 +984,25 @@ private fun Resolver.resolveStatement(
     }
 }
 
+private fun Resolver.resolveExpressionInBrackets(
+    statement: ExpressionInBrackets,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>
+): Type {
+    if (statement.statements.isEmpty()) {
+        throw Exception("Parens must contain expression, line: ${statement.token.line}")
+    }
+    val lastExpr = statement.statements.last()
+    if (lastExpr !is Expression) {
+        throw Exception("Last statement inside parens must be expression, line: ${statement.token.line}")
+    }
+
+    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+    resolve(statement.statements, previousAndCurrentScope, statement)
+    statement.type = lastExpr.type
+    return lastExpr.type!!
+}
+
 
 private fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
     if (type1.name == "Any" && type2.name == "Any") {
@@ -994,6 +1027,18 @@ private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: Stri
     }
     val lineMessagePart = if (line != null) "on Line: $line" else ""
     throw Error("Cant find unary message: $selectorName for type ${receiverType.name} $lineMessagePart")
+}
+
+private fun Resolver.findStaticMessageType(receiverType: Type, selectorName: String, line: Int? = null): Type {
+    receiverType.protocols.forEach { (k, v) ->
+        val q = v.staticMsgs[selectorName]
+
+        if (q != null) {
+            return q.returnType
+        }
+    }
+    val lineMessagePart = if (line != null) "on Line: $line" else ""
+    throw Error("Cant find static message: $selectorName for type ${receiverType.name} $lineMessagePart")
 }
 
 private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String): Type {
@@ -1093,6 +1138,39 @@ fun Resolver.getCurrentProtocol(typeName: String): Protocol {
 fun Resolver.getCurrentPackage() = getPackage(currentPackageName)
 
 
+fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
+    val typeOfReceiver = typeTable[statement.forType.name]!!
+    when (statement.msgDeclaration) {
+        is MessageDeclarationUnary -> {
+            staticUnaryForType[statement.name] = statement.msgDeclaration
+            val protocol = getCurrentProtocol(statement.forType.name)
+            val messageData = UnaryMsgMetaData(
+                name = statement.msgDeclaration.name,
+                returnType = typeOfReceiver,
+            )
+            protocol.staticMsgs[statement.name] = messageData
+        }
+
+        is MessageDeclarationBinary -> {
+            throw Exception("Binary static message, really? This is not allowed")
+        }
+
+        is MessageDeclarationKeyword -> {
+            staticKeywordForType[statement.name] = statement.msgDeclaration
+            val protocol = getCurrentProtocol(statement.forType.name)
+            val messageData = UnaryMsgMetaData(
+                name = statement.msgDeclaration.name,
+                returnType = typeOfReceiver,
+            )
+            protocol.staticMsgs[statement.name] = messageData
+        }
+
+        is ConstructorDeclaration -> TODO()
+    }
+    addMsgToPackageDeclarations(statement)
+
+}
+
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
@@ -1101,7 +1179,6 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     protocol.unaryMsgs[statement.name] = messageData
 
     addMsgToPackageDeclarations(statement)
-
 }
 
 fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {

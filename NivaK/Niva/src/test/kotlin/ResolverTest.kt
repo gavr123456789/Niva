@@ -73,7 +73,7 @@ class ResolverTest {
             type Person name: String age: Int
             person = Person name: "sas" age: 5
             Person sas -> Unit = [
-              self name: "sus"
+              this name: "sus"
             ]
         """.trimIndent()
 
@@ -85,7 +85,7 @@ class ResolverTest {
         val msg = firstOfBody.messages[0]
         val receiver = msg.receiver
         assert(receiver.type?.name == "Person")
-        assert(receiver.str == "self")
+        assert(receiver.str == "this")
         assert((msg as KeywordMsg).kind == KeywordLikeType.Setter)
     }
 
@@ -96,7 +96,7 @@ class ResolverTest {
             type Person name: String age: Int
             person = Person name: "sas" age: 5
             Person sas -> Unit = [
-              self name
+              this name
             ]
         """.trimIndent()
 
@@ -108,7 +108,7 @@ class ResolverTest {
         val msg = firstOfBody.messages[0]
         val receiver = msg.receiver
         assert(receiver.type?.name == "Person")
-        assert(receiver.str == "self")
+        assert(receiver.str == "this")
         assert((msg as UnaryMsg).kind == UnaryMsgKind.Getter)
     }
 
@@ -411,8 +411,6 @@ class ResolverTest {
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
-//        val listCollection = statements[0] as ListCollection
-
     }
 
 
@@ -435,6 +433,23 @@ class ResolverTest {
         val listCollection = statements[0] as ListCollection
         assert(listCollection.type != null)
         assertEquals("List::Int", listCollection.type?.name)
+    }
+
+    @Test
+    fun constructor() {
+
+        val source = """
+            type Wallet amount: Int
+            constructor Wallet empty = Wallet amount: 0 
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+        val construct = ast[1] as ConstructorDeclaration
+        assert(construct.body.count() == 1)
     }
 
 

@@ -643,6 +643,9 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
+        val constr = ast[0] as ConstructorDeclaration
+        assert(constr.forType.name == "Person")
+        assert(constr.body.size == 1)
     }
 
     @Test
