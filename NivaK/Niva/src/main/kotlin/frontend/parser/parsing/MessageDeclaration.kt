@@ -418,8 +418,7 @@ fun Parser.constructorDeclaration(): ConstructorDeclaration {
     }
 
     val result = ConstructorDeclaration(
-        msgDeclarationKeyword = msgDecl,
-        forType = msgDecl.forType,
+        msgDeclaration = msgDecl,
         constructorKeyword
     )
     return result

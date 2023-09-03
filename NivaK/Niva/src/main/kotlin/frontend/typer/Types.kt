@@ -44,11 +44,11 @@ class KeywordMsgMetaData(
     msgSends: List<MsgSend> = listOf()
 ) : MessageMetadata(name, returnType, msgSends)
 
-class ConstructorMsgMetaData(
-    name: String,
-    returnType: Type,
-    msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
+//class ConstructorMsgMetaData(
+//    name: String,
+//    returnType: Type,
+//    msgSends: List<MsgSend> = listOf()
+//) : MessageMetadata(name, returnType, msgSends)
 
 data class TypeField(
     val name: String,
@@ -147,6 +147,7 @@ data class Protocol(
     val unaryMsgs: MutableMap<String, UnaryMsgMetaData> = mutableMapOf(),
     val binaryMsgs: MutableMap<String, BinaryMsgMetaData> = mutableMapOf(),
     val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
+    val staticMsgs: MutableMap<String, MessageMetadata> = mutableMapOf(),
 )
 
 class Package(
@@ -166,12 +167,17 @@ class Project(
 fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
 
     when (this) {
-        is TypeAST.InternalType, is TypeAST.UserType -> {
-            return Resolver.defaultTypes[InternalTypes.valueOf(name)]
-                ?: (typeTable[name]
-                    ?: throw Exception("Can't find type $name ")
-                        // TODO better inference, depend on context
-                        )
+        is TypeAST.InternalType -> {
+            return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
+                throw Exception("Can't find type $name ")
+                // TODO better inference, depend on context
+
+            }
+
+        }
+
+        is TypeAST.UserType -> {
+            return typeTable[name] ?: throw Exception("Can't find type $name ")
         }
 
         is TypeAST.Lambda -> {
@@ -259,12 +265,12 @@ fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type
     return result
 }
 
-fun ConstructorDeclaration.toMessageData(typeTable: MutableMap<TypeName, Type>): ConstructorMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable)
-        ?: throw Exception("return type of constructor message ${this.name} not registered")
-    val result = ConstructorMsgMetaData(
-        name = this.name,
-        returnType = returnType
-    )
-    return result
-}
+//fun ConstructorDeclaration.toMessageData(typeTable: MutableMap<TypeName, Type>): ConstructorMsgMetaData {
+//    val returnType = this.returnType?.toType(typeTable)
+//        ?: throw Exception("return type of constructor message ${this.name} not registered")
+//    val result = ConstructorMsgMetaData(
+//        name = this.name,
+//        returnType = returnType
+//    )
+//    return result
+//}

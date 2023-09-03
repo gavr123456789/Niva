@@ -1,0 +1,5 @@
+type Wallet amount: Int
+constructor Wallet empty = Wallet amount: 0
+emptyWallet = Wallet empty
+
+emptyWallet amount echo

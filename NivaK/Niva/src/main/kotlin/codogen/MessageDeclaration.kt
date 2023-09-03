@@ -2,13 +2,6 @@ package codogen
 
 import frontend.parser.types.ast.*
 
-fun MessageDeclarationUnary.generateUnaryDeclaration() = buildString {
-    //            fun Int.sas(): unit {
-    //              this.echo()
-    //            }
-    append("fun ", forType.name, ".", name, "()")
-    bodyPart(this@generateUnaryDeclaration, this)
-}
 
 val operators = hashMapOf(
     "+" to "plus",
@@ -40,7 +33,19 @@ val operators = hashMapOf(
     "apply" to "invoke",
 )
 
-fun MessageDeclarationBinary.generateBinaryDeclaration() = buildString {
+fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+    // fun Int.sas(): unit {
+    //   this.echo()
+    // }
+    append("fun ", forType.name)
+    if (isStatic) {
+        append(".Companion")
+    }
+    append(".", name, "()")
+    bodyPart(this@generateUnaryDeclaration, this)
+}
+
+fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false) = buildString {
     fun operatorToString(x: String): String {
         return operators[x]!!
     }
@@ -49,7 +54,12 @@ fun MessageDeclarationBinary.generateBinaryDeclaration() = buildString {
     //              this.echo()
     //            }
 
-    append("operator fun ", forType.name, ".", operatorToString(name), "(", arg.name)
+    append("operator fun ", forType.name)
+    if (isStatic) {
+        append(".Companion")
+    }
+    append(".", operatorToString(name), "(", arg.name)
+
     if (arg.type != null) {
         append(": ", arg.type.name)
     }
@@ -58,11 +68,16 @@ fun MessageDeclarationBinary.generateBinaryDeclaration() = buildString {
     bodyPart(this@generateBinaryDeclaration, this)
 }
 
-fun MessageDeclarationKeyword.generateKeywordDeclaration() = buildString {
+fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
     //            fun Int.fromTo(x: Int, y: Int): Counter {
     //              this.echo()
     //            }
-    append("fun ", forType.name, ".", name, "(")
+    append("fun ", forType.name)
+    if (isStatic) {
+        append(".Companion")
+    }
+    append(".", name, "(")
+
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
         append(arg.name())

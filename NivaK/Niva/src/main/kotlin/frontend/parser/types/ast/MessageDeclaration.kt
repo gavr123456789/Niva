@@ -61,16 +61,15 @@ class MessageDeclarationKeyword(
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class ConstructorDeclaration(
-    val msgDeclarationKeyword: MessageDeclaration,
-    forType: TypeAST,
+    val msgDeclaration: MessageDeclaration,
     token: Token
 ) : MessageDeclaration(
-    msgDeclarationKeyword.name,
-    forType,
+    msgDeclaration.name,
+    msgDeclaration.forType,
     token,
-    msgDeclarationKeyword.isSingleExpression,
-    msgDeclarationKeyword.body,
-    msgDeclarationKeyword.returnType,
-    msgDeclarationKeyword.isPrivate,
-    msgDeclarationKeyword.pragmas
+    msgDeclaration.isSingleExpression,
+    msgDeclaration.body,
+    msgDeclaration.returnType,
+    msgDeclaration.isPrivate,
+    msgDeclaration.pragmas
 )

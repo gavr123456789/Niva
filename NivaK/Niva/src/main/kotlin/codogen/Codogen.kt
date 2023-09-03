@@ -23,9 +23,8 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
             is LiteralExpression.IntExpr -> statement.str
             is LiteralExpression.StringExpr -> "\"" + statement.str + "\""
 
-            is MessageDeclarationUnary -> statement.generateUnaryDeclaration()
-            is MessageDeclarationBinary -> statement.generateBinaryDeclaration()
-            is MessageDeclarationKeyword -> statement.generateKeywordDeclaration()
+            is MessageDeclaration -> statement.generateMessageDeclaration()
+
             is TypeDeclaration -> statement.generateTypeDeclaration()
             is Expression -> statement.generateExpression()
             is ReturnStatement -> {
@@ -35,7 +34,8 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
             is Assign -> "${statement.name} = ${statement.value.generateExpression()}"
 
             is AliasDeclaration -> TODO()
-            is ConstructorDeclaration -> TODO()
+
+
             is UnionDeclaration -> TODO()
             is TypeAST.InternalType -> TODO()
             is TypeAST.Lambda -> TODO()
@@ -44,10 +44,25 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
     )
 }
 
+fun ConstructorDeclaration.generateConstructorDeclaration() =
+    this.msgDeclaration.generateMessageDeclaration(true)
+
+
+fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
+    append(
+        when (this@generateMessageDeclaration) {
+            is ConstructorDeclaration -> generateConstructorDeclaration()
+            is MessageDeclarationUnary -> generateUnaryDeclaration(isStatic)
+            is MessageDeclarationBinary -> generateBinaryDeclaration(isStatic)
+            is MessageDeclarationKeyword -> generateKeywordDeclaration(isStatic)
+        }
+    )
+}
+
 fun Expression.generateExpression(): String {
     return when (this) {
         is ExpressionInBrackets -> this.generateExpressionInBrackets()
-        
+
         is MessageSend -> this.generateMessageCall()
         is IdentifierExpr -> if (name != "do") this.name else "`do`"
         is LiteralExpression.FalseExpr -> "false"

@@ -131,7 +131,7 @@ int to: x = [
 
     @Test
     fun keywords() {
-        check("true false type use union ", listOf(True, False, Type, Use, Union, EndOfFile))
+        check("true false type use union constructor", listOf(True, False, Type, Use, Union, Constructor, EndOfFile))
     }
 
     @Test

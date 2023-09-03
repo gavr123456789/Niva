@@ -182,7 +182,7 @@ fun main(args: Array<String>) {
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
     val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathToNivaProjectRootFile =
-        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Factorial\\factorial.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
+        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Constructors\\constructors.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
 
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
     runGradleRunInProject(pathToProjectRoot)

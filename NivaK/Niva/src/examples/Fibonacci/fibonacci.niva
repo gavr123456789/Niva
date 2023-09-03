@@ -1,0 +1,13 @@
+Int fib -> Int =
+| this < 2 => 1
+|=> (this - 2) fib + (this - 1) fib
+
+
+Int fib2 -> Int = |this
+| 0 => 1
+| 1 => 1
+|=> (this - 2) fib + (this - 1) fib
+
+5 fib echo
+6 fib2 echo
+

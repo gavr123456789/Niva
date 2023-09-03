@@ -1,7 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.TypeDeclaration
-import java.lang.Exception
 
 fun TypeDeclaration.generateTypeDeclaration() = buildString {
     append("class ")
@@ -17,6 +16,6 @@ fun TypeDeclaration.generateTypeDeclaration() = buildString {
         if (c != i) append(", ")
     }
 
-    append(")")
+    append(")", " { companion object }")
 
 }
