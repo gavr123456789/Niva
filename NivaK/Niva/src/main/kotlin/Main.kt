@@ -177,6 +177,11 @@ fun String.addNivaStd(): String {
 fun main(args: Array<String>) {
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\main.niva
 
+    val data = "sas"
+    val open = "sus"
+    val enum = 1
+    val catch = 2
+
     val isThereArgs = args.count() == 2
 
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"

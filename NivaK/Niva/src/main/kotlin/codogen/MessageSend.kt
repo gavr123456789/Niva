@@ -55,7 +55,21 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 //            append(keywordMsg.receiver.str)
         }
 
-        KeywordLikeType.Setter -> TODO()
+        KeywordLikeType.Setter -> {
+            // emptyWallet money: 20
+            // emptyWallet.money = 20
+            if (keywordMsg.args.count() != 1) {
+                throw Exception("Setters must have only one argument, line: ${keywordMsg.token.line}")
+            }
+            val valueArg = keywordMsg.args[0]
+            if (receiver is IdentifierExpr) {
+                append(receiver.name, ".", valueArg.selectorName, " = ")
+//                val valueCode = valueArg.generateCallPair()
+//                append(valueCode)
+            } else {
+                TODO()
+            }
+        }
 
         KeywordLikeType.ForCodeBlock -> {
             // if whileTrue we still need to add .name

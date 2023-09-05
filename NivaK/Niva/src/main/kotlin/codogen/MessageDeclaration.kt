@@ -72,6 +72,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     //            fun Int.fromTo(x: Int, y: Int): Counter {
     //              this.echo()
     //            }
+
+    // if this is constructor, then method on Companion
     append("fun ", forType.name)
     if (isStatic) {
         append(".Companion")
@@ -103,7 +105,10 @@ private fun bodyPart(
         stringBuilder.append(": ", messageDeclaration.returnType.name)
     }
 
-    if (messageDeclaration.body.count() == 1 && messageDeclaration.body[0] !is ReturnStatement) {
+    val firstBodyStatement = messageDeclaration.body[0]
+    val isNotSetter =
+        !(firstBodyStatement is MessageSendKeyword && firstBodyStatement.messages[0] is KeywordMsg && (firstBodyStatement.messages[0] as KeywordMsg).kind == KeywordLikeType.Setter)
+    if (messageDeclaration.body.count() == 1 && firstBodyStatement !is ReturnStatement && isNotSetter) {
         stringBuilder.append(" = ", codogenKt(messageDeclaration.body, 0))
     } else {
         stringBuilder.append(" {\n")
