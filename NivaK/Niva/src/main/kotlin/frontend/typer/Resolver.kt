@@ -128,6 +128,19 @@ class Resolver(
                     anyType = anyType
                 )
             )
+
+            floatType.protocols.putAll(
+                createFloatProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    floatType = floatType,
+                    intRangeType = intRangeType,
+                    anyType = anyType
+                )
+            )
+
             stringType.protocols.putAll(
                 createStringProtocols(
                     intType = intType,

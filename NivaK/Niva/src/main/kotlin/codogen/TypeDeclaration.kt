@@ -12,7 +12,8 @@ fun TypeDeclaration.generateTypeDeclaration() = buildString {
         if (it.type == null) {
             throw Exception("arg must have type")
         }
-        append("val ", it.name, ": ", it.type.name)
+        // TODO var or val?
+        append("var ", it.name, ": ", it.type.name)
         if (c != i) append(", ")
     }
 

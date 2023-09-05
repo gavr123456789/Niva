@@ -54,6 +54,47 @@ fun createIntProtocols(
     return result
 }
 
+fun createFloatProtocols(
+    intType: Type.InternalType,
+    stringType: Type.InternalType,
+    unitType: Type.InternalType,
+    boolType: Type.InternalType,
+    floatType: Type.InternalType,
+    intRangeType: Type.InternalType,
+    anyType: Type.InternalType,
+
+    ): MutableMap<String, Protocol> {
+    val result = mutableMapOf<String, Protocol>()
+
+    val arithmeticProtocol = Protocol(
+        name = "arithmetic",
+        unaryMsgs = mutableMapOf(
+            createUnary("echo", unitType),
+            createUnary("inc", intType),
+            createUnary("dec", intType),
+            createUnary("toInt", floatType),
+        ),
+        binaryMsgs = mutableMapOf(
+            createBinary("==", intType, boolType),
+            createBinary("!=", intType, boolType),
+            createBinary(">", intType, boolType),
+            createBinary("<", intType, boolType),
+            createBinary("<=", intType, boolType),
+            createBinary(">=", intType, boolType),
+            createBinary("+", intType, intType),
+            createBinary("-", intType, intType),
+            createBinary("*", intType, intType),
+            createBinary("%", intType, intType),
+            createBinary("/", intType, intType),
+        ),
+        keywordMsgs = mutableMapOf(
+
+        ),
+    )
+    result[arithmeticProtocol.name] = arithmeticProtocol
+    return result
+}
+
 
 val createUnary = { name: String, returnType: Type.InternalType ->
     name to UnaryMsgMetaData(name, returnType)

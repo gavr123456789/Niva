@@ -327,6 +327,7 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
     // flags for keyword
     // from[:] ... [=]
     var isThereIdentColon = false
+    // ...: = ...
     var isThereEqualAfterThat = false
     // for unary
     var isThereEqual = false
@@ -338,8 +339,10 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
         val q = peek(peekCounter)
 
 
+        val noLocal = check(TokenType.DoubleColon, peekCounter + 1) && check(TokenType.Identifier, peekCounter + 2)
+        val local = check(TokenType.Colon, peekCounter + 1)
         // keyword checks
-        if (q.isIdentifier() && check(TokenType.Colon, peekCounter + 1)) {
+        if (q.isIdentifier() && (local || noLocal)) {
             isThereIdentColon = true
         }
 

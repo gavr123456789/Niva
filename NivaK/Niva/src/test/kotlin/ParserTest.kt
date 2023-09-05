@@ -367,7 +367,7 @@ class ParserTest {
     @Test
     fun unaryMessageDeclaration() {
         val source = """
-            int inc = [
+            Int inc = [
               x = 1
               y sas
             ]
@@ -379,7 +379,7 @@ class ParserTest {
     @Test
     fun unaryMessageDeclarationWithReturnType() {
         val source = """
-            int inc -> int = [
+            Int wew -> Int = [
               x = 1
               y sas
             ]
@@ -454,6 +454,18 @@ class ParserTest {
     fun keywordMessageDeclarationWithReturnType() {
         val source = """
             int from: x::int -> int = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun keywordMessageDeclarationNoLocalName() {
+        val source = """
+            int from::int -> int = [
               x = 1
               y sas
             ]
