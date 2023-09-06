@@ -422,6 +422,11 @@ private fun Resolver.resolveStatement(
                     currentArgumentNumber = argNum
                     resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
                     currentLevel--
+
+                    if (it.unaryOrBinaryMsgsForArg != null) {
+                        resolve(it.unaryOrBinaryMsgsForArg, previousAndCurrentScope, statement)
+                    }
+                    println()
                 }
             }
             currentArgumentNumber = -1
@@ -461,6 +466,7 @@ private fun Resolver.resolveStatement(
             if (receiverText == "Project") {
                 throw Error("We cant get here, type Project are ignored")
             }
+
             if (q == null) {
                 val checkForSetter = { receiverType2: Type ->
                     // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
@@ -494,8 +500,6 @@ private fun Resolver.resolveStatement(
                         } else q.returnType
                 }
             } else {
-                // this is a constructor
-
                 // check that all fields are filled
                 if (receiverType is Type.UserType) {
                     val receiverFields = receiverType.fields
@@ -541,6 +545,21 @@ private fun Resolver.resolveStatement(
             // find message for this type
             val messageReturnType = findBinaryMessageType(receiverType, statement.selectorName)
             statement.type = messageReturnType
+
+            // resolve messages
+            if (statement.unaryMsgsForArg.isNotEmpty()) {
+                val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                currentLevel++
+                resolve(statement.unaryMsgsForArg, previousAndCurrentScope, statement)
+                currentLevel--
+            }
+            if (statement.unaryMsgsForReceiver.isNotEmpty()) {
+                val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                currentLevel++
+                resolve(statement.unaryMsgsForReceiver, previousAndCurrentScope, statement)
+                currentLevel--
+            }
+
         }
 
         is UnaryMsg -> {

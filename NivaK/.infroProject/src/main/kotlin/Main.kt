@@ -33,7 +33,8 @@ inline fun <T> WhileIf.whileFalse(x: () -> T) {
 // end of STD
 
 fun main() {
-    val person = Person("sas")
-    person + 4
+    val person = Person(32)
+    person + 5
+    person.age.echo()
     
 }
