@@ -391,13 +391,28 @@ class ParserTest {
     @Test
     fun binaryMessageDeclaration() {
         val source = """
-            int + x = [
+            Int + x = [
               x = 1
               y sas
             ]
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
+        assert(ast[0] is MessageDeclarationBinary)
+    }
+
+    @Test
+    fun binaryMessageDeclarationWithType() {
+        val source = """
+            Int + x::Int = [
+              x = 1
+              y sas
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is MessageDeclarationBinary)
+
     }
 
     @Test
@@ -473,6 +488,18 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun keywordMessageDeclarationNoLocalNameLambda() {
+        val source = """
+            Int x::[Int, Int -> Int] = [
+                1 echo
+            ]
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
 
     @Test
     fun typeDeclaration() {

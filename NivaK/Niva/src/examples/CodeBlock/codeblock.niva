@@ -1,0 +1,9 @@
+x = [q::Int -> q + 5]
+w = x q: 2
+w echo
+
+lambda = [str1::String, str2::String -> str1 + " " + str2]
+e = lambda str1: "Hello" str2: "World!"
+e echo
+
+

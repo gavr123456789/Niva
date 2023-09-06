@@ -1,0 +1,15 @@
+1 to: 3 do: [ it echo ]
+3 downTo: 1 do: [ it echo ]
+
+
+mut x = 10
+"whileTrue" echo
+[x > 0] whileTrue: [
+  x echo
+  x <- x dec
+]
+"whileFalse" echo
+[x == 5] whileFalse: [
+  x echo
+  x <- x inc
+]

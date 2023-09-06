@@ -273,15 +273,6 @@ fun Resolver.resolveDeclarations(
 
         is UnionDeclaration -> TODO()
         is AliasDeclaration -> TODO()
-//        is ConstructorDeclaration -> {
-//
-//            if (statement.body.count() != 1) {
-//                throw Exception("Constructor must contain only one expression, line: ${statement.token.line}")
-//            }
-//
-//            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-//            resolve(statement.body, previousAndCurrentScope, statement)
-//        }
 
         is MessageDeclaration -> {
             // check if the type already registered
@@ -289,16 +280,14 @@ fun Resolver.resolveDeclarations(
             val forType = typeTable[statement.forType.name]
                 ?: throw Exception("type ${statement.forType.name} is not registered")
 
-            // add this
-            currentScope["this"] = forType
 
             // if yes, check for register in unaryTable
             val isUnaryRegistered = unaryForType.containsKey(statement.name)
             if (isUnaryRegistered) {
                 throw Exception("Unary ${statement.name} for type ${statement.forType.name} is already registered")
             }
-            // check that there is no field with the same name (because of getter has the same signature)
 
+            // check that there is no field with the same name (because of getter has the same signature)
             if (forType is Type.UserType) {
                 val q = forType.fields.find { it.name == statement.name }
                 if (q != null) {
@@ -309,22 +298,28 @@ fun Resolver.resolveDeclarations(
             when (statement) {
                 is MessageDeclarationUnary -> addNewUnaryMessage(statement)
                 is MessageDeclarationBinary -> addNewBinaryMessage(statement)
-                is MessageDeclarationKeyword -> addNewKeywordMessage(statement)
+                is MessageDeclarationKeyword -> {
+                    statement.args.forEach {
+                        currentScope[it.name] = it.type!!.toType(typeTable)
+                    }
+                    addNewKeywordMessage(statement)
+                }
 
                 is ConstructorDeclaration -> addStaticDeclaration(statement)
             }
 
+            // add this
+            currentScope["this"] = forType
+
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            previousAndCurrentScope["this"] = forType
+//            previousAndCurrentScope["this"] = forType
 
             val body = this.resolve(statement.body, previousAndCurrentScope, statement)
 
             // TODO check that return type is the same as declared return type, or if it not declared -> assign it
 
         }
-//        is MessageDeclarationBinary -> TODO()
-//        is MessageDeclarationKeyword -> TODO()
-//        is MessageDeclarationUnary -> TODO()
+
     }
     currentLevel -= 1
 }
@@ -708,12 +703,13 @@ private fun Resolver.resolveStatement(
             resolve(statement.statements, previousAndCurrentScope, statement)
             currentLevel--
             val lastExpression = statement.statements.last()
-            if (lastExpression !is Expression) {
-                throw Exception("last statement of code block must be expression on line ${statement.token.line}")
-            }
+//            if (lastExpression !is Expression) {
+//                throw Exception("last statement of code block must be expression on line ${statement.token.line}")
+//            }
 
             // Add lambda type to code-block itself
-            val returnType = lastExpression.type!!
+            val returnType =
+                if (lastExpression is Expression) lastExpression.type!! else Resolver.defaultTypes[InternalTypes.Unit]!!
 
             val args = statement.inputList.map {
                 TypeField(name = it.name, type = it.type!!)

@@ -319,11 +319,12 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
 
 // returns null if it's not a message declaration
 // very bad function
-fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
+fun Parser.checkTypeOfMessageDeclaration(): MessageDeclarationType? {
     // receiver is first
     if (!check(TokenType.Identifier)) {
         return null
     }
+
     // flags for keyword
     // from[:] ... [=]
     var isThereIdentColon = false
@@ -339,7 +340,7 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
         val q = peek(peekCounter)
 
 
-        val noLocal = check(TokenType.DoubleColon, peekCounter + 1) && check(TokenType.Identifier, peekCounter + 2)
+        val noLocal = check(TokenType.DoubleColon, peekCounter + 1) && !check(TokenType.BinarySymbol, peekCounter - 1)
         val local = check(TokenType.Colon, peekCounter + 1)
         // keyword checks
         if (q.isIdentifier() && (local || noLocal)) {
@@ -356,6 +357,11 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
         peekCounter++
 
     }
+    // int + arg =
+    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier, 2) && isThereEqual) {
+        return MessageDeclarationType.Binary
+    }
+
     if (isThereIdentColon && isThereEqualAfterThat) {
         return MessageDeclarationType.Keyword
     }
@@ -368,11 +374,7 @@ fun Parser.isItKeywordDeclaration(): MessageDeclarationType? {
         return MessageDeclarationType.Unary
     }
 
-    // int + arg =
 
-    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier, 2) && isThereEqual) {
-        return MessageDeclarationType.Binary
-    }
 
     return null
 }
@@ -411,7 +413,7 @@ fun Parser.messageOrVarDeclarationOrReturn(): Statement {
 fun Parser.constructorDeclaration(): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
-    val isItKeywordDeclaration = isItKeywordDeclaration()
+    val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
     val msgDecl = if (isItKeywordDeclaration != null) {
         messageDeclaration(isItKeywordDeclaration)
     } else null

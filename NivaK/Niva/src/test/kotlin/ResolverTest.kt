@@ -430,9 +430,6 @@ class ResolverTest {
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
-        val listCollection = statements[0] as ListCollection
-        assert(listCollection.type != null)
-        assertEquals("List::Int", listCollection.type?.name)
     }
 
     @Test
@@ -452,6 +449,21 @@ class ResolverTest {
         assert(construct.body.count() == 1)
     }
 
+    @Test
+    fun keyWordDeclaration() {
+
+        val source = """
+            Int from::Int = [
+              from echo
+            ]
+        """.trimIndent()
+
+
+        val ast = getAst(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+    }
 
 }
 

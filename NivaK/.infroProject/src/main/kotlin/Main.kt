@@ -11,6 +11,11 @@ inline fun Int.toDo(to: Int, `do`: (Int) -> Unit) {
     for (element in range) `do`(element)
 }
 
+inline fun Int.downToDo(down: Int, `do`: (Int) -> Unit) {
+    val range = this.downTo(down)
+    for (element in range) `do`(element)
+}
+
 // while cycles
 typealias WhileIf = () -> Boolean
 
@@ -28,12 +33,7 @@ inline fun <T> WhileIf.whileFalse(x: () -> T) {
 // end of STD
 
 fun main() {
-    val emptyWallet = Wallet.empty()
-    emptyWallet.money.echo()
-    emptyWallet.money = (20)
-    emptyWallet.money.echo()
-    emptyWallet.empty()
-    emptyWallet.money.echo()
-    Float.pi().echo()
+    val person = Person("sas")
+    person + 4
     
 }

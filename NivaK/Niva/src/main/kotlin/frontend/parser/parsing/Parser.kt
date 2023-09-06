@@ -168,10 +168,6 @@ fun Parser.statement(): Statement {
         return constructorDeclaration()
     }
 
-//    if (kind == TokenType.OpenBracket) {
-//        return codeBlock()
-//    }
-
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()
     }
@@ -186,7 +182,7 @@ fun Parser.statement(): Statement {
     }
 
 
-    val isItKeywordDeclaration = isItKeywordDeclaration()
+    val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
     if (isItKeywordDeclaration != null) {
         return messageDeclaration(isItKeywordDeclaration)
     }

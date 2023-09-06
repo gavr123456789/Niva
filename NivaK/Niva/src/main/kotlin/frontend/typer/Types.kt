@@ -87,11 +87,11 @@ sealed class Type(
     ) : InternalLike(typeName, `package`, isPrivate, protocols)
 
     class NullableInternalType(
-        typeName: InternalTypes,
+        name: InternalTypes,
         `package`: String,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
-    ) : InternalLike(typeName, `package`, isPrivate, protocols)
+    ) : InternalLike(name, `package`, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,
