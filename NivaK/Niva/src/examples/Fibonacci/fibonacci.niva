@@ -6,8 +6,25 @@ Int fib -> Int =
 Int fib2 -> Int = |this
 | 0 => 1
 | 1 => 1
-|=> (this - 2) fib + (this - 1) fib
+|=> (this - 2) fib2 + (this - 1) fib2
+
+Int fib3 -> Int = [
+  mut a = 0
+  mut b = 1
+  mut n = this
+  ^| this > 0 => [
+    [n > 0] whileTrue: [
+      t = a + b
+      a <- b
+      b <- t
+      n <- n dec
+    ]
+    b
+  ]
+  |=> a
+]
 
 5 fib echo
 6 fib2 echo
+6 fib3 echo
 

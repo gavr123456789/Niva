@@ -48,6 +48,14 @@ fun createIntProtocols(
                 ),
                 intType
             ),
+            createKeyword(
+                "downToDo",
+                listOf(
+                    KeywordArg("downTo", intType),
+                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
+                ),
+                intType
+            ),
         ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol

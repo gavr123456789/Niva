@@ -58,7 +58,8 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     if (isStatic) {
         append(".Companion")
     }
-    append(".", operatorToString(name), "(", arg.name)
+    val operatorName = operatorToString(name)
+    append(".", operatorName, "(", arg.name)
 
     if (arg.type != null) {
         append(": ", arg.type.name)
@@ -69,9 +70,6 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 }
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
-    //            fun Int.fromTo(x: Int, y: Int): Counter {
-    //              this.echo()
-    //            }
 
     // if this is constructor, then method on Companion
     append("fun ", forType.name)
@@ -92,7 +90,6 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     }
 
     append(")")
-    // operator fun int.sas(...)
     bodyPart(this@generateKeywordDeclaration, this)
 }
 
@@ -116,3 +113,17 @@ private fun bodyPart(
         stringBuilder.append("}\n")
     }
 }
+
+fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
+    append(
+        when (this@generateMessageDeclaration) {
+            is ConstructorDeclaration -> generateConstructorDeclaration()
+            is MessageDeclarationUnary -> generateUnaryDeclaration(isStatic)
+            is MessageDeclarationBinary -> generateBinaryDeclaration(isStatic)
+            is MessageDeclarationKeyword -> generateKeywordDeclaration(isStatic)
+        }
+    )
+}
+
+fun ConstructorDeclaration.generateConstructorDeclaration() =
+    this.msgDeclaration.generateMessageDeclaration(true)

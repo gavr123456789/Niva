@@ -12,11 +12,10 @@ fun TypeDeclaration.generateTypeDeclaration() = buildString {
         if (it.type == null) {
             throw Exception("arg must have type")
         }
-        // TODO var or val?
+        // TODO var or val?, maybe add  mut modifier
         append("var ", it.name, ": ", it.type.name)
         if (c != i) append(", ")
     }
-
+    // for static methods like constructor
     append(")", " { companion object }")
-
 }

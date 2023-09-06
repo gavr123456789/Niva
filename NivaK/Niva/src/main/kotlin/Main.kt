@@ -150,6 +150,11 @@ fun String.addNivaStd(): String {
             for (element in range) `do`(element)
         }
         
+        inline fun Int.downToDo(down: Int, `do`: (Int) -> Unit) {
+            val range = this.downTo(down)
+            for (element in range) `do`(element)
+        }
+        
         // while cycles
         typealias WhileIf = () -> Boolean
         
@@ -177,17 +182,12 @@ fun String.addNivaStd(): String {
 fun main(args: Array<String>) {
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\main.niva
 
-    val data = "sas"
-    val open = "sus"
-    val enum = 1
-    val catch = 2
-
     val isThereArgs = args.count() == 2
 
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
     val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathToNivaProjectRootFile =
-        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Constructors\\constructors.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
+        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\BubbleSort\\bubblesort.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
 
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
     runGradleRunInProject(pathToProjectRoot)
