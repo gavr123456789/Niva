@@ -584,16 +584,11 @@ private fun Resolver.resolveStatement(
                     is BinaryMsg -> TODO()
                     is KeywordMsg -> TODO()
 
-                    // receiver
                     is MessageSend -> TODO()
 
 
-                    is IdentifierExpr -> {
-                        if (typeTable[receiver.str] != null) {
-                            isStaticCall = true
-                        }
-                        getTypeForIdentifier(receiver, currentScope, previousScope)
-                    }
+                    is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
+
 
                     is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
                     is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
@@ -602,6 +597,12 @@ private fun Resolver.resolveStatement(
                     is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
                 }
 
+            // if this is message for type
+            if (receiver is IdentifierExpr) {
+                if (typeTable[receiver.str] != null) {
+                    isStaticCall = true
+                }
+            }
             val receiverType = receiver.type!!
 
 
