@@ -1,5 +1,5 @@
 class Person(var age: Int) { companion object }
-operator fun Person.plus(x: Int) {
-    this.age = (this.age + x)
-}
+fun Person.Companion.newborn() = Person(0)
+
+fun Person.person(person: Person) = 1.echo()
 
