@@ -94,15 +94,9 @@ fun Parser.simpleReceiver(): Receiver {
         return result
     }
 
-
     val tryPrimary = primary()
         ?: collectionLiteral()
         ?: throw Error("expected primary but found ${peek().kind} on line ${peek().line}")
-
-//    if (inParens) {
-//        matchAssert(TokenType.CloseParen, "You forgot to close parens - ')'")
-//    }
-//    tryPrimary.inBracket = inParens
 
     return tryPrimary
 }
@@ -286,8 +280,8 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 }
 
 
-fun Parser.skipNewLines() {
-    while (match(TokenType.EndOfLine)) {
+fun Parser.skipNewLinesAndComments() {
+    while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
     }
 }
 
@@ -302,7 +296,7 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
         isSingleExpression = false
 
 //        match(TokenType.EndOfLine)
-        skipNewLines()
+        skipNewLinesAndComments()
         do {
 //            messagesOrVarStatements.add(messageOrVarDeclarationOrReturn())
             messagesOrVarStatements.add(statementWithEndLine())
@@ -391,22 +385,6 @@ fun Parser.messageDeclaration(type: MessageDeclarationType): MessageDeclaration 
         MessageDeclarationType.Binary -> binaryDeclaration()
         MessageDeclarationType.Keyword -> keywordDeclaration()
     }
-}
-
-fun Parser.messageOrVarDeclarationOrReturn(): Statement {
-    val result = if (check(TokenType.Identifier) &&
-        (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1))
-    ) {
-        varDeclaration()
-    } else {
-        expression()
-    }
-
-    skipNewLines()
-//    if (check(TokenType.EndOfLine)) {
-//        step()
-//    }
-    return result
 }
 
 // constructor TYPE messageDeclaration

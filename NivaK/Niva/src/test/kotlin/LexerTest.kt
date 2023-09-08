@@ -11,12 +11,6 @@ val helloWorldProgram = """
 """.trimIndent()
 
 
-val functionDeclarationWithType = """
-int to: x(int) = [
-  code
-]
-""".trimIndent()
-
 val rawString = """
 x = r"string"
 """.trimIndent()
@@ -151,6 +145,11 @@ int to: x = [
     fun pipeOperator() {
         check("|>", listOf(PipeOperator, EndOfFile))
         check("|||", listOf(Pipe, Pipe, Pipe, EndOfFile))
+    }
+
+    @Test
+    fun comment() {
+        check("// some important info", listOf(Comment, EndOfFile))
     }
 
     @Test

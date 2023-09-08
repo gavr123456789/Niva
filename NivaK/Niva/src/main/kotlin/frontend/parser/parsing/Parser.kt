@@ -181,6 +181,10 @@ fun Parser.statement(): Statement {
         )
     }
 
+    if (kind == TokenType.EndOfFile) {
+        throw Exception("File contains only comments, nothing to compile")
+    }
+
 
     val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
     if (isItKeywordDeclaration != null) {
@@ -194,9 +198,9 @@ fun Parser.statement(): Statement {
 
 
 fun Parser.statementWithEndLine(): Statement {
-    skipNewLines()
+    skipNewLinesAndComments()
     val result = this.statement()
-    skipNewLines()
+    skipNewLinesAndComments()
 
     return result
 }
