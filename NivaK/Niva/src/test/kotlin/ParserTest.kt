@@ -59,7 +59,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val declaration = ast[0] as LiteralExpression
+        assert(ast[0] is LiteralExpression)
     }
 
     @Test
@@ -158,7 +158,7 @@ class ParserTest {
         val source = "1 to: 2 + 3"
         val tokens = lex(source)
         val parser = Parser(file = "", tokens = tokens, source = source)
-        val ast = parser.keyword(false)
+        parser.keyword(false)
     }
 
     @Test
@@ -169,7 +169,6 @@ class ParserTest {
 
         val messageSend: MessageSend = ast[0] as MessageSend
         val q = messageSend.messages
-        val name = q[0]
         val first = q[1]
         Assertions.assertEquals(first.receiver.str, "name")
     }
@@ -180,7 +179,7 @@ class ParserTest {
         val ast = getAst(source)
         assert(ast.count() == 1)
 
-        val messageSend: MessageSend = ast[0] as MessageSend
+        assert(ast[0] is MessageSend)
     }
 
     @Test
@@ -193,7 +192,6 @@ class ParserTest {
         assert(messageSend.messages.count() == 2)
         assert(messageSend.messages[0].selectorName == "inc")
         assert(messageSend.messages[1].selectorName == "inc")
-//        assert(messageSend.messages[1].receiver.type?.name == "int")
     }
 
     @Test
@@ -613,8 +611,8 @@ class ParserTest {
         val elseBranches = iF.elseBranch
         val ifBranches = iF.ifBranches
         assert(ifBranches.count() == 2)
-        val firstIfExpression = ifBranches[0] as IfBranch.IfBranchSingleExpr
-        val secondIfBody = ifBranches[1] as IfBranch.IfBranchWithBody
+        assert(ifBranches[0] is IfBranch.IfBranchSingleExpr)
+        assert(ifBranches[1] is IfBranch.IfBranchWithBody)
         assert(elseBranches != null && elseBranches.count() == 1)
     }
 
@@ -630,13 +628,10 @@ class ParserTest {
         assert(ast.count() == 1)
         assert(ast[0] is ControlFlow.SwitchStatement)
         val switchStatement = ast[0] as ControlFlow.SwitchStatement
-        val msgCall = switchStatement.switch as MessageSend
-        val receiver = msgCall.receiver
-        assert(receiver.str == "y")
-        assert(msgCall.messages.isEmpty())
+        val switch = switchStatement.switch as IdentifierExpr
+        assert(switch.str == "y")
     }
 
-    // TODO need design
     @Test
     fun genericTypeDeclaration() {
         val source = """
@@ -704,12 +699,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val varDecl = ast[0] as VarDeclaration
-//        val lambdaType = varDecl.valueType as Type.Lambda
-//        assert(lambdaType.inputTypesList.count() == 2)
-//        assert(lambdaType.inputTypesList[0].name == "int")
-//        assert(lambdaType.inputTypesList[1].name == "bool")
-//        assert(lambdaType.returnType.name == "string")
+        assert(ast[0] is VarDeclaration)
     }
 
     @Test
@@ -719,7 +709,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val varDecl = ast[0] as VarDeclaration
+        assert(ast[0] is VarDeclaration)
     }
 
     @Test
@@ -729,7 +719,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val varDecl = ast[0] as VarDeclaration
+        assert(ast[0] is VarDeclaration)
     }
 
     @Test
@@ -739,7 +729,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val varDecl = ast[0] as VarDeclaration
+        assert(ast[0] is VarDeclaration)
     }
 
     @Test
@@ -801,17 +791,17 @@ class ParserTest {
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val q = ast[0] as MessageSend
+        assert(ast[0] is MessageSend)
     }
 
     @Test
-    fun qwea() {
+    fun messageSendWithPackageName() {
         val source = """
         1 Sas.from: 1 to: 2 
         """.trimIndent()
         val ast = getAst(source)
         assert(ast.count() == 1)
-        val q = ast[0] as MessageSend
+        assert(ast[0] is MessageSend)
     }
 
 
@@ -874,6 +864,17 @@ class ParserTest {
     }
 
     @Test
+    fun comment() {
+
+        val source = """
+            // sas
+            x = 5
+        """.trimIndent()
+        val ast = getAst(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
     fun mutableVariable() {
 
         val source = """
@@ -894,6 +895,5 @@ class ParserTest {
 fun getAst(source: String): List<Statement> {
     val tokens = lex(source)
     val parser = Parser(file = "", tokens = tokens, source = source)
-    val ast = parser.statements()
-    return ast
+    return parser.statements()
 }

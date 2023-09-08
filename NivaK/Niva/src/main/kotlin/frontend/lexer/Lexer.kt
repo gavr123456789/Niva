@@ -17,18 +17,8 @@ fun SymbolTable.addSymbol(lexeme: String, tokenType: TokenType) =
 fun SymbolTable.existsKeyword(keyword: String) =
     keyword in keywords
 
-fun SymbolTable.getMaxSymbolSize(): Int {
-    var result = symbols.maxOf { it.key.length }
+fun SymbolTable.getMaxSymbolSize(): Int = symbols.maxOf { it.key.length }
 
-    return result
-//    for (key in symbols.keys) {
-//        if (key.length > result) {
-//            result = key.length
-//        }
-//    }
-//    return result
-}
-//    symbols.keys.max().length
 
 fun SymbolTable.getSymbols(n: Int) =
     symbols.keys.filter { it.length == n }
@@ -88,10 +78,11 @@ fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
 fun Lexer.step(n: Int = 1): String =
     buildString {
         while (length < n) {
-            if (done() || current > source.lastIndex)
+            if (done() || current > source.lastIndex) {
                 break
-            else
+            } else {
                 append(source[current])
+            }
 
             current++
         }
@@ -410,11 +401,11 @@ fun Lexer.next() {
         // Comment
         match("//") -> {
             // inline comments
-            while (!match("\n") || done()) {
+            while (!match("\n") && !done()) {
                 step()
             }
             createToken(TokenType.Comment)
-            incLine(false)
+            incLine(true)
         }
 
 
