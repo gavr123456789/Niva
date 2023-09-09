@@ -259,7 +259,6 @@ fun Resolver.resolve(
 
 fun Resolver.resolveDeclarations(
     statement: Declaration,
-    currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
 ) {
     currentLevel += 1
@@ -295,12 +294,13 @@ fun Resolver.resolveDeclarations(
                 }
             }
 
+            val bodyScope = mutableMapOf<String, Type>()
             when (statement) {
                 is MessageDeclarationUnary -> addNewUnaryMessage(statement)
                 is MessageDeclarationBinary -> addNewBinaryMessage(statement)
                 is MessageDeclarationKeyword -> {
                     statement.args.forEach {
-                        currentScope[it.name] = it.type!!.toType(typeTable)
+                        bodyScope[it.name] = it.type!!.toType(typeTable)
                     }
                     addNewKeywordMessage(statement)
                 }
@@ -308,13 +308,12 @@ fun Resolver.resolveDeclarations(
                 is ConstructorDeclaration -> addStaticDeclaration(statement)
             }
 
-            // add this
-            currentScope["this"] = forType
+            bodyScope["this"] = forType
 
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-//            previousAndCurrentScope["this"] = forType
+            val previousAndCurrentScope = (previousScope + bodyScope).toMutableMap()
 
             val body = this.resolve(statement.body, previousAndCurrentScope, statement)
+
 
             // TODO check that return type is the same as declared return type, or if it not declared -> assign it
 
@@ -371,7 +370,7 @@ private fun Resolver.resolveStatement(
     }
 
     when (statement) {
-        is Declaration -> resolveDeclarations(statement, currentScope, previousScope)
+        is Declaration -> resolveDeclarations(statement, previousScope)
         is VarDeclaration -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             // currentNode, depth + 1
@@ -1313,8 +1312,9 @@ fun Resolver.getTypeForIdentifier(
     val type = typeTable[x.str]
         ?: currentScope[x.str]
         ?: previousScope[x.str]
-        ?: throw Exception("Can't find type for identifier: ${x.str} on line ${x.token.line}")
+        ?: throw Exception("Unresolved reference: ${x.str} on line ${x.token.line}")
     x.type = type
+
     return type
 }
 

@@ -33,7 +33,6 @@ inline fun <T> WhileIf.whileFalse(x: () -> T) {
 // end of STD
 
 fun main() {
-    val person = Person.newborn()
-    (person).person(Person.newborn())
+    (1).x(3)
     
 }

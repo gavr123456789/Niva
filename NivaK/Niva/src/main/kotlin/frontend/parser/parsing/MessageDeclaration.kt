@@ -38,6 +38,9 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
             is MessageSendKeyword -> error("keyword cant be a receiver, for now")// need pipe operator
         }
     } catch (e: Throwable) {
+        if (e.message?.startsWith("Error") == true) {
+            throw e
+        }
         current = safePoint
     }
     current = safePoint
