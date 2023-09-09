@@ -1,5 +1,5 @@
-class Person(var age: Int) { companion object }
-fun Person.Companion.newborn() = Person(0)
-
-fun Person.person(person: Person) = 1.echo()
+fun Int.x(x: Int) {
+    val qwe = 5
+    (this + x).echo()
+}
 
