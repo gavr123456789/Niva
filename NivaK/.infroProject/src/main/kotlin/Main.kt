@@ -1,5 +1,10 @@
 // STD
-fun Any?.echo() = println(this)
+import java.io.BufferedWriter
+import java.io.FileWriter
+import java.io.IOException
+
+inline fun Any?.echo() = println(this)
+const val INLINE_REPL = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
 
 inline fun IntRange.forEach(action: (Int) -> Unit) {
     for (element in this) action(element)
@@ -30,9 +35,27 @@ inline fun <T> WhileIf.whileFalse(x: () -> T) {
         x()
     }
 }
+
+
+fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
+    val q = x.toString()
+    // x/y/z.niva:6 5
+    val content = pathToNivaFileAndLine + "|||" + q + "***" + count
+
+    try {
+        val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
+        writer.append(content)
+        writer.newLine()
+        writer.close()
+    } catch (e: IOException) {
+        println("File error" + e.message)
+    }
+
+    return x
+}
 // end of STD
 
 fun main() {
-    (1).x(3)
+    inlineRepl(1 + 56, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\BubbleSort\bubblesort.niva:::1""", 4)
     
 }

@@ -171,6 +171,19 @@ fun Parser.statement(): Statement {
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()
     }
+    val isInlineReplWithNum = tok.kind == TokenType.InlineReplWithNum
+    if (tok.lexeme == ">" || isInlineReplWithNum) {
+        val q = step()
+        val w = statement()
+        if (w is Expression) {
+            w.isInlineRepl = true
+            if (isInlineReplWithNum)
+                w.inlineReplCounter = tok.lexeme.substring(1).toInt()
+            return w
+        } else {
+            throw Exception("> can only be used with expressions, line: ${q.line}")
+        }
+    }
 
     if (kind == TokenType.Return) {
         val returnTok = step()

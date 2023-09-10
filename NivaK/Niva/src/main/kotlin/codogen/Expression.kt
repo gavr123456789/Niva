@@ -2,35 +2,47 @@ package codogen
 
 import frontend.parser.types.ast.*
 
-fun Expression.generateExpression(): String {
-    return when (this) {
-        is ExpressionInBrackets -> this.generateExpressionInBrackets()
+fun Expression.generateExpression(): String = buildString {
 
-        is MessageSend -> this.generateMessageCall()
-        is IdentifierExpr -> if (name != "do") this.name else "`do`"
-        is LiteralExpression.FalseExpr -> "false"
-        is LiteralExpression.TrueExpr -> "true"
-        is LiteralExpression.FloatExpr -> this.str
-        is LiteralExpression.IntExpr -> this.str
-        is LiteralExpression.StringExpr -> this.str
+    if (isInlineRepl) {
+        append("inlineRepl(")
+    }
 
-        is ListCollection -> {
-            this.generateList()
+    append(
+        when (this@generateExpression) {
+            is ExpressionInBrackets -> generateExpressionInBrackets()
+
+            is MessageSend -> generateMessageCall()
+            is IdentifierExpr -> if (name != "do") name else "`do`"
+            is LiteralExpression.FalseExpr -> "false"
+            is LiteralExpression.TrueExpr -> "true"
+            is LiteralExpression.FloatExpr -> str
+            is LiteralExpression.IntExpr -> str
+            is LiteralExpression.StringExpr -> "\"" + str + "\""
+
+            is ListCollection -> {
+                generateList()
+            }
+
+            is MapCollection -> TODO()
+            is ControlFlow.IfExpression -> generateIf()
+            is ControlFlow.IfStatement -> generateIf()
+            is ControlFlow.SwitchExpression -> generateSwitch()
+            is ControlFlow.SwitchStatement -> generateSwitch()
+
+            // when message is receiver
+            is BinaryMsg -> TODO()
+            is KeywordMsg -> TODO()
+            is UnaryMsg -> TODO()
+
+
+            is CodeBlock -> generateCodeBlock()
         }
+    )
 
-        is MapCollection -> TODO()
-        is ControlFlow.IfExpression -> this.generateIf()
-        is ControlFlow.IfStatement -> this.generateIf()
-        is ControlFlow.SwitchExpression -> this.generateSwitch()
-        is ControlFlow.SwitchStatement -> this.generateSwitch()
-
-        // when message is receiver
-        is BinaryMsg -> TODO()
-        is KeywordMsg -> TODO()
-        is UnaryMsg -> TODO()
-
-
-        is CodeBlock -> this.generateCodeBlock()
+    if (isInlineRepl) {
+        val fileAndLine = token.file.absolutePath + ":::" + token.line
+        append(", \"\"\"$fileAndLine\"\"\", $inlineReplCounter)")
     }
 
 }

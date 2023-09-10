@@ -5,9 +5,10 @@ import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.Statement
+import java.io.File
 
 class Parser(
-    val file: String,
+    val file: File,
     val tokens: MutableList<Token>,
     val source: String,
     val currentFunction: Statement? = null,
@@ -26,18 +27,19 @@ fun Parser.getCurrentToken() =
         tokens.elementAt(current - 1)
 
 fun Parser.getCurrentFunction() = currentFunction
-fun endOfFile() = Token(
+fun endOfFile(file: File) = Token(
     kind = TokenType.EndOfFile,
     lexeme = "",
     line = -1,
     pos = Position(-1, -1),
-    relPos = Position(-1, -1)
+    relPos = Position(-1, -1),
+    file = file
 )
 
 fun Parser.peek(distance: Int = 0): Token =
     // check
     if (tokens.size == 0 || current + distance > tokens.size - 1 || current + distance < 0)
-        endOfFile()
+        endOfFile(file)
     else
         tokens[current + distance]
 

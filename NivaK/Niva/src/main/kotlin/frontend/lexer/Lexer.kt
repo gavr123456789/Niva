@@ -6,6 +6,7 @@ import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.util.fillSymbolTable
+import java.io.File
 
 typealias StringToToken = HashMap<String, TokenType>
 
@@ -26,7 +27,7 @@ fun SymbolTable.getSymbols(n: Int) =
 
 class Lexer(
     var source: String,
-    val file: String
+    val file: File
 ) {
     val symbolTable: SymbolTable = SymbolTable()
     val tokens: MutableList<Token> = mutableListOf()
@@ -54,7 +55,8 @@ class Lexer(
                 lexeme = "",
                 line = line,
                 pos = Position(current, current),
-                relPos = Position(0, linePos - 1)
+                relPos = Position(0, linePos - 1),
+                file = file
             )
         )
         incLine()
@@ -156,7 +158,8 @@ fun Lexer.createToken(tokenType: TokenType) {
                 line = line,
                 spaces = spaces,
                 pos = Position(start = start, end = current - 1),
-                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = linePos - 1)
+                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = linePos - 1),
+                file = file
             )
         )
         spaces = 0
@@ -348,7 +351,8 @@ fun Lexer.next() {
             line = line,
             pos = Position(start, current - 1),
             relPos = Position(linePos - lexeme.lastIndex - 1, linePos - 1),
-            spaces = spaces
+            spaces = spaces,
+            file = file
         )
         spaces = 0
         return result
@@ -408,6 +412,13 @@ fun Lexer.next() {
             incLine(true)
         }
 
+        // inlineRepl
+        check(">") && peek(1).isDigit() -> {
+            step()
+            stepWhileDigit()
+            createToken(TokenType.InlineReplWithNum)
+        }
+
 
         match("::") -> createToken(TokenType.DoubleColon)
 
@@ -429,6 +440,7 @@ fun Lexer.next() {
 
         match("=") -> createToken(TokenType.Assign)
         match("`") -> createToken(TokenType.Apostrophe)
+
 
         else -> {
             var n = symbolTable.getMaxSymbolSize()

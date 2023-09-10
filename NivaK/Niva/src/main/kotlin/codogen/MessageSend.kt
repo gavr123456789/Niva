@@ -32,14 +32,15 @@ fun MessageSend.generateMessageCall(): String {
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
-    val receiverCode = if (keywordMsg.kind == KeywordLikeType.Constructor)
-        receiver.generateExpression()
-    else {
-        if (receiver !is ExpressionInBrackets)
-            "(" + receiver.generateExpression() + ")"
-        else
+    val receiverCode =
+        if (keywordMsg.kind == KeywordLikeType.Constructor)
             receiver.generateExpression()
-    }
+        else {
+            if (receiver !is ExpressionInBrackets)
+                "(" + receiver.generateExpression() + ")"
+            else
+                receiver.generateExpression()
+        }
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword -> {
             if (i == 0) {

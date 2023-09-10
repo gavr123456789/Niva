@@ -1,5 +1,7 @@
 package frontend.meta
 
+import java.io.File
+
 enum class TokenType {
     True, False,
 
@@ -41,8 +43,9 @@ enum class TokenType {
     Pragma,
     Assign, Equal, NotEqual, // =, ==, !=
     DoubleColon,
-    EndOfLine // \n and next line starts not from the dot
-    ,
+    EndOfLine, // \n and next line starts not from the dot
+
+    InlineReplWithNum, // >Number, >3
 }
 
 data class Position(val start: Int, val end: Int)
@@ -53,8 +56,10 @@ data class Token(
     val line: Int,
     val pos: Position,
     val relPos: Position,
+    val file: File,
     val spaces: Int = 0
 ) {
+
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind

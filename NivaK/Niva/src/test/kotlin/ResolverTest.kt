@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 fun resolve(source: String): List<Statement> {
-    val ast = getAst(source)
+    val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
 
     return resolver.resolve(resolver.statements, mutableMapOf())
@@ -16,7 +16,7 @@ fun resolve(source: String): List<Statement> {
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
-    mainFilePath = File("sas.niva"),
+    mainFile = File("sas.niva"),
     statements = statements.toMutableList()
 )
 
@@ -119,7 +119,7 @@ class ResolverTest {
             type Person name: String age: Int
         """.trimIndent()
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         val proj = resolver.projects["common"]!!
@@ -139,7 +139,7 @@ class ResolverTest {
             Project package: "files" protocol: "path"
             type Person name: String age: Int
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
 
         val resolver = createDefaultResolver(ast)
 
@@ -165,7 +165,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 
@@ -194,7 +194,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 
@@ -228,7 +228,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source).toMutableList()
+        val ast = getAstTest(source).toMutableList()
 
         val resolver = createDefaultResolver(ast)
         resolver.resolve(resolver.statements, mutableMapOf())
@@ -267,9 +267,9 @@ class ResolverTest {
             MegaMassive2 add -> Unit = [1 echo]
         """.trimIndent()
 
-        val ast1 = getAst(source1).toMutableList()
-        val ast2 = getAst(source2).toMutableList()
-        val ast3 = getAst(source3).toMutableList()
+        val ast1 = getAstTest(source1).toMutableList()
+        val ast2 = getAstTest(source2).toMutableList()
+        val ast3 = getAstTest(source3).toMutableList()
 
         val ast = ast3 + ast2
 
@@ -290,7 +290,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
@@ -308,7 +308,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
 //        assert(statements.count() == 2)
@@ -328,7 +328,7 @@ class ResolverTest {
         val q: (Int) -> Int = { it }
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
@@ -347,7 +347,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
@@ -368,7 +368,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
@@ -386,7 +386,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
@@ -407,7 +407,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
@@ -426,7 +426,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
@@ -441,7 +441,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
@@ -459,7 +459,7 @@ class ResolverTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
