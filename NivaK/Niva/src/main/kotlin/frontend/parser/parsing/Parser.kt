@@ -2,6 +2,7 @@ package frontend.parser.parsing
 
 import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 
@@ -181,7 +182,7 @@ fun Parser.statement(): Statement {
                 w.inlineReplCounter = tok.lexeme.substring(1).toInt()
             return w
         } else {
-            throw Exception("> can only be used with expressions, line: ${q.line}")
+            q.compileError("> can only be used with expressions")
         }
     }
 
@@ -195,7 +196,7 @@ fun Parser.statement(): Statement {
     }
 
     if (kind == TokenType.EndOfFile) {
-        throw Exception("File contains only comments, nothing to compile")
+        tok.compileError("File contains only comments, nothing to compile")
     }
 
 

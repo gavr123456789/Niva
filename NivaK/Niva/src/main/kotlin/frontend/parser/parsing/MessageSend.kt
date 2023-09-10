@@ -1,6 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
 
@@ -88,10 +89,10 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
         if (identifier.typeAST != null) {
-            throw Exception("Error: You can't put type on a unary message send: ${identifier.token.lexeme + "::" + identifier.typeAST.name}, line: ${identifier.token.line}")
+            identifier.token.compileError("Error: You can't put type on a unary message send: ${identifier.token.lexeme + "::" + identifier.typeAST.name}, line: ${identifier.token.line}")
         }
         if (check(TokenType.Colon)) {
-            throw Exception("Error: This is not unary, but a keyword with path")
+            identifier.token.compileError("Error: This is not unary, but a keyword with path")
         }
         // each unary message must have previous unary as receiver because
         // person name echo -- receiver of echo is name, not person
@@ -281,12 +282,8 @@ fun Parser.checkForKeyword(): Boolean {
 
 
 fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
-    // сначала попробовать унарное или бинарное
-
     val receiver = unaryOrBinaryMessageOrPrimaryReceiver()
     val isNextKeyword = checkForKeyword()
-
-
     val isReceiverUnaryOrBinaryOrCodeBlock =
         receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
@@ -309,7 +306,6 @@ fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
                 listOf(),
                 token = receiver.token
             )
-//            throw Exception("bruh!")
         }
     }
 }

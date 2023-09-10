@@ -1,6 +1,7 @@
 package frontend.meta
 
 import java.io.File
+import kotlin.system.exitProcess
 
 enum class TokenType {
     True, False,
@@ -77,3 +78,12 @@ data class Token(
 
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
+
+fun Token.compileError(text: String): Nothing {
+    ":" + this.relPos.start
+    val fileLine = "(" + file.name + ":" + line + ")"
+    val red = "\u001b[31m"
+    val reset = "\u001b[0m"
+    println("$red\t$text.$fileLine$reset")
+    exitProcess(1)
+}

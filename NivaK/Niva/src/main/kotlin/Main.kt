@@ -59,7 +59,7 @@ fun runGradleRunInProject(path: String) {
 
     val file = File(path)
     when (getOSType()) {
-        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run".runCommand(file, true)
+        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
         OS_Type.LINUX -> TODO()
         OS_Type.MAC -> TODO()
     }
@@ -266,6 +266,7 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
                     linesAdded++
                 }
             } else {
+
                 throw Exception("Inline REPL System: Got line #${it.line} but all lines are only ${lines.size}")
             }
         }
@@ -281,7 +282,7 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 }
 
 fun main(args: Array<String>) {
-    // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\main.niva
+    // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
 
     val isThereArgs = args.count() == 2
@@ -289,10 +290,18 @@ fun main(args: Array<String>) {
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
     val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathToNivaProjectRootFile =
-        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\BubbleSort\\bubblesort.niva" //"." / "src" / "nivaExampleProject" / "main.niva"
+        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Main\\main.niva" //"." / "src" / "nivaExampleProject" / "collections.niva"
 
+    val startTime = System.currentTimeMillis()
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
+    val secondTime = System.currentTimeMillis()
+    val executionTime = secondTime - startTime
+    println("Niva compilation time: $executionTime ms")
     runGradleRunInProject(pathToProjectRoot)
+    val thirdTime = System.currentTimeMillis()
+    val executionTime2 = thirdTime - secondTime
+    println("Kotlin compilation + exec time: $executionTime2 ms")
+
 
     val file = File(INLINE_REPL)
     if (file.exists())

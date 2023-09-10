@@ -1,0 +1,19 @@
+type HyperCube x: Int y: Int z: Int
+
+cube = HyperCube x: 1
+
+1 to: 2 do: [ it echo ]
+2 downTo: 1 do: [ it echo ]
+
+
+mut x = 2
+"whileTrue" echo
+[x > 0] whileTrue: [
+    x echo
+    x <- x dec
+]
+"whileFalse" echo
+[x == 7] whileFalse: [
+    x echo
+    x <- x inc
+]

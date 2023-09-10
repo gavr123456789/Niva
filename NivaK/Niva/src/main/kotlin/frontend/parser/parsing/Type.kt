@@ -12,8 +12,6 @@ fun Parser.parseType(): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
-    // List<Map<int, string>> - generic
-    // List(Map(int, string))
     // List::Map::(int, string)
     // Person from: x::List::Map::(int, string)
     // x::int?

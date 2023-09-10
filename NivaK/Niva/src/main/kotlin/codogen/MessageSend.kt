@@ -1,5 +1,6 @@
 package codogen
 
+import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
 fun MessageSend.generateMessageCall(): String {
@@ -7,7 +8,7 @@ fun MessageSend.generateMessageCall(): String {
     val b = StringBuilder()
 
     if (this.messages.isEmpty()) {
-        throw Exception("Message list for ${this.str}  can't be empty on Line: ${this.token.line}")
+        this.token.compileError("Message list for ${this.str} can't be empty")
     }
 
     this.messages.forEachIndexed { i, it ->
@@ -60,7 +61,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             // emptyWallet money: 20
             // emptyWallet.money = 20
             if (keywordMsg.args.count() != 1) {
-                throw Exception("Setters must have only one argument, line: ${keywordMsg.token.line}")
+                keywordMsg.token.compileError("Setters must have only one argument")
             }
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
