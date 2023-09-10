@@ -99,7 +99,6 @@ fun Parser.simpleReceiver(): Receiver {
 
     val tryPrimary = primary()
         ?: collectionLiteral()
-        ?: throw Error("expected primary but found ${peek().kind} on line ${peek().line}")
 
     return tryPrimary
 }

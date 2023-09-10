@@ -1,9 +1,6 @@
 package frontend.parser.parsing
 
-import frontend.meta.Position
-import frontend.meta.Token
-import frontend.meta.TokenType
-import frontend.meta.isIdentifier
+import frontend.meta.*
 import frontend.parser.types.ast.Statement
 import java.io.File
 
@@ -61,7 +58,7 @@ fun Parser.error(message: String, token: Token? = null): Nothing {
     if (realToken.kind == TokenType.EndOfFile) {
         realToken = peek(-1)
     }
-    throw Error("$message\ntoken: $token\nline: ${realToken.line}\nfile: $file\nparser: $this")
+    realToken.compileError(message)
 }
 
 fun Parser.check(kind: TokenType, distance: Int = 0) =

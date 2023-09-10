@@ -1,7 +1,0 @@
-
-type Person age: Int
-Person + x::Int = this age: this age + x
-
-person = Person age: 32
-person + 5
-person age echo

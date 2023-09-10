@@ -2,6 +2,7 @@
 
 package frontend.typer
 
+import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 
@@ -169,7 +170,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
     when (this) {
         is TypeAST.InternalType -> {
             return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
-                throw Exception("Can't find type $name ")
+                this.token.compileError("Can't find type $name")
                 // TODO better inference, depend on context
 
             }
@@ -177,7 +178,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
         }
 
         is TypeAST.UserType -> {
-            return typeTable[name] ?: throw Exception("Can't find type $name ")
+            return typeTable[name] ?: this.token.compileError("Can't find type $name")
         }
 
         is TypeAST.Lambda -> {
@@ -223,7 +224,7 @@ fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, Type>): Ty
 fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>): UnaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
-//        throw Exception("return type of unary message ${this.name} not registered")
+
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
@@ -234,7 +235,7 @@ fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>)
 fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>): BinaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
-//        ?: throw Exception("return type of binary message ${this.name} not registered")
+
 
     val argType = this.forType.toType(typeTable)
 
@@ -249,12 +250,12 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
 fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>): KeywordMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
-//        throw Exception("return type of keyword message ${this.name} not registered")
+
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,
             type = it.type?.toType(typeTable)
-                ?: throw Exception("type of keyword message ${this.name}'s arg ${it.name} not registered")
+                ?: token.compileError("Type of keyword message ${this.name}'s arg ${it.name} not registered")
         )
     }
     val result = KeywordMsgMetaData(
@@ -264,13 +265,3 @@ fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type
     )
     return result
 }
-
-//fun ConstructorDeclaration.toMessageData(typeTable: MutableMap<TypeName, Type>): ConstructorMsgMetaData {
-//    val returnType = this.returnType?.toType(typeTable)
-//        ?: throw Exception("return type of constructor message ${this.name} not registered")
-//    val result = ConstructorMsgMetaData(
-//        name = this.name,
-//        returnType = returnType
-//    )
-//    return result
-//}

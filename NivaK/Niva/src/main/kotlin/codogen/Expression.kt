@@ -18,7 +18,7 @@ fun Expression.generateExpression(): String = buildString {
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FloatExpr -> str
             is LiteralExpression.IntExpr -> str
-            is LiteralExpression.StringExpr -> "\"" + str + "\""
+            is LiteralExpression.StringExpr -> str
 
             is ListCollection -> {
                 generateList()

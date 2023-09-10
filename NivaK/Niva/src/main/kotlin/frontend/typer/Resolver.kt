@@ -1,6 +1,9 @@
 package frontend.typer
 
+import frontend.meta.Position
+import frontend.meta.Token
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
@@ -17,23 +20,6 @@ inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.Inte
         `package` = "common",
     )
 }
-
-//inline fun createCollectionType(type: InternalTypes): Pair<InternalTypes, Type.GenericType> {
-//
-//    return type to Type.GenericType(
-//        mainType = type,
-//        `package` = "common",
-//        typeArgumentList = listOf(InternalTypes.Unknown),
-//        fields = listOf(
-////            TypeField(
-////                name = "length",
-////                type = Resolver.defaultTypes[InternalTypes.Int]!!
-////            )
-//        ),
-//
-//
-//    )
-//}
 
 class Resolver(
     val projectName: String,
@@ -276,20 +262,20 @@ fun Resolver.resolveDeclarations(
             // check if the type already registered
             // if no then error
             val forType = typeTable[statement.forType.name]
-                ?: throw Exception("type ${statement.forType.name} is not registered")
+                ?: statement.token.compileError("type ${statement.forType.name} is not registered")
 
 
             // if yes, check for register in unaryTable
             val isUnaryRegistered = unaryForType.containsKey(statement.name)
             if (isUnaryRegistered) {
-                throw Exception("Unary ${statement.name} for type ${statement.forType.name} is already registered")
+                statement.token.compileError("Unary ${statement.name} for type ${statement.forType.name} is already registered")
             }
 
             // check that there is no field with the same name (because of getter has the same signature)
             if (forType is Type.UserType) {
                 val q = forType.fields.find { it.name == statement.name }
                 if (q != null) {
-                    throw Exception("Type ${statement.forType.name} already has field with name ${statement.name}")
+                    statement.token.compileError("Type ${statement.forType.name} already has field with name ${statement.name}")
                 }
             }
 
@@ -338,7 +324,7 @@ private fun Resolver.resolveStatement(
             if (statement2.messages.isNotEmpty()) {
                 statement2.type =
                     statement2.messages.last().type
-                        ?: throw Exception("Not all messages of ${statement2.str} has types")
+                        ?: statement2.token.compileError("Not all messages of ${statement2.str} has types")
             } else {
                 // every single expressions is unary message without messages
                 if (statement2.type == null) {
@@ -347,7 +333,7 @@ private fun Resolver.resolveStatement(
                     currentLevel--
                 }
                 statement2.type = statement2.receiver.type
-                    ?: throw Exception("Can't find type for ${statement2.str} on line ${statement2.token.line}")
+                    ?: statement2.token.compileError("Can't find type for ${statement2.str} on line ${statement2.token.line}")
             }
         } else {
             // add to the current project
@@ -358,11 +344,11 @@ private fun Resolver.resolveStatement(
                 if (it.keywordArg.token.kind == TokenType.String) {
                     val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
                     when (it.selectorName) {
-                        "name" -> changeProject(substring)
-                        "package" -> changePackage(substring)
+                        "name" -> changeProject(substring, statement2.token)
+                        "package" -> changePackage(substring, statement2.token)
                         "protocol" -> changeProtocol(substring)
                     }
-                } else throw Exception("Only string arguments for Project allowed")
+                } else it.keywordArg.token.compileError("Only string arguments for Project allowed")
             }
         }
 
@@ -378,14 +364,14 @@ private fun Resolver.resolveStatement(
             currentLevel--
 
             val valueType = statement.value.type
-                ?: throw Exception("Line: ${statement.token.line} In var declaration ${statement.name} value doesn't got type")
+                ?: statement.token.compileError("In var declaration ${statement.name} value doesn't got type")
             val statementDeclaredType = statement.valueType
 
             // check that declared type == inferred type
             if (statementDeclaredType != null) {
                 if (statementDeclaredType.name != valueType.name) {
                     val text = "${statementDeclaredType.name} != ${valueType.name}"
-                    throw Exception("Type declared for ${statement.name} is not equal for it's value type($text)")
+                    statement.token.compileError("Type declared for ${statement.name} is not equal for it's value type($text)")
                 }
             }
 
@@ -408,7 +394,7 @@ private fun Resolver.resolveStatement(
             }
             val receiverType =
                 statement.receiver.type
-                    ?: throw Exception("Can't infer receiver ${statement.receiver.str} type on line ${statement.token.line}")
+                    ?: statement.token.compileError("Can't infer receiver ${statement.receiver.str} type")
 
 
             // resolve args types
@@ -435,18 +421,39 @@ private fun Resolver.resolveStatement(
 
                 // need
                 if (receiverType.args.count() != statement.args.count()) {
-                    throw Exception("you need to use  on Line ${statement.token.line}")
+                    //
+                    val q =
+                        statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
+                    val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
+                    val setOfNeededFields = receiverType.args.map { it.name }.toSet()
+                    val extraOrMissed = statement.args.count() > receiverType.args.count()
+                    val whatIsMissingOrExtra =
+                        if (extraOrMissed)
+                            (setOfHaveFields - setOfNeededFields).joinToString(", ") { it }
+                        else
+                            (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
+
+
+                    val text =
+                        if (extraOrMissed)
+                            "For $q code block eval, extra fields are listed: $whatIsMissingOrExtra"
+                        else
+                            "For $q code block eval, not all fields are listed, you missed: $whatIsMissingOrExtra"
+
+                    statement.token.compileError(text)
                 }
 
                 statement.args.forEachIndexed { ii, it ->
                     // name check
                     if (it.selectorName != receiverType.args[ii].name) {
-                        throw Exception("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
+                        statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
                     }
                     // type check
                     val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
                     if (!isTypesEqual) {
-                        throw Exception("${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }} on Line ${statement.token.line}")
+                        statement.token.compileError(
+                            "${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
+                        )
                     }
                 }
 
@@ -461,7 +468,7 @@ private fun Resolver.resolveStatement(
             val receiverText = statement.receiver.str
             val q = typeTable[receiverText]
             if (receiverText == "Project") {
-                throw Error("We cant get here, type Project are ignored")
+                statement.token.compileError("We cant get here, type Project are ignored")
             }
 
             if (q == null) {
@@ -488,7 +495,7 @@ private fun Resolver.resolveStatement(
                 checkForSetter(receiverType)
                 if (statement.kind != KeywordLikeType.Setter) {
                     statement.kind = KeywordLikeType.Keyword
-                    val q = findKeywordMsgType(receiverType, statement.selectorName)
+                    val q = findKeywordMsgType(receiverType, statement.selectorName, statement.token)
 
                     // KOSTЫL для list2 = list.map...
                     statement.type =
@@ -501,13 +508,31 @@ private fun Resolver.resolveStatement(
                 if (receiverType is Type.UserType) {
                     val receiverFields = receiverType.fields
                     if (statement.args.count() != receiverFields.count()) {
-                        throw Exception("For ${statement.selectorName} constructor call, not all fields are listed")
+//                        statement.args
+                        val q =
+                            statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
+                        val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
+                        val setOfNeededFields = receiverFields.map { it.name }.toSet()
+                        val extraOrMissed = statement.args.count() > receiverFields.count()
+                        val whatIsMissingOrExtra =
+                            if (extraOrMissed)
+                                (setOfHaveFields - setOfNeededFields).joinToString(", ") { it }
+                            else
+                                (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
+
+
+                        val text =
+                            if (extraOrMissed)
+                                "For $q constructor call, extra fields are listed: $whatIsMissingOrExtra"
+                            else
+                                "For $q constructor call, not all fields are listed, you missed: $whatIsMissingOrExtra"
+                        statement.token.compileError(text)
                     }
 
                     statement.args.forEachIndexed { i, arg ->
                         val typeField = receiverFields[i]
                         if (typeField.name != arg.selectorName) {
-                            throw Exception("In constructor message for type ${statement.receiver.str} field ${typeField.name} != ${arg.selectorName}")
+                            statement.token.compileError("In constructor message for type ${statement.receiver.str} field ${typeField.name} != ${arg.selectorName}")
                         }
                     }
                 }
@@ -540,7 +565,7 @@ private fun Resolver.resolveStatement(
             }
             val receiverType = receiver.type!!
             // find message for this type
-            val messageReturnType = findBinaryMessageType(receiverType, statement.selectorName)
+            val messageReturnType = findBinaryMessageType(receiverType, statement.selectorName, statement.token)
             statement.type = messageReturnType
 
             // resolve messages
@@ -562,8 +587,6 @@ private fun Resolver.resolveStatement(
         is UnaryMsg -> {
 
             // if a type already has a field with the same name, then this is getter, not unary send
-            val forType =
-                statement.receiver.type?.name// ?: throw Exception("${statement.selectorName} hasn't type")
             val receiver = statement.receiver
 
             // for constructors
@@ -607,14 +630,14 @@ private fun Resolver.resolveStatement(
             if (receiverType is Type.Lambda) {
                 if (statement.selectorName != "exe") {
                     if (receiverType.args.isNotEmpty())
-                        throw Exception("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                        statement.token.compileError("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
                     else
-                        throw Exception("For lambda ${statement.str} on Line ${statement.token.line} you can use only unary 'exe' message")
+                        statement.token.compileError("For lambda ${statement.str} on Line ${statement.token.line} you can use only unary 'do' message")
                 }
 
 
                 if (receiverType.args.isNotEmpty()) {
-                    throw Exception("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                    statement.token.compileError("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
                 }
 
                 statement.type = receiverType.returnType
@@ -641,9 +664,9 @@ private fun Resolver.resolveStatement(
 
                 val messageReturnType =
                     if (!isStaticCall)
-                        findUnaryMessageType(receiverType, statement.selectorName, statement.token.line)
+                        findUnaryMessageType(receiverType, statement.selectorName, statement.token)
                     else
-                        findStaticMessageType(receiverType, statement.selectorName, statement.token.line)
+                        findStaticMessageType(receiverType, statement.selectorName, statement.token)
 
                 statement.kind = UnaryMsgKind.Unary
                 statement.type = messageReturnType
@@ -700,7 +723,11 @@ private fun Resolver.resolveStatement(
             // TODO don't add it if this lambda has named arg
             if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
                 if (rootStatement.receiver !is CodeBlock) {
-                    val metaData = findKeywordMsgType(rootStatement.receiver.type!!, rootStatement.selectorName)
+                    val metaData = findKeywordMsgType(
+                        rootStatement.receiver.type!!,
+                        rootStatement.selectorName,
+                        rootStatement.token
+                    )
                     val currentArgType = metaData.argTypes[currentArgumentNumber]
 
                     if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
@@ -725,7 +752,7 @@ private fun Resolver.resolveStatement(
             currentLevel--
             val lastExpression = statement.statements.last()
 //            if (lastExpression !is Expression) {
-//                throw Exception("last statement of code block must be expression on line ${statement.token.line}")
+//                throwp Exception("last statement of code block must be expression on line ${statement.token.line}")
 //            }
 
             // Add lambda type to code-block itself
@@ -781,7 +808,7 @@ private fun Resolver.resolveStatement(
 
                     // try to find list with the same generic type
                     val typeName = "List::${w.name}"
-                    val currentPkg = getCurrentPackage()
+                    val currentPkg = getCurrentPackage(statement.token)
                     val alreadyExistsListType = currentPkg.types[typeName]
 
                     val listProtocols = listType.protocols
@@ -801,7 +828,7 @@ private fun Resolver.resolveStatement(
 
                     statement.type = genericType
                 } else {
-                    throw Exception("Cant get type of elements of list literal on line ${statement.token.line}")
+                    statement.token.compileError("Cant get type of elements of list literal")
                 }
             }
 
@@ -832,7 +859,7 @@ private fun Resolver.resolveStatement(
 
         is ControlFlow -> {
             if (statement.ifBranches.isEmpty()) {
-                throw Exception("If must contain at least one branch, Line: ${statement.token.line}")
+                statement.token.compileError("If must contain at least one branch")
             }
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -847,7 +874,6 @@ private fun Resolver.resolveStatement(
                     statement.ifBranches.forEachIndexed { i, it ->
                         /// resolving if
                         resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
-                        val currentType = it.ifExpression.type?.name
                         /// resolving then
                         when (it) {
                             is IfBranch.IfBranchSingleExpr -> {
@@ -862,7 +888,7 @@ private fun Resolver.resolveStatement(
 
                                     val lastExpr = it.body.last()
                                     if (lastExpr !is Expression) {
-                                        throw Exception("In switch expression body last statement must be an expression, Line: ${lastExpr.token.line}")
+                                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
                                     }
                                 }
                             }
@@ -875,7 +901,7 @@ private fun Resolver.resolveStatement(
                             val prevType: Type = prev.getReturnTypeOrThrow()
                             val currType = it.getReturnTypeOrThrow()
                             if (prevType.name != currType.name) {
-                                throw Exception(
+                                it.ifExpression.token.compileError(
                                     "In if Expression return type of branch on line: ${prev.ifExpression.token.line} is ${prevType.name} " +
                                             "but return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
                                 )
@@ -887,22 +913,20 @@ private fun Resolver.resolveStatement(
 
 
                     if (statement.elseBranch == null) {
-                        throw Exception("If expression must contain else branch, Line: ${statement.token.line}")
+                        statement.token.compileError("If expression must contain else branch")
                     }
 
 
                     resolve(statement.elseBranch, previousAndCurrentScope, statement)
                     val lastExpr = statement.elseBranch.last()
                     if (lastExpr !is Expression) {
-                        throw Exception("In switch expression body last statement must be an expression, Line: ${lastExpr.token.line}")
+                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
                     }
                     val elseReturnType = lastExpr.type!!
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
                     if (elseReturnTypeName != firstReturnTypeName) {
-                        throw Exception(
-                            "In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)"
-                        )
+                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
                     }
 
                     statement.type = elseReturnType
@@ -922,7 +946,7 @@ private fun Resolver.resolveStatement(
                         val currentType = it.ifExpression.type?.name
                         if (currentType != statement.switch.type!!.name) {
                             val curTok = it.ifExpression.token
-                            throw Exception("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
+                            curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
                         }
                         /// resolving then
                         when (it) {
@@ -938,7 +962,7 @@ private fun Resolver.resolveStatement(
 
                                     val lastExpr = it.body.last()
                                     if (lastExpr !is Expression) {
-                                        throw Exception("In switch expression body last statement must be an expression, Line: ${lastExpr.token.line}")
+                                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
                                     }
                                 }
                             }
@@ -951,9 +975,9 @@ private fun Resolver.resolveStatement(
                             val prevType: Type = prev.getReturnTypeOrThrow()
                             val currType = it.getReturnTypeOrThrow()
                             if (prevType.name != currType.name) {
-                                throw Exception(
-                                    "In switch Expression return type of branch on line: ${prev.ifExpression.token.line} is ${prevType.name} " +
-                                            "but return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
+                                it.ifExpression.token.compileError(
+                                    "In switch Expression return type of branch on line: ${prev.ifExpression.token.line} is ${prevType.name} "
+                                            + "but return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
                                 )
                             }
                         } else {
@@ -963,22 +987,21 @@ private fun Resolver.resolveStatement(
 
 
                     if (statement.elseBranch == null) {
-                        throw Exception("If expression must contain else branch, Line: ${statement.token.line}")
+                        statement.token.compileError("If expression must contain else branch")
                     }
 
 
                     resolve(statement.elseBranch, previousAndCurrentScope, statement)
                     val lastExpr = statement.elseBranch.last()
                     if (lastExpr !is Expression) {
-                        throw Exception("In switch expression body last statement must be an expression, Line: ${lastExpr.token.line}")
+                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
                     }
                     val elseReturnType = lastExpr.type!!
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
                     if (elseReturnTypeName != firstReturnTypeName) {
-                        throw Exception(
-                            "In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)"
-                        )
+                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
+
                     }
 
                     statement.type = elseReturnType
@@ -1024,11 +1047,11 @@ private fun Resolver.resolveExpressionInBrackets(
     previousScope: MutableMap<String, Type>
 ): Type {
     if (statement.statements.isEmpty()) {
-        throw Exception("Parens must contain expression, line: ${statement.token.line}")
+        statement.token.compileError("Parens must contain expression")
     }
     val lastExpr = statement.statements.last()
     if (lastExpr !is Expression) {
-        throw Exception("Last statement inside parens must be expression, line: ${statement.token.line}")
+        statement.token.compileError("Last statement inside parens must be expression")
     }
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -1042,16 +1065,15 @@ private fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
     if (type1.name == "Any" && type2.name == "Any") {
         return true
     }
-    // temp
+    // TODO temp
     if (type1 is Type.Lambda || type2 is Type.Lambda) {
         return true
     }
 
     return type1.name === type2.name
-
 }
 
-private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, line: Int? = null): Type {
+private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.unaryMsgs[selectorName]
 
@@ -1059,59 +1081,56 @@ private fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: Stri
             return q.returnType
         }
     }
-    val lineMessagePart = if (line != null) "on Line: $line" else ""
-    throw Error("Cant find unary message: $selectorName for type ${receiverType.name} $lineMessagePart")
+    token.compileError("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
-private fun Resolver.findStaticMessageType(receiverType: Type, selectorName: String, line: Int? = null): Type {
+private fun Resolver.findStaticMessageType(receiverType: Type, selectorName: String, token: Token): Type {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.staticMsgs[selectorName]
-
         if (q != null) {
             return q.returnType
         }
     }
-    val lineMessagePart = if (line != null) "on Line: $line" else ""
-    throw Error("Cant find static message: $selectorName for type ${receiverType.name} $lineMessagePart")
+    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
 }
 
-private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String): Type {
+private fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.binaryMsgs[selectorName]
         if (q != null) {
             return q.returnType
         }
     }
-    throw Error("Cant find binary message: $selectorName for type ${receiverType.name}")
+    token.compileError("Cant find binary message: $selectorName for type ${receiverType.name}")
 }
 
-private fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String): KeywordMsgMetaData {
+private fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
     receiverType.protocols.forEach { (k, v) ->
         val q = v.keywordMsgs[selectorName]
         if (q != null) {
             return q
         }
     }
-    throw Error("Cant find keyword message: $selectorName for type ${receiverType.name}")
+    token.compileError("Cant find keyword message: $selectorName for type ${receiverType.name}")
 }
 
 
-fun Resolver.getPackage(packageName: String): Package {
-    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
-    val pack = p.packages[packageName] ?: throw Exception("there are no such package: $packageName")
+fun Resolver.getPackage(packageName: String, token: Token): Package {
+    val p = this.projects[currentProjectName] ?: token.compileError("there are no such project: $currentProjectName")
+    val pack = p.packages[packageName] ?: token.compileError("there are no such package: $packageName")
     return pack
 }
 
 
-fun Resolver.getCurrentProtocol(typeName: String): Protocol {
-    val pack = getPackage(currentPackageName)
+fun Resolver.getCurrentProtocol(typeName: String, token: Token): Protocol {
+    val pack = getPackage(currentPackageName, token)
     val type2 = pack.types[typeName]
-        ?: getPackage("common").types[typeName]
-        ?: getPackage("core").types[typeName]
-        ?: throw Exception("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
+        ?: getPackage("common", token).types[typeName]
+        ?: getPackage("core", token).types[typeName]
+        ?: token.compileError("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
 
     val protocol =
-        type2.protocols[currentProtocolName] //?: throw Exception("there no such protocol: $currentProtocolName in type: ${type2.name} in package $currentPackageName in project: $currentProjectName")
+        type2.protocols[currentProtocolName]
     if (protocol == null) {
         val newProtocol = Protocol(currentProtocolName)
         type2.protocols[currentProtocolName] = newProtocol
@@ -1120,7 +1139,7 @@ fun Resolver.getCurrentProtocol(typeName: String): Protocol {
     return protocol
 }
 
-fun Resolver.getCurrentPackage() = getPackage(currentPackageName)
+fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
 
 
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
@@ -1128,7 +1147,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
     when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
             staticUnaryForType[statement.name] = statement.msgDeclaration
-            val protocol = getCurrentProtocol(statement.forType.name)
+            val protocol = getCurrentProtocol(statement.forType.name, statement.token)
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
                 returnType = typeOfReceiver,
@@ -1137,12 +1156,12 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
         }
 
         is MessageDeclarationBinary -> {
-            throw Exception("Binary static message, really? This is not allowed")
+            statement.token.compileError("Binary static message, really? This is not allowed")
         }
 
         is MessageDeclarationKeyword -> {
             staticKeywordForType[statement.name] = statement.msgDeclaration
-            val protocol = getCurrentProtocol(statement.forType.name)
+            val protocol = getCurrentProtocol(statement.forType.name, statement.token)
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
                 returnType = typeOfReceiver,
@@ -1159,7 +1178,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name)
+    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
     val messageData = statement.toMessageData(typeTable)
     protocol.unaryMsgs[statement.name] = messageData
 
@@ -1169,7 +1188,7 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
 fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
     binaryForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name)
+    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
     val messageData = statement.toMessageData(typeTable)
     protocol.binaryMsgs[statement.name] = messageData
 
@@ -1179,7 +1198,7 @@ fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
 fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
     keywordForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name)
+    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
     val messageData = statement.toMessageData(typeTable)
     protocol.keywordMsgs[statement.name] = messageData
 
@@ -1188,13 +1207,17 @@ fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
 }
 
 fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
-    val pack = getPackage(currentPackageName)
+    val pack = getPackage(currentPackageName, statement.token)
     pack.declarations.add(statement)
 }
 
+fun createFakeToken(): Token = Token(
+    TokenType.Identifier, "!!!Nothing!!!", 0, Position(0, 1),
+    Position(0, 1), File("Nothing")
+)
 
 fun Resolver.addNewType(type: Type, statement: TypeDeclaration?, pkg: Package? = null) {
-    val pack = pkg ?: getPackage(currentPackageName)
+    val pack = pkg ?: getPackage(currentPackageName, statement?.token ?: createFakeToken())
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
     }
@@ -1208,15 +1231,15 @@ fun Resolver.addNewType(type: Type, statement: TypeDeclaration?, pkg: Package? =
 }
 
 
-fun Resolver.changeProject(newCurrentProject: String) {
+fun Resolver.changeProject(newCurrentProject: String, token: Token) {
     // clear all current, load project
     currentProjectName = newCurrentProject
     // check that there are no such project already
 
     if (projects[newCurrentProject] != null) {
-        throw Exception("Project with name: $newCurrentProject already exists")
+        token.compileError("Project with name: $newCurrentProject already exists")
     }
-    val commonProject = projects["common"] ?: throw Exception("Can't find common project")
+    val commonProject = projects["common"] ?: token.compileError("Can't find common project")
 
 
     projects[newCurrentProject] = Project(
@@ -1227,10 +1250,10 @@ fun Resolver.changeProject(newCurrentProject: String) {
     TODO()
 }
 
-fun Resolver.changePackage(newCurrentPackage: String) {
+fun Resolver.changePackage(newCurrentPackage: String, token: Token) {
     currentPackageName = newCurrentPackage
 
-    val currentProject = projects[currentProjectName] ?: throw Exception("Can't find project: $currentProjectName")
+    val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $currentProjectName")
 
     val alreadyExistsPack = currentProject.packages[newCurrentPackage]
 
@@ -1239,7 +1262,6 @@ fun Resolver.changePackage(newCurrentPackage: String) {
         // load table of types
         typeTable.clear()
         typeTable.putAll(alreadyExistsPack.types)
-//        throw Exception("package: $newCurrentPackage already exists")
     } else {
         // create this new package
         val pack = Package(
@@ -1252,13 +1274,6 @@ fun Resolver.changePackage(newCurrentPackage: String) {
 
 fun Resolver.changeProtocol(protocolName: String) {
     currentProtocolName = protocolName
-//    val pack = getCurrentPackage()
-//    val type = pack.types[typeName] ?: throw Exception("Can't find $typeName for protocol $protocolName")
-//
-//    val alreadyExistsProtocol = type.protocols[protocolName]
-//    if (alreadyExistsProtocol == null) {
-//        type.protocols[protocolName] =  Protocol(name = protocolName)
-//    }
 }
 
 fun Resolver.getTypeForIdentifier(
@@ -1269,7 +1284,7 @@ fun Resolver.getTypeForIdentifier(
     val type = typeTable[x.str]
         ?: currentScope[x.str]
         ?: previousScope[x.str]
-        ?: throw Exception("Unresolved reference: ${x.str} on line ${x.token.line}")
+        ?: x.token.compileError("Unresolved reference: ${x.str}")
     x.type = type
 
     return type

@@ -56,6 +56,19 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 // end of STD
 
 fun main() {
-    inlineRepl(1 + 56, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\BubbleSort\bubblesort.niva:::1""", 4)
+    val cube = HyperCube(1)
+    (1).toDo(2, {it.echo()})
+    (2).downToDo(1, {it.echo()})
+    var x = 2
+    "whileTrue".echo()
+    ({x > 0}).whileTrue({
+        x.echo()
+        x = x.dec()
+    })
+    "whileFalse".echo()
+    ({x == 7}).whileFalse({
+        x.echo()
+        x = x.inc()
+    })
     
 }

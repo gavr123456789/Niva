@@ -1,5 +1,6 @@
 package codogen
 
+import frontend.meta.compileError
 import frontend.parser.types.ast.TypeDeclaration
 
 class Sas(val x: String) {
@@ -18,7 +19,7 @@ fun TypeDeclaration.generateTypeDeclaration() = buildString {
     val c = fields.count() - 1
     fields.forEachIndexed { i, it ->
         if (it.type == null) {
-            throw Exception("arg must have type")
+            it.token.compileError("arg must have type")
         }
         // TODO var or val?, maybe add  mut modifier
         append("var ", it.name, ": ", it.type.name)

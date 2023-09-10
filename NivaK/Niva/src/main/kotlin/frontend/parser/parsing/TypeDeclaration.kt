@@ -37,7 +37,7 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
         val isGeneric = match(TokenType.Apostrophe)
         val name = step()
         val type: TypeAST? = if (!isGeneric) {
-            matchAssert(TokenType.Colon, "colon before type name expected")
+            matchAssert(TokenType.Colon, "Types without fields not supported yet")
             parseType()
         } else {
             null
