@@ -4,12 +4,13 @@ import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import java.io.File
 
 class ParserTest {
     @Test
     fun varDeclaration() {
         val source = "x::int = 1"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         println("ast.count = ${ast.count()}")
         assert(ast.count() == 1)
         println("ast = $ast")
@@ -24,7 +25,7 @@ class ParserTest {
     @Test
     fun varDeclWithTypeInfer() {
         val source = "x = 1"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
@@ -36,7 +37,7 @@ class ParserTest {
     @Test
     fun collectionList() {
         val source = "{1 2 3}"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val list = ast[0] as ListCollection
@@ -46,7 +47,7 @@ class ParserTest {
     @Test
     fun collectionListOfObjectConstructors() {
         val source = "{Person age: 1, Person age: 2, Person age: 3}"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val list = ast[0] as ListCollection
@@ -56,7 +57,7 @@ class ParserTest {
     @Test
     fun literalInt() {
         val source = "1.1"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         assert(ast[0] is LiteralExpression)
@@ -65,7 +66,7 @@ class ParserTest {
     @Test
     fun varDeclWithBinary() {
         val source = "x = 1 + 1"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
@@ -79,7 +80,7 @@ class ParserTest {
     @Test
     fun string() {
         val source = "\"sas\""
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val declaration = ast[0] as LiteralExpression
@@ -90,7 +91,7 @@ class ParserTest {
     @Test
     fun helloWorld() {
         val source = "\"sas\" echo"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend = ast[0] as MessageSend
@@ -108,7 +109,7 @@ class ParserTest {
         x = 1
         x echo
     """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 2)
 
         val declaration = ast[0] as VarDeclaration
@@ -124,7 +125,7 @@ class ParserTest {
     @Test
     fun binaryFirst() {
         val source = "1 + 2 to: 3"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend = ast[0] as MessageSendKeyword
@@ -142,7 +143,7 @@ class ParserTest {
     @Test
     fun manyBinaryFirstBeforeKeyword() {
         val source = "1 + 2 + 2 to: 3"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend: MessageSend = ast[0] as MessageSend
@@ -155,16 +156,17 @@ class ParserTest {
 
     @Test
     fun kw() {
+        val fakeFile = File("Niva.iml")
         val source = "1 to: 2 + 3"
-        val tokens = lex(source)
-        val parser = Parser(file = "", tokens = tokens, source = source)
+        val tokens = lex(source, fakeFile)
+        val parser = Parser(file = fakeFile, tokens = tokens, source = source)
         parser.keyword(false)
     }
 
     @Test
     fun unaryEachReceiverIsPrevious() {
         val source = "person name first"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend: MessageSend = ast[0] as MessageSend
@@ -176,7 +178,7 @@ class ParserTest {
     @Test
     fun unaryFirst() {
         val source = "1 sas to: 2"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         assert(ast[0] is MessageSend)
@@ -185,7 +187,7 @@ class ParserTest {
     @Test
     fun twoUnary() {
         val source = "3 inc inc"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend: MessageSend = ast[0] as MessageSend
@@ -200,7 +202,7 @@ class ParserTest {
             3 inc inc
             1 dec dec
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 2)
 
         val firstUnary: MessageSend = ast[0] as MessageSend
@@ -223,7 +225,7 @@ class ParserTest {
             1 + 2
             x from: 1 to: 2
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 3)
         val unary = (ast[0] as MessageSend).messages[0]
         val binary = (ast[1] as MessageSend).messages[0]
@@ -242,7 +244,7 @@ class ParserTest {
         val source = """
             1 + 2 - 2 / 4
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val messages = (ast[0] as MessageSend).messages
         assert(messages.count() == 3)
@@ -257,7 +259,7 @@ class ParserTest {
             x from: 1 inc inc
               to: 2
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val keyword = (ast[0] as MessageSend).messages[0] as KeywordMsg
@@ -273,7 +275,7 @@ class ParserTest {
         and: that
                   and: that
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 2)
 
         val keyword = (ast[0] as MessageSend).messages[0] as KeywordMsg
@@ -287,7 +289,7 @@ class ParserTest {
     fun binaryWithUnary() {
         // inc(inc(3)) + dec(dec(2))
         val source = "3 inc inc + 2 dec dec"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend: MessageSend = ast[0] as MessageSend
@@ -313,7 +315,7 @@ class ParserTest {
     fun binaryWithUnary2() {
         // inc(inc(3)) + dec(dec(2))
         val source = "3 inc inc + 2 dec dec + 4 sas inc"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val messageSend: MessageSend = ast[0] as MessageSend
@@ -339,7 +341,7 @@ class ParserTest {
     fun keywordMessage() {
         // inc(inc(3)) + dec(dec(2))
         val source = "x from: 3 inc inc + 2 dec dec to: 5"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val unary: MessageSend = ast[0] as MessageSend
@@ -370,7 +372,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -382,7 +384,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -394,7 +396,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is MessageDeclarationBinary)
     }
@@ -407,7 +409,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is MessageDeclarationBinary)
 
@@ -421,7 +423,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -433,7 +435,7 @@ class ParserTest {
               x sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val msgDecl = (ast[0] as MessageDeclarationKeyword)
         assert(msgDecl.name == "noTypeLocalNameTypeAndLocalNameNothingNoLocalNameButType")
@@ -471,7 +473,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -483,7 +485,7 @@ class ParserTest {
               y sas
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -494,7 +496,7 @@ class ParserTest {
                 1 echo
             ]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -502,7 +504,7 @@ class ParserTest {
     @Test
     fun typeDeclaration() {
         val source = "type Person name: string age: int"
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val typeDeclaration = ast[0] as TypeDeclaration
         assert(typeDeclaration.typeName == "Person")
@@ -522,7 +524,7 @@ class ParserTest {
               name: string 
               age: int
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val typeDeclaration = ast[0] as TypeDeclaration
         assert(typeDeclaration.typeName == "Person")
@@ -541,7 +543,7 @@ class ParserTest {
             type Person name: string 
               age: int
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val typeDeclaration = ast[0] as TypeDeclaration
         assert(typeDeclaration.typeName == "Person")
@@ -561,7 +563,7 @@ class ParserTest {
               age: int
               `generic
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val typeDeclaration = ast[0] as TypeDeclaration
         assert(typeDeclaration.typeName == "Person")
@@ -577,7 +579,7 @@ class ParserTest {
             | Rectangle => width: int height: int
             | Circle    => radius: int
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val unionDeclaration = ast[0] as UnionDeclaration
         val branches = unionDeclaration.branches
@@ -605,7 +607,7 @@ class ParserTest {
         ]
         |=> else branch sas
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val iF = ast[0] as ControlFlow.IfStatement
         val elseBranches = iF.elseBranch
@@ -624,7 +626,7 @@ class ParserTest {
         | 9 inc => "sas" echo
         |=> else branch sas
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is ControlFlow.SwitchStatement)
         val switchStatement = ast[0] as ControlFlow.SwitchStatement
@@ -637,7 +639,7 @@ class ParserTest {
         val source = """
         x::List::int = 1
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -648,7 +650,7 @@ class ParserTest {
         val source = """
         x::List::Map(int, string) = 1
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -657,7 +659,7 @@ class ParserTest {
         val source = """
         x::Map(int, Map(int, string)) = 1
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -666,7 +668,7 @@ class ParserTest {
         val source = """
         x::List::List::Person = 1
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -675,7 +677,7 @@ class ParserTest {
         val source = """
         constructor Person default = Person name: "" age: 0 
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val constr = ast[0] as ConstructorDeclaration
         assert(constr.forType.name == "Person")
@@ -688,7 +690,7 @@ class ParserTest {
         val source = """
             x::int? = null
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -697,7 +699,7 @@ class ParserTest {
         val source = """
             x::[int, bool -> string]? = null
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is VarDeclaration)
     }
@@ -707,7 +709,7 @@ class ParserTest {
         val source = """
             x = [x, y -> x + y]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is VarDeclaration)
     }
@@ -717,7 +719,7 @@ class ParserTest {
         val source = """
             x = [x + y]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is VarDeclaration)
     }
@@ -727,7 +729,7 @@ class ParserTest {
         val source = """
             x = [x::Int, y::Int -> x + y]
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is VarDeclaration)
     }
@@ -737,7 +739,7 @@ class ParserTest {
         val source = """
         1 to: 2 |> from: 3 |> kek: 5
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -746,7 +748,7 @@ class ParserTest {
         val source = """
         1 + 1 |> inc 
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -757,7 +759,7 @@ class ParserTest {
         """.trimIndent()
 
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -767,7 +769,7 @@ class ParserTest {
         val source = """
         1 inc; + 2; dec; + 5; from: "sas"
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val q = ast[0] as MessageSend
         assert(q.messages.count() == 5)
@@ -778,7 +780,7 @@ class ParserTest {
         val source = """
         1 inc; inc + 2
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val q = ast[0] as MessageSend
         assert(q.messages.count() == 2)
@@ -789,7 +791,7 @@ class ParserTest {
         val source = """
         1 from: 1 to: 2 
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is MessageSend)
     }
@@ -799,7 +801,7 @@ class ParserTest {
         val source = """
         1 Sas.from: 1 to: 2 
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is MessageSend)
     }
@@ -815,7 +817,7 @@ class ParserTest {
         1 Package.from: 1 to: 2 
         """.trimIndent()
 
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 4)
         val q = ast[0] as MessageSend
         val u = q.messages[0] as UnaryMsg
@@ -836,7 +838,7 @@ class ParserTest {
         val source = """
         alias MyInt = Int
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
         val q = ast[0] as AliasDeclaration
         assert(q.typeName == "MyInt")
@@ -849,7 +851,7 @@ class ParserTest {
         val source = """
             (3 + 5)
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
@@ -859,19 +861,32 @@ class ParserTest {
         val source = """
             ^ 5
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
     @Test
     fun comment() {
-
         val source = """
             // sas
             x = 5
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 1)
+    }
+
+    @Test
+    fun inlineRepl() {
+        val source = """
+            > 5 + 5
+            5 + 5
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val q = ast[0] as Expression
+        val w = ast[1] as Expression
+        assert(q.isInlineRepl)
+        assert(!w.isInlineRepl)
     }
 
     @Test
@@ -881,7 +896,7 @@ class ParserTest {
             mut x = 6
             x <- 7
         """.trimIndent()
-        val ast = getAst(source)
+        val ast = getAstTest(source)
         assert(ast.count() == 2)
         val q = ast[1] as Assign
 
@@ -892,8 +907,9 @@ class ParserTest {
 
 }
 
-fun getAst(source: String): List<Statement> {
-    val tokens = lex(source)
-    val parser = Parser(file = "", tokens = tokens, source = source)
+fun getAstTest(source: String): List<Statement> {
+    val fakeFile = File("Niva.iml")
+    val tokens = lex(source, fakeFile)
+    val parser = Parser(file = fakeFile, tokens = tokens, source = source)
     return parser.statements()
 }

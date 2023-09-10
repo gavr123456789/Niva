@@ -38,6 +38,8 @@ sealed class Expression(
     token: Token,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
+    var isInlineRepl: Boolean = false,
+    var inlineReplCounter: Int = 1,
 ) : Statement(token, isPrivate, pragmas)
 
 class ReturnStatement(

@@ -13,20 +13,19 @@ fun codogenKt(statements: List<Statement>, ident: Int = 0): String = buildString
 fun generateKtStatement(statement: Statement, ident: Int): String = buildString {
     append(
         when (statement) {
-            is MessageSend -> statement.generateMessageCall()
+            is Expression -> statement.generateExpression()
             is VarDeclaration -> statement.generateVarDeclaration()
-            is IdentifierExpr -> statement.name
+//            is IdentifierExpr -> statement.name
 
-            is LiteralExpression.TrueExpr -> "true"
-            is LiteralExpression.FalseExpr -> "false"
-            is LiteralExpression.FloatExpr -> statement.str
-            is LiteralExpression.IntExpr -> statement.str
-            is LiteralExpression.StringExpr -> "\"" + statement.str + "\""
+//            is LiteralExpression.TrueExpr -> "true"
+//            is LiteralExpression.FalseExpr -> "false"
+//            is LiteralExpression.FloatExpr -> statement.str
+//            is LiteralExpression.IntExpr -> statement.str
+//            is LiteralExpression.StringExpr -> "\"" + statement.str + "\""
 
             is MessageDeclaration -> statement.generateMessageDeclaration()
 
             is TypeDeclaration -> statement.generateTypeDeclaration()
-            is Expression -> statement.generateExpression()
             is ReturnStatement -> {
                 "return ${statement.expression.generateExpression()}"
             }

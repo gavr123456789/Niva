@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 fun generateKotlin(source: String): String {
-    val ast = getAst(source)
+    val ast = getAstTest(source)
     val resolver = Resolver(
-        projectName = "common", mainFilePath = File("sas.niva"), statements = ast.toMutableList()
+        projectName = "common", mainFile = File("sas.niva"), statements = ast.toMutableList()
     )
     resolver.resolve(resolver.statements, mutableMapOf())
     val codogenerator = codogenKt(resolver.statements)
@@ -17,9 +17,9 @@ fun generateKotlin(source: String): String {
 }
 
 fun generateKotlinWithoutResolve(source: String): String {
-    val ast = getAst(source)
+    val ast = getAstTest(source)
     val resolver = Resolver(
-        projectName = "common", mainFilePath = File("sas.niva"), statements = ast.toMutableList()
+        projectName = "common", mainFile = File("sas.niva"), statements = ast.toMutableList()
     )
 //    resolver.resolve(resolver.statements, mutableMapOf())
     val codogenerator = codogenKt(resolver.statements)

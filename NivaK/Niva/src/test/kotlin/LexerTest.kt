@@ -4,6 +4,7 @@ import frontend.meta.TokenType
 import frontend.meta.TokenType.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.io.File
 
 
 val helloWorldProgram = """
@@ -161,10 +162,10 @@ int to: x = [
     fun nn() {
         check(
             """
-                min
-
-                ^
-        """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile)
+                    min
+    
+                    ^
+            """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile)
         )
     }
 
@@ -175,7 +176,7 @@ int to: x = [
 
 
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
-        val lexer = Lexer(source, "sas")
+        val lexer = Lexer(source, File("Niva.iml"))
 //        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
         assertEquals(tokens, result)

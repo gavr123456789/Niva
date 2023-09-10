@@ -1,39 +1,29 @@
-import codogen.codogenKt
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
-import frontend.meta.TokenType
-import frontend.parser.parsing.Parser
-import frontend.parser.parsing.statements
-import frontend.parser.types.ast.Statement
 import frontend.typer.Resolver
 import frontend.typer.generateKtProject
 import frontend.util.OS_Type
 import frontend.util.div
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
+import java.io.BufferedWriter
 import java.io.File
+import java.io.FileWriter
 import java.util.concurrent.TimeUnit
 
-fun emptySource() {
-    check("", mutableListOf(TokenType.EndOfFile))
-}
 
-fun punctuation() {
-    check("{}", mutableListOf(TokenType.BinarySymbol, TokenType.BinarySymbol, TokenType.EndOfFile))
-}
+//fun check(source: String, tokens: MutableList<TokenType>) {
+//    val lexer = Lexer(source, "sas")
+//    lexer.fillSymbolTable()
+//    val result = lexer.lex().map { it.kind }
+//    if (tokens != result) {
+//        throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
+//    }
+//}
 
-fun check(source: String, tokens: MutableList<TokenType>) {
-    val lexer = Lexer(source, "sas")
-    lexer.fillSymbolTable()
-    val result = lexer.lex().map { it.kind }
-    if (tokens != result) {
-        throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
-    }
-}
-
-fun lex(source: String): MutableList<Token> {
-    val lexer = Lexer(source, "sas")
+fun lex(source: String, file: File): MutableList<Token> {
+    val lexer = Lexer(source, file)
     lexer.fillSymbolTable()
     return lexer.lex()
 }
@@ -61,6 +51,12 @@ fun runKotlin(kotlinCode: String) {
 
 
 fun runGradleRunInProject(path: String) {
+    // remove repl log file since it will be recreated
+    val w = File(INLINE_REPL)
+    if (w.exists()) {
+        w.delete()
+    }
+
     val file = File(path)
     when (getOSType()) {
         OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run".runCommand(file, true)
@@ -70,6 +66,7 @@ fun runGradleRunInProject(path: String) {
 }
 
 fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String) {
+
     fun listFilesRecursively(directory: File): List<File> {
         val fileList = mutableListOf<File>()
 
@@ -99,7 +96,7 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
 
     val resolver = Resolver(
         projectName = "common",
-        mainFilePath = mainFile,
+        mainFile = mainFile,
         otherFilesPaths = otherFilesPaths,
         statements = mutableListOf()
     )
@@ -116,29 +113,17 @@ fun putInMainKotlinCode(code: String) = buildString {
     append("}\n")
 }
 
-fun kotlinCodeFromNiva(nivaCode: String): String {
-    fun getAst(source: String): List<Statement> {
-        val tokens = lex(source)
-        val parser = Parser(file = "", tokens = tokens, source = "sas.niva")
-        val ast = parser.statements()
-        return ast
-    }
-
-    fun generateKotlin(source: String): String {
-        val ast = getAst(source)
-        val codogenerator = codogenKt(ast)
-        return codogenerator
-    }
-
-    return generateKotlin(nivaCode)
-}
-
 
 fun String.addNivaStd(): String {
 
     val nivaStd = """
         // STD
-        fun Any?.echo() = println(this)
+        import java.io.BufferedWriter
+        import java.io.FileWriter
+        import java.io.IOException
+        
+        inline fun Any?.echo() = println(this)
+        const val INLINE_REPL = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
         
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
@@ -169,6 +154,24 @@ fun String.addNivaStd(): String {
                 x()
             }
         }
+        
+        
+        fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
+            val q = x.toString()
+            // x/y/z.niva:6 5
+            val content = pathToNivaFileAndLine + "|||" + q + "***" + count
+        
+            try {
+                val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
+                writer.append(content)
+                writer.newLine()
+                writer.close()
+            } catch (e: IOException) {
+                println("File error" + e.message)
+            }
+        
+            return x
+        }
         // end of STD
         
     """.trimIndent()
@@ -178,9 +181,108 @@ fun String.addNivaStd(): String {
     }
 }
 
+const val INLINE_REPL = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
+
+
+//fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
+//    val q = x.toString()
+//    // x/y/z.niva:6 5
+//    val content = pathToNivaFileAndLine + "|||" + q + "***" + count
+//
+//    try {
+//        val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
+//        writer.append(content)
+//        writer.newLine()
+//        writer.close()
+//    } catch (e: IOException) {
+//        println("File error" + e.message)
+//    }
+//
+//    return x
+//}
+
+
+class LineAndContent(val line: Int, val content: String, val count: Int)
+
+fun inlineReplSystem(file: File) {
+
+    val lines = file.useLines { it.toList() }
+
+    val q = lines.map {
+        val (patnLineContent, countStr) = it.split("***")
+        val (pathLine, content) = patnLineContent.split("|||")
+        val (path, line) = pathLine.split(":::")
+        val lineAndContent = LineAndContent(line = line.toInt(), content = content, count = countStr.toInt())
+
+        path to lineAndContent
+    }
+
+    val lineNumberToContent = mutableMapOf<String, MutableList<LineAndContent>>()
+    q.forEach { (t, u) ->
+        lineNumberToContent.getOrPut(t) { mutableListOf() }.add(u)
+    }
+
+    addCommentAboveLine(lineNumberToContent)
+}
+
+fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndContent>>) {
+
+    lineNumberToContent.forEach { (k, v) ->
+        val lines = File(k).useLines { it.toMutableList() }
+
+        var linesAdded = 0
+        v.forEach { it ->
+
+
+            if (it.line >= 1 && it.line <= lines.size) {
+                val lineNumToAdd = it.line - 1 + linesAdded
+                val addAfterComma = { lines[lineNumToAdd - 1] += ", ${it.content}" }
+                val addNewLineAbove = { lines.add(lineNumToAdd, "//> ${it.content}") }
+
+
+                // separate when it is already //> on line above, usual >, and > with number
+
+
+                if (lineNumToAdd > 0 && lines[lineNumToAdd - 1].startsWith("//>")) {
+                    // count how many values there already
+                    val countValues = lines[lineNumToAdd - 1].count { it == ',' } + 1
+                    // after this action there will be one more value
+                    val realCount = it.count - 1
+                    if (countValues > realCount) {
+                        val needToDrop = countValues - realCount
+                        val currentValues = lines[lineNumToAdd - 1]
+                            .split(", ")
+                            .drop(needToDrop).toMutableList()
+                        currentValues.add(it.content)
+                        val str = "//> ${currentValues.joinToString(", ")}"
+
+                        lines[lineNumToAdd - 1] = str
+
+                    } else {
+                        lines[lineNumToAdd - 1] += ", ${it.content}"
+                    }
+                } else {
+                    lines.add(lineNumToAdd, "//> ${it.content}")
+                    linesAdded++
+                }
+            } else {
+                throw Exception("Inline REPL System: Got line #${it.line} but all lines are only ${lines.size}")
+            }
+        }
+
+
+        val writer = BufferedWriter(FileWriter(k))
+        for (updatedLine in lines) {
+            writer.write(updatedLine)
+            writer.newLine()
+        }
+        writer.close()
+    }
+}
 
 fun main(args: Array<String>) {
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\main.niva
+
 
     val isThereArgs = args.count() == 2
 
@@ -191,4 +293,8 @@ fun main(args: Array<String>) {
 
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
     runGradleRunInProject(pathToProjectRoot)
+
+    val file = File(INLINE_REPL)
+    if (file.exists())
+        inlineReplSystem(file)
 }

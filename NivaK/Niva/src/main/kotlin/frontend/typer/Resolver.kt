@@ -4,7 +4,6 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
-import frontend.util.checkIfAllStringsEqual
 import frontend.util.removeDoubleQuotes
 import lex
 import java.io.File
@@ -43,7 +42,7 @@ class Resolver(
     // if there cycle types then just remember the unresolved types and then try to resolve them again in the end
     var statements: MutableList<Statement>,
 
-    val mainFilePath: File,
+    val mainFile: File,
     val otherFilesPaths: List<File> = listOf(),
 
     val projects: MutableMap<String, Project> = mutableMapOf(),
@@ -199,21 +198,21 @@ class Resolver(
         projects[projectName] = defaultProject
         ///////generate ast from files////////
         if (statements.isEmpty()) {
-            fun getAst(source: String, fileName: String): List<Statement> {
-                val tokens = lex(source)
-                val parser = Parser(file = fileName, tokens = tokens, source = "sas.niva")
+            fun getAst(source: String, file: File): List<Statement> {
+                val tokens = lex(source, file)
+                val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
                 val ast = parser.statements()
                 return ast
             }
             // generate ast for main file with filling topLevelStatements
             // 1) read content of mainFilePath
             // 2) generate ast
-            val mainSourse = mainFilePath.readText()
-            val mainAST = getAst(source = mainSourse, fileName = mainFilePath.name)
+            val mainSourse = mainFile.readText()
+            val mainAST = getAst(source = mainSourse, file = mainFile)
             // generate ast for others
             val otherASTs = otherFilesPaths.map {
                 val src = it.readText()
-                getAst(source = src, fileName = it.name)
+                getAst(source = src, file = it)
             }
 
             ////resolve all the AST////
@@ -425,7 +424,6 @@ private fun Resolver.resolveStatement(
                     if (it.unaryOrBinaryMsgsForArg != null) {
                         resolve(it.unaryOrBinaryMsgsForArg, previousAndCurrentScope, statement)
                     }
-                    println()
                 }
             }
             currentArgumentNumber = -1
@@ -663,10 +661,14 @@ private fun Resolver.resolveStatement(
 
         is IdentifierExpr -> {
             getTypeForIdentifier(statement, previousScope, currentScope)
+            if (currentLevel == 0) topLevelStatements.add(statement)
+
         }
 
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, previousScope, currentScope)
+            if (currentLevel == 0) topLevelStatements.add(statement)
+
         }
 
         is CodeBlock -> {
@@ -801,6 +803,10 @@ private fun Resolver.resolveStatement(
                 } else {
                     throw Exception("Cant get type of elements of list literal on line ${statement.token.line}")
                 }
+            }
+
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
             }
         }
 
@@ -1096,55 +1102,6 @@ fun Resolver.getPackage(packageName: String): Package {
     return pack
 }
 
-// @isThisTheLastTypeCheck if it is the last, then we throw errors, if not
-fun Resolver.findPackageWhereTypeDeclarated(
-    typeName: String,
-    expectedTypeName: String? = null,
-    isThisTheLastTypeCheck: Boolean = false,
-): String? {
-    val p = this.projects[currentProjectName] ?: throw Exception("there are no such project: $currentProjectName")
-    var result: String? = null
-    val foundResults = mutableListOf<String>()
-
-    p.packages.forEach { (k, v) ->
-        val foundType = v.types[typeName]
-        if (foundType == null) {
-            result = k
-            foundResults.add(k)
-        }
-    }
-
-    if (result == null) {
-        if (isThisTheLastTypeCheck)
-            throw Exception("Can't find $typeName in all packages")
-        else
-            return null // need to add statement to unresolved list
-    }
-
-    if (foundResults.count() == 1) {
-        return result
-    }
-    // found more than one result
-    // need to check them for equality
-    val q = checkIfAllStringsEqual(foundResults)
-    if (isThisTheLastTypeCheck) {
-        if (q) {
-            throw Exception("There is more than one $typeName in all packages")
-        } else {
-            result = null
-        }
-    }
-
-    if (foundResults.count() > 1) {
-        if (expectedTypeName != null && foundResults.contains(expectedTypeName)) {
-            return expectedTypeName
-        } else {
-            result = null
-        }
-    }
-
-    return result
-}
 
 fun Resolver.getCurrentProtocol(typeName: String): Protocol {
     val pack = getPackage(currentPackageName)
