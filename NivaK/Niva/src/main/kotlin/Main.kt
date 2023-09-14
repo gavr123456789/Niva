@@ -50,17 +50,19 @@ fun runKotlin(kotlinCode: String) {
 }
 
 
-fun runGradleRunInProject(path: String) {
+fun runGradleRunInProject(path: String, inlineReplPath: File) {
     // remove repl log file since it will be recreated
-    val w = File(INLINE_REPL)
-    if (w.exists()) {
-        w.delete()
+    if (inlineReplPath.exists()) {
+        inlineReplPath.delete()
     }
 
     val file = File(path)
+    if (!file.exists()) {
+        throw Exception("Path to infra project doesn't exists")
+    }
     when (getOSType()) {
         OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.LINUX -> TODO()
+        OS_Type.LINUX -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
         OS_Type.MAC -> TODO()
     }
 }
@@ -115,7 +117,7 @@ fun putInMainKotlinCode(code: String) = buildString {
 
 
 fun String.addNivaStd(): String {
-
+    val inlineReplPath = File("inline_repl.txt").absolutePath
     val nivaStd = """
         // STD
         import java.io.BufferedWriter
@@ -123,7 +125,7 @@ fun String.addNivaStd(): String {
         import java.io.IOException
         
         inline fun Any?.echo() = println(this)
-        const val INLINE_REPL = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
+        const val INLINE_REPL = "$inlineReplPath" 
         
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
@@ -181,26 +183,7 @@ fun String.addNivaStd(): String {
     }
 }
 
-const val INLINE_REPL = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
-
-
-//fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
-//    val q = x.toString()
-//    // x/y/z.niva:6 5
-//    val content = pathToNivaFileAndLine + "|||" + q + "***" + count
-//
-//    try {
-//        val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
-//        writer.append(content)
-//        writer.newLine()
-//        writer.close()
-//    } catch (e: IOException) {
-//        println("File error" + e.message)
-//    }
-//
-//    return x
-//}
-
+//const val INLINE_REPL_WIN = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\inline_repl.txt"
 
 class LineAndContent(val line: Int, val content: String, val count: Int)
 
@@ -236,13 +219,8 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 
             if (it.line >= 1 && it.line <= lines.size) {
                 val lineNumToAdd = it.line - 1 + linesAdded
-                val addAfterComma = { lines[lineNumToAdd - 1] += ", ${it.content}" }
-                val addNewLineAbove = { lines.add(lineNumToAdd, "//> ${it.content}") }
-
 
                 // separate when it is already //> on line above, usual >, and > with number
-
-
                 if (lineNumToAdd > 0 && lines[lineNumToAdd - 1].startsWith("//>")) {
                     // count how many values there already
                     val countValues = lines[lineNumToAdd - 1].count { it == ',' } + 1
@@ -257,7 +235,6 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
                         val str = "//> ${currentValues.joinToString(", ")}"
 
                         lines[lineNumToAdd - 1] = str
-
                     } else {
                         lines[lineNumToAdd - 1] += ", ${it.content}"
                     }
@@ -266,11 +243,9 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
                     linesAdded++
                 }
             } else {
-
                 throw Exception("Inline REPL System: Got line #${it.line} but all lines are only ${lines.size}")
             }
         }
-
 
         val writer = BufferedWriter(FileWriter(k))
         for (updatedLine in lines) {
@@ -284,26 +259,36 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 fun main(args: Array<String>) {
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
-
     val isThereArgs = args.count() == 2
+
+
+    val inlineRepl = File("inline_repl.txt").absoluteFile
 
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
     val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
+    val pathToTheMainExample = File("src" / "examples" / "Main" / "main.niva").absolutePath
     val pathToNivaProjectRootFile =
-        if (isThereArgs) args[1] else "C:\\Users\\gavr\\Documents\\Projects\\Fun\\Niva\\NivaK\\Niva\\src\\examples\\Main\\main.niva" //"." / "src" / "nivaExampleProject" / "collections.niva"
+        if (isThereArgs) args[1] else pathToTheMainExample
 
     val startTime = System.currentTimeMillis()
+
+
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
+
+
     val secondTime = System.currentTimeMillis()
     val executionTime = secondTime - startTime
     println("Niva compilation time: $executionTime ms")
-    runGradleRunInProject(pathToProjectRoot)
+
+
+    runGradleRunInProject(pathToProjectRoot, inlineRepl)
+
+
     val thirdTime = System.currentTimeMillis()
     val executionTime2 = thirdTime - secondTime
     println("Kotlin compilation + exec time: $executionTime2 ms")
 
 
-    val file = File(INLINE_REPL)
-    if (file.exists())
-        inlineReplSystem(file)
+    if (inlineRepl.exists())
+        inlineReplSystem(inlineRepl)
 }
