@@ -118,6 +118,7 @@ fun putInMainKotlinCode(code: String) = buildString {
 
 fun String.addNivaStd(): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
+    val quote = "\"\"\""
     val nivaStd = """
         // STD
         import java.io.BufferedWriter
@@ -125,7 +126,7 @@ fun String.addNivaStd(): String {
         import java.io.IOException
         
         inline fun Any?.echo() = println(this)
-        const val INLINE_REPL = "$inlineReplPath" 
+        const val INLINE_REPL = $quote$inlineReplPath$quote 
         
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
