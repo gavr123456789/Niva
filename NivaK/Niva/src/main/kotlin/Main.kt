@@ -28,7 +28,7 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
+fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, needWait: Boolean = true) {
     val p = ProcessBuilder(*split(" ").toTypedArray())
         .directory(workingDir)
 
@@ -37,24 +37,21 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
 
-    p.start()
-        .waitFor(60, TimeUnit.MINUTES)
-}
-
-fun runKotlin(kotlinCode: String) {
-    val file = File("sas.kt")
-    val parent = file.absoluteFile.parentFile
-    file.writeText(kotlinCode)
-    "kotlinc sas.kt -language-version 2.0 -include-runtime -d sas.jar".runCommand(parent)
-    "java -jar sas.jar".runCommand(parent, true)
+    val process = p.start()
+    if (needWait) {
+        process.waitFor(60, TimeUnit.MINUTES)
+    }
 }
 
 
 fun runGradleRunInProject(path: String, inlineReplPath: File) {
     // remove repl log file since it will be recreated
-    if (inlineReplPath.exists()) {
-        inlineReplPath.delete()
+    val removeReplFile = {
+        if (inlineReplPath.exists()) {
+            inlineReplPath.delete()
+        }
     }
+    removeReplFile()
 
     val file = File(path)
     if (!file.exists()) {
@@ -64,6 +61,11 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
         OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
         OS_Type.LINUX -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
         OS_Type.MAC -> TODO()
+    }
+
+    if (inlineReplPath.exists()) {
+        inlineReplSystem(inlineReplPath)
+        removeReplFile()
     }
 }
 
@@ -260,7 +262,7 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 fun main(args: Array<String>) {
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
-    val isThereArgs = args.count() == 2
+    val isThereArgs = args.count() >= 2
 
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
@@ -270,6 +272,7 @@ fun main(args: Array<String>) {
     val pathToTheMainExample = File("src" / "examples" / "Main" / "main.niva").absolutePath
     val pathToNivaProjectRootFile =
         if (isThereArgs) args[1] else pathToTheMainExample
+
 
     val startTime = System.currentTimeMillis()
 
@@ -282,7 +285,10 @@ fun main(args: Array<String>) {
     println("Niva compilation time: $executionTime ms")
 
 
-    runGradleRunInProject(pathToProjectRoot, inlineRepl)
+    val isGradleWatching = args.count() > 1 && args[2] == "watch"
+    if (!isGradleWatching) {
+        runGradleRunInProject(pathToProjectRoot, inlineRepl)
+    }
 
 
     val thirdTime = System.currentTimeMillis()
@@ -290,6 +296,6 @@ fun main(args: Array<String>) {
     println("Kotlin compilation + exec time: $executionTime2 ms")
 
 
-    if (inlineRepl.exists())
-        inlineReplSystem(inlineRepl)
+//    if (inlineRepl.exists())
+//        inlineReplSystem(inlineRepl)
 }

@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.meta.compileError
+import frontend.parser.types.ast.TypeAST
 import frontend.parser.types.ast.TypeDeclaration
 
 class Sas(val x: String) {
@@ -14,32 +15,46 @@ class Sas(val x: String) {
 fun TypeDeclaration.generateTypeDeclaration() = buildString {
     append("class ")
     append(typeName)
-    append("(")
 
+    if (typeFields.isNotEmpty()) {
+        append("<")
+        typeFields.forEach({ append(", ") }) {
+            append(it)
+        }
+        append(">")
+    }
+
+
+    append("(")
+    // class Person (
     val c = fields.count() - 1
     fields.forEachIndexed { i, it ->
         if (it.type == null) {
             it.token.compileError("arg must have type")
         }
         // TODO var or val?, maybe add  mut modifier
-        append("var ", it.name, ": ", it.type.name)
+
+        val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
+            it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
+        } else it.type.name
+        append("var ", it.name, ": ", typeName)
         if (c != i) append(", ")
     }
-    // for static methods like constructor
-    append(") {\n") // " { companion object }"
-    append("override fun toString(): String {\n")
-    //
-    append("        return \"", typeName, " ")
+    append(")")
+    // class Person (age: Int)
 
-    val q = fields.map {
+
+    /// Override toString
+    append(" {\n")
+    append("\toverride fun toString(): String {\n")
+    append("\t\treturn \"", typeName, " ")
+
+    val toStringFields = fields.joinToString(" ") {
         it.name + ": " + "$" + it.name
-    }.joinToString(" ")
+    }
 
-    append(q)
-
-    append("\"")
-
-    //
+    append(toStringFields, "\"")
+    // for static methods like constructor
     append(
         """
         

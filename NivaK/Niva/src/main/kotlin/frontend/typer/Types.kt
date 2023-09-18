@@ -7,7 +7,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 
 data class MsgSend(
-    val `package`: String,
+    val pkg: String,
     val selector: String,
     val project: String,
     val type: MessageDeclarationType
@@ -53,83 +53,95 @@ class KeywordMsgMetaData(
 
 data class TypeField(
     val name: String,
-    val type: Type
+    var type: Type //when generic, we need to reassign it to real type
 )
 
 
 sealed class Type(
-    val name: String,
-    val `package`: String,
+    val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField
+    val pkg: String,
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
 ) {
+    override fun toString(): String {
+        return "Type: $name"
+    }
 
 
     class Lambda(
         val args: MutableList<TypeField>,
         val returnType: Type,
-        `package`: String = "common",
+        pkg: String = "common",
         isPrivate: Boolean = false,
-    ) : Type("codeblock${args.map { it.name }} -> ${returnType.name}", `package`, isPrivate)
+    ) : Type("codeblock${args.map { it.name }} -> ${returnType.name}", pkg, isPrivate)
 
     sealed class InternalLike(
         typeName: InternalTypes,
-        `package`: String,
+        pkg: String,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
-    ) : Type(typeName.name, `package`, isPrivate, protocols)
+    ) : Type(typeName.name, pkg, isPrivate, protocols)
 
     class InternalType(
         typeName: InternalTypes,
-        `package`: String,
+        pkg: String,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : InternalLike(typeName, `package`, isPrivate, protocols)
+    ) : InternalLike(typeName, pkg, isPrivate, protocols)
 
     class NullableInternalType(
         name: InternalTypes,
-        `package`: String,
+        pkg: String,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
-    ) : InternalLike(name, `package`, isPrivate, protocols)
+    ) : InternalLike(name, pkg, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,
-        val typeArgumentList: List<Type>,
+        var typeArgumentList: List<Type>,
         val fields: List<TypeField>,
         isPrivate: Boolean = false,
-        `package`: String,
+        pkg: String,
         protocols: MutableMap<String, Protocol>
-    ) : Type(name, `package`, isPrivate, protocols)
+    ) : Type(name, pkg, isPrivate, protocols)
 
     class UserType(
         name: String,
-        typeArgumentList: List<Type>,
+        typeArgumentList: List<Type>, // for <T, G>
         fields: List<TypeField>,
         isPrivate: Boolean = false,
-        `package`: String,
+        pkg: String,
         protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
-    class GenericType(
+    class KnownGenericType(
         val mainType: Type,
         name: String,
         typeArgumentList: List<Type>,
         fields: List<TypeField>,
         isPrivate: Boolean = false,
-        `package`: String,
+        pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
+    class UnknownGenericType(
+        name: String,
+        typeArgumentList: List<Type> = listOf(),
+        fields: List<TypeField> = listOf(),
+        isPrivate: Boolean = true,
+        pkg: String = "common",
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
     // like List::T
     // not sure if it is needed
 //    class UnknownGenericType(
-//        `package`: String,
+//        pkg: String,
 //        typeName: InternalTypes = InternalTypes.Unknown,
 //        isPrivate: Boolean = false,
 //        protocols: MutableMap<String, Protocol> = mutableMapOf()
-//    ) : InternalLike(typeName, `package`, isPrivate, protocols)
+//    ) : InternalLike(typeName, pkg, isPrivate, protocols)
 
 
     class NullableUserType(
@@ -137,9 +149,9 @@ sealed class Type(
         typeArgumentList: List<Type>,
         fields: List<TypeField>,
         isPrivate: Boolean = false,
-        `package`: String,
+        pkg: String,
         protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, `package`, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
 }
 
@@ -170,7 +182,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
     when (this) {
         is TypeAST.InternalType -> {
             return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
-                this.token.compileError("Can't find type $name")
+                this.token.compileError("Can't find default type: $name")
                 // TODO better inference, depend on context
 
             }
@@ -178,7 +190,17 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
         }
 
         is TypeAST.UserType -> {
-            return typeTable[name] ?: this.token.compileError("Can't find type $name")
+            if (name.length == 1 && name[0].isUpperCase()) {
+                return Type.UnknownGenericType(name)
+            }
+//            val w = typeTable[name]
+//            if (w is Type.UserType) {
+//                if (w.typeArgumentList.isNotEmpty()) {
+//                    println()
+//                }
+//            }
+            return typeTable[name]
+                ?: this.token.compileError("Can't find user type: $name")
         }
 
         is TypeAST.Lambda -> {
@@ -207,16 +229,67 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
     return result
 }
 
-fun TypeDeclaration.toType(packagge: String, typeTable: Map<TypeName, Type>): Type {
+fun TypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type {
+
+    val fieldsTyped = fields.map { it.toTypeField(typeTable) }
+//    fieldsTyped.forEachIndexed { index, typeField ->
+//        val q = fields[index].type
+//        val typeFieldType = typeField.type
+//        if (q is TypeAST.UserType && typeFieldType is Type.UserLike) {
+//            q.typeArgumentList
+//
+//            typeFieldType.typeArgumentList.forEachIndexed { i, it ->
+//                it.name = q.typeArgumentList[i].name
+//            }
+//        }
+//    }
+
+    fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type> {
+        val result = mutableListOf<Type>()
+        fields2.forEachIndexed { i, it ->
+            val type = it.type
+
+            if (type is Type.UserLike) {
+                val qwe = type.typeArgumentList.mapIndexed { i2, it2 ->
+                    val field = fields[i].type
+                    val typeName =
+                        if (field is TypeAST.UserType) {
+                            field.typeArgumentList[i2].name
+                        } else {
+                            throw Exception("field is not user type")
+                        }
+                    Type.UnknownGenericType(
+                        name = typeName
+                    )
+                }
+//                result.addAll(type.typeArgumentList)
+                result.addAll(qwe)
+
+                if (type.fields.isNotEmpty()) {
+                    result.addAll(getAllGenericTypesFromFields(type.fields, fields))
+                }
+            }
+        }
+        return result
+    }
+
+    val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
+    val typeFields2 = getAllGenericTypesFromFields(fieldsTyped, fields)
+    val typeFields = typeFields1 + typeFields2
 
     val result = Type.UserType(
         name = typeName,
-        typeArgumentList = listOf(), // for now it's impossible to declare msg for List<Int>
-        fields = fields.map { it.toTypeField(typeTable) },
+        typeArgumentList = typeFields,
+        fields = fieldsTyped,
         isPrivate = isPrivate,
-        `package` = packagge,
+        pkg = pkg,
         protocols = mutableMapOf()
     )
+    this.typeFields.addAll(typeFields.map { it.name })
+
+
+
+
 
     return result
 }
