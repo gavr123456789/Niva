@@ -17,7 +17,7 @@ typealias TypeName = String
 inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.InternalType> {
     return type to Type.InternalType(
         typeName = type,
-        `package` = "common",
+        pkg = "common",
     )
 }
 
@@ -250,7 +250,7 @@ fun Resolver.resolveDeclarations(
 
     when (statement) {
         is TypeDeclaration -> {
-            // if not then add
+
             val newType = statement.toType(currentPackageName, typeTable)
             addNewType(newType, statement)
         }
@@ -470,8 +470,10 @@ private fun Resolver.resolveStatement(
             if (receiverText == "Project") {
                 statement.token.compileError("We cant get here, type Project are ignored")
             }
+            val receiverIsNotType = q == null
 
-            if (q == null) {
+            if (receiverIsNotType) {
+                // setter or regular keyword call
                 val checkForSetter = { receiverType2: Type ->
                     // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
 
@@ -499,18 +501,19 @@ private fun Resolver.resolveStatement(
 
                     // KOSTЫL для list2 = list.map...
                     statement.type =
-                        if (q.returnType.name == InternalTypes.List.name && receiverType is Type.GenericType && receiverType.mainType.name == "List") {
+                        if (q.returnType.name == InternalTypes.List.name && receiverType is Type.KnownGenericType && receiverType.mainType.name == "List") {
                             receiverType
                         } else q.returnType
                 }
             } else {
+                // this is constructor
                 // check that all fields are filled
+                var replacerTypeIfItGeneric: Type? = null
                 if (receiverType is Type.UserType) {
                     val receiverFields = receiverType.fields
+                    // check that amount of arguments if right
                     if (statement.args.count() != receiverFields.count()) {
-//                        statement.args
-                        val q =
-                            statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
+
                         val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
                         val setOfNeededFields = receiverFields.map { it.name }.toSet()
                         val extraOrMissed = statement.args.count() > receiverFields.count()
@@ -521,23 +524,63 @@ private fun Resolver.resolveStatement(
                                 (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
 
 
+                        val errorText =
+                            statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
                         val text =
                             if (extraOrMissed)
-                                "For $q constructor call, extra fields are listed: $whatIsMissingOrExtra"
+                                "For $errorText constructor call, extra fields are listed: $whatIsMissingOrExtra"
                             else
-                                "For $q constructor call, not all fields are listed, you missed: $whatIsMissingOrExtra"
+                                "For $errorText constructor call, not all fields are listed, you missed: $whatIsMissingOrExtra"
                         statement.token.compileError(text)
                     }
 
                     statement.args.forEachIndexed { i, arg ->
-                        val typeField = receiverFields[i]
-                        if (typeField.name != arg.selectorName) {
-                            statement.token.compileError("In constructor message for type ${statement.receiver.str} field ${typeField.name} != ${arg.selectorName}")
+                        val typeField = receiverFields[i].name
+                        // check that every arg name is right
+                        if (typeField != arg.selectorName) {
+                            statement.token.compileError("In constructor message for type ${statement.receiver.str} field $typeField != ${arg.selectorName}")
                         }
+                    }
+
+                    // replace every Generic type with real
+                    if (receiverType.typeArgumentList.isNotEmpty()) {
+                        replacerTypeIfItGeneric = Type.UserType(
+                            name = receiverType.name,
+                            typeArgumentList = receiverType.typeArgumentList.toList(),
+                            fields = receiverType.fields.toList(),
+                            isPrivate = receiverType.isPrivate,
+                            pkg = receiverType.pkg,
+                            protocols = receiverType.protocols.toMutableMap()
+                        )
+                        // match every type argument with fields
+                        // replace fields types to real one
+                        val map = mutableMapOf<String, Type>()
+                        replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
+                            val fieldsOfThisType =
+                                replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
+                            fieldsOfThisType.forEach { genericField ->
+                                // find real type from arguments
+                                val real = statement.args.find { it.selectorName == genericField.name }
+                                    ?: statement.token.compileError("Can't find real type for field: ${genericField.name} of generic type: ${genericField.type.name}")
+                                val realType = real.keywordArg.type
+                                    ?: real.keywordArg.token.compileError("Panic: ${real.selectorName} doesn't have type")
+                                genericField.type = realType
+                                map[typeArg.name] = realType
+                            }
+                        }
+                        // replace typeFields to real ones
+                        val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
+                        map.forEach { (fieldName, fieldRealType) ->
+                            val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
+                            realTypes[fieldIndex] = fieldRealType
+                        }
+                        replacerTypeIfItGeneric.typeArgumentList = realTypes
+
+
                     }
                 }
                 statement.kind = KeywordLikeType.Constructor
-                statement.type = receiverType
+                statement.type = replacerTypeIfItGeneric ?: receiverType
             }
 
         }
@@ -564,23 +607,36 @@ private fun Resolver.resolveStatement(
                 is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
             }
             val receiverType = receiver.type!!
-            // find message for this type
-            val messageReturnType = findBinaryMessageType(receiverType, statement.selectorName, statement.token)
-            statement.type = messageReturnType
+
 
             // resolve messages
             if (statement.unaryMsgsForArg.isNotEmpty()) {
+
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
                 resolve(statement.unaryMsgsForArg, previousAndCurrentScope, statement)
                 currentLevel--
             }
-            if (statement.unaryMsgsForReceiver.isNotEmpty()) {
+
+            val isUnaryForReceiver = statement.unaryMsgsForReceiver.isNotEmpty()
+            if (isUnaryForReceiver) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
                 resolve(statement.unaryMsgsForReceiver, previousAndCurrentScope, statement)
                 currentLevel--
             }
+
+            // find message for this type
+            val messageReturnType =
+                if (isUnaryForReceiver)
+                    findBinaryMessageType(
+                        statement.unaryMsgsForReceiver.last().type!!,
+                        statement.selectorName,
+                        statement.token
+                    )
+                else
+                    findBinaryMessageType(receiverType, statement.selectorName, statement.token)
+            statement.type = messageReturnType
 
         }
 
@@ -671,27 +727,22 @@ private fun Resolver.resolveStatement(
                 statement.kind = UnaryMsgKind.Unary
                 statement.type = messageReturnType
             }
-
-
         }
 
         is MessageSend -> {
             resolveTypeForMessageSend(statement)
             if (currentLevel == 0) topLevelStatements.add(statement)
-
         }
 
 
         is IdentifierExpr -> {
             getTypeForIdentifier(statement, previousScope, currentScope)
             if (currentLevel == 0) topLevelStatements.add(statement)
-
         }
 
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, previousScope, currentScope)
             if (currentLevel == 0) topLevelStatements.add(statement)
-
         }
 
         is CodeBlock -> {
@@ -735,7 +786,7 @@ private fun Resolver.resolveStatement(
                         val weew = currentArgType.type.args[0].type
                         val receiverTypeArg = rootStatement.receiver.type
                         val onlyArgOfLambdaType =
-                            if (weew.name == InternalTypes.Unknown.name && receiverTypeArg is Type.GenericType) {
+                            if (weew.name == InternalTypes.Unknown.name && receiverTypeArg is Type.KnownGenericType) {
                                 receiverTypeArg.typeArgumentList[0]
                             } else weew
 
@@ -766,7 +817,7 @@ private fun Resolver.resolveStatement(
             val type = Type.Lambda(
                 args = args,
                 returnType = returnType,
-                `package` = currentPackageName
+                pkg = currentPackageName
             )
             statement.type = type
 
@@ -786,7 +837,7 @@ private fun Resolver.resolveStatement(
                             type = Type.Lambda(
                                 args = mutableListOf(),
                                 returnType = Resolver.defaultTypes[InternalTypes.Any]!!,
-                                `package` = currentPackageName
+                                pkg = currentPackageName
                             )
                         )
                     )
@@ -813,12 +864,12 @@ private fun Resolver.resolveStatement(
 
                     val listProtocols = listType.protocols
 
-                    val genericType = alreadyExistsListType ?: Type.GenericType(
+                    val genericType = alreadyExistsListType ?: Type.KnownGenericType(
                         mainType = listType,
                         name = typeName,
                         typeArgumentList = listOf(w),
                         fields = listOf(),
-                        `package` = currentPackageName,
+                        pkg = currentPackageName,
                         protocols = listProtocols
                     )
 

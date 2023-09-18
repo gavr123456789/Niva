@@ -1,0 +1,10 @@
+type Box x: T y: G
+type Xob x: T y: G
+cube = Box x: 1 y: "sas"
+q = cube x + 5
+
+notCube = Box x: "sas" y: 42
+w = notCube y + 5
+
+q echo
+w echo

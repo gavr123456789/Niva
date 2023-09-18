@@ -573,7 +573,7 @@ class ParserTest {
 
 
     @Test
-    fun typeDeclarationManyLinesGeneric2() {
+    fun typeDeclarationUnion() {
         val source = """
         union Shape area: int =
             | Rectangle => width: int height: int

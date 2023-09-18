@@ -56,20 +56,12 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 // end of STD
 
 fun main() {
-    val cube = HyperCube(1, 2, 3)
-    (1).toDo(2, {it.echo()})
-    (2).downToDo(1, {it.echo()})
-    var x = 2
-    "whileTrue".echo()
-    ({x > 0}).whileTrue({
-        x.echo()
-        inlineRepl(x, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\Main\main.niva:::13""", 1)
-        x = x.dec()
-    })
-    "whileFalse".echo()
-    ({x == 7}).whileFalse({
-        x.echo()
-        x = x.inc()
-    })
+    val box = Box(1, "sas")
+    val box2 = Box("sus", 2)
+    val boxInXob = Xob(box, box2)
+    boxInXob.box.x.echo()
+    boxInXob.box.y.echo()
+    boxInXob.box2.x.echo()
+    boxInXob.box2.y.echo()
     
 }

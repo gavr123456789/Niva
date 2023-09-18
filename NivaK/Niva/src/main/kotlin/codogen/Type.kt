@@ -10,7 +10,8 @@ fun Type.generateType(): String {
             this.name
         }
 
-        is Type.GenericType -> TODO()
+        is Type.KnownGenericType -> TODO()
+        is Type.UnknownGenericType -> TODO()
         is Type.NullableUserType -> TODO()
         is Type.UserType -> TODO()
     }

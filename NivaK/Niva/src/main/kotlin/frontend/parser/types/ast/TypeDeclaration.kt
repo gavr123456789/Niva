@@ -68,7 +68,7 @@ fun TypeAST.toKotlinStr(): String {
 class TypeFieldAST(
     val name: String,
     val type: TypeAST?,
-    val token: Token
+    val token: Token,
 )
 
 interface ITypeDeclaration {
@@ -80,9 +80,14 @@ class TypeDeclaration(
     override val typeName: String,
     override val fields: List<TypeFieldAST>,
     token: Token,
+    val typeFields: MutableList<String> = mutableListOf(),
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Declaration(token, isPrivate, pragmas), ITypeDeclaration
+) : Declaration(token, isPrivate, pragmas), ITypeDeclaration {
+    override fun toString(): String {
+        return "TypeDeclaration($typeName)"
+    }
+}
 
 class UnionBranch(
     override val typeName: String,
