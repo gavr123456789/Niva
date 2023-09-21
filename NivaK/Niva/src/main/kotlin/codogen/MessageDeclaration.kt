@@ -72,7 +72,17 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
 
     // if this is constructor, then method on Companion
-    append("fun ", forType.name)
+    append("fun ")
+
+    val isThereUnresolvedTypeArgs = typeArgs.filter { it.count() == 1 && it[0].isUpperCase() }
+    if (isThereUnresolvedTypeArgs.isNotEmpty()) {
+        // There can be resolved type args like box::Box::Int, then we don't need to add them
+        append("<")
+        append(isThereUnresolvedTypeArgs.joinToString(", "))
+        append(">")
+    }
+
+    append(forType.name)
     if (isStatic) {
         append(".Companion")
     }

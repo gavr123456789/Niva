@@ -904,6 +904,41 @@ class ParserTest {
         assert(q.value is LiteralExpression.IntExpr)
     }
 
+//    @Test
+//    fun unaryOnManyLines() {
+//
+//        val source = """
+//            obj call1
+//              call2
+//              call3
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val q = ast[0] as MessageSendUnary
+//        assert(q.messages.count() == 3)
+//        assert(q.messages[0].selectorName == "call1")
+//        assert(q.messages[1].selectorName == "call2")
+//        assert(q.messages[2].selectorName == "call3")
+//    }
+
+//    @Test
+//    fun unaryOnManyLines2() {
+//
+//        val source = """
+//            obj
+//              call1
+//              call2
+//              call3
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val q = ast[0] as MessageSendUnary
+//        assert(q.messages.count() == 3)
+//        assert(q.messages[0].selectorName == "call1")
+//        assert(q.messages[1].selectorName == "call2")
+//        assert(q.messages[2].selectorName == "call3")
+//
+//    }
 
 }
 
