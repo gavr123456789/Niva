@@ -177,7 +177,7 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
+fun TypeAST.toType(typeTable: Map<TypeName, Type>, fieldName: String? = null): Type {
 
     when (this) {
         is TypeAST.InternalType -> {
@@ -193,12 +193,38 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
             if (name.length == 1 && name[0].isUpperCase()) {
                 return Type.UnknownGenericType(name)
             }
-//            val w = typeTable[name]
-//            if (w is Type.UserType) {
-//                if (w.typeArgumentList.isNotEmpty()) {
-//                    println()
-//                }
-//            }
+
+            if (this.typeArgumentList.isNotEmpty()) {
+                // need to know, what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
+
+                val type = typeTable[name] ?: this.token.compileError("Can't find user type: $name")
+
+                if (type is Type.UserType) {
+                    val letterToTypeMap = mutableMapOf<String, Type>()
+
+                    if (this.typeArgumentList.count() != type.typeArgumentList.count()) {
+                        throw Exception("Count ${this.name}'s type arguments not the same it's AST version ")
+                    }
+                    val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
+                        val rer = it.toType(typeTable)
+                        letterToTypeMap[type.typeArgumentList[i].name] = rer
+                        rer
+                    }
+
+
+                    type.typeArgumentList = typeArgs
+                    // replace fields types from T to real
+                    type.fields.forEachIndexed { i, field ->
+                        val fieldType = letterToTypeMap[field.type.name]
+                        if (fieldType != null) {
+                            field.type = fieldType
+                        }
+                    }
+                    return type
+                } else {
+                    this.token.compileError("Panic: type: ${this.name} with typeArgumentList cannot but be Type.UserType")
+                }
+            }
             return typeTable[name]
                 ?: this.token.compileError("Can't find user type: $name")
         }
@@ -232,17 +258,6 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
 fun TypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type {
 
     val fieldsTyped = fields.map { it.toTypeField(typeTable) }
-//    fieldsTyped.forEachIndexed { index, typeField ->
-//        val q = fields[index].type
-//        val typeFieldType = typeField.type
-//        if (q is TypeAST.UserType && typeFieldType is Type.UserLike) {
-//            q.typeArgumentList
-//
-//            typeFieldType.typeArgumentList.forEachIndexed { i, it ->
-//                it.name = q.typeArgumentList[i].name
-//            }
-//        }
-//    }
 
     fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type> {
         val result = mutableListOf<Type>()
@@ -286,10 +301,6 @@ fun TypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type {
         protocols = mutableMapOf()
     )
     this.typeFields.addAll(typeFields.map { it.name })
-
-
-
-
 
     return result
 }

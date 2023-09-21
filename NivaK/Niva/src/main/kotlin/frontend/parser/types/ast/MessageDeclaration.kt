@@ -56,6 +56,7 @@ class MessageDeclarationKeyword(
     body: List<Statement>,
     returnType: TypeAST?,
     isSingleExpression: Boolean,
+    val typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)

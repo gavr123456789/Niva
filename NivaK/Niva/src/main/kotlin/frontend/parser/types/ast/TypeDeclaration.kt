@@ -8,7 +8,7 @@ sealed class TypeAST(
     val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
-    pragmas: List<Pragma>
+    pragmas: List<Pragma>,
 ) : Statement(token, isPrivate, pragmas) {
 //    val name: String
 //        get() = this.type.name
@@ -22,7 +22,7 @@ sealed class TypeAST(
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf()
+        pragmas: List<Pragma> = listOf(),
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 
     class InternalType(
@@ -48,7 +48,14 @@ sealed class TypeAST(
 fun TypeAST.toKotlinStr(): String {
 //    val x: (String, Int) -> Int = {}
     return when (this) {
-        is TypeAST.InternalType, is TypeAST.UserType -> name
+        is TypeAST.InternalType -> name
+        is TypeAST.UserType -> buildString {
+            append(name)
+            if (typeArgumentList.isNotEmpty()) {
+                append("<${typeArgumentList.joinToString(", ") { it.name }}>")
+            }
+        }
+
         is TypeAST.Lambda -> {
             buildString {
                 append("(")

@@ -282,7 +282,7 @@ fun main(args: Array<String>) {
 
     val secondTime = System.currentTimeMillis()
     val executionTime = secondTime - startTime
-    println("Niva compilation time: $executionTime ms")
+//    println("Niva compilation time: $executionTime ms")
 
 
     val isGradleWatching = args.count() > 1 && args[2] == "watch"
@@ -293,7 +293,7 @@ fun main(args: Array<String>) {
 
     val thirdTime = System.currentTimeMillis()
     val executionTime2 = thirdTime - secondTime
-    println("Kotlin compilation + exec time: $executionTime2 ms")
+//    println("Kotlin compilation + exec time: $executionTime2 ms")
 
 
 //    if (inlineRepl.exists())

@@ -86,13 +86,25 @@ fun Parser.messageSend(): MessageSend {
 // 1^ sas sus sos -> {sas sus sos}
 fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
+
+    // if we have
+    // a
+    //   b
+    // situation, where b is unary for a
+//    if (check(TokenType.EndOfLine) && check(TokenType.Identifier, 1) && !check(TokenType.Colon, 2) &&
+//        peek(1).spaces > receiver.token.spaces
+//    ) {
+//        step()
+//    }
+
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
         if (identifier.typeAST != null) {
             identifier.token.compileError("Error: You can't put type on a unary message send: ${identifier.token.lexeme + "::" + identifier.typeAST.name}, line: ${identifier.token.line}")
         }
         if (check(TokenType.Colon)) {
-            identifier.token.compileError("Error: This is not unary, but a keyword with path")
+//            identifier.token.compileError("Error: This is not unary, but a keyword with path")
+            throw Exception("This is not unary, but a keyword with path")
         }
         // each unary message must have previous unary as receiver because
         // person name echo -- receiver of echo is name, not person
@@ -105,6 +117,14 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
             identifier.token
         )
         unaryMessages.add(unaryFirstMsg)
+
+
+//        if (check(TokenType.EndOfLine) && check(TokenType.Identifier, 1) && !check(TokenType.Colon, 2) &&
+//            peek(1).spaces > receiver.token.spaces
+//        ) {
+//            step()
+//        }
+
     }
 
     return unaryMessages

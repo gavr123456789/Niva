@@ -285,7 +285,24 @@ fun Resolver.resolveDeclarations(
                 is MessageDeclarationBinary -> addNewBinaryMessage(statement)
                 is MessageDeclarationKeyword -> {
                     statement.args.forEach {
-                        bodyScope[it.name] = it.type!!.toType(typeTable)
+                        val astType = it.type!!
+                        val type = astType.toType(typeTable, it.name)
+
+                        if (type.name == it.type.name) {
+                            bodyScope[it.name] = type
+                        } else {
+                            bodyScope[it.name] = type
+                        }
+                        if (type is Type.UnknownGenericType) {
+                            statement.typeArgs.add(type.name)
+                        }
+                        if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
+                            statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
+                            if (type.name == it.type.name) {
+                                bodyScope[it.name] = type
+                            }
+                        }
+
                     }
                     addNewKeywordMessage(statement)
                 }
@@ -410,6 +427,8 @@ private fun Resolver.resolveStatement(
                     if (it.unaryOrBinaryMsgsForArg != null) {
                         resolve(it.unaryOrBinaryMsgsForArg, previousAndCurrentScope, statement)
                     }
+                } else {
+                    println()
                 }
             }
             currentArgumentNumber = -1
@@ -575,9 +594,8 @@ private fun Resolver.resolveStatement(
                             realTypes[fieldIndex] = fieldRealType
                         }
                         replacerTypeIfItGeneric.typeArgumentList = realTypes
-
-
                     }
+
                 }
                 statement.kind = KeywordLikeType.Constructor
                 statement.type = replacerTypeIfItGeneric ?: receiverType

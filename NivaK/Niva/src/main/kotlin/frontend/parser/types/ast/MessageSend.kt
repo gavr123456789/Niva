@@ -22,7 +22,7 @@ sealed class MessageSend(
     token: Token
 ) : Receiver(type, token) {
     override fun toString(): String {
-        return "${messages.map { it.toString() }}"
+        return "${receiver.token.lexeme} ${messages.map { it.toString() }}"
     }
 }
 
