@@ -56,12 +56,11 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 // end of STD
 
 fun main() {
-    val box = Box(1, "sas")
-    val box2 = Box("sus", 2)
-    val boxInXob = Xob(box, box2)
-    boxInXob.box.x.echo()
-    boxInXob.box.y.echo()
-    boxInXob.box2.x.echo()
-    boxInXob.box2.y.echo()
+    val littleList = mutableListOf(1, 2, 3, 4, 5)
+    littleList.echo()
+    val mappedList = (littleList).map({it.toString() + "s"})
+    mappedList.echo()
+    val mappedList2 = (mappedList).map({((it).get(0)).digitToInt() + 1})
+    mappedList2.echo()
     
 }

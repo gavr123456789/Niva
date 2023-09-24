@@ -8,7 +8,7 @@ sealed class TypeAST(
     val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
-    pragmas: List<Pragma>,
+    pragmas: List<Pragma>
 ) : Statement(token, isPrivate, pragmas) {
 //    val name: String
 //        get() = this.type.name
@@ -22,7 +22,7 @@ sealed class TypeAST(
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf(),
+        pragmas: List<Pragma> = listOf()
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 
     class InternalType(
@@ -121,6 +121,8 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any, List, Map, Set,
-    Unknown // For generics like T
+    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any,
+
+    //    List, Map, Set,
+//    Unknown // For generics like T
 }
