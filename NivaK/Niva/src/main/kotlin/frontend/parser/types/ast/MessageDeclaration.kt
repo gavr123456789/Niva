@@ -59,7 +59,11 @@ class MessageDeclarationKeyword(
     val typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
+    override fun toString(): String {
+        return "${forType.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: "Unit"}"
+    }
+}
 
 class ConstructorDeclaration(
     val msgDeclaration: MessageDeclaration,

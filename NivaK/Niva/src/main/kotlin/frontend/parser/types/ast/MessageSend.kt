@@ -45,7 +45,11 @@ class MessageSendKeyword(
     override val messages: List<Message>, // can be unary or binary after keyword
     type: Type? = null,
     token: Token
-) : MessageSend(receiver, messages, type, token)
+) : MessageSend(receiver, messages, type, token) {
+    override fun toString(): String {
+        return messages.joinToString(" ") { it.toString() }
+    }
+}
 
 
 // binaryMessage | unaryMessage | keywordMessage
@@ -92,8 +96,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        val receiverName = receiver
-        return "KeywordCall($receiverName ${args.map { it.toString() }})"
+        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.selectorName + ": " + it.keywordArg.type }})"
     }
 }
 

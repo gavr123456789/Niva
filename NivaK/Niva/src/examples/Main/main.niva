@@ -1,10 +1,24 @@
-type Box x: T
+//type Box x: T y: G
+//
+//Box(A, B) k::A v::B = [
+//    this x: k
+//    this y: v
+//]
+//
+//box = Box x: 40 y: "sas"
+//box k: 23 v: "qwe"
 
-Int box::Box::Int = [
-  (box x + this) echo
-]
+//Int sas::[T -> G] s::T -> G = [
+//  ^ sas
+//]
+//
+//x = 1 sas: "sas" + "sus"
+//> x + "sыs"
 
-box = Box x: 40
-
-2 box: box
-
+//q = ("1s" get: 0) digitToInt + 1
+littleList = {1 2 3 4 5}
+littleList echo
+mappedList = littleList map: [it toString + "s"]
+mappedList echo
+mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
+mappedList2 echo
