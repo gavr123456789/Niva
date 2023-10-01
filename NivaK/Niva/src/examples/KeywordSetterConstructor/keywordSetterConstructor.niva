@@ -5,7 +5,7 @@ Person from::String = [
 
 person = Person name: "sas"
 person name: "new name"
-person from: "fghfgh "
-//> Person name: fghfgh 
+person from: "qwe"
+//> Person name: qwe
 >person
 
