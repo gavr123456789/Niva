@@ -1,7 +1,6 @@
 import frontend.parser.types.ast.*
 import frontend.typer.Resolver
 import frontend.typer.Type
-import frontend.typer.generateKtProject
 import frontend.typer.resolve
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -121,7 +120,7 @@ class ResolverTest {
 
         val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        resolver.resolve(resolver.statements, mutableMapOf())
         val proj = resolver.projects["common"]!!
         val pack = proj.packages["files"]!!
         val protocol = (pack.types["Person"]!!) as Type.UserType //!!.protocols["path"]!!
@@ -196,9 +195,8 @@ class ResolverTest {
 
         val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        resolver.resolve(resolver.statements, mutableMapOf())
 
-//        assert(statements.count() == 3)
         assert(resolver.currentPackageName == "files")
         assert(resolver.currentProjectName == "common")
         assert(resolver.currentProtocolName == "path")
@@ -209,76 +207,75 @@ class ResolverTest {
         val unary = protocol.unaryMsgs["filePath"]!!
         assert(unary.name == "filePath")
 
-
         assert(resolver.topLevelStatements.isNotEmpty())
         assert(resolver.topLevelStatements.count() == 3)
     }
+//
+//    @Test
+//    fun recreateKtFolder() {
+//        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+//
+//        val source = """
+//            1 echo
+//            9 echo
+//            Project package: "files" protocol: "path"
+//            x = 8
+//            type Person name: String age: Int
+//            Person filePath -> Unit = [1 echo]
+//        """.trimIndent()
+//
+//
+//        val ast = getAstTest(source).toMutableList()
+//
+//        val resolver = createDefaultResolver(ast)
+//        resolver.resolve(resolver.statements, mutableMapOf())
+//
+//        resolver.generateKtProject(path)
+//    }
 
-    @Test
-    fun recreateKtFolder() {
-        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
-
-        val source = """
-            1 echo
-            9 echo
-            Project package: "files" protocol: "path"
-            x = 8
-            type Person name: String age: Int
-            Person filePath -> Unit = [1 echo]
-        """.trimIndent()
-
-
-        val ast = getAstTest(source).toMutableList()
-
-        val resolver = createDefaultResolver(ast)
-        resolver.resolve(resolver.statements, mutableMapOf())
-
-        resolver.generateKtProject(path)
-    }
-
-    @Test
-    fun manySources() {
-        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
-
-        val source1 = """
-            1 echo
-            9 echo
-            Project package: "files" protocol: "path"
-            x = 8
-            type Person name: String age: Int
-            Person filePath -> Unit = [1 echo]
-        """.trimIndent()
-
-        val source2 = """
-            1 echo
-            9 echo
-            Project package: "collections" 
-            x = 8
-            type MegaMassive count: Int
-            MegaMassive add -> Unit = [1 echo]
-        """.trimIndent()
-
-        val source3 = """
-            1 echo
-            9 echo
-            Project package: "collectionsUnlim" 
-            x = 8
-            type MegaMassive2 count: Int
-            MegaMassive2 add -> Unit = [1 echo]
-        """.trimIndent()
-
-        val ast1 = getAstTest(source1).toMutableList()
-        val ast2 = getAstTest(source2).toMutableList()
-        val ast3 = getAstTest(source3).toMutableList()
-
-        val ast = ast3 + ast2
-
-        val resolver = createDefaultResolver(ast)
-
-        resolver.resolve(resolver.statements, mutableMapOf())
-
-        resolver.generateKtProject(path)
-    }
+//    @Test
+//    fun manySources() {
+//        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
+//
+//        val source1 = """
+//            1 echo
+//            9 echo
+//            Project package: "files" protocol: "path"
+//            x = 8
+//            type Person name: String age: Int
+//            Person filePath -> Unit = [1 echo]
+//        """.trimIndent()
+//
+//        val source2 = """
+//            1 echo
+//            9 echo
+//            Project package: "collections"
+//            x = 8
+//            type MegaMassive count: Int
+//            MegaMassive add -> Unit = [1 echo]
+//        """.trimIndent()
+//
+//        val source3 = """
+//            1 echo
+//            9 echo
+//            Project package: "collectionsUnlim"
+//            x = 8
+//            type MegaMassive2 count: Int
+//            MegaMassive2 add -> Unit = [1 echo]
+//        """.trimIndent()
+//
+//        val ast1 = getAstTest(source1).toMutableList()
+//        val ast2 = getAstTest(source2).toMutableList()
+//        val ast3 = getAstTest(source3).toMutableList()
+//
+//        val ast = ast3 + ast2
+//
+//        val resolver = createDefaultResolver(ast)
+//
+//        resolver.resolve(resolver.statements, mutableMapOf())
+//
+//        resolver.generateKtProject(path)
+//    }
 
 
     @Test
@@ -310,12 +307,7 @@ class ResolverTest {
 
         val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
-//        assert(statements.count() == 2)
-//        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
-//        lambdaCall.args.forEach {
-//            assert(it.keywordArg.type != null)
-//        }
+        resolver.resolve(resolver.statements, mutableMapOf())
     }
 
     @Test
@@ -324,9 +316,6 @@ class ResolverTest {
         val source = """
             1 to: 3 do: [ 1 echo ]
         """.trimIndent()
-
-        val q: (Int) -> Int = { it }
-
 
         val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
@@ -392,7 +381,9 @@ class ResolverTest {
         assert(statements.count() == 1)
         val listCollection = statements[0] as ListCollection
         assert(listCollection.type != null)
-        assertEquals("List::Int", listCollection.type?.name)
+        assertEquals("List", listCollection.type?.name)
+        val type = listCollection.type as Type.UserType
+        assertEquals("Int", type.typeArgumentList[0].name)
     }
 
 

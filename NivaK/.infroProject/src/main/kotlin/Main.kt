@@ -56,11 +56,11 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 // end of STD
 
 fun main() {
-    val littleList = mutableListOf(1, 2, 3, 4, 5)
-    littleList.echo()
-    val mappedList = (littleList).map({it.toString() + "s"})
-    mappedList.echo()
-    val mappedList2 = (mappedList).map({((it).get(0)).digitToInt() + 1})
-    mappedList2.echo()
+    val person = Person("sas")
+    person
+    person.name = ("new name")
+    person
+    (person).from("fghfgh ")
+    inlineRepl(person, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\Main\main.niva:::10""", 1)
     
 }
