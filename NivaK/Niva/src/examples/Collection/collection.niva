@@ -1,0 +1,6 @@
+littleList = {1 2 3 4 5}
+littleList echo
+mappedList = littleList map: [it toString + "s"]
+mappedList echo
+mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
+mappedList2 echo

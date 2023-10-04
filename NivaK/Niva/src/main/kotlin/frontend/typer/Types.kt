@@ -51,10 +51,14 @@ class KeywordMsgMetaData(
 //    msgSends: List<MsgSend> = listOf()
 //) : MessageMetadata(name, returnType, msgSends)
 
-data class TypeField(
+class TypeField(
     val name: String,
     var type: Type //when generic, we need to reassign it to real type
-)
+) {
+    override fun toString(): String {
+        return "$name: $type"
+    }
+}
 
 
 sealed class Type(
@@ -62,7 +66,8 @@ sealed class Type(
     val pkg: String,
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
-    var parent: Type? = null // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
+    var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
+    var beforeGenericResolvedName: String? = null
 ) {
     override fun toString(): String {
         return "Type: $name"
@@ -74,7 +79,7 @@ sealed class Type(
         val returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
-    ) : Type("codeblock${args.map { it.name }} -> ${returnType.name}", pkg, isPrivate)
+    ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
 
     sealed class InternalLike(
         typeName: InternalTypes,
@@ -112,7 +117,7 @@ sealed class Type(
         fields: List<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol>
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
     class KnownGenericType(

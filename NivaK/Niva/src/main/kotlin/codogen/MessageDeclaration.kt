@@ -82,7 +82,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
         append(">")
     }
 
-    append(forType.name)
+    append(forType.toKotlinStr())
     if (isStatic) {
         append(".Companion")
     }

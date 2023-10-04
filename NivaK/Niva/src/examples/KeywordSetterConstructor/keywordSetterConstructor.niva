@@ -1,0 +1,11 @@
+type Person name: String
+Person from::String = [
+  this name: from
+]
+
+person = Person name: "sas"
+person name: "new name"
+person from: "qwe"
+//> Person name: qwe
+>person
+
