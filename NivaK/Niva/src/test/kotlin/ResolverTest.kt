@@ -465,6 +465,21 @@ class ResolverTest {
         assert(statements.count() == 1)
     }
 
+    @Test
+    fun receiverIsBinaryThenReturnsDifferentType() {
+
+        val source = """
+             6 > 5 && (6 < 10)
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+    }
+
+
 }
 
 

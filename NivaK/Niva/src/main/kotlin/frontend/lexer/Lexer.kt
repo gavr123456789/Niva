@@ -422,6 +422,9 @@ fun Lexer.next() {
 
         match("::") -> createToken(TokenType.DoubleColon)
 
+        match("||") -> createToken(TokenType.BinarySymbol)
+        match("&&") -> createToken(TokenType.BinarySymbol)
+
         match("=>") -> createToken(TokenType.Then)
         match("|=>") -> createToken(TokenType.Else)
 

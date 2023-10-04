@@ -133,7 +133,19 @@ int to: x = [
     fun hardcodedBinarySymbols() {
         check(
             "^ |> | |=> = ::",
-            listOf(Return, PipeOperator, Pipe, Else, Assign, DoubleColon, EndOfFile)
+            listOf(
+                Return, PipeOperator, Pipe, Else, Assign, DoubleColon, EndOfFile
+            )
+        )
+    }
+
+    @Test
+    fun binarySymbols2() {
+        check(
+            "|| && == !=",
+            listOf(
+                BinarySymbol, BinarySymbol, BinarySymbol, BinarySymbol, EndOfFile
+            )
         )
     }
 
@@ -174,6 +186,15 @@ int to: x = [
         check("1..2", listOf(Integer, BinarySymbol, Integer, EndOfFile))
     }
 
+    @Test
+    fun thenIsNotBinarySymbol() {
+        check(
+            """
+            | x > 10 => x echo
+            | x > 5 && x < 10 => "sas" echo
+        """.trimIndent(), listOf(Integer, BinarySymbol, Integer, EndOfFile)
+        )
+    }
 
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, File("Niva.iml"))

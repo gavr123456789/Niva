@@ -609,22 +609,18 @@ private fun Resolver.resolveStatement(
             val receiver = statement.receiver
 
             receiver.type = when (receiver) {
-                is MessageSend -> TODO()
-                is CodeBlock -> TODO()
                 is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, previousScope, currentScope)
-                is ListCollection -> TODO()
-                is MapCollection -> TODO()
-                is BinaryMsg -> TODO()
-                is KeywordMsg -> TODO()
-                is UnaryMsg -> TODO()
                 is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
                 is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
                 is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
                 is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
                 is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
                 is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
+                is KeywordMsg, is UnaryMsg, is BinaryMsg -> receiver.type
+
+                is MessageSend, is MapCollection, is ListCollection, is CodeBlock -> TODO()
             }
-            val receiverType = receiver.type!!
+            var receiverType = receiver.type!!
 
 
             // resolve messages
