@@ -56,12 +56,11 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 // end of STD
 
 fun main() {
-    val box = Box(1, "sas")
-    val box2 = Box("sus", 2)
-    val boxInXob = Xob(box, box2)
-    boxInXob.box.x.echo()
-    boxInXob.box.y.echo()
-    boxInXob.box2.x.echo()
-    boxInXob.box2.y.echo()
+    val person = Person("sas")
+    person
+    person.name = ("new name")
+    person
+    (person).from("fghfgh ")
+    inlineRepl(person, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\Main\main.niva:::10""", 1)
     
 }
