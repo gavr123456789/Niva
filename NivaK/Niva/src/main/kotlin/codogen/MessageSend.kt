@@ -139,7 +139,7 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
         append(generateSingleUnary(i, it.receiver, it))
     }
     if (messages.isEmpty()) {
-        append(receiver.str)
+        append(receiver.generateExpression())
     }
 
 //    return if (messages.count() == 1) {

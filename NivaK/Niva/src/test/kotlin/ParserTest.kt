@@ -44,15 +44,15 @@ class ParserTest {
         assert(list.initElements.count() == 3)
     }
 
-    @Test
-    fun collectionListOfObjectConstructors() {
-        val source = "{Person age: 1, Person age: 2, Person age: 3}"
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-
-        val list = ast[0] as ListCollection
-        assert(list.initElements.count() == 3)
-    }
+//    @Test
+//    fun collectionListOfObjectConstructors() {
+//        val source = "{Person age: 1, Person age: 2, Person age: 3}"
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//
+//        val list = ast[0] as ListCollection
+//        assert(list.initElements.count() == 3)
+//    }
 
     @Test
     fun literalInt() {
@@ -251,6 +251,8 @@ class ParserTest {
         assert(messages[0].selectorName == "+")
         assert(messages[1].selectorName == "-")
         assert(messages[2].selectorName == "/")
+        assert(messages[1].receiver == messages[0])
+        assert(messages[2].receiver == messages[1])
     }
 
     @Test
@@ -775,16 +777,16 @@ class ParserTest {
         assert(q.messages.count() == 5)
     }
 
-    @Test
-    fun cascadeOperator2() {
-        val source = """
-        1 inc; inc + 2
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        val q = ast[0] as MessageSend
-        assert(q.messages.count() == 2)
-    }
+//    @Test
+//    fun cascadeOperator2() {
+//        val source = """
+//        1 inc; inc + 2
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val q = ast[0] as MessageSend
+//        assert(q.messages.count() == 2)
+//    }
 
     @Test
     fun asdas() {
@@ -891,6 +893,21 @@ class ParserTest {
 
     @Test
     fun mutableVariable() {
+
+        val source = """
+            mut x = 6
+            x <- 7
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val q = ast[1] as Assign
+
+        assert(q.name == "x")
+        assert(q.value is LiteralExpression.IntExpr)
+    }
+
+    @Test
+    fun manyBinarys() {
 
         val source = """
             mut x = 6

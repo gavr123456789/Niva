@@ -23,66 +23,6 @@ fun Parser.messageSend(): MessageSend {
     return anyMessageSend(false)
 }
 
-
-//fun Parser.anyMessageSend2(messages: MutableList<Message>): MessageSend {
-//
-//    // parsing (receiver message?)+
-//
-////    val q = nullableSimpleReceiver() ?: throw Exception("bruh!")
-//
-//
-//    val primaryReceiver = primary()
-//
-////    val t = step()
-////    val k = t.kind
-//
-//    when {
-//        check(TokenType.OpenBrace) -> {
-//            val q = anyMessageSend2(messages)
-//            // put it in brace, so make it messageSend
-//        }
-//
-//        primaryReceiver != null -> {
-//            when {
-//                // 1 inc
-//                // 1 +
-//                // 1 to:
-//                check(TokenType.BinarySymbol) -> {
-//                    // binary
-//                    println()
-//                }
-//
-//                check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) -> {
-//                    // keyword
-//                }
-//
-//                check(TokenType.Identifier) -> {
-//                    // unary
-//
-//                    println()
-//                    val unaryMessages = unaryMessagesMatching(primaryReceiver)
-//                    val unaryMsgSend = MessageSendUnary(
-//                        receiver = primaryReceiver,
-//                        messages = unaryMessages,
-//                        token = primaryReceiver.token
-//                    )
-//                    val possibleBinary = possibleBinary(unaryMessages, unaryMsgSend)
-//                }
-//
-//                else -> {
-//                    TODO()
-//                }
-//            }
-//        }
-//
-//        else -> {
-//            TODO()
-//        }
-//    }
-//    TODO()
-//}
-
-
 // 1^ sas sus sos -> {sas sus sos}
 fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
@@ -139,13 +79,14 @@ fun Parser.binaryMessagesMatching(
     // if we have more than one binary message, we don't wand unary duplicates like
     // 2 inc + 3 dec + 4 sas // first have inc and dec, second have dec and sas, we don't want dec duplicate
     var needAddMessagesForReceiverForBinary = true
+    var previousBinaryParsed: BinaryMsg? = null
     while (check(TokenType.BinarySymbol)) {
 
         val binarySymbol = identifierMayBeTyped()
         val binaryArgument = simpleReceiver() // 2
         val unaryForArg = unaryMessagesMatching(binaryArgument)
         val binaryMsg = BinaryMsg(
-            receiver,
+            previousBinaryParsed ?: receiver,
             if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else listOf(),
             binarySymbol.name,
             null,
@@ -156,6 +97,7 @@ fun Parser.binaryMessagesMatching(
         )
         binaryMessages.add(binaryMsg)
         needAddMessagesForReceiverForBinary = false
+        previousBinaryParsed = binaryMsg
     }
     return binaryMessages
 }

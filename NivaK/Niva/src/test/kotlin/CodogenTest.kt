@@ -471,6 +471,19 @@ class CodogenTest {
         """.trimIndent().trim()
         assertEquals(expect, ktCode)
     }
+
+    @Test
+    fun `binary with binary in brackets?`() {
+        val source = """
+            true && (x < 10)
+        """.trimIndent()
+        val ktCode = generateKotlinWithoutResolve(source).trim()
+        val expect = """
+            true && (x < 10)
+        """.trimIndent().trim()
+        assertEquals(expect, ktCode)
+    }
+
 }
 
 
