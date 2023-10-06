@@ -2,25 +2,25 @@ package frontend.parser.parsing
 
 import frontend.meta.TokenType
 import frontend.parser.types.ast.ControlFlow
+import frontend.parser.types.ast.ControlFlowKind
 import frontend.parser.types.ast.Expression
 import frontend.parser.types.ast.IfBranch
 
-fun Parser.ifOrSwitch(isExpression: Boolean): ControlFlow {
+fun Parser.ifOrSwitch(): ControlFlow {
 
     val wasFirstPipe = check(TokenType.Pipe)
-    var wasSecondPipe = false
-    var x = 1 // because first is pipe already
+    var x = 1 // because first is pipe already matched
     do {
         if (check(TokenType.Then, x)) {
-            return ifStatementOrExpression(isExpression)
+            return ifStatementOrExpression()
         }
-        // oneline switch
+        // one-line switch
         if (wasFirstPipe && check(TokenType.Pipe, x)) {
-            return switchStatementOrExpression(isExpression)
+            return switchStatementOrExpression()
         }
         x++
     } while (!check(TokenType.EndOfLine, x))
-    return switchStatementOrExpression(isExpression)
+    return switchStatementOrExpression()
 }
 
 fun Parser.ifBranches(): List<IfBranch> {
@@ -56,7 +56,7 @@ fun Parser.ifBranches(): List<IfBranch> {
     return result
 }
 
-fun Parser.ifStatementOrExpression(isExpression: Boolean): ControlFlow.If {
+fun Parser.ifStatementOrExpression(): ControlFlow.If {
 
     val pipeTok = peek()
     val ifBranches = ifBranches()
@@ -66,48 +66,29 @@ fun Parser.ifStatementOrExpression(isExpression: Boolean): ControlFlow.If {
     } else null
 
 
-    val result = if (isExpression) {
-        if (elseBranch == null) {
-            error("else branch is required in control flow expression")
-        }
-        ControlFlow.IfExpression(
-            type = null,
-            branches = ifBranches,
-            elseBranch = elseBranch,
-            token = pipeTok
-        )
-    } else {
-        ControlFlow.IfStatement(
-            type = null,
-            branches = ifBranches,
-            elseBranch = elseBranch,
-            token = pipeTok
-        )
-    }
+    val result = ControlFlow.If(
+        type = null,
+        ifBranches = ifBranches,
+        kind = ControlFlowKind.Statement,
+        elseBranch = elseBranch,
+        token = pipeTok,
+    )
 
     return result
 }
 
-fun Parser.switchStatementOrExpression(isExpression: Boolean): ControlFlow.Switch {
-    val pipeTok = matchAssert(TokenType.Pipe, "")
+fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
+    matchAssert(TokenType.Pipe, "| expected")
 
     val switchExpression = expression()
 
     match(TokenType.EndOfLine)
-    val otherPart = ifStatementOrExpression(isExpression)
+    val otherPart = ifStatementOrExpression()
 
+    val result = ControlFlow.Switch(
+        switch = switchExpression,
+        iF = otherPart
+    )
+    return result
 
-    return if (isExpression) {
-        val result = ControlFlow.SwitchExpression(
-            switch = switchExpression,
-            iF = otherPart
-        )
-        result
-    } else {
-        val result = ControlFlow.SwitchStatement(
-            switch = switchExpression,
-            iF = otherPart
-        )
-        result
-    }
 }

@@ -23,15 +23,13 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
 
     val safePoint = current
     try {
-        val q = unaryOrBinary(false)
-
-        when (q) {
+        when (val messageSend = unaryOrBinary()) {
             is MessageSendUnary, is MessageSendBinary -> {
-                if (q.messages.isNotEmpty()) {
+                if (messageSend.messages.isNotEmpty()) {
 
 //                    assert(q.messages.count() == 1)
                     // if followed by keyword
-                    return q//.messages[0]
+                    return messageSend//.messages[0]
                 }
             }
 

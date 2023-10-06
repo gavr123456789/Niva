@@ -88,25 +88,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->
 
-        val messagesForArg = it.unaryOrBinaryMsgsForArg
-
-
-        if (messagesForArg != null && messagesForArg.isNotEmpty()) {
-            val messageForArg = messagesForArg[0]
-            if (messageForArg is BinaryMsg) {
-                append(generateBinarySend(messageForArg.receiver, messagesForArg as List<BinaryMsg>))
-            } else if (messageForArg is UnaryMsg) {
-                append(generateUnarySends(messageForArg.receiver, messagesForArg as List<UnaryMsg>))
-            }
-
-            if (i != keywordMsg.args.count() - 1)
-                append(", ")
-        } else {
-            // no unaryOrBinary args
-            append(it.generateCallPair())
-            if (i != keywordMsg.args.count() - 1)
-                append(", ")
-        }
+        val expressionStr = it.keywordArg.generateExpression()
+        append(expressionStr)
+        if (i != keywordMsg.args.count() - 1)
+            append(", ")
 
     }
 
