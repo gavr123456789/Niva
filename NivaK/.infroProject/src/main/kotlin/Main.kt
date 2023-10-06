@@ -57,10 +57,7 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 
 fun main() {
     val person = Person("sas")
-    person
-    person.name = ("new name")
-    person
-    (person).from("fghfgh ")
-    inlineRepl(person, """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\examples\Main\main.niva:::10""", 1)
+    person.name
+    val u = 5
     
 }

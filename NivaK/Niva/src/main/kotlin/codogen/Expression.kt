@@ -25,10 +25,8 @@ fun Expression.generateExpression(): String = buildString {
             }
 
             is MapCollection -> TODO()
-            is ControlFlow.IfExpression -> generateIf()
-            is ControlFlow.IfStatement -> generateIf()
-            is ControlFlow.SwitchExpression -> generateSwitch()
-            is ControlFlow.SwitchStatement -> generateSwitch()
+            is ControlFlow.If -> generateIf()
+            is ControlFlow.Switch -> generateSwitch()
 
             // when message is receiver
             is BinaryMsg -> TODO()

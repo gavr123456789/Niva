@@ -5,23 +5,23 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
 
-//   // MESSAGES
-//  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
-//  		 | (binaryMessage+ keywordMessage?) -- binaryFirst
-//           | (keywordMessage) -- keywordFirst
-fun Parser.messageSend(): MessageSend {
-    // x echo // identifier
-    // 1 echo // primary
-    // (1 + 1) echo // parens
-    // [1 2 3] // data structure
-
-    // 3 + (1 / 2)
-    // 3 + 8 to: 7
-
-
-//    return anyMessageSend2(mutableListOf())
-    return anyMessageSend(false)
-}
+////   // MESSAGES
+////  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
+////  		 | (binaryMessage+ keywordMessage?) -- binaryFirst
+////           | (keywordMessage) -- keywordFirst
+//fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
+//    // x echo // identifier
+//    // 1 echo // primary
+//    // (1 + 1) echo // parens
+//    // [1 2 3] // data structure
+//
+//    // 3 + (1 / 2)
+//    // 3 + 8 to: 7
+//
+//
+////    return anyMessageSend2(mutableListOf())
+//    return anyMessageSend(dontParseKeywords)
+//}
 
 // 1^ sas sus sos -> {sas sus sos}
 fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
@@ -103,7 +103,6 @@ fun Parser.binaryMessagesMatching(
 }
 
 fun Parser.unaryOrBinary(
-    inBrackets: Boolean,
     customReceiver: Receiver? = null,
     parsePipeAndCascade: Boolean = true
 ): MessageSend {
@@ -191,7 +190,7 @@ fun Parser.unaryOrBinary(
             }
 
             checkForKeyword() -> {
-                val keyword = keywordMessageParsing(false, firstReceiver)
+                val keyword = keywordMessageParsing(firstReceiver)
                 cascadedMsgs.add(keyword)
             }
 
@@ -243,19 +242,21 @@ fun Parser.checkForKeyword(): Boolean {
 }
 
 
-fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
+fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
     val receiver = unaryOrBinaryMessageOrPrimaryReceiver()
-    val isNextKeyword = checkForKeyword()
+
+    val isNextKeyword = if (dontParseKeywords) false else checkForKeyword()
     val isReceiverUnaryOrBinaryOrCodeBlock =
         receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
+
     return when {
         isReceiverUnaryOrBinaryOrCodeBlock && isNextKeyword -> {
-            keyword(inBrackets, receiver)
+            keyword(receiver)
         }
 
         isNextKeyword -> {
-            keyword(inBrackets, receiver)
+            keyword(receiver)
         }
 
         !isNextKeyword && (receiver is MessageSendBinary || receiver is MessageSendBinary) -> {
@@ -274,7 +275,6 @@ fun Parser.anyMessageSend(inBrackets: Boolean): MessageSend {
 
 
 fun Parser.keyword(
-    inBrackets: Boolean,
     customReceiver: Receiver? = null
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
@@ -282,7 +282,7 @@ fun Parser.keyword(
 
 
     val keyColonCycle = {
-        keywordMessageParsing(inBrackets, receiver)
+        keywordMessageParsing(receiver)
     }
 
     val messages = mutableListOf<Message>()
@@ -301,7 +301,6 @@ fun Parser.keyword(
 }
 
 fun Parser.keywordMessageParsing(
-    inBrackets: Boolean,
     receiver: Receiver
 ): KeywordMsg {
     val stringBuilder = StringBuilder()
@@ -319,11 +318,11 @@ fun Parser.keywordMessageParsing(
             firstKeywordIdentifierExpr = keywordPart
         }
 
-        // trying to eat unary or binary, if there are non, then we got receiver
-        val unaryOrBinaryForArgument =
-            unaryOrBinary(inBrackets, null, false) // Тут может понядобится все таки передать ресивер
-        val keyArg = unaryOrBinaryForArgument.receiver
+        val argument = expression(true)
 
+        if (argument is KeywordMsg) {
+            argument.token.compileError("argument can't be another keyword message, use (), foo: (x bar: y)")
+        }
 
         // making fun name camelCase
         stringBuilder.append(
@@ -331,18 +330,9 @@ fun Parser.keywordMessageParsing(
             else keywordPart.name.capitalizeFirstLetter()
         )
 
-
-        val isUnaryOrIsBinary =
-            unaryOrBinaryForArgument is MessageSendUnary || unaryOrBinaryForArgument is MessageSendBinary
-        val unaryOrBinaryMsgForArg =
-            if (isUnaryOrIsBinary && unaryOrBinaryForArgument.messages.isNotEmpty()) unaryOrBinaryForArgument.messages
-            else null
-
-
         val x = KeywordArgAndItsMessages(
             selectorName = keywordPart.name,
-            keywordArg = keyArg,
-            unaryOrBinaryMsgsForArg = unaryOrBinaryMsgForArg
+            keywordArg = argument,
         )
 
         keyWordArguments.add(x)

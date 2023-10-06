@@ -160,7 +160,7 @@ class ParserTest {
         val source = "1 to: 2 + 3"
         val tokens = lex(source, fakeFile)
         val parser = Parser(file = fakeFile, tokens = tokens, source = source)
-        parser.keyword(false)
+        parser.keyword()
     }
 
     @Test
@@ -611,7 +611,8 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val iF = ast[0] as ControlFlow.IfStatement
+        val iF = ast[0] as ControlFlow.If
+        assert(iF.kind == ControlFlowKind.Statement)
         val elseBranches = iF.elseBranch
         val ifBranches = iF.ifBranches
         assert(ifBranches.count() == 2)
@@ -630,8 +631,9 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        assert(ast[0] is ControlFlow.SwitchStatement)
-        val switchStatement = ast[0] as ControlFlow.SwitchStatement
+        assert(ast[0] is ControlFlow.Switch)
+        val switchStatement = ast[0] as ControlFlow.Switch
+        assert(switchStatement.kind == ControlFlowKind.Statement)
         val switch = switchStatement.switch as IdentifierExpr
         assert(switch.str == "y")
     }

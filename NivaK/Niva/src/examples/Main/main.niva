@@ -1,26 +1,18 @@
-// simple if statement
-x = 6
-| x > 10 => x echo
-| x > 5 && x < 10 => "sas" echo
-| x > 1 && x < 5 => "sus" echo
-| x < 0 => "x is negative"
-|=> "x is something" echo
+type Person name: String
+person = Person name: "sas"
+person name
 
-// if as expression
-y = | x > 10 => 11
-    | x > 5 && (x < 10) => 12
-    |=> 13
-y echo
-// switch
-| y
-| 10 => "sas" echo
-| 11 => "ses" echo
-| 12 => "sus" echo
-|=> "?" echo
-// switch expression
-t = | y - 2
-| 10 => "sas"
-| 11 => "ses"
-| 12 => "sus"
-|=> "?"
-t echo
+
+// simple if statement
+//x = 6
+//| x > 10 => x echo
+//| x > 5 && (x < 10) => "sas" echo
+//| x > 1 && (x < 5) => "sus" echo
+//| x < 0 => "x is negative"
+//|=> "x is something" echo
+//
+//// if as expression
+//y = | x > 10 => 11
+//    | x > 5 => | x < 10 => 4 |=> 3
+//    |=> 13
+//y echo

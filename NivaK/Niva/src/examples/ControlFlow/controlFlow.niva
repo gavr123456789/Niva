@@ -24,3 +24,12 @@ t = | y - 2
 | 12 => "sus"
 |=> "?"
 t echo
+
+
+// control flow expressions as arguments
+Boolean to::Boolean = [
+    to echo
+]
+x = 5
+(| x > 5 => true |=> false) to: (| x == 5 => true |=> false)
+

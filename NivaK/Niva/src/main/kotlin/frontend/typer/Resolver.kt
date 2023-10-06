@@ -77,13 +77,6 @@ class Resolver(
             createDefaultType(InternalTypes.IntRange),
 
             createDefaultType(InternalTypes.Any),
-//            createDefaultType(InternalTypes.Unknown),
-
-//            createDefaultType(InternalTypes.List),
-//            createDefaultType(InternalTypes.Map),
-//            createDefaultType(InternalTypes.Set),
-
-
         )
 
         init {
@@ -95,9 +88,6 @@ class Resolver(
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
-//            val listType = defaultTypes[InternalTypes.List]!!
-//            val unknownGenericType = defaultTypes[InternalTypes.Unknown]!!
-
 
             intType.protocols.putAll(
                 createIntProtocols(
@@ -156,19 +146,6 @@ class Resolver(
                 )
             )
 
-//            listType.protocols.putAll(
-//                createListProtocols(
-//                    intType = intType,
-//                    stringType = stringType,
-//                    unitType = unitType,
-//                    boolType = boolType,
-//                    listType = listType,
-//                    anyType = anyType,
-//                    unknownGenericType = unknownGenericType
-//                )
-//            )
-
-            // TODO add default protocols for other types
         }
 
     }
@@ -257,6 +234,15 @@ class Resolver(
 
             ////resolve all the AST////
             statements = mainAST.toMutableList()
+
+            // resolve types
+//            resolveTypesDeclarations(mainAST)
+//            otherASTs.forEach {
+//                statements = it.toMutableList()
+//                resolveTypesDeclarations(it)
+//            }
+
+
             resolve(mainAST, mutableMapOf())
 
             otherASTs.forEach {
@@ -268,6 +254,14 @@ class Resolver(
     }
 }
 
+//fun Resolver.resolveTypesDeclarations(statements: List<Statement>) {
+//    statements.forEach {
+//        if (it is TypeDeclaration) {
+//            val pkgName = getCurrentPackage(it.token).packageName
+//            addNewType(it.toType(pkgName, typeTable), it)
+//        }
+//    }
+//}
 
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
@@ -303,7 +297,6 @@ fun Resolver.resolveDeclarations(
 
     when (statement) {
         is TypeDeclaration -> {
-
             val newType = statement.toType(currentPackageName, typeTable)
             addNewType(newType, statement)
         }
@@ -453,7 +446,9 @@ private fun Resolver.resolveStatement(
             /// check for constructor
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                currentLevel++
                 resolve(listOf(statement.receiver), previousAndCurrentScope, statement)
+                currentLevel--
             }
             val receiverType =
                 statement.receiver.type
@@ -515,11 +510,7 @@ private fun Resolver.resolveStatement(
                         resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
                         currentLevel--
 
-                        if (it.unaryOrBinaryMsgsForArg != null) {
-                            resolve(it.unaryOrBinaryMsgsForArg, previousAndCurrentScope, statement)
-                        }
-                        val argType =
-                            if (it.unaryOrBinaryMsgsForArg == null) it.keywordArg.type!! else it.unaryOrBinaryMsgsForArg.last().type!!
+                        val argType = it.keywordArg.type!!
 
                         // we need to check for generic args only if it is Keyword
                         if (msgTypeFromDB != null) {
@@ -946,44 +937,19 @@ private fun Resolver.resolveStatement(
                     }
 
 
-                    if (currentArgType.type is Type.Lambda) {
-                        currentArgType.type.args.forEachIndexed { i, labmdaArg ->
-                            if (labmdaArg.type is Type.UnknownGenericType && rootReceiverType is Type.UserType) {
-
-                                // Заного получить из базы тип ресивера, он будет нересолвнутым, и там будут правильным буквы
-                                // теперь у нас есть 2 типа, с резульвнутыми и без
-                                // сопоставить тупа по порядку буквы к типам
-                                // сопоставлять именно
-//                                val realType =
-//                                    rootReceiverType.typeArgumentList.find { arg -> arg.beforeGenericResolvedName == labmdaArg.type.name }!!
-////                                it.type = realType
-//                                val beforeGenericResolvedName = realType.beforeGenericResolvedName
-//                                if (beforeGenericResolvedName != null) {
-//                                    genericLetterToTypes[beforeGenericResolvedName] = realType
-//                                }
-                                // TODO именно тут, где у нас еще есть метадата, нам нужно назначить настоящие типы для дженерик параметров
-//                                realType.beforeGenericResolvedName = currentArgType.type.returnType.name
-
+                    if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
+                        val typeOfFirstArgs = currentArgType.type.args[0].type
+                        val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
+                            typeOfFirstArgs
+                        } else {
+                            val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
+                            if (foundRealType == null) {
+                                throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
                             }
+                            foundRealType
                         }
-
-
-                        if (currentArgType.type.args.count() == 1) {
-                            val typeOfFirstArgs = currentArgType.type.args[0].type
-
-                            val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
-                                typeOfFirstArgs
-                            } else {
-                                val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                                if (foundRealType == null) {
-                                    throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
-                                }
-                                foundRealType
-                            }
-                            previousAndCurrentScope["it"] = typeForIt
-                            itArgType = typeForIt
-                        }
-
+                        previousAndCurrentScope["it"] = typeForIt
+                        itArgType = typeForIt
                     }
 
                     isThisWhileCycle = false
@@ -1116,12 +1082,29 @@ private fun Resolver.resolveStatement(
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
+            val detectExprOrStatement = {
+                when (rootStatement) {
+                    null -> {
+                        ControlFlowKind.Statement
+                    }
+
+                    // we inside argument probably
+                    is MessageSend, is ExpressionInBrackets -> ControlFlowKind.Expression
+                    is ControlFlow -> {
+                        rootStatement.kind
+                    }
+
+                    else -> ControlFlowKind.Statement
+                }
+
+            }
 
             when (statement) {
-                is ControlFlow.IfExpression -> {
-
-
+                is ControlFlow.If -> {
                     var firstBranchReturnType: Type? = null
+
+                    statement.kind = detectExprOrStatement()
+
 
                     statement.ifBranches.forEachIndexed { i, it ->
                         /// resolving if
@@ -1137,10 +1120,11 @@ private fun Resolver.resolveStatement(
                                     currentLevel++
                                     resolve(it.body, previousAndCurrentScope, statement)
                                     currentLevel--
-
-                                    val lastExpr = it.body.last()
-                                    if (lastExpr !is Expression) {
-                                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                                    if (statement.kind == ControlFlowKind.Expression) {
+                                        val lastExpr = it.body.last()
+                                        if (lastExpr !is Expression) {
+                                            lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                                        }
                                     }
                                 }
                             }
@@ -1164,31 +1148,44 @@ private fun Resolver.resolveStatement(
                     }
 
 
-                    if (statement.elseBranch == null) {
+                    if (statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
                         statement.token.compileError("If expression must contain else branch")
                     }
 
+                    statement.type = if (statement.elseBranch != null) {
+                        resolve(statement.elseBranch, previousAndCurrentScope, statement)
+                        if (statement.kind == ControlFlowKind.Expression) {
+                            val lastExpr = statement.elseBranch.last()
+                            if (lastExpr !is Expression) {
+                                lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                            }
+                            val elseReturnType = lastExpr.type!!
+                            val elseReturnTypeName = elseReturnType.name
+                            val firstReturnTypeName = firstBranchReturnType!!.name
+                            if (elseReturnTypeName != firstReturnTypeName) {
+                                lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
+                            }
+                            elseReturnType
+                        } else {
+                            Resolver.defaultTypes[InternalTypes.Unit]!!
+                        }
 
-                    resolve(statement.elseBranch, previousAndCurrentScope, statement)
-                    val lastExpr = statement.elseBranch.last()
-                    if (lastExpr !is Expression) {
-                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
-                    }
-                    val elseReturnType = lastExpr.type!!
-                    val elseReturnTypeName = elseReturnType.name
-                    val firstReturnTypeName = firstBranchReturnType!!.name
-                    if (elseReturnTypeName != firstReturnTypeName) {
-                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
+                    } else {
+                        // if no else branch, its not an expression already
+                        Resolver.defaultTypes[InternalTypes.Unit]!!
                     }
 
-                    statement.type = elseReturnType
+
                 }
 
 
-                is ControlFlow.SwitchExpression -> {
+                is ControlFlow.Switch -> {
                     if (statement.switch.type == null) {
                         resolve(listOf(statement.switch), previousAndCurrentScope, statement)
                     }
+
+                    // TODO check if this expression of statement
+
 
                     var firstBranchReturnType: Type? = null
 
@@ -1259,14 +1256,6 @@ private fun Resolver.resolveStatement(
                     statement.type = elseReturnType
                 }
 
-
-                is ControlFlow.IfStatement -> {
-                    statement.type = Resolver.defaultTypes[InternalTypes.Unit]!!
-                }
-
-                is ControlFlow.SwitchStatement -> {
-                    statement.type = Resolver.defaultTypes[InternalTypes.Unit]!!
-                }
             }
 
 

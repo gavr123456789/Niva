@@ -126,17 +126,14 @@ fun Parser.isNextReceiver(): Boolean {
 
 
 // message or control flow
-fun Parser.expression(): Expression {
-
-    when {
-        check(TokenType.Pipe) -> {
-            val lastIsReturnOrAssign = check(TokenType.Assign, -1) || check(TokenType.Return, -1)
-            val isExpression = current != 0 && lastIsReturnOrAssign
-            return ifOrSwitch(isExpression)
-        }
+// inside x from: y to: z
+// we don't have to parse y to: z as new keyword, only y expression
+fun Parser.expression(dontParseKeywords: Boolean = false): Expression {
+    if (check(TokenType.Pipe)) {
+        return ifOrSwitch()
     }
 
-    val messageSend = messageSend()
+    val messageSend = messageSend(dontParseKeywords)
     // unwrap unnecessary MessageSend
     return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver
