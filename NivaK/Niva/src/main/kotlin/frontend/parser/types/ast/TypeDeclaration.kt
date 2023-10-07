@@ -78,38 +78,41 @@ class TypeFieldAST(
     val token: Token,
 )
 
-interface ITypeDeclaration {
-    val typeName: String
-    val fields: List<TypeFieldAST>
-}
+sealed class SomeTypeDeclaration(
+    val typeName: String,
+    val fields: List<TypeFieldAST>,
+    token: Token,
+    isPrivate: Boolean = false,
+    pragmas: List<Pragma> = listOf(),
+) : Declaration(token, isPrivate, pragmas)
 
 class TypeDeclaration(
-    override val typeName: String,
-    override val fields: List<TypeFieldAST>,
+    typeName: String,
+    fields: List<TypeFieldAST>,
     token: Token,
     val typeFields: MutableList<String> = mutableListOf(),
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Declaration(token, isPrivate, pragmas), ITypeDeclaration {
+) : SomeTypeDeclaration(typeName, fields, token, isPrivate, pragmas) {
     override fun toString(): String {
         return "TypeDeclaration($typeName)"
     }
 }
 
 class UnionBranch(
-    override val typeName: String,
-    override val fields: List<TypeFieldAST>,
-    val token: Token,
-) : ITypeDeclaration
+    typeName: String,
+    fields: List<TypeFieldAST>,
+    token: Token,
+) : SomeTypeDeclaration(typeName, fields, token)
 
 class UnionDeclaration(
-    override val typeName: String,
+    typeName: String,
     val branches: List<UnionBranch>,
-    override val fields: List<TypeFieldAST>,
+    fields: List<TypeFieldAST>,
     token: Token,
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : Declaration(token, isPrivate, pragmas), ITypeDeclaration
+) : SomeTypeDeclaration(typeName, fields, token, isPrivate, pragmas)
 
 class AliasDeclaration(
     val typeName: String,

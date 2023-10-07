@@ -42,6 +42,12 @@ fun Resolver.run() {
     if (unResolvedMessageDeclarations.isNotEmpty()) {
         throw Exception("Not all message declarations resolved: $unResolvedMessageDeclarations")
     }
+    if (unResolvedTypeDeclarations.isNotEmpty()) {
+        resolveDeclarationsOnly(unResolvedTypeDeclarations.toMutableList())
+
+    }
+
+
     allDeclarationResolvedAlready = true
 
 
