@@ -5,8 +5,8 @@ import codogen.codogenKt
 import frontend.util.addIndentationForEachString
 import putInMainKotlinCode
 import java.io.File
+import java.nio.file.Path
 import kotlin.io.path.div
-import java.nio.file.Path as Path
 
 fun deleteAndRecreateKotlinFolder(path: File) {
     if (path.deleteRecursively()) {
@@ -39,9 +39,10 @@ fun Resolver.generateMainKtCode(): String {
 
 fun addStdAndPutInMain(ktCode: String): String {
     val code1 = ktCode.addIndentationForEachString(1)
-    val code2 = putInMainKotlinCode(code1)
-    val code3 = code2.addNivaStd()
-    return code3
+    val mainCode = putInMainKotlinCode(code1)
+    val code3 = addNivaStd(mainCode)
+    val code4 = "package main\n\n$code3"
+    return code4
 }
 
 fun Resolver.generatePackages(pathToSource: Path) {
@@ -49,18 +50,17 @@ fun Resolver.generatePackages(pathToSource: Path) {
 //    val builder = StringBuilder()
     commonProject.packages.forEach { (k, v) ->
 
-        val q = codogenKt(v.declarations)
+        val code = codogenKt(v.declarations)
         // generate folder for package
-        val w = (pathToSource / v.packageName).toFile()
-        w.mkdir()
+        val folderForPackage = (pathToSource / v.packageName).toFile()
+        folderForPackage.mkdir()
         // generate file with code
-        createCodeKtFile(w, v.packageName + ".kt", q)
+        createCodeKtFile(folderForPackage, v.packageName + ".kt", code)
 
 
     }
 
 }
-
 
 
 fun Resolver.generateKtProject(pathToSrcKtFolder: String) {

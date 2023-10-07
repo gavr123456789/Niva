@@ -3,6 +3,7 @@ import frontend.lex
 import frontend.meta.Token
 import frontend.typer.Resolver
 import frontend.typer.generateKtProject
+import frontend.typer.run
 import frontend.util.OS_Type
 import frontend.util.div
 import frontend.util.fillSymbolTable
@@ -104,6 +105,7 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
         otherFilesPaths = otherFilesPaths,
         statements = mutableListOf()
     )
+    resolver.run()
 
     resolver.generateKtProject(pathWhereToGenerateKt)
 
@@ -118,7 +120,7 @@ fun putInMainKotlinCode(code: String) = buildString {
 }
 
 
-fun String.addNivaStd(): String {
+fun addNivaStd(mainCode: String): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
     val quote = "\"\"\""
     val nivaStd = """
@@ -180,9 +182,10 @@ fun String.addNivaStd(): String {
         // end of STD
         
     """.trimIndent()
+
     return buildString {
         append(nivaStd, "\n")
-        append(this@addNivaStd)
+        append(mainCode)
     }
 }
 

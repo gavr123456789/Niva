@@ -104,10 +104,10 @@ x sas
     fun functionDeclarationWithBody() {
 
         val functionDeclaration = """
-int to: x = [
-  x echo
-]
-""".trimIndent()
+            int to: x = [
+              x echo
+            ]       
+        """.trimIndent()
         check(
             functionDeclaration,
             listOf(

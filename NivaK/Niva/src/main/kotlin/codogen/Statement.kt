@@ -15,13 +15,6 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
         when (statement) {
             is Expression -> statement.generateExpression()
             is VarDeclaration -> statement.generateVarDeclaration()
-//            is IdentifierExpr -> statement.name
-
-//            is LiteralExpression.TrueExpr -> "true"
-//            is LiteralExpression.FalseExpr -> "false"
-//            is LiteralExpression.FloatExpr -> statement.str
-//            is LiteralExpression.IntExpr -> statement.str
-//            is LiteralExpression.StringExpr -> "\"" + statement.str + "\""
 
             is MessageDeclaration -> statement.generateMessageDeclaration()
 

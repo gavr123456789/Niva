@@ -1,18 +1,11 @@
 type Person name: String
+
+
+Wallet something = [
+    1 echo
+]
+1 echo
 person = Person name: "sas"
-person name
+person buy
 
 
-// simple if statement
-//x = 6
-//| x > 10 => x echo
-//| x > 5 && (x < 10) => "sas" echo
-//| x > 1 && (x < 5) => "sus" echo
-//| x < 0 => "x is negative"
-//|=> "x is something" echo
-//
-//// if as expression
-//y = | x > 10 => 11
-//    | x > 5 => | x < 10 => 4 |=> 3
-//    |=> 13
-//y echo
