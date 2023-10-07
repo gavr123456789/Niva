@@ -58,7 +58,7 @@ class Resolver(
 
     // for recursive types
     val unResolvedMessageDeclarations: MutableSet<MessageDeclaration> = mutableSetOf(),
-    val unResolvedTypeDeclarations: MutableSet<ITypeDeclaration> = mutableSetOf(),
+    val unResolvedTypeDeclarations: MutableSet<SomeTypeDeclaration> = mutableSetOf(),
     var allDeclarationResolvedAlready: Boolean = false
 ) {
     companion object {
@@ -327,6 +327,9 @@ fun Resolver.resolveDeclarations(
 
         }
 
+        is UnionBranch -> {
+            println("Union branch???")
+        }
     }
     currentLevel -= 1
 }

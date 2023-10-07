@@ -1,14 +1,12 @@
 package main
 
 // STD
-import Person
-import buy
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.io.IOException
 
 inline fun Any?.echo() = println(this)
-const val INLINE_REPL = """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\inline_repl.txt"""
+const val INLINE_REPL = """C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\inline_repl.txt""" 
 
 inline fun IntRange.forEach(action: (Int) -> Unit) {
     for (element in this) action(element)
@@ -63,5 +61,5 @@ fun main() {
     1.echo()
     val person = Person("sas")
     person.buy()
-
+    
 }
