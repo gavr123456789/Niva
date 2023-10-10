@@ -1,11 +1,8 @@
-type Person name: String
-
-
 Wallet something = [
-    1 echo
+    "wallet" echo
 ]
-1 echo
 person = Person name: "sas"
 person buy
+type Person name: String
 
 

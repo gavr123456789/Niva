@@ -1,7 +1,8 @@
 package frontend.typer
 
 import addNivaStd
-import codogen.codogenKt
+import codogen.generateKtStatement
+import frontend.parser.types.ast.Statement
 import frontend.util.addIndentationForEachString
 import putInMainKotlinCode
 import java.io.File
@@ -32,25 +33,28 @@ fun createCodeKtFile(path: File, fileName: String, code: String): File {
     return baseDir
 }
 
-
-fun Resolver.generateMainKtCode(): String {
-    return codogenKt(topLevelStatements)
-}
-
-fun addStdAndPutInMain(ktCode: String): String {
+fun addStdAndPutInMain(ktCode: String, mainPkg: Package) = buildString {
+    append("package main\n")
     val code1 = ktCode.addIndentationForEachString(1)
     val mainCode = putInMainKotlinCode(code1)
     val code3 = addNivaStd(mainCode)
-    val code4 = "package main\n\n$code3"
-    return code4
+    append(mainPkg.generateImports(), "\n")
+    append(code3, "\n")
 }
+//fun addStdAndPutInMain(ktCode: String, mainPkg: Package): String {
+//    val code1 = ktCode.addIndentationForEachString(1)
+//    val mainCode = putInMainKotlinCode(code1)
+//    val code3 = addNivaStd(mainCode)
+//    val code4 = "package main\n\n$code3"
+//    return code4
+//}
 
 fun Resolver.generatePackages(pathToSource: Path) {
     val commonProject = projects["common"]!!
 //    val builder = StringBuilder()
     commonProject.packages.forEach { (k, v) ->
 
-        val code = codogenKt(v.declarations)
+        val code = codogenKt(v.declarations, pkg = v)
         // generate folder for package
         val folderForPackage = (pathToSource / v.packageName).toFile()
         folderForPackage.mkdir()
@@ -62,14 +66,35 @@ fun Resolver.generatePackages(pathToSource: Path) {
 
 }
 
+fun Package.generateImports() = buildString {
+    currentImports.forEach {
+        append("import $it.*\n")
+    }
+}
 
 fun Resolver.generateKtProject(pathToSrcKtFolder: String) {
     val path = File(pathToSrcKtFolder)
     // 1 recreate pathToSrcKtFolder
     deleteAndRecreateKotlinFolder(path)
     // 2 generate Main.kt
-    val mainCode = addStdAndPutInMain(generateMainKtCode())
+    val mainPkg = projects["common"]!!.packages["main"]!!
+    val mainCode = addStdAndPutInMain(codogenKt(topLevelStatements), mainPkg)
     val mainFile = createCodeKtFile(path, "Main.kt", mainCode)
     // 3 generate every package like folders with code
     generatePackages(path.toPath())
+}
+
+fun codogenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
+    if (pkg != null) {
+
+        append("package ${pkg.packageName}\n\n")
+        append("import main.*\n")
+
+        append(pkg.generateImports())
+
+    }
+    statements.forEach {
+        append(generateKtStatement(it, indent), "\n")
+    }
+
 }

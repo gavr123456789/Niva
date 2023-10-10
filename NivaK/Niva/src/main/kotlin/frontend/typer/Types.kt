@@ -169,11 +169,11 @@ data class Protocol(
 )
 
 class Package(
-    // TODO add protocols
     val packageName: String,
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
-    val usingPackages: MutableList<Package> = mutableListOf()
+//    val usingPackages: MutableList<Package> = mutableListOf(),
+    val currentImports: MutableSet<String> = mutableSetOf()
 )
 
 class Project(

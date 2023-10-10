@@ -57,66 +57,66 @@ fun Resolver.resolveMessage(
 
             val kind = resolveKindOfKeyword(statement)
 
-            val letterToRealType = mutableMapOf<String, Type>();
+            val letterToRealType = mutableMapOf<String, Type>()
             /// resolve arguments
-            {
-                val msgTypeFromDB = if (kind == KeywordLikeType.Keyword) findKeywordMsgType(
-                    receiverType,
-                    statement.selectorName,
-                    statement.token
-                ) else null
+
+            val msgTypeFromDB = if (kind == KeywordLikeType.Keyword) findKeywordMsgType(
+                receiverType,
+                statement.selectorName,
+                statement.token
+            ) else null
 
 
-                // resolve args types
-                val args = statement.args
-                args.forEachIndexed { argNum, it ->
-                    if (it.keywordArg.type == null) {
-                        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-                        currentLevel++
-                        currentArgumentNumber = argNum
-                        resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
-                        currentLevel--
+            // resolve args types
+            val args = statement.args
+            args.forEachIndexed { argNum, it ->
+                if (it.keywordArg.type == null) {
+                    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                    currentLevel++
+                    currentArgumentNumber = argNum
+                    resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
+                    currentLevel--
 
-                        val argType = it.keywordArg.type!!
+                    val argType = it.keywordArg.type!!
 
-                        // we need to check for generic args only if it is Keyword
-                        if (msgTypeFromDB != null) {
-                            val typeFromDBForThisArg = msgTypeFromDB.argTypes[argNum].type
-                            if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
-                                letterToRealType[typeFromDBForThisArg.name] = argType
-                            }
-
-                            if (typeFromDBForThisArg is Type.Lambda) {
-                                if (argType !is Type.Lambda) {
-                                    throw Exception("If typeFromDBForThisArg is lambda then argType must be lambda")
-                                }
-                                /// remember letter to type args
-                                typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
-                                    val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
-                                    if (typeField.type.name.length == 1 && typeField.type.name[0].isUpperCase()) {
-                                        letterToRealType[typeFromDBForThisArg.name] = argType.args[i].type
-                                    } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.length == 1 && beforeGenericResolvedName[0].isUpperCase()) {
-                                        letterToRealType[beforeGenericResolvedName] = argType.args[i].type
-                                    }
-                                }
-                                /// remember letter to return type
-                                val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
-
-                                if (typeFromDBForThisArg.returnType.name.length == 1 && typeFromDBForThisArg.returnType.name[0].isUpperCase()) {
-                                    letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
-                                } else if (returnTypeBefore != null && returnTypeBefore.length == 1 && returnTypeBefore[0].isUpperCase()) {
-                                    letterToRealType[returnTypeBefore] = argType.returnType
-                                }
-
-                            }
+                    // we need to check for generic args only if it is Keyword
+                    if (msgTypeFromDB != null) {
+                        val typeFromDBForThisArg = msgTypeFromDB.argTypes[argNum].type
+                        if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
+                            letterToRealType[typeFromDBForThisArg.name] = argType
                         }
 
+                        if (typeFromDBForThisArg is Type.Lambda) {
+                            if (argType !is Type.Lambda) {
+                                throw Exception("If typeFromDBForThisArg is lambda then argType must be lambda")
+                            }
+                            /// remember letter to type args
+                            typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
+                                val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
+                                if (typeField.type.name.length == 1 && typeField.type.name[0].isUpperCase()) {
+                                    letterToRealType[typeFromDBForThisArg.name] = argType.args[i].type
+                                } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.length == 1 && beforeGenericResolvedName[0].isUpperCase()) {
+                                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
+                                }
+                            }
+                            /// remember letter to return type
+                            val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
 
+                            if (typeFromDBForThisArg.returnType.name.length == 1 && typeFromDBForThisArg.returnType.name[0].isUpperCase()) {
+                                letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
+                            } else if (returnTypeBefore != null && returnTypeBefore.length == 1 && returnTypeBefore[0].isUpperCase()) {
+                                letterToRealType[returnTypeBefore] = argType.returnType
+                            }
+
+                        }
                     }
+
+
                 }
-                currentArgumentNumber = -1
-            }()
-            ///
+            }
+            currentArgumentNumber = -1
+
+            /// end of resolving arguments
 
             // if receiverType is lambda then we need to check does it have same argument names and types
             if (receiverType is Type.Lambda) {

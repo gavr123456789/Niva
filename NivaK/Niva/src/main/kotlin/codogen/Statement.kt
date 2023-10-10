@@ -3,12 +3,6 @@ package codogen
 import frontend.parser.types.ast.*
 import frontend.util.addIndentationForEachString
 
-fun codogenKt(statements: List<Statement>, ident: Int = 0): String = buildString {
-    statements.forEach {
-        append(generateKtStatement(it, ident), "\n")
-    }
-
-}
 
 fun generateKtStatement(statement: Statement, ident: Int): String = buildString {
     append(
