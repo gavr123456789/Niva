@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
+import frontend.typer.codogenKt
 
 
 val operators = hashMapOf(
@@ -115,7 +116,13 @@ private fun bodyPart(
     val firstBodyStatement = messageDeclaration.body[0]
     val isNotSetter =
         !(firstBodyStatement is MessageSendKeyword && firstBodyStatement.messages[0] is KeywordMsg && (firstBodyStatement.messages[0] as KeywordMsg).kind == KeywordLikeType.Setter)
-    if (messageDeclaration.body.count() == 1 && firstBodyStatement !is ReturnStatement && isNotSetter) {
+
+    if (messageDeclaration.body.count() == 1 &&
+        firstBodyStatement !is VarDeclaration &&
+        firstBodyStatement !is Assign &&
+        firstBodyStatement !is ReturnStatement &&
+        isNotSetter
+    ) {
         stringBuilder.append(" = ", codogenKt(messageDeclaration.body, 0))
     } else {
         stringBuilder.append(" {\n")

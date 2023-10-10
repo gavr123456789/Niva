@@ -1,5 +1,5 @@
-import codogen.codogenKt
 import frontend.typer.Resolver
+import frontend.typer.codogenKt
 import frontend.typer.resolve
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

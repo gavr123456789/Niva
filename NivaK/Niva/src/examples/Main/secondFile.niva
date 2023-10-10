@@ -1,4 +1,6 @@
-type Wallet money: Int
 Person buy = [
-    1 echo
+    wallet = Wallet money: 23
+    wallet something
+    "buy" echo
 ]
+type Wallet money: Int

@@ -26,10 +26,9 @@ fun Resolver.run() {
         getAst(source = src, file = it)
     }
 
-    ////resolve all the AST////
+    /// resolve all declarations
     statements = mainAST.toMutableList()
 
-    // resolve types
     resolveDeclarationsOnly(mainAST)
     otherASTs.forEach {
         statements = it.toMutableList()
@@ -42,17 +41,21 @@ fun Resolver.run() {
     if (unResolvedMessageDeclarations.isNotEmpty()) {
         throw Exception("Not all message declarations resolved: $unResolvedMessageDeclarations")
     }
+
     if (unResolvedTypeDeclarations.isNotEmpty()) {
         resolveDeclarationsOnly(unResolvedTypeDeclarations.toMutableList())
-
     }
-
+    if (unResolvedTypeDeclarations.isNotEmpty()) {
+        throw Exception("Not all type declarations resolved: $unResolvedTypeDeclarations")
+    }
+    /// end of resolve all declarations
 
     allDeclarationResolvedAlready = true
 
 
+    currentPackageName = "main"
     resolve(mainAST, mutableMapOf())
-
+    currentPackageName = "common"
     otherASTs.forEach {
         statements = it.toMutableList()
         resolve(it, mutableMapOf())
