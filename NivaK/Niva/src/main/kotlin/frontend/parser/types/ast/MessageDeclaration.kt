@@ -12,7 +12,11 @@ sealed class MessageDeclaration(
     val returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf()
-) : Declaration(token, isPrivate, pragmas)
+) : Declaration(token, isPrivate, pragmas) {
+    override fun toString(): String {
+        return "${forType.name} $name -> ${returnType?.name ?: "Unit"}"
+    }
+}
 
 class MessageDeclarationUnary(
     name: String,

@@ -186,13 +186,13 @@ class Resolver(
         val listType = Type.UserType(
             name = "List",
             typeArgumentList = listOf(genericType),
-            fields = listOf(),
+            fields = mutableListOf(),
             pkg = "core",
         )
         val listTypeOfDifferentGeneric = Type.UserType(
             name = "List",
             typeArgumentList = listOf(differentGenericType),
-            fields = listOf(),
+            fields = mutableListOf(),
             pkg = "core",
         )
         listType.protocols.putAll(
@@ -267,7 +267,19 @@ fun Resolver.resolveDeclarations(
             addNewType(newType, statement)
         }
 
-        is UnionDeclaration -> TODO()
+        is UnionDeclaration -> {
+            val newType = statement.toType(currentPackageName, typeTable)
+
+            addNewType(newType, statement)
+            statement.branches.forEach {
+                val type = it.toType(currentPackageName, typeTable)
+                type.parent = newType
+                type.fields += newType.fields
+
+                addNewType(type, it)
+            }
+        }
+
         is AliasDeclaration -> TODO()
 
         is MessageDeclaration -> {
@@ -468,7 +480,7 @@ private fun Resolver.resolveStatement(
                     val genericType = alreadyExistsListType ?: Type.UserType(
                         name = typeName,
                         typeArgumentList = listOf(w),
-                        fields = listOf(),
+                        fields = mutableListOf(),
                         pkg = currentPackageName,
                         protocols = listProtocols
                     )
@@ -740,7 +752,7 @@ fun createFakeToken(): Token = Token(
     Position(0, 1), File("Nothing")
 )
 
-fun Resolver.addNewType(type: Type, statement: TypeDeclaration?, pkg: Package? = null) {
+fun Resolver.addNewType(type: Type, statement: SomeTypeDeclaration?, pkg: Package? = null) {
     val pack = pkg ?: getPackage(currentPackageName, statement?.token ?: createFakeToken())
     if (pack.types.containsKey(type.name)) {
         throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")

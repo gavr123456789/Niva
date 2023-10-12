@@ -168,7 +168,15 @@ fun Resolver.resolveMessage(
                     // check that all fields are filled
                     var replacerTypeIfItGeneric: Type? = null
                     if (receiverType is Type.UserType) {
-                        val receiverFields = receiverType.fields
+                        // collect all fields from parents
+                        val listOfAllParentsFields = mutableListOf<TypeField>()
+                        var parent = receiverType.parent
+                        while (parent != null && parent is Type.UserType) {
+                            listOfAllParentsFields.addAll(parent.fields)
+                            parent = parent.parent
+                        }
+
+                        val receiverFields = receiverType.fields //+ listOfAllParentsFields
                         // check that amount of arguments if right
                         if (statement.args.count() != receiverFields.count()) {
 
@@ -205,7 +213,7 @@ fun Resolver.resolveMessage(
                             replacerTypeIfItGeneric = Type.UserType(
                                 name = receiverType.name,
                                 typeArgumentList = receiverType.typeArgumentList.toList(),
-                                fields = receiverType.fields.toList(),
+                                fields = receiverType.fields,
                                 isPrivate = receiverType.isPrivate,
                                 pkg = receiverType.pkg,
                                 protocols = receiverType.protocols.toMutableMap()

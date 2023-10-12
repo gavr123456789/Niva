@@ -66,7 +66,7 @@ fun Parser.unionDeclaration(): UnionDeclaration {
     matchAssert(TokenType.Assign, "Equal expected")
     match(TokenType.EndOfLine)
 
-    fun unionFields(): List<UnionBranch> {
+    fun unionFields(root: UnionDeclaration): List<UnionBranch> {
         val unionBranches = mutableListOf<UnionBranch>()
 
         do {
@@ -82,7 +82,8 @@ fun Parser.unionDeclaration(): UnionDeclaration {
                 UnionBranch(
                     typeName = branchName.lexeme,
                     fields = fields,
-                    token = pipeTok
+                    token = pipeTok,
+                    root = root
                 )
             )
             match(TokenType.EndOfLine)
@@ -93,17 +94,18 @@ fun Parser.unionDeclaration(): UnionDeclaration {
         return unionBranches
     }
 
-    val unionBranches = unionFields()
 
-
-    val result = UnionDeclaration(
+    val root = UnionDeclaration(
         typeName = unionName.lexeme,
-        branches = unionBranches,
+        branches = mutableListOf(),
         token = unionTok,
         fields = localFields
     )
+    val unionBranches = unionFields(root)
+    root.branches = unionBranches
 
-    return result
+
+    return root
 }
 
 fun Parser.typeAliasDeclaration(): AliasDeclaration {

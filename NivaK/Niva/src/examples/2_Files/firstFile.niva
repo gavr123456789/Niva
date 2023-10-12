@@ -1,0 +1,8 @@
+Wallet something = [
+    "wallet" echo
+]
+person = Person name: "sas"
+person buy
+type Person name: String
+
+

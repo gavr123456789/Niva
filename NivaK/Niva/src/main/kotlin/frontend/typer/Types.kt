@@ -105,7 +105,7 @@ sealed class Type(
     sealed class UserLike(
         name: String,
         var typeArgumentList: List<Type>,
-        val fields: List<TypeField>,
+        val fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>
@@ -114,7 +114,7 @@ sealed class Type(
     class UserType(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: List<TypeField>,
+        fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -124,7 +124,7 @@ sealed class Type(
         val mainType: Type,
         name: String,
         typeArgumentList: List<Type>,
-        fields: List<TypeField>,
+        fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -133,7 +133,7 @@ sealed class Type(
     class UnknownGenericType(
         name: String,
         typeArgumentList: List<Type> = listOf(),
-        fields: List<TypeField> = listOf(),
+        fields: MutableList<TypeField> = mutableListOf(),
         isPrivate: Boolean = true,
         pkg: String = "common",
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -152,7 +152,7 @@ sealed class Type(
     class NullableUserType(
         name: String,
         typeArgumentList: List<Type>,
-        fields: List<TypeField>,
+        fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>
@@ -260,12 +260,12 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
     return result
 }
 
-fun TypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type {
+fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type.UserType {
 
-    val fieldsTyped = fields.map { it.toTypeField(typeTable) }
+    val fieldsTyped = fields.map { it.toTypeField(typeTable) }.toMutableList()
 
-    fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type> {
-        val result = mutableListOf<Type>()
+    fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
+        val result = mutableListOf<Type.UserLike>()
         fields2.forEachIndexed { i, it ->
             val type = it.type
 
@@ -305,7 +305,7 @@ fun TypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type {
         pkg = pkg,
         protocols = mutableMapOf()
     )
-    this.typeFields.addAll(typeFields.map { it.name })
+    this.genericFields.addAll(typeFields.map { it.name })
 
     return result
 }

@@ -1,66 +1,107 @@
 package codogen
 
 import frontend.meta.compileError
+import frontend.parser.types.ast.SomeTypeDeclaration
 import frontend.parser.types.ast.TypeAST
-import frontend.parser.types.ast.TypeDeclaration
+import frontend.parser.types.ast.TypeFieldAST
+import frontend.parser.types.ast.UnionDeclaration
 
-class Sas(val x: String) {
-    override fun toString(): String {
-        return "Sas x: $x"
-    }
 
-    companion object
-}
+fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, root: UnionDeclaration? = null) =
+    buildString {
+        if (isUnionRoot) append("sealed ")
+        append("class ")
+        append(typeName)
 
-fun TypeDeclaration.generateTypeDeclaration() = buildString {
-    append("class ")
-    append(typeName)
-
-    if (typeFields.isNotEmpty()) {
-        append("<")
-        typeFields.forEach({ append(", ") }) {
-            append(it)
+        if (genericFields.isNotEmpty()) {
+            append("<")
+            genericFields.forEach({ append(", ") }) {
+                append(it)
+            }
+            append(">")
         }
-        append(">")
-    }
 
 
-    append("(")
-    // class Person (
-    val c = fields.count() - 1
-    fields.forEachIndexed { i, it ->
-        if (it.type == null) {
-            it.token.compileError("arg must have type")
+        append("(")
+        // class Person (
+
+        fun sas(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+
+            if (it.type == null) {
+                it.token.compileError("arg must have type")
+            }
+            // TODO var or val?, maybe add  mut modifier
+
+            val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
+                it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
+            } else it.type.name
+            if (!rootFields) {
+                append("var ")
+            }
+            append(it.name, ": ", typeName)
+            if (fieldsCountMinus1 != i) {
+                append(", ")
+            }
         }
-        // TODO var or val?, maybe add  mut modifier
 
-        val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
-            it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
-        } else it.type.name
-        append("var ", it.name, ": ", typeName)
-        if (c != i) append(", ")
-    }
-    append(")")
-    // class Person (age: Int)
-
-
-    /// Override toString
-    append(" {\n")
-    append("\toverride fun toString(): String {\n")
-    append("\t\treturn \"", typeName, " ")
-
-    val toStringFields = fields.joinToString(" ") {
-        it.name + ": " + "$" + it.name
-    }
-
-    append(toStringFields, "\"")
-    // for static methods like constructor
-    append(
-        """
-        
+        // default fields
+        fields.forEachIndexed { i, it ->
+            sas(it, i, false, fields.count() - 1)
         }
-        companion object
+        // class Person (var age: Int,
+        // root fields
+        if (root != null) {
+            append(", ")
+            root.fields.forEachIndexed { i, it ->
+                sas(it, i, true, root.fields.count() - 1)
+            }
+        }
+
+
+        append(")")
+        // class Person (var age: Int, kek: String)
+
+        if (root != null) {
+            val w = root.fields.count() - 1
+
+            append(" : ${root.typeName}(")
+            root.fields.forEachIndexed { i, it ->
+                append(it.name)
+                if (w != i) {
+                    append(", ")
+                }
+            }
+            append(")")
+        }
+
+        // class Person (var age: Int, kek: String): Kek(kek)
+        /// Override toString
+        append(" {\n")
+        append("\toverride fun toString(): String {\n")
+        append("\t\treturn \"", typeName, " ")
+
+        val toStringFields = fields.joinToString(" ") {
+            it.name + ": " + "$" + it.name
+        }
+
+        append(toStringFields, "\"")
+        // for static methods like constructor
+        append(
+            """
+                
+                }
+                companion object
+            }
+            """.trimIndent()
+        )
+
     }
-    """.trimIndent()
-    )
+
+sealed class Shape(val area: Int)
+class Rectangle(val width: Int, val height: Int, area: Int) : Shape(area)
+
+fun UnionDeclaration.generateUnionDeclaration() = buildString {
+    val statement = this@generateUnionDeclaration
+
+    append(statement.generateTypeDeclaration(true))
 }
