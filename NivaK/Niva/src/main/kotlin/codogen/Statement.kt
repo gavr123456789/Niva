@@ -23,12 +23,18 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
             is AliasDeclaration -> TODO()
 
 
-            is UnionDeclaration -> TODO()
+            is UnionDeclaration -> {
+
+                statement.generateUnionDeclaration()
+            }
+
             is TypeAST.InternalType -> TODO()
             is TypeAST.Lambda -> TODO()
             is TypeAST.UserType -> TODO()
 
-            is UnionBranch -> TODO()
+            is UnionBranch -> {
+                statement.generateTypeDeclaration(false, statement.root)
+            }
 
         }.addIndentationForEachString(ident)
     )

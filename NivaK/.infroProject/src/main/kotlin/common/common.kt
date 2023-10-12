@@ -1,24 +1,21 @@
 package common
 
 import main.*
-import common.*
-class Person(var name: String) {
+sealed class Shape(var area: Int) {
 	override fun toString(): String {
-		return "Person name: $name"    
+		return "Shape area: $area"    
     }
     companion object
 }
-fun Person.buy() {
-    val wallet = Wallet(23)
-    wallet.something()
-    "buy".echo()
-}
-
-class Wallet(var money: Int) {
+class Rectangle(var width: Int, var height: Int, area: Int) : Shape(area) {
 	override fun toString(): String {
-		return "Wallet money: $money"    
+		return "Rectangle width: $width height: $height"    
     }
     companion object
 }
-fun Wallet.something() = "wallet".echo()
-
+class Circle(var radius: Int, area: Int) : Shape(area) {
+	override fun toString(): String {
+		return "Circle radius: $radius"    
+    }
+    companion object
+}

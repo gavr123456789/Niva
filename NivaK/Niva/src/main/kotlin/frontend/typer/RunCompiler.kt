@@ -1,5 +1,6 @@
 package frontend.typer
 
+import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
@@ -39,6 +40,9 @@ fun Resolver.run() {
         resolveDeclarationsOnly(unResolvedMessageDeclarations.toMutableList())
     }
     if (unResolvedMessageDeclarations.isNotEmpty()) {
+        unResolvedMessageDeclarations.forEach {
+            it.token.compileError("Method `$it` for unresolved type: `${it.forType.name}`")
+        }
         throw Exception("Not all message declarations resolved: $unResolvedMessageDeclarations")
     }
 
@@ -46,6 +50,9 @@ fun Resolver.run() {
         resolveDeclarationsOnly(unResolvedTypeDeclarations.toMutableList())
     }
     if (unResolvedTypeDeclarations.isNotEmpty()) {
+        unResolvedTypeDeclarations.forEach {
+            it.token.compileError("Unresolved type: $it")
+        }
         throw Exception("Not all type declarations resolved: $unResolvedTypeDeclarations")
     }
     /// end of resolve all declarations

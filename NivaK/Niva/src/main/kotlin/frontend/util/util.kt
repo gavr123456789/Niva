@@ -17,10 +17,13 @@ fun String.removeDoubleQuotes(): String = this.substring(1, this.count() - 1)
 
 fun String.isSimpleTypes(): InternalTypes? {
     return when (this) {
-        "int" -> InternalTypes.Int
-        "bool" -> InternalTypes.Boolean
-        "float" -> InternalTypes.Float
-        "string" -> InternalTypes.String
+        InternalTypes.Int.name -> InternalTypes.Int
+        InternalTypes.Boolean.name -> InternalTypes.Boolean
+        InternalTypes.Float.name -> InternalTypes.Float
+        InternalTypes.String.name -> InternalTypes.String
+        InternalTypes.Unit.name -> InternalTypes.Unit
+        InternalTypes.Char.name -> InternalTypes.Char
+        InternalTypes.Any.name -> InternalTypes.Any
         else -> null
     }
 }
