@@ -591,16 +591,33 @@ fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
 
 fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
 
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.unaryMsgs[selectorName]
+    fun findUnary(receiverType: Type, selectorName: String, token: Token): Type? {
+        receiverType.protocols.forEach { (_, v) ->
+            val q = v.unaryMsgs[selectorName]
 
-        if (q != null) {
-            // TODO! add unisng of unary
-            val pkg = getCurrentPackage(token)
-            pkg.currentImports.add(receiverType.pkg)
-            return q.returnType
+            if (q != null) {
+                // TODO! add unisng of unary
+                val pkg = getCurrentPackage(token)
+                pkg.currentImports.add(receiverType.pkg)
+                return q.returnType
+            }
         }
+        return null
     }
+
+    val result = findUnary(receiverType, selectorName, token)
+    if (result != null)
+        return result
+
+    var parent: Type? = receiverType.parent
+    while (parent != null) {
+        val parentResult = findUnary(parent, selectorName, token)
+        if (parentResult != null)
+            return parentResult
+        parent = parent.parent
+    }
+
+    println("Sas???")
     token.compileError("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
