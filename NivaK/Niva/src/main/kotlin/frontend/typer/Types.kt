@@ -120,6 +120,15 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
+    class UserUnionType(
+        name: String,
+        typeArgumentList: List<Type>, // for <T, G>
+        fields: MutableList<TypeField>,
+        isPrivate: Boolean = false,
+        pkg: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
     class KnownGenericType(
         val mainType: Type,
         name: String,
@@ -138,15 +147,6 @@ sealed class Type(
         pkg: String = "common",
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
-
-    // like List::T
-    // not sure if it is needed
-//    class UnknownGenericType(
-//        pkg: String,
-//        typeName: InternalTypes = InternalTypes.Unknown,
-//        isPrivate: Boolean = false,
-//        protocols: MutableMap<String, Protocol> = mutableMapOf()
-//    ) : InternalLike(typeName, pkg, isPrivate, protocols)
 
 
     class NullableUserType(
@@ -260,7 +260,7 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
     return result
 }
 
-fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Type.UserType {
+fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>, isUnion: Boolean = false): Type.UserLike {
 
     val fieldsTyped = fields.map { it.toTypeField(typeTable) }.toMutableList()
 
@@ -297,14 +297,25 @@ fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>): Typ
     val typeFields2 = getAllGenericTypesFromFields(fieldsTyped, fields)
     val typeFields = typeFields1 + typeFields2
 
-    val result = Type.UserType(
-        name = typeName,
-        typeArgumentList = typeFields,
-        fields = fieldsTyped,
-        isPrivate = isPrivate,
-        pkg = pkg,
-        protocols = mutableMapOf()
-    )
+    val result = if (!isUnion)
+        Type.UserType(
+            name = typeName,
+            typeArgumentList = typeFields,
+            fields = fieldsTyped,
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    else
+        Type.UserUnionType(
+            name = typeName,
+            typeArgumentList = typeFields,
+            fields = fieldsTyped,
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+
     this.genericFields.addAll(typeFields.map { it.name })
 
     return result

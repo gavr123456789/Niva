@@ -93,7 +93,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.selectorName + ": " + it.keywordArg.type }})"
+        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.selectorName + ": " + it.keywordArg.str }})"
     }
 }
 
