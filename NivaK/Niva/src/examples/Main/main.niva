@@ -2,7 +2,10 @@ union Shape area: Int =
     | Rectangle => width: Int height: Int
     | Circle    => radius: Int
 
+y = Shape area: 3
+
 x = Rectangle width: 1 height: 41 area: 5
+
 x height echo
 x width echo
 x area echo

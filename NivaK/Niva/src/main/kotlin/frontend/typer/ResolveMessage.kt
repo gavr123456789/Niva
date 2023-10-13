@@ -33,6 +33,9 @@ fun Resolver.resolveMessage(
                 }
 
                 if (q != null) {
+                    if (q is Type.UserUnionType) {
+                        statement.token.compileError("You can't instantiate Union root: ${q.name}")
+                    }
                     statement.kind = KeywordLikeType.Constructor
                     return KeywordLikeType.Constructor
                 }

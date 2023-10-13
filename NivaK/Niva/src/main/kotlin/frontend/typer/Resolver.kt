@@ -268,7 +268,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionDeclaration -> {
-            val newType = statement.toType(currentPackageName, typeTable)
+            val newType = statement.toType(currentPackageName, typeTable, true)
 
             addNewType(newType, statement)
             statement.branches.forEach {
