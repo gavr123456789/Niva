@@ -2,14 +2,19 @@ union Shape area: Int =
     | Rectangle => width: Int height: Int
     | Circle    => radius: Int
 
-Shape getArea = [
-    232 echo
-]
-Int shape::Shape = [
-   233 echo
+
+Int add2::Int -> Int = [
+    ^ this + add2
 ]
 
-x = Rectangle width: 1 height: 41 area: 5
+Shape getArea = [
+    "Union as receiver" echo
+]
+Int shape::Shape = [
+   "Union as argument" echo
+]
+
+x = Rectangle width: 2 height: 3 area: 6
 x getArea
 1 shape: x
 

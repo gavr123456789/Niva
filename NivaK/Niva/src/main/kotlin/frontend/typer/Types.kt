@@ -120,7 +120,18 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
-    class UserUnionType(
+    class UserUnionRootType(
+        var branches: List<UserUnionBranchType>,
+        name: String,
+        typeArgumentList: List<Type>, // for <T, G>
+        fields: MutableList<TypeField>,
+        isPrivate: Boolean = false,
+        pkg: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
+    class UserUnionBranchType(
+        val root: UserUnionRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
@@ -260,7 +271,12 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
     return result
 }
 
-fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>, isUnion: Boolean = false): Type.UserLike {
+fun SomeTypeDeclaration.toType(
+    pkg: String,
+    typeTable: Map<TypeName, Type>,
+    isUnion: Boolean = false,
+    root: Type.UserUnionRootType? = null
+): Type.UserLike {
 
     val fieldsTyped = fields.map { it.toTypeField(typeTable) }.toMutableList()
 
@@ -282,7 +298,7 @@ fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>, isUn
                         name = typeName
                     )
                 }
-//                result.addAll(type.typeArgumentList)
+
                 result.addAll(qwe)
 
                 if (type.fields.isNotEmpty()) {
@@ -297,8 +313,19 @@ fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>, isUn
     val typeFields2 = getAllGenericTypesFromFields(fieldsTyped, fields)
     val typeFields = typeFields1 + typeFields2
 
-    val result = if (!isUnion)
-        Type.UserType(
+    val result = if (isUnion)
+        Type.UserUnionRootType(
+            branches = listOf(),
+            name = typeName,
+            typeArgumentList = typeFields,
+            fields = fieldsTyped,
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    else if (root != null)
+        Type.UserUnionBranchType(
+            root = root,
             name = typeName,
             typeArgumentList = typeFields,
             fields = fieldsTyped,
@@ -307,7 +334,7 @@ fun SomeTypeDeclaration.toType(pkg: String, typeTable: Map<TypeName, Type>, isUn
             protocols = mutableMapOf()
         )
     else
-        Type.UserUnionType(
+        Type.UserType(
             name = typeName,
             typeArgumentList = typeFields,
             fields = fieldsTyped,
