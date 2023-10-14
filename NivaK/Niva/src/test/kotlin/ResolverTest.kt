@@ -40,6 +40,18 @@ class ResolverTest {
     }
 
     @Test
+    fun keywordCall() {
+        val source = """
+            Int add2::Int = [
+                ^ this + add2
+            ]
+        """.trimIndent()
+        val ast = resolve(source)
+        assert(ast.count() == 1)
+
+    }
+
+    @Test
     fun constructorCall() {
         val source = """
             x = "sas"
@@ -470,6 +482,23 @@ class ResolverTest {
         assert(statements.count() == 1)
     }
 
+    @Test
+    fun unionTypes() {
+
+        val source = """
+            union Shape area: Int =
+            | Rectangle => width: Int height: Int
+            | Circle    => radius: Int
+            circle = Circle radius: 25
+
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+    }
 
 }
 

@@ -33,7 +33,7 @@ fun Resolver.resolveMessage(
                 }
 
                 if (q != null) {
-                    if (q is Type.UserUnionType) {
+                    if (q is Type.UserUnionRootType) {
                         statement.token.compileError("You can't instantiate Union root: ${q.name}")
                     }
                     statement.kind = KeywordLikeType.Constructor
@@ -415,7 +415,7 @@ fun Resolver.resolveMessage(
 
 
             val checkForGetter = {
-                if (receiverType is Type.UserType) {
+                if (receiverType is Type.UserLike) {
                     val fieldWithSameName = receiverType.fields.find { it.name == statement.selectorName }
                     Pair(fieldWithSameName != null, fieldWithSameName)
                 } else Pair(false, null)
