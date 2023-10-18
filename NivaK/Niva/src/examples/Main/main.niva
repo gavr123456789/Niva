@@ -3,22 +3,13 @@ union Shape area: Int =
     | Circle    => radius: Int
 
 
-Int add2::Int -> Int = [
-    ^ this + add2
-]
-
-Shape getArea = [
-    "Union as receiver" echo
-]
-Int shape::Shape = [
-   "Union as argument" echo
-]
 
 x = Rectangle width: 2 height: 3 area: 6
-x getArea
-1 shape: x
 
-x height echo
-x width echo
-x area echo
+
+| x
+| Rectangle => x width echo
+| Circle => x radius echo
+
+
 "Hello tagged unions!" echo

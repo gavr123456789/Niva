@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.ControlFlow
+import frontend.parser.types.ast.ControlFlowKind
 import frontend.parser.types.ast.IfBranch
 import frontend.parser.types.ast.ListCollection
 import frontend.typer.codogenKt
@@ -49,7 +50,11 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     ifBranches.forEach {
         append("    ")
 
-        append(it.ifExpression.generateExpression())
+        if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
+            append(it.ifExpression.generateExpression())
+        } else {
+            append("is ", it.ifExpression.generateExpression())
+        }
 
         append(" -> ")
         when (it) {
@@ -62,6 +67,8 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     if (elseBranch != null) {
         append("    else -> ")
         append(codogenKt(elseBranch, 0))
+        append("}\n")
+    } else {
         append("}\n")
     }
 }

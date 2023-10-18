@@ -623,11 +623,36 @@ fun Resolver.resolveExpressionInBrackets(
 }
 
 
-fun Resolver.compare2Types(type1: Type, type2: Type): Boolean {
+fun compare2Types(type1: Type, type2: Type): Boolean {
     // TODO temp
     if (type1 is Type.Lambda || type2 is Type.Lambda) {
         return true
     }
+    // TODO temp, there could be types with same names in different packages
+    if (type1.name == type2.name) {
+        return true
+    }
+
+    if (type1 is Type.UserLike && type2 is Type.UserLike) {
+        // first is parent of the second
+        var parent1: Type? = type1.parent
+        while (parent1 != null) {
+            if (compare2Types(type2, parent1)) {
+                return true
+            }
+            parent1 = parent1.parent
+        }
+        // second is parent of the first
+        var parent2: Type? = type2.parent
+        while (parent2 != null) {
+            if (compare2Types(type1, parent2)) {
+                return true
+            }
+            parent2 = parent2.parent
+        }
+    }
+
+
 
     return type1.name == type2.name
 }

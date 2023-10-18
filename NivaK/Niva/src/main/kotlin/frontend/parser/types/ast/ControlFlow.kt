@@ -19,6 +19,8 @@ sealed class IfBranch(
 
 
 enum class ControlFlowKind {
+    ExpressionTypeMatch,
+    StatementTypeMatch,
     Expression,
     Statement
 }
