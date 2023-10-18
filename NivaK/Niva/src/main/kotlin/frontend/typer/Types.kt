@@ -60,6 +60,19 @@ class TypeField(
     }
 }
 
+fun Type.isDescendantOf(type: Type): Boolean {
+    if (this !is Type.UserLike || type !is Type.UserLike) {
+        return false
+    }
+    var parent: Type? = this.parent
+    while (parent != null) {
+        if (compare2Types(type, parent)) {
+            return true
+        }
+        parent = parent.parent
+    }
+    return false
+}
 
 sealed class Type(
     val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField

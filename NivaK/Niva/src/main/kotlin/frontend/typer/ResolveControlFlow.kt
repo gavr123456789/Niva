@@ -113,25 +113,54 @@ fun Resolver.resolveControlFlow(
 
 
         is ControlFlow.Switch -> {
+            statement.kind = detectExprOrStatement()
+
             if (statement.switch.type == null) {
+                currentLevel++
                 resolve(listOf(statement.switch), previousAndCurrentScope, statement)
+                currentLevel--
             }
 
+
             // TODO check if this expression of statement
+
             var firstBranchReturnType: Type? = null
+            val savedSwitchType = statement.switch.type
 
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if
+                currentLevel++
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
-                val currentType = it.ifExpression.type?.name
-                if (currentType != statement.switch.type!!.name) {
+                currentLevel--
+                val currentTypeName = it.ifExpression.type?.name
+                val currentType = it.ifExpression.type!!
+                val switchMainType = statement.switch.type!!
+
+                if (i == 0 && it.ifExpression is IdentifierExpr && currentTypeName == it.ifExpression.name) {
+                    statement.kind =
+                        if (statement.kind == ControlFlowKind.Expression) ControlFlowKind.ExpressionTypeMatch
+                        else ControlFlowKind.StatementTypeMatch
+                }
+                val thisIsTypeMatching =
+                    statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch
+                if (thisIsTypeMatching && statement.switch is IdentifierExpr) {
+                    currentScope[statement.switch.name] = currentType
+                    previousAndCurrentScope[statement.switch.name] = currentType
+                    statement.switch.type = currentType
+                }
+
+
+
+                if (!compare2Types(currentType, switchMainType)) {
                     val curTok = it.ifExpression.token
                     curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
                 }
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
+                        currentLevel++
                         resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
+                        currentLevel--
                     }
 
                     is IfBranch.IfBranchWithBody -> {
@@ -165,26 +194,25 @@ fun Resolver.resolveControlFlow(
                 }
             }
 
+            statement.switch.type = savedSwitchType
 
-            if (statement.elseBranch == null) {
-                statement.token.compileError("If expression must contain else branch")
+            if (statement.elseBranch != null) {
+                resolve(statement.elseBranch, previousAndCurrentScope, statement)
+                val lastExpr = statement.elseBranch.last()
+                if (lastExpr !is Expression) {
+                    lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                }
+                val elseReturnType = lastExpr.type!!
+                val elseReturnTypeName = elseReturnType.name
+                val firstReturnTypeName = firstBranchReturnType!!.name
+                if (elseReturnTypeName != firstReturnTypeName) {
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
+
+                }
+                statement.type = elseReturnType
             }
 
 
-            resolve(statement.elseBranch, previousAndCurrentScope, statement)
-            val lastExpr = statement.elseBranch.last()
-            if (lastExpr !is Expression) {
-                lastExpr.token.compileError("In switch expression body last statement must be an expression")
-            }
-            val elseReturnType = lastExpr.type!!
-            val elseReturnTypeName = elseReturnType.name
-            val firstReturnTypeName = firstBranchReturnType!!.name
-            if (elseReturnTypeName != firstReturnTypeName) {
-                lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
-
-            }
-
-            statement.type = elseReturnType
         }
 
     }
