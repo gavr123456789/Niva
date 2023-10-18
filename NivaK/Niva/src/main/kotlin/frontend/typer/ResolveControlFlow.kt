@@ -127,6 +127,8 @@ fun Resolver.resolveControlFlow(
             var firstBranchReturnType: Type? = null
             val savedSwitchType = statement.switch.type
 
+            val typesAlreadyChecked = mutableSetOf<Type>()
+            var thisIsTypeMatching = false
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if
                 currentLevel++
@@ -134,24 +136,25 @@ fun Resolver.resolveControlFlow(
                 currentLevel--
                 val currentTypeName = it.ifExpression.type?.name
                 val currentType = it.ifExpression.type!!
-                val switchMainType = statement.switch.type!!
 
                 if (i == 0 && it.ifExpression is IdentifierExpr && currentTypeName == it.ifExpression.name) {
                     statement.kind =
                         if (statement.kind == ControlFlowKind.Expression) ControlFlowKind.ExpressionTypeMatch
                         else ControlFlowKind.StatementTypeMatch
                 }
-                val thisIsTypeMatching =
+                // this is cheaper than every string comparison
+                thisIsTypeMatching =
                     statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch
                 if (thisIsTypeMatching && statement.switch is IdentifierExpr) {
                     currentScope[statement.switch.name] = currentType
                     previousAndCurrentScope[statement.switch.name] = currentType
                     statement.switch.type = currentType
+                    typesAlreadyChecked += currentType
                 }
 
 
 
-                if (!compare2Types(currentType, switchMainType)) {
+                if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
                     curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
                 }
@@ -210,6 +213,19 @@ fun Resolver.resolveControlFlow(
 
                 }
                 statement.type = elseReturnType
+            } else if (thisIsTypeMatching) {
+                // check that this is exhaustive checking
+                val root = savedSwitchType!!.parent
+                if (root is Type.UserUnionRootType) {
+                    val realBranchTypes = mutableSetOf<Type>()
+                    root.branches.forEach {
+                        realBranchTypes += it
+                    }
+                    if (realBranchTypes != typesAlreadyChecked) {
+                        val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
+                        statement.token.compileError("Not all types are checked: ($difference)")
+                    }
+                }
             }
 
 

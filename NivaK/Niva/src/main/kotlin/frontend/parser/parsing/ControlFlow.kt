@@ -20,6 +20,7 @@ fun Parser.ifOrSwitch(): ControlFlow {
         }
         x++
     } while (!check(TokenType.EndOfLine, x))
+
     return switchStatementOrExpression()
 }
 
@@ -27,11 +28,10 @@ fun Parser.ifBranches(): List<IfBranch> {
     val result = mutableListOf<IfBranch>()
 
     do {
-
         step() // skip Pipe
         val ifExpression = expression()
 
-        matchAssert(TokenType.Then, "\"=>\" expected")
+        matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
         val (body, isSingleExpression) = methodBody()
 
         result.add(
@@ -81,8 +81,13 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
     matchAssert(TokenType.Pipe, "| expected")
 
     val switchExpression = expression()
+    while (match(TokenType.EndOfLine)) {
+    }
+    while (match(TokenType.Comment)) {
+    }
+    while (match(TokenType.EndOfLine)) {
+    }
 
-    match(TokenType.EndOfLine)
     val otherPart = ifStatementOrExpression()
 
     val result = ControlFlow.Switch(
