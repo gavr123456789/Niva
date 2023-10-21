@@ -32,17 +32,24 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     return result
 }
 
+sealed class Sas<T>(val x: T)
+class X<T>(x: T) : Sas<T>(x)
+class Y<T>(x: T) : Sas<T>(x)
+
+
 private fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
+
+    if (check(TokenType.EndOfLine))
+        return mutableListOf()
 
     do {
         val isGeneric = match(TokenType.Apostrophe)
         val name = step()
         val type: TypeAST? = if (!isGeneric) {
-//            matchAssert(TokenType.Colon, "Types without fields not supported yet")
             val isThereFields = match(TokenType.Colon)
             if (!isThereFields && !check(TokenType.EndOfLine)) {
-                peek().compileError("Syntax error, expected : \"fields\" or new line")
+                name.compileError("Syntax error, expected : fields or new line, but found \"$name\"")
             }
             parseType()
         } else {
