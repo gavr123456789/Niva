@@ -950,7 +950,6 @@ class ParserTest {
            type Sas
            type Sus
            type Ses
-            
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
@@ -959,6 +958,21 @@ class ParserTest {
         assert(ast[2] is TypeDeclaration)
     }
 
+    @Test
+    fun emptyUnionType() {
+
+        val source = """
+            union Nothing
+            union NoUnionBranches width: Int
+            union NoFieldsButBranches =
+                | Circle => radius: Int
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        assert(ast[0] is UnionDeclaration)
+        assert(ast[1] is UnionDeclaration)
+        assert(ast[1] is UnionDeclaration)
+    }
 
 //    @Test
 //    fun unaryOnManyLines() {

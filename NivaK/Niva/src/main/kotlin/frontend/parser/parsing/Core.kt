@@ -1,9 +1,6 @@
 package frontend.parser.parsing
 
-import frontend.meta.Position
-import frontend.meta.Token
-import frontend.meta.TokenType
-import frontend.meta.isIdentifier
+import frontend.meta.*
 import frontend.parser.types.ast.Statement
 import java.io.File
 
@@ -122,7 +119,8 @@ fun Parser.matchAssert(kind: TokenType, errorMessage: String? = null): Token {
         step()
         tok
     } else {
-        error(realErrorMessage)
+        tok.compileError(realErrorMessage)
+//        error(realErrorMessage)
     }
 }
 

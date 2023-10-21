@@ -48,8 +48,12 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
         val name = step()
         val type: TypeAST? = if (!isGeneric) {
             val isThereFields = match(TokenType.Colon)
-            if (!isThereFields && !check(TokenType.EndOfLine)) {
+            val isThereEndOfLine = match(TokenType.EndOfLine)
+            if (!isThereFields && !isThereEndOfLine) {
                 name.compileError("Syntax error, expected : fields or new line, but found \"$name\"")
+            }
+            if (isThereEndOfLine) {
+                skipNewLinesAndComments()
             }
             parseType()
         } else {
@@ -75,10 +79,13 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
 fun Parser.unionDeclaration(): UnionDeclaration {
     val unionTok = matchAssert(TokenType.Union, "")
     val unionName = matchAssertAnyIdent("name of the union expected")
-    val localFields = typeFields()
 
-    matchAssert(TokenType.Assign, "Equal expected")
-    match(TokenType.EndOfLine)
+    val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
+
+//    matchAssert(TokenType.Assign, "Equal expected")
+    val isThereBrunches = match(TokenType.Assign)
+
+//    skipNewLinesAndComments()
 
     fun unionFields(root: UnionDeclaration): List<UnionBranch> {
         val unionBranches = mutableListOf<UnionBranch>()
@@ -90,7 +97,7 @@ fun Parser.unionDeclaration(): UnionDeclaration {
             val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
             val branchName = matchAssertAnyIdent("Name of the union branch expected")
 
-            matchAssert(TokenType.Then, "=> expected")
+            matchAssert(TokenType.Then, "=> after $branchName expected")
 
             val fields = typeFields()
 
@@ -117,9 +124,10 @@ fun Parser.unionDeclaration(): UnionDeclaration {
         token = unionTok,
         fields = localFields
     )
-    val unionBranches = unionFields(root)
-    root.branches = unionBranches
-
+    if (isThereBrunches) {
+        val unionBranches = unionFields(root)
+        root.branches = unionBranches
+    }
 
     return root
 }
