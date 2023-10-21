@@ -52,7 +52,7 @@ enum class TokenType {
 
 data class Position(val start: Int, val end: Int)
 
-data class Token(
+class Token(
     val kind: TokenType,
     val lexeme: String,
     val line: Int,
@@ -74,6 +74,10 @@ data class Token(
         result = 31 * result + relPos.hashCode()
         result = 31 * result + spaces
         return result
+    }
+
+    override fun toString(): String {
+        return lexeme
     }
 }
 

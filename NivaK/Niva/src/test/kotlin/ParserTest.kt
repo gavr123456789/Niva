@@ -923,6 +923,43 @@ class ParserTest {
         assert(q.value is LiteralExpression.IntExpr)
     }
 
+    @Test
+    fun commentsInsideUnionsAndCF() {
+
+        val source = """
+            union Shape area: Int =
+            // | Circle    => radius: Int
+            | Rectangle => width: Int height: Int
+            x = Rectangle width: 2 height: 3 area: 6
+            | x
+            // | Circle => x radius echo
+            | Rectangle => x width echo
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        assert(ast[0] is UnionDeclaration)
+        assert(ast[1] is VarDeclaration)
+        assert(ast[2] is ControlFlow.Switch)
+    }
+
+    @Test
+    fun emptyType() {
+
+        val source = """
+           type Sas
+           type Sus
+           type Ses
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        assert(ast[0] is TypeDeclaration)
+        assert(ast[1] is TypeDeclaration)
+        assert(ast[2] is TypeDeclaration)
+    }
+
+
 //    @Test
 //    fun unaryOnManyLines() {
 //
