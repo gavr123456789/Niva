@@ -81,13 +81,7 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
     matchAssert(TokenType.Pipe, "| expected")
 
     val switchExpression = expression()
-    while (match(TokenType.EndOfLine)) {
-    }
-    while (match(TokenType.Comment)) {
-    }
-    while (match(TokenType.EndOfLine)) {
-    }
-
+    skipNewLinesAndComments()
     val otherPart = ifStatementOrExpression()
 
     val result = ControlFlow.Switch(
