@@ -1,7 +1,10 @@
 union Shape area: Int =
-    | Rectangle => width: Int height: Int
     | Circle    => radius: Int
+    | Rectangle => width: Int height: Int
 
+
+
+type Kek => width: Int height: Int
 
 
 x = Rectangle width: 2 height: 3 area: 6

@@ -1,6 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
 fun Parser.typeDeclaration(): TypeDeclaration {
@@ -20,6 +21,7 @@ fun Parser.typeDeclaration(): TypeDeclaration {
         step()
     }
 
+
     val typeFields = typeFields()
 
     val result = TypeDeclaration(
@@ -37,15 +39,20 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
         val isGeneric = match(TokenType.Apostrophe)
         val name = step()
         val type: TypeAST? = if (!isGeneric) {
-            matchAssert(TokenType.Colon, "Types without fields not supported yet")
+//            matchAssert(TokenType.Colon, "Types without fields not supported yet")
+            val isThereFields = match(TokenType.Colon)
+            if (!isThereFields && !check(TokenType.EndOfLine)) {
+                peek().compileError("Syntax error, expected : \"fields\" or new line")
+            }
             parseType()
         } else {
             null
         }
 
         // type declaration can be separated on many lines
-        match(TokenType.EndOfFile)
         match(TokenType.EndOfLine)
+
+        match(TokenType.EndOfFile)
 
         fields.add(
             TypeFieldAST(
@@ -70,6 +77,8 @@ fun Parser.unionDeclaration(): UnionDeclaration {
         val unionBranches = mutableListOf<UnionBranch>()
 
         do {
+            skipNewLinesAndComments()
+
             // | Rectangle => width: int height: int
             val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
             val branchName = matchAssertAnyIdent("Name of the union branch expected")
@@ -86,8 +95,8 @@ fun Parser.unionDeclaration(): UnionDeclaration {
                     root = root
                 )
             )
-            match(TokenType.EndOfLine)
-            match(TokenType.EndOfFile)
+//            match(TokenType.EndOfLine)
+//            match(TokenType.EndOfFile)
 
         } while (check(TokenType.Pipe))
 
