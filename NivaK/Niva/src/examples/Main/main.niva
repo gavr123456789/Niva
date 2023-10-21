@@ -1,18 +1,26 @@
-union Shape area: Int =
-    | Circle    => radius: Int
-    | Rectangle => width: Int height: Int
+//union Shape area: Int =
+//    | Circle    => radius: Int
+//    | Rectangle => width: Int height: Int
+//
+
+//| x
+//| Rectangle => x width echo
+//| Circle => x radius echo
 
 
+//union Sas
+//| union Sus
+//  | A x: Int
+//  | B y: Int
+//| Ses x: Int
 
-type Kek => width: Int height: Int
+//x = Rectangle width: 2 height: 3 area: 6
+
+union Sas =
+    | Circle => radius: Int
 
 
-x = Rectangle width: 2 height: 3 area: 6
-
-
-| x
-| Rectangle => x width echo
-| Circle => x radius echo
+x = 56
 
 
 "Hello tagged unions!" echo
