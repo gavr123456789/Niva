@@ -253,7 +253,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
 
     val receiver = if (!keywordOnReceiverWithoutMessages)
         unaryOrBinaryMessageOrPrimaryReceiver()
-    else identifierMayBeTyped() // simpleReceiver
+    else simpleReceiver()
 
     val isNextKeyword = if (dontParseKeywords) false else checkForKeyword()
     val isReceiverUnaryOrBinaryOrCodeBlock =
@@ -285,7 +285,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
 
 
 fun Parser.keyword(
-    customReceiver: Receiver? = null
+    customReceiver: Receiver? = null,
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
     val receiver: Receiver = customReceiver ?: simpleReceiver()
@@ -312,7 +312,7 @@ fun Parser.keyword(
 }
 
 fun Parser.keywordMessageParsing(
-    receiver: Receiver
+    receiver: Receiver,
 ): KeywordMsg {
     val stringBuilder = StringBuilder()
 
@@ -357,6 +357,7 @@ fun Parser.keywordMessageParsing(
             step()
 
         firstCycle = false
+        skipNewLinesAndComments()
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
     val keywordMsg = KeywordMsg(
         receiver,
