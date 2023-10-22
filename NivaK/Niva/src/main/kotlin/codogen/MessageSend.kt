@@ -89,6 +89,9 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     keywordMsg.args.forEachIndexed { i, it ->
 
         val expressionStr = it.keywordArg.generateExpression()
+        if (keywordMsg.kind == KeywordLikeType.Constructor) {
+            append(it.selectorName, " = ")
+        }
         append(expressionStr)
         if (i != keywordMsg.args.count() - 1)
             append(", ")
@@ -96,14 +99,6 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     }
 
     append(")")
-}
-
-private fun KeywordArgAndItsMessages.generateCallPair(): String {
-    // from: 1 to: 2
-    // from = 1, to = 2
-    return keywordArg.generateExpression()
-//    return keywordArg.str
-//    return "$selectorName = ${keywordArg.str}"
 }
 
 fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString {
@@ -126,32 +121,6 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
     if (messages.isEmpty()) {
         append(receiver.generateExpression())
     }
-
-//    return if (messages.count() == 1) {
-//        val unaryMsg = messages[0]
-//        // 1 inc
-//        "${receiver.str}.${unaryMsg.selectorName}()"
-//    } else {
-//        buildString {
-//            append(receiver.str)
-//            messages.forEach {
-//                // 1 inc inc dec
-//                // 1.inc().inc().dec()
-//                append(".${it.selectorName}()")
-//            }
-//        }
-//    }
-}
-
-// 1 + 2 |> inc |> to: "sas"
-// can be unary after binary
-fun generateBinarySend(receiver: Receiver, messages: List<BinaryMsg>) = buildString {
-    messages.forEachIndexed { i, it ->
-        append(generateSingleBinary(i, it.receiver, it))
-    }
-//    if (messages.isEmpty()) {
-//        append(receiver.str)
-//    }
 }
 
 fun generateSingleBinary(

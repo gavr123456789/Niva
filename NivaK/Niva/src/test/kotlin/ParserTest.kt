@@ -288,6 +288,22 @@ class ParserTest {
     }
 
     @Test
+    fun keywordFirstArgStartOnNewLine() {
+        val source = """
+            x 
+            from: 1 
+            to: 2
+            q 
+            do: this
+        and: that
+                  and: that
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+
+    }
+
+    @Test
     fun binaryWithUnary() {
         // inc(inc(3)) + dec(dec(2))
         val source = "3 inc inc + 2 dec dec"
