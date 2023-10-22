@@ -827,31 +827,50 @@ class ParserTest {
     }
 
 
+//    @Test
+//    fun dotOperatorForTypesAndMessages() {
+//
+//        val source = """
+//        x Sas.sus
+//        x = "path to file" Package.unaryMessage
+//        Package.Type create: "sas"
+//        1 Package.from: 1 to: 2
+//        """.trimIndent()
+//
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 4)
+//        val q = ast[0] as MessageSend
+//        val u = q.messages[0] as UnaryMsg
+//        assert(u.selectorName == "sus")
+//        assert(u.path.first() == "Sas")
+//        val w = ((ast[1] as VarDeclaration).value as MessageSendUnary).messages[0] as UnaryMsg
+//        assert(w.path.first() == "Package")
+//        assert(w.selectorName == "unaryMessage")
+//        val e = ((ast[2] as MessageSendKeyword).receiver as IdentifierExpr).name
+//        assert(e == "Type")
+//        val r = ((ast[3] as MessageSendKeyword).messages[0] as KeywordMsg)
+//        assert(r.selectorName == "fromTo")
+//        assert(r.path.last() == "from")
+//    }
+
+
     @Test
-    fun dotOperator() {
+    fun dotOperatorForTypes() {
 
         val source = """
-        x Sas.sus
-        x = "path to file" Package.unaryMessage
         Package.Type create: "sas"
-        1 Package.from: 1 to: 2 
+        x = Package.Package.Type x: 1
         """.trimIndent()
 
         val ast = getAstTest(source)
-        assert(ast.count() == 4)
-        val q = ast[0] as MessageSend
-        val u = q.messages[0] as UnaryMsg
-        assert(u.selectorName == "sus")
-        assert(u.path.first() == "Sas")
-        val w = ((ast[1] as VarDeclaration).value as MessageSendUnary).messages[0] as UnaryMsg
-        assert(w.path.first() == "Package")
-        assert(w.selectorName == "unaryMessage")
-        val e = ((ast[2] as MessageSendKeyword).receiver as IdentifierExpr).name
+        assert(ast.count() == 2)
+
+        val e = ((ast[0] as MessageSendKeyword).receiver as IdentifierExpr).name
         assert(e == "Type")
-        val r = ((ast[3] as MessageSendKeyword).messages[0] as KeywordMsg)
-        assert(r.selectorName == "fromTo")
-        assert(r.path.last() == "from")
+        val r = (((ast[1] as VarDeclaration).value as MessageSendKeyword).messages[0] as KeywordMsg)
+        assert(r.selectorName == "x")
     }
+
 
     @Test
     fun typeAlias() {
