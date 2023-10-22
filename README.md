@@ -3,16 +3,18 @@ It will be Smalltalk like language, but statically typed.
 
 ## What's going on
 The simple implementation is ready on TS, now I rewriting it on Kotlin without parser generator(ohm)
-To check TS version run `yarn` and `yarn ohm generateBundles --withTypes src/niva.ohm` and to run code `yarn ts-node ./src/main.ts ./examples/controlFlow.niva`
-
+To check TS version run `yarn` and `yarn ohm generateBundles --withTypes src/niva.ohm` and to run code `yarn ts-node ./src/main.ts ./examples/controlFlow.niva`  
+UPD:  
+The implementation on Kotlin has already overtaken TS in terms of functionality.  
+`gradle run` will compile main.niva file from NivaK/Niva/src/examples/Main
+    
 ## Backend
-Now the backend is Nim. Yes it's quite fun `niva` -> `nim` -> `C`.  
+~~Now the backend is Nim. Yes it's quite fun `niva` -> `nim` -> `C`.  
 I made this decision because I saw how many new languages die quickly, due to lack of time or being disappointed in ideas, so I decided to transpile into a language of a sufficiently high level so as not to mess with LLVM and be able to quickly test ideas. Also nim gives free Js transpile and simple interaction with `C`, `C++` and `Js`.  
-That can be changed in future.
+That can be changed in future.~~
+Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich. 
   
-A lot of languages are translated into js, which is very high-level, so why not be translated into a real language.
-
-P.S. now rewriting in kotlin without parcer generator.
+A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
 
 ## Name
 I haven't decided on the final name yet, so far I've chosen niva because my 2 favorite static languages are nim and vala.
