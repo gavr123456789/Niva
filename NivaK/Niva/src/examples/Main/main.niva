@@ -20,10 +20,14 @@ type Person
     name: String
     age: Int
 
-x = Person
-age: 2
-name: "sas"
+Person from::Int to::Int = [1 echo]
 
+x = Person
+    age: 2
+    name: "sas"
+x
+    from: 1
+    to: 2
 
 
 "Hello tagged unions!" echo

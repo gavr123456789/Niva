@@ -141,12 +141,12 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // message or control flow
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
-fun Parser.expression(dontParseKeywords: Boolean = false): Expression {
+fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expression {
     if (check(TokenType.Pipe)) {
         return ifOrSwitch()
     }
 
-    val messageSend = messageSend(dontParseKeywords)
+    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines)
     // unwrap unnecessary MessageSend
     return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver
