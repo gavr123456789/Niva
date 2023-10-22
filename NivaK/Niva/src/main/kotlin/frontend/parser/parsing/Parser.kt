@@ -115,7 +115,7 @@ fun Parser.isNextSimpleReceiver(): Boolean {
         // x = 1
         // from: 0
         // to: 3
-        if (check(TokenType.EndOfLine, 1) && check(TokenType.Identifier, 2)) {
+        if (check(TokenType.EndOfLine, 1) && check(TokenType.Identifier, 2) && check(TokenType.Colon, 3)) {
             identifierMayBeTyped()
             skipNewLinesAndComments()
             if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
@@ -236,4 +236,17 @@ fun Parser.statements(): List<Statement> {
     }
 
     return this.tree
+}
+
+
+fun Parser.checkEndOfLineOrFile(i: Int = 0) =
+    check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i)
+
+fun Parser.skipEndOfLineOrFile() =
+    match(TokenType.EndOfLine) || match(TokenType.EndOfFile)
+
+
+fun Parser.skipNewLinesAndComments() {
+    while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
+    }
 }
