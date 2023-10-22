@@ -25,7 +25,7 @@ Almost everything in this lang is message sending(function call), because of tha
 Everything is sending a message to an object. 
 There no such things as `function(arg)`, only `object message`
 ```F#
-"Hello world" print // print is a message for String
+"Hello world" echo // print is a message for String
 ```
 You can send as many messages as you want 
 ```Scala
@@ -33,7 +33,7 @@ You can send as many messages as you want
 // 12
 ```
 
-Okey, but what if out message has some arguments  
+Okey, but what if the message has some arguments?  
 Just separate them with colons, this is called a keyword message:  
 ```Scala
 obj message: argument
@@ -60,7 +60,7 @@ Niva is statically typed language, so we need a way to declare custom types, her
 Each type automatically has a constructor that represents as the same keyword message, isn't it beautiful?
 ```Scala
 // Declare type Person with 2 fields
-type Person name: string age: int
+type Person name: String age: Int
 // Instantiation
 person = Person name: "Bob" age: 42
 ```
@@ -90,12 +90,12 @@ There only one control flow operator: `|` that replace if, elif and switch, it c
 `|-> do` - else branch
 
 #### Factorial
-`factorial` is a message for `int` type, that returns `int`.
-`self` is context-dependent variable that represents int on which factorial is called.
+`factorial` is a message for `Int` type, that returns `Int`.
+`self` is context-dependent variable that represents Int on which factorial is called.
 The whole function is one expression, we pattern matching on self with `|` operator that acts as swith expression here.
 ```Scala
-int factorial -> int = self
-| 0 => 1 // switch on self, self is int
+Int factorial -> Int = self
+| 0 => 1 // switch on self, self is Int
 |=> self * (self - 1) factorial.
 
 5 factorial echo
@@ -103,7 +103,7 @@ int factorial -> int = self
 
 #### Fibonacci
 ```F#
-int fib -> int = [
+Int fib -> Int = [
   n = self.
   | n < 2 => 1
   |=> (n - 2) fib + (n - 1) fib
@@ -114,7 +114,7 @@ int fib -> int = [
 
 #### Is even
 ```F#
-int isEven = [
+Int isEven = [
   | self % 2 == 0 => true
   |=> false
 ]
@@ -174,7 +174,7 @@ So to get fluent desing in Java like languages you need to return this or new in
 
 So the same on niva will looks like:
 ```Scala
-int add: b -> int = [ 
+Int add: b -> Int = [ 
   self + b 
 ]
 a = 0 add: 1; add: 2; add: 3; add 4 // 10
@@ -203,18 +203,18 @@ block value // hello from block printed
 ```
 Block with arguments: 
 ```Scala
-block::[int -> int] = [x -> x + 1]
+block::[Int -> Int] = [x -> x + 1]
 block value: 1 // 2
 ```
 Many args -> many value messages:
 ```Scala
-block::[int int int -> int] = [x y z-> x + y + z]
+block::[Int, Int, Int -> Int] = [x y z-> x + y + z]
 block value: 1 value: 2 value: 3 // 6
 ```
 If you have a better ideas how to send many arguments to blocks please make an issue.
 I have anoter variant in mind with named args
 ```Scala
-block::[int -> int] = [it + 1]
+block::[Int -> Int] = [it + 1]
 block it: 1 // 2
 
 block x: 1 y: 2 z: 3 // 6
@@ -225,9 +225,9 @@ block x: 1 y: 2 z: 3 // 6
 # Tagged unions 
 Declaration:  
 ```C
-union Shape area: int =
-| Rectangle => width: int height: int
-| Circle    => radius: int
+union Shape area: Int =
+| Rectangle => width: Int height: Int
+| Circle    => radius: Int
 
 rectangle = Rectangle area: 42 width: 7 height: 6
 
