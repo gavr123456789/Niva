@@ -1,7 +1,7 @@
 //union Shape area: Int =
 //    | Circle    => radius: Int
 //    | Rectangle => width: Int height: Int
-//
+
 
 //| x
 //| Rectangle => x width echo
@@ -16,11 +16,14 @@
 
 //x = Rectangle width: 2 height: 3 area: 6
 
-union Sas =
-    | Circle => radius: Int
+type Person
+    name: String
+    age: Int
 
+x = Person
+age: 2
+name: "sas"
 
-x = 56
 
 
 "Hello tagged unions!" echo

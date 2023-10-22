@@ -60,7 +60,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     val valueType: TypeAST?
     when (typeOrEqual.kind) {
         TokenType.Assign -> {
-            val isNextReceiver = isNextReceiver()
+            val isNextReceiver = isNextSimpleReceiver()
             value = if (isNextReceiver) simpleReceiver() else expression()
             valueType = null
         }
@@ -84,7 +84,7 @@ fun Parser.assignVariableNewValue(): Assign {
     val identTok = this.step()
     matchAssert(TokenType.AssignArrow)
 
-    val isNextReceiver = isNextReceiver()
+    val isNextReceiver = isNextSimpleReceiver()
     val value = if (isNextReceiver) simpleReceiver() else expression()
 
 
@@ -109,9 +109,22 @@ fun Token.isPrimaryToken(): Boolean =
 
 // checks is next thing is receiver
 // needed for var declaration to know what to parse - message or value
-fun Parser.isNextReceiver(): Boolean {
+fun Parser.isNextSimpleReceiver(): Boolean {
+    val savepoint = current
     if (peek().isPrimaryToken()) {
+        // x = 1
+        // from: 0
+        // to: 3
+        if (check(TokenType.EndOfLine, 1) && check(TokenType.Identifier, 2)) {
+            identifierMayBeTyped()
+            skipNewLinesAndComments()
+            if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+                current = savepoint
+                return false
+            }
+        }
         when {
+
             // x = 1
             check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
             // x = [code]

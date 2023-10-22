@@ -203,13 +203,20 @@ fun Resolver.resolveMessage(
                             statement.token.compileError(text)
                         }
 
-                        statement.args.forEachIndexed { i, arg ->
-                            val typeField = receiverFields[i].name
-                            // check that every arg name is right
-                            if (typeField != arg.selectorName) {
-                                statement.token.compileError("In constructor message for type ${statement.receiver.str} field $typeField != ${arg.selectorName}")
-                            }
+                        val typeFieldsNamesSet = statement.args.map { it.selectorName }.toSet()
+                        val receiverFieldsSet = receiverFields.map { it.name }.toSet()
+
+                        if (typeFieldsNamesSet != receiverFieldsSet) {
+                            statement.token.compileError("In constructor message for type ${statement.receiver.str} fields $typeFieldsNamesSet != $receiverFieldsSet")
                         }
+
+//                        statement.args.forEachIndexed { i, arg ->
+//                            val typeField = receiverFields[i].name
+//                            // check that every arg name is right
+//                            if (typeField != arg.selectorName) {
+//                                statement.token.compileError("In constructor message for type ${statement.receiver.str} field $typeField != ${arg.selectorName}")
+//                            }
+//                        }
 
                         // replace every Generic type with real
                         if (receiverType.typeArgumentList.isNotEmpty()) {

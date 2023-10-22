@@ -215,13 +215,15 @@ fun Parser.unaryOrBinary(
     return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs, null, firstReceiver.token)
 }
 
+// Receiver ^ from: to:
 fun Parser.checkForKeyword(): Boolean {
     val savePoint = current
     var result = false
-    val q = match(TokenType.Identifier)
-    if (q) {
-        val w = match(TokenType.Dot)
-        if (w) {
+    skipNewLinesAndComments()
+    val identTok = match(TokenType.Identifier)
+    if (identTok) {
+        val dot = match(TokenType.Dot)
+        if (dot) {
             while (match(TokenType.Identifier)) {
                 match(TokenType.Dot)
             }
@@ -230,6 +232,7 @@ fun Parser.checkForKeyword(): Boolean {
             }
 
         } else {
+//            skipNewLinesAndComments()
             if (match(TokenType.Colon)) {
                 result = true
             }
@@ -243,7 +246,14 @@ fun Parser.checkForKeyword(): Boolean {
 
 
 fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
-    val receiver = unaryOrBinaryMessageOrPrimaryReceiver()
+    val savepoint = current
+    identifierMayBeTyped()
+    val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else checkForKeyword()
+    current = savepoint
+
+    val receiver = if (!keywordOnReceiverWithoutMessages)
+        unaryOrBinaryMessageOrPrimaryReceiver()
+    else identifierMayBeTyped() // simpleReceiver
 
     val isNextKeyword = if (dontParseKeywords) false else checkForKeyword()
     val isReceiverUnaryOrBinaryOrCodeBlock =
@@ -279,7 +289,7 @@ fun Parser.keyword(
 ): MessageSend {
     // if unary/binary message receiver then we already parsed it somewhere on a higher level
     val receiver: Receiver = customReceiver ?: simpleReceiver()
-
+    skipNewLinesAndComments()
 
     val keyColonCycle = {
         keywordMessageParsing(receiver)
@@ -288,6 +298,7 @@ fun Parser.keyword(
     val messages = mutableListOf<Message>()
     messages.add(keyColonCycle())
     while (match(TokenType.PipeOperator)) {
+        skipNewLinesAndComments()
         messages.add(keyColonCycle())
     }
 
@@ -311,6 +322,7 @@ fun Parser.keywordMessageParsing(
     do {
         val keywordPart =
             identifierMayBeTyped() //matchAssert(TokenType.Identifier, "Identifier expected inside keyword message send")
+
         matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
         // x from: ^3 inc to: 2 inc
         // x from: 3 ^inc to: 2 inc
