@@ -289,8 +289,6 @@ fun Lexer.parseNumber() {
         start += 1
 
         match("..")
-//        step()
-//        step()
 
         createToken(TokenType.BinarySymbol)
         return
@@ -389,6 +387,13 @@ fun Lexer.next() {
             step()
             parseNumber()
         }
+
+        check("-") && peek(1).isDigit() -> {
+            step()
+            step()
+            parseNumber()
+        }
+
         // String
         peek().isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
 
