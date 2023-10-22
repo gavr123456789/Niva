@@ -32,15 +32,11 @@ fun Parser.typeDeclaration(): TypeDeclaration {
     return result
 }
 
-sealed class Sas<T>(val x: T)
-class X<T>(x: T) : Sas<T>(x)
-class Y<T>(x: T) : Sas<T>(x)
-
 
 private fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
 
-    if (check(TokenType.EndOfLine))
+    if (checkEndOfLineOrFile())
         return mutableListOf()
 
     do {
@@ -48,7 +44,7 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
         val name = step()
         val type: TypeAST? = if (!isGeneric) {
             val isThereFields = match(TokenType.Colon)
-            val isThereEndOfLine = match(TokenType.EndOfLine)
+            val isThereEndOfLine = skipEndOfLineOrFile()// match(TokenType.EndOfLine)
             if (!isThereFields && !isThereEndOfLine) {
                 name.compileError("Syntax error, expected : fields or new line, but found \"$name\"")
             }
