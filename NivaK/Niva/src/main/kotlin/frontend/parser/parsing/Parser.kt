@@ -60,7 +60,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     val valueType: TypeAST?
     when (typeOrEqual.kind) {
         TokenType.Assign -> {
-            val isNextReceiver = isNextReceiver()
+            val isNextReceiver = isNextSimpleReceiver()
             value = if (isNextReceiver) simpleReceiver() else expression()
             valueType = null
         }
@@ -84,7 +84,7 @@ fun Parser.assignVariableNewValue(): Assign {
     val identTok = this.step()
     matchAssert(TokenType.AssignArrow)
 
-    val isNextReceiver = isNextReceiver()
+    val isNextReceiver = isNextSimpleReceiver()
     val value = if (isNextReceiver) simpleReceiver() else expression()
 
 
@@ -109,9 +109,22 @@ fun Token.isPrimaryToken(): Boolean =
 
 // checks is next thing is receiver
 // needed for var declaration to know what to parse - message or value
-fun Parser.isNextReceiver(): Boolean {
+fun Parser.isNextSimpleReceiver(): Boolean {
+    val savepoint = current
     if (peek().isPrimaryToken()) {
+        // x = 1
+        // from: 0
+        // to: 3
+        if (check(TokenType.EndOfLine, 1) && check(TokenType.Identifier, 2) && check(TokenType.Colon, 3)) {
+            identifierMayBeTyped()
+            skipNewLinesAndComments()
+            if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+                current = savepoint
+                return false
+            }
+        }
         when {
+
             // x = 1
             check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
             // x = [code]
@@ -128,12 +141,12 @@ fun Parser.isNextReceiver(): Boolean {
 // message or control flow
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
-fun Parser.expression(dontParseKeywords: Boolean = false): Expression {
+fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expression {
     if (check(TokenType.Pipe)) {
         return ifOrSwitch()
     }
 
-    val messageSend = messageSend(dontParseKeywords)
+    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines)
     // unwrap unnecessary MessageSend
     return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver
@@ -223,4 +236,17 @@ fun Parser.statements(): List<Statement> {
     }
 
     return this.tree
+}
+
+
+fun Parser.checkEndOfLineOrFile(i: Int = 0) =
+    check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i)
+
+fun Parser.skipEndOfLineOrFile() =
+    match(TokenType.EndOfLine) || match(TokenType.EndOfFile)
+
+
+fun Parser.skipNewLinesAndComments() {
+    while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
+    }
 }

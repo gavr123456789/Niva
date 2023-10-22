@@ -280,11 +280,6 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 }
 
 
-fun Parser.skipNewLinesAndComments() {
-    while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
-    }
-}
-
 // returns true if it's single expression
 fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean

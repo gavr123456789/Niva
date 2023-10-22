@@ -52,7 +52,7 @@ class Lexer(
         tokens.add(
             Token(
                 kind = TokenType.EndOfFile,
-                lexeme = "",
+                lexeme = "EOF",
                 line = line,
                 pos = Position(current, current),
                 relPos = Position(0, linePos - 1),
