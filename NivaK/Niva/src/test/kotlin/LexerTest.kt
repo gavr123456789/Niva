@@ -42,8 +42,7 @@ x sas
 """
         // there no end of line after "sas" because there end of file
         check(
-            oneExpr,
-            listOf(
+            oneExpr, listOf(
                 Identifier,
                 Identifier,
                 Colon,
@@ -109,10 +108,17 @@ x sas
             ]       
         """.trimIndent()
         check(
-            functionDeclaration,
-            listOf(
-                Identifier, Identifier, Colon, Identifier, Assign, OpenBracket, EndOfLine,
-                Identifier, Identifier, EndOfLine,
+            functionDeclaration, listOf(
+                Identifier,
+                Identifier,
+                Colon,
+                Identifier,
+                Assign,
+                OpenBracket,
+                EndOfLine,
+                Identifier,
+                Identifier,
+                EndOfLine,
                 CloseBracket,
                 EndOfFile
             )
@@ -132,8 +138,7 @@ x sas
     @Test
     fun hardcodedBinarySymbols() {
         check(
-            "^ |> | |=> = ::",
-            listOf(
+            "^ |> | |=> = ::", listOf(
                 Return, PipeOperator, Pipe, Else, Assign, DoubleColon, EndOfFile
             )
         )
@@ -142,8 +147,7 @@ x sas
     @Test
     fun binarySymbols2() {
         check(
-            "|| && == !=",
-            listOf(
+            "|| && == !=", listOf(
                 BinarySymbol, BinarySymbol, BinarySymbol, BinarySymbol, EndOfFile
             )
         )
@@ -195,6 +199,29 @@ x sas
         """.trimIndent(), listOf(Integer, BinarySymbol, Integer, EndOfFile)
         )
     }
+
+    @Test
+    fun codeAttributes() {
+        check(
+            """
+                @ a: 1 b: "sas"
+                type Person
+            """.trimIndent(), listOf(
+                BinarySymbol,
+                Identifier,
+                Colon,
+                Integer,
+                Identifier,
+                Colon,
+                TokenType.String,
+                EndOfLine,
+                Type,
+                Identifier,
+                EndOfFile
+            )
+        )
+    }
+
 
     private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, File("Niva.iml"))

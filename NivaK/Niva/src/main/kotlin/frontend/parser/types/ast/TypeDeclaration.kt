@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.parser.parsing.CodeAttribute
 
 
 sealed class TypeAST(
@@ -85,6 +86,7 @@ sealed class SomeTypeDeclaration(
     val genericFields: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: List<Pragma> = listOf(),
+    val codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
 
 class TypeDeclaration(
@@ -94,7 +96,8 @@ class TypeDeclaration(
     genericFields: MutableList<String> = mutableListOf(),
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas) {
+    codeAttributes: MutableList<CodeAttribute>,
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas, codeAttributes) {
     override fun toString(): String {
         return "TypeDeclaration($typeName)"
     }
@@ -105,8 +108,9 @@ class UnionBranch(
     fields: List<TypeFieldAST>,
     token: Token,
     genericFields: MutableList<String> = mutableListOf(),
-    val root: UnionDeclaration
-) : SomeTypeDeclaration(typeName, fields, token, genericFields)
+    val root: UnionDeclaration,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, codeAttributes = codeAttributes)
 
 class UnionDeclaration(
     typeName: String,
@@ -116,7 +120,8 @@ class UnionDeclaration(
     genericFields: MutableList<String> = mutableListOf(),
     pragmas: List<Pragma> = listOf(),
     isPrivate: Boolean = false,
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas)
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas, codeAttributes)
 
 class AliasDeclaration(
     val typeName: String,
@@ -128,7 +133,7 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any,
+    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any, Bind,
 
     //    List, Map, Set,
 //    Unknown // For generics like T

@@ -28,7 +28,7 @@ fun Resolver.resolveMessage(
                 }
                 val receiverText = statement.receiver.str
                 val q = typeTable[receiverText]
-                if (receiverText == "Project") {
+                if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
 

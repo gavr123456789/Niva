@@ -73,6 +73,7 @@ class Resolver(
             createDefaultType(InternalTypes.Unit),
 
             createDefaultType(InternalTypes.Project),
+            createDefaultType(InternalTypes.Bind),
             createDefaultType(InternalTypes.IntRange),
 
             createDefaultType(InternalTypes.Any),
@@ -247,7 +248,7 @@ fun Resolver.resolve(
     }
 
     topLevelStatements = topLevelStatements.filter {
-        !(it is MessageSendKeyword && it.receiver.str == "Project")
+        !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind"))
     }.toMutableList()
 
 
@@ -362,39 +363,51 @@ private fun Resolver.resolveStatement(
     rootStatement: Statement?
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
-        if (statement2.receiver.str != "Project") {
-            val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            this.resolve(statement2.messages, previousAndCurrentScope, statement2)
+        when (statement2.receiver.str) {
+            "Project" -> {
+                // add to the current project
+                assert(statement2.messages.count() == 1)
+                val keyword = statement2.messages[0] as KeywordMsg
 
-            // TODO check then return parameter of each send match the next input parameter
-            if (statement2.messages.isNotEmpty()) {
-                statement2.type =
-                    statement2.messages.last().type
-                        ?: statement2.token.compileError("Not all messages of ${statement2.str} has types")
-            } else {
-                // every single expressions is unary message without messages
-                if (statement2.type == null) {
-                    currentLevel++
-                    resolve(listOf(statement2.receiver), previousAndCurrentScope, statement2)
-                    currentLevel--
+                keyword.args.forEach {
+                    if (it.keywordArg.token.kind == TokenType.String) {
+                        val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
+                        when (it.selectorName) {
+                            "name" -> changeProject(substring, statement2.token)
+                            "package" -> changePackage(substring, statement2.token)
+                            "protocol" -> changeProtocol(substring)
+                        }
+                    } else it.keywordArg.token.compileError("Only string arguments for Project allowed")
                 }
-                statement2.type = statement2.receiver.type
-                    ?: statement2.token.compileError("Can't find type for ${statement2.str} on line ${statement2.token.line}")
             }
-        } else {
-            // add to the current project
-            assert(statement2.messages.count() == 1)
-            val keyword = statement2.messages[0] as KeywordMsg
 
-            keyword.args.forEach {
-                if (it.keywordArg.token.kind == TokenType.String) {
-                    val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
-                    when (it.selectorName) {
-                        "name" -> changeProject(substring, statement2.token)
-                        "package" -> changePackage(substring, statement2.token)
-                        "protocol" -> changeProtocol(substring)
+            "Bind" -> {
+//                val q = File("a")
+//                q.resolve("")
+//                q.setReadable(false, true)
+
+                TODO()
+            }
+
+            else -> {
+                val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                this.resolve(statement2.messages, previousAndCurrentScope, statement2)
+
+                // TODO check then return parameter of each send match the next input parameter
+                if (statement2.messages.isNotEmpty()) {
+                    statement2.type =
+                        statement2.messages.last().type
+                            ?: statement2.token.compileError("Not all messages of ${statement2.str} has types")
+                } else {
+                    // every single expressions is unary message without messages
+                    if (statement2.type == null) {
+                        currentLevel++
+                        resolve(listOf(statement2.receiver), previousAndCurrentScope, statement2)
+                        currentLevel--
                     }
-                } else it.keywordArg.token.compileError("Only string arguments for Project allowed")
+                    statement2.type = statement2.receiver.type
+                        ?: statement2.token.compileError("Can't find type for ${statement2.str} on line ${statement2.token.line}")
+                }
             }
         }
 
@@ -511,7 +524,7 @@ private fun Resolver.resolveStatement(
                     val w = q.typeAST.toType(typeTable)
                     w.beforeGenericResolvedName = "T" // Default List has T type
                     val listType =
-                        this.projects["common"]!!.packages["core"]!!.types["List"] as Type.UserType// Resolver.defaultTypes[InternalTypes.List]!!
+                        this.projects["common"]!!.packages["core"]!!.types["List"] as Type.UserType
 
                     // try to find list with the same generic type
                     val typeName = "List"
@@ -527,10 +540,6 @@ private fun Resolver.resolveStatement(
                         pkg = currentPackageName,
                         protocols = listProtocols
                     )
-
-//                    if (alreadyExistsListType == null) {
-//                        addNewType(genericType, null, currentPkg)
-//                    }
 
                     statement.type = genericType
                 } else {

@@ -374,12 +374,19 @@ enum class MessageDeclarationType {
     Keyword
 }
 
-fun Parser.messageDeclaration(type: MessageDeclarationType): MessageDeclaration {
-    return when (type) {
+fun Parser.messageDeclaration(
+    type: MessageDeclarationType,
+    codeAttributes: MutableList<CodeAttribute>? = null
+): MessageDeclaration {
+    val result = when (type) {
         MessageDeclarationType.Unary -> unaryDeclaration()
         MessageDeclarationType.Binary -> binaryDeclaration()
         MessageDeclarationType.Keyword -> keywordDeclaration()
     }
+    if (codeAttributes != null) {
+        result.codeAttributes = codeAttributes
+    }
+    return result
 }
 
 // constructor TYPE messageDeclaration
