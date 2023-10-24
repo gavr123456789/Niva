@@ -163,6 +163,7 @@ class ResolverTest {
         assert(e["Boolean"] != null)
         assert(e["Unit"] != null)
         assert(e["Project"] != null)
+        assert(e["Bind"] != null)
 
     }
 

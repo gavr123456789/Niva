@@ -960,7 +960,6 @@ class ParserTest {
 
     @Test
     fun commentsInsideUnionsAndCF() {
-
         val source = """
             union Shape area: Int =
             // | Circle    => radius: Int
@@ -1007,6 +1006,21 @@ class ParserTest {
         assert(ast[0] is UnionDeclaration)
         assert(ast[1] is UnionDeclaration)
         assert(ast[1] is UnionDeclaration)
+    }
+
+    @Test
+    fun codeAttributes() {
+
+        val source = """
+           @ a: 1 b: "sas"
+           type Person
+           @ sas: 212 sus: "wqw"
+           Person from::Int = 1 echo
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        assert((ast[0] as TypeDeclaration).codeAttributes.count() == 2)
+        assert((ast[1] as MessageDeclarationKeyword).codeAttributes.count() == 2)
     }
 
 //    @Test

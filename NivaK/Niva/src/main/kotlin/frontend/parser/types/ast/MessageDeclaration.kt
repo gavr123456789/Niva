@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.parser.parsing.CodeAttribute
 
 
 sealed class MessageDeclaration(
@@ -11,7 +12,8 @@ sealed class MessageDeclaration(
     val body: List<Statement>,
     val returnType: TypeAST?,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: List<Pragma> = listOf(),
+    var codeAttributes: MutableList<CodeAttribute> = mutableListOf()
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forType.name} $name -> ${returnType?.name ?: "Unit"}"
@@ -80,5 +82,5 @@ class ConstructorDeclaration(
     msgDeclaration.body,
     msgDeclaration.returnType,
     msgDeclaration.isPrivate,
-    msgDeclaration.pragmas
+    msgDeclaration.pragmas,
 )

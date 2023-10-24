@@ -6,12 +6,12 @@ import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 
-data class Module(val name: String, var loaded: Boolean)
+//data class Module(val name: String, var loaded: Boolean)
 
 fun Parser.identifierMayBeTyped(): IdentifierExpr {
     val x = step()
     val dotMatched = match(TokenType.Dot)
-    val listOfIdentifiersPath = mutableListOf<String>(x.lexeme)
+    val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
         do {
             val q = matchAssert(TokenType.Identifier, "Identifier expected after dot")
@@ -155,11 +155,18 @@ fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expre
     }
 }
 
+class CodeAttribute(
+    val name: String,
+    val value: Primary
+)
 
 // Declaration without end of line
 fun Parser.statement(): Statement {
+    val codeAttributes = if (check("@")) codeAttributes() else mutableListOf()
     val tok = peek()
     val kind = tok.kind
+
+
     // Checks for declarations that starts from keyword like type/fn
 
     if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
@@ -167,7 +174,7 @@ fun Parser.statement(): Statement {
         return varDeclaration()
     }
     if (kind == TokenType.Type) {
-        return typeDeclaration()
+        return typeDeclaration(codeAttributes)
     }
     if (kind == TokenType.Alias) {
         return typeAliasDeclaration()
@@ -206,18 +213,38 @@ fun Parser.statement(): Statement {
     }
 
     if (kind == TokenType.EndOfFile) {
-        tok.compileError("File contains only comments, nothing to compile")
+        tok.compileError("Nothing to compile :(")
     }
 
 
     val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
     if (isItKeywordDeclaration != null) {
-        return messageDeclaration(isItKeywordDeclaration)
+        return messageDeclaration(isItKeywordDeclaration, codeAttributes)
     }
 
 
 
     return expression()
+}
+
+private fun Parser.codeAttributes(): MutableList<CodeAttribute> {
+    val codeAttributes: MutableList<CodeAttribute> = mutableListOf()
+    step()
+    do {
+        val name = step()
+        step() // skip colon
+        val value = primary() ?: name.compileError("Inside code attribute after : value expected")
+
+        codeAttributes.add(
+            CodeAttribute(
+                name = name.lexeme,
+                value = value
+            )
+        )
+
+    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+    skipEndOfLineOrFile()
+    return codeAttributes
 }
 
 

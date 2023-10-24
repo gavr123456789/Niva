@@ -4,7 +4,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
-fun Parser.typeDeclaration(): TypeDeclaration {
+fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDeclaration {
     // type Person name: string generic age: int
 
     // type Person
@@ -24,16 +24,18 @@ fun Parser.typeDeclaration(): TypeDeclaration {
 
     val typeFields = typeFields()
 
+
     val result = TypeDeclaration(
         typeName = typeName.lexeme,
         fields = typeFields,
-        token = typeToken
+        token = typeToken,
+        codeAttributes = codeAttributes
     )
     return result
 }
 
 
-private fun Parser.typeFields(): MutableList<TypeFieldAST> {
+fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
 
     if (checkEndOfLineOrFile())
@@ -57,9 +59,9 @@ private fun Parser.typeFields(): MutableList<TypeFieldAST> {
         }
 
         // type declaration can be separated on many lines
-        match(TokenType.EndOfLine)
-
-        match(TokenType.EndOfFile)
+        skipEndOfLineOrFile()
+//        match(TokenType.EndOfLine)
+//        match(TokenType.EndOfFile)
 
         fields.add(
             TypeFieldAST(

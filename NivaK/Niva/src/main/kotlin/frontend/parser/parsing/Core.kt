@@ -13,7 +13,7 @@ class Parser(
 //    val operators: OperatorTable,
     val tree: MutableList<Statement> = mutableListOf(),
     var current: Int = 0,
-    val modules: MutableList<Module> = mutableListOf(),
+//    val modules: MutableList<Module> = mutableListOf(),
 )
 
 fun Parser.getCurrent() = current
@@ -53,11 +53,11 @@ fun Parser.step(n: Int = 1): Token {
     return result
 }
 
-fun Parser.error(message: String, token: Token? = null): Nothing {
-    var realToken = token ?: getCurrentToken()
-    if (realToken.kind == TokenType.EndOfFile) {
-        realToken = peek(-1)
-    }
+fun Parser.error(message: String): Nothing {
+//    var realToken = token ?: getCurrentToken()
+//    if (realToken.kind == TokenType.EndOfFile) {
+//        realToken = peek(-1)
+//    }
     throw Exception(message)
 }
 
@@ -153,7 +153,7 @@ fun Parser.matchString(kind: Iterable<String>): Boolean {
 fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}", token)
+            error("expecting token of kind $kind, found ${peek().kind}")
         } else {
             error(message)
         }
@@ -163,7 +163,7 @@ fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
 fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
     if (!match(kind)) {
         if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}", token)
+            error("expecting token of kind $kind, found ${peek().kind}")
         } else {
             error(message)
         }
