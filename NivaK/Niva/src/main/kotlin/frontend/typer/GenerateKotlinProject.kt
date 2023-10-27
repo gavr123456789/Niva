@@ -52,7 +52,7 @@ fun addStdAndPutInMain(ktCode: String, mainPkg: Package) = buildString {
 fun Resolver.generatePackages(pathToSource: Path) {
     val commonProject = projects["common"]!!
 //    val builder = StringBuilder()
-    commonProject.packages.forEach { (k, v) ->
+    commonProject.packages.values.filter { !it.isBinding }.forEach { v ->
 
         val code = codogenKt(v.declarations, pkg = v)
         // generate folder for package

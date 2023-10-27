@@ -12,8 +12,7 @@ sealed class MessageDeclaration(
     val body: List<Statement>,
     val returnType: TypeAST?,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf(),
-    var codeAttributes: MutableList<CodeAttribute> = mutableListOf()
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forType.name} $name -> ${returnType?.name ?: "Unit"}"
@@ -28,7 +27,7 @@ class MessageDeclarationUnary(
     body: List<Statement>,
     returnType: TypeAST?,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 class MessageDeclarationBinary(
@@ -40,7 +39,7 @@ class MessageDeclarationBinary(
     returnType: TypeAST?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
 
 
@@ -64,7 +63,7 @@ class MessageDeclarationKeyword(
     isSingleExpression: Boolean,
     val typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forType.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: "Unit"}"

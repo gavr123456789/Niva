@@ -221,12 +221,55 @@ class Resolver(
     }
 }
 
+//fun MessageSendKeyword.toMessageDeclarationKeyword(): MessageDeclarationKeyword {
+//    val msg = messages[0]
+//    if (this.messages.count() > 0 || msg !is KeywordMsg) {
+//        this.token.compileError("Can't translate msg send to msg declaration")
+//    }
+//
+//    val result = MessageDeclarationKeyword(
+//        name = msg.selectorName,
+//        forType = TypeAST(
+//            name = receiver.str,
+//            is
+//        )
+//    )
+//}
 
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
+    val savedPackageName = currentPackageName
     statements.forEach {
         if (it is Declaration)
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
+        if (it is MessageSendKeyword && it.receiver.str == "Bind") {
+            val msg = it.messages[0]
+            if (msg !is KeywordMsg)
+                it.token.compileError("Bind must have keyword message")
+            if (msg.args.count() != 2)
+                it.token.compileError("Bind must have 2 argument: package and content")
+            val pkgArg = msg.args[0]
+            val contentArg = msg.args[1]
+            if (pkgArg.keywordArg !is LiteralExpression)
+                it.token.compileError("Package argument must be a string")
+            if (contentArg.keywordArg !is CodeBlock)
+                it.token.compileError("Content argument must be a code block with type and method declarations")
+
+
+            val pkg = pkgArg.keywordArg.toString()
+
+            changePackage(pkg, it.token, true)
+            val declarations = contentArg.keywordArg.statements
+            declarations.forEach {
+                if (it is Declaration) {
+                    resolveDeclarations(it, mutableMapOf(), resolveBody = false)
+                } else {
+                    it.token.compileError("Inside Bild can be only declarations, but found $it")
+                }
+            }
+//            TODO()
+        }
     }
+    changePackage(savedPackageName, createFakeToken())
 }
 
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
@@ -259,6 +302,7 @@ fun Resolver.resolveDeclarations(
     statement: Declaration,
     previousScope: MutableMap<String, Type>,
     resolveBody: Boolean = true,
+//    pathToPackage: List<String> = listOf()
 ) {
     currentLevel += 1
 
@@ -312,7 +356,10 @@ fun Resolver.resolveDeclarations(
                 is MessageDeclarationBinary -> addNewBinaryMessage(statement)
                 is MessageDeclarationKeyword -> {
                     statement.args.forEach {
-                        val astType = it.type!!
+                        if (it.type == null) {
+                            statement.token.compileError("Can't parse type for argument ${it.name}")
+                        }
+                        val astType = it.type
                         val type = astType.toType(typeTable, it.name)
 
                         if (type.name == it.type.name) {
@@ -382,11 +429,6 @@ private fun Resolver.resolveStatement(
             }
 
             "Bind" -> {
-//                val q = File("a")
-//                q.resolve("")
-//                q.setReadable(false, true)
-
-                TODO()
             }
 
             else -> {
@@ -856,6 +898,9 @@ fun Resolver.addNewType(type: Type, statement: SomeTypeDeclaration?, pkg: Packag
         pack.declarations.add(statement)
     }
 
+    if (pack.isBinding && type is Type.UserLike) {
+        type.isBinding = true
+    }
     pack.types[type.name] = type
     typeTable[type.name] = type
 }
@@ -880,7 +925,7 @@ fun Resolver.changeProject(newCurrentProject: String, token: Token) {
     TODO()
 }
 
-fun Resolver.changePackage(newCurrentPackage: String, token: Token) {
+fun Resolver.changePackage(newCurrentPackage: String, token: Token, isBinding: Boolean = false) {
     currentPackageName = newCurrentPackage
 
     val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $currentProjectName")
@@ -895,7 +940,8 @@ fun Resolver.changePackage(newCurrentPackage: String, token: Token) {
     } else {
         // create this new package
         val pack = Package(
-            packageName = newCurrentPackage
+            packageName = newCurrentPackage,
+            isBinding = isBinding
         )
         currentProject.packages[newCurrentPackage] = pack
     }
@@ -911,13 +957,34 @@ fun Resolver.getTypeForIdentifier(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ): Type {
-    val type = typeTable[x.str]
-        ?: currentScope[x.str]
-        ?: previousScope[x.str]
+    val type = findType(x.name, currentScope, previousScope)
         ?: x.token.compileError("Unresolved reference: ${x.str}")
-    x.type = type
 
+    x.type = type
     return type
+}
+
+fun Resolver.findType(
+    typeName: String,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>
+): Type? =
+    typeTable[typeName]
+        ?: currentScope[typeName]
+        ?: previousScope[typeName]
+        ?: findTypeInAllPackages(typeName)
+
+
+fun Resolver.findTypeInAllPackages(x: String): Type? {
+    val packages = projects[currentProjectName]!!.packages.values
+    packages.forEach {
+        val result = it.types[x]
+        if (result != null) {
+            return result
+        }
+    }
+
+    return null
 }
 
 

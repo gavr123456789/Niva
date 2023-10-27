@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.parser.parsing.CodeAttribute
 import frontend.typer.Type
 
 // [it toString]
@@ -12,7 +13,7 @@ class CodeBlock(
     var isSingle: Boolean = false,
     type: Type?,
     token: Token,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : Receiver(type, token)
 
@@ -20,6 +21,6 @@ class ExpressionInBrackets(
     val statements: List<Statement>,
     type: Type?,
     token: Token,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : Receiver(type, token)
