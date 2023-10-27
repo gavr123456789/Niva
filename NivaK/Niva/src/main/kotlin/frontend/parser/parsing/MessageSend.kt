@@ -246,10 +246,14 @@ fun Parser.checkForKeyword(): Boolean {
 
 
 fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
-    val savepoint = current
-    identifierMayBeTyped()
-    val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else checkForKeyword()
-    current = savepoint
+
+    val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
+        val savepoint = current
+        identifierMayBeTyped()
+        val result = checkForKeyword()
+        current = savepoint
+        result
+    }
 
     val receiver = if (!keywordOnReceiverWithoutMessages)
         unaryOrBinaryMessageOrPrimaryReceiver()

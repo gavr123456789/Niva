@@ -19,8 +19,8 @@ fun Resolver.run() {
     // generate ast for main file with filling topLevelStatements
     // 1) read content of mainFilePath
     // 2) generate ast
-    val mainSourse = mainFile.readText()
-    val mainAST = getAst(source = mainSourse, file = mainFile)
+    val mainSource = mainFile.readText()
+    val mainAST = getAst(source = mainSource, file = mainFile)
     // generate ast for others
     val otherASTs = otherFilesPaths.map {
         val src = it.readText()

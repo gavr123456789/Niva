@@ -26,14 +26,11 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
         when (val messageSend = unaryOrBinary()) {
             is MessageSendUnary, is MessageSendBinary -> {
                 if (messageSend.messages.isNotEmpty()) {
-
-//                    assert(q.messages.count() == 1)
-                    // if followed by keyword
-                    return messageSend//.messages[0]
+                    return messageSend
                 }
             }
 
-            is MessageSendKeyword -> error("keyword cant be a receiver, for now")// need pipe operator
+            is MessageSendKeyword -> error("keyword cant be a receiver, for now")
         }
     } catch (e: Throwable) {
         if (e.message?.startsWith("Error") == true) {
@@ -198,7 +195,6 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
 
     val receiverTypeNameToken = peek()
-//        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
     val forType = parseType()
 
     val args = mutableListOf<KeywordDeclarationArg>()
@@ -209,8 +205,6 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
         // type and local name: to: x::int   from: y::int
 
         args.add(keyArg())
-
-
     } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
 
 
@@ -290,17 +284,13 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
     if (match(TokenType.OpenBracket)) {
         isSingleExpression = false
 
-//        match(TokenType.EndOfLine)
         skipNewLinesAndComments()
-        do {
-//            messagesOrVarStatements.add(messageOrVarDeclarationOrReturn())
+        while (!match(TokenType.CloseBracket)) {
             messagesOrVarStatements.add(statementWithEndLine())
-
-        } while (!match(TokenType.CloseBracket))
+        }
     } else {
         isSingleExpression = true
         // one expression in body
-//        messagesOrVarStatements.add(messageOrVarDeclarationOrReturn())
         messagesOrVarStatements.add(statementWithEndLine())
     }
     return Pair(messagesOrVarStatements, isSingleExpression)
@@ -384,7 +374,7 @@ fun Parser.messageDeclaration(
         MessageDeclarationType.Keyword -> keywordDeclaration()
     }
     if (codeAttributes != null) {
-        result.codeAttributes = codeAttributes
+        result.pragmas = codeAttributes
     }
     return result
 }

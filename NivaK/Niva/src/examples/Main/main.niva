@@ -1,12 +1,32 @@
-Bind package: "java.io" content: [
-    type File pathname: String
+//    @kind = getter
+//    File path = []
+
+//    File resolve: relative::String = []
+
 //    boolean setReadable(boolean readable, boolean ownerOnly)
-//    @callAs "setReadable($1, $2)"
 //    @ktName: "setReadable"
-    File setReadable: Boolean ownerOnly: Boolean
+//    File setReadable::Boolean ownerOnly::Boolean = []
 
 //    void sasSes(1, 2)
-//    @ktName: "sasSes" // this should be default
-    File sas: 1 ses: 2
+//    @ktName: "sasSes"
+//    File sas::Int ses::Int = []
+
+
+Bind package: "java.io" content: [
+    type File pathname: String
+    File getters: [
+        File isDirectory -> Boolean = []
+    ]
+    File exists -> Boolean = []
 ]
+
+
+
+x = File pathname: "sas"
+x exists echo
+
+y = File pathname: "."
+y exists echo
+
+"Hello bindings!" echo
 

@@ -1,6 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
+import frontend.parser.parsing.CodeAttribute
 import frontend.typer.Type
 
 // https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
@@ -14,7 +15,7 @@ sealed class ASTNode2(
 sealed class Statement(
     token: Token,
     val isPrivate: Boolean,
-    val pragmas: List<Pragma>,
+    var pragmas: MutableList<CodeAttribute>,
 ) : ASTNode2(token) {
     override fun toString(): String {
         return "Declaration(${token.lexeme})"
@@ -24,7 +25,7 @@ sealed class Statement(
 sealed class Declaration(
     token: Token,
     isPrivate: Boolean,
-    pragmas: List<Pragma>,
+    pragmas: MutableList<CodeAttribute>,
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "Declaration(${token.lexeme})"
@@ -37,7 +38,7 @@ sealed class Expression(
     var type: Type? = null,
     token: Token,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
 ) : Statement(token, isPrivate, pragmas)
@@ -46,7 +47,7 @@ class ReturnStatement(
     var expression: Expression,
     token: Token,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : Statement(token, isPrivate, pragmas)
 
 class VarDeclaration(
@@ -56,7 +57,7 @@ class VarDeclaration(
     var valueType: TypeAST? = null,
     val mutable: Boolean = false,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "VarDeclaration(${name} = ${value.str}, valueType=${valueType?.name})"
@@ -68,7 +69,7 @@ class Assign(
     val name: String,
     val value: Expression,
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf()
+    pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "Assign(${name} = ${value.str})"
@@ -76,8 +77,5 @@ class Assign(
 }
 
 
-class Pragma(
-    val name: IdentifierExpr,
-    val args: List<LiteralExpr>
-)
+
 

@@ -9,7 +9,7 @@ sealed class TypeAST(
     val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
-    pragmas: List<Pragma>
+    pragmas: MutableList<CodeAttribute>
 ) : Statement(token, isPrivate, pragmas) {
 //    val name: String
 //        get() = this.type.name
@@ -23,7 +23,7 @@ sealed class TypeAST(
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf()
+        pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 
     class InternalType(
@@ -31,7 +31,7 @@ sealed class TypeAST(
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf()
+        pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
 
     class Lambda(
@@ -41,7 +41,7 @@ sealed class TypeAST(
         isNullable: Boolean,
         token: Token,
         isPrivate: Boolean = false,
-        pragmas: List<Pragma> = listOf()
+        pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 }
 
@@ -85,8 +85,7 @@ sealed class SomeTypeDeclaration(
     token: Token,
     val genericFields: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
-    pragmas: List<Pragma> = listOf(),
-    val codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
 
 class TypeDeclaration(
@@ -94,10 +93,9 @@ class TypeDeclaration(
     fields: List<TypeFieldAST>,
     token: Token,
     genericFields: MutableList<String> = mutableListOf(),
-    pragmas: List<Pragma> = listOf(),
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     isPrivate: Boolean = false,
-    codeAttributes: MutableList<CodeAttribute>,
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas, codeAttributes) {
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, codeAttributes) {
     override fun toString(): String {
         return "TypeDeclaration($typeName)"
     }
@@ -110,7 +108,7 @@ class UnionBranch(
     genericFields: MutableList<String> = mutableListOf(),
     val root: UnionDeclaration,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, codeAttributes = codeAttributes)
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = codeAttributes)
 
 class UnionDeclaration(
     typeName: String,
@@ -118,16 +116,15 @@ class UnionDeclaration(
     fields: List<TypeFieldAST>,
     token: Token,
     genericFields: MutableList<String> = mutableListOf(),
-    pragmas: List<Pragma> = listOf(),
-    isPrivate: Boolean = false,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas, codeAttributes)
+    isPrivate: Boolean = false,
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, codeAttributes)
 
 class AliasDeclaration(
     val typeName: String,
     val matchedTypeName: String,
     token: Token,
-    pragmas: List<Pragma> = listOf(),
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : Declaration(token, isPrivate, pragmas)
 

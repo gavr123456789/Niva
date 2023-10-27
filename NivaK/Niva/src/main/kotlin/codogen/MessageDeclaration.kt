@@ -112,6 +112,10 @@ private fun bodyPart(
     if (messageDeclaration.returnType != null) {
         stringBuilder.append(": ", messageDeclaration.returnType.name)
     }
+    if (messageDeclaration.body.isEmpty()) {
+        stringBuilder.append(" { }\n")
+        return
+    }
 
     val firstBodyStatement = messageDeclaration.body[0]
     val isNotSetter =

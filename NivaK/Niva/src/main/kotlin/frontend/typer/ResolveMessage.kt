@@ -10,7 +10,6 @@ fun Resolver.resolveMessage(
 ) {
     when (statement) {
         is KeywordMsg -> {
-            /// check for constructor
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
@@ -27,14 +26,15 @@ fun Resolver.resolveMessage(
                     return KeywordLikeType.ForCodeBlock
                 }
                 val receiverText = statement.receiver.str
-                val q = typeTable[receiverText]
+                val keywordReceiverType = findType(receiverText, currentScope, previousScope)
+
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
 
-                if (q != null) {
-                    if (q is Type.UserUnionRootType) {
-                        statement.token.compileError("You can't instantiate Union root: ${q.name}")
+                if (keywordReceiverType != null) {
+                    if (keywordReceiverType is Type.UserUnionRootType) {
+                        statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
                     }
                     statement.kind = KeywordLikeType.Constructor
                     return KeywordLikeType.Constructor
@@ -267,9 +267,7 @@ fun Resolver.resolveMessage(
 
                     val returnType = if (msgTypeFromDB.returnType is Type.UnknownGenericType) {
                         val realTypeFromTable = letterToRealType[msgTypeFromDB.returnType.name]
-                        if (realTypeFromTable == null) {
-                            throw Exception("Cant find generic type ${msgTypeFromDB.returnType.name} in letterToRealType table $letterToRealType")
-                        }
+                            ?: throw Exception("Cant find generic type ${msgTypeFromDB.returnType.name} in letterToRealType table $letterToRealType")
                         realTypeFromTable
                     } else if (msgTypeFromDB.returnType is Type.UserType && msgTypeFromDB.returnType.typeArgumentList.find { it.name.length == 1 } != null) {
                         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
@@ -281,9 +279,7 @@ fun Resolver.resolveMessage(
                             val isNotResolved = typeArg.name.length == 1 && typeArg.name[0].isUpperCase()
                             if (isNotResolved) {
                                 val resolvedLetterType = letterToRealType[typeArg.name]
-                                if (resolvedLetterType == null) {
-                                    throw Exception("Can't find generic type: ${typeArg.name} in letter table")
-                                }
+                                    ?: throw Exception("Can't find generic type: ${typeArg.name} in letter table")
                                 newResolvedTypeArgs.add(resolvedLetterType)
                                 resolvedLetterType.beforeGenericResolvedName = typeArg.name
                             } else {
@@ -326,7 +322,7 @@ fun Resolver.resolveMessage(
 
                 is MessageSend, is MapCollection, is ListCollection, is CodeBlock -> TODO()
             }
-            var receiverType = receiver.type!!
+            val receiverType = receiver.type!!
 
 
             // resolve messages

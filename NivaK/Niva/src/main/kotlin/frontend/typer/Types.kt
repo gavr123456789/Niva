@@ -3,6 +3,7 @@
 package frontend.typer
 
 import frontend.meta.compileError
+import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 
@@ -16,22 +17,25 @@ data class MsgSend(
 sealed class MessageMetadata(
     val name: String,
     val returnType: Type,
+    val codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
-    val msgSends: List<MsgSend>
+    val msgSends: List<MsgSend> = listOf()
 )
 
 class UnaryMsgMetaData(
     name: String,
     returnType: Type,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
+) : MessageMetadata(name, returnType, codeAttributes, msgSends)
 
 class BinaryMsgMetaData(
     name: String,
     argType: Type,
     returnType: Type,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
+) : MessageMetadata(name, returnType, codeAttributes, msgSends)
 
 class KeywordArg(
     val name: String,
@@ -42,8 +46,9 @@ class KeywordMsgMetaData(
     name: String,
     val argTypes: List<KeywordArg>,
     returnType: Type,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, msgSends)
+) : MessageMetadata(name, returnType, codeAttributes, msgSends)
 
 //class ConstructorMsgMetaData(
 //    name: String,
@@ -80,7 +85,8 @@ sealed class Type(
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
-    var beforeGenericResolvedName: String? = null
+    var beforeGenericResolvedName: String? = null,
+//    var bind: Boolean = false
 ) {
     override fun toString(): String {
         return "Type: $name"
@@ -121,7 +127,8 @@ sealed class Type(
         val fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol>
+        protocols: MutableMap<String, Protocol>,
+        var isBinding: Boolean = false
     ) : Type(name, pkg, isPrivate, protocols)
 
     class UserType(
@@ -197,7 +204,8 @@ class Package(
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
 //    val usingPackages: MutableList<Package> = mutableListOf(),
-    val currentImports: MutableSet<String> = mutableSetOf()
+    val currentImports: MutableSet<String> = mutableSetOf(),
+    val isBinding: Boolean = false
 )
 
 class Project(
@@ -368,6 +376,7 @@ fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>)
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
+        codeAttributes = pragmas
     )
     return result
 }
@@ -382,7 +391,8 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
     val result = BinaryMsgMetaData(
         name = this.name,
         argType = argType,
-        returnType = returnType
+        returnType = returnType,
+        codeAttributes = pragmas
     )
     return result
 }
@@ -401,7 +411,8 @@ fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type
     val result = KeywordMsgMetaData(
         name = this.name,
         argTypes = keywordArgs,
-        returnType = returnType
+        returnType = returnType,
+        codeAttributes = pragmas
     )
     return result
 }

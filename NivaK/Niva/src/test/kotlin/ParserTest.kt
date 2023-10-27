@@ -1019,10 +1019,20 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)
-        assert((ast[0] as TypeDeclaration).codeAttributes.count() == 2)
-        assert((ast[1] as MessageDeclarationKeyword).codeAttributes.count() == 2)
+        assert((ast[0] as TypeDeclaration).pragmas.count() == 2)
+        assert((ast[1] as MessageDeclarationKeyword).pragmas.count() == 2)
     }
 
+    @Test
+    fun emptyBody() {
+
+        val source = """
+            Int sas::Int = []
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert((ast[0] as MessageDeclarationKeyword).args.count() == 1)
+    }
 //    @Test
 //    fun unaryOnManyLines() {
 //

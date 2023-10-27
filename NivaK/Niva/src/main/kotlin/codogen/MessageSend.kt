@@ -2,6 +2,8 @@ package codogen
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import frontend.typer.Type
+import java.io.File
 
 fun MessageSend.generateMessageCall(): String {
 
@@ -34,9 +36,9 @@ fun MessageSend.generateMessageCall(): String {
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
     val receiverCode =
-        if (keywordMsg.kind == KeywordLikeType.Constructor)
+        if (keywordMsg.kind == KeywordLikeType.Constructor) {
             receiver.generateExpression()
-        else {
+        } else {
             if (receiver !is ExpressionInBrackets)
                 "(" + receiver.generateExpression() + ")"
             else
@@ -52,9 +54,17 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
+                val receiver = keywordMsg.receiver
+                if (receiver is IdentifierExpr) {
+                    val type = receiver.type
+                    if (type != null) {
+                        append(type.pkg, ".")
+                    } else {
+                        append(".")
+                    }
+                }
                 append(receiverCode)
             }
-//            append(keywordMsg.receiver.str)
         }
 
         KeywordLikeType.Setter -> {
@@ -66,8 +76,6 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
                 append(receiver.name, ".", valueArg.selectorName, " = ")
-//                val valueCode = valueArg.generateCallPair()
-//                append(valueCode)
             } else {
                 TODO()
             }
@@ -82,14 +90,18 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             }
         }
     }
+    val file = File(".")
+    file.exists()
+    file.isDirectory
 
     append("(")
+    val receiverType = receiver.type!!
 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->
 
         val expressionStr = it.keywordArg.generateExpression()
-        if (keywordMsg.kind == KeywordLikeType.Constructor) {
+        if (keywordMsg.kind == KeywordLikeType.Constructor && receiverType is Type.UserLike && !receiverType.isBinding) {
             append(it.selectorName, " = ")
         }
         append(expressionStr)
