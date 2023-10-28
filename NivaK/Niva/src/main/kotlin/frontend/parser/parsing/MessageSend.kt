@@ -107,7 +107,7 @@ fun Parser.unaryOrBinary(
     parsePipeAndCascade: Boolean = true
 ): MessageSend {
     var wasPipe = false
-    var wasCascade = false
+//    var wasCascade = false
 
     val firstReceiver: Receiver = customReceiver ?: simpleReceiver()
 
@@ -134,8 +134,6 @@ fun Parser.unaryOrBinary(
 
     while (parsePipeAndCascade && match(TokenType.PipeOperator)) {
         wasPipe = true
-        val tok = peek()
-        val kind = tok.kind
         when {
 
             check(TokenType.Identifier) -> {
@@ -177,12 +175,11 @@ fun Parser.unaryOrBinary(
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
     while (parsePipeAndCascade && match(TokenType.Cascade)) {
-        wasCascade = true
+//        wasCascade = true
         if (wasPipe) {
             error("Dont use pipe with cascade operator, better create different variables")
         }
-        val tok = peek()
-        val kind = tok.kind
+
         when {
             check(TokenType.BinarySymbol) -> {
                 val binary = binaryMessagesMatching(firstReceiver, mutableListOf())
@@ -249,7 +246,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
 
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
         val savepoint = current
-        identifierMayBeTyped()
+        dotSeparatedIdentifiers()
         val result = checkForKeyword()
         current = savepoint
         result

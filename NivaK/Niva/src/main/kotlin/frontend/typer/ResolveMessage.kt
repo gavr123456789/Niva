@@ -433,14 +433,18 @@ fun Resolver.resolveMessage(
                 // usual message
                 // find this message
 
-                val messageReturnType =
-                    if (!isStaticCall)
-                        findUnaryMessageType(receiverType, statement.selectorName, statement.token)
-                    else
-                        findStaticMessageType(receiverType, statement.selectorName, statement.token)
+                if (!isStaticCall) {
+                    val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token)
 
-                statement.kind = UnaryMsgKind.Unary
-                statement.type = messageReturnType
+                    statement.kind = if (messageReturnType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
+                    statement.type = messageReturnType.returnType
+                } else {
+                    val messageReturnType = findStaticMessageType(receiverType, statement.selectorName, statement.token)
+
+                    statement.kind = UnaryMsgKind.Unary
+                    statement.type = messageReturnType
+                }
+
             }
         }
     }

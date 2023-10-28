@@ -1,3 +1,5 @@
+@file:Suppress("ControlFlowWithEmptyBody")
+
 package frontend.parser.parsing
 
 import frontend.meta.Token
@@ -7,6 +9,24 @@ import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 
 //data class Module(val name: String, var loaded: Boolean)
+
+fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
+    val x = step()
+    if (x.kind != TokenType.Identifier) {
+        return null
+    }
+    val dotMatched = match(TokenType.Dot)
+    val listOfIdentifiersPath = mutableListOf(x.lexeme)
+    if (dotMatched) {
+        do {
+            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot")
+            listOfIdentifiersPath.add(q.lexeme)
+        } while (match(TokenType.Dot))
+    }
+
+    return IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x)
+
+}
 
 fun Parser.identifierMayBeTyped(): IdentifierExpr {
     val x = step()
@@ -205,7 +225,7 @@ fun Parser.statement(): Statement {
 
     if (kind == TokenType.Return) {
         val returnTok = step()
-        val expression = expression()
+        val expression = if (checkEndOfLineOrFile()) null else expression()
         return ReturnStatement(
             expression = expression,
             token = returnTok,

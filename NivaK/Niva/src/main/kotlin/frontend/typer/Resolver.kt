@@ -245,19 +245,27 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             val msg = it.messages[0]
             if (msg !is KeywordMsg)
                 it.token.compileError("Bind must have keyword message")
-            if (msg.args.count() != 2)
-                it.token.compileError("Bind must have 2 argument: package and content")
-            val pkgArg = msg.args[0]
-            val contentArg = msg.args[1]
+            if (msg.args.count() <= 2)
+                it.token.compileError("Bind must have at least 2 argument: package and content")
+
+            val pkgArg = msg.args.find { it.selectorName == "package" }
+            if (pkgArg == null)
+                msg.token.compileError("'package' param is missing")
+
+
+            val contentArg = msg.args.find { it.selectorName == "content" }
+            if (contentArg == null)
+                msg.token.compileError("'content' param is missing")
+
             if (pkgArg.keywordArg !is LiteralExpression)
-                it.token.compileError("Package argument must be a string")
+                pkgArg.keywordArg.token.compileError("Package argument must be a string")
             if (contentArg.keywordArg !is CodeBlock)
-                it.token.compileError("Content argument must be a code block with type and method declarations")
+                contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
 
-            val pkg = pkgArg.keywordArg.toString()
+            val pkgName = pkgArg.keywordArg.toString()
 
-            changePackage(pkg, it.token, true)
+            changePackage(pkgName, it.token, true)
             val declarations = contentArg.keywordArg.statements
             declarations.forEach {
                 if (it is Declaration) {
@@ -266,7 +274,24 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     it.token.compileError("Inside Bild can be only declarations, but found $it")
                 }
             }
-//            TODO()
+
+            val gettersArg = msg.args.find { it.selectorName == "getters" }
+            if (gettersArg != null) {
+                if (gettersArg.keywordArg !is CodeBlock)
+                    gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
+                val gettersDeclarations = gettersArg.keywordArg.statements
+                gettersDeclarations.forEach { getter ->
+
+                    if (getter !is MessageDeclarationUnary) {
+                        getter.token.compileError("Union declaration expected")
+                    }
+                    addNewUnaryMessage(getter, isGetter = true)
+
+                }
+
+            }
+
+
         }
     }
     changePackage(savedPackageName, createFakeToken())
@@ -360,13 +385,14 @@ fun Resolver.resolveDeclarations(
                             statement.token.compileError("Can't parse type for argument ${it.name}")
                         }
                         val astType = it.type
-                        val type = astType.toType(typeTable, it.name)
+                        val type = astType.toType(typeTable)
 
                         if (type.name == it.type.name) {
                             bodyScope[it.name] = type
                         } else {
                             bodyScope[it.name] = type
                         }
+
                         if (type is Type.UnknownGenericType) {
                             statement.typeArgs.add(type.name)
                         }
@@ -479,7 +505,7 @@ private fun Resolver.resolveStatement(
 
                         statement.args.forEach {
                             val astType = it.type!!
-                            val type = astType.toType(typeTable, it.name)
+                            val type = astType.toType(typeTable)
 
                             if (type.name == it.type.name) {
                                 bodyScope[it.name] = type
@@ -631,9 +657,11 @@ private fun Resolver.resolveStatement(
 
         is ReturnStatement -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            resolve(listOf(statement.expression), previousAndCurrentScope, statement)
+            val expr = statement.expression
+            if (expr != null)
+                resolve(listOf(expr), previousAndCurrentScope, statement)
 
-            val q = statement.expression.type!!
+            val q = expr?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
             if (rootStatement is MessageDeclaration) {
                 val w = rootStatement.returnType?.toType(typeTable)
                 if (w != null) {
@@ -708,9 +736,9 @@ fun compare2Types(type1: Type, type2: Type): Boolean {
     return type1.name == type2.name
 }
 
-fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
+fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData {
 
-    fun findUnary(receiverType: Type, selectorName: String, token: Token): Type? {
+    fun findUnary(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData? {
         receiverType.protocols.forEach { (_, v) ->
             val q = v.unaryMsgs[selectorName]
 
@@ -718,7 +746,7 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
                 // TODO! add unisng of unary
                 val pkg = getCurrentPackage(token)
                 pkg.currentImports.add(receiverType.pkg)
-                return q.returnType
+                return q
             }
         }
         return null
@@ -847,11 +875,12 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
 
 }
 
-fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary) {
+fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
     val protocol = getCurrentProtocol(statement.forType.name, statement.token)
-    val messageData = statement.toMessageData(typeTable)
+    val messageData = statement.toMessageData(typeTable, isGetter)
+
     protocol.unaryMsgs[statement.name] = messageData
 
     addMsgToPackageDeclarations(statement)
@@ -994,6 +1023,11 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
     }
 
     is IfBranch.IfBranchWithBody -> {
-        (this.body.last() as Expression).type!!
+        val last = body.last()
+        when (last) {
+            is Expression -> last.type!!
+//            is ReturnStatement -> last.expression.type!!
+            else -> Resolver.defaultTypes[InternalTypes.Unit]!!
+        }
     }
 }

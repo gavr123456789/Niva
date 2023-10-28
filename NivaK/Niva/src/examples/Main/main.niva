@@ -1,32 +1,19 @@
-//    @kind = getter
-//    File path = []
-
-//    File resolve: relative::String = []
-
-//    boolean setReadable(boolean readable, boolean ownerOnly)
-//    @ktName: "setReadable"
-//    File setReadable::Boolean ownerOnly::Boolean = []
-
-//    void sasSes(1, 2)
-//    @ktName: "sasSes"
-//    File sas::Int ses::Int = []
-
 
 Bind package: "java.io" content: [
     type File pathname: String
-    File getters: [
-        File isDirectory -> Boolean = []
-    ]
     File exists -> Boolean = []
+] getters: [
+    File absoluteFile -> File = []
+    File absolutePath -> String = []
+    File canonicalPath -> String = []
+    File isDirectory -> String = []
 ]
 
+x = File pathname: "sas.txt"
+//> true
+>x exists
+| x exists not => ^
 
+"sas" echo
 
-x = File pathname: "sas"
-x exists echo
-
-y = File pathname: "."
-y exists echo
-
-"Hello bindings!" echo
 

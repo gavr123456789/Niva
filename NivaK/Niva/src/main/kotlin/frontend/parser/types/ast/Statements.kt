@@ -44,7 +44,7 @@ sealed class Expression(
 ) : Statement(token, isPrivate, pragmas)
 
 class ReturnStatement(
-    var expression: Expression,
+    var expression: Expression?,
     token: Token,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),

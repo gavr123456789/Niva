@@ -1033,6 +1033,30 @@ class ParserTest {
         assert(ast.count() == 1)
         assert((ast[0] as MessageDeclarationKeyword).args.count() == 1)
     }
+
+    @Test
+    fun twoBodyArgs() {
+
+        val source = """
+            Bind package: [
+            1 echo
+            ] content: [
+            2 echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun returnWithoutExpression() {
+
+        val source = """
+            ^
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun unaryOnManyLines() {
 //

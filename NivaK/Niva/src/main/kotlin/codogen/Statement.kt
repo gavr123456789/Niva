@@ -15,7 +15,12 @@ fun generateKtStatement(statement: Statement, ident: Int): String = buildString 
             is TypeDeclaration -> statement.generateTypeDeclaration()
 
             is ReturnStatement -> {
-                "return ${statement.expression.generateExpression()}"
+                val expr = statement.expression
+                if (expr != null) {
+                    "return ${expr.generateExpression()}"
+                } else {
+                    "return"
+                }
             }
 
             is Assign -> "${statement.name} = ${statement.value.generateExpression()}"
