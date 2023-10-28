@@ -49,10 +49,10 @@ fun addStdAndPutInMain(ktCode: String, mainPkg: Package) = buildString {
 //    return code4
 //}
 
-fun Resolver.generatePackages(pathToSource: Path) {
-    val commonProject = projects["common"]!!
+fun Resolver.generatePackages(pathToSource: Path, notBindedPackages: List<Package>) {
 //    val builder = StringBuilder()
-    commonProject.packages.values.filter { !it.isBinding }.forEach { v ->
+    notBindedPackages.forEach { v ->
+
 
         val code = codogenKt(v.declarations, pkg = v)
         // generate folder for package
@@ -67,28 +67,44 @@ fun Resolver.generatePackages(pathToSource: Path) {
 }
 
 fun Package.generateImports() = buildString {
+
     currentImports.forEach {
         append("import $it.*\n")
     }
 }
 
 fun Resolver.generateKtProject(pathToSrcKtFolder: String) {
+    val mainProject = projects["common"]!!
+    // remove imports of empty packages from other packages
+    val notBindedPackages = mainProject.packages.values.filter { !it.isBinding }
+    notBindedPackages.forEach { pkg ->
+        if (pkg.declarations.isEmpty()) {
+            notBindedPackages.forEach { pkg2 ->
+                pkg2.currentImports -= pkg.packageName
+            }
+        }
+    }
+
+
     val path = File(pathToSrcKtFolder)
     // 1 recreate pathToSrcKtFolder
     deleteAndRecreateKotlinFolder(path)
     // 2 generate Main.kt
-    val mainPkg = projects["common"]!!.packages["main"]!!
+    val mainPkg = mainProject.packages["main"]!!
     val mainCode = addStdAndPutInMain(codogenKt(topLevelStatements), mainPkg)
     val mainFile = createCodeKtFile(path, "Main.kt", mainCode)
     // 3 generate every package like folders with code
-    generatePackages(path.toPath())
+
+
+    generatePackages(path.toPath(), notBindedPackages)
 }
 
 fun codogenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
     if (pkg != null) {
 
         append("package ${pkg.packageName}\n\n")
-        append("import main.*\n")
+        if (pkg.packageName != "core")
+            append("import main.*\n")
 
         append(pkg.generateImports())
 

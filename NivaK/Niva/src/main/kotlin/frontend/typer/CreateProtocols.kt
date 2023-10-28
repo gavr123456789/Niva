@@ -241,7 +241,7 @@ fun createListProtocols(
     boolType: Type.InternalType,
     listType: Type.UserType,
     listTypeOfDifferentGeneric: Type.UserType,
-    genericType: Type.UnknownGenericType,
+    genericTypeOfListElements: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -261,7 +261,7 @@ fun createListProtocols(
                         "forEach",
                         Type.Lambda(
                             mutableListOf(
-                                TypeField("forEach", genericType)
+                                TypeField("forEach", genericTypeOfListElements)
                             ),
                             unitType
                         )
@@ -274,7 +274,7 @@ fun createListProtocols(
                 KeywordArg(
                     "map",
                     Type.Lambda(
-                        mutableListOf(TypeField("transform", genericType)),
+                        mutableListOf(TypeField("transform", genericTypeOfListElements)),
                         differentGenericType
                     ) // return list map of type of last expression
                 ),
@@ -282,11 +282,15 @@ fun createListProtocols(
             ),
             createKeyword(
                 "filter",
-                KeywordArg("filter", Type.Lambda(mutableListOf(TypeField("filter", genericType)), boolType)),
+                KeywordArg(
+                    "filter",
+                    Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfListElements)), boolType)
+                ),
                 listType
             ),
 
-            createKeyword("add", KeywordArg("add", genericType), unitType),
+            createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
+            createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
             createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType)
 
