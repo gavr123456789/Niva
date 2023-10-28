@@ -470,8 +470,9 @@ class ResolverTest {
     fun keyWordDeclaration() {
 
         val source = """
-            Int from::Int = [
+            Int from::Int to: x::Int = [
               from echo
+              x echo
             ]
         """.trimIndent()
 
@@ -481,6 +482,7 @@ class ResolverTest {
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
+
 
     @Test
     fun receiverIsBinaryThenReturnsDifferentType() {

@@ -268,7 +268,8 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
             null
         }
 
-        return (KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = type))
+        val result = KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = type)
+        return result
 
     }
 }
@@ -301,6 +302,7 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
 
 // returns null if it's not a message declaration
 // very bad function
+// TODO refactor
 fun Parser.checkTypeOfMessageDeclaration(): MessageDeclarationType? {
     // receiver is first
     if (!check(TokenType.Identifier)) {
@@ -316,16 +318,23 @@ fun Parser.checkTypeOfMessageDeclaration(): MessageDeclarationType? {
     var isThereEqual = false
 
     var peekCounter = 0
-
+    var afterReturn = false
     // is there ident: and = after that before end of line?
     while (!(check(TokenType.EndOfLine, peekCounter) || check(TokenType.EndOfFile, peekCounter))) {
         val q = peek(peekCounter)
 
+        if (!afterReturn) {
+            afterReturn = check(TokenType.ReturnArrow, peekCounter)
+        }
 
-        val noLocal = check(TokenType.DoubleColon, peekCounter + 1) && !check(TokenType.BinarySymbol, peekCounter - 1)
-        val local = check(TokenType.Colon, peekCounter + 1)
+        // :: can be inside return type like List::Int
+        val noLocalParam = check(TokenType.DoubleColon, peekCounter + 1) && !check(
+            TokenType.BinarySymbol,
+            peekCounter - 1
+        ) && !afterReturn
+        val localParam = check(TokenType.Colon, peekCounter + 1)
         // keyword checks
-        if (q.isIdentifier() && (local || noLocal)) {
+        if (q.isIdentifier() && (localParam || noLocalParam)) {
             isThereIdentColon = true
         }
 

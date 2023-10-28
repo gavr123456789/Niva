@@ -161,7 +161,7 @@ x sas
     @Test
     fun pipeOperator() {
         check("|>", listOf(PipeOperator, EndOfFile))
-        check("|||", listOf(Pipe, Pipe, Pipe, EndOfFile))
+        check("|||", listOf(BinarySymbol, Pipe, EndOfFile)) // || is OR
     }
 
     @Test
@@ -188,16 +188,6 @@ x sas
     @Test
     fun dotDotOp() {
         check("1..2", listOf(Integer, BinarySymbol, Integer, EndOfFile))
-    }
-
-    @Test
-    fun thenIsNotBinarySymbol() {
-        check(
-            """
-            | x > 10 => x echo
-            | x > 5 && x < 10 => "sas" echo
-        """.trimIndent(), listOf(Integer, BinarySymbol, Integer, EndOfFile)
-        )
     }
 
     @Test

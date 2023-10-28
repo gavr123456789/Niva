@@ -8,7 +8,71 @@ import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 
-//data class Module(val name: String, var loaded: Boolean)
+
+// Declaration without end of line
+fun Parser.statement(): Statement {
+    val codeAttributes = if (check("@")) codeAttributes() else mutableListOf()
+    val tok = peek()
+    val kind = tok.kind
+
+
+    // Checks for declarations that starts from keyword like type/fn
+
+    if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
+    ) {
+        return varDeclaration()
+    }
+    if (kind == TokenType.Type) {
+        return typeDeclaration(codeAttributes)
+    }
+    if (kind == TokenType.Alias) {
+        return typeAliasDeclaration()
+    }
+    if (kind == TokenType.Union) {
+        return unionDeclaration()
+    }
+    if (kind == TokenType.Constructor) {
+        return constructorDeclaration()
+    }
+
+    if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
+        return assignVariableNewValue()
+    }
+    val isInlineReplWithNum = tok.kind == TokenType.InlineReplWithNum
+    if (tok.lexeme == ">" || isInlineReplWithNum) {
+        val q = step()
+        val w = statement()
+        if (w is Expression) {
+            w.isInlineRepl = true
+            if (isInlineReplWithNum)
+                w.inlineReplCounter = tok.lexeme.substring(1).toInt()
+            return w
+        } else {
+            q.compileError("> can only be used with expressions")
+        }
+    }
+
+    if (kind == TokenType.Return) {
+        val returnTok = step()
+        val expression = if (checkEndOfLineOrFile()) null else expression()
+        return ReturnStatement(
+            expression = expression,
+            token = returnTok,
+        )
+    }
+
+    if (kind == TokenType.EndOfFile) {
+        tok.compileError("Nothing to compile :(")
+    }
+
+
+    val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
+    if (isItKeywordDeclaration != null) {
+        return messageDeclaration(isItKeywordDeclaration, codeAttributes)
+    }
+
+    return expression()
+}
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
     val x = step()
@@ -180,72 +244,6 @@ class CodeAttribute(
     val value: Primary
 )
 
-// Declaration without end of line
-fun Parser.statement(): Statement {
-    val codeAttributes = if (check("@")) codeAttributes() else mutableListOf()
-    val tok = peek()
-    val kind = tok.kind
-
-
-    // Checks for declarations that starts from keyword like type/fn
-
-    if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
-    ) {
-        return varDeclaration()
-    }
-    if (kind == TokenType.Type) {
-        return typeDeclaration(codeAttributes)
-    }
-    if (kind == TokenType.Alias) {
-        return typeAliasDeclaration()
-    }
-    if (kind == TokenType.Union) {
-        return unionDeclaration()
-    }
-    if (kind == TokenType.Constructor) {
-        return constructorDeclaration()
-    }
-
-    if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
-        return assignVariableNewValue()
-    }
-    val isInlineReplWithNum = tok.kind == TokenType.InlineReplWithNum
-    if (tok.lexeme == ">" || isInlineReplWithNum) {
-        val q = step()
-        val w = statement()
-        if (w is Expression) {
-            w.isInlineRepl = true
-            if (isInlineReplWithNum)
-                w.inlineReplCounter = tok.lexeme.substring(1).toInt()
-            return w
-        } else {
-            q.compileError("> can only be used with expressions")
-        }
-    }
-
-    if (kind == TokenType.Return) {
-        val returnTok = step()
-        val expression = if (checkEndOfLineOrFile()) null else expression()
-        return ReturnStatement(
-            expression = expression,
-            token = returnTok,
-        )
-    }
-
-    if (kind == TokenType.EndOfFile) {
-        tok.compileError("Nothing to compile :(")
-    }
-
-
-    val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
-    if (isItKeywordDeclaration != null) {
-        return messageDeclaration(isItKeywordDeclaration, codeAttributes)
-    }
-
-
-
-    return expression()
-}
 
 private fun Parser.codeAttributes(): MutableList<CodeAttribute> {
     val codeAttributes: MutableList<CodeAttribute> = mutableListOf()

@@ -162,8 +162,6 @@ fun Parser.unaryOrBinary(
             }
 
             checkForKeyword() -> {
-//                val keyword = keywordMessageParsing(false, firstReceiver)
-//                pipedMsgs.add(keyword)
                 error("sas!")
             }
 

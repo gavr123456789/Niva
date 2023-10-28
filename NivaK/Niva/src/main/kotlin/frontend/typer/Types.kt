@@ -207,7 +207,11 @@ class Package(
 //    val usingPackages: MutableList<Package> = mutableListOf(),
     val currentImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false
-)
+) {
+    override fun toString(): String {
+        return packageName
+    }
+}
 
 class Project(
     val name: String,
