@@ -26,12 +26,13 @@ class UnaryMsgMetaData(
     name: String,
     returnType: Type,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf()
+    msgSends: List<MsgSend> = listOf(),
+    val isGetter: Boolean = false
 ) : MessageMetadata(name, returnType, codeAttributes, msgSends)
 
 class BinaryMsgMetaData(
     name: String,
-    argType: Type,
+    val argType: Type,
     returnType: Type,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
@@ -214,7 +215,7 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeTable: Map<TypeName, Type>, fieldName: String? = null): Type {
+fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
 
     when (this) {
         is TypeAST.InternalType -> {
@@ -369,14 +370,18 @@ fun SomeTypeDeclaration.toType(
     return result
 }
 
-fun MessageDeclarationUnary.toMessageData(typeTable: MutableMap<TypeName, Type>): UnaryMsgMetaData {
+fun MessageDeclarationUnary.toMessageData(
+    typeTable: MutableMap<TypeName, Type>,
+    isGetter: Boolean = false
+): UnaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
-        codeAttributes = pragmas
+        codeAttributes = pragmas,
+        isGetter = isGetter
     )
     return result
 }

@@ -3,7 +3,6 @@ package codogen
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.typer.Type
-import java.io.File
 
 fun MessageSend.generateMessageCall(): String {
 
@@ -54,9 +53,9 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                val receiver = keywordMsg.receiver
-                if (receiver is IdentifierExpr) {
-                    val type = receiver.type
+                val kwReceiver = keywordMsg.receiver
+                if (kwReceiver is IdentifierExpr) {
+                    val type = kwReceiver.type
                     if (type != null) {
                         append(type.pkg, ".")
                     } else {
@@ -90,9 +89,6 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             }
         }
     }
-    val file = File(".")
-    file.exists()
-    file.isDirectory
 
     append("(")
     val receiverType = receiver.type!!

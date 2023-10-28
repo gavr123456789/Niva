@@ -293,7 +293,10 @@ fun Parser.methodBody(): Pair<MutableList<Statement>, Boolean> {
         // one expression in body
         messagesOrVarStatements.add(statementWithEndLine())
     }
-    return Pair(messagesOrVarStatements, isSingleExpression)
+
+    val realIsSingleExpression = isSingleExpression && messagesOrVarStatements[0] is Expression
+
+    return Pair(messagesOrVarStatements, realIsSingleExpression)
 }
 
 // returns null if it's not a message declaration

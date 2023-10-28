@@ -52,10 +52,6 @@ fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
             return true
         }
         c++
-
-        val q = check(TokenType.EndOfLine, c)
-        val w = check(TokenType.EndOfFile, c)
-
     } while (!(check(TokenType.EndOfLine, c) || check(TokenType.EndOfFile, c)))
     return false
 }
@@ -82,13 +78,3 @@ fun getOsPathSeparator() = when (getOSType()) {
 }
 
 operator fun String.div(arg: String) = this + getOsPathSeparator() + arg
-
-
-fun checkIfAllStringsEqual(list: List<String>): Boolean {
-    if (list.isEmpty()) {
-        return true // Если список пустой, считаем, что все элементы равны между собой
-    }
-
-    val firstElement = list[0]
-    return list.all { it == firstElement }
-}

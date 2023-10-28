@@ -5,7 +5,6 @@ import frontend.parser.types.ast.CodeBlock
 import frontend.parser.types.ast.ExpressionInBrackets
 import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.Statement
-import frontend.util.checkTokUntilEndOfLine
 
 fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
     val result = mutableListOf<Statement>()
@@ -36,7 +35,11 @@ fun Parser.codeBlock(): CodeBlock {
 
     val openBracket = matchAssert(TokenType.OpenBracket, "")
 
-    val isThereBeforeStatementPart = checkTokUntilEndOfLine(TokenType.ReturnArrow)
+    val isThereBeforeStatementPart =
+        check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) ||
+                check(TokenType.Identifier) && check(TokenType.Comma, 1)
+
+    //checkTokUntilEndOfLine(TokenType.ReturnArrow)
     // [{a, b -> } statements]
     val beforeStatementsPart: List<IdentifierExpr> =
         if (isThereBeforeStatementPart)

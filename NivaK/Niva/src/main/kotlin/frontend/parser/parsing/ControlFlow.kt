@@ -1,10 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
-import frontend.parser.types.ast.ControlFlow
-import frontend.parser.types.ast.ControlFlowKind
-import frontend.parser.types.ast.Expression
-import frontend.parser.types.ast.IfBranch
+import frontend.parser.types.ast.*
 
 fun Parser.ifOrSwitch(): ControlFlow {
 
@@ -32,7 +29,8 @@ fun Parser.ifBranches(): List<IfBranch> {
         val ifExpression = expression()
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
-        val (body, isSingleExpression) = methodBody()
+        var (body, isSingleExpression) = methodBody()
+        if (body[0] is ReturnStatement) isSingleExpression = false
 
         result.add(
             if (isSingleExpression) {
