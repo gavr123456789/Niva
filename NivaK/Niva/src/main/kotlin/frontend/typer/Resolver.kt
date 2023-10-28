@@ -168,8 +168,11 @@ class Resolver(
         val corePackage = Package("core")
         val mainPackage = Package("main")
 
+        // pkg with everything that was declared without package specification
         commonProject.packages["common"] = Package("common")
+        // pkg with std types like Int
         commonProject.packages["core"] = corePackage
+        // package with main function
         commonProject.packages["main"] = mainPackage
 
 
@@ -203,7 +206,7 @@ class Resolver(
                 boolType = boolType,
                 listType = listType,
                 listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
-                genericType = genericType,
+                genericTypeOfListElements = genericType,
                 differentGenericType = differentGenericType
             )
         )
@@ -247,7 +250,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             val msg = it.messages[0]
             if (msg !is KeywordMsg)
                 it.token.compileError("Bind must have keyword message")
-            if (msg.args.count() <= 2)
+            if (msg.args.count() < 2)
                 it.token.compileError("Bind must have at least 2 argument: package and content")
 
             val pkgArg = msg.args.find { it.selectorName == "package" }
@@ -740,6 +743,12 @@ fun compare2Types(type1: Type, type2: Type): Boolean {
     return type1.name == type2.name
 }
 
+fun Package.addImport(pkg: String) {
+    if (packageName != pkg) {
+        currentImports.add(pkg)
+    }
+}
+
 fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData {
 
     fun findUnary(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData? {
@@ -749,7 +758,7 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
             if (q != null) {
                 // TODO! add unisng of unary
                 val pkg = getCurrentPackage(token)
-                pkg.currentImports.add(receiverType.pkg)
+                pkg.addImport(receiverType.pkg)
                 return q
             }
         }
@@ -776,9 +785,8 @@ fun Resolver.findStaticMessageType(receiverType: Type, selectorName: String, tok
     receiverType.protocols.forEach { (_, v) ->
         val q = v.staticMsgs[selectorName]
         if (q != null) {
-            // TODO! add unisng of binary
             val pkg = getCurrentPackage(token)
-            pkg.currentImports.add(receiverType.pkg)
+            pkg.addImport(receiverType.pkg)
             return q.returnType
         }
     }
@@ -794,7 +802,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
         if (q != null) {
             // TODO! add unisng of keyword
             val pkg = getCurrentPackage(token)
-            pkg.currentImports.add(receiverType.pkg)
+            pkg.addImport(receiverType.pkg)
             return q.returnType
         }
     }
@@ -811,7 +819,7 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
         if (q != null) {
             // TODO! add unisng of keyword
             val pkg = getCurrentPackage(token)
-            pkg.currentImports.add(receiverType.pkg)
+            pkg.addImport(receiverType.pkg)
             return q
         }
     }

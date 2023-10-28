@@ -3,6 +3,20 @@ package frontend.typer
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
+fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
+    if (type.typeArgumentList.count() > 2) {
+        throw Exception("Generics with more than 2 params are not supported yet")
+    }
+    val genericLetters = listOf("T", "G")
+
+    type.typeArgumentList.forEachIndexed { i, it ->
+        if (it.beforeGenericResolvedName == null) {
+            it.beforeGenericResolvedName = genericLetters[i]
+        }
+    }
+}
+
+
 fun Resolver.resolveMessage(
     statement: Message,
     previousScope: MutableMap<String, Type>,
@@ -61,14 +75,12 @@ fun Resolver.resolveMessage(
             val kind = resolveKindOfKeyword(statement)
 
             val letterToRealType = mutableMapOf<String, Type>()
-            /// resolve arguments
 
-            val msgTypeFromDB = if (kind == KeywordLikeType.Keyword) findKeywordMsgType(
+            val kwTypeFromDB = if (kind == KeywordLikeType.Keyword) findKeywordMsgType(
                 receiverType,
                 statement.selectorName,
                 statement.token
             ) else null
-
 
             // resolve args types
             val args = statement.args
@@ -83,8 +95,8 @@ fun Resolver.resolveMessage(
                     val argType = it.keywordArg.type!!
 
                     // we need to check for generic args only if it is Keyword
-                    if (msgTypeFromDB != null) {
-                        val typeFromDBForThisArg = msgTypeFromDB.argTypes[argNum].type
+                    if (kwTypeFromDB != null) {
+                        val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
                         if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
                             letterToRealType[typeFromDBForThisArg.name] = argType
                         }
@@ -118,8 +130,35 @@ fun Resolver.resolveMessage(
                 }
             }
             currentArgumentNumber = -1
-
             /// end of resolving arguments
+
+
+            if (kwTypeFromDB != null &&
+                kwTypeFromDB.returnType.name.length == 1 && kwTypeFromDB.returnType.name[0].isUpperCase() &&
+                kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
+            ) {
+                fillGenericsWithLettersByOrder(receiverType)
+
+
+                val inferredGenericTypeFromArgs = letterToRealType[kwTypeFromDB.returnType.name]
+                // take type from receiver
+                if (inferredGenericTypeFromArgs == null) {
+                    if (receiverType.typeArgumentList.isEmpty()) {
+                        statement.receiver.token.compileError("Nor receiver type, nor arguments are generic, but method is generic, so can't infer real type")
+                    }
+                    val receiverGenericType =
+                        receiverType.typeArgumentList.find { it.beforeGenericResolvedName == kwTypeFromDB.returnType.name }
+                    if (receiverGenericType != null) {
+                        statement.type = receiverGenericType
+                    } else {
+                        statement.receiver.token.compileError("Can't infer generic return type from receiver generic type")
+                    }
+                } else {
+                    // take type from arguments
+                    statement.type = inferredGenericTypeFromArgs
+                }
+//                    letterToRealType[keywordMsgTypeFromDB.returnType.name] = argType
+            }
 
             // if receiverType is lambda then we need to check does it have same argument names and types
             if (receiverType is Type.Lambda) {
@@ -210,14 +249,6 @@ fun Resolver.resolveMessage(
                             statement.token.compileError("In constructor message for type ${statement.receiver.str} fields $typeFieldsNamesSet != $receiverFieldsSet")
                         }
 
-//                        statement.args.forEachIndexed { i, arg ->
-//                            val typeField = receiverFields[i].name
-//                            // check that every arg name is right
-//                            if (typeField != arg.selectorName) {
-//                                statement.token.compileError("In constructor message for type ${statement.receiver.str} field $typeField != ${arg.selectorName}")
-//                            }
-//                        }
-
                         // replace every Generic type with real
                         if (receiverType.typeArgumentList.isNotEmpty()) {
                             replacerTypeIfItGeneric = Type.UserType(
@@ -263,6 +294,9 @@ fun Resolver.resolveMessage(
                 }
 
                 KeywordLikeType.Keyword -> {
+                    if (statement.type != null)
+                        return
+
                     val msgTypeFromDB = findKeywordMsgType(receiverType, statement.selectorName, statement.token)
 
                     val returnType = if (msgTypeFromDB.returnType is Type.UnknownGenericType) {
@@ -286,7 +320,6 @@ fun Resolver.resolveMessage(
                                 newResolvedTypeArgs.add(typeArg)
                             }
                         }
-
 
                         Type.UserType(
                             name = returnType.name,

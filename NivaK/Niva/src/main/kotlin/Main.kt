@@ -105,11 +105,9 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
         otherFilesPaths = otherFilesPaths,
         statements = mutableListOf()
     )
+
     resolver.run()
-
     resolver.generateKtProject(pathWhereToGenerateKt)
-
-
 }
 
 

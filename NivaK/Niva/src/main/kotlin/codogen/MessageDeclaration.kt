@@ -110,7 +110,7 @@ private fun bodyPart(
     stringBuilder: StringBuilder
 ) {
     if (messageDeclaration.returnType != null) {
-        stringBuilder.append(": ", messageDeclaration.returnType.name)
+        stringBuilder.append(": ", messageDeclaration.returnType.toKotlinStr())
     }
     if (messageDeclaration.body.isEmpty()) {
         stringBuilder.append(" { }\n")
