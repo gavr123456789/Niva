@@ -31,8 +31,8 @@ fun Resolver.resolveMessage(
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
-
-                if (keywordReceiverType != null) {
+                val isThisConstructor = keywordReceiverType != null && keywordReceiverType.name == receiverText
+                if (isThisConstructor) {
                     if (keywordReceiverType is Type.UserUnionRootType) {
                         statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
                     }

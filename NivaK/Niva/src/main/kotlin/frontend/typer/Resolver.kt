@@ -239,8 +239,10 @@ class Resolver(
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     val savedPackageName = currentPackageName
     statements.forEach {
-        if (it is Declaration)
+        if (it is Declaration) {
+            changePackage(savedPackageName, createFakeToken())
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
+        }
         if (it is MessageSendKeyword && it.receiver.str == "Bind") {
             val msg = it.messages[0]
             if (msg !is KeywordMsg)
@@ -252,10 +254,11 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             if (pkgArg == null)
                 msg.token.compileError("'package' param is missing")
 
-
             val contentArg = msg.args.find { it.selectorName == "content" }
             if (contentArg == null)
                 msg.token.compileError("'content' param is missing")
+
+
 
             if (pkgArg.keywordArg !is LiteralExpression)
                 pkgArg.keywordArg.token.compileError("Package argument must be a string")
@@ -388,9 +391,9 @@ fun Resolver.resolveDeclarations(
                         val type = astType.toType(typeTable)
 
                         if (type.name == it.type.name) {
-                            bodyScope[it.name] = type
+                            bodyScope[it.localName ?: it.name] = type
                         } else {
-                            bodyScope[it.name] = type
+                            bodyScope[it.localName ?: it.name] = type
                         }
 
                         if (type is Type.UnknownGenericType) {
@@ -566,7 +569,8 @@ private fun Resolver.resolveStatement(
 
         is MessageSend -> {
             resolveTypeForMessageSend(statement)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            if (currentLevel == 0)
+                topLevelStatements.add(statement)
         }
 
 
@@ -964,7 +968,7 @@ fun Resolver.changePackage(newCurrentPackage: String, token: Token, isBinding: B
     // check that this package not exits already
     if (alreadyExistsPack != null) {
         // load table of types
-        typeTable.clear()
+//        typeTable.clear()
         typeTable.putAll(alreadyExistsPack.types)
     } else {
         // create this new package
