@@ -6,7 +6,6 @@ import frontend.parser.types.ast.TypeAST
 import frontend.parser.types.ast.TypeFieldAST
 import frontend.parser.types.ast.UnionDeclaration
 
-
 fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, root: UnionDeclaration? = null) =
     buildString {
         if (isUnionRoot) append("sealed ")
@@ -25,7 +24,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
         append("(")
         // class Person (
 
-        fun sas(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+        fun generateFieldArguments(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
 
             if (it.type == null) {
                 it.token.compileError("arg must have type")
@@ -46,14 +45,18 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
 
         // default fields
         fields.forEachIndexed { i, it ->
-            sas(it, i, false, fields.count() - 1)
+            generateFieldArguments(it, i, false, fields.count() - 1)
         }
         // class Person (var age: Int,
         // root fields
         if (root != null) {
-            append(", ")
+            // comma after branch's fields, before root fields
+            if (fields.isNotEmpty()) {
+                append(", ")
+            }
+
             root.fields.forEachIndexed { i, it ->
-                sas(it, i, true, root.fields.count() - 1)
+                generateFieldArguments(it, i, true, root.fields.count() - 1)
             }
         }
 
@@ -97,8 +100,6 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
 
     }
 
-sealed class Shape(val area: Int)
-class Rectangle(val width: Int, val height: Int, area: Int) : Shape(area)
 
 fun UnionDeclaration.generateUnionDeclaration() = buildString {
     val statement = this@generateUnionDeclaration
