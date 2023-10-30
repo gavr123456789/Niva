@@ -261,7 +261,48 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
     }
 }
 
+
+class Node<T>(
+    val data: T,
+    var prev: Node<T>?
+)
+
+fun <T> Node<T>.add(data: T): Node<T> {
+    val result = Node(data = data, prev = null)
+    this.prev = result
+    return result
+}
+
+fun <T> Node<T>.toList(): List<T> {
+    val result = mutableListOf<T>(data)
+    var q = prev
+    while (q != null) {
+        result.add(q.data)
+        q = q.prev
+    }
+    return result
+}
+
+class MyList<T>(
+    val initialVal: T,
+    var head: Node<T> = Node(initialVal, null)
+)
+
+// 1 next: []
+// 1 next: [2 next: []]
+
+fun <T> MyList<T>.add(data: T) {
+    val result = Node(data = data, prev = head)
+    head = result
+}
+
 fun main(args: Array<String>) {
+    val myList = MyList(0)
+    myList.add(1)
+    myList.add(2)
+    myList.add(3)
+    val list = myList.head.toList()
+
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
     val isThereArgs = args.count() >= 2

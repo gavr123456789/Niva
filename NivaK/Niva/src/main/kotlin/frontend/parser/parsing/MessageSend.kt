@@ -268,7 +268,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
             keyword(receiver)
         }
 
-        !isNextKeyword && (receiver is MessageSendBinary || receiver is MessageSendBinary) -> {
+        !isNextKeyword && (receiver is MessageSendBinary) -> {
             receiver
         }
 

@@ -30,7 +30,7 @@ fun Expression.generateExpression(): String = buildString {
 
             // when message is receiver
             is BinaryMsg -> TODO()
-            is KeywordMsg -> TODO()
+            is KeywordMsg -> generateSingleKeyword(0, receiver, this@generateExpression)
             is UnaryMsg -> TODO()
 
 

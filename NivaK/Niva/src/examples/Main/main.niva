@@ -1,83 +1,22 @@
+union Result =
+    | Some x: T
+    | None
 
-// qwe
-//type Person name: String
-//constructor Person from::String to::Int = [Person name: from]
-//constructor Person from::String = [Person name: from]
+some = Some x: 6
+> Some x: 6
+none = None
+//> None
+> none
+
+
+//Box x: Int prev: Box
+
+//type Node data: T prev: Node
 //
-//person = Person from: "sas"
-
-
-
-//
-//Bind package: "kotlinx.datetime" content: [
-//    type LocalTime hour: Int minute: Int second: Int
-//    LocalTime toSecondOfDay -> Int = []
+//Int box::Node::Int = [
+//  (box data + this) echo
 //]
 //
-//localTime = LocalTime hour: 23 minute: 59 second: 12
-//secondOfDay = localTime toSecondOfDay
-//secondOfDay echo
+//box = Node x: 40
 //
-//firstSecondOfDay = (LocalTime hour: 0 minute: 0 second: 1) toSecondOfDay
-//firstSecondOfDay echo
-
-
-
-
-Project loadPackages: {"org.jetbrains.kotlinx:kotlinx-datetime:0.4.1"}
-Bind package: "kotlinx.datetime" content: [
-    type Clock
-    type Instant
-    type LocalDateTime hour: Int
-    type TimeZone id: String
-        constructor TimeZone currentSystemDefault
-        constructor TimeZone of::String = []
-    type FixedOffsetTimeZone
-    Clock now -> Instant
-    Instant toLocalDateTime::TimeZone -> LocalDateTime
-] getters: [
-    LocalDateTime dayOfYear -> Int
-    Clock System -> Clock
-    TimeZone UTC -> TimeZone
-]
-
-now = Clock System now
-utc = now toLocalDateTime: TimeZone UTC
-
-systemTime = now toLocalDateTime: TimeZone currentSystemDefault
-tzBerlin = TimeZone of: "Europe/Berlin"
-berlinTime = now toLocalDateTime: tzBerlin
-
-utc echo
-berlinTime echo
-systemTime echo
-berlinTime dayOfYear echo
-
-
-//type TimeZone time: Int
-//
-//timeZone = TimeZone time: 123
-////> TimeZone time: 123
-//>timeZone
-//
-//constructor TimeZone UTC = TimeZone time: 0
-//
-//timeZone2 = TimeZone UTC
-////> TimeZone time: 0
-//>timeZone2
-
-
-
-
-
-//    val localTime = kotlinx.datetime.LocalTime(23, 59, 12)
-//    val secondOfDay = localTime.toSecondOfDay()
-//    secondOfDay.echo()
-//    val firstSecondOfDay = (kotlinx.datetime.LocalTime(0, 0, 1)).toSecondOfDay()
-//    firstSecondOfDay.echo()
-//
-//    val now = Clock.System.now()
-//    now.toLocalDateTime(TimeZone.UTC).echo()
-//    now.toLocalDateTime(TimeZone.currentSystemDefault()).echo()
-//    val tzBerlin = TimeZone.of("Europe/Berlin")
-//    now.toLocalDateTime(tzBerlin).echo()
+//2 box: box

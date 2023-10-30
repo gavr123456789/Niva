@@ -584,10 +584,24 @@ private fun Resolver.resolveStatement(
             currentLevel++
             resolve(listOf(statement.value), previousAndCurrentScope, statement)
             currentLevel--
-
-            val valueType = statement.value.type
+            val value = statement.value
+            val valueType = value.type
                 ?: statement.token.compileError("In var declaration ${statement.name} value doesn't got type")
             val statementDeclaredType = statement.valueType
+
+            // if this is Type with zero fields constructor
+            // replace Identifier with Keyword kind: Constructor
+            if (value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
+                statement.value = KeywordMsg(
+                    receiver = value, //IdentifierExpr("", token = createFakeToken()),
+                    selectorName = value.str,
+                    type = valueType,
+                    token = statement.value.token,
+                    args = listOf(),
+                    path = listOf(),
+                    kind = KeywordLikeType.Constructor
+                )
+            }
 
             // check that declared type == inferred type
             if (statementDeclaredType != null) {

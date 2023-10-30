@@ -53,7 +53,7 @@ class ReturnStatement(
 class VarDeclaration(
     token: Token,
     val name: String,
-    val value: Expression,
+    var value: Expression,
     var valueType: TypeAST? = null,
     val mutable: Boolean = false,
     isPrivate: Boolean = false,
