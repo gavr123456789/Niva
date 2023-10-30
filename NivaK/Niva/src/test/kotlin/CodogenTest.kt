@@ -1,5 +1,5 @@
+import codogen.codegenKt
 import frontend.typer.Resolver
-import frontend.typer.codogenKt
 import frontend.typer.resolve
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -11,7 +11,7 @@ fun generateKotlin(source: String): String {
         projectName = "common", mainFile = File("sas.niva"), statements = ast.toMutableList()
     )
     resolver.resolve(resolver.statements, mutableMapOf())
-    val codogenerator = codogenKt(resolver.statements)
+    val codogenerator = codegenKt(resolver.statements)
 
     return codogenerator
 }
@@ -22,7 +22,7 @@ fun generateKotlinWithoutResolve(source: String): String {
         projectName = "common", mainFile = File("sas.niva"), statements = ast.toMutableList()
     )
 //    resolver.resolve(resolver.statements, mutableMapOf())
-    val codogenerator = codogenKt(resolver.statements)
+    val codogenerator = codegenKt(resolver.statements)
 
     return codogenerator
 }

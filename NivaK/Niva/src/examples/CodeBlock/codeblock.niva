@@ -7,3 +7,9 @@ e = lambda str1: "Hello" str2: "World!"
 e echo
 
 
+Int from::[Int, String -> Unit] = [
+    from Int: 1 String: "sas"
+    1 echo
+]
+
+1 from: [x::Int, y::String -> x echo]

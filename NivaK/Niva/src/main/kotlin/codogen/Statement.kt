@@ -4,7 +4,7 @@ import frontend.parser.types.ast.*
 import frontend.util.addIndentationForEachString
 
 
-fun generateKtStatement(statement: Statement, ident: Int): String = buildString {
+fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = buildString {
     append(
         when (statement) {
             is Expression -> statement.generateExpression()

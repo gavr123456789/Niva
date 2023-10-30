@@ -66,9 +66,9 @@ fun Parser.statement(): Statement {
     }
 
 
-    val isItKeywordDeclaration = checkTypeOfMessageDeclaration()
-    if (isItKeywordDeclaration != null) {
-        return messageDeclaration(isItKeywordDeclaration, codeAttributes)
+    val isItMsgDeclaration = checkTypeOfMessageDeclaration()
+    if (isItMsgDeclaration != null) {
+        return messageDeclaration(isItMsgDeclaration, codeAttributes)
     }
 
     return expression()

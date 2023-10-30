@@ -1,7 +1,9 @@
 package frontend.typer
 
 import frontend.meta.compileError
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.util.toCalmelCase
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     if (type.typeArgumentList.count() > 2) {
@@ -133,6 +135,7 @@ fun Resolver.resolveMessage(
             /// end of resolving arguments
 
 
+            // infer generic type from args or receiver
             if (kwTypeFromDB != null &&
                 kwTypeFromDB.returnType.name.length == 1 && kwTypeFromDB.returnType.name[0].isUpperCase() &&
                 kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
@@ -157,7 +160,6 @@ fun Resolver.resolveMessage(
                     // take type from arguments
                     statement.type = inferredGenericTypeFromArgs
                 }
-//                    letterToRealType[keywordMsgTypeFromDB.returnType.name] = argType
             }
 
             // if receiverType is lambda then we need to check does it have same argument names and types
@@ -187,6 +189,7 @@ fun Resolver.resolveMessage(
                 statement.args.forEachIndexed { ii, it ->
                     // name check
                     if (it.selectorName != receiverType.args[ii].name) {
+
                         statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
                     }
                     // type check
@@ -218,9 +221,29 @@ fun Resolver.resolveMessage(
                             parent = parent.parent
                         }
 
+                        // Check for custom constructor
+                        val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
+                        val (customConstructorType) = try {
+                            findStaticMessageType(
+                                receiverType,
+                                selectorName,
+                                statement.token,
+                                MessageDeclarationType.Keyword
+                            ) as Pair<Type.UserLike, Boolean>
+                        } catch (e: Exception) {
+                            Pair(null, false)
+                        }
+                        // if constructor with current args is found, then we dont need to check that the args are right
+                        val thisIsCustomConstructor = customConstructorType != null
+                        if (thisIsCustomConstructor) {
+                            // we need to call it as method, not as constructor
+                            // Person.from(p) vs Person(from = p)
+                            statement.kind = KeywordLikeType.Keyword
+                        }
+
                         val receiverFields = receiverType.fields //+ listOfAllParentsFields
                         // check that amount of arguments if right
-                        if (statement.args.count() != receiverFields.count()) {
+                        if (statement.args.count() != receiverFields.count() && !thisIsCustomConstructor) {
 
                             val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
                             val setOfNeededFields = receiverFields.map { it.name }.toSet()
@@ -245,7 +268,9 @@ fun Resolver.resolveMessage(
                         val typeFieldsNamesSet = statement.args.map { it.selectorName }.toSet()
                         val receiverFieldsSet = receiverFields.map { it.name }.toSet()
 
-                        if (typeFieldsNamesSet != receiverFieldsSet) {
+
+
+                        if (!thisIsCustomConstructor && typeFieldsNamesSet != receiverFieldsSet) {
                             statement.token.compileError("In constructor message for type ${statement.receiver.str} fields $typeFieldsNamesSet != $receiverFieldsSet")
                         }
 
@@ -285,6 +310,7 @@ fun Resolver.resolveMessage(
                         }
 
                     }
+
 
                     statement.type = replacerTypeIfItGeneric ?: receiverType
                 }
@@ -394,7 +420,6 @@ fun Resolver.resolveMessage(
             val receiver = statement.receiver
 
             // for constructors
-            var isStaticCall = false
 
             if (receiver.type == null)
                 receiver.type = when (receiver) {
@@ -422,21 +447,19 @@ fun Resolver.resolveMessage(
                 }
 
             // if this is message for type
-            if (receiver is IdentifierExpr) {
-                if (typeTable[receiver.str] != null) {
-                    isStaticCall = true
-                }
-            }
+            val isStaticCall =
+                receiver is IdentifierExpr && typeTable[receiver.str] != null
+
             val receiverType = receiver.type!!
 
 
 
             if (receiverType is Type.Lambda) {
-                if (statement.selectorName != "exe") {
+                if (statement.selectorName != "do") {
                     if (receiverType.args.isNotEmpty())
-                        statement.token.compileError("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                        statement.token.compileError("Lambda ${statement.str} takes more than 0 arguments, please use keyword message with it's args names")
                     else
-                        statement.token.compileError("For lambda ${statement.str} on Line ${statement.token.line} you can use only unary 'do' message")
+                        statement.token.compileError("For lambda ${statement.str} you can use only unary 'do' message")
                 }
 
 
@@ -472,9 +495,14 @@ fun Resolver.resolveMessage(
                     statement.kind = if (messageReturnType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType.returnType
                 } else {
-                    val messageReturnType = findStaticMessageType(receiverType, statement.selectorName, statement.token)
+                    val (messageReturnType, isGetter) = findStaticMessageType(
+                        receiverType,
+                        statement.selectorName,
+                        statement.token,
+                        MessageDeclarationType.Unary
+                    )
 
-                    statement.kind = UnaryMsgKind.Unary
+                    statement.kind = if (isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType
                 }
 

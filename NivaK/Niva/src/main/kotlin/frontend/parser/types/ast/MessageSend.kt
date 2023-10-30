@@ -79,8 +79,12 @@ data class KeywordArgAndItsMessages(
     val keywordArg: Expression
 )
 
+
 enum class KeywordLikeType {
-    Keyword, Constructor, Setter, ForCodeBlock
+    Keyword, // .sas(1, 2)
+    Constructor, // Sas(1, 2)
+    Setter, // x y: 1 == x.y = 1
+    ForCodeBlock // [] whileDo: []
 }
 
 class KeywordMsg(

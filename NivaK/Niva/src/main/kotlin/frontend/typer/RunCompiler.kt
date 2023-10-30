@@ -7,7 +7,7 @@ import frontend.parser.types.ast.Statement
 import lex
 import java.io.File
 
-fun Resolver.run() {
+fun Resolver.resolve() {
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
         val parser = Parser(file = file, tokens = tokens, source = "sas.niva")

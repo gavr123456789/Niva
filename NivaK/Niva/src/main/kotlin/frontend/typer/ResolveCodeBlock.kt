@@ -50,9 +50,9 @@ fun Resolver.resolveCodeBlock(
 
             // List(T, G) map::[T -> G] -> G = []
 
-            val we = typeTable[rootReceiverType.name]
-            if (we is Type.UserType && rootReceiverType is Type.UserType) {
-                we.typeArgumentList.forEachIndexed { i, it ->
+            val rootType = typeTable[rootReceiverType.name]
+            if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
+                rootType.typeArgumentList.forEachIndexed { i, it ->
                     if (it.name.length == 1 && it.name[0].isUpperCase()) {
                         val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
@@ -71,9 +71,7 @@ fun Resolver.resolveCodeBlock(
                     typeOfFirstArgs
                 } else {
                     val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                    if (foundRealType == null) {
-                        throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
-                    }
+                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
                     foundRealType
                 }
                 previousAndCurrentScope["it"] = typeForIt

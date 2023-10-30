@@ -1,0 +1,25 @@
+Bind package: "java.io" content: [
+    type File pathname: String
+    File exists -> Boolean = []
+] getters: [
+    File absoluteFile -> File = []
+    File absolutePath -> String = []
+    File canonicalPath -> String = []
+    File isDirectory -> String = []
+]
+
+Bind package: "kotlin.text" content: [
+    String split::String -> List::String = []
+]
+
+strings = "a.b" split: "."
+//> [a, b]
+> strings
+first = strings get: 0
+//> a
+> first
+
+x = File pathname: "sas.txt"
+//> true
+>x exists
+| x exists not => ^
