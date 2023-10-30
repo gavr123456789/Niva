@@ -95,8 +95,8 @@ fun Parser.unionDeclaration(): UnionDeclaration {
             val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
             val branchName = matchAssertAnyIdent("Name of the union branch expected")
 
-            matchAssert(TokenType.Then, "=> after $branchName expected")
-
+//            matchAssert(TokenType.Then, "=> after $branchName expected")
+            match(TokenType.Then)
             val fields = typeFields()
 
             unionBranches.add(

@@ -807,7 +807,7 @@ class ParserTest {
 //    }
 
     @Test
-    fun asdas() {
+    fun simpleKeyword() {
         val source = """
         1 from: 1 to: 2 
         """.trimIndent()
@@ -1057,6 +1057,22 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun unionsBranchesWithoutFields() {
+
+        val source = """
+            union Result =
+                | Some x: Int
+                | None
+            union Result =
+                | Some x: Int
+                | None
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
 //    @Test
 //    fun unaryOnManyLines() {
 //

@@ -108,7 +108,11 @@ class UnionBranch(
     genericFields: MutableList<String> = mutableListOf(),
     val root: UnionDeclaration,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = codeAttributes)
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = codeAttributes) {
+    override fun toString(): String {
+        return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.type }
+    }
+}
 
 class UnionDeclaration(
     typeName: String,
