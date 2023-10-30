@@ -24,8 +24,10 @@ fun Resolver.resolveMessage(
     previousScope: MutableMap<String, Type>,
     currentScope: MutableMap<String, Type>
 ) {
+
     when (statement) {
         is KeywordMsg -> {
+            val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
@@ -36,7 +38,7 @@ fun Resolver.resolveMessage(
                 statement.receiver.type
                     ?: statement.token.compileError("Can't infer receiver ${statement.receiver.str} type")
 
-
+            var foundCustomConstructorDb: MessageMetadata? = null
             fun resolveKindOfKeyword(statement: KeywordMsg): KeywordLikeType {
                 if (receiverType is Type.Lambda) {
                     return KeywordLikeType.ForCodeBlock
@@ -51,6 +53,16 @@ fun Resolver.resolveMessage(
                 if (isThisConstructor) {
                     if (keywordReceiverType is Type.UserUnionRootType) {
                         statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
+                    }
+                    // check if custom
+                    if (keywordReceiverType is Type.UserLike) {
+                        keywordReceiverType.protocols.values.forEach {
+                            if (it.staticMsgs.containsKey(selectorName)) {
+                                foundCustomConstructorDb = it.staticMsgs[selectorName]
+                                statement.kind = KeywordLikeType.CustomConstructor
+                                return KeywordLikeType.CustomConstructor
+                            }
+                        }
                     }
                     statement.kind = KeywordLikeType.Constructor
                     return KeywordLikeType.Constructor
@@ -135,7 +147,7 @@ fun Resolver.resolveMessage(
             /// end of resolving arguments
 
 
-            // infer generic type from args or receiver
+            // infer a generic type from args or receiver
             if (kwTypeFromDB != null &&
                 kwTypeFromDB.returnType.name.length == 1 && kwTypeFromDB.returnType.name[0].isUpperCase() &&
                 kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
@@ -165,7 +177,6 @@ fun Resolver.resolveMessage(
             // if receiverType is lambda then we need to check does it have same argument names and types
             if (receiverType is Type.Lambda) {
 
-                // need
                 if (receiverType.args.count() != statement.args.count()) {
                     val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
                     val setOfNeededFields = receiverType.args.map { it.name }.toSet()
@@ -209,6 +220,15 @@ fun Resolver.resolveMessage(
 
 
             when (kind) {
+                KeywordLikeType.CustomConstructor -> {
+                    val capture = foundCustomConstructorDb
+                    if (capture != null) {
+                        statement.type = capture.returnType
+                    } else {
+                        statement.type = receiverType
+                    }
+                }
+
                 KeywordLikeType.Constructor -> {
                     // check that all fields are filled
                     var replacerTypeIfItGeneric: Type? = null
@@ -222,28 +242,30 @@ fun Resolver.resolveMessage(
                         }
 
                         // Check for custom constructor
-                        val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
-                        val (customConstructorType) = try {
-                            findStaticMessageType(
-                                receiverType,
-                                selectorName,
-                                statement.token,
-                                MessageDeclarationType.Keyword
-                            ) as Pair<Type.UserLike, Boolean>
-                        } catch (e: Exception) {
-                            Pair(null, false)
-                        }
+//                        val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
+                        // if it is a constructor already, we dont need to check for custom
+//                        val (customConstructorType) = if (statement.kind != KeywordLikeType.Constructor)
+//                            try {
+//                                findStaticMessageType(
+//                                    receiverType,
+//                                    selectorName,
+//                                    statement.token,
+//                                    MessageDeclarationType.Keyword
+//                                ) as Pair<Type.UserLike, Boolean>
+//                            } catch (e: Exception) {
+//                                Pair(null, false)
+//                            } else Pair(null, false)
                         // if constructor with current args is found, then we dont need to check that the args are right
-                        val thisIsCustomConstructor = customConstructorType != null
-                        if (thisIsCustomConstructor) {
-                            // we need to call it as method, not as constructor
-                            // Person.from(p) vs Person(from = p)
-                            statement.kind = KeywordLikeType.Keyword
-                        }
+//                        val thisIsCustomConstructor = statement.kind == KeywordLikeType.CustomConstructor //customConstructorType != null
+//                        if (thisIsCustomConstructor) {
+//                            // we need to call it as method, not as constructor
+//                            // Person.from(p) vs Person(from = p)
+//                            statement.kind = KeywordLikeType.Keyword
+//                        }
 
                         val receiverFields = receiverType.fields //+ listOfAllParentsFields
                         // check that amount of arguments if right
-                        if (statement.args.count() != receiverFields.count() && !thisIsCustomConstructor) {
+                        if (statement.args.count() != receiverFields.count()) { // && !thisIsCustomConstructor
 
                             val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
                             val setOfNeededFields = receiverFields.map { it.name }.toSet()
@@ -270,7 +292,7 @@ fun Resolver.resolveMessage(
 
 
 
-                        if (!thisIsCustomConstructor && typeFieldsNamesSet != receiverFieldsSet) {
+                        if (typeFieldsNamesSet != receiverFieldsSet) { // !thisIsCustomConstructor &&
                             statement.token.compileError("In constructor message for type ${statement.receiver.str} fields $typeFieldsNamesSet != $receiverFieldsSet")
                         }
 

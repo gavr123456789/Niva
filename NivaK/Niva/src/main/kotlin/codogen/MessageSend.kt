@@ -44,7 +44,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
                 receiver.generateExpression()
         }
     when (keywordMsg.kind) {
-        KeywordLikeType.Keyword -> {
+        KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if (i == 0) {
                 append(receiverCode, ".")
             }
@@ -115,7 +115,11 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
         append(receiverCode)
     }
     when (it.kind) {
-        UnaryMsgKind.Unary -> append(".${it.selectorName}()")
+        UnaryMsgKind.Unary -> {
+
+            append(".${it.selectorName}()")
+        }
+
         UnaryMsgKind.Getter -> append(".${it.selectorName}")
         UnaryMsgKind.ForCodeBlock -> append("()")
     }

@@ -72,7 +72,7 @@ fun Resolver.resolveControlFlow(
                     if (prevType.name != currType.name) {
                         it.ifExpression.token.compileError(
                             "In if Expression return type of branch on line: ${prev.ifExpression.token.line} is ${prevType.name} " +
-                                    "but return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
+                                    "\n\tBut return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
                         )
                     }
                 } else {
@@ -121,8 +121,6 @@ fun Resolver.resolveControlFlow(
                 currentLevel--
             }
 
-
-            // TODO check if this expression of statement
 
             var firstBranchReturnType: Type? = null
             val savedSwitchType = statement.switch.type
@@ -186,10 +184,11 @@ fun Resolver.resolveControlFlow(
 
                     val prevType: Type = prev.getReturnTypeOrThrow()
                     val currType = it.getReturnTypeOrThrow()
-                    if (prevType.name != currType.name) {
+                    val isTypeEqual = compare2Types(prevType, currType)
+                    if (!isTypeEqual) {
                         it.ifExpression.token.compileError(
                             "In switch Expression return type of branch on line: ${prev.ifExpression.token.line} is ${prevType.name} "
-                                    + "but return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
+                                    + "\n\tBut return type of branch on line ${it.ifExpression.token.line} is ${currType.name}, all branches must return the same type"
                         )
                     }
                 } else {

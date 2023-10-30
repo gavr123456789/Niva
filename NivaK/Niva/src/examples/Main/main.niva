@@ -1,12 +1,33 @@
-union Result =
+//Error throwWithMessage: "sas"
+
+
+
+//union Result =
+//    | Ok value: T
+//    | Err err: G
+//option = Ok value: 42
+//
+
+
+union Option =
     | Some x: T
     | None
 
-some = Some x: 6
-> Some x: 6
-none = None
-//> None
-> none
+Option unwrap -> T = |this
+| Some => this x
+| None => Error throwWithMessage: "sas"
+
+option = Some x: 6
+kek = option unwrap
+//> 6
+>kek
+
+//
+//some = Some x: 6
+//> Some x: 6
+//none = None
+////> None
+//> none
 
 
 //Box x: Int prev: Box

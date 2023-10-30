@@ -82,6 +82,7 @@ class Resolver(
             createDefaultType(InternalTypes.IntRange),
 
             createDefaultType(InternalTypes.Any),
+            createDefaultType(InternalTypes.Nothing),
         )
 
         init {
@@ -171,6 +172,7 @@ class Resolver(
         val unitType = defaultTypes[InternalTypes.Unit]!!
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!
         val anyType = defaultTypes[InternalTypes.Any]!!
+        val nothingType = defaultTypes[InternalTypes.Nothing]!!
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
 
@@ -228,7 +230,30 @@ class Resolver(
         // Map TODO
 
 
-        ///
+//        val kotlinPkg = Package("kotlin", isBinding = true)
+//        commonProject.packages["kotlin"] = kotlinPkg
+
+        /// add Error
+        val errorType = Type.UserType(
+            name = "Error",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(TypeField("message", stringType)),
+            pkg = "kotlin",
+        )
+        errorType.isBinding = true
+        errorType.protocols.putAll(
+            createExceptionProtocols(
+                errorType,
+                unitType,
+                nothingType,
+                stringType
+            )
+        )
+//        kotlinPkg.types["Exception"] = exceptionType
+
+
+        typeTable[errorType.name] = errorType
+        corePackage.types[errorType.name] = errorType
 
         projects[projectName] = commonProject
 
@@ -791,9 +816,10 @@ fun compare2Types(type1: Type, type2: Type): Boolean {
         }
     }
 
-
-
-    return type1.name == type2.name
+    // comparing with nothing is always true, its bottom type, subtype of all types
+    // so we can return nothing from switch expr branches, beside u cant do it with different types
+    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
+    return type1 == nothing || type2 == nothing
 }
 
 fun Package.addImport(pkg: String) {
@@ -859,7 +885,7 @@ fun Resolver.findStaticMessageType(
         }
     }
 
-    // if this is binding, then getters can are static
+    // if this is binding, then getters are static, calls without ()
     if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
         when (msgType) {
             MessageDeclarationType.Unary ->

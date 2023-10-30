@@ -37,10 +37,23 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     // fun Int.sas(): unit {
     //   this.echo()
     // }
-    append("fun ", forType.name)
+    append("fun ")
+    if (returnType != null) {
+        val isThereUnresolvedTypeArgs = returnType.name.count() == 1 && returnType.name[0].isUpperCase()
+        if (isThereUnresolvedTypeArgs) {
+            // There can be resolved type args like box::Box::Int, then we don't need to add them
+            append("<")
+            append(returnType.name)
+            append(">")
+        }
+    }
+    append(forType.name)
     if (isStatic) {
         append(".Companion")
     }
+
+
+
     append(".", name, "()")
     bodyPart(this@generateUnaryDeclaration, this)
 }
@@ -71,7 +84,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
 
-    // if this is constructor, then method on Companion
+    // if this is the constructor, then method on Companion
     append("fun ")
 
     val isThereUnresolvedTypeArgs = typeArgs.filter { it.count() == 1 && it[0].isUpperCase() }
