@@ -49,21 +49,40 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     append(") {\n")
     ifBranches.forEach {
         append("    ")
+        val type = it.ifExpression.type
+        var genericTypeNameIfSingle: String? = null
+        val isMatchingOnGeneric = if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+            if (type.typeArgumentList.count() == 1) {
+                genericTypeNameIfSingle = type.typeArgumentList[0].name
+            }
+            true
+        } else {
+            false
+        }
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
             append(it.ifExpression.generateExpression())
         } else {
             append("is ", it.ifExpression.generateExpression())
             // if this is Generic then we need to add <*>, because type erasing(
-            val type = it.ifExpression.type
-            if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+            if (isMatchingOnGeneric) {
                 append("<*>")
             }
         }
 
         append(" -> ")
         when (it) {
-            is IfBranch.IfBranchSingleExpr -> append(it.thenDoExpression.generateExpression())
+            is IfBranch.IfBranchSingleExpr -> {
+
+                if (genericTypeNameIfSingle != null) {
+                    append("(")
+                    append(it.thenDoExpression.generateExpression())
+                    append(") as $genericTypeNameIfSingle")
+                } else {
+                    append(it.thenDoExpression.generateExpression())
+                }
+            }
+
             is IfBranch.IfBranchWithBody -> append(codegenKt(it.body, 1))
         }
         append("\n")

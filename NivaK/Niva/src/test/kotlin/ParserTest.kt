@@ -18,7 +18,6 @@ class ParserTest {
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
-//        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
     }
 

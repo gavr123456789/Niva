@@ -82,7 +82,8 @@ data class KeywordArgAndItsMessages(
 
 enum class KeywordLikeType {
     Keyword, // .sas(1, 2)
-    Constructor, // Sas(1, 2)
+    Constructor, // Sas(x = 1, y = 2)
+    CustomConstructor, // Sas(1, 2)
     Setter, // x y: 1 == x.y = 1
     ForCodeBlock // [] whileDo: []
 }

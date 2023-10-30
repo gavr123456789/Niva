@@ -128,6 +128,13 @@ fun addNivaStd(mainCode: String): String {
         import java.io.FileWriter
         import java.io.IOException
         
+        class Error {
+            companion object
+        }
+        fun Error.Companion.throwWithMessage(message: String): Nothing {
+            throw kotlin.Exception(message)
+        }
+        
         inline fun Any?.echo() = println(this)
         const val INLINE_REPL = $quote$inlineReplPath$quote 
         
@@ -294,6 +301,10 @@ class MyList<T>(
 fun <T> MyList<T>.add(data: T) {
     val result = Node(data = data, prev = head)
     head = result
+}
+
+fun Exception.throwError(): Nothing {
+    throw this
 }
 
 fun main(args: Array<String>) {

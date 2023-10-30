@@ -252,6 +252,31 @@ fun createAnyProtocols(
     return result
 }
 
+fun createExceptionProtocols(
+    errorType: Type.UserType,
+    unitType: Type.InternalType,
+    nothingType: Type.InternalType,
+    stringType: Type.InternalType
+): MutableMap<String, Protocol> {
+
+    val result = mutableMapOf<String, Protocol>()
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("echo", unitType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword("addSuppressed", KeywordArg("addSuppressed", errorType), unitType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword("throwWithMessage", KeywordArg("throwWithMessage", stringType), nothingType),
+        )
+    )
+    result[protocol.name] = protocol
+    return result
+}
+
 
 fun createListProtocols(
     intType: Type.InternalType,

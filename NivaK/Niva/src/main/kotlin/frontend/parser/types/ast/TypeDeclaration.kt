@@ -134,8 +134,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any, Bind,
-
-    //    List, Map, Set,
-//    Unknown // For generics like T
+    Int, String, Float, Boolean, Unit, Project, Char, IntRange, Any, Bind, Nothing, Exception
 }
