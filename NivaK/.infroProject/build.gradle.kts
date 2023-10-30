@@ -1,3 +1,4 @@
+
 plugins {
     kotlin("jvm") version "1.9.20-Beta"
     application
@@ -14,6 +15,11 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
+dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+}
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -25,3 +31,4 @@ kotlin {
 application {
     mainClass.set("main.MainKt")
 }
+

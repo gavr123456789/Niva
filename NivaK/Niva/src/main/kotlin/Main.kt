@@ -1,9 +1,9 @@
+import codogen.generateKtProject
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
 import frontend.typer.Resolver
-import frontend.typer.generateKtProject
-import frontend.typer.run
+import frontend.typer.resolve
 import frontend.util.OS_Type
 import frontend.util.div
 import frontend.util.fillSymbolTable
@@ -70,7 +70,7 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
     }
 }
 
-fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String) {
+fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String) {
 
     fun listFilesRecursively(directory: File): List<File> {
         val fileList = mutableListOf<File>()
@@ -106,8 +106,9 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
         statements = mutableListOf()
     )
 
-    resolver.run()
-    resolver.generateKtProject(pathWhereToGenerateKt)
+    resolver.resolve()
+    val mainProject = resolver.projects["common"]!!
+    resolver.generator.generateKtProject(pathWhereToGenerateKt, pathToGradle, mainProject, resolver.topLevelStatements)
 }
 
 
@@ -271,14 +272,14 @@ fun main(args: Array<String>) {
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
     val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathToTheMainExample = File("src" / "examples" / "Main" / "main.niva").absolutePath
-    val pathToNivaProjectRootFile =
-        if (isThereArgs) args[1] else pathToTheMainExample
+    val pathToNivaProjectRootFile = if (isThereArgs) args[1] else pathToTheMainExample
+    val pathToGradle = pathToProjectRoot / "build.gradle.kts"
 
 
     val startTime = System.currentTimeMillis()
 
 
-    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt)
+    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt, pathToGradle)
 
 
     val secondTime = System.currentTimeMillis()

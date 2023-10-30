@@ -1,9 +1,12 @@
 package frontend.typer
 
+import codogen.GeneratorKt
+import codogen.loadPackages
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.meta.compileError
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.util.removeDoubleQuotes
 import java.io.File
@@ -59,7 +62,9 @@ class Resolver(
     // for recursive types
     val unResolvedMessageDeclarations: MutableSet<MessageDeclaration> = mutableSetOf(),
     val unResolvedTypeDeclarations: MutableSet<SomeTypeDeclaration> = mutableSetOf(),
-    var allDeclarationResolvedAlready: Boolean = false
+    var allDeclarationResolvedAlready: Boolean = false,
+
+    val generator: GeneratorKt = GeneratorKt()
 ) {
     companion object {
 
@@ -142,6 +147,12 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     charType = charType,
+                    any = anyType
+                )
+            )
+            anyType.protocols.putAll(
+                createAnyProtocols(
+                    unitType = unitType,
                     any = anyType
                 )
             )
@@ -277,7 +288,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                 if (it is Declaration) {
                     resolveDeclarations(it, mutableMapOf(), resolveBody = false)
                 } else {
-                    it.token.compileError("Inside Bild can be only declarations, but found $it")
+                    it.token.compileError("There can be only declarations inside Bind, but found $it")
                 }
             }
 
@@ -449,14 +460,34 @@ private fun Resolver.resolveStatement(
                 val keyword = statement2.messages[0] as KeywordMsg
 
                 keyword.args.forEach {
-                    if (it.keywordArg.token.kind == TokenType.String) {
-                        val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
-                        when (it.selectorName) {
-                            "name" -> changeProject(substring, statement2.token)
-                            "package" -> changePackage(substring, statement2.token)
-                            "protocol" -> changeProtocol(substring)
+
+                    when (it.keywordArg) {
+                        is LiteralExpression.StringExpr -> {
+                            val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
+                            when (it.selectorName) {
+                                "name" -> changeProject(substring, statement2.token)
+                                "package" -> changePackage(substring, statement2.token)
+                                "protocol" -> changeProtocol(substring)
+                            }
                         }
-                    } else it.keywordArg.token.compileError("Only string arguments for Project allowed")
+
+                        is ListCollection -> {
+                            when (it.selectorName) {
+                                "loadPackages" -> {
+                                    if (it.keywordArg.initElements[0] !is LiteralExpression.StringExpr) {
+                                        it.keywordArg.token.compileError("packages must be listed as String")
+                                    }
+
+                                    generator.loadPackages(it.keywordArg.initElements.map { it.token.lexeme })
+                                }
+                            }
+                        }
+
+                        else -> it.keywordArg.token.compileError("Only String args allowed for ${it.selectorName}")
+
+                    }
+
+
                 }
             }
 
@@ -501,6 +532,28 @@ private fun Resolver.resolveStatement(
 
                 bodyScope["this"] = forType
 
+                fun addArgumentsToBodyScope(statement: MessageDeclarationKeyword) {
+                    statement.args.forEach {
+                        val astType = it.type!!
+                        val type = astType.toType(typeTable)
+
+                        if (type.name == it.type.name) {
+                            bodyScope[it.name] = type
+                        } else {
+                            bodyScope[it.name] = type
+                        }
+                        if (type is Type.UnknownGenericType) {
+                            statement.typeArgs.add(type.name)
+                        }
+                        if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
+                            statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
+                            if (type.name == it.type.name) {
+                                bodyScope[it.name] = type
+                            }
+                        }
+
+                    }
+                }
                 when (statement) {
                     is MessageDeclarationUnary -> {}
                     is MessageDeclarationBinary -> {
@@ -508,30 +561,16 @@ private fun Resolver.resolveStatement(
                     }
 
                     is MessageDeclarationKeyword -> {
+                        addArgumentsToBodyScope(statement)
 
-                        statement.args.forEach {
-                            val astType = it.type!!
-                            val type = astType.toType(typeTable)
-
-                            if (type.name == it.type.name) {
-                                bodyScope[it.name] = type
-                            } else {
-                                bodyScope[it.name] = type
-                            }
-                            if (type is Type.UnknownGenericType) {
-                                statement.typeArgs.add(type.name)
-                            }
-                            if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                                statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                                if (type.name == it.type.name) {
-                                    bodyScope[it.name] = type
-                                }
-                            }
-
-                        }
                     }
 
-                    is ConstructorDeclaration -> {}
+                    is ConstructorDeclaration -> {
+                        val constructorDecl = statement.msgDeclaration
+                        if (constructorDecl is MessageDeclarationKeyword) {
+                            addArgumentsToBodyScope(constructorDecl)
+                        }
+                    }
                 }
                 resolve(statement.body, (previousScope + bodyScope).toMutableMap())
                 currentLevel--
@@ -777,20 +816,51 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         parent = parent.parent
     }
 
+    // this is Any
+    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
+    val messageFromAny = findUnary(anyType, selectorName, token)
+    if (messageFromAny != null) {
+        return messageFromAny
+    }
+
     println("Sas???")
     token.compileError("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
-fun Resolver.findStaticMessageType(receiverType: Type, selectorName: String, token: Token): Type {
+
+// returns true if it is static call, but not constructor(so we generate Clock.System instead of Clock.System())
+fun Resolver.findStaticMessageType(
+    receiverType: Type,
+    selectorName: String,
+    token: Token,
+    msgType: MessageDeclarationType? = null
+): Pair<Type, Boolean> {
+
     receiverType.protocols.forEach { (_, v) ->
         val q = v.staticMsgs[selectorName]
         if (q != null) {
             val pkg = getCurrentPackage(token)
             pkg.addImport(receiverType.pkg)
-            return q.returnType
+            return Pair(q.returnType, false)
         }
     }
-    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
+
+    // if this is binding, then getters can are static
+    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
+        when (msgType) {
+            MessageDeclarationType.Unary ->
+                return Pair(findUnaryMessageType(receiverType, selectorName, token).returnType, true)
+
+            MessageDeclarationType.Keyword ->
+                return Pair(findKeywordMsgType(receiverType, selectorName, token).returnType, true)
+
+            MessageDeclarationType.Binary -> TODO()
+        }
+
+    }
+
+    throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")
+//    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
 }
 
 fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
@@ -874,8 +944,17 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
         is MessageDeclarationKeyword -> {
             staticKeywordForType[statement.name] = statement.msgDeclaration
             val protocol = getCurrentProtocol(statement.forType.name, statement.token)
-            val messageData = UnaryMsgMetaData(
+
+            val keywordArgs = statement.msgDeclaration.args.map {
+                KeywordArg(
+                    name = it.name,
+                    type = it.type?.toType(typeTable)
+                        ?: statement.token.compileError("Type of keyword message ${statement.msgDeclaration.name}'s arg ${it.name} not registered")
+                )
+            }
+            val messageData = KeywordMsgMetaData(
                 name = statement.msgDeclaration.name,
+                argTypes = keywordArgs,
                 returnType = typeOfReceiver,
             )
             protocol.staticMsgs[statement.name] = messageData

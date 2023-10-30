@@ -4,7 +4,6 @@ import frontend.parser.types.ast.ControlFlow
 import frontend.parser.types.ast.ControlFlowKind
 import frontend.parser.types.ast.IfBranch
 import frontend.parser.types.ast.ListCollection
-import frontend.typer.codogenKt
 
 
 fun ControlFlow.If.generateIf(): String = buildString {
@@ -16,7 +15,7 @@ fun ControlFlow.If.generateIf(): String = buildString {
     append("    ")
     when (firstIfBranch) {
         is IfBranch.IfBranchSingleExpr -> append(firstIfBranch.thenDoExpression.generateExpression())
-        is IfBranch.IfBranchWithBody -> append(codogenKt(firstIfBranch.body, 1))
+        is IfBranch.IfBranchWithBody -> append(codegenKt(firstIfBranch.body, 1))
     }
     append("\n}")
 
@@ -28,7 +27,7 @@ fun ControlFlow.If.generateIf(): String = buildString {
         append("    ")
         when (ifBranch) {
             is IfBranch.IfBranchSingleExpr -> append(ifBranch.thenDoExpression.generateExpression())
-            is IfBranch.IfBranchWithBody -> append(codogenKt(ifBranch.body, 1))
+            is IfBranch.IfBranchWithBody -> append(codegenKt(ifBranch.body, 1))
         }
         append("\n}")
 
@@ -36,7 +35,7 @@ fun ControlFlow.If.generateIf(): String = buildString {
 
     if (elseBranch != null) {
         append(" else {\n")
-        append(codogenKt(elseBranch, 1))
+        append(codegenKt(elseBranch, 1))
         append("} ")
     }
 
@@ -59,14 +58,14 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
         append(" -> ")
         when (it) {
             is IfBranch.IfBranchSingleExpr -> append(it.thenDoExpression.generateExpression())
-            is IfBranch.IfBranchWithBody -> append(codogenKt(it.body, 1))
+            is IfBranch.IfBranchWithBody -> append(codegenKt(it.body, 1))
         }
         append("\n")
     }
 
     if (elseBranch != null) {
         append("    else -> ")
-        append(codogenKt(elseBranch, 0))
+        append(codegenKt(elseBranch, 0))
         append("}\n")
     } else {
         append("}\n")

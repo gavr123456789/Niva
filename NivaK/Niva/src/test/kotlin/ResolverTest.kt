@@ -341,11 +341,11 @@ class ResolverTest {
     }
 
     @Test
-    fun exeLambda() {
+    fun doCodeBlockWithoutParams() {
 
         val source = """
             x = [1 echo]
-            x exe 
+            x do 
         """.trimIndent()
 
 
@@ -373,7 +373,7 @@ class ResolverTest {
     }
 
     @Test
-    fun lambdaArgument() {
+    fun codeblockArgument() {
 
         val source = """
             Int to: x::Int doo::[Int -> Int] = [

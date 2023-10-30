@@ -5,6 +5,10 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.check
 import frontend.parser.types.ast.InternalTypes
 
+fun List<String>.toCalmelCase(): String =
+    this[0] + this.drop(1).map { it.capitalizeFirstLetter() }.joinToString("") { it }
+
+
 fun String.capitalizeFirstLetter(): String {
     if (isEmpty()) {
         return this

@@ -234,6 +234,24 @@ fun createCharProtocols(
     return result
 }
 
+fun createAnyProtocols(
+    unitType: Type.InternalType,
+    any: Type.InternalType
+): MutableMap<String, Protocol> {
+
+    val result = mutableMapOf<String, Protocol>()
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("echo", unitType)
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(),
+    )
+    result[protocol.name] = protocol
+    return result
+}
+
 
 fun createListProtocols(
     intType: Type.InternalType,

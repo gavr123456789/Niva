@@ -1,7 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.typer.codogenKt
 
 fun Expression.generateExpression(): String = buildString {
 
@@ -48,7 +47,7 @@ fun Expression.generateExpression(): String = buildString {
 
 fun ExpressionInBrackets.generateExpressionInBrackets() = buildString {
     append("(")
-    val statementsCode = codogenKt(statements, 0).removeSuffix("\n")
+    val statementsCode = codegenKt(statements, 0).removeSuffix("\n")
     append(statementsCode)
     append(")")
 }

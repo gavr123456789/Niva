@@ -29,7 +29,7 @@ fun Parser.ifBranches(): List<IfBranch> {
         val ifExpression = expression()
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
-        var (body, isSingleExpression) = methodBody()
+        var (body, isSingleExpression) = methodBody(true)
         if (body[0] is ReturnStatement) isSingleExpression = false
 
         result.add(
@@ -60,7 +60,7 @@ fun Parser.ifStatementOrExpression(): ControlFlow.If {
     val ifBranches = ifBranches()
 
     val elseBranch = if (match(TokenType.Else)) {
-        methodBody().first.toList()
+        methodBody(true).first.toList()
     } else null
 
 

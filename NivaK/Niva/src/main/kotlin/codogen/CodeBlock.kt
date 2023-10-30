@@ -1,7 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.CodeBlock
-import frontend.typer.codogenKt
 
 fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}
@@ -20,10 +19,10 @@ fun CodeBlock.generateCodeBlock() = buildString {
     // generate single line lambda or not
     val statementsCode = if (statements.count() == 1) {
         append(if (isThereArgs) "-> " else "")
-        codogenKt(statements, 0).removeSuffix("\n")
+        codegenKt(statements, 0).removeSuffix("\n")
     } else {
         append(if (isThereArgs) "-> " else "", "\n")
-        codogenKt(statements, 1)
+        codegenKt(statements, 1)
     }
     append(statementsCode)
 

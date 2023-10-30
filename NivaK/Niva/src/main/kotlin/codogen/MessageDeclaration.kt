@@ -1,7 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.typer.codogenKt
 
 
 val operators = hashMapOf(
@@ -101,6 +100,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     }
 
     append(")")
+
+
     bodyPart(this@generateKeywordDeclaration, this)
 }
 
@@ -127,10 +128,10 @@ private fun bodyPart(
         firstBodyStatement !is ReturnStatement &&
         isNotSetter
     ) {
-        stringBuilder.append(" = ", codogenKt(messageDeclaration.body, 0))
+        stringBuilder.append(" = ", codegenKt(messageDeclaration.body, 0))
     } else {
         stringBuilder.append(" {\n")
-        stringBuilder.append(codogenKt(messageDeclaration.body, 1))
+        stringBuilder.append(codegenKt(messageDeclaration.body, 1))
         stringBuilder.append("}\n")
     }
 }
