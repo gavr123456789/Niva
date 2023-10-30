@@ -4,6 +4,7 @@ import frontend.parser.types.ast.ControlFlow
 import frontend.parser.types.ast.ControlFlowKind
 import frontend.parser.types.ast.IfBranch
 import frontend.parser.types.ast.ListCollection
+import frontend.typer.Type
 
 
 fun ControlFlow.If.generateIf(): String = buildString {
@@ -53,6 +54,11 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
             append(it.ifExpression.generateExpression())
         } else {
             append("is ", it.ifExpression.generateExpression())
+            // if this is Generic then we need to add <*>, because type erasing(
+            val type = it.ifExpression.type
+            if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+                append("<*>")
+            }
         }
 
         append(" -> ")
