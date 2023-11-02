@@ -41,7 +41,7 @@ fun Resolver.resolve() {
     }
     if (unResolvedMessageDeclarations.isNotEmpty()) {
         unResolvedMessageDeclarations.forEach {
-            it.token.compileError("Method `$it` for unresolved type: `${it.forType.name}`")
+            it.token.compileError("Method `$it` for unresolved type: `${it.forTypeAst.name}`")
         }
         throw Exception("Not all message declarations resolved: $unResolvedMessageDeclarations")
     }

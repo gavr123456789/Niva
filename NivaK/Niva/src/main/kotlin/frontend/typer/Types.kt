@@ -395,7 +395,7 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
 
-    val argType = this.forType.toType(typeTable)
+    val argType = this.forTypeAst.toType(typeTable)
 
     val result = BinaryMsgMetaData(
         name = this.name,

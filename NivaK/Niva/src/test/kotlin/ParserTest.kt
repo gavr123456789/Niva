@@ -699,7 +699,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val constr = ast[0] as ConstructorDeclaration
-        assert(constr.forType.name == "Person")
+        assert(constr.forTypeAst.name == "Person")
         assert(constr.body.size == 1)
     }
 

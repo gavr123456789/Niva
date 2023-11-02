@@ -65,22 +65,22 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
         } else {
             append("is ", it.ifExpression.generateExpression())
             // if this is Generic then we need to add <*>, because type erasing(
-            if (isMatchingOnGeneric) {
-                append("<*>")
-            }
+//            if (isMatchingOnGeneric) {
+//                append("<*>")
+//            }
         }
 
         append(" -> ")
         when (it) {
             is IfBranch.IfBranchSingleExpr -> {
 
-                if (genericTypeNameIfSingle != null) {
-                    append("(")
-                    append(it.thenDoExpression.generateExpression())
-                    append(") as $genericTypeNameIfSingle")
-                } else {
-                    append(it.thenDoExpression.generateExpression())
-                }
+//                if (genericTypeNameIfSingle != null) {
+//                    append("(")
+//                    append(it.thenDoExpression.generateExpression())
+//                    append(") as $genericTypeNameIfSingle")
+//                } else {
+                append(it.thenDoExpression.generateExpression())
+//                }
             }
 
             is IfBranch.IfBranchWithBody -> append(codegenKt(it.body, 1))

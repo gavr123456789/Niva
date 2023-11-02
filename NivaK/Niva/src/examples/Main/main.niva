@@ -15,12 +15,13 @@ union Option =
 
 Option unwrap -> T = |this
 | Some => this x
-| None => Error throwWithMessage: "sas"
+| None => Error throwWithMessage: "No value"
 
-option = Some x: 6
-kek = option unwrap
-//> 6
->kek
+optionInt = Some x: 42
+optionInt unwrap echo
+
+optionStr = Some x: "sas"
+optionStr unwrap echo
 
 //
 //some = Some x: 6
