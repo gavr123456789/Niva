@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
+import frontend.typer.Type
 
 
 val operators = hashMapOf(
@@ -38,6 +39,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     //   this.echo()
     // }
     append("fun ")
+    // TODO also every argument can be generic, not only return type
     if (returnType != null) {
         val isThereUnresolvedTypeArgs = returnType.name.count() == 1 && returnType.name[0].isUpperCase()
         if (isThereUnresolvedTypeArgs) {
@@ -47,9 +49,21 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
             append(">")
         }
     }
-    append(forType.name)
+    append(forTypeAst.name)
     if (isStatic) {
         append(".Companion")
+    }
+    // if forType is generic
+    val forType2 = forType
+    if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty()) {
+        append("<")
+        val typeArgs = mutableListOf<String>()
+        typeArgs.addAll(forType2.typeArgumentList.map { it.name })
+
+        forType2.typeArgumentList.forEach {
+            append(it.name)
+        }
+        append(">")
     }
 
 
@@ -67,7 +81,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     //              this.echo()
     //            }
 
-    append("operator fun ", forType.name)
+    append("operator fun ", forTypeAst.name)
     if (isStatic) {
         append(".Companion")
     }
@@ -95,7 +109,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
         append(">")
     }
 
-    append(forType.toKotlinStr())
+    append(forTypeAst.toKotlinStr())
     if (isStatic) {
         append(".Companion")
     }

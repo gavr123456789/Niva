@@ -2,20 +2,22 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
+import frontend.typer.Type
 
 
 sealed class MessageDeclaration(
     val name: String,
-    val forType: TypeAST,
+    val forTypeAst: TypeAST,
     token: Token,
     val isSingleExpression: Boolean,
     val body: List<Statement>,
     val returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    var forType: Type? = null,
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forType.name} $name -> ${returnType?.name ?: "Unit"}"
+        return "${forTypeAst.name} $name -> ${returnType?.name ?: "Unit"}"
     }
 }
 
@@ -66,7 +68,7 @@ class MessageDeclarationKeyword(
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forType.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: "Unit"}"
+        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: "Unit"}"
     }
 }
 
@@ -75,7 +77,7 @@ class ConstructorDeclaration(
     token: Token
 ) : MessageDeclaration(
     msgDeclaration.name,
-    msgDeclaration.forType,
+    msgDeclaration.forTypeAst,
     token,
     msgDeclaration.isSingleExpression,
     msgDeclaration.body,

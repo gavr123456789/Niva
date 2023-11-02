@@ -6,6 +6,14 @@ import frontend.parser.types.ast.TypeAST
 import frontend.parser.types.ast.TypeFieldAST
 import frontend.parser.types.ast.UnionDeclaration
 
+fun UnionDeclaration.collectAllGenericsFromBranches(): Set<String> {
+    val genericsOfBranches = mutableSetOf<String>()
+    branches.forEach {
+        genericsOfBranches.addAll(it.genericFields)
+    }
+    return genericsOfBranches
+}
+
 fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, root: UnionDeclaration? = null) =
     buildString {
         if (isUnionRoot) append("sealed ")
@@ -50,7 +58,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
         // class Person (var age: Int,
         // root fields
         if (root != null) {
-            // comma after branch's fields, before root fields
+            // comma after branch fields, before root fields
             if (fields.isNotEmpty()) {
                 append(", ")
             }
@@ -59,15 +67,40 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
                 generateFieldArguments(it, i, true, root.fields.count() - 1)
             }
         }
-
-
         append(")")
         // class Person (var age: Int, kek: String)
 
         if (root != null) {
             val w = root.fields.count() - 1
 
-            append(" : ${root.typeName}(")
+            append(" : ${root.typeName}")
+
+            val genericsOfTheBranch = genericFields.toSet()
+            // for each generic that is not in genericsOfTheRoot we must use Nothing
+            // if current branch does not has a generic param, but root has, then add Never
+
+            val isThereGenericsSomewhere = genericFields.isNotEmpty() || root.genericFields.isNotEmpty()
+            if (isThereGenericsSomewhere)
+                append("<")
+
+            val realGenerics = mutableListOf<String>()
+            realGenerics.addAll(genericFields)
+
+            root.genericFields.forEach {
+                if (!genericsOfTheBranch.contains(it)) {
+                    //append("Nothing")
+                    realGenerics.add("Nothing")
+                } else
+                    realGenerics.add(it)
+            }
+
+            append(realGenerics.toSortedSet().joinToString(", "))
+
+
+            if (isThereGenericsSomewhere)
+                append(">")
+
+            append("(")
             root.fields.forEachIndexed { i, it ->
                 append(it.name)
                 if (w != i) {

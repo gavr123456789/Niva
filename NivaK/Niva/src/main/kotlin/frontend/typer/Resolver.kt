@@ -1,6 +1,7 @@
 package frontend.typer
 
 import codogen.GeneratorKt
+import codogen.collectAllGenericsFromBranches
 import codogen.loadPackages
 import frontend.meta.Position
 import frontend.meta.Token
@@ -380,40 +381,55 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionDeclaration -> {
-            val root = statement.toType(currentPackageName, typeTable, isUnion = true) as Type.UserUnionRootType
+            val rootType = statement.toType(currentPackageName, typeTable, isUnion = true) as Type.UserUnionRootType
+            addNewType(rootType, statement)
 
 
-            addNewType(root, statement)
             val branches = mutableListOf<Type.UserUnionBranchType>()
+            val genericsOfBranches = mutableSetOf<Type>()
             statement.branches.forEach {
-                val branchType = it.toType(currentPackageName, typeTable, root = root) as Type.UserUnionBranchType
-                branchType.parent = root
-                branchType.fields += root.fields
+                val branchType = it.toType(currentPackageName, typeTable, root = rootType) as Type.UserUnionBranchType
+                branchType.parent = rootType
+                branchType.fields += rootType.fields
                 branches.add(branchType)
 
                 addNewType(branchType, it)
+
+                genericsOfBranches.addAll(branchType.typeArgumentList)
             }
-            root.branches = branches
+            rootType.branches = branches
+            rootType.typeArgumentList = rootType.typeArgumentList + genericsOfBranches
+
+
+            /// generics
+            // add generics from branches
+            val allGenerics = statement.collectAllGenericsFromBranches() + statement.genericFields
+            statement.genericFields.clear()
+            statement.genericFields.addAll(allGenerics)
+            // not only to statement, but to Type too
+            rootType
+
         }
 
         is AliasDeclaration -> TODO()
 
         is MessageDeclaration -> {
             // check if the type already registered
-            val forType = typeTable[statement.forType.name]
+            val forType = typeTable[statement.forTypeAst.name]
             if (forType == null) {
                 unResolvedMessageDeclarations.add(statement) // statement.token.compileError("type ${statement.forType.name} is not registered")
                 currentLevel--
                 return
             } else {
                 unResolvedMessageDeclarations.remove(statement)
+                statement.forType = forType
             }
 
             // check that there is no field with the same name (because of getter has the same signature)
             if (forType is Type.UserType) {
                 val q = forType.fields.find { it.name == statement.name }
                 if (q != null) {
-                    statement.token.compileError("Type ${statement.forType.name} already has field with name ${statement.name}")
+                    statement.token.compileError("Type ${statement.forTypeAst.name} already has field with name ${statement.name}")
                 }
             }
 
@@ -553,7 +569,7 @@ private fun Resolver.resolveStatement(
                 // add this to scope
                 // add arguments to scope, if this is binary or keyword
                 val bodyScope = mutableMapOf<String, Type>()
-                val forType = typeTable[statement.forType.name]!!
+                val forType = typeTable[statement.forTypeAst.name]!!
 
                 bodyScope["this"] = forType
 
@@ -965,11 +981,11 @@ fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, to
 
 
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
-    val typeOfReceiver = typeTable[statement.forType.name]!!
+    val typeOfReceiver = typeTable[statement.forTypeAst.name]!!
     when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
             staticUnaryForType[statement.name] = statement.msgDeclaration
-            val protocol = getCurrentProtocol(statement.forType.name, statement.token)
+            val protocol = getCurrentProtocol(statement.forTypeAst.name, statement.token)
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
                 returnType = typeOfReceiver,
@@ -983,7 +999,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
 
         is MessageDeclarationKeyword -> {
             staticKeywordForType[statement.name] = statement.msgDeclaration
-            val protocol = getCurrentProtocol(statement.forType.name, statement.token)
+            val protocol = getCurrentProtocol(statement.forTypeAst.name, statement.token)
 
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
@@ -1009,7 +1025,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false) {
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
+    val protocol = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeTable, isGetter)
 
     protocol.unaryMsgs[statement.name] = messageData
@@ -1020,7 +1036,7 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
 fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
     binaryForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
+    val protocol = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeTable)
     protocol.binaryMsgs[statement.name] = messageData
 
@@ -1030,7 +1046,7 @@ fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
 fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
     keywordForType[statement.name] = statement // will be reloaded when package changed
 
-    val protocol = getCurrentProtocol(statement.forType.name, statement.token)
+    val protocol = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeTable)
     protocol.keywordMsgs[statement.name] = messageData
 
