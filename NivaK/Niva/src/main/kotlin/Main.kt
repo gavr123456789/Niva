@@ -268,46 +268,51 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
     }
 }
 
+sealed class Option<out T>
+class Some<T>(var value: T) : Option<T>()
+data object None : Option<Nothing>()
 
 class Node<T>(
     val data: T,
-    var prev: Node<T>?
+    var prev: Option<Node<T>>
 )
-
-fun <T> Node<T>.add(data: T): Node<T> {
-    val result = Node(data = data, prev = null)
-    this.prev = result
-    return result
-}
 
 fun <T> Node<T>.toList(): List<T> {
     val result = mutableListOf<T>(data)
     var q = prev
-    while (q != null) {
-        result.add(q.data)
-        q = q.prev
+    while (q != None) {
+        when (q) {
+            None -> {}
+            is Some -> {
+                result.add(q.value.data)
+                q = q.value.prev
+            }
+        }
     }
     return result
 }
 
 class MyList<T>(
     val initialVal: T,
-    var head: Node<T> = Node(initialVal, null)
+    var head: Node<T> = Node(initialVal, None)
 )
 
 // 1 next: []
 // 1 next: [2 next: []]
 
 fun <T> MyList<T>.add(data: T) {
-    val result = Node(data = data, prev = head)
+    val result = Node(data = data, prev = Some(head))
     head = result
 }
 
-fun Exception.throwError(): Nothing {
-    throw this
+class Box<in T> {
+    fun compareTo(x: T) {}
 }
 
+
 fun main(args: Array<String>) {
+
+
     val myList = MyList(0)
     myList.add(1)
     myList.add(2)

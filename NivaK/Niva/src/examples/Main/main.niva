@@ -9,36 +9,25 @@
 //
 
 
-union Option =
-    | Some x: T
-    | None
 
-Option unwrap -> T = |this
-| Some => this x
-| None => Error throwWithMessage: "No value"
 
-optionInt = Some x: 42
-optionInt unwrap echo
-
-optionStr = Some x: "sas"
-optionStr unwrap echo
-
+//Option unwrap -> T = |this
+//| Some => this x
+//| None => Error throwWithMessage: "No value"
 //
-//some = Some x: 6
-//> Some x: 6
-//none = None
-////> None
-//> none
+//optionInt = Some x: 42
+//optionInt unwrap echo
+//
+//optionStr = Some x: "sas"
+//optionStr unwrap echo
 
 
-//Box x: Int prev: Box
-
-//type Node data: T prev: Node
+type Person x: String
+x = Person x: "sas"
+//> Person x: sas
+> x
+//union Option =
+//    | Some x: T
+//    | None
 //
-//Int box::Node::Int = [
-//  (box data + this) echo
-//]
-//
-//box = Node x: 40
-//
-//2 box: box
+//type Node data: T prev: Option::Node::T
