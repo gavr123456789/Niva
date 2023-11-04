@@ -43,6 +43,26 @@ class ParserTest {
         assert(list.initElements.count() == 3)
     }
 
+    @Test
+    fun collectionMap() {
+        val source = "#{1 2 3 4}"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val map = ast[0] as MapCollection
+        assert(map.initElements.count() == 2)
+    }
+
+    @Test
+    fun collectionSet() {
+        val source = "#(1 2 3 3)"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val map = ast[0] as SetCollection
+        assert(map.initElements.count() == 4)
+    }
+
 //    @Test
 //    fun collectionListOfObjectConstructors() {
 //        val source = "{Person age: 1, Person age: 2, Person age: 3}"

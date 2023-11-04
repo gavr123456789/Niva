@@ -1,8 +1,10 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import frontend.typer.Type
 import frontend.util.capitalizeFirstLetter
 
 // also recevier can be unary or binary message
@@ -56,45 +58,93 @@ fun Parser.simpleReceiver(): Receiver {
         return bracketExpression()
     }
 
-    fun collectionLiteral(): Receiver {
-
-        val result: ListCollection
+    val readPrimaryCollection = {
         val initElements = mutableListOf<Primary>()
-        // {1, 2 3}
 
-        val leftBraceTok = matchAssert(TokenType.OpenBrace)
-
-        // cycle that eats primary with optional commas
-        // for now, messages inside collection literals are impossible
-
-
-        val readPrimaryCollection = {
-            var lastPrimary: Primary? = null
-            do {
-                val primaryTok = primary()
-                match(TokenType.Comma)
-                if (primaryTok != null) {
-                    if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
-                        error("Heterogeneous collections are not supported")
-                    }
-                    initElements.add(primaryTok)
+        var lastPrimary: Primary? = null
+        do {
+            val primaryTok = primary()
+            match(TokenType.Comma)
+            if (primaryTok != null) {
+                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
+                    error("Heterogeneous collections are not supported")
                 }
-                lastPrimary = primaryTok
-            } while (primaryTok != null)
-        }
+                initElements.add(primaryTok)
+            }
+            lastPrimary = primaryTok
+        } while (primaryTok != null)
 
-        //if there are keyword call, then read collection of constructors
-        readPrimaryCollection()
-        match(TokenType.CloseBrace)
+        initElements
+    }
+    val readPrimaryMap = {
+        val initElementsPairs: MutableList<Pair<Receiver, Receiver>> = mutableListOf()
+        do {
+            val primaryTok = primary()
+            if (primaryTok != null && check(TokenType.CloseBrace)) {
+                peek().compileError("Map must contain even elements")
+            }
 
-        val type = if (initElements.isNotEmpty()) initElements[0].type else null
-        result = ListCollection(initElements, type, leftBraceTok)
-        return result
+            val primaryTok2 = primary()
+            match(TokenType.Comma)
+            if (primaryTok != null && primaryTok2 != null) {
+                initElementsPairs.add(Pair(primaryTok, primaryTok2))
+            }
+        } while (primaryTok != null && primaryTok2 != null)
+
+        initElementsPairs
     }
 
-    val tryPrimary = primary()
-        ?: collectionLiteral()
+    var tryPrimary: Receiver? = primary()
+    if (tryPrimary == null) {
+        val q = step()
+        tryPrimary = when (q.kind) {
+            TokenType.OpenBrace -> {
+                // {1, 2 3}
+                // for now, messages inside collection literals are impossible
 
+                //if there are keyword call, then read collection of constructors
+                val initElements = readPrimaryCollection()
+                match(TokenType.CloseBrace)
+
+                val type = if (initElements.isNotEmpty()) initElements[0].type else null
+                return ListCollection(initElements, type, q)
+            }
+
+            TokenType.OpenBraceHash -> {
+                // #{"a" 1 "b" 2}
+                val initElements = readPrimaryMap()
+                match(TokenType.CloseBrace)
+
+                val keyType = if (initElements.isNotEmpty()) initElements[0].first.type else null
+                val valType = if (initElements.isNotEmpty()) initElements[0].second.type else null
+                if (initElements.count() % 2 != 0) {
+                    q.compileError("Amount of init elements for Map must be even")
+                }
+
+                val mapType = if (keyType != null && valType != null)
+                    Type.KnownGenericType("Map", listOf(keyType, valType), pkg = "common")
+                else null
+
+                return MapCollection(initElements, mapType, q)
+            }
+
+            TokenType.OpenParenHash -> {
+                // #(1, 2 3)
+                val initElements = readPrimaryCollection()
+                match(TokenType.CloseParen)
+
+                val type = if (initElements.isNotEmpty()) initElements[0].type else null
+                return SetCollection(initElements, type, q)
+            }
+
+
+            else -> null
+        }
+    }
+
+    if (tryPrimary == null) {
+        peek().compileError("Can't parse primary token")
+    }
     return tryPrimary
 }
 

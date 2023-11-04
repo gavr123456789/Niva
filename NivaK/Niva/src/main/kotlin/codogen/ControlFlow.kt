@@ -1,9 +1,6 @@
 package codogen
 
-import frontend.parser.types.ast.ControlFlow
-import frontend.parser.types.ast.ControlFlowKind
-import frontend.parser.types.ast.IfBranch
-import frontend.parser.types.ast.ListCollection
+import frontend.parser.types.ast.*
 import frontend.typer.Type
 
 
@@ -110,6 +107,16 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 
 fun ListCollection.generateList() = buildString {
     append("mutableListOf(")
+
+    initElements.forEach(exceptLastDo = { append(", ") }) {
+        append(it.generateExpression())
+    }
+
+    append(")")
+}
+
+fun SetCollection.generateSet() = buildString {
+    append("mutableSetOf(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())

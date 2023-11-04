@@ -312,6 +312,7 @@ class Box<in T> {
 
 fun main(args: Array<String>) {
 
+    val x = mutableMapOf<Int, String>()
 
     val myList = MyList(0)
     myList.add(1)

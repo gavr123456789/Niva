@@ -11,6 +11,7 @@ fun Receiver.toNivaStr(): String {
         is MessageSend -> TODO()
         is CodeBlock -> TODO()
         is ListCollection -> TODO()
+        is SetCollection -> TODO()
         is MapCollection -> TODO()
 
         is BinaryMsg -> TODO()
@@ -23,7 +24,6 @@ fun Receiver.toNivaStr(): String {
         is LiteralExpression.FloatExpr -> this.str
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
-
     }
 }
 

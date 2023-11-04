@@ -2,9 +2,9 @@
 
 
 
-//union Result =
-//    | Ok value: T
-//    | Err err: G
+union Result =
+    | Ok value: T
+    | Err err: G
 //option = Ok value: 42
 //
 
@@ -23,7 +23,7 @@
 
 
 type Person x: String
-x = Person x: "sas"
+x = #{"a" "b" "c" "d"}
 //> Person x: sas
 > x
 //union Option =

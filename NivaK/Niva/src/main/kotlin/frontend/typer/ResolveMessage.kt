@@ -401,7 +401,7 @@ fun Resolver.resolveMessage(
                 is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
                 is KeywordMsg, is UnaryMsg, is BinaryMsg -> receiver.type
 
-                is MessageSend, is MapCollection, is ListCollection, is CodeBlock -> TODO()
+                is MessageSend, is MapCollection, is ListCollection, is SetCollection, is CodeBlock -> TODO()
             }
             val receiverType = receiver.type!!
 
@@ -450,6 +450,8 @@ fun Resolver.resolveMessage(
                     is CodeBlock -> TODO()
                     is ListCollection -> TODO()
                     is MapCollection -> TODO()
+                    is SetCollection -> TODO()
+
                     // receiver
                     is UnaryMsg -> TODO()
                     is BinaryMsg -> TODO()

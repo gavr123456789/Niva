@@ -310,7 +310,7 @@ fun createListProtocols(
                         )
                     )
                 ),
-                intType
+                unitType
             ),
             createKeyword(
                 "map",
@@ -336,6 +336,74 @@ fun createListProtocols(
             createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
             createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType)
+
+
+        )
+    )
+
+    result[collectionProtocol.name] = collectionProtocol
+    return result
+}
+
+fun createMapProtocols(
+    intType: Type.InternalType,
+    unitType: Type.InternalType,
+    boolType: Type.InternalType,
+    mapType: Type.UserType,
+    mapTypeOfDifferentGeneric: Type.UserType,
+    genericTypeOfListElements: Type.UnknownGenericType,
+    differentGenericType: Type.UnknownGenericType,
+): MutableMap<String, Protocol> {
+    val result = mutableMapOf<String, Protocol>()
+
+    val collectionProtocol = Protocol(
+        name = "collectionProtocol",
+        unaryMsgs = mutableMapOf(
+            createUnary("count", intType),
+            createUnary("echo", unitType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword(
+                "forEach",
+                listOf(
+                    KeywordArg(
+                        "forEach",
+                        Type.Lambda(
+                            mutableListOf(
+                                TypeField("key", genericTypeOfListElements),
+                                TypeField("value", differentGenericType),
+                            ),
+                            unitType
+                        )
+                    )
+                ),
+                unitType
+            ),
+            createKeyword(
+                "map",
+                KeywordArg(
+                    "map",
+                    Type.Lambda(
+                        mutableListOf(TypeField("transform", genericTypeOfListElements)),
+                        differentGenericType
+                    ) // return list map of type of last expression
+                ),
+                mapTypeOfDifferentGeneric
+            ),
+            createKeyword(
+                "filter",
+                KeywordArg(
+                    "filter",
+                    Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfListElements)), boolType)
+                ),
+                mapType
+            ),
+
+            createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
+            createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
+            createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
+            createKeyword("addAll", KeywordArg("addAll", mapType), boolType)
 
 
         )
