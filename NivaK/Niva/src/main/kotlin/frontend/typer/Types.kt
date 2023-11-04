@@ -125,7 +125,7 @@ sealed class Type(
     sealed class UserLike(
         name: String,
         var typeArgumentList: List<Type>,
-        val fields: MutableList<TypeField>,
+        var fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>,
@@ -180,6 +180,8 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
+    object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, "common", mutableMapOf())
+
 
     class NullableUserType(
         name: String,
@@ -219,36 +221,37 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
+fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
 
     when (this) {
         is TypeAST.InternalType -> {
             return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
                 this.token.compileError("Can't find default type: $name")
                 // TODO better inference, depend on context
-
             }
-
         }
+
 
         is TypeAST.UserType -> {
             if (name.length == 1 && name[0].isUpperCase()) {
                 return Type.UnknownGenericType(name)
             }
+            if (selfType != null && name == selfType.name) return selfType
 
             if (this.typeArgumentList.isNotEmpty()) {
                 // need to know, what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
+
                 val type = typeTable[name] ?: this.token.compileError("Can't find user type: $name")
 
-                if (type is Type.UserType) {
+                if (type is Type.UserLike) {
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
                     if (this.typeArgumentList.count() != type.typeArgumentList.count()) {
                         throw Exception("Count ${this.name}'s type arguments not the same it's AST version ")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val rer = it.toType(typeTable)
+                        val rer = it.toType(typeTable, selfType)
                         letterToTypeMap[type.typeArgumentList[i].name] = rer
                         rer
                     }
@@ -275,24 +278,26 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>): Type {
             val lambdaType = Type.Lambda(
                 args = inputTypesList.map {
                     TypeField(
-                        type = it.toType(typeTable),
+                        type = it.toType(typeTable, selfType),
                         name = it.name
                     )
                 }.toMutableList(),
-                returnType = this.returnType.toType(typeTable)
+                returnType = this.returnType.toType(typeTable, selfType)
             )
             return lambdaType
 
         }
 
+        is TypeAST.ResursiveType -> return Type.RecursiveType
+
     }
 
 }
 
-fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>): TypeField {
+fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>, selfType: Type.UserLike): TypeField {
     val result = TypeField(
         name = name,
-        type = type!!.toType(typeTable)
+        type = type!!.toType(typeTable, selfType)
     )
     return result
 }
@@ -304,7 +309,69 @@ fun SomeTypeDeclaration.toType(
     root: Type.UserUnionRootType? = null
 ): Type.UserLike {
 
-    val fieldsTyped = fields.map { it.toTypeField(typeTable) }.toMutableList()
+    val result = if (isUnion)
+        Type.UserUnionRootType(
+            branches = listOf(),
+            name = typeName,
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    else if (root != null)
+        Type.UserUnionBranchType(
+            root = root,
+            name = typeName,
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    else
+        Type.UserType(
+            name = typeName,
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+
+
+    val fieldsTyped = mutableListOf<TypeField>()
+    val unresolvedSelfTypeFields = mutableListOf<TypeField>()
+    val unresolvedSelfTypeGenericFields = mutableMapOf<TypeFieldAST, TypeField>()
+
+//    val createTypeAlreadyWithNoFields // than fill it with them
+
+    fields.forEach {
+        val astType = it.type
+        if (astType != null && astType.name == typeName) {
+            // this is recursive type
+            val fieldType = TypeField(
+                name = it.name,
+                type = Type.RecursiveType
+            )
+            fieldsTyped.add(fieldType)
+            unresolvedSelfTypeFields.add(fieldType)
+
+        }
+//        else if (astType != null && astType is TypeAST.UserType && astType.typeArgumentList.find { it.name == typeName } != null) {
+//            println()
+//            // this field's type contains the type itself
+//            val fieldType = TypeField(
+//                name = it.name,
+//                type = Type.RecursiveType
+//            )
+//            fieldsTyped.add(fieldType)
+//            unresolvedSelfTypeGenericFields[it] = fieldType
+//        }
+        else fieldsTyped.add(it.toTypeField(typeTable, selfType = result))
+
+//        fieldsTyped.add(it.toTypeField(typeTable))
+    }
 
     fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
         val result = mutableListOf<Type.UserLike>()
@@ -336,43 +403,41 @@ fun SomeTypeDeclaration.toType(
     }
 
     val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
-    val typeFields2 = getAllGenericTypesFromFields(fieldsTyped, fields)
-    val typeFields = typeFields1 + typeFields2
+    val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
+    val typeFields = typeFields1 + typeFieldsGeneric
 
-    val result = if (isUnion)
-        Type.UserUnionRootType(
-            branches = listOf(),
-            name = typeName,
-            typeArgumentList = typeFields,
-            fields = fieldsTyped,
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf()
-        )
-    else if (root != null)
-        Type.UserUnionBranchType(
-            root = root,
-            name = typeName,
-            typeArgumentList = typeFields,
-            fields = fieldsTyped,
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf()
-        )
-    else
-        Type.UserType(
-            name = typeName,
-            typeArgumentList = typeFields,
-            fields = fieldsTyped,
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf()
-        )
+
+
+
+
+    unresolvedSelfTypeFields.forEach {
+        it.type = result
+    }
+//    unresolvedSelfTypeGenericFields.forEach { (astField, field) ->
+//        // сопоставить с оригиналом, нет, это просто должна быть хешмапа оригиналов Аст к реальным филдам
+//        // найти на каком уровне собственно содержится рекурсивность
+//        println(astField)
+//        println(field)
+//        val astType = astField.type
+//
+//        if (astType is TypeAST.UserType) {
+//            var typeArgList = astType.typeArgumentList
+//            val q = typeArgList[0]
+//            if (q.name == typeName) {
+//                println()
+//            }
+//
+//        }
+//
+//    }
+    result.typeArgumentList = typeFields
+    result.fields = fieldsTyped
 
     this.genericFields.addAll(typeFields.map { it.name })
 
     return result
 }
+
 
 fun MessageDeclarationUnary.toMessageData(
     typeTable: MutableMap<TypeName, Type>,

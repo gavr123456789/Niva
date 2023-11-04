@@ -331,10 +331,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     addNewUnaryMessage(getter, isGetter = true)
 
                 }
-
             }
-
-
         }
     }
     changePackage(savedPackageName, createFakeToken())
@@ -370,8 +367,8 @@ fun Resolver.resolveDeclarations(
     statement: Declaration,
     previousScope: MutableMap<String, Type>,
     resolveBody: Boolean = true,
-//    pathToPackage: List<String> = listOf()
 ) {
+
     currentLevel += 1
 
     when (statement) {

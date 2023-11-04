@@ -36,6 +36,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = 
             is TypeAST.InternalType -> TODO()
             is TypeAST.Lambda -> TODO()
             is TypeAST.UserType -> TODO()
+            is TypeAST.ResursiveType -> TODO()
 
             is UnionBranch -> {
                 statement.generateTypeDeclaration(false, statement.root)
