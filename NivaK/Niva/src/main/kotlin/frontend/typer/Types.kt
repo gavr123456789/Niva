@@ -162,12 +162,12 @@ sealed class Type(
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
     class KnownGenericType(
-        val mainType: Type,
+//        val mainType: Type,
         name: String,
         typeArgumentList: List<Type>,
-        fields: MutableList<TypeField>,
-        isPrivate: Boolean = false,
         pkg: String,
+        fields: MutableList<TypeField> = mutableListOf(),
+        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 

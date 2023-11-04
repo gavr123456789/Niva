@@ -44,6 +44,12 @@ class ListCollection(
     token: Token,
 ) : Collection(type, token)
 
+class SetCollection(
+    val initElements: List<Primary>,
+    type: Type?,
+    token: Token,
+) : Collection(type, token)
+
 class MapCollection(
     val initElements: List<Pair<Receiver, Receiver>>,
     type: Type?,

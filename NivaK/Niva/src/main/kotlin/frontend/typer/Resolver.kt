@@ -228,8 +228,31 @@ class Resolver(
         typeTable[listType.name] = listType
         corePackage.types[listType.name] = listType
         // Set TODO
-        // Map TODO
-
+        // TODO Map
+        /// Map
+        val mapType = Type.UserType(
+            name = "Map",
+            typeArgumentList = listOf(genericType, differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val mapTypeOfDifferentGeneric = Type.UserType(
+            name = "Map",
+            typeArgumentList = listOf(differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        mapType.protocols.putAll(
+            createMapProtocols(
+                intType = intType,
+                unitType = unitType,
+                boolType = boolType,
+                mapType = mapType,
+                mapTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
+                genericTypeOfListElements = genericType,
+                differentGenericType = differentGenericType
+            )
+        )
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
 //        commonProject.packages["kotlin"] = kotlinPkg

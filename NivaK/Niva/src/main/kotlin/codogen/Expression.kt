@@ -24,6 +24,11 @@ fun Expression.generateExpression(): String = buildString {
                 generateList()
             }
 
+            is SetCollection -> {
+                generateSet()
+            }
+
+
             is MapCollection -> TODO()
             is ControlFlow.If -> generateIf()
             is ControlFlow.Switch -> generateSwitch()
