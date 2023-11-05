@@ -43,28 +43,20 @@
 //type Node data: T prev: Option::Node::T
 
 
-union User =
-| LoggedIn name: String
-| Guest
-
-User getName -> String = | this
-| Guest => "Guest"
-| LoggedIn => name
-
-User getName2 = [
-    name = "sas"
-    | this
-    | Guest => "Welcome guest" echo
-    | LoggedIn => ("Welcome " + this name) echo
+Bind package: "kotlin.random" content: [
+    type Random
+    constructor Random nextInt -> Int
+    constructor Random nextBoolean -> Boolean
+    constructor Random nextFloat -> Float
+    @rename: "nextInt"
+    constructor Random from::Int to::Int -> Int
 ]
-
-User welcome =
-    ("Welcome " + this getName) echo
-
-user = LoggedIn name: "Oleг"
-guest = Guest
-user welcome
-guest welcome
-
-user getName2
+//> 1749689129
+> Random nextInt
+//> false
+> Random nextBoolean
+//> 0.7046697
+> Random nextFloat
+//> 16
+> Random from: 1 to: 42
 

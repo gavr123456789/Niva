@@ -2,18 +2,26 @@ package codogen
 
 import frontend.parser.types.ast.*
 
-fun Expression.generateExpression(): String = buildString {
+fun replaceKeywords(str: String) =
+    when (str) {
+        "do", "val", "var" -> "`$str`"
+        else -> str
+    }
+
+fun Expression.generateExpression(replaceLiteral: String? = null): String = buildString {
 
     if (isInlineRepl) {
         append("inlineRepl(")
     }
+
+
 
     append(
         when (this@generateExpression) {
             is ExpressionInBrackets -> generateExpressionInBrackets()
 
             is MessageSend -> generateMessageCall()
-            is IdentifierExpr -> if (name != "do") name else "`do`"
+            is IdentifierExpr -> replaceKeywords(replaceLiteral ?: name)
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FloatExpr -> str

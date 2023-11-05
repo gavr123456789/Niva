@@ -222,8 +222,10 @@ fun Resolver.resolveMessage(
             when (kind) {
                 KeywordLikeType.CustomConstructor -> {
                     val capture = foundCustomConstructorDb
+
                     if (capture != null) {
                         statement.type = capture.returnType
+                        statement.pragmas = capture.pragmas
                     } else {
                         statement.type = receiverType
                     }

@@ -311,8 +311,13 @@ class Box<in T> {
 
 
 fun main(args: Array<String>) {
+//    val q = kotlin.random.Random.next()
 
-    val x = mutableMapOf<Int, String>()
+
+    val randomValues = List(10) { kotlin.random.Random.nextInt(0, 100) }
+    // prints new sequence every time
+
+    val nextValues = List(10) { kotlin.random.Random.nextInt(0, 100) }
 
     val myList = MyList(0)
     myList.add(1)

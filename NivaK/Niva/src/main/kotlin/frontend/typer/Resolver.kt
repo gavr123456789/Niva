@@ -862,7 +862,6 @@ fun Resolver.findStaticMessageType(
     token: Token,
     msgType: MessageDeclarationType? = null
 ): Pair<Type, Boolean> {
-
     receiverType.protocols.forEach { (_, v) ->
         val q = v.staticMsgs[selectorName]
         if (q != null) {
@@ -960,6 +959,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
                 returnType = typeOfReceiver,
+                codeAttributes = statement.pragmas
+
             )
             protocol.staticMsgs[statement.name] = messageData
         }
@@ -983,6 +984,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
                 name = statement.msgDeclaration.name,
                 argTypes = keywordArgs,
                 returnType = typeOfReceiver,
+                codeAttributes = statement.pragmas
             )
             protocol.staticMsgs[statement.name] = messageData
         }
