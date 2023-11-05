@@ -407,9 +407,6 @@ fun SomeTypeDeclaration.toType(
     val typeFields = typeFields1 + typeFieldsGeneric
 
 
-
-
-
     unresolvedSelfTypeFields.forEach {
         it.type = result
     }

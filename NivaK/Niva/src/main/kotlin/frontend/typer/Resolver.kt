@@ -384,6 +384,10 @@ fun Resolver.resolveDeclarations(
             addNewType(newType, statement)
         }
 
+        is MessageDeclaration -> {
+            if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
+        }
+
         is UnionDeclaration -> {
             val rootType = statement.toType(currentPackageName, typeTable, isUnion = true) as Type.UserUnionRootType
             addNewType(rootType, statement)
@@ -415,9 +419,6 @@ fun Resolver.resolveDeclarations(
 
         is AliasDeclaration -> TODO()
 
-        is MessageDeclaration -> {
-            if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
-        }
 
         is UnionBranch -> {
             println("Union branch???")
@@ -483,13 +484,18 @@ private fun Resolver.resolveMessageDeclaration(
         is ConstructorDeclaration -> if (addToDb) addStaticDeclaration(statement)
     }
 
-
     if (resolveBody) {
         bodyScope["this"] = forType
-        val previousAndCurrentScope = (previousScope + bodyScope).toMutableMap()
-        this.resolve(statement.body, previousAndCurrentScope, statement)
-
+        // add args to bodyScope
+        if (forType is Type.UserLike) {
+            forType.fields.forEach {
+                bodyScope[it.name] = it.type
+            }
+        }
+        resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
     }
+
+
     // TODO check that return type is the same as declared return type, or if it not declared -> assign it
     return false
 }

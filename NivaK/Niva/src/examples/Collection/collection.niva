@@ -1,4 +1,6 @@
-littleList = {1 2 3 4 5}
+littleList = {1 2 3 4}
+littleList add: 5
+
 littleList echo
 mappedList = littleList map: [it toString + "s"]
 mappedList echo

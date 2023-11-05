@@ -16,22 +16,6 @@
 
 
 
-Int fizzbuzz -> String =
-| (this % (3 * 5)) == 0 => "FizzBuzz"
-| (this % 3) == 0 => "Fizz"
-| (this % 5) == 0 => "Buzz"
-|=> this toString
-
-30 fizzbuzz echo
-"----" echo
-
-Int fizzbuzzTo: x::Int = this to: x do: [
-  it fizzbuzz echo
-]
-
-1 fizzbuzzTo: 100
-
-
 //union Result =
 //    | Ok value: T
 //    | Err err: G
@@ -57,3 +41,30 @@ Int fizzbuzzTo: x::Int = this to: x do: [
 //    | None
 //
 //type Node data: T prev: Option::Node::T
+
+
+union User =
+| LoggedIn name: String
+| Guest
+
+User getName -> String = | this
+| Guest => "Guest"
+| LoggedIn => name
+
+User getName2 = [
+    name = "sas"
+    | this
+    | Guest => "Welcome guest" echo
+    | LoggedIn => ("Welcome " + this name) echo
+]
+
+User welcome =
+    ("Welcome " + this getName) echo
+
+user = LoggedIn name: "Oleг"
+guest = Guest
+user welcome
+guest welcome
+
+user getName2
+
