@@ -28,3 +28,33 @@ x height echo
 x width echo
 x area echo
 "Hello tagged unions!" echo
+
+
+// another example
+
+union User =
+| LoggedIn name: String
+| Guest
+
+User getName -> String = | this
+| Guest => "Guest"
+| LoggedIn => name
+
+// here if u use name, then name from 46 will be used
+// but there will be no 46 line, then name can be used without this
+User getName2 = [
+    name = "sas"
+    | this
+    | Guest => "Welcome guest" echo
+    | LoggedIn => ("Welcome " + this name) echo
+]
+
+User welcome =
+    ("Welcome " + this getName) echo
+
+user = LoggedIn name: "Oleг"
+guest = Guest
+user welcome
+guest welcome
+
+user getName2

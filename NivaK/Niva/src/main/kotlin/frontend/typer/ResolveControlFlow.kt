@@ -128,7 +128,7 @@ fun Resolver.resolveControlFlow(
             val typesAlreadyChecked = mutableSetOf<Type>()
             var thisIsTypeMatching = false
             statement.ifBranches.forEachIndexed { i, it ->
-                /// resolving if
+                /// resolving if (^)
                 currentLevel++
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
@@ -143,7 +143,20 @@ fun Resolver.resolveControlFlow(
                 // this is cheaper than every string comparison
                 thisIsTypeMatching =
                     statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch
+
+                // new instance in every loop iteration to erase previous
+                val scopeWithThisFields: MutableMap<String, Type> = mutableMapOf()
+
                 if (thisIsTypeMatching && statement.switch is IdentifierExpr) {
+                    if (currentType is Type.UserLike) {
+                        currentType.fields.forEach {
+                            val alreadyDeclarated = currentScope[it.name]
+                            if (alreadyDeclarated == null) {
+                                scopeWithThisFields[it.name] = it.type
+                            }
+                        }
+                    }
+
                     currentScope[statement.switch.name] = currentType
                     previousAndCurrentScope[statement.switch.name] = currentType
                     statement.switch.type = currentType
@@ -156,18 +169,25 @@ fun Resolver.resolveControlFlow(
                     val curTok = it.ifExpression.token
                     curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
                 }
-                /// resolving then
+                /// resolving then, if() ^
+                val scopeWithFields =
+                    if (thisIsTypeMatching) (previousAndCurrentScope + scopeWithThisFields).toMutableMap() else previousAndCurrentScope
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
-                        resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
+                        // if scope doesnt contain field type, then add them
+                        if (statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch) {
+                            savedSwitchType
+                        }
+
+                        resolve(listOf(it.thenDoExpression), scopeWithFields, statement)
                         currentLevel--
                     }
 
                     is IfBranch.IfBranchWithBody -> {
                         if (it.body.isNotEmpty()) {
                             currentLevel++
-                            resolve(it.body, previousAndCurrentScope, statement)
+                            resolve(it.body, scopeWithFields, statement)
                             currentLevel--
 
                             val lastExpr = it.body.last()
@@ -209,7 +229,6 @@ fun Resolver.resolveControlFlow(
                 val firstReturnTypeName = firstBranchReturnType!!.name
                 if (elseReturnTypeName != firstReturnTypeName) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($firstReturnTypeName != $elseReturnTypeName)")
-
                 }
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
@@ -231,7 +250,6 @@ fun Resolver.resolveControlFlow(
         }
 
     }
-
 
     if (currentLevel == 0) topLevelStatements.add(statement)
 }

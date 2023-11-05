@@ -1,0 +1,9 @@
+// create type
+type Person name: String age: Int
+// create method
+Person haveBirthday = age <- age + 1
+
+// create instance
+person = Person name: "sas" age: 6
+// send message
+person haveBirthday
