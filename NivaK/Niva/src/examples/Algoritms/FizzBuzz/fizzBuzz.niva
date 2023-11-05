@@ -1,0 +1,14 @@
+Int fizzbuzz -> String =
+| (this % (3 * 5)) == 0 => "FizzBuzz"
+| (this % 3) == 0 => "Fizz"
+| (this % 5) == 0 => "Buzz"
+|=> this toString
+
+30 fizzbuzz echo
+"----" echo
+
+Int fizzbuzzTo: x::Int = this to: x do: [
+  it fizzbuzz echo
+]
+
+1 fizzbuzzTo: 100

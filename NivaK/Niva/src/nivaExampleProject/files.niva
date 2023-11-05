@@ -1,2 +1,0 @@
-Project package: "files" protocol: "path"
-Int newFile -> Unit = [1 echo]
