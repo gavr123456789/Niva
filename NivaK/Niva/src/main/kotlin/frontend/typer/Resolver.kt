@@ -284,21 +284,6 @@ class Resolver(
     }
 }
 
-//fun MessageSendKeyword.toMessageDeclarationKeyword(): MessageDeclarationKeyword {
-//    val msg = messages[0]
-//    if (this.messages.count() > 0 || msg !is KeywordMsg) {
-//        this.token.compileError("Can't translate msg send to msg declaration")
-//    }
-//
-//    val result = MessageDeclarationKeyword(
-//        name = msg.selectorName,
-//        forType = TypeAST(
-//            name = receiver.str,
-//            is
-//        )
-//    )
-//}
-
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     val savedPackageName = currentPackageName
     statements.forEach {
@@ -391,7 +376,6 @@ fun Resolver.resolveDeclarations(
     previousScope: MutableMap<String, Type>,
     resolveBody: Boolean = true,
 ) {
-
     currentLevel += 1
 
     when (statement) {
@@ -427,76 +411,12 @@ fun Resolver.resolveDeclarations(
             statement.genericFields.clear()
             statement.genericFields.addAll(allGenerics)
             // not only to statement, but to Type too
-            rootType
-
         }
 
         is AliasDeclaration -> TODO()
 
         is MessageDeclaration -> {
-            // check if the type already registered
-            val forType = typeTable[statement.forTypeAst.name]
-            if (forType == null) {
-                unResolvedMessageDeclarations.add(statement) // statement.token.compileError("type ${statement.forType.name} is not registered")
-                currentLevel--
-                return
-            } else {
-                unResolvedMessageDeclarations.remove(statement)
-                statement.forType = forType
-            }
-
-            // check that there is no field with the same name (because of getter has the same signature)
-            if (forType is Type.UserType) {
-                val q = forType.fields.find { it.name == statement.name }
-                if (q != null) {
-                    statement.token.compileError("Type ${statement.forTypeAst.name} already has field with name ${statement.name}")
-                }
-            }
-
-            val bodyScope = mutableMapOf<String, Type>()
-            when (statement) {
-                is MessageDeclarationUnary -> addNewUnaryMessage(statement)
-                is MessageDeclarationBinary -> addNewBinaryMessage(statement)
-                is MessageDeclarationKeyword -> {
-                    statement.args.forEach {
-                        if (it.type == null) {
-                            statement.token.compileError("Can't parse type for argument ${it.name}")
-                        }
-                        val astType = it.type
-                        val type = astType.toType(typeTable)
-
-                        if (type.name == it.type.name) {
-                            bodyScope[it.localName ?: it.name] = type
-                        } else {
-                            bodyScope[it.localName ?: it.name] = type
-                        }
-
-                        if (type is Type.UnknownGenericType) {
-                            statement.typeArgs.add(type.name)
-                        }
-                        if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                            statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                            if (type.name == it.type.name) {
-                                bodyScope[it.name] = type
-                            }
-                        }
-
-                    }
-                    addNewKeywordMessage(statement)
-                }
-
-                is ConstructorDeclaration -> addStaticDeclaration(statement)
-            }
-
-
-            if (resolveBody) {
-                bodyScope["this"] = forType
-                val previousAndCurrentScope = (previousScope + bodyScope).toMutableMap()
-                this.resolve(statement.body, previousAndCurrentScope, statement)
-
-            }
-            // TODO check that return type is the same as declared return type, or if it not declared -> assign it
-
+            if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
 
         is UnionBranch -> {
@@ -504,6 +424,74 @@ fun Resolver.resolveDeclarations(
         }
     }
     currentLevel -= 1
+}
+
+private fun Resolver.resolveMessageDeclaration(
+    statement: MessageDeclaration,
+    resolveBody: Boolean,
+    previousScope: MutableMap<String, Type>,
+    addToDb: Boolean = true
+): Boolean {
+    // check if the type already registered
+    val forType = typeTable[statement.forTypeAst.name]
+    if (forType == null) {
+        unResolvedMessageDeclarations.add(statement)
+        currentLevel--
+        return true
+    } else {
+        unResolvedMessageDeclarations.remove(statement)
+        statement.forType = forType
+    }
+
+    // check that there is no field with the same name (because of getter has the same signature)
+    if (forType is Type.UserType) {
+        val fieldWithTheSameName = forType.fields.find { it.name == statement.name }
+        if (fieldWithTheSameName != null) {
+            statement.token.compileError("Type ${statement.forTypeAst.name} already has field with name ${statement.name}")
+        }
+    }
+
+    val bodyScope = mutableMapOf<String, Type>()
+    when (statement) {
+        is MessageDeclarationUnary -> if (addToDb) addNewUnaryMessage(statement)
+        is MessageDeclarationBinary -> if (addToDb) addNewBinaryMessage(statement)
+        is MessageDeclarationKeyword -> {
+            statement.args.forEach {
+                if (it.type == null) {
+                    statement.token.compileError("Can't parse type for argument ${it.name}")
+                }
+                val astType = it.type
+                val type = astType.toType(typeTable)
+
+                bodyScope[it.localName ?: it.name] = type
+
+                if (type is Type.UnknownGenericType) {
+                    statement.typeArgs.add(type.name)
+                }
+                if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
+                    statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
+                    if (type.name == type.name) {
+                        bodyScope[it.name] = type
+                    }
+                }
+
+            }
+            if (addToDb)
+                addNewKeywordMessage(statement)
+        }
+
+        is ConstructorDeclaration -> if (addToDb) addStaticDeclaration(statement)
+    }
+
+
+    if (resolveBody) {
+        bodyScope["this"] = forType
+        val previousAndCurrentScope = (previousScope + bodyScope).toMutableMap()
+        this.resolve(statement.body, previousAndCurrentScope, statement)
+
+    }
+    // TODO check that return type is the same as declared return type, or if it not declared -> assign it
+    return false
 }
 
 
@@ -584,58 +572,15 @@ private fun Resolver.resolveStatement(
             if (!allDeclarationResolvedAlready)
                 resolveDeclarations(statement, previousScope, true)
             else if (statement is MessageDeclaration) {
-                // after first type check, only body of messages remains unresolved
+                // first time all declarations resolved without bodyes, now we need to resolve them
                 currentLevel++
-                // add this to scope
-                // add arguments to scope, if this is binary or keyword
-                val bodyScope = mutableMapOf<String, Type>()
-                val forType = typeTable[statement.forTypeAst.name]!!
-
-                bodyScope["this"] = forType
-
-                fun addArgumentsToBodyScope(statement: MessageDeclarationKeyword) {
-                    statement.args.forEach {
-                        val astType = it.type!!
-                        val type = astType.toType(typeTable)
-
-                        if (type.name == it.type.name) {
-                            bodyScope[it.name] = type
-                        } else {
-                            bodyScope[it.name] = type
-                        }
-                        if (type is Type.UnknownGenericType) {
-                            statement.typeArgs.add(type.name)
-                        }
-                        if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                            statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                            if (type.name == it.type.name) {
-                                bodyScope[it.name] = type
-                            }
-                        }
-
-                    }
-                }
-                when (statement) {
-                    is MessageDeclarationUnary -> {}
-                    is MessageDeclarationBinary -> {
-                        bodyScope[statement.arg.name] = statement.arg.type!!.toType(typeTable)
-                    }
-
-                    is MessageDeclarationKeyword -> {
-                        addArgumentsToBodyScope(statement)
-
-                    }
-
-                    is ConstructorDeclaration -> {
-                        val constructorDecl = statement.msgDeclaration
-                        if (constructorDecl is MessageDeclarationKeyword) {
-                            addArgumentsToBodyScope(constructorDecl)
-                        }
-                    }
-                }
-                resolve(statement.body, (previousScope + bodyScope).toMutableMap())
+                resolveMessageDeclaration(
+                    statement,
+                    true,
+                    (currentScope + previousScope).toMutableMap(),
+                    addToDb = false
+                )
                 currentLevel--
-
             }
         }
 
