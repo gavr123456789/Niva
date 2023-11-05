@@ -31,37 +31,58 @@ fun MessageSend.generateMessageCall(): String {
     // 4 inc + 4 dec = 4.inc() + 4.dec()
 }
 
+enum class Pragmas(val v: String) {
+    RENAME("rename")
+}
+
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
-
-    val receiverCode =
-        if (keywordMsg.kind == KeywordLikeType.Constructor) {
-            receiver.generateExpression()
-        } else {
-            if (receiver !is ExpressionInBrackets)
-                "(" + receiver.generateExpression() + ")"
-            else
-                receiver.generateExpression()
+    val value = (keywordMsg.pragmas.find { it.name == Pragmas.RENAME.v })?.value
+    val replacedSelectorName =
+        when (value) {
+            is LiteralExpression.StringExpr -> value.toString()
+            else -> null
         }
+
+
+    val receiverCode = buildString {
+        val needBrackets = keywordMsg.kind != KeywordLikeType.Constructor && receiver !is ExpressionInBrackets
+        if (needBrackets) append("(")
+
+        val kwReceiver = keywordMsg.receiver
+        if (kwReceiver is IdentifierExpr) {
+            val type = kwReceiver.type
+            if (type != null) {
+                append(type.pkg, ".")
+            } else {
+                append(".")
+            }
+        }
+        append(
+            receiver.generateExpression()
+//            if (keywordMsg.kind == KeywordLikeType.Constructor) {
+//                receiver.generateExpression()
+//            } else {
+//                if (receiver !is ExpressionInBrackets)
+//                    receiver.generateExpression()
+//                else
+//                    receiver.generateExpression()
+//            }
+        )
+        if (needBrackets) append(")")
+
+    }
+
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if (i == 0) {
                 append(receiverCode, ".")
             }
-            append(keywordMsg.selectorName)
+            append(replacedSelectorName ?: keywordMsg.selectorName)
         }
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                val kwReceiver = keywordMsg.receiver
-                if (kwReceiver is IdentifierExpr) {
-                    val type = kwReceiver.type
-                    if (type != null) {
-                        append(type.pkg, ".")
-                    } else {
-                        append(".")
-                    }
-                }
                 append(receiverCode)
             }
         }
@@ -74,7 +95,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             }
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
-                append(receiver.name, ".", valueArg.selectorName, " = ")
+                append(receiver.name, ".", replacedSelectorName ?: valueArg.selectorName, " = ")
             } else {
                 TODO()
             }

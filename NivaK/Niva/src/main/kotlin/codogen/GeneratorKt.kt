@@ -70,7 +70,6 @@ fun GeneratorKt.regenerateGradle(pathToGradle: String) {
 
 fun GeneratorKt.deleteAndRecreateKotlinFolder(path: File) {
     if (path.deleteRecursively()) {
-//        println("Deleted: ${path.absolutePath}")
         path.mkdir()
     } else {
         throw Error("Failed to delete: ${path.absolutePath}")
@@ -83,7 +82,6 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
         println("File already exists: ${baseDir.absolutePath}")
     } else {
         if (baseDir.createNewFile()) {
-//            println("File created: ${baseDir.absolutePath}")
             baseDir.writeText(code)
         } else {
             throw Error("Failed to create file: ${baseDir.absolutePath}")

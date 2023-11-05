@@ -1043,6 +1043,22 @@ class ParserTest {
     }
 
     @Test
+    fun codeAttributesInsideBind() {
+
+        val source = """
+           Bind package: "kotlin.random" content: [
+                type Random
+                @ktName: "setReadable"
+                constructor Random from::Int until::Int
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+//        assert((ast[0] as TypeDeclaration).pragmas.count() == 2)
+//        assert((ast[1] as MessageDeclarationKeyword).pragmas.count() == 2)
+    }
+
+    @Test
     fun emptyBody() {
 
         val source = """

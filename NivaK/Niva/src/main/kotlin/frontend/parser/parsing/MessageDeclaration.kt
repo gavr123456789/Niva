@@ -293,7 +293,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         step() //skip colon
         val argName = step()
         if (argName.kind != TokenType.Identifier) {
-            error("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
+            argName.compileError("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
         }
         return (KeywordDeclarationArg(name = argName.lexeme))
     }
@@ -424,6 +424,11 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
     }
 
     if (isThereKeyLikeArg && isThereEqualAfterThat || isThereKeyLikeArg && afterReturn || isThereKeyLikeArg && isConstructor) {
+        // constructor Sas from::Int
+        // no body, no return type
+        if (isThereKeyLikeArg && isConstructor && !afterReturn && !isThereEqual) {
+            peek().compileError("Please add return type or body for type ${peek().lexeme} constructor")
+        }
         return MessageDeclarationType.Keyword
     }
 
@@ -462,12 +467,12 @@ fun Parser.messageDeclaration(
 }
 
 // constructor TYPE messageDeclaration
-fun Parser.constructorDeclaration(): ConstructorDeclaration {
+fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
     val isItKeywordDeclaration = checkTypeOfMessageDeclaration(isConstructor = true)
     val msgDecl = if (isItKeywordDeclaration != null) {
-        messageDeclaration(isItKeywordDeclaration)
+        messageDeclaration(isItKeywordDeclaration, codeAttributes)
     } else null
 
     if (msgDecl == null) {
@@ -476,7 +481,7 @@ fun Parser.constructorDeclaration(): ConstructorDeclaration {
 
     val result = ConstructorDeclaration(
         msgDeclaration = msgDecl,
-        constructorKeyword
+        constructorKeyword,
     )
     return result
 }

@@ -50,6 +50,9 @@ fun Parser.step(n: Int = 1): Token {
         else
             tokens[current]
     current += n
+    if (current > this.tokens.count()) {
+        throw Exception("Reached out of tokens somehow")
+    }
     return result
 }
 

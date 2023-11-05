@@ -17,7 +17,7 @@ data class MsgSend(
 sealed class MessageMetadata(
     val name: String,
     val returnType: Type,
-    val codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf()
 )

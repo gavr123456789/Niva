@@ -32,7 +32,7 @@ fun Parser.statement(): Statement {
         return unionDeclaration()
     }
     if (kind == TokenType.Constructor) {
-        return constructorDeclaration()
+        return constructorDeclaration(codeAttributes)
     }
 
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {

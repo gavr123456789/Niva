@@ -74,7 +74,7 @@ class MessageDeclarationKeyword(
 
 class ConstructorDeclaration(
     val msgDeclaration: MessageDeclaration,
-    token: Token
+    token: Token,
 ) : MessageDeclaration(
     msgDeclaration.name,
     msgDeclaration.forTypeAst,
