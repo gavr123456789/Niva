@@ -16,7 +16,7 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
 
 
-    // Checks for declarations that starts from keyword like type/fn
+
 
     if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
     ) {
@@ -65,11 +65,11 @@ fun Parser.statement(): Statement {
         tok.compileError("Nothing to compile :(")
     }
 
-
     val isItMsgDeclaration = checkTypeOfMessageDeclaration()
     if (isItMsgDeclaration != null) {
         return messageDeclaration(isItMsgDeclaration, codeAttributes)
     }
+
 
     return expression()
 }

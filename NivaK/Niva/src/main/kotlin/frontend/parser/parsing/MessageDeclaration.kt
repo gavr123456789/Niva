@@ -358,6 +358,12 @@ fun Parser.methodBody(isControlFlow: Boolean = false): Pair<MutableList<Statemen
 // very bad function
 // TODO refactor
 fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): MessageDeclarationType? {
+
+    val savepoint = current
+//    while (check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) {
+//        step()
+//        step()
+//    }
     // Person sas = []
 
     // Person sas::Int -> Int = []
@@ -420,6 +426,7 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
 
     // int + arg =
     if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier, 2) && (isThisMsgDeclaration)) {
+        current = savepoint
         return MessageDeclarationType.Binary
     }
 
@@ -429,6 +436,7 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
         if (isThereKeyLikeArg && isConstructor && !afterReturn && !isThereEqual) {
             peek().compileError("Please add return type or body for type ${peek().lexeme} constructor")
         }
+        current = savepoint
         return MessageDeclarationType.Keyword
     }
 
@@ -437,11 +445,12 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
 
     // int inc = []
     if (check(TokenType.Identifier, 1) && (isThisMsgDeclaration)) {
+        current = savepoint
         return MessageDeclarationType.Unary
     }
 
 
-
+    current = savepoint
     return null
 }
 

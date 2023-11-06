@@ -1,7 +1,29 @@
-//1 to: 3 do: [ it echo ]
+x::[int, bool -> string]? = null
+
+List::Int sort = [
+    >this
+]
+
+
+{1 2} sort
+
+
+//1 to: 3 do: [ x -> x echo ]
 //3 downTo: 1 do: [ it echo ]
 //
+//Int sas::[Int -> Int] = [
+//    x = sas Int: 1
+////> 2, 4
+//    >2 x
+//]
 //
+//1 sas: [x -> x + 1]
+//1 sas: [it + 3]
+
+
+
+
+
 //mut x = 10
 //"whileTrue" echo
 //[x > 0] whileTrue: [
@@ -43,20 +65,20 @@
 //type Node data: T prev: Option::Node::T
 
 
-Bind package: "kotlin.random" content: [
-    type Random
-    constructor Random nextInt -> Int
-    constructor Random nextBoolean -> Boolean
-    constructor Random nextFloat -> Float
-    @rename: "nextInt"
-    constructor Random from::Int to::Int -> Int
-]
-//> 1749689129
-> Random nextInt
-//> false
-> Random nextBoolean
-//> 0.7046697
-> Random nextFloat
-//> 16
-> Random from: 1 to: 42
+//Bind package: "kotlin.random" content: [
+//    type Random
+//    constructor Random nextInt -> Int
+//    constructor Random nextBoolean -> Boolean
+//    constructor Random nextFloat -> Float
+//    @rename: "nextInt"
+//    constructor Random from::Int to::Int -> Int
+//]
+////> 1749689129
+//> Random nextInt
+////> false
+//> Random nextBoolean
+////> 0.7046697
+//> Random nextFloat
+////> 16
+//> Random from: 1 to: 42
 
