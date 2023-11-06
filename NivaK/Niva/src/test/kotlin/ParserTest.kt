@@ -1049,7 +1049,7 @@ class ParserTest {
            Bind package: "kotlin.random" content: [
                 type Random
                 @ktName: "setReadable"
-                constructor Random from::Int until::Int
+                constructor Random from::Int until::Int -> Int
             ]
         """.trimIndent()
         val ast = getAstTest(source)

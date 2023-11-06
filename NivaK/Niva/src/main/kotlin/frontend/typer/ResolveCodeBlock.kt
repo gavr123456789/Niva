@@ -1,5 +1,6 @@
 package frontend.typer
 
+import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
 fun Resolver.resolveCodeBlock(
@@ -14,28 +15,28 @@ fun Resolver.resolveCodeBlock(
         statement.isSingle = true
     }
 
+    val paramsOfArgument = mutableListOf<Type>()
 
     val variables = statement.inputList
     variables.forEach {
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeTable)
-        } else {
-            it.type = getTypeForIdentifier(it, previousScope, currentScope)
         }
+//        else {
+//            it.type = getTypeForIdentifier(it, previousScope, currentScope)
+//            println()
+//        }
+
 
     }
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
-    variables.forEach {
-        previousAndCurrentScope[it.name] = it.type!!
-    }
 
     var isThisWhileCycle = true
     var metaDataFound: KeywordMsgMetaData? = null
     var itArgType: Type? = null
-    // if this is lambda with one arg, then add "it" to scope
-    // TODO don't add it if this lambda has named arg
+    // generics resolve
     val genericLetterToTypes = mutableMapOf<String, Type>()
     if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
         if (rootStatement.receiver !is CodeBlock) {
@@ -64,22 +65,37 @@ fun Resolver.resolveCodeBlock(
                 }
             }
 
-
-            if (currentArgType.type is Type.Lambda && currentArgType.type.args.count() == 1) {
-                val typeOfFirstArgs = currentArgType.type.args[0].type
-                val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
-                    typeOfFirstArgs
-                } else {
-                    val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
-                    foundRealType
+            // if this is lambda with one arg, then add "it" to scope
+            // TODO don't add it if this lambda has named arg
+            if (currentArgType.type is Type.Lambda) {
+                if (currentArgType.type.args.count() == 1 && variables.isEmpty()) {
+                    val typeOfFirstArgs = currentArgType.type.args[0].type
+                    val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
+                        typeOfFirstArgs
+                    } else {
+                        val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
+                            ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
+                        foundRealType
+                    }
+                    previousAndCurrentScope["it"] = typeForIt
+                    itArgType = typeForIt
+                } else if (currentArgType.type.args.isNotEmpty()) {
+                    if (currentArgType.type.args.count() != variables.count()) {
+                        statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${variables.count()}")
+                    }
+                    currentArgType.type.args.forEachIndexed { i, typeField ->
+                        variables[i].type = typeField.type
+                    }
                 }
-                previousAndCurrentScope["it"] = typeForIt
-                itArgType = typeForIt
+
             }
 
             isThisWhileCycle = false
         }
+    }
+
+    variables.forEach {
+        previousAndCurrentScope[it.name] = it.type!!
     }
 
     currentLevel++

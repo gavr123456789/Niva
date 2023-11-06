@@ -37,7 +37,9 @@ fun Parser.codeBlock(): CodeBlock {
 
     val isThereBeforeStatementPart =
         check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) ||
-                check(TokenType.Identifier) && check(TokenType.Comma, 1)
+                check(TokenType.Identifier) && check(TokenType.Comma, 1) ||
+                check(TokenType.Identifier) && check(TokenType.ReturnArrow, 1)
+
 
     //checkTokUntilEndOfLine(TokenType.ReturnArrow)
     // [{a, b -> } statements]
