@@ -104,17 +104,17 @@ fun createFloatProtocols(
 
 
 val createUnary = { name: String, returnType: Type.InternalType ->
-    name to UnaryMsgMetaData(name, returnType)
+    name to UnaryMsgMetaData(name, returnType, "core")
 }
 val createBinary = { name: String, argType: Type, returnType: Type.InternalType ->
-    name to BinaryMsgMetaData(name, argType, returnType)
+    name to BinaryMsgMetaData(name, argType, returnType, "core")
 }
 val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type.InternalType ->
-    name to KeywordMsgMetaData(name, args, returnType)
+    name to KeywordMsgMetaData(name, args, returnType, "core")
 }
 
 fun createKeyword(name: String, arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
-    return name to KeywordMsgMetaData(name, listOf(arg), returnType)
+    return name to KeywordMsgMetaData(name, listOf(arg), returnType, "core")
 }
 
 fun createStringProtocols(

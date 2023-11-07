@@ -17,6 +17,7 @@ data class MsgSend(
 sealed class MessageMetadata(
     val name: String,
     val returnType: Type,
+    val pkg: String,
     val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf()
@@ -25,18 +26,20 @@ sealed class MessageMetadata(
 class UnaryMsgMetaData(
     name: String,
     returnType: Type,
+    pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
     val isGetter: Boolean = false
-) : MessageMetadata(name, returnType, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
 
 class BinaryMsgMetaData(
     name: String,
     val argType: Type,
     returnType: Type,
+    pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
 
 class KeywordArg(
     val name: String,
@@ -47,9 +50,10 @@ class KeywordMsgMetaData(
     name: String,
     val argTypes: List<KeywordArg>,
     returnType: Type,
+    pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
 
 //class ConstructorMsgMetaData(
 //    name: String,
@@ -438,6 +442,7 @@ fun SomeTypeDeclaration.toType(
 
 fun MessageDeclarationUnary.toMessageData(
     typeTable: MutableMap<TypeName, Type>,
+    pkg: Package,
     isGetter: Boolean = false
 ): UnaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
@@ -446,13 +451,14 @@ fun MessageDeclarationUnary.toMessageData(
     val result = UnaryMsgMetaData(
         name = this.name,
         returnType = returnType,
+        pkg = pkg.packageName,
         codeAttributes = pragmas,
         isGetter = isGetter
     )
     return result
 }
 
-fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>): BinaryMsgMetaData {
+fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>, pkg: Package): BinaryMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
@@ -463,12 +469,13 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
         name = this.name,
         argType = argType,
         returnType = returnType,
+        pkg = pkg.packageName,
         codeAttributes = pragmas
     )
     return result
 }
 
-fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>): KeywordMsgMetaData {
+fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>, pkg: Package): KeywordMsgMetaData {
     val returnType = this.returnType?.toType(typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
@@ -483,7 +490,8 @@ fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type
         name = this.name,
         argTypes = keywordArgs,
         returnType = returnType,
-        codeAttributes = pragmas
+        codeAttributes = pragmas,
+        pkg = pkg.packageName
     )
     return result
 }

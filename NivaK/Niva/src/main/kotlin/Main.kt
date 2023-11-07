@@ -61,7 +61,7 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
     when (getOSType()) {
         OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
         OS_Type.LINUX -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.MAC -> TODO()
+        OS_Type.MAC -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
     }
 
     if (inlineReplPath.exists()) {
@@ -282,7 +282,7 @@ fun <T> Node<T>.toList(): List<T> {
     var q = prev
     while (q != None) {
         when (q) {
-            None -> {}
+            is None -> {}
             is Some -> {
                 result.add(q.value.data)
                 q = q.value.prev
