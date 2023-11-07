@@ -450,7 +450,12 @@ fun Resolver.resolveMessage(
 
                     is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, currentScope, previousScope)
                     is CodeBlock -> TODO()
-                    is ListCollection -> TODO()
+                    is ListCollection -> {
+                        currentLevel++
+                        resolve(listOf(receiver), (currentScope + previousScope).toMutableMap() )
+                        currentLevel--
+                        receiver.type!!
+                    }
                     is MapCollection -> TODO()
                     is SetCollection -> TODO()
 

@@ -16,9 +16,12 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
 
 
-
-
-    if ((tok.isIdentifier() && (check(TokenType.DoubleColon, 1) || check(TokenType.Assign, 1)) || kind == TokenType.Mut)
+    // List::Int sas = [] - unary
+    // x::[Int->Int] = [] - value
+    // x::Int = 5
+    if ((tok.isIdentifier() &&
+                ( check(TokenType.Assign, 1)) // check(TokenType.DoubleColon, 1) ||
+                || kind == TokenType.Mut)
     ) {
         return varDeclaration()
     }

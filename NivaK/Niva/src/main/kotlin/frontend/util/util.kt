@@ -67,7 +67,7 @@ enum class OS_Type {
 }
 
 fun getOSType(): OS_Type {
-    val osName = System.getProperty("os.name")
+    val osName = System.getProperty("os.name").lowercase()
     return when {
         osName.contains("dows") -> OS_Type.WINDOWS
         osName.contains("nux") -> OS_Type.LINUX

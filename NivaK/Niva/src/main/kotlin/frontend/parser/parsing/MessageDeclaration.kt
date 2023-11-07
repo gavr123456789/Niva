@@ -360,10 +360,10 @@ fun Parser.methodBody(isControlFlow: Boolean = false): Pair<MutableList<Statemen
 fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): MessageDeclarationType? {
 
     val savepoint = current
-//    while (check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) {
-//        step()
-//        step()
-//    }
+    while (check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) {
+        step()
+        step()
+    }
     // Person sas = []
 
     // Person sas::Int -> Int = []
