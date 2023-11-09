@@ -407,7 +407,7 @@ class ResolverTest {
         assert(statements.count() == 1)
         val listCollection = statements[0] as ListCollection
         assert(listCollection.type != null)
-        assertEquals("List", listCollection.type?.name)
+        assertEquals("MutableList", listCollection.type?.name)
         val type = listCollection.type as Type.UserType
         assertEquals("Int", type.typeArgumentList[0].name)
     }
@@ -560,6 +560,25 @@ class ResolverTest {
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 6)
     }
+
+    @Test
+    fun genericInferReturnTypeFromReceiver() {
+
+        val source = """
+                x = { 1 2 3 }
+                y = x map: [it + 5]
+                z = y get: 1
+
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 3)
+    }
+
+
 }
 
 

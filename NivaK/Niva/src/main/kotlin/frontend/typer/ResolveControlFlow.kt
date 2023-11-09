@@ -22,7 +22,7 @@ fun Resolver.resolveControlFlow(
             }
 
             // we inside argument probably
-            is MessageSend, is ExpressionInBrackets -> ControlFlowKind.Expression
+            is MessageSend, is ExpressionInBrackets, is ReturnStatement -> ControlFlowKind.Expression
             is ControlFlow -> {
                 rootStatement.kind
             }
