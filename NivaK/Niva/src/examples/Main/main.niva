@@ -1,30 +1,55 @@
-Int fib -> Int =
-| this < 2 => 1
-|=> (this - 2) fib + (this - 1) fib
+union Shape area: Int =
+    | Rectangle width: Int height: Int
+    | Circle    radius: Int
 
-
-Int fib2 -> Int = |this
-| 0 => 1
-| 1 => 1
-|=> (this - 2) fib2 + (this - 1) fib2
-
-Int fib3 -> Int = [
-  mut a = 0
-  mut b = 1
-  mut n = this
-  ^| this > 0 => [
-    [n > 0] whileTrue: [
-      t = a + b
-      a <- b
-      b <- t
-      n <- n dec
-    ]
-    b
-  ]
-  |=> a
+Shape getArea = [
+    "Union as receiver" echo
+]
+Int shape::Shape = [
+   "Union as argument" echo
 ]
 
-5 fib echo
-6 fib2 echo
-6 fib3 echo
+x = Rectangle width: 2 height: 3 area: 6
+x getArea
+1 shape: x
 
+
+| x
+| Rectangle => "Rectangle" echo
+| Circle => "Circle" echo
+
+
+//x height echo
+//x width echo
+x area echo
+"Hello tagged unions!" echo
+
+
+// another example
+
+union User =
+| LoggedIn name: String
+| Guest
+
+User getName -> String = | this
+| Guest => "Guest"
+| LoggedIn => name
+
+// here if u use name, then name from 46 will be used
+// but there will be no 46 line, then name can be used without this
+User getName2 = [
+    name = "sas"
+    | this
+    | Guest => "Welcome guest" echo
+    | LoggedIn => ("Welcome " + this name) echo
+]
+
+User welcome =
+    ("Welcome " + this getName) echo
+
+user = LoggedIn name: "Oleг"
+guest = Guest
+user welcome
+guest welcome
+
+user getName2

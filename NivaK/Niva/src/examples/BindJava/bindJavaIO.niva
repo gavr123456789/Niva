@@ -12,7 +12,7 @@ Bind package: "kotlin.text" content: [
     String split::String -> List::String = []
 ]
 
-strings = "a.b" split: "."
+strings = "a.b" split: "."?
 //> [a, b]
 > strings
 first = strings get: 0
