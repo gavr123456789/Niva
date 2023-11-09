@@ -410,6 +410,7 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
 
         if (isThereKeyLikeArg && check(TokenType.Assign, peekCounter)) {
             isThereEqualAfterThat = true
+            isThereEqual = true
             break
         }
         if (check(TokenType.Assign, peekCounter)) {

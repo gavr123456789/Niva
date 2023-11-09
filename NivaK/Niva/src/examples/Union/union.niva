@@ -1,6 +1,6 @@
 union Shape area: Int =
-    | Rectangle => width: Int height: Int
-    | Circle    => radius: Int
+    | Rectangle width: Int height: Int
+    | Circle    radius: Int
 
 
 Int add2::Int -> Int = [
@@ -24,8 +24,8 @@ x getArea
 | Circle => "Circle" echo
 
 
-x height echo
-x width echo
+//x height echo
+//x width echo
 x area echo
 "Hello tagged unions!" echo
 
