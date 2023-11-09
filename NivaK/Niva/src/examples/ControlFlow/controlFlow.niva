@@ -1,9 +1,9 @@
 // simple if statement
 x = 6
 | x > 10 => x echo
-| x > 5 && x < 10 => "sas" echo
-| x > 1 && x < 5 => "sus" echo
-| x < 0 => "x is negative"
+| x > 5 && (x < 10) => "sas" echo
+| x > 1 && (x < 5) => "sus" echo
+| x < 0 => "x is negative" echo
 |=> "x is something" echo
 
 // if as expression
@@ -30,6 +30,6 @@ t echo
 Boolean to::Boolean = [
     to echo
 ]
-x = 5
-(| x > 5 => true |=> false) to: (| x == 5 => true |=> false)
+o = 5
+(| o > 5 => true |=> false) to: (| o == 5 => true |=> false)
 

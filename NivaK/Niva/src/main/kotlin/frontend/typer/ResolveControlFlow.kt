@@ -22,7 +22,7 @@ fun Resolver.resolveControlFlow(
             }
 
             // we inside argument probably
-            is MessageSend, is ExpressionInBrackets, is ReturnStatement -> ControlFlowKind.Expression
+            is MessageSend, is ExpressionInBrackets, is ReturnStatement, is VarDeclaration-> ControlFlowKind.Expression
             is ControlFlow -> {
                 rootStatement.kind
             }
@@ -45,7 +45,9 @@ fun Resolver.resolveControlFlow(
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
+                        currentLevel++
                         resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
+                        currentLevel--
                     }
 
                     is IfBranch.IfBranchWithBody -> {
@@ -86,7 +88,9 @@ fun Resolver.resolveControlFlow(
             }
 
             statement.type = if (statement.elseBranch != null) {
+                currentLevel++
                 resolve(statement.elseBranch, previousAndCurrentScope, statement)
+                currentLevel--
                 if (statement.kind == ControlFlowKind.Expression) {
                     val lastExpr = statement.elseBranch.last()
                     if (lastExpr !is Expression) {
@@ -164,7 +168,7 @@ fun Resolver.resolveControlFlow(
                 }
 
 
-
+                // TODO!
                 if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
                     curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")

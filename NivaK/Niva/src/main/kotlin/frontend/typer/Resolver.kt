@@ -899,7 +899,6 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    println("Sas???")
     token.compileError("Cant find unary message: $selectorName for type ${receiverType.name}")
 }
 
