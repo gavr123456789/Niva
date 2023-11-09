@@ -12,9 +12,9 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     val genericLetters = listOf("T", "G")
 
     type.typeArgumentList.forEachIndexed { i, it ->
-        if (it.beforeGenericResolvedName == null) {
+//        if (it.beforeGenericResolvedName == null) {
             it.beforeGenericResolvedName = genericLetters[i]
-        }
+//        }
     }
 }
 
@@ -147,7 +147,7 @@ fun Resolver.resolveMessage(
             /// end of resolving arguments
 
 
-            // infer a generic type from args or receiver
+            // infer return generic type from args or receiver
             if (kwTypeFromDB != null &&
                 kwTypeFromDB.returnType.name.length == 1 && kwTypeFromDB.returnType.name[0].isUpperCase() &&
                 kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike

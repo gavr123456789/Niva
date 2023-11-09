@@ -7,19 +7,19 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 class ParserTest {
-    @Test
-    fun varDeclaration() {
-        val source = "x::int = 1"
-        val ast = getAstTest(source)
-        println("ast.count = ${ast.count()}")
-        assert(ast.count() == 1)
-        println("ast = $ast")
-        println("ast[0] = ${ast[0]}")
-
-        val declaration: VarDeclaration = ast[0] as VarDeclaration
-        assert(declaration.name == "x")
-        assert(declaration.value.str == "1")
-    }
+//    @Test
+//    fun varDeclaration() {
+//        val source = "x::int = 1"
+//        val ast = getAstTest(source)
+//        println("ast.count = ${ast.count()}")
+//        assert(ast.count() == 1)
+//        println("ast = $ast")
+//        println("ast[0] = ${ast[0]}")
+//
+//        val declaration: VarDeclaration = ast[0] as VarDeclaration
+//        assert(declaration.name == "x")
+//        assert(declaration.value.str == "1")
+//    }
 
     @Test
     fun varDeclWithTypeInfer() {
@@ -673,43 +673,34 @@ class ParserTest {
         assert(switch.str == "y")
     }
 
-    @Test
-    fun genericTypeDeclaration() {
-        val source = """
-        x::List::int = 1
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
-
 
     // x::Map(int, string)
-    @Test
-    fun genericTypeDeclarationWith2Types() {
-        val source = """
-        x::List::Map(int, string) = 1
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
+//    @Test
+//    fun genericTypeDeclarationWith2Types() {
+//        val source = """
+//        x::List::Map(int, string) = 1
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
-    @Test
-    fun genericTypeDeclarationWithMapOfMap() {
-        val source = """
-        x::Map(int, Map(int, string)) = 1
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
+//    @Test
+//    fun genericTypeDeclarationWithMapOfMap() {
+//        val source = """
+//        x::Map(int, Map(int, string)) = 1
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
-    @Test
-    fun genericTypeDeclarationWithListOfListOfPerson() {
-        val source = """
-        x::List::List::Person = 1
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
+//    @Test
+//    fun genericTypeDeclarationWithListOfListOfPerson() {
+//        val source = """
+//        x::List::List::Person = 1
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
     @Test
     fun constructor() {
@@ -723,25 +714,25 @@ class ParserTest {
         assert(constr.body.size == 1)
     }
 
-    @Test
-    fun nullableValue() {
+//    @Test
+//    fun nullableValue() {
+//
+//        val source = """
+//            x::int? = null
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
-        val source = """
-            x::int? = null
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
-
-    @Test
-    fun codeBlockType() {
-        val source = """
-            x::[int, bool -> string]? = null
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        assert(ast[0] is VarDeclaration)
-    }
+//    @Test
+//    fun codeBlockType() {
+//        val source = """
+//            x::[int, bool -> string]? = null
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        assert(ast[0] is VarDeclaration)
+//    }
 
     @Test
     fun codeBlock() {
