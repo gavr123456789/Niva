@@ -1,55 +1,12 @@
-union Shape area: Int =
-    | Rectangle width: Int height: Int
-    | Circle    radius: Int
+list = {1 2 3 4}
+list add: 5
+//> [1, 2, 3, 4, 5]
+> list
 
-Shape getArea = [
-    "Union as receiver" echo
-]
-Int shape::Shape = [
-   "Union as argument" echo
-]
+mappedList = list map: [it toString + "s"]
+//> [1s, 2s, 3s, 4s, 5s]
+> mappedList
 
-x = Rectangle width: 2 height: 3 area: 6
-x getArea
-1 shape: x
-
-
-| x
-| Rectangle => "Rectangle" echo
-| Circle => "Circle" echo
-
-
-//x height echo
-//x width echo
-x area echo
-"Hello tagged unions!" echo
-
-
-// another example
-
-union User =
-| LoggedIn name: String
-| Guest
-
-User getName -> String = | this
-| Guest => "Guest"
-| LoggedIn => name
-
-// here if u use name, then name from 46 will be used
-// but there will be no 46 line, then name can be used without this
-User getName2 = [
-    name = "sas"
-    | this
-    | Guest => "Welcome guest" echo
-    | LoggedIn => ("Welcome " + this name) echo
-]
-
-User welcome =
-    ("Welcome " + this getName) echo
-
-user = LoggedIn name: "Oleг"
-guest = Guest
-user welcome
-guest welcome
-
-user getName2
+mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
+//> [2, 3, 4, 5, 6]
+> mappedList2

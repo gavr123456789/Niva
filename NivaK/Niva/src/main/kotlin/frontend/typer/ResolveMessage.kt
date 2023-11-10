@@ -13,9 +13,11 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 
     type.typeArgumentList.forEachIndexed { i, it ->
 //        if (it.beforeGenericResolvedName == null) {
-            it.beforeGenericResolvedName = genericLetters[i]
+        val k = genericLetters[i]
+        it.beforeGenericResolvedName = k // тут у нас один и тот же инт
 //        }
     }
+    println()
 }
 
 
@@ -110,6 +112,8 @@ fun Resolver.resolveMessage(
 
                     // we need to check for generic args only if it is Keyword
                     if (kwTypeFromDB != null) {
+                        statement.pragmas = kwTypeFromDB.pragmas
+
                         val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
                         if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
                             letterToRealType[typeFromDBForThisArg.name] = argType
