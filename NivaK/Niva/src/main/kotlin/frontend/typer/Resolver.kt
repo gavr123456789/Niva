@@ -259,13 +259,13 @@ class Resolver(
         // TODO Map
         /// Map
         val mapType = Type.UserType(
-            name = "Map",
+            name = "MutableMap",
             typeArgumentList = listOf(genericType, differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
         )
         val mapTypeOfDifferentGeneric = Type.UserType(
-            name = "Map",
+            name = "MutableMap",
             typeArgumentList = listOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
@@ -281,6 +281,10 @@ class Resolver(
                 differentGenericType = differentGenericType
             )
         )
+
+        mapTypeOfDifferentGeneric.protocols.putAll(mapType.protocols)
+        typeTable[mapType.name] = mapType
+        corePackage.types[mapType.name] = mapType
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
 //        commonProject.packages["kotlin"] = kotlinPkg
@@ -722,7 +726,7 @@ private fun Resolver.resolveStatement(
 
                     val listProtocols = listType.protocols
 
-                    val genericType = alreadyExistsListType ?: Type.UserType(
+                    val genericType = Type.UserType( // alreadyExistsListType ?:
                         name = typeName,
                         typeArgumentList = listOf(firstElemType),
                         fields = mutableListOf(),
@@ -741,6 +745,63 @@ private fun Resolver.resolveStatement(
             }
         }
 
+        is MapCollection -> {
+            // get type of the first key
+            // get type of the first value
+            if (statement.initElements.isEmpty()) {
+                throw Exception("Empty map not supported yet")
+            }
+            val (key, value) = statement.initElements[0]
+            currentLevel++
+            resolve(listOf(key), (currentScope + previousScope).toMutableMap(), statement)
+            resolve(listOf(value), (currentScope + previousScope).toMutableMap(), statement)
+            currentLevel--
+
+            val keyType = key.type ?: key.token.compileError("Can't resolve type of key: ${key.str}")
+            val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${value.str}")
+
+            val mapTypeFromDb =
+                this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
+            val listTypeFromDb =
+                this.projects["common"]!!.packages["core"]!!.types["MutableList"] as Type.UserType
+
+
+            mutableMapOf(1 to 2).values
+
+            val listTypeOfValues = Type.UserType(
+                name = "MutableList",
+                typeArgumentList = listOf(valueType),
+                fields = mutableListOf(),
+                pkg = currentPackageName,
+                protocols = listTypeFromDb.protocols
+            )
+            val listTypeOfKeys = Type.UserType(
+                name = "MutableList",
+                typeArgumentList = listOf(keyType),
+                fields = mutableListOf(),
+                pkg = currentPackageName,
+                protocols = listTypeFromDb.protocols
+            )
+
+            val mapType = Type.UserType(
+                name = "MutableMap",
+                typeArgumentList = listOf(keyType, valueType),
+                fields = mutableListOf(
+                    TypeField("values", listTypeOfValues),
+                    TypeField("keys", listTypeOfKeys)
+                ),
+                pkg = currentPackageName,
+                protocols = mapTypeFromDb.protocols
+            )
+            statement.type = mapType
+
+
+
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
+            }
+
+        }
 
         is LiteralExpression.FloatExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Float]
@@ -961,7 +1022,7 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
     receiverType.protocols.forEach { (_, v) ->
         val q = v.keywordMsgs[selectorName]
         if (q != null) {
-            // TODO! add unisng of keyword
+            // TODO! add using of keyword to msgs list of method, maybe
             val pkg = getCurrentPackage(token)
             pkg.addImport(receiverType.pkg)
             return q

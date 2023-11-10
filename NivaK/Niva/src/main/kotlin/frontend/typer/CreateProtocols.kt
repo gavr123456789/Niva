@@ -1,5 +1,14 @@
 package frontend.typer
 
+import frontend.meta.Position
+import frontend.meta.Token
+import frontend.meta.TokenType
+import frontend.parser.parsing.CodeAttribute
+import frontend.parser.types.ast.LiteralExpr
+import frontend.parser.types.ast.LiteralExpression
+import frontend.parser.types.ast.Primary
+import java.io.File
+
 
 fun createIntProtocols(
     intType: Type.InternalType,
@@ -345,6 +354,20 @@ fun createListProtocols(
     return result
 }
 
+private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(Token(
+    kind = TokenType.String,
+    lexeme = """"$lexeme"""",
+    line = 0,
+    pos = Position(0, 0),
+    relPos = Position(0, 0),
+    file = File("."),
+))
+fun createCodeAttribute(k: String, v: String) =
+     CodeAttribute(name = k, value = createStringLiteral(v))
+fun createRenameAtttribure(v: String) =
+    createCodeAttribute("rename", v)
+
+
 fun createMapProtocols(
     intType: Type.InternalType,
     unitType: Type.InternalType,
@@ -400,8 +423,19 @@ fun createMapProtocols(
                 mapType
             ),
 
-            createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
-            createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
+            createKeyword(
+                "atPut",
+                listOf(
+                    KeywordArg("at", genericTypeOfListElements),
+                    KeywordArg("put", differentGenericType)
+                ),
+                unitType
+            )
+                .also { it.second.pragmas.add(createRenameAtttribure("set")) },
+
+            createKeyword("at", KeywordArg("at", genericTypeOfListElements), differentGenericType)
+                .also { it.second.pragmas.add(createRenameAtttribure("get")) },
+
             createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
             createKeyword("addAll", KeywordArg("addAll", mapType), boolType)
 

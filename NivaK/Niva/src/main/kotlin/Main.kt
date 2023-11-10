@@ -325,6 +325,7 @@ fun main(args: Array<String>) {
     myList.add(3)
     val list = myList.head.toList()
 
+
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
     val isThereArgs = args.count() >= 2

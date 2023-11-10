@@ -37,7 +37,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             }
 
 
-            is MapCollection -> TODO()
+            is MapCollection -> generateMap()
             is ControlFlow.If -> generateIf()
             is ControlFlow.Switch -> generateSwitch()
 

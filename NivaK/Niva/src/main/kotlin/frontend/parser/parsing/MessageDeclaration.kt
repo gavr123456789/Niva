@@ -76,19 +76,27 @@ fun Parser.simpleReceiver(): Receiver {
 
         initElements
     }
+
     val readPrimaryMap = {
         val initElementsPairs: MutableList<Pair<Receiver, Receiver>> = mutableListOf()
         do {
             val primaryTok = primary()
-            if (primaryTok != null && check(TokenType.CloseBrace)) {
-                peek().compileError("Map must contain even elements")
+            if (match(TokenType.Comma)) {
+                peek().compileError("Only map pairs can be separated by commas")
             }
 
             val primaryTok2 = primary()
             match(TokenType.Comma)
+            skipEndOfLineOrFile()
+
             if (primaryTok != null && primaryTok2 != null) {
                 initElementsPairs.add(Pair(primaryTok, primaryTok2))
             }
+
+            if (primaryTok != null && primaryTok2 == null) {
+                peek().compileError("Map must contain even elements")
+            }
+
         } while (primaryTok != null && primaryTok2 != null)
 
         initElementsPairs
@@ -97,6 +105,8 @@ fun Parser.simpleReceiver(): Receiver {
     var tryPrimary: Receiver? = primary()
     if (tryPrimary == null) {
         val q = step()
+        skipEndOfLineOrFile()
+
         tryPrimary = when (q.kind) {
             TokenType.OpenBrace -> {
                 // {1, 2 3}
@@ -113,24 +123,25 @@ fun Parser.simpleReceiver(): Receiver {
             TokenType.OpenBraceHash -> {
                 // #{"a" 1 "b" 2}
                 val initElements = readPrimaryMap()
+                skipEndOfLineOrFile()
+
                 match(TokenType.CloseBrace)
 
                 val keyType = if (initElements.isNotEmpty()) initElements[0].first.type else null
                 val valType = if (initElements.isNotEmpty()) initElements[0].second.type else null
-                if (initElements.count() % 2 != 0) {
-                    q.compileError("Amount of init elements for Map must be even")
-                }
 
                 val mapType = if (keyType != null && valType != null)
-                    Type.KnownGenericType("Map", listOf(keyType, valType), pkg = "common")
+                    Type.KnownGenericType("MutableMap", listOf(keyType, valType), pkg = "common")
                 else null
 
-                return MapCollection(initElements, mapType, q)
+                return MapCollection(initElements, null, q)
             }
 
             TokenType.OpenParenHash -> {
                 // #(1, 2 3)
                 val initElements = readPrimaryCollection()
+                skipEndOfLineOrFile()
+
                 match(TokenType.CloseParen)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
@@ -140,6 +151,7 @@ fun Parser.simpleReceiver(): Receiver {
 
             else -> null
         }
+
     }
 
     if (tryPrimary == null) {

@@ -115,6 +115,16 @@ fun ListCollection.generateList() = buildString {
     append(")")
 }
 
+fun MapCollection.generateMap() = buildString {
+    append("mutableMapOf(")
+
+    initElements.forEach(exceptLastDo = { append(", ") }) {
+        append(it.first.generateExpression(), " to ", it.second.generateExpression())
+    }
+
+    append(")")
+}
+
 fun SetCollection.generateSet() = buildString {
     append("mutableSetOf(")
 
