@@ -4,9 +4,7 @@ import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.parsing.CodeAttribute
-import frontend.parser.types.ast.LiteralExpr
 import frontend.parser.types.ast.LiteralExpression
-import frontend.parser.types.ast.Primary
 import java.io.File
 
 
@@ -344,26 +342,40 @@ fun createListProtocols(
             createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
             createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
             createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
-            createKeyword("addAll", KeywordArg("addAll", listType), boolType)
+            createKeyword("addAll", KeywordArg("addAll", listType), boolType),
+            createKeyword("atPut", KeywordArg("at", genericTypeOfListElements), unitType),
+            createKeyword(
+                "atPut",
+                listOf(
+                    KeywordArg("at", intType),
+                    KeywordArg("put", genericTypeOfListElements)
+                ),
+                unitType
+            )
+                .also { it.second.pragmas.add(createRenameAtttribure("set")) },
 
 
-        )
+            )
     )
 
     result[collectionProtocol.name] = collectionProtocol
     return result
 }
 
-private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(Token(
-    kind = TokenType.String,
-    lexeme = """"$lexeme"""",
-    line = 0,
-    pos = Position(0, 0),
-    relPos = Position(0, 0),
-    file = File("."),
-))
+private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(
+    Token(
+        kind = TokenType.String,
+        lexeme = """"$lexeme"""",
+        line = 0,
+        pos = Position(0, 0),
+        relPos = Position(0, 0),
+        file = File("."),
+    )
+)
+
 fun createCodeAttribute(k: String, v: String) =
-     CodeAttribute(name = k, value = createStringLiteral(v))
+    CodeAttribute(name = k, value = createStringLiteral(v))
+
 fun createRenameAtttribure(v: String) =
     createCodeAttribute("rename", v)
 

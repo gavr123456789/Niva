@@ -246,6 +246,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     return result
 }
 
+
 /**
  * Parses a keyword message declaration, which follows the format:
  *  - Receiver type, followed by arguments.
@@ -405,7 +406,7 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
         val q = peek(peekCounter)
 
         if (!afterReturn) {
-            afterReturn = check(TokenType.ReturnArrow, peekCounter)
+            afterReturn = check(TokenType.ReturnArrow, peekCounter) && !check(TokenType.EndOfLine, peekCounter + 1)
         }
 
         // :: can be inside return type like List::Int

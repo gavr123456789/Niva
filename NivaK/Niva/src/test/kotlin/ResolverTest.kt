@@ -578,6 +578,23 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
+    @Test
+    fun assignThis() {
+
+        val source = """
+            Int x = [
+                ar = this
+            ]
+
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 1)
+    }
+
 
 }
 

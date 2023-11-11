@@ -1099,6 +1099,18 @@ class ParserTest {
         assert(ast.count() == 2)
     }
 
+    @Test
+    fun twoNamedArgsCodeBlock() {
+        val source = """
+            map foreach: [ k, v ->
+                1 echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+
 //    @Test
 //    fun unaryOnManyLines() {
 //

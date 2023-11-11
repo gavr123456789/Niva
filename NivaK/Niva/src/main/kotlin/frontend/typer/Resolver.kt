@@ -487,7 +487,7 @@ private fun Resolver.resolveMessageDeclaration(
 
             if (alTypeArgsAreFound) {
                 forType.typeArgumentList = newListOfTypeArgs
-            } else{
+            } else {
                 unResolvedMessageDeclarations.add(statement)
                 currentLevel--
                 return true
@@ -656,7 +656,7 @@ private fun Resolver.resolveStatement(
 
             // if this is Type with zero fields constructor
             // replace Identifier with Keyword kind: Constructor
-            if (value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
+            if (value.str[0].isUpperCase() && value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
                 statement.value = KeywordMsg(
                     receiver = value, //IdentifierExpr("", token = createFakeToken()),
                     selectorName = value.str,
@@ -827,6 +827,7 @@ private fun Resolver.resolveStatement(
         }
 
         is Assign -> {
+
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             resolve(listOf(statement.value), previousAndCurrentScope, statement)
 
@@ -1110,7 +1111,7 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
     unaryForType[statement.name] = statement // will be reloaded when package changed
 
     val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
-    val messageData = statement.toMessageData(typeTable,pkg, isGetter)
+    val messageData = statement.toMessageData(typeTable, pkg, isGetter)
 
     protocol.unaryMsgs[statement.name] = messageData
 
@@ -1147,7 +1148,8 @@ private class FakeToken {
     companion object {
         val fakeToken = Token(
             TokenType.Identifier, "!!!Nothing!!!", 0, Position(0, 1),
-            Position(0, 1), File("Nothing"))
+            Position(0, 1), File("Nothing")
+        )
     }
 }
 

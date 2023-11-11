@@ -247,28 +247,6 @@ fun Resolver.resolveMessage(
                             parent = parent.parent
                         }
 
-                        // Check for custom constructor
-//                        val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
-                        // if it is a constructor already, we dont need to check for custom
-//                        val (customConstructorType) = if (statement.kind != KeywordLikeType.Constructor)
-//                            try {
-//                                findStaticMessageType(
-//                                    receiverType,
-//                                    selectorName,
-//                                    statement.token,
-//                                    MessageDeclarationType.Keyword
-//                                ) as Pair<Type.UserLike, Boolean>
-//                            } catch (e: Exception) {
-//                                Pair(null, false)
-//                            } else Pair(null, false)
-                        // if constructor with current args is found, then we dont need to check that the args are right
-//                        val thisIsCustomConstructor = statement.kind == KeywordLikeType.CustomConstructor //customConstructorType != null
-//                        if (thisIsCustomConstructor) {
-//                            // we need to call it as method, not as constructor
-//                            // Person.from(p) vs Person(from = p)
-//                            statement.kind = KeywordLikeType.Keyword
-//                        }
-
                         val receiverFields = receiverType.fields //+ listOfAllParentsFields
                         // check that amount of arguments if right
                         if (statement.args.count() != receiverFields.count()) { // && !thisIsCustomConstructor
@@ -344,7 +322,7 @@ fun Resolver.resolveMessage(
                 }
 
                 KeywordLikeType.Setter -> {
-                    // Nothing to do, because checke for setter already sets the type of statement
+                    // Nothing to do, because check for setter already sets the type of statement
                 }
 
                 KeywordLikeType.Keyword -> {
@@ -456,10 +434,11 @@ fun Resolver.resolveMessage(
                     is CodeBlock -> TODO()
                     is ListCollection -> {
                         currentLevel++
-                        resolve(listOf(receiver), (currentScope + previousScope).toMutableMap() )
+                        resolve(listOf(receiver), (currentScope + previousScope).toMutableMap())
                         currentLevel--
                         receiver.type!!
                     }
+
                     is MapCollection -> TODO()
                     is SetCollection -> TODO()
 

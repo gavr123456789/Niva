@@ -1,0 +1,10 @@
+map = #{1 "one" 2 "two"}
+
+map at: 3 put: "three"
+//> {1=one, 2=two, 3=three}
+>map
+
+map forEach: [ k, v ->
+    k inc echo
+    (v get: 0) echo
+]
