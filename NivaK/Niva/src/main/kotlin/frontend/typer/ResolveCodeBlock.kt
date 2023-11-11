@@ -66,7 +66,6 @@ fun Resolver.resolveCodeBlock(
             }
 
             // if this is lambda with one arg, then add "it" to scope
-            // TODO don't add it if this lambda has named arg
             if (currentArgType.type is Type.Lambda) {
                 if (currentArgType.type.args.count() == 1 && variables.isEmpty()) {
                     val typeOfFirstArgs = currentArgType.type.args[0].type
@@ -74,7 +73,7 @@ fun Resolver.resolveCodeBlock(
                         typeOfFirstArgs
                     } else {
                         val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                            ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolvind lambda")
+                            ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving lambda")
                         foundRealType
                     }
                     previousAndCurrentScope["it"] = typeForIt
@@ -84,7 +83,15 @@ fun Resolver.resolveCodeBlock(
                         statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${variables.count()}")
                     }
                     currentArgType.type.args.forEachIndexed { i, typeField ->
-                        variables[i].type = typeField.type
+                        val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
+                            typeField.type
+                        } else {
+                            val foundRealType = genericLetterToTypes[typeField.type.name]
+                                ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving lambda")
+                            foundRealType
+                        }
+
+                        variables[i].type = typeForArg
                     }
                 }
 
