@@ -169,22 +169,38 @@ fun Lexer.createToken(tokenType: TokenType) {
     }
 }
 
-fun Lexer.error(message: String) {
+fun Lexer.error(message: String): Nothing {
     val msg = "${message}\nline: ${line}\n$file\npos: $lineCurrent - ${linePos - 1}\n"
     throw Throwable(msg)
 }
 
 fun String.set(index: Int, char: Char): String {
-    return substring(0, index) + char + substring(index + 1)
+    return substring(0, index) + char + substring(index)
 }
 
-fun Lexer.parseEscape() {
-    when (peek()[0]) {
-        'n' -> source.set(current, '\n')
+fun String.set(index: Int, str: String): String {
+    return substring(0, index) + str + substring(index)
+}
+
+fun Lexer.parseEscape(q: String) {
+//    step()
+    val q11 = peek(-2)
+
+    val q232 = peek(-1)
+    val q1 = peek()
+    val q2 = peek(1)
+    val q3 = peek(2)
+    val q4 = peek(3)
+    val q5 = peek(4)
+    val q6 = peek(5)
+
+    source = when (q[0]) {
+        'n' -> source.set(current, 'n')
         '\'' -> source.set(current, '\'')
         '\\' -> source.set(current, '\\')
         else -> this.error("invalid escape sequence '\\${peek()}'")
     }
+    println()
 }
 
 
@@ -203,8 +219,10 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         if (mode in arrayOf("raw", "multy")) {
             this.step()
         } else if (this.match("\\")) {
+            val q = peek()
+
             source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex) //..^1
-            parseEscape()
+            parseEscape(q)
         }
 
         if (mode == "format" && match("{")) {
