@@ -14,20 +14,21 @@ Bind package: "kotlin.text" content: [
     String split::String -> List::String = []
 ]
 
+strings = "a.b" split: "."
+//> [a, b]
+> strings
+
 x = File pathname: "sas.txt"
 //> true
 >x exists
 | x exists not => ^
 
 text = x readText
+
 lines = (text split: "\n") dropLast: 1
 
 lines forEach: [ line ->
     r = line split: " "
     first = r get: 0
     second = r get: 1
-//> monday, tuesday, wednesday, thursday, friday
-    >10 first
-//> 5, 3, 7, 6, 8
-    >10 second
 ]

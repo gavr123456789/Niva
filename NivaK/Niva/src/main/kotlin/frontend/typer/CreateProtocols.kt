@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED_PARAMETER")
+
 package frontend.typer
 
 import frontend.meta.Position
@@ -344,6 +346,8 @@ fun createListProtocols(
             createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType),
             createKeyword("atPut", KeywordArg("at", genericTypeOfListElements), unitType),
+            createKeyword("drop", KeywordArg("drop", intType), listType),
+            createKeyword("dropLast", KeywordArg("dropLast", intType), listType),
             createKeyword(
                 "atPut",
                 listOf(

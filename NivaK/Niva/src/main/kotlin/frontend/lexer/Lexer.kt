@@ -183,24 +183,12 @@ fun String.set(index: Int, str: String): String {
 }
 
 fun Lexer.parseEscape(q: String) {
-//    step()
-    val q11 = peek(-2)
-
-    val q232 = peek(-1)
-    val q1 = peek()
-    val q2 = peek(1)
-    val q3 = peek(2)
-    val q4 = peek(3)
-    val q5 = peek(4)
-    val q6 = peek(5)
-
     source = when (q[0]) {
         'n' -> source.set(current, 'n')
         '\'' -> source.set(current, '\'')
         '\\' -> source.set(current, '\\')
         else -> this.error("invalid escape sequence '\\${peek()}'")
     }
-    println()
 }
 
 

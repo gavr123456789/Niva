@@ -15,10 +15,8 @@ fun Resolver.resolveCodeBlock(
         statement.isSingle = true
     }
 
-    val paramsOfArgument = mutableListOf<Type>()
-
-    val variables = statement.inputList
-    variables.forEach {
+    val namedLambdaArgs = statement.inputList
+    namedLambdaArgs.forEach {
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeTable)
         }
@@ -41,33 +39,46 @@ fun Resolver.resolveCodeBlock(
     if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
         if (rootStatement.receiver !is CodeBlock) {
             val rootReceiverType = rootStatement.receiver.type!!
-            val metaData = findKeywordMsgType(
+            val metaDataFromDb = findKeywordMsgType(
                 rootReceiverType,
                 rootStatement.selectorName,
                 rootStatement.token
             )
-            metaDataFound = metaData
-            val currentArgType = metaData.argTypes[currentArgumentNumber]
+            metaDataFound = metaDataFromDb
+            val currentArgType = metaDataFromDb.argTypes[currentArgumentNumber]
 
             // List(T, G) map::[T -> G] -> G = []
 
             val rootType = typeTable[rootReceiverType.name]
             if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
+                fillGenericsWithLettersByOrder(rootType)
+
                 rootType.typeArgumentList.forEachIndexed { i, it ->
+                    val beforeName = it.beforeGenericResolvedName
+
                     if (it.name.length == 1 && it.name[0].isUpperCase()) {
+
                         val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
                         if (sameButResolvedArg.name.length == 1) {
                             throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
                         }
                         genericLetterToTypes[it.name] = sameButResolvedArg
+                    } else if (beforeName != null && beforeName.length == 1 && beforeName[0].isUpperCase()) {
+                        // was resolved somehow
+                        genericLetterToTypes[beforeName] = it
+
+                    } else {
+
+                        println()
+
                     }
                 }
             }
 
-            // if this is lambda with one arg, then add "it" to scope
             if (currentArgType.type is Type.Lambda) {
-                if (currentArgType.type.args.count() == 1 && variables.isEmpty()) {
+                // if this is lambda with one arg, and no namedArgs, then add "it" to scope
+                if (currentArgType.type.args.count() == 1 && namedLambdaArgs.isEmpty()) {
                     val typeOfFirstArgs = currentArgType.type.args[0].type
                     val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
                         typeOfFirstArgs
@@ -79,9 +90,11 @@ fun Resolver.resolveCodeBlock(
                     previousAndCurrentScope["it"] = typeForIt
                     itArgType = typeForIt
                 } else if (currentArgType.type.args.isNotEmpty()) {
-                    if (currentArgType.type.args.count() != variables.count()) {
-                        statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${variables.count()}")
+                    if (currentArgType.type.args.count() != namedLambdaArgs.count()) {
+                        statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${namedLambdaArgs.count()}")
                     }
+
+//                    rootType.typeArgumentList
                     currentArgType.type.args.forEachIndexed { i, typeField ->
                         val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
                             typeField.type
@@ -91,7 +104,7 @@ fun Resolver.resolveCodeBlock(
                             foundRealType
                         }
 
-                        variables[i].type = typeForArg
+                        namedLambdaArgs[i].type = typeForArg
                     }
                 }
 
@@ -101,7 +114,7 @@ fun Resolver.resolveCodeBlock(
         }
     }
 
-    variables.forEach {
+    namedLambdaArgs.forEach {
         previousAndCurrentScope[it.name] = it.type!!
     }
 
