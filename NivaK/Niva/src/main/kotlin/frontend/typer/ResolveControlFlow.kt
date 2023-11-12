@@ -22,7 +22,7 @@ fun Resolver.resolveControlFlow(
             }
 
             // we inside argument probably
-            is MessageSend, is ExpressionInBrackets, is ReturnStatement, is VarDeclaration-> ControlFlowKind.Expression
+            is MessageSend, is ExpressionInBrackets, is ReturnStatement, is VarDeclaration -> ControlFlowKind.Expression
             is ControlFlow -> {
                 rootStatement.kind
             }
@@ -41,7 +41,9 @@ fun Resolver.resolveControlFlow(
 
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if
+                currentLevel++
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
+                currentLevel--
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
@@ -179,11 +181,6 @@ fun Resolver.resolveControlFlow(
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
-                        // if scope doesnt contain field type, then add them
-                        if (statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch) {
-                            savedSwitchType
-                        }
-
                         resolve(listOf(it.thenDoExpression), scopeWithFields, statement)
                         currentLevel--
                     }
@@ -223,7 +220,9 @@ fun Resolver.resolveControlFlow(
             statement.switch.type = savedSwitchType
 
             if (statement.elseBranch != null) {
+                currentLevel++
                 resolve(statement.elseBranch, previousAndCurrentScope, statement)
+                currentLevel--
                 val lastExpr = statement.elseBranch.last()
                 if (lastExpr !is Expression) {
                     lastExpr.token.compileError("In switch expression body last statement must be an expression")

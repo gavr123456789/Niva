@@ -914,6 +914,10 @@ fun compare2Types(type1: Type, type2: Type): Boolean {
         }
     }
 
+    if (type1 is Type.UnknownGenericType || type2 is Type.UnknownGenericType) {
+        return true
+    }
+
     // comparing with nothing is always true, its bottom type, subtype of all types
     // so we can return nothing from switch expr branches, beside u cant do it with different types
     val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
