@@ -56,6 +56,16 @@ fun createIntProtocols(
                 ),
                 intType
             ),
+
+            createKeyword(
+                "untilDo",
+                listOf(
+                    KeywordArg("until", intType),
+                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
+                ),
+                intType
+            ),
+
             createKeyword(
                 "downToDo",
                 listOf(
@@ -260,6 +270,55 @@ fun createAnyProtocols(
     result[protocol.name] = protocol
     return result
 }
+
+fun createIntRangeProtocols(
+//    genericTypeOfListElements: Type.InternalType,
+//    differentGenericType: Type.InternalType,
+    rangeType: Type.InternalType,
+    boolType: Type.InternalType,
+
+    intType: Type.InternalType,
+    unitType: Type.InternalType,
+    any: Type.InternalType
+): MutableMap<String, Protocol> {
+//    1.rangeTo(5).step(5)
+
+
+    val result = mutableMapOf<String, Protocol>()
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("echo", unitType),
+            createUnary("isEmpty", boolType),
+            createUnary("first", intType),
+            createUnary("last", intType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword("step", KeywordArg("step", intType), rangeType),
+
+            createKeyword(
+                "forEach",
+                listOf(
+                    KeywordArg(
+                        "forEach",
+                        Type.Lambda(
+                            mutableListOf(
+                                TypeField("forEach", intType)
+                            ),
+                            unitType
+                        )
+                    )
+                ),
+                unitType
+            ),
+
+            ),
+    )
+    result[protocol.name] = protocol
+    return result
+}
+
 
 fun createExceptionProtocols(
     errorType: Type.UserType,

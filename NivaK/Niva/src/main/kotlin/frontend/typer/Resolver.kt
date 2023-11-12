@@ -159,6 +159,16 @@ class Resolver(
                 )
             )
 
+            intRangeType.protocols.putAll(
+                createIntRangeProtocols(
+                    rangeType = intRangeType,
+                    boolType = boolType,
+                    intType = intType,
+                    unitType = unitType,
+                    any = anyType
+                )
+            )
+
         }
 
     }
