@@ -1,9 +1,12 @@
-type Sas
+list = {1 2 3 4 }
+list add: 5
+> list
 
-Sas kek::String = [
-    1 echo
-]
+list at: 0 put: 6
+> list
 
-sas = Sas
-x = "s"
-sas kek: x
+mappedList = list map: [x -> x toString + "s"]
+> mappedList
+
+mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
+> mappedList2
