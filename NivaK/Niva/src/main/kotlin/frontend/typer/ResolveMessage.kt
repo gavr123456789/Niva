@@ -362,6 +362,23 @@ fun Resolver.resolveMessage(
                             protocols = returnType.protocols
                         )
                     } else msgTypeFromDB.returnType
+
+                    // type check args
+                    if (kwTypeFromDB != null) {
+                        assert(statement.args.count() == kwTypeFromDB.argTypes.count())
+
+                        statement.args.forEachIndexed { i, argAndItsMessages ->
+                            val typeOfArgFromDb = kwTypeFromDB.argTypes[i].type
+                            val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
+                            val sameTypes =
+                                compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration)
+                            if (!sameTypes) {
+                                argAndItsMessages.keywordArg.token.compileError(
+                                    "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.selectorName} doesn't match ${typeOfArgFromDb.name}"
+                                )
+                            }
+                        }
+                    }
                     statement.type = returnType
                 }
 
