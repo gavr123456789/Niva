@@ -343,7 +343,7 @@ fun createListProtocols(
 
             createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
             createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
-            createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
+            createKeyword("removeAt", KeywordArg("removeAt", intType), unitType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType),
             createKeyword("atPut", KeywordArg("at", genericTypeOfListElements), unitType),
             createKeyword("drop", KeywordArg("drop", intType), listType),
