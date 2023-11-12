@@ -307,19 +307,9 @@ fun <T> MyList<T>.add(data: T) {
     head = result
 }
 
-class Box<in T> {
-    fun compareTo(x: T) {}
-}
 
-
+@Suppress("UNUSED_VARIABLE")
 fun main(args: Array<String>) {
-//    val q = kotlin.random.Random.next()
-
-
-    val randomValues = List(10) { kotlin.random.Random.nextInt(0, 100) }
-    // prints new sequence every time
-
-    val nextValues = List(10) { kotlin.random.Random.nextInt(0, 100) }
 
     val myList = MyList(0)
     myList.add(1)
@@ -350,7 +340,7 @@ fun main(args: Array<String>) {
 
     val secondTime = System.currentTimeMillis()
     val executionTime = secondTime - startTime
-    println("Niva compilation time: $executionTime ms")
+//    println("Niva compilation time: $executionTime ms")
 
 
     val isGradleWatching = args.count() > 1 && args[2] == "watch"
@@ -361,9 +351,5 @@ fun main(args: Array<String>) {
 
     val thirdTime = System.currentTimeMillis()
     val executionTime2 = thirdTime - secondTime
-    println("Kotlin compilation + exec time: $executionTime2 ms")
-
-
-//    if (inlineRepl.exists())
-//        inlineReplSystem(inlineRepl)
+//    println("Kotlin compilation + exec time: $executionTime2 ms")
 }

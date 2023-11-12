@@ -44,10 +44,13 @@ fun createIntProtocols(
             createBinary("%", intType, intType),
             createBinary("/", intType, intType),
             createBinary("..", intType, intRangeType),
+            createBinary("..<", intType, intRangeType),
 
             ),
         keywordMsgs = mutableMapOf(
             createKeyword("plus", KeywordArg("plus", intType), intType),
+            createKeyword("to", KeywordArg("to", intType), intRangeType),
+            createKeyword("downTo", KeywordArg("downTo", intType), intRangeType),
             createKeyword(
                 "toDo",
                 listOf(
@@ -272,8 +275,6 @@ fun createAnyProtocols(
 }
 
 fun createIntRangeProtocols(
-//    genericTypeOfListElements: Type.InternalType,
-//    differentGenericType: Type.InternalType,
     rangeType: Type.InternalType,
     boolType: Type.InternalType,
 
@@ -281,8 +282,6 @@ fun createIntRangeProtocols(
     unitType: Type.InternalType,
     any: Type.InternalType
 ): MutableMap<String, Protocol> {
-//    1.rangeTo(5).step(5)
-
 
     val result = mutableMapOf<String, Protocol>()
     val protocol = Protocol(
@@ -292,8 +291,12 @@ fun createIntRangeProtocols(
             createUnary("isEmpty", boolType),
             createUnary("first", intType),
             createUnary("last", intType),
+            createUnary("random", intType),
         ),
-        binaryMsgs = mutableMapOf(),
+        binaryMsgs = mutableMapOf(
+            createBinary("==", rangeType, boolType),
+            createBinary("!=", rangeType, boolType)
+        ),
         keywordMsgs = mutableMapOf(
             createKeyword("step", KeywordArg("step", intType), rangeType),
 
@@ -312,6 +315,9 @@ fun createIntRangeProtocols(
                 ),
                 unitType
             ),
+
+            createKeyword("contains", KeywordArg("contains", intType), boolType),
+
 
             ),
     )

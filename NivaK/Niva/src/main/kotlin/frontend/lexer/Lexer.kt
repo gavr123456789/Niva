@@ -289,12 +289,13 @@ fun Lexer.parseNumber() {
     stepWhileDigit()
 
     // .. operator
-    if (check("..")) {
-
+    val a = check("..<")
+    val b = check("..")
+    if (a || b) {
         createToken(TokenType.Integer)
         start += 1
-
-        match("..")
+        if (a) match("..<")
+        if (b) match("..")
 
         createToken(TokenType.BinarySymbol)
         return
@@ -386,6 +387,10 @@ fun Lexer.next() {
             parseString(peek(-1), mode)
         }
 
+        // before digit because of floats "3.14"
+        match("..<") -> {
+            createToken(TokenType.BinarySymbol)
+        }
 
         match("..") -> createToken(TokenType.BinarySymbol)
 
