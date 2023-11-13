@@ -2,7 +2,6 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
-import frontend.typer.createFakeToken
 
 
 sealed class TypeAST(
@@ -35,9 +34,9 @@ sealed class TypeAST(
         pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
 
-    object ResursiveType : TypeAST(
-        "ResursiveType", false, createFakeToken(), false, mutableListOf()
-    )
+//    object ResursiveType : TypeAST(
+//        "ResursiveType", false, createFakeToken(), false, mutableListOf()
+//    )
 
 
     class Lambda(
@@ -52,7 +51,7 @@ sealed class TypeAST(
 }
 
 
-fun TypeAST.toKotlinStr(): String {
+fun TypeAST.generateType(): String {
 //    val x: (String, Int) -> Int = {}
     return when (this) {
         is TypeAST.InternalType -> name
@@ -67,16 +66,15 @@ fun TypeAST.toKotlinStr(): String {
             buildString {
                 append("(")
                 inputTypesList.forEach {
-                    append(it.toKotlinStr(), ",")
+                    append(it.generateType(), ",")
                 }
                 append(") -> ")
 
-                append(returnType.toKotlinStr())
+                append(returnType.generateType())
 
             }
         }
 
-        is TypeAST.ResursiveType -> name
     }
 }
 

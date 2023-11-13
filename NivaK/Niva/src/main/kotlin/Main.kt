@@ -190,6 +190,10 @@ fun addNivaStd(mainCode: String): String {
         
             return x
         }
+        
+        inline fun Boolean.isFalse() = !this
+        inline fun Boolean.isTrue() = this
+        
         // end of STD
         
     """.trimIndent()
@@ -317,20 +321,12 @@ operator fun <K, V> MutableMap<K, V>.plus(map: MutableMap<K, V>): MutableMap<K, 
 @Suppress("UNUSED_VARIABLE")
 fun main(args: Array<String>) {
 
-    val we1: MutableMap<Int, Int> = mutableMapOf(1 to 2)
-    val we2: MutableMap<Int, Int> = mutableMapOf(1 to 3)
-    val we3 = we1 - 1
-
     val myList = MyList(0)
     myList.add(1)
-    myList.add(2)
-    myList.add(3)
     val list = myList.head.toList()
 
 
-    val set1 = mutableSetOf(1, 2)
-    val set2 = mutableSetOf(1, 2)
-
+    val list2 = listOf(1, 2)
 
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 

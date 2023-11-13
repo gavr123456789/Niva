@@ -760,7 +760,6 @@ private fun Resolver.resolveStatement(
                     // try to find list with the same generic type
                     val typeName = "MutableList"
                     val currentPkg = getCurrentPackage(statement.token)
-                    val alreadyExistsListType = currentPkg.types[typeName]
 
                     val listProtocols = listType.protocols
 
@@ -776,6 +775,9 @@ private fun Resolver.resolveStatement(
                 } else {
                     statement.token.compileError("Cant get type of elements of list literal")
                 }
+            } else if (rootStatement is VarDeclaration && rootStatement.valueType != null) {
+                val type = rootStatement.valueType!!.toType(typeTable)
+                statement.type = type
             }
 
             if (currentLevel == 0) {
@@ -810,6 +812,9 @@ private fun Resolver.resolveStatement(
                 } else {
                     statement.token.compileError("Cant get type of elements of list literal")
                 }
+            } else if (rootStatement is VarDeclaration && rootStatement.valueType != null) {
+                val type = rootStatement.valueType!!.toType(typeTable)
+                statement.type = type
             }
 
             if (currentLevel == 0) {
@@ -820,10 +825,11 @@ private fun Resolver.resolveStatement(
         is MapCollection -> {
             // get type of the first key
             // get type of the first value
-            if (statement.initElements.isEmpty()) {
-                throw Exception("Empty map not supported yet")
+            if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueType != null)) {
+                val type = rootStatement.valueType!!.toType(typeTable)
+                statement.type = type
+                return
             }
-
             val (key, value) = statement.initElements[0]
             currentLevel++
             resolve(listOf(key), (currentScope + previousScope).toMutableMap(), statement)
@@ -864,8 +870,6 @@ private fun Resolver.resolveStatement(
                 protocols = mapTypeFromDb.protocols
             )
             statement.type = mapType
-
-
 
             if (currentLevel == 0) {
                 topLevelStatements.add(statement)
@@ -928,10 +932,7 @@ private fun Resolver.resolveStatement(
             }
 
         }
-
-        else -> {
-
-        }
+        
     }
 }
 

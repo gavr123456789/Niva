@@ -206,6 +206,8 @@ fun createBoolProtocols(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
             createUnary("not", boolType),
+            createUnary("isFalse", boolType),
+            createUnary("isTrue", boolType),
             createUnary("echo", unitType),
 
             ),
@@ -447,8 +449,7 @@ fun createSetProtocols(
             createFilterKeyword(genericTypeOfSetElements, boolType, setType),
 
             createKeyword("add", KeywordArg("add", genericTypeOfSetElements), unitType),
-            createKeyword("removeElement", KeywordArg("removeElement", genericTypeOfSetElements), boolType)
-                .rename("remove"),
+            createKeyword("remove", KeywordArg("remove", genericTypeOfSetElements), boolType),
 
             createKeyword("addAll", KeywordArg("addAll", setType), boolType),
 

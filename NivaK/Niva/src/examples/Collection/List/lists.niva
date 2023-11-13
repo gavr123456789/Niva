@@ -14,3 +14,9 @@ mappedList = list map: [x -> x toString + "s"]
 mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
 //> [2, 3, 4, 5, 6]
 > mappedList2
+
+
+emptyList::MutableList::Int = {}
+emptyList add: 5
+//> [5]
+> emptyList

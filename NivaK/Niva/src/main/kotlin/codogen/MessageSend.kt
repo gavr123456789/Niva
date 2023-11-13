@@ -46,11 +46,12 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
 
     val receiverCode = buildString {
-        val needBrackets = keywordMsg.kind != KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.ForCodeBlock || receiver is ExpressionInBrackets
+        val needBrackets =
+            keywordMsg.kind != KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.ForCodeBlock || receiver is ExpressionInBrackets
         if (needBrackets) append("(")
 
         val kwReceiver = keywordMsg.receiver
-        if ((keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor) && kwReceiver is IdentifierExpr) {
+        if (kwReceiver.type?.pkg != "core" && (keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor) && kwReceiver is IdentifierExpr) {
             val type = kwReceiver.type
             if (type != null) {
                 append(type.pkg, ".")
