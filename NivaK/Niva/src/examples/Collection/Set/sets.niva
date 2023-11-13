@@ -1,0 +1,15 @@
+set1 = #(1 2 3)
+set2 = #(3 4 5)
+set3 = set1 + set2
+//> [1, 2, 3, 4, 5]
+>set3
+
+set4 = set3 - #(4 5)
+//> [1, 2, 3]
+>set4
+
+set1 add: 10
+set1 removeElement: 1
+//> [2, 3, 10]
+>set1
+

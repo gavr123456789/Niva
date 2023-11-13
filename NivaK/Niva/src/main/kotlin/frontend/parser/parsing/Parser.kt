@@ -19,9 +19,9 @@ fun Parser.statement(): Statement {
     // List::Int sas = [] - unary
     // x::[Int->Int] = [] - value
     // x::Int = 5
-    if ((tok.isIdentifier() &&
-                ( check(TokenType.Assign, 1)) // check(TokenType.DoubleColon, 1) ||
-                || kind == TokenType.Mut)
+    if (tok.isIdentifier() && tok.lexeme[0].isLowerCase() &&
+        (check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1))
+        || kind == TokenType.Mut
     ) {
         return varDeclaration()
     }

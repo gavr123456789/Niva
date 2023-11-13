@@ -170,6 +170,9 @@ fun addNivaStd(mainCode: String): String {
             }
         }
         
+        operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): MutableMap<K, V> =
+            LinkedHashMap(this).apply { putAll(map) }
+        
         
         fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
             val q = x.toString()
@@ -307,15 +310,26 @@ fun <T> MyList<T>.add(data: T) {
     head = result
 }
 
+operator fun <K, V> MutableMap<K, V>.plus(map: MutableMap<K, V>): MutableMap<K, V> =
+    this.apply { putAll(map) }
+
 
 @Suppress("UNUSED_VARIABLE")
 fun main(args: Array<String>) {
+
+    val we1: MutableMap<Int, Int> = mutableMapOf(1 to 2)
+    val we2: MutableMap<Int, Int> = mutableMapOf(1 to 3)
+    val we3 = we1 - 1
 
     val myList = MyList(0)
     myList.add(1)
     myList.add(2)
     myList.add(3)
     val list = myList.head.toList()
+
+
+    val set1 = mutableSetOf(1, 2)
+    val set2 = mutableSetOf(1, 2)
 
 
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
@@ -340,7 +354,7 @@ fun main(args: Array<String>) {
 
     val secondTime = System.currentTimeMillis()
     val executionTime = secondTime - startTime
-//    println("Niva compilation time: $executionTime ms")
+    println("Niva compilation time: $executionTime ms")
 
 
     val isGradleWatching = args.count() > 1 && args[2] == "watch"
@@ -351,5 +365,5 @@ fun main(args: Array<String>) {
 
     val thirdTime = System.currentTimeMillis()
     val executionTime2 = thirdTime - secondTime
-//    println("Kotlin compilation + exec time: $executionTime2 ms")
+    println("Kotlin compilation + exec time: $executionTime2 ms")
 }

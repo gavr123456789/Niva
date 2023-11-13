@@ -7,19 +7,19 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 class ParserTest {
-//    @Test
-//    fun varDeclaration() {
-//        val source = "x::int = 1"
-//        val ast = getAstTest(source)
-//        println("ast.count = ${ast.count()}")
-//        assert(ast.count() == 1)
-//        println("ast = $ast")
-//        println("ast[0] = ${ast[0]}")
-//
-//        val declaration: VarDeclaration = ast[0] as VarDeclaration
-//        assert(declaration.name == "x")
-//        assert(declaration.value.str == "1")
-//    }
+    @Test
+    fun varDeclaration() {
+        val source = "x::Int = 1"
+        val ast = getAstTest(source)
+        println("ast.count = ${ast.count()}")
+        assert(ast.count() == 1)
+        println("ast = $ast")
+        println("ast[0] = ${ast[0]}")
+
+        val declaration: VarDeclaration = ast[0] as VarDeclaration
+        assert(declaration.name == "x")
+        assert(declaration.value.str == "1")
+    }
 
     @Test
     fun varDeclWithTypeInfer() {
@@ -387,18 +387,8 @@ class ParserTest {
         val keywordMsg = messages[0] as KeywordMsg
 
         assert(keywordMsg.args.count() == 2)
-//        assert(keywordMsg.args[0].keywordArg.type?.name == "int")
         assert(keywordMsg.args[0].keywordArg.str == "3")
-//        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg.count() == 1)
-//        assert(keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] is BinaryMsg)
-//        val binaryFromKeyword = keywordMsg.args[0].unaryOrBinaryMsgsForArg[0] as BinaryMsg
-//        assert(binaryFromKeyword.selectorName == "+")
-//        assert(binaryFromKeyword.unaryMsgsForArg.count() == 2)
-//        assert(binaryFromKeyword.unaryMsgsForReceiver.count() == 2)
-
-//        assert(keywordMsg.args[1].keywordArg.type?.name == "int")
         assert(keywordMsg.args[1].keywordArg.str == "5")
-//        assert(keywordMsg.args[1].unaryOrBinaryMsgsForArg.isEmpty())
     }
 
     @Test
@@ -488,7 +478,6 @@ class ParserTest {
         assert(msgDecl.args[2].localName == null)
         assert(msgDecl.args[3].name == "noLocalNameButType")
         assert(msgDecl.args[3].localName == null)
-//        assert(msgDecl.args[3].type?.name == "int")
 
         // body
         val body = msgDecl.body
@@ -588,9 +577,7 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-//        assert(fields[0].type?.name == "string")
         assert(fields[1].name == "age")
-//        assert(fields[1].type?.name == "int")
     }
 
     @Test
@@ -675,32 +662,32 @@ class ParserTest {
 
 
     // x::Map(int, string)
-//    @Test
-//    fun genericTypeDeclarationWith2Types() {
-//        val source = """
-//        x::List::Map(int, string) = 1
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//    }
+    @Test
+    fun genericTypeDeclarationWith2Types() {
+        val source = """
+        x::List::Map(int, string) = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
-//    @Test
-//    fun genericTypeDeclarationWithMapOfMap() {
-//        val source = """
-//        x::Map(int, Map(int, string)) = 1
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//    }
+    @Test
+    fun genericTypeDeclarationWithMapOfMap() {
+        val source = """
+        x::Map(int, Map(int, string)) = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
-//    @Test
-//    fun genericTypeDeclarationWithListOfListOfPerson() {
-//        val source = """
-//        x::List::List::Person = 1
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//    }
+    @Test
+    fun genericTypeDeclarationWithListOfListOfPerson() {
+        val source = """
+        x::List::List::Person = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
     @Test
     fun constructor() {
@@ -714,25 +701,25 @@ class ParserTest {
         assert(constr.body.size == 1)
     }
 
-//    @Test
-//    fun nullableValue() {
-//
-//        val source = """
-//            x::int? = null
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//    }
+    @Test
+    fun nullableValue() {
 
-//    @Test
-//    fun codeBlockType() {
-//        val source = """
-//            x::[int, bool -> string]? = null
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//        assert(ast[0] is VarDeclaration)
-//    }
+        val source = """
+            x::int? = null
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun codeBlockType() {
+        val source = """
+            x::[int, bool -> string]? = null
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is VarDeclaration)
+    }
 
     @Test
     fun codeBlock() {
