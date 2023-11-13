@@ -9,7 +9,12 @@ set4 = set3 - #(4 5)
 >set4
 
 set1 add: 10
-set1 removeElement: 1
+set1 remove: 1
 //> [2, 3, 10]
 >set1
 
+// empty collection
+set::MutableSet::Int = #()
+set add: 5
+//> [5]
+>set

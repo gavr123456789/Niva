@@ -1,4 +1,18 @@
 
+list::MutableList::Int = {}
+list add: 5
+//> [5]
+>list
+
+map::MutableMap(Int, String) = #{}
+map at: 1 put: "sas"
+//> {1=sas}
+>map
+
+set::MutableSet::Int = #()
+set add: 5
+//> [5]
+>set
 
 map1 = #{1 2 3 4}
 map2 = #{5 6}
@@ -21,9 +35,11 @@ set4 = set3 - #(4 5)
 //> [1, 2, 3]
 >set4
 set1 add: 10
-set1 removeElement: 1
+set1 remove: 1
 //> [2, 3, 10]
 >set1
+
+
 
 mut sum = 0
 mut num = 20000

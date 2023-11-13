@@ -8,3 +8,9 @@ map forEach: [ k, v ->
     k inc echo
     (v get: 0) echo
 ]
+
+// empty collection
+map2::MutableMap(Int, String) = #{}
+map2 at: 1 put: "sas"
+//> {1=sas}
+>map2

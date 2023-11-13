@@ -292,7 +292,6 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = nu
 
         }
 
-        is TypeAST.ResursiveType -> return Type.RecursiveType
 
     }
 
@@ -346,7 +345,6 @@ fun SomeTypeDeclaration.toType(
 
     val fieldsTyped = mutableListOf<TypeField>()
     val unresolvedSelfTypeFields = mutableListOf<TypeField>()
-    val unresolvedSelfTypeGenericFields = mutableMapOf<TypeFieldAST, TypeField>()
 
 //    val createTypeAlreadyWithNoFields // than fill it with them
 

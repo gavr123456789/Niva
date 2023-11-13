@@ -109,7 +109,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
         append(">")
     }
 
-    append(forTypeAst.toKotlinStr())
+    append(forTypeAst.generateType())
     if (isStatic) {
         append(".Companion")
     }
@@ -119,7 +119,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     args.forEachIndexed { i, arg ->
         append(arg.name())
         if (arg.type != null) {
-            append(": ", arg.type.toKotlinStr())
+            append(": ", arg.type.generateType())
             if (i != c) {
                 append(", ")
             }
@@ -138,7 +138,7 @@ private fun bodyPart(
     stringBuilder: StringBuilder
 ) {
     if (messageDeclaration.returnType != null) {
-        stringBuilder.append(": ", messageDeclaration.returnType.toKotlinStr())
+        stringBuilder.append(": ", messageDeclaration.returnType.generateType())
     }
     if (messageDeclaration.body.isEmpty()) {
         stringBuilder.append(" { }\n")
