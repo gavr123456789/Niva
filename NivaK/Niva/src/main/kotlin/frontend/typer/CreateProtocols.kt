@@ -125,10 +125,10 @@ fun createFloatProtocols(
 }
 
 
-val createUnary = { name: String, returnType: Type.InternalType ->
+val createUnary = { name: String, returnType: Type ->
     name to UnaryMsgMetaData(name, returnType, "core")
 }
-val createBinary = { name: String, argType: Type, returnType: Type.InternalType ->
+val createBinary = { name: String, argType: Type, returnType: Type ->
     name to BinaryMsgMetaData(name, argType, returnType, "core")
 }
 val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type.InternalType ->
@@ -137,6 +137,11 @@ val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type.Int
 
 fun createKeyword(name: String, arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
     return name to KeywordMsgMetaData(name, listOf(arg), returnType, "core")
+}
+
+fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createRenameAtttribure(str))
+    return this
 }
 
 fun createStringProtocols(
@@ -159,6 +164,9 @@ fun createStringProtocols(
             createUnary("isAlphaNumeric", boolType),
             createUnary("isNotBlank", boolType),
             createUnary("isNotEmpty", boolType),
+            createUnary("trimIndent", stringType),
+
+
             createUnary("echo", unitType),
 
             ),
@@ -168,6 +176,12 @@ fun createStringProtocols(
             createBinary("!=", stringType, boolType),
         ),
         keywordMsgs = mutableMapOf(
+            createKeyword(
+                "replaceWith",
+                listOf(KeywordArg("replace", intType), KeywordArg("with", intType)), stringType
+            )
+                .rename("replace"),
+
             createKeyword("get", KeywordArg("get", intType), charType),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
             createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
@@ -371,40 +385,9 @@ fun createListProtocols(
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
-            createKeyword(
-                "forEach",
-                listOf(
-                    KeywordArg(
-                        "forEach",
-                        Type.Lambda(
-                            mutableListOf(
-                                TypeField("forEach", genericTypeOfListElements)
-                            ),
-                            unitType
-                        )
-                    )
-                ),
-                unitType
-            ),
-            createKeyword(
-                "map",
-                KeywordArg(
-                    "map",
-                    Type.Lambda(
-                        mutableListOf(TypeField("transform", genericTypeOfListElements)),
-                        differentGenericType
-                    ) // return list map of type of last expression
-                ),
-                listTypeOfDifferentGeneric
-            ),
-            createKeyword(
-                "filter",
-                KeywordArg(
-                    "filter",
-                    Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfListElements)), boolType)
-                ),
-                listType
-            ),
+            createForEachKeyword(genericTypeOfListElements, unitType),
+            createMapKeyword(genericTypeOfListElements, differentGenericType, listTypeOfDifferentGeneric),
+            createFilterKeyword(genericTypeOfListElements, boolType, listType),
 
             createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
             createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
@@ -421,7 +404,7 @@ fun createListProtocols(
                 ),
                 unitType
             )
-                .also { it.second.pragmas.add(createRenameAtttribure("set")) },
+                .rename("set"),
 
 
             )
@@ -430,6 +413,72 @@ fun createListProtocols(
     result[collectionProtocol.name] = collectionProtocol
     return result
 }
+
+
+fun createSetProtocols(
+    intType: Type.InternalType,
+    unitType: Type.InternalType,
+    boolType: Type.InternalType,
+    setType: Type.UserType,
+    setTypeOfDifferentGeneric: Type.UserType,
+    genericTypeOfSetElements: Type.UnknownGenericType,
+    differentGenericType: Type.UnknownGenericType,
+): MutableMap<String, Protocol> {
+    val result = mutableMapOf<String, Protocol>()
+
+    val collectionProtocol = Protocol(
+        name = "collectionProtocol",
+        unaryMsgs = mutableMapOf(
+            createUnary("count", intType),
+            createUnary("echo", unitType),
+            createUnary("removeAll", boolType),
+            createUnary("clear", boolType),
+        ),
+        binaryMsgs = mutableMapOf(
+            createBinary("==", setType, boolType),
+            createBinary("!=", setType, boolType),
+            createBinary("+", setType, setType),
+            createBinary("-", setType, setType),
+
+            ),
+        keywordMsgs = mutableMapOf(
+            createForEachKeyword(genericTypeOfSetElements, unitType),
+            createMapKeyword(genericTypeOfSetElements, differentGenericType, setTypeOfDifferentGeneric),
+            createFilterKeyword(genericTypeOfSetElements, boolType, setType),
+
+            createKeyword("add", KeywordArg("add", genericTypeOfSetElements), unitType),
+            createKeyword("removeElement", KeywordArg("removeElement", genericTypeOfSetElements), boolType)
+                .rename("remove"),
+
+            createKeyword("addAll", KeywordArg("addAll", setType), boolType),
+
+
+            )
+    )
+
+    result[collectionProtocol.name] = collectionProtocol
+    return result
+}
+
+private fun createForEachKeyword(
+    genericTypeOfSetElements: Type.UnknownGenericType,
+    unitType: Type.InternalType
+) = createKeyword(
+    "forEach",
+    listOf(
+        KeywordArg(
+            "forEach",
+            Type.Lambda(
+                mutableListOf(
+                    TypeField("forEach", genericTypeOfSetElements)
+                ),
+                unitType
+            )
+        )
+    ),
+    unitType
+)
+
 
 private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(
     Token(
@@ -455,9 +504,12 @@ fun createMapProtocols(
     boolType: Type.InternalType,
     mapType: Type.UserType,
     mapTypeOfDifferentGeneric: Type.UserType,
-    genericTypeOfListElements: Type.UnknownGenericType,
-    differentGenericType: Type.UnknownGenericType,
-): MutableMap<String, Protocol> {
+    keyType: Type.UnknownGenericType,
+    valueType: Type.UnknownGenericType,
+    setType: Type.UserType,
+    listType: Type.UserType,
+
+    ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
     val collectionProtocol = Protocol(
@@ -465,8 +517,15 @@ fun createMapProtocols(
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
             createUnary("echo", unitType),
+            createUnary("clear", unitType),
+            createUnary("values", listType),
+            createUnary("keys", setType),
+
+            ),
+        binaryMsgs = mutableMapOf(
+            createBinary("+", mapType, mapType),
+            createBinary("-", mapType, valueType)
         ),
-        binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(
                 "forEach",
@@ -475,8 +534,8 @@ fun createMapProtocols(
                         "forEach",
                         Type.Lambda(
                             mutableListOf(
-                                TypeField("key", genericTypeOfListElements),
-                                TypeField("value", differentGenericType),
+                                TypeField("key", keyType),
+                                TypeField("value", valueType),
                             ),
                             unitType
                         )
@@ -484,46 +543,60 @@ fun createMapProtocols(
                 ),
                 unitType
             ),
-            createKeyword(
-                "map",
-                KeywordArg(
-                    "map",
-                    Type.Lambda(
-                        mutableListOf(TypeField("transform", genericTypeOfListElements)),
-                        differentGenericType
-                    ) // return list map of type of last expression
-                ),
-                mapTypeOfDifferentGeneric
-            ),
-            createKeyword(
-                "filter",
-                KeywordArg(
-                    "filter",
-                    Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfListElements)), boolType)
-                ),
-                mapType
-            ),
+            createMapKeyword(keyType, valueType, mapTypeOfDifferentGeneric),
+            createFilterKeyword(keyType, boolType, mapType),
 
             createKeyword(
                 "atPut",
                 listOf(
-                    KeywordArg("at", genericTypeOfListElements),
-                    KeywordArg("put", differentGenericType)
+                    KeywordArg("at", keyType),
+                    KeywordArg("put", valueType)
                 ),
                 unitType
             )
-                .also { it.second.pragmas.add(createRenameAtttribure("set")) },
+                .rename("set"),
 
-            createKeyword("at", KeywordArg("at", genericTypeOfListElements), differentGenericType)
-                .also { it.second.pragmas.add(createRenameAtttribure("get")) },
+            createKeyword("at", KeywordArg("at", keyType), valueType)
+                .rename("get"),
 
-            createKeyword("removeAt", KeywordArg("removeAt", intType), intType),
-            createKeyword("addAll", KeywordArg("addAll", mapType), boolType)
+            createKeyword("remove", KeywordArg("remove", keyType), intType),
+            createKeyword("putAll", KeywordArg("addAll", mapType), unitType),
+            createKeyword("containsKey", KeywordArg("containsKey", keyType), boolType),
+            createKeyword("containsValue", KeywordArg("containsValue", valueType), boolType),
 
 
-        )
+            )
     )
 
     result[collectionProtocol.name] = collectionProtocol
     return result
 }
+
+private fun createMapKeyword(
+    genericTypeOfListElements: Type.UnknownGenericType,
+    differentGenericType: Type.UnknownGenericType,
+    listTypeOfDifferentGeneric: Type.UserType
+) = createKeyword(
+    "map",
+    KeywordArg(
+        "map",
+        Type.Lambda(
+            mutableListOf(TypeField("transform", genericTypeOfListElements)),
+            differentGenericType
+        ) // return list map of type of last expression
+    ),
+    listTypeOfDifferentGeneric
+)
+
+private fun createFilterKeyword(
+    genericTypeOfSetElements: Type.UnknownGenericType,
+    boolType: Type.InternalType,
+    setType: Type.UserType
+) = createKeyword(
+    "filter",
+    KeywordArg(
+        "filter",
+        Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfSetElements)), boolType)
+    ),
+    setType
+)

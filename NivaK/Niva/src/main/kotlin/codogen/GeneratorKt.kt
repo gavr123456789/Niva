@@ -50,6 +50,9 @@ application {
 }
 
 """
+        val ALWAYS_IMPORTS = listOf(
+            ""
+        )
     }
 }
 

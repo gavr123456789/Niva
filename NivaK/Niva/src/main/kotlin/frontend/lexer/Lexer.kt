@@ -197,7 +197,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
     while (!this.check(delimiter) && !this.done()) {
 
         if (this.match("\n")) {
-            if (mode == "multy") {
+            if (mode == "multi") {
                 this.incLine(false)
             } else {
                 this.error("unexpected EOL while parsing string literal")
@@ -378,7 +378,7 @@ fun Lexer.next() {
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
 
-            // if "" then it must be multyline string
+            // if """ then it must be multiline string
             if (peek(-1) != "'" && check(peek(-1)) && check(peek(-1), 1)) {
                 // Multiline strings start with 3 quotes
                 step(2)

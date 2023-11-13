@@ -128,7 +128,6 @@ class Resolver(
                     boolType = boolType,
                     charType = charType,
                     any = anyType
-
                 )
             )
 
@@ -238,7 +237,6 @@ class Resolver(
         typeTable[listType.name] = listType
         corePackage.types[listType.name] = listType
         // Mutable list
-        // List
         val mutableListType = Type.UserType(
             name = "MutableList",
             typeArgumentList = listOf(genericType),
@@ -265,9 +263,36 @@ class Resolver(
         mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
         typeTable[mutableListType.name] = mutableListType
         corePackage.types[mutableListType.name] = mutableListType
-        // Set TODO
-        // TODO Map
-        /// Map
+
+        // mutable set
+        val mutableSetType = Type.UserType(
+            name = "MutableSet",
+            typeArgumentList = listOf(genericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val mutSetTypeOfDifferentGeneric = Type.UserType(
+            name = "MutableSet",
+            typeArgumentList = listOf(differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        mutableSetType.protocols.putAll(
+            createSetProtocols(
+                intType = intType,
+                unitType = unitType,
+                boolType = boolType,
+                setType = mutableSetType,
+                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+                genericTypeOfSetElements = genericType,
+                differentGenericType = differentGenericType
+            )
+        )
+        mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
+        typeTable[mutableSetType.name] = mutableSetType
+        corePackage.types[mutableSetType.name] = mutableSetType
+
+        // mutable map
         val mapType = Type.UserType(
             name = "MutableMap",
             typeArgumentList = listOf(genericType, differentGenericType),
@@ -287,14 +312,17 @@ class Resolver(
                 boolType = boolType,
                 mapType = mapType,
                 mapTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
-                genericTypeOfListElements = genericType,
-                differentGenericType = differentGenericType
+                keyType = genericType,
+                valueType = differentGenericType,
+                setType = mutableSetType,
+                listType = listType
             )
         )
 
         mapTypeOfDifferentGeneric.protocols.putAll(mapType.protocols)
         typeTable[mapType.name] = mapType
         corePackage.types[mapType.name] = mapType
+
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
 //        commonProject.packages["kotlin"] = kotlinPkg
@@ -755,12 +783,47 @@ private fun Resolver.resolveStatement(
             }
         }
 
+        is SetCollection -> {
+
+            if (statement.initElements.isNotEmpty()) {
+                val firstElem = statement.initElements[0]
+                if (firstElem.typeAST != null) {
+                    val firstElemType = firstElem.typeAST.toType(typeTable)
+                    firstElemType.beforeGenericResolvedName = "T" // Default List has T type
+                    val listType =
+                        this.projects["common"]!!.packages["core"]!!.types["MutableSet"] as Type.UserType
+
+                    // try to find list with the same generic type
+                    val typeName = "MutableSet"
+
+                    val listProtocols = listType.protocols
+
+                    val genericType = Type.UserType( // alreadyExistsListType ?:
+                        name = typeName,
+                        typeArgumentList = listOf(firstElemType),
+                        fields = mutableListOf(),
+                        pkg = currentPackageName,
+                        protocols = listProtocols
+                    )
+
+                    statement.type = genericType
+                } else {
+                    statement.token.compileError("Cant get type of elements of list literal")
+                }
+            }
+
+            if (currentLevel == 0) {
+                topLevelStatements.add(statement)
+            }
+        }
+
         is MapCollection -> {
             // get type of the first key
             // get type of the first value
             if (statement.initElements.isEmpty()) {
                 throw Exception("Empty map not supported yet")
             }
+
             val (key, value) = statement.initElements[0]
             currentLevel++
             resolve(listOf(key), (currentScope + previousScope).toMutableMap(), statement)
@@ -774,9 +837,6 @@ private fun Resolver.resolveStatement(
                 this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
             val listTypeFromDb =
                 this.projects["common"]!!.packages["core"]!!.types["MutableList"] as Type.UserType
-
-
-            mutableMapOf(1 to 2).values
 
             val listTypeOfValues = Type.UserType(
                 name = "MutableList",
@@ -1276,8 +1336,7 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
     }
 
     is IfBranch.IfBranchWithBody -> {
-        val last = body.last()
-        when (last) {
+        when (val last = body.last()) {
             is Expression -> last.type!!
 //            is ReturnStatement -> last.expression.type!!
             else -> Resolver.defaultTypes[InternalTypes.Unit]!!
