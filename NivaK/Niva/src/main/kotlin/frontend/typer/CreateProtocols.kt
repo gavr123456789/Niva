@@ -440,7 +440,9 @@ fun createSetProtocols(
             createBinary("==", setType, boolType),
             createBinary("!=", setType, boolType),
             createBinary("+", setType, setType),
+            createBinary("+", genericTypeOfSetElements, setType),
             createBinary("-", setType, setType),
+            createBinary("-", genericTypeOfSetElements, setType),
 
             ),
         keywordMsgs = mutableMapOf(
@@ -453,8 +455,11 @@ fun createSetProtocols(
 
             createKeyword("addAll", KeywordArg("addAll", setType), boolType),
 
+            createKeyword("intersect", KeywordArg("intersect", setType), setType),
+//            createKeyword("unite", KeywordArg("unite", setType), setType).rename("union"),
 
-            )
+
+        )
     )
 
     result[collectionProtocol.name] = collectionProtocol

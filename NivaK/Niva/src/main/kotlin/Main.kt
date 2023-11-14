@@ -328,6 +328,7 @@ fun main(args: Array<String>) {
 
     val list2 = listOf(1, 2)
 
+
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 
     val isThereArgs = args.count() >= 2

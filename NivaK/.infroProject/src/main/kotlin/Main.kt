@@ -67,37 +67,17 @@ fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
 
     return x
 }
+
+inline fun Boolean.isFalse() = !this
+inline fun Boolean.isTrue() = this
+
 // end of STD
 
 fun main() {
-    val map1 = mutableMapOf(1 to 2, 3 to 4)
-    val map2 = mutableMapOf(5 to 6)
-    val map3 = map1 + map2
-    inlineRepl(map3, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::8""", 1)
-    val map4 = map3 - 3
-    inlineRepl(map4, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::12""", 1)
-    val set1 = mutableSetOf(1, 2, 3)
-    val set2 = mutableSetOf(3, 4, 5)
-    val set3 = set1 + set2
-    inlineRepl(set3, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::18""", 1)
-    val set4 = set3 - mutableSetOf(4, 5)
-    inlineRepl(set4, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::22""", 1)
-    (set1).add(10)
-    (set1).remove(1)
-    inlineRepl(set1, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::25""", 1)
-    var sum = 0
-    var num = 20000
-    (1).untilDo(num, {i: Int, -> 
-        (1).untilDo(num, {j: Int, -> if (num % j == 0) {
-                sum = sum + j
-        
-        }})
-        if (num == sum) {
-            sum.echo()
-        }
-        sum = 0
-        num = num.dec()
-    })
+    val person = common.Person(age = 1, name = "sas")
+    val x = 25
+    person.age = (x)
+    inlineRepl(person, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::10""", 1)
     
 }
 

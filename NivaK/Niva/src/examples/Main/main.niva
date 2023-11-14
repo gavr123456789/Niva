@@ -1,55 +1,6 @@
-
-list::MutableList::Int = {}
-list add: 5
-//> [5]
->list
-
-map::MutableMap(Int, String) = #{}
-map at: 1 put: "sas"
-//> {1=sas}
->map
-
-set::MutableSet::Int = #()
-set add: 5
-//> [5]
->set
-
-map1 = #{1 2 3 4}
-map2 = #{5 6}
-
-map3 = map1 + map2
-//> {1=2, 3=4, 5=6}
-> map3
-
-map4 = map3 - 3
-//> {1=2, 5=6}
-> map4
-
-set1 = #(1 2 3)
-set2 = #(3 4 5)
-set3 = set1 + set2
-//> [1, 2, 3, 4, 5]
->set3
-
-set4 = set3 - #(4 5)
-//> [1, 2, 3]
->set4
-set1 add: 10
-set1 remove: 1
-//> [2, 3, 10]
->set1
+list = {1 2 3 4}
 
 
-
-mut sum = 0
-mut num = 20000
-
-1 until: num do: [ i ->
-    1 until: num do: [ j ->
-        | num % j == 0 => sum <- sum + j
-    ]
-    | num == sum => sum echo
-    sum <- 0
-    num <- num dec
-]
-
+mappedList = list map: [x -> x toString + "s"]
+//> [1s, 2s, 3s, 4s, 5s]
+> mappedList

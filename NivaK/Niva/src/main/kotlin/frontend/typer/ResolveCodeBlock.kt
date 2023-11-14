@@ -18,7 +18,7 @@ fun Resolver.resolveCodeBlock(
     val namedLambdaArgs = statement.inputList
     namedLambdaArgs.forEach {
         if (it.typeAST != null) {
-            it.type = it.typeAST.toType(typeTable)
+            it.type = it.typeAST.toType(typeDB, typeTable)//fix
         }
 //        else {
 //            it.type = getTypeForIdentifier(it, previousScope, currentScope)
@@ -49,7 +49,8 @@ fun Resolver.resolveCodeBlock(
 
             // List(T, G) map::[T -> G] -> G = []
 
-            val rootType = typeTable[rootReceiverType.name]
+            val rootType = typeTable[rootReceiverType.name]//testing
+            val testDB = typeDB.getType(rootReceiverType.name)
             if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
                 fillGenericsWithLettersByOrder(rootType)
 

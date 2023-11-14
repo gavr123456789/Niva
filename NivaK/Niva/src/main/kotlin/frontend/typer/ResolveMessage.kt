@@ -46,7 +46,7 @@ fun Resolver.resolveMessage(
                     return KeywordLikeType.ForCodeBlock
                 }
                 val receiverText = statement.receiver.str
-                val keywordReceiverType = findType(receiverText, currentScope, previousScope)
+                val keywordReceiverType = getType(receiverText, currentScope, previousScope)
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
@@ -150,10 +150,14 @@ fun Resolver.resolveMessage(
             currentArgumentNumber = -1
             /// end of resolving arguments
 
+            val returnName = kwTypeFromDB?.returnType?.name ?: ""
+            val returnTypeIsSingleGeneric = returnName.length == 1 && returnName[0].isUpperCase()
+            val returnTypeIsNestedGeneric =
+                kwTypeFromDB != null && kwTypeFromDB.returnType is Type.UserLike && kwTypeFromDB.returnType.typeArgumentList.isNotEmpty()
 
             // infer return generic type from args or receiver
             if (kwTypeFromDB != null &&
-                kwTypeFromDB.returnType.name.length == 1 && kwTypeFromDB.returnType.name[0].isUpperCase() &&
+                (returnTypeIsSingleGeneric || returnTypeIsNestedGeneric) &&
                 kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
             ) {
                 fillGenericsWithLettersByOrder(receiverType)
@@ -479,7 +483,8 @@ fun Resolver.resolveMessage(
 
             // if this is message for type
             val isStaticCall =
-                receiver is IdentifierExpr && typeTable[receiver.str] != null
+                receiver is IdentifierExpr && typeTable[receiver.str] != null//testing
+            val testDB = typeDB.getType(receiver.str)
 
             val receiverType = receiver.type!!
 

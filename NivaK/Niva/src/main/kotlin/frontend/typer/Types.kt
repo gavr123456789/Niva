@@ -225,7 +225,7 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
+fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
 
     when (this) {
         is TypeAST.InternalType -> {
@@ -247,7 +247,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = nu
 
 
                 val type = typeTable[name] ?: this.token.compileError("Can't find user type: $name")
-
+                //TODO DB
                 if (type is Type.UserLike) {
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
@@ -255,7 +255,7 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = nu
                         throw Exception("Count ${this.name}'s type arguments not the same it's AST version ")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val rer = it.toType(typeTable, selfType)
+                        val rer = it.toType(typeDB, typeTable, selfType)
                         letterToTypeMap[type.typeArgumentList[i].name] = rer
                         rer
                     }
@@ -282,11 +282,11 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = nu
             val lambdaType = Type.Lambda(
                 args = inputTypesList.map {
                     TypeField(
-                        type = it.toType(typeTable, selfType),
+                        type = it.toType(typeDB, typeTable, selfType),
                         name = it.name
                     )
                 }.toMutableList(),
-                returnType = this.returnType.toType(typeTable, selfType)
+                returnType = this.returnType.toType(typeDB, typeTable, selfType)
             )
             return lambdaType
 
@@ -297,10 +297,10 @@ fun TypeAST.toType(typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = nu
 
 }
 
-fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>, selfType: Type.UserLike): TypeField {
+fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike): TypeField {
     val result = TypeField(
         name = name,
-        type = type!!.toType(typeTable, selfType)
+        type = type!!.toType(typeDB, typeTable, selfType)
     )
     return result
 }
@@ -308,6 +308,7 @@ fun TypeFieldAST.toTypeField(typeTable: Map<TypeName, Type>, selfType: Type.User
 fun SomeTypeDeclaration.toType(
     pkg: String,
     typeTable: Map<TypeName, Type>,
+    typeDB: TypeDB,
     isUnion: Boolean = false,
     root: Type.UserUnionRootType? = null
 ): Type.UserLike {
@@ -370,7 +371,7 @@ fun SomeTypeDeclaration.toType(
 //            fieldsTyped.add(fieldType)
 //            unresolvedSelfTypeGenericFields[it] = fieldType
 //        }
-        else fieldsTyped.add(it.toTypeField(typeTable, selfType = result))
+        else fieldsTyped.add(it.toTypeField(typeDB, typeTable, selfType = result))
 
 //        fieldsTyped.add(it.toTypeField(typeTable))
     }
@@ -439,11 +440,12 @@ fun SomeTypeDeclaration.toType(
 
 
 fun MessageDeclarationUnary.toMessageData(
+    typeDB: TypeDB,
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package,
     isGetter: Boolean = false
 ): UnaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable)
+    val returnType = this.returnType?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     val result = UnaryMsgMetaData(
@@ -456,12 +458,16 @@ fun MessageDeclarationUnary.toMessageData(
     return result
 }
 
-fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>, pkg: Package): BinaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable)
+fun MessageDeclarationBinary.toMessageData(
+    typeDB: TypeDB,
+    typeTable: MutableMap<TypeName, Type>,
+    pkg: Package
+): BinaryMsgMetaData {
+    val returnType = this.returnType?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
 
-    val argType = this.forTypeAst.toType(typeTable)
+    val argType = this.forTypeAst.toType(typeDB, typeTable)
 
     val result = BinaryMsgMetaData(
         name = this.name,
@@ -473,14 +479,18 @@ fun MessageDeclarationBinary.toMessageData(typeTable: MutableMap<TypeName, Type>
     return result
 }
 
-fun MessageDeclarationKeyword.toMessageData(typeTable: MutableMap<TypeName, Type>, pkg: Package): KeywordMsgMetaData {
-    val returnType = this.returnType?.toType(typeTable)
+fun MessageDeclarationKeyword.toMessageData(
+    typeDB: TypeDB,
+    typeTable: MutableMap<TypeName, Type>,
+    pkg: Package
+): KeywordMsgMetaData {
+    val returnType = this.returnType?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,
-            type = it.type?.toType(typeTable)
+            type = it.type?.toType(typeDB, typeTable)
                 ?: token.compileError("Type of keyword message ${this.name}'s arg ${it.name} not registered")
         )
     }
