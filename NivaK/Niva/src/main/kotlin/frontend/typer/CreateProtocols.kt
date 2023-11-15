@@ -456,10 +456,9 @@ fun createSetProtocols(
             createKeyword("addAll", KeywordArg("addAll", setType), boolType),
 
             createKeyword("intersect", KeywordArg("intersect", setType), setType),
-//            createKeyword("unite", KeywordArg("unite", setType), setType).rename("union"),
 
 
-        )
+            )
     )
 
     result[collectionProtocol.name] = collectionProtocol

@@ -115,9 +115,27 @@ fun Resolver.resolveMessage(
                         statement.pragmas = kwTypeFromDB.pragmas
 
                         val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
+
+                        // this is T
                         if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
                             letterToRealType[typeFromDBForThisArg.name] = argType
                         }
+                        // This is Box::T
+                        if (typeFromDBForThisArg is Type.UserLike && argType is Type.UserLike && typeFromDBForThisArg.typeArgumentList.isNotEmpty()) {
+                            // get resolved generic type from real argument
+                            if (argType.name == typeFromDBForThisArg.name && argType.typeArgumentList.count() == typeFromDBForThisArg.typeArgumentList.count()) {
+                                argType.typeArgumentList.forEachIndexed { i, type ->
+                                    val fromDb = typeFromDBForThisArg.typeArgumentList[i]
+                                    if (fromDb.name.length == 1 && fromDb.name[0].isUpperCase() && !(type.name.length == 1 && type.name[0].isUpperCase())) {
+                                        letterToRealType[fromDb.name] = type
+                                    }
+                                }
+                            } else {
+                                throw Exception("Something strange in generic resolving going on, ${argType.name} != ${typeFromDBForThisArg.name}")
+                            }
+
+                        }
+
 
                         if (typeFromDBForThisArg is Type.Lambda) {
                             if (argType !is Type.Lambda) {
@@ -157,7 +175,7 @@ fun Resolver.resolveMessage(
 
             // infer return generic type from args or receiver
             if (kwTypeFromDB != null &&
-                (returnTypeIsSingleGeneric || returnTypeIsNestedGeneric) &&
+                (returnTypeIsSingleGeneric) &&
                 kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
             ) {
                 fillGenericsWithLettersByOrder(receiverType)
