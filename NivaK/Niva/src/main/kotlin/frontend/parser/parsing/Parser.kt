@@ -11,7 +11,7 @@ import frontend.parser.types.ast.*
 
 // Declaration without end of line
 fun Parser.statement(): Statement {
-    val codeAttributes = if (check("@")) codeAttributes() else mutableListOf()
+    val pragmas = if (check("@")) codeAttributes() else mutableListOf()
     val tok = peek()
     val kind = tok.kind
 
@@ -26,7 +26,7 @@ fun Parser.statement(): Statement {
         return varDeclaration()
     }
     if (kind == TokenType.Type) {
-        return typeDeclaration(codeAttributes)
+        return typeDeclaration(pragmas)
     }
     if (kind == TokenType.Alias) {
         return typeAliasDeclaration()
@@ -35,7 +35,7 @@ fun Parser.statement(): Statement {
         return unionDeclaration()
     }
     if (kind == TokenType.Constructor) {
-        return constructorDeclaration(codeAttributes)
+        return constructorDeclaration(pragmas)
     }
 
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
@@ -70,7 +70,7 @@ fun Parser.statement(): Statement {
 
     val isItMsgDeclaration = checkTypeOfMessageDeclaration()
     if (isItMsgDeclaration != null) {
-        return messageDeclaration(isItMsgDeclaration, codeAttributes)
+        return messageDeclaration(isItMsgDeclaration, pragmas)
     }
 
 

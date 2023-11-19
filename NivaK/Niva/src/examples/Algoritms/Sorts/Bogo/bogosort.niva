@@ -1,0 +1,35 @@
+
+MutableList::Int isSorted =
+    | this count < 2 => true
+    |=> [
+        1..<this count forEach: [
+            | (this get: it) < (this get: it - 1) => ^false
+        ]
+        true
+    ]
+
+MutableList::Int shuffle = [
+    n = this count
+    swap = [ a::MutableList::Int, b::Int, c::Int ->
+        temp = a get: b
+        a at: b put: (a get: c)
+        a at: c put: temp
+    ]
+    | n < 2 => ^
+    0..<n forEach: [
+        swap a:this b:it c: (0..<n) random
+    ]
+]
+
+MutableList::Int bogosort = [
+    mut i = 0
+    [this isSorted] whileFalse: [
+        this shuffle
+        this echo
+        i <- i inc
+    ]
+    "iterations: $i" echo
+]
+
+list = {9 8 7 6 5 4 3 2 1}
+list bogosort

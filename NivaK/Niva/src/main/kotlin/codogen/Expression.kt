@@ -43,7 +43,11 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
 
             // when message is receiver
             is BinaryMsg -> TODO()
-            is KeywordMsg -> generateSingleKeyword(0, receiver, this@generateExpression)
+            is KeywordMsg -> {
+                replaceNameFromPragma(this@generateExpression)
+                generateSingleKeyword(0, receiver, this@generateExpression)
+            }
+
             is UnaryMsg -> TODO()
 
 

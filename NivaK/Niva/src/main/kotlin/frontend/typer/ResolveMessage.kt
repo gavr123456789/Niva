@@ -17,7 +17,6 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
         it.beforeGenericResolvedName = k // тут у нас один и тот же инт
 //        }
     }
-    println()
 }
 
 
@@ -47,6 +46,17 @@ fun Resolver.resolveMessage(
                 }
                 val receiverText = statement.receiver.str
                 val keywordReceiverType = getType(receiverText, currentScope, previousScope)
+                val testDB = typeDB.getType(receiverText, currentScope, previousScope)
+                val keywordReceiverType2 = when (testDB) {
+                    is TypeDBResult.FoundMoreThanOne -> {
+
+                    }
+
+                    is TypeDBResult.FoundOneInternal -> testDB.type
+
+                    is TypeDBResult.FoundOneUser -> testDB.type
+                    TypeDBResult.NotFound -> {}
+                }
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
@@ -92,11 +102,17 @@ fun Resolver.resolveMessage(
 
             val letterToRealType = mutableMapOf<String, Type>()
 
-            val kwTypeFromDB = if (kind == KeywordLikeType.Keyword) findKeywordMsgType(
-                receiverType,
-                statement.selectorName,
-                statement.token
-            ) else null
+            val kwTypeFromDB = if (kind == KeywordLikeType.Keyword)
+                findKeywordMsgType(
+                    receiverType,
+                    statement.selectorName,
+                    statement.token
+                )
+            else null
+
+            if (kwTypeFromDB != null) {
+                statement.pragmas = kwTypeFromDB.pragmas
+            }
 
             // resolve args types
             val args = statement.args
@@ -112,7 +128,7 @@ fun Resolver.resolveMessage(
 
                     // we need to check for generic args only if it is Keyword
                     if (kwTypeFromDB != null) {
-                        statement.pragmas = kwTypeFromDB.pragmas
+
 
                         val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
 
@@ -135,6 +151,7 @@ fun Resolver.resolveMessage(
                             }
 
                         }
+
 
 
                         if (typeFromDBForThisArg is Type.Lambda) {
@@ -227,7 +244,7 @@ fun Resolver.resolveMessage(
                     // name check
                     if (it.selectorName != receiverType.args[ii].name) {
 
-                        statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.selectorName }} on Line ${statement.token.line}")
+                        statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
                     }
                     // type check
                     val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
@@ -243,6 +260,31 @@ fun Resolver.resolveMessage(
                 return
             }
 
+            // check all generics are same type
+            // if resolver is generic then
+            if (receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
+                val receiverTable = mutableMapOf<String, Type>()
+                receiverType.typeArgumentList.forEach {
+                    val beforeResolveName = it.beforeGenericResolvedName
+                    if (beforeResolveName != null) {
+                        receiverTable[beforeResolveName] = it
+                    }
+                }
+                args.forEach { kwArg ->
+                    val argType = kwArg.keywordArg.type
+                    if (argType is Type.UserLike && argType.typeArgumentList.isNotEmpty()) {
+                        argType.typeArgumentList.forEach {
+                            val beforeName = it.beforeGenericResolvedName
+                            if (beforeName != null) {
+                                val typeFromReceiver = receiverTable[beforeName]
+                                if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it)) {
+                                    statement.token.compileError("Generic param of receiver: `${typeFromReceiver.name}` is different from\n\targ: `${kwArg.selectorName}: ${kwArg.keywordArg.str}::${it.name}` but both must be $beforeName")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
 
             when (kind) {
@@ -444,6 +486,13 @@ fun Resolver.resolveMessage(
                 resolve(statement.unaryMsgsForReceiver, previousAndCurrentScope, statement)
                 currentLevel--
             }
+
+            // 1 < (this get: 0)
+            if (statement.argument is ExpressionInBrackets) {
+                resolveExpressionInBrackets(statement.argument, currentScope, previousScope)
+            }
+
+
             // q = "sas" + 2 toString
             // find message for this type
             val messageReturnType =
@@ -455,7 +504,8 @@ fun Resolver.resolveMessage(
                     )
                 else
                     findBinaryMessageType(receiverType, statement.selectorName, statement.token)
-            statement.type = messageReturnType
+            statement.type = messageReturnType.returnType
+            statement.pragmas = messageReturnType.pragmas
 
         }
 
@@ -548,6 +598,7 @@ fun Resolver.resolveMessage(
 
                     statement.kind = if (messageReturnType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType.returnType
+                    statement.pragmas = messageReturnType.pragmas
                 } else {
                     val (messageReturnType, isGetter) = findStaticMessageType(
                         receiverType,
@@ -557,7 +608,8 @@ fun Resolver.resolveMessage(
                     )
 
                     statement.kind = if (isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
-                    statement.type = messageReturnType
+                    statement.type = messageReturnType.returnType
+                    statement.pragmas = messageReturnType.pragmas
                 }
 
             }

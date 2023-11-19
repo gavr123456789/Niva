@@ -1,4 +1,5 @@
 package main
+import common.*
 
 // STD
 import java.io.BufferedWriter
@@ -74,14 +75,10 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val set1 = mutableSetOf(1, 2, 3)
-    val set2 = mutableSetOf(2, 3, 4)
-    val intersect1 = (set1).intersect(set2)
-    inlineRepl(intersect1, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::25""", 1)
-    val set3 = mutableSetOf("foo", "foobar")
-    val set4 = mutableSetOf("bar", "foobar")
-    val intersect2 = (set3).intersect(set4)
-    inlineRepl(intersect2, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::32""", 1)
+    val person = common.Person(name = "sas")
+    person.name = ("new name")
+    (person).from("qwe")
+    inlineRepl(person, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::10""", 1)
     
 }
 

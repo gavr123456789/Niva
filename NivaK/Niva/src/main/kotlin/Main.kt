@@ -318,16 +318,7 @@ operator fun <K, V> MutableMap<K, V>.plus(map: MutableMap<K, V>): MutableMap<K, 
     this.apply { putAll(map) }
 
 
-@Suppress("UNUSED_VARIABLE")
 fun main(args: Array<String>) {
-
-    val myList = MyList(0)
-    myList.add(1)
-    val list = myList.head.toList()
-
-
-    val list2 = listOf(1, 2)
-
 
     // java -jar .\Niva.jar C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\.infroProject C:\Users\gavr\Documents\Projects\Fun\Niva\NivaK\Niva\src\nivaExampleProject\collections.niva
 

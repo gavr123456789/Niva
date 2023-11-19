@@ -591,7 +591,18 @@ private fun Resolver.resolveMessageDeclaration(
                 addNewKeywordMessage(statement)
         }
 
-        is ConstructorDeclaration -> if (addToDb) addStaticDeclaration(statement)
+        is ConstructorDeclaration -> {
+            if (statement.returnTypeAST == null) {
+                statement.returnTypeDeclared = forType
+//                statement.returnTypeAST = TypeAST.UserType(
+//                    name = forType.name,
+//                    typeArgumentList = listOf(),
+//                    isNullable = false,
+//                    token = createFakeToken(),
+//                )
+            }
+            if (addToDb) addStaticDeclaration(statement)
+        }
     }
 
     if (resolveBody) {
@@ -939,7 +950,7 @@ private fun Resolver.resolveStatement(
 
             val q = expr?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
             if (rootStatement is MessageDeclaration) {
-                val w = rootStatement.returnType?.toType(typeDB, typeTable)//fix
+                val w = rootStatement.returnTypeAST?.toType(typeDB, typeTable)//fix
                 if (w != null) {
                     val isReturnTypeEqualToReturnExprType = compare2Types(q, w)
                     if (!isReturnTypeEqualToReturnExprType) {
@@ -1065,13 +1076,13 @@ fun Resolver.findStaticMessageType(
     selectorName: String,
     token: Token,
     msgType: MessageDeclarationType? = null
-): Pair<Type, Boolean> {
+): Pair<MessageMetadata, Boolean> {
     receiverType.protocols.forEach { (_, v) ->
         val q = v.staticMsgs[selectorName]
         if (q != null) {
             val pkg = getCurrentPackage(token)
             pkg.addImport(receiverType.pkg)
-            return Pair(q.returnType, false)
+            return Pair(q, false)
         }
     }
 
@@ -1079,10 +1090,10 @@ fun Resolver.findStaticMessageType(
     if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
         when (msgType) {
             MessageDeclarationType.Unary ->
-                return Pair(findUnaryMessageType(receiverType, selectorName, token).returnType, true)
+                return Pair(findUnaryMessageType(receiverType, selectorName, token), true)
 
             MessageDeclarationType.Keyword ->
-                return Pair(findKeywordMsgType(receiverType, selectorName, token).returnType, true)
+                return Pair(findKeywordMsgType(receiverType, selectorName, token), true)
 
             MessageDeclarationType.Binary -> TODO()
         }
@@ -1093,17 +1104,16 @@ fun Resolver.findStaticMessageType(
 //    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
 }
 
-fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): Type {
+fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): BinaryMsgMetaData {
     if (receiverType.name.length == 1 && receiverType.name[0].isUpperCase()) {
         throw Exception("Can't receive generic type to find binary method for it")
     }
     receiverType.protocols.forEach { (_, v) ->
         val q = v.binaryMsgs[selectorName]
         if (q != null) {
-            // TODO! add unisng of keyword
             val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
-            return q.returnType
+            pkg.addImport(q.pkg)
+            return q
         }
     }
     token.compileError("Cant find binary message: $selectorName for type ${receiverType.name}")
@@ -1119,7 +1129,7 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
         if (q != null) {
             // TODO! add using of keyword to msgs list of method, maybe
             val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
+            pkg.addImport(q.pkg)
             return q
         }
     }
@@ -1162,9 +1172,15 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
         is MessageDeclarationUnary -> {
 //            staticUnaryForType[statement.name] = statement.msgDeclaration
             val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+
+            // if return type is not declared then use receiver
+            val returnType = if (statement.returnTypeAST == null)
+                typeOfReceiver
+            else statement.returnTypeDeclared ?: statement.returnTypeAST.toType(typeDB, typeTable)
+
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
-                returnType = typeOfReceiver,
+                returnType = returnType,
                 codeAttributes = statement.pragmas,
                 pkg = pkg.packageName
             )
@@ -1343,7 +1359,6 @@ fun Resolver.getType(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ): Type? {
-    val testDB = typeDB.getType(typeName, currentScope, previousScope)
 
     return typeTable[typeName]//get
         ?: currentScope[typeName]
@@ -1351,6 +1366,22 @@ fun Resolver.getType(
         ?: findTypeInAllPackages(typeName)
 }
 
+
+inline fun Resolver.getCurrentProject(): Project {
+    return projects[currentProjectName]!!
+}
+
+fun Project.findTypeInAllPackages(x: String): Type? {
+    val packages = this.packages.values
+    packages.forEach {
+        val result = it.types[x]
+        if (result != null) {
+            return result
+        }
+    }
+
+    return null
+}
 
 fun Resolver.findTypeInAllPackages(x: String): Type? {
     val packages = projects[currentProjectName]!!.packages.values

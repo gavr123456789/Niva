@@ -19,8 +19,10 @@ class TypeDB(
 // getting
 
 fun TypeDB.getType(
-    name: String, currentScope: MutableMap<String, Type>? = null,
-    previousScope: MutableMap<String, Type>? = null
+    name: String,
+    currentScope: MutableMap<String, Type>? = null,
+    previousScope: MutableMap<String, Type>? = null,
+    project: Project? = null
 ): TypeDBResult {
     // first check internal types
     val foundInInternal = internalTypes[name]

@@ -445,8 +445,9 @@ fun MessageDeclarationUnary.toMessageData(
     pkg: Package,
     isGetter: Boolean = false
 ): UnaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeDB, typeTable)
+    val returnType = this.returnTypeAST?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+    this.returnTypeDeclared = returnType
 
     val result = UnaryMsgMetaData(
         name = this.name,
@@ -463,8 +464,9 @@ fun MessageDeclarationBinary.toMessageData(
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package
 ): BinaryMsgMetaData {
-    val returnType = this.returnType?.toType(typeDB, typeTable)
+    val returnType = this.returnTypeAST?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+    this.returnTypeDeclared = returnType
 
 
     val argType = this.forTypeAst.toType(typeDB, typeTable)
@@ -484,8 +486,10 @@ fun MessageDeclarationKeyword.toMessageData(
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package
 ): KeywordMsgMetaData {
-    val returnType = this.returnType?.toType(typeDB, typeTable)
+    val returnType = this.returnTypeAST?.toType(typeDB, typeTable)
         ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+    this.returnTypeDeclared = returnType
+
 
     val keywordArgs = this.args.map {
         KeywordArg(

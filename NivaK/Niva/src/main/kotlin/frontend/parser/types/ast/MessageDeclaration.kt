@@ -11,13 +11,14 @@ sealed class MessageDeclaration(
     token: Token,
     val isSingleExpression: Boolean,
     val body: List<Statement>,
-    val returnType: TypeAST?,
+    val returnTypeAST: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     var forType: Type? = null,
+    var returnTypeDeclared: Type? = null,
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forTypeAst.name} $name -> ${returnType?.name ?: "Unit"}"
+        return "${forTypeAst.name} $name -> ${returnTypeAST?.name ?: "Unit"}"
     }
 }
 
@@ -68,7 +69,7 @@ class MessageDeclarationKeyword(
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: "Unit"}"
+        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnTypeAST?.name ?: "Unit"}"
     }
 }
 
@@ -81,7 +82,7 @@ class ConstructorDeclaration(
     token,
     msgDeclaration.isSingleExpression,
     msgDeclaration.body,
-    msgDeclaration.returnType,
+    msgDeclaration.returnTypeAST,
     msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
 )
