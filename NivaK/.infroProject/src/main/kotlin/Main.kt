@@ -1,5 +1,6 @@
 package main
-import common.*
+import a.*
+import b.*
 
 // STD
 import java.io.BufferedWriter
@@ -75,10 +76,10 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val person = common.Person(name = "sas")
-    person.name = ("new name")
-    (person).from("qwe")
-    inlineRepl(person, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::10""", 1)
+    val person1 = a.Person(age = 42)
+    person1.kek()
+    val person2 = b.Person(name = "Petr")
+    person2.kek()
     
 }
 

@@ -1,25 +1,19 @@
+
+
+Project package: "a"
+
+type Person age: Int
+Person kek = 1 echo
+person1 = Person age: 42
+person1 kek
+
+
+
+Project package: "b"
+
 type Person name: String
-Person from::String = [
-  this name: from
-]
+Person kek = 1 echo
 
-person = Person name: "sas"
-person name: "new name"
-person from: "qwe"
-//> Person name: qwe
->person
-
-
-//Project package: "a"
-//
-//type Person age: Int
-//person = Person age: 42
-//
-//
-//
-//Project package: "b"
-//
-//type Person name: String
-//person = Person name: "Petr"
-
+person2 = Person name: "Petr"
+person2 kek
 

@@ -2,7 +2,7 @@ package frontend.typer
 
 import codogen.GeneratorKt
 import codogen.collectAllGenericsFromBranches
-import codogen.loadPackages
+import codogen.addToGradleDependencies
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
@@ -372,7 +372,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     val savedPackageName = currentPackageName
     statements.forEach {
         if (it is Declaration) {
-            changePackage(savedPackageName, createFakeToken())
+//            changePackage(savedPackageName, createFakeToken())
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
         if (it is MessageSendKeyword && it.receiver.str == "Bind") {
@@ -402,11 +402,11 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
             changePackage(pkgName, it.token, true)
             val declarations = contentArg.keywordArg.statements
-            declarations.forEach {
-                if (it is Declaration) {
-                    resolveDeclarations(it, mutableMapOf(), resolveBody = false)
+            declarations.forEach { decl ->
+                if (decl is Declaration) {
+                    resolveDeclarations(decl, mutableMapOf(), resolveBody = false)
                 } else {
-                    it.token.compileError("There can be only declarations inside Bind, but found $it")
+                    decl.token.compileError("There can be only declarations inside Bind, but found $decl")
                 }
             }
 
@@ -425,6 +425,10 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                 }
             }
         }
+        if (it is MessageSendKeyword && it.receiver.str == "Project") {
+            resolveProjectKeyMessage(it)
+        }
+
     }
     changePackage(savedPackageName, createFakeToken())
 }
@@ -622,6 +626,41 @@ private fun Resolver.resolveMessageDeclaration(
 }
 
 
+fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
+    // add to the current project
+    assert(statement.messages.count() == 1)
+    val keyword = statement.messages[0] as KeywordMsg
+
+    keyword.args.forEach {
+
+        when (it.keywordArg) {
+            is LiteralExpression.StringExpr -> {
+                val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
+                when (it.selectorName) {
+                    "name" -> changeProject(substring, statement.token)
+                    "package" -> changePackage(substring, statement.token)
+                    "protocol" -> changeProtocol(substring)
+                    else -> statement.token.compileError("Unexpected argument ${it.selectorName} for Project")
+                }
+            }
+
+            is ListCollection -> {
+                when (it.selectorName) {
+                    "loadPackages" -> {
+                        if (it.keywordArg.initElements[0] !is LiteralExpression.StringExpr) {
+                            it.keywordArg.token.compileError("packages must be listed as String")
+                        }
+
+                        generator.addToGradleDependencies(it.keywordArg.initElements.map { it.token.lexeme })
+                    }
+                }
+            }
+
+            else -> it.keywordArg.token.compileError("Only String args allowed for ${it.selectorName}")
+        }
+    }
+}
+
 private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
@@ -630,45 +669,7 @@ private fun Resolver.resolveStatement(
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         when (statement2.receiver.str) {
-            "Project" -> {
-                // add to the current project
-                assert(statement2.messages.count() == 1)
-                val keyword = statement2.messages[0] as KeywordMsg
-
-                keyword.args.forEach {
-
-                    when (it.keywordArg) {
-                        is LiteralExpression.StringExpr -> {
-                            val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
-                            when (it.selectorName) {
-                                "name" -> changeProject(substring, statement2.token)
-                                "package" -> changePackage(substring, statement2.token)
-                                "protocol" -> changeProtocol(substring)
-                            }
-                        }
-
-                        is ListCollection -> {
-                            when (it.selectorName) {
-                                "loadPackages" -> {
-                                    if (it.keywordArg.initElements[0] !is LiteralExpression.StringExpr) {
-                                        it.keywordArg.token.compileError("packages must be listed as String")
-                                    }
-
-                                    generator.loadPackages(it.keywordArg.initElements.map { it.token.lexeme })
-                                }
-                            }
-                        }
-
-                        else -> it.keywordArg.token.compileError("Only String args allowed for ${it.selectorName}")
-
-                    }
-
-
-                }
-            }
-
-            "Bind" -> {
-            }
+            "Project", "Bind" -> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -764,7 +765,13 @@ private fun Resolver.resolveStatement(
 
 
         is IdentifierExpr -> {
-            getTypeForIdentifier(statement, previousScope, currentScope)
+            val kw = if (rootStatement is KeywordMsg) {
+                rootStatement
+            } else null
+            
+            getTypeForIdentifier(
+                statement, previousScope, currentScope, kw
+            )
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
@@ -1316,7 +1323,6 @@ fun Resolver.changePackage(newCurrentPackage: String, token: Token, isBinding: B
     // check that this package not exits already
     if (alreadyExistsPack != null) {
         // load table of types
-//        typeTable.clear()
         typeTable.putAll(alreadyExistsPack.types)//fixed
         alreadyExistsPack.types.values.forEach {
             if (it is Type.InternalType) {
@@ -1345,12 +1351,29 @@ fun Resolver.changeProtocol(protocolName: String) {
 fun Resolver.getTypeForIdentifier(
     x: IdentifierExpr,
     currentScope: MutableMap<String, Type>,
-    previousScope: MutableMap<String, Type>
+    previousScope: MutableMap<String, Type>,
+    kw: KeywordMsg? = null
 ): Type {
-    val type = getType(x.name, currentScope, previousScope)
+    val type = if (kw != null) getType2(x.name, currentScope, previousScope, kw) else getType(
+        x.name,
+        currentScope,
+        previousScope
+    )
         ?: x.token.compileError("Unresolved reference: ${x.str}")
 
     x.type = type
+    return type
+}
+
+
+fun Resolver.getType2(
+    typeName: String,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>,
+    statement: KeywordMsg
+): Type {
+    val q = typeDB.getType(typeName, currentScope, previousScope)
+    val type = q.getTypeFromTypeDBResult(statement)
     return type
 }
 
@@ -1359,7 +1382,6 @@ fun Resolver.getType(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ): Type? {
-
     return typeTable[typeName]//get
         ?: currentScope[typeName]
         ?: previousScope[typeName]

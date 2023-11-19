@@ -10,6 +10,7 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
 
+// Can generate source files
 class GeneratorKt(
     val dependencies: MutableList<String> = mutableListOf()
 ) {
@@ -53,7 +54,7 @@ application {
     }
 }
 
-fun GeneratorKt.loadPackages(dependenciesList: List<String>) {
+fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
     this.dependencies.addAll(dependenciesList)
 }
 

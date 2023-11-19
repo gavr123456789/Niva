@@ -19,7 +19,6 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     }
 }
 
-
 fun Resolver.resolveMessage(
     statement: Message,
     previousScope: MutableMap<String, Type>,
@@ -45,18 +44,9 @@ fun Resolver.resolveMessage(
                     return KeywordLikeType.ForCodeBlock
                 }
                 val receiverText = statement.receiver.str
-                val keywordReceiverType = getType(receiverText, currentScope, previousScope)
+//                val keywordReceiverType2 = getType(receiverText, currentScope, previousScope)
                 val testDB = typeDB.getType(receiverText, currentScope, previousScope)
-                val keywordReceiverType2 = when (testDB) {
-                    is TypeDBResult.FoundMoreThanOne -> {
-
-                    }
-
-                    is TypeDBResult.FoundOneInternal -> testDB.type
-
-                    is TypeDBResult.FoundOneUser -> testDB.type
-                    TypeDBResult.NotFound -> {}
-                }
+                val keywordReceiverType = testDB.getTypeFromTypeDBResult(statement)
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")

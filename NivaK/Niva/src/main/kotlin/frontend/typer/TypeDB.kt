@@ -1,6 +1,8 @@
 package frontend.typer
 
 import frontend.meta.Token
+import frontend.meta.compileError
+import frontend.parser.types.ast.KeywordMsg
 
 enum class TypeDBResultKind { FOUND, HAS }
 
@@ -41,7 +43,7 @@ fun TypeDB.getType(
             countOfTypes > 1 -> {
                 val map = mutableMapOf<String, Type>()
                 listOfUserTypes.forEach {
-                    map[it.name] = it
+                    map[it.pkg] = it
                 }
                 TypeDBResult.FoundMoreThanOne(map)
             }
@@ -118,6 +120,42 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
             // this type is first with that name in the list
             // this is never happen, lists contains types with same name
             list.add(type)
+        }
+    }
+}
+
+
+
+
+fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg): Type {
+    // case 1 same names different arg names
+    val setOfArgsNames = statement.args.map { it.selectorName }.toSet()
+    result.packagesToTypes.values.forEach{ type ->
+        if (type is Type.UserLike){
+            val resultSet = type.fields.map { it.name }.toSet()
+            if (resultSet == setOfArgsNames) {
+                return type
+            }
+        }
+    }
+    // same names, same arg names, different art's types
+
+    TODO()
+}
+
+
+fun TypeDBResult.getTypeFromTypeDBResult( statement: KeywordMsg): Type {
+
+    return when (this) {
+        is TypeDBResult.FoundMoreThanOne -> {
+            resolveTypeIfSameNames(this, statement)
+        }
+
+        is TypeDBResult.FoundOneInternal -> this.type
+
+        is TypeDBResult.FoundOneUser -> this.type
+        TypeDBResult.NotFound -> {
+            statement.token.compileError("Cant find type: ${statement.receiver}")
         }
     }
 }

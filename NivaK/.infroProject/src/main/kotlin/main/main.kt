@@ -1,4 +1,5 @@
 package main
 
 import main.*
-import common.*
+import a.*
+import b.*
