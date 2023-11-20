@@ -2,7 +2,6 @@ package frontend.typer
 
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 
 enum class TypeDBResultKind { FOUND, HAS }
@@ -11,7 +10,7 @@ sealed class TypeDBResult {
     class FoundOneUser(val type: Type.UserLike) : TypeDBResult()
     class FoundOneInternal(val type: Type.InternalType) : TypeDBResult()
     class FoundMoreThanOne(val packagesToTypes: Map<String, Type>) : TypeDBResult()
-    data object NotFound : TypeDBResult()
+    class NotFound(val notFountName: String) : TypeDBResult()
 }
 
 class TypeDB(
@@ -49,7 +48,7 @@ fun TypeDB.getType(
                 TypeDBResult.FoundMoreThanOne(map)
             }
 
-            countOfTypes == 0 -> TypeDBResult.NotFound
+            countOfTypes == 0 -> TypeDBResult.NotFound(name)
             else -> throw Exception("???")
         }
 
@@ -80,7 +79,7 @@ fun TypeDB.getType(
                 }
             }
         }
-        return TypeDBResult.NotFound
+        return TypeDBResult.NotFound(name)
     }
 }
 
@@ -126,8 +125,6 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 }
 
 
-
-
 fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg): Type {
     // case 1 same names different arg names
     val setOfArgsNames = statement.args.map { it.selectorName }.toSet()
@@ -136,8 +133,8 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()
 
-    result.packagesToTypes.values.forEach{ type ->
-        if (type is Type.UserLike){
+    result.packagesToTypes.values.forEach { type ->
+        if (type is Type.UserLike) {
             val resultSetNames = type.fields.map { it.name }.toSet()
             val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
             val sameNames = resultSetNames == setOfArgsNames
@@ -149,7 +146,7 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
 //            else if (sameNames && !sameTypes) {
 //                return type
 //            }
-            
+
             // same names, same arg names, different art's types
 //            if (!sameNames && sameTypes) {
 //                return type
@@ -162,7 +159,7 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResult( statement: KeywordMsg): Type {
+fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg): Type {
 
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
@@ -172,8 +169,8 @@ fun TypeDBResult.getTypeFromTypeDBResult( statement: KeywordMsg): Type {
         is TypeDBResult.FoundOneInternal -> this.type
 
         is TypeDBResult.FoundOneUser -> this.type
-        TypeDBResult.NotFound -> {
-            statement.token.compileError("Cant find type: ${statement.receiver}")
+        is TypeDBResult.NotFound -> {
+            statement.token.compileError("Cant find type: ${this.notFountName}")
         }
     }
 }

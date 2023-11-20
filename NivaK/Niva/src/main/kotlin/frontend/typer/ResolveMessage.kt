@@ -180,8 +180,13 @@ fun Resolver.resolveMessage(
                 }
                 val receiverText = statement.receiver.str
 //                val keywordReceiverType2 = getType(receiverText, currentScope, previousScope)
-                val testDB = typeDB.getType(receiverText, currentScope, previousScope)
-                val keywordReceiverType = testDB.getTypeFromTypeDBResult(statement)
+                // TODO! resolve type for Bracket expressions, maybe?
+                val testDB = if (statement.receiver is IdentifierExpr) typeDB.getType(
+                    receiverText,
+                    currentScope,
+                    previousScope
+                ) else null
+                val keywordReceiverType = testDB?.getTypeFromTypeDBResult(statement)
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
@@ -496,6 +501,8 @@ fun Resolver.resolveMessage(
                 is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
                 is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
                 is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
+                is LiteralExpression.CharExpr -> Resolver.defaultTypes[InternalTypes.Char]
+
                 is KeywordMsg, is UnaryMsg, is BinaryMsg -> receiver.type
 
                 is MessageSend, is MapCollection, is ListCollection, is SetCollection, is CodeBlock -> TODO()
@@ -579,6 +586,7 @@ fun Resolver.resolveMessage(
                     is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
                     is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
                     is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
+                    is LiteralExpression.CharExpr -> Resolver.defaultTypes[InternalTypes.Char]
                 }
 
             // if this is message for type

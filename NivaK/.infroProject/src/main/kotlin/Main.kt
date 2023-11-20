@@ -1,4 +1,6 @@
 package main
+import a.*
+import b.*
 
 // STD
 import java.io.BufferedWriter
@@ -74,8 +76,10 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val x = mutableListOf(1, 2, 3)
-    (x).forEach({it.echo()})
+    val person1 = a.Person(age = 42)
+    person1.kek()
+    val person2 = b.Person(name = 56)
+    person2.kek()
     
 }
 

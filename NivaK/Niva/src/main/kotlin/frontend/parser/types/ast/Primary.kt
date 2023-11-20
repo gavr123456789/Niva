@@ -19,6 +19,13 @@ sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, l
         }
     }
 
+    class CharExpr(literal: Token) :
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Char, false, literal), literal) {
+        override fun toString(): String {
+            return this.token.lexeme.slice(1 until token.lexeme.count() - 1)
+        }
+    }
+
     class FalseExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, false, literal), literal)
 

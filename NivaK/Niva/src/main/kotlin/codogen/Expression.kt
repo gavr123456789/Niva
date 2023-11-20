@@ -27,7 +27,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             is LiteralExpression.FloatExpr -> str
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
-
+            is LiteralExpression.CharExpr -> str
+            
             is ListCollection -> {
                 generateList()
             }

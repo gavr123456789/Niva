@@ -1,8 +1,8 @@
 package frontend.typer
 
 import codogen.GeneratorKt
-import codogen.collectAllGenericsFromBranches
 import codogen.addToGradleDependencies
+import codogen.collectAllGenericsFromBranches
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
@@ -376,7 +376,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
         }
         if (it is MessageSendKeyword && it.receiver.str == "Bind") {
             val savedPackageName = currentPackageName
-            
+
             val msg = it.messages[0]
             if (msg !is KeywordMsg)
                 it.token.compileError("Bind must have keyword message")
@@ -422,7 +422,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
                 }
             }
-            
+
             changePackage(savedPackageName, createFakeToken())
         }
         if (it is MessageSendKeyword && it.receiver.str == "Project") {
@@ -767,7 +767,7 @@ private fun Resolver.resolveStatement(
             val kw = if (rootStatement is KeywordMsg) {
                 rootStatement
             } else null
-            
+
             getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
@@ -921,6 +921,9 @@ private fun Resolver.resolveStatement(
 
         is LiteralExpression.StringExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.String]
+
+        is LiteralExpression.CharExpr ->
+            statement.type = Resolver.defaultTypes[InternalTypes.Char]
 
         is LiteralExpression.TrueExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]

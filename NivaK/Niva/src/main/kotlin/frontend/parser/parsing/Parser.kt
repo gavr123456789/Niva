@@ -124,6 +124,8 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
+        TokenType.Char -> LiteralExpression.CharExpr(step())
+
         TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
 
 //        TokenType.OpenParen -> TODO()
@@ -189,7 +191,9 @@ fun Token.isPrimaryToken(): Boolean =
         TokenType.False,
         TokenType.Integer,
         TokenType.Float,
-        TokenType.String -> true
+        TokenType.Char,
+        TokenType.String,
+        -> true
 
         else -> false
     }
@@ -229,6 +233,10 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
 fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expression {
+    if (check(TokenType.Return)) {
+        TODO()// надо сделать ретурн экспрешоном
+    }
+
     if (check(TokenType.Pipe)) {
         return ifOrSwitch()
     }
