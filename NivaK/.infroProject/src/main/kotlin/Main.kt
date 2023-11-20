@@ -78,7 +78,7 @@ inline fun Boolean.isTrue() = this
 fun main() {
     val person1 = a.Person(age = 42)
     person1.kek()
-    val person2 = b.Person(name = "Petr")
+    val person2 = b.Person(name = 56)
     person2.kek()
     
 }
