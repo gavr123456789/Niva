@@ -374,60 +374,65 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 //            changePackage(savedPackageName, createFakeToken())
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
-        if (it is MessageSendKeyword && it.receiver.str == "Bind") {
-            val savedPackageName = currentPackageName
+        if (it is MessageSendKeyword) {
+            when (it.receiver.str) {
+                "Project" ->
+                    resolveProjectKeyMessage(it)
 
-            val msg = it.messages[0]
-            if (msg !is KeywordMsg)
-                it.token.compileError("Bind must have keyword message")
-            if (msg.args.count() < 2)
-                it.token.compileError("Bind must have at least 2 argument: package and content")
-            val pkgArg = msg.args.find { it.selectorName == "package" }
-            if (pkgArg == null)
-                msg.token.compileError("'package' param is missing")
-            val contentArg = msg.args.find { it.selectorName == "content" }
-            if (contentArg == null)
-                msg.token.compileError("'content' param is missing")
+                "Bind" -> {
+                    val savedPackageName = currentPackageName
+
+                    val msg = it.messages[0]
+                    if (msg !is KeywordMsg)
+                        it.token.compileError("Bind must have keyword message")
+                    if (msg.args.count() < 2)
+                        it.token.compileError("Bind must have at least 2 argument: package and content")
+                    val pkgArg = msg.args.find { it.selectorName == "package" }
+                    if (pkgArg == null)
+                        msg.token.compileError("'package' param is missing")
+                    val contentArg = msg.args.find { it.selectorName == "content" }
+                    if (contentArg == null)
+                        msg.token.compileError("'content' param is missing")
 
 
-            if (pkgArg.keywordArg !is LiteralExpression)
-                pkgArg.keywordArg.token.compileError("Package argument must be a string")
-            if (contentArg.keywordArg !is CodeBlock)
-                contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
+                    if (pkgArg.keywordArg !is LiteralExpression)
+                        pkgArg.keywordArg.token.compileError("Package argument must be a string")
+                    if (contentArg.keywordArg !is CodeBlock)
+                        contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
 
-            val pkgName = pkgArg.keywordArg.toString()
+                    val pkgName = pkgArg.keywordArg.toString()
 
-            changePackage(pkgName, it.token, true)
-            val declarations = contentArg.keywordArg.statements
-            declarations.forEach { decl ->
-                if (decl is Declaration) {
-                    resolveDeclarations(decl, mutableMapOf(), resolveBody = false)
-                } else {
-                    decl.token.compileError("There can be only declarations inside Bind, but found $decl")
-                }
-            }
-
-            val gettersArg = msg.args.find { it.selectorName == "getters" }
-            if (gettersArg != null) {
-                if (gettersArg.keywordArg !is CodeBlock)
-                    gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
-                val gettersDeclarations = gettersArg.keywordArg.statements
-                gettersDeclarations.forEach { getter ->
-
-                    if (getter !is MessageDeclarationUnary) {
-                        getter.token.compileError("Union declaration expected")
+                    changePackage(pkgName, it.token, true)
+                    val declarations = contentArg.keywordArg.statements
+                    declarations.forEach { decl ->
+                        if (decl is Declaration) {
+                            resolveDeclarations(decl, mutableMapOf(), resolveBody = false)
+                        } else {
+                            decl.token.compileError("There can be only declarations inside Bind, but found $decl")
+                        }
                     }
-                    addNewUnaryMessage(getter, isGetter = true)
 
+                    val gettersArg = msg.args.find { it.selectorName == "getters" }
+                    if (gettersArg != null) {
+                        if (gettersArg.keywordArg !is CodeBlock)
+                            gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
+                        val gettersDeclarations = gettersArg.keywordArg.statements
+                        gettersDeclarations.forEach { getter ->
+
+                            if (getter !is MessageDeclarationUnary) {
+                                getter.token.compileError("Union declaration expected")
+                            }
+                            addNewUnaryMessage(getter, isGetter = true)
+
+                        }
+                    }
+
+                    changePackage(savedPackageName, createFakeToken())
                 }
             }
+        }
 
-            changePackage(savedPackageName, createFakeToken())
-        }
-        if (it is MessageSendKeyword && it.receiver.str == "Project") {
-            resolveProjectKeyMessage(it)
-        }
     }
 //    changePackage(savedPackageName, createFakeToken())
 }

@@ -1,5 +1,4 @@
 
-Project package: "a"
 
 type Person age: Int
 Person kek = 1
