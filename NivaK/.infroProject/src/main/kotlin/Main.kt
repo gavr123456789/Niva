@@ -1,6 +1,5 @@
 package main
 import a.*
-import b.*
 
 // STD
 import java.io.BufferedWriter
@@ -77,9 +76,7 @@ inline fun Boolean.isTrue() = this
 
 fun main() {
     val person1 = a.Person(age = 42)
-    person1.kek()
-    val person2 = b.Person(name = 56)
-    person2.kek()
+    inlineRepl(person1.kek(), """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::6""", 1)
     
 }
 

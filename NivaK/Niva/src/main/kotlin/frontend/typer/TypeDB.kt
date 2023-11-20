@@ -126,7 +126,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 }
 
 
-fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg): Type {
+fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg, imports: Set<String>): Type {
     // if statement has clarification already like a.Person
     val receiver = statement.receiver
     if (receiver is IdentifierExpr && receiver.names.count() > 1) {
@@ -141,13 +141,7 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()
 
-    val isThereTypesWithAllSame = false
-
-    val checkThatEveryTypeIsDifferent = {
-        result.packagesToTypes.values.forEach {
-
-        }
-    }
+    val set = mutableSetOf<Type>()
 
 
     // case 1 same names different arg names
@@ -159,10 +153,27 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
             val sameTypes = resultSetTypes == setOfArgsTypeNames
 
             if (sameNames && sameTypes) {
-                return type
+                set.add(type)
             }
 
         }
+    }
+
+    if (set.count() == 1) {
+        return set.first()
+    }
+    // we have 2 or more absolutely same types defined in different packages
+    // need to check if current package has some import
+
+    val qwe = set.find { imports.contains(it.pkg) }
+    if (qwe != null) {
+        return qwe
+    } else {
+        statement.token.compileError(
+            "Type `${statement.receiver}` is defined in may packages: ${set.map { it.pkg }},\n\t" +
+                    "please specify what package you wanna use with for example `${set.first().pkg}.${statement.receiver}`\n\t" +
+                    "or `Project use: \"${set.first().pkg}\"` "
+        )
     }
 
 
@@ -170,11 +181,11 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg): Type {
+fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg, imports: Set<String>): Type {
 
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
-            resolveTypeIfSameNames(this, statement)
+            resolveTypeIfSameNames(this, statement, imports)
         }
 
         is TypeDBResult.FoundOneInternal -> this.type

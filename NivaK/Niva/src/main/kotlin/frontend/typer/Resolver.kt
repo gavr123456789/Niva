@@ -639,6 +639,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "name" -> changeProject(substring, statement.token)
                     "package" -> changePackage(substring, statement.token)
                     "protocol" -> changeProtocol(substring)
+                    "use" -> usePackage(substring)
                     else -> statement.token.compileError("Unexpected argument ${it.selectorName} for Project")
                 }
             }
@@ -1350,6 +1351,11 @@ fun Resolver.changeProtocol(protocolName: String) {
     currentProtocolName = protocolName
 }
 
+fun Resolver.usePackage(packageName: String) {
+    val currentPkg = getCurrentPackage(this.statements.last().token)
+    currentPkg.addImport(packageName)
+}
+
 fun Resolver.getTypeForIdentifier(
     x: IdentifierExpr,
     currentScope: MutableMap<String, Type>,
@@ -1375,7 +1381,9 @@ fun Resolver.getType2(
     statement: KeywordMsg
 ): Type {
     val q = typeDB.getType(typeName, currentScope, previousScope)
-    val type = q.getTypeFromTypeDBResult(statement)
+    val currentPackage = getCurrentPackage(statement.token)
+
+    val type = q.getTypeFromTypeDBResult(statement, currentPackage.currentImports)
     return type
 }
 

@@ -1,0 +1,5 @@
+
+Project package: "b"
+
+type Person age: Int
+Person kek = 2
