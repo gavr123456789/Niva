@@ -72,20 +72,17 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
 
 fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String) {
 
-    fun listFilesRecursively(directory: File): List<File> {
+    fun listFilesRecursively(directory: File, ext: String): List<File> {
         val fileList = mutableListOf<File>()
 
-        // Получаем все файлы и поддиректории в данной директории
         val filesAndDirs = directory.listFiles()
 
         if (filesAndDirs != null) {
             for (file in filesAndDirs) {
-                if (file.isFile) {
-                    // Если это файл, добавляем его в список
+                if (file.isFile && file.extension == ext) {
                     fileList.add(file)
                 } else if (file.isDirectory) {
-                    // Если это директория, рекурсивно вызываем эту же функцию для нее
-                    fileList.addAll(listFilesRecursively(file))
+                    fileList.addAll(listFilesRecursively(file, ext))
                 }
             }
         }
@@ -96,7 +93,7 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
 
     val mainFile = File(pathToProjectRootFile)
     val projectFolder = mainFile.absoluteFile.parentFile
-    val otherFilesPaths = listFilesRecursively(projectFolder).filter { it.name != mainFile.name }
+    val otherFilesPaths = listFilesRecursively(projectFolder, "niva").filter { it.name != mainFile.name }
     // we have main file, and all other files, so we can create resolver now
 
     val resolver = Resolver(

@@ -69,10 +69,6 @@ fun Resolver.resolveCodeBlock(
                         // was resolved somehow
                         genericLetterToTypes[beforeName] = it
 
-                    } else {
-
-                        println()
-
                     }
                 }
             }

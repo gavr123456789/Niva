@@ -115,7 +115,6 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
 }
 
 fun Package.generateImports() = buildString {
-
     currentImports.forEach {
         append("import $it.*\n")
     }

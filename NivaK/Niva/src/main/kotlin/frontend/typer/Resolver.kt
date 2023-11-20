@@ -369,27 +369,25 @@ class Resolver(
 }
 
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
-    val savedPackageName = currentPackageName
     statements.forEach {
         if (it is Declaration) {
 //            changePackage(savedPackageName, createFakeToken())
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
         if (it is MessageSendKeyword && it.receiver.str == "Bind") {
+            val savedPackageName = currentPackageName
+            
             val msg = it.messages[0]
             if (msg !is KeywordMsg)
                 it.token.compileError("Bind must have keyword message")
             if (msg.args.count() < 2)
                 it.token.compileError("Bind must have at least 2 argument: package and content")
-
             val pkgArg = msg.args.find { it.selectorName == "package" }
             if (pkgArg == null)
                 msg.token.compileError("'package' param is missing")
-
             val contentArg = msg.args.find { it.selectorName == "content" }
             if (contentArg == null)
                 msg.token.compileError("'content' param is missing")
-
 
 
             if (pkgArg.keywordArg !is LiteralExpression)
@@ -424,13 +422,14 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
                 }
             }
+            
+            changePackage(savedPackageName, createFakeToken())
         }
         if (it is MessageSendKeyword && it.receiver.str == "Project") {
             resolveProjectKeyMessage(it)
         }
-
     }
-    changePackage(savedPackageName, createFakeToken())
+//    changePackage(savedPackageName, createFakeToken())
 }
 
 // нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any

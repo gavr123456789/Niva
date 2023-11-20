@@ -23,9 +23,13 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 fun Resolver.resolveKwArgs(
     statement: KeywordMsg,
     previousScope: MutableMap<String, Type>,
-    currentScope: MutableMap<String, Type>
+    currentScope: MutableMap<String, Type>,
+    filterCodeBlock: Boolean
 ) {
-    val args = statement.args
+    val args = if (filterCodeBlock)
+        statement.args.filter { it.keywordArg !is CodeBlock }
+    else statement.args
+
     args.forEachIndexed { argNum, it ->
         if (it.keywordArg.type == null) {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -151,7 +155,7 @@ fun Resolver.resolveMessage(
     when (statement) {
         is KeywordMsg -> {
             // resolve just non generic types of args
-            resolveKwArgs(statement, currentScope, previousScope)
+            resolveKwArgs(statement, currentScope, previousScope, true)
 
             // resolve receiverType
             val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
@@ -164,6 +168,10 @@ fun Resolver.resolveMessage(
             val receiverType =
                 statement.receiver.type
                     ?: statement.token.compileError("Can't infer receiver ${statement.receiver.str} type")
+
+            resolveKwArgs(statement, currentScope, previousScope, false)
+
+
             // resolve kw kind
             var foundCustomConstructorDb: MessageMetadata? = null
             fun resolveKindOfKeyword(statement: KeywordMsg): KeywordLikeType {
