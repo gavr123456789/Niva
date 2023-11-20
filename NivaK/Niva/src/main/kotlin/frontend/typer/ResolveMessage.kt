@@ -174,24 +174,26 @@ fun Resolver.resolveMessage(
 
             // resolve kw kind
             var foundCustomConstructorDb: MessageMetadata? = null
-            fun resolveKindOfKeyword(statement: KeywordMsg): KeywordLikeType {
+            fun resolveKindOfKeyword(statement: KeywordMsg, receiverType: Type): KeywordLikeType {
                 if (receiverType is Type.Lambda) {
                     return KeywordLikeType.ForCodeBlock
                 }
-                val receiverText = statement.receiver.str
+                val receiver = statement.receiver
+                val receiverText = receiver.toString()
 //                val keywordReceiverType2 = getType(receiverText, currentScope, previousScope)
                 // TODO! resolve type for Bracket expressions, maybe?
-                val testDB = if (statement.receiver is IdentifierExpr) typeDB.getType(
-                    receiverText,
-                    currentScope,
-                    previousScope
-                ) else null
-                val keywordReceiverType = testDB?.getTypeFromTypeDBResult(statement)
+//                val testDB = if (statement.receiver is IdentifierExpr) typeDB.getType(
+//                    receiverText,
+//                    currentScope,
+//                    previousScope
+//                ) else null
+//
+                val keywordReceiverType = receiverType//testDB?.getTypeFromTypeDBResult(statement)
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
-                val isThisConstructor = keywordReceiverType != null && keywordReceiverType.name == receiverText
+                val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
                 if (isThisConstructor) {
                     if (keywordReceiverType is Type.UserUnionRootType) {
                         statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
@@ -228,7 +230,7 @@ fun Resolver.resolveMessage(
                 return KeywordLikeType.Keyword
             }
 
-            val kind = resolveKindOfKeyword(statement)
+            val kind = resolveKindOfKeyword(statement, receiverType)
 
             val letterToRealType = mutableMapOf<String, Type>()
 

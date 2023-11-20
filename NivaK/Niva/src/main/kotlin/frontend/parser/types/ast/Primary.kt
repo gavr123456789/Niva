@@ -42,7 +42,11 @@ class IdentifierExpr(
     type: TypeAST? = null,
     token: Token,
 //    val depth: Int,
-) : Primary(type, token)
+) : Primary(type, token) {
+    override fun toString(): String {
+        return names.joinToString(".")
+    }
+}
 
 sealed class Collection(type: Type?, token: Token) : Receiver(type, token)
 class ListCollection(

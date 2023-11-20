@@ -2,6 +2,7 @@ package frontend.typer
 
 import frontend.meta.Token
 import frontend.meta.compileError
+import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 
 enum class TypeDBResultKind { FOUND, HAS }
@@ -126,31 +127,41 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 
 
 fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg): Type {
-    // case 1 same names different arg names
+    // if statement has clarification already like a.Person
+    val receiver = statement.receiver
+    if (receiver is IdentifierExpr && receiver.names.count() > 1) {
+        val packageName = receiver.names.dropLast(1).joinToString(".")
+        val resultType = result.packagesToTypes[packageName]
+            ?: statement.token.compileError("Can't find type ${receiver.name} inside $packageName package")
+        return resultType
+    }
+
     val setOfArgsNames = statement.args.map { it.selectorName }.toSet()
     val setOfArgsTypeNames = statement.args.map {
-        // нужно резолвнуть аргументы сначала, на аст тип полагаться незя, он есть только у обычных литералов
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()
 
+    val isThereTypesWithAllSame = false
+
+    val checkThatEveryTypeIsDifferent = {
+        result.packagesToTypes.values.forEach {
+
+        }
+    }
+
+
+    // case 1 same names different arg names
     result.packagesToTypes.values.forEach { type ->
         if (type is Type.UserLike) {
             val resultSetNames = type.fields.map { it.name }.toSet()
             val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
             val sameNames = resultSetNames == setOfArgsNames
             val sameTypes = resultSetTypes == setOfArgsTypeNames
-            // same names, different arg names
+
             if (sameNames && sameTypes) {
                 return type
             }
-//            else if (sameNames && !sameTypes) {
-//                return type
-//            }
 
-            // same names, same arg names, different art's types
-//            if (!sameNames && sameTypes) {
-//                return type
-//            }
         }
     }
 

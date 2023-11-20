@@ -2,19 +2,18 @@
 Project package: "a"
 
 type Person age: Int
-Person kek = 1 echo
+Person kek = 1
 
 
 Project package: "b"
 
-type Person name: Int
-Person kek = 2 echo
+type Person age: Int
+Person kek = 2
 
 
 
 
-person1 = Person age: 42
-person1 kek
+person1 = b.Person age: 42
+//> 2
+>person1 kek
 
-person2 = Person name: 56
-person2 kek
