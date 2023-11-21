@@ -1,7 +1,7 @@
 
-Project use: "b"
+Project use: "a"
 
 person1 = Person age: 42
-//> 2
+//> 1
 >person1 kek
 
