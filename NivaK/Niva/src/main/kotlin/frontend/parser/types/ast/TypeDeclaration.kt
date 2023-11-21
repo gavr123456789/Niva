@@ -83,7 +83,11 @@ class TypeFieldAST(
     val name: String,
     val type: TypeAST?,
     val token: Token,
-)
+) {
+    override fun toString(): String {
+        return name +(type?.toString() ?: "")
+    }
+}
 
 sealed class SomeTypeDeclaration(
     val typeName: String,

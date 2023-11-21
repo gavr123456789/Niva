@@ -1,0 +1,25 @@
+MutableList::Int selectionSort = [
+
+    swap = [a::MutableList::Int, b::Int, c::Int ->
+        temp = a get: b
+        a at: b put: (a get: c)
+        a at: c put: temp
+    ]
+
+    mut min = 0
+
+    0..<this count forEach: [ i ->
+        min <- i
+        (i + 1)..<this count forEach: [ j ->
+            | (this get: j) < (this get: min) => min <- j
+        ]
+        swap a: this b: min c: i
+    ]
+]
+
+list = {9 8 7 6 5 4 3 2 1}
+
+list selectionSort
+//> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+>list
+

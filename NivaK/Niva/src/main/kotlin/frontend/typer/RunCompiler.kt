@@ -24,16 +24,21 @@ fun Resolver.resolve() {
     // generate ast for others
     val otherASTs = otherFilesPaths.map {
         val src = it.readText()
-        getAst(source = src, file = it)
+        it.nameWithoutExtension to getAst(source = src, file = it)
     }
 
     /// resolve all declarations
     statements = mainAST.toMutableList()
 
+
+    // create main package
+    changePackage(mainFile.nameWithoutExtension, createFakeToken())
     resolveDeclarationsOnly(mainAST)
     otherASTs.forEach {
-        statements = it.toMutableList()
-        resolveDeclarationsOnly(it)
+        // create package
+        changePackage(it.first, createFakeToken())
+        statements = it.second.toMutableList()
+        resolveDeclarationsOnly(it.second)
     }
 
     if (unResolvedMessageDeclarations.isNotEmpty()) {
@@ -60,12 +65,13 @@ fun Resolver.resolve() {
     allDeclarationResolvedAlready = true
 
 
-    currentPackageName = "main"
+    currentPackageName = mainFile.nameWithoutExtension
     resolve(mainAST, mutableMapOf())
-    currentPackageName = "common"
+//    currentPackageName = "common"
     otherASTs.forEach {
-        statements = it.toMutableList()
-        resolve(it, mutableMapOf())
+        currentPackageName = it.first
+        statements = it.second.toMutableList()
+        resolve(it.second, mutableMapOf())
     }
 
 }

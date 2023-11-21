@@ -19,6 +19,13 @@ sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, l
         }
     }
 
+    class CharExpr(literal: Token) :
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Char, false, literal), literal) {
+        override fun toString(): String {
+            return this.token.lexeme.slice(1 until token.lexeme.count() - 1)
+        }
+    }
+
     class FalseExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, false, literal), literal)
 
@@ -35,7 +42,11 @@ class IdentifierExpr(
     type: TypeAST? = null,
     token: Token,
 //    val depth: Int,
-) : Primary(type, token)
+) : Primary(type, token) {
+    override fun toString(): String {
+        return names.joinToString(".")
+    }
+}
 
 sealed class Collection(type: Type?, token: Token) : Receiver(type, token)
 class ListCollection(
