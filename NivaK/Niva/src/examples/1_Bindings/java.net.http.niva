@@ -1,0 +1,28 @@
+Bind package: "java.net" content: [
+    type URI
+    constructor URI create::String -> URI
+]
+
+Bind package: "java.net.http" content: [
+    type HttpRequest value: String
+    constructor HttpRequest newBuilder -> HttpRequest
+    HttpRequest uri::URI -> HttpRequest
+    HttpRequest build -> HttpRequest
+
+    type BodyHandlers
+
+    type HttpResponse
+    HttpResponse body -> String
+    @rename: "BodyHandlers.ofString"
+    constructor HttpResponse ofString -> BodyHandlers
+
+    type HttpClient value: String
+    constructor HttpClient newHttpClient -> HttpClient
+    @rename: "send"
+    HttpClient send::HttpRequest handler::BodyHandlers -> HttpResponse
+]
+
+client = HttpClient newHttpClient
+request = ((HttpRequest newBuilder) uri: (URI create: "https://postman-echo.com/get")) build
+response = client send: request handler: (HttpResponse ofString)
+response body echo

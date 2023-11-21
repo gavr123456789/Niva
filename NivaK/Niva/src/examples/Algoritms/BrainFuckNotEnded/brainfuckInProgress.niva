@@ -1,0 +1,41 @@
+
+
+Bind package: "java.io" content: [
+    type File pathname: String
+    File exists -> Boolean
+    File readText -> String
+]
+
+
+
+
+a = "abc"
+w = a forEach: [ it echo ]
+
+
+pathToFile = "/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/bench.b"
+
+f = File pathname: pathToFile
+| f exists isFalse -> ^
+
+program = f readText
+
+type BrainFuck
+
+BrainFuck matchJumps: program::String -> Map(Int, Int) = [
+    stack::MutableList::Int = {}
+    jumpMap::MutableMap(Int, Int) = #{}
+    mut i = 0
+    program forEach: [
+        i <- i inc
+    ]
+]
+
+
+BrainFuck runProgram: p::String = [
+    1 echo
+    // jumps = matchJumps(program)
+    // mem = MutableList(30000, init = { 0 })
+    // pc = 0
+    // cursor = 0
+]

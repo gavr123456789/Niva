@@ -27,7 +27,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             is LiteralExpression.FloatExpr -> str
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
-
+            is LiteralExpression.CharExpr -> str
+            
             is ListCollection -> {
                 generateList()
             }
@@ -43,7 +44,11 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
 
             // when message is receiver
             is BinaryMsg -> TODO()
-            is KeywordMsg -> generateSingleKeyword(0, receiver, this@generateExpression)
+            is KeywordMsg -> {
+                replaceNameFromPragma(this@generateExpression)
+                generateSingleKeyword(0, receiver, this@generateExpression)
+            }
+
             is UnaryMsg -> TODO()
 
 
