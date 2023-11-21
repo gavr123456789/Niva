@@ -1097,6 +1097,14 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun ghhjg() {
+        val source = """
+            type Saas::T
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
 //    @Test
 //    fun unaryOnManyLines() {

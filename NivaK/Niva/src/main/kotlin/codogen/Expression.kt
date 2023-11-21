@@ -4,7 +4,7 @@ import frontend.parser.types.ast.*
 
 fun replaceKeywords(str: String) =
     when (str) {
-        "do", "val", "var" -> "`$str`"
+        "do", "val", "var", "class", "if" -> "`$str`"
         else -> str
     }
 
@@ -28,7 +28,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
             is LiteralExpression.CharExpr -> str
-            
+
             is ListCollection -> {
                 generateList()
             }

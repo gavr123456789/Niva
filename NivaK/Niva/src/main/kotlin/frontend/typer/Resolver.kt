@@ -192,14 +192,14 @@ class Resolver(
         /// Default packages
         val commonProject = Project("common")
         val corePackage = Package("core")
-        val mainPackage = Package("main")
+        val mainPackage = Package("mainNiva")
 
         // pkg with everything that was declared without package specification
         commonProject.packages["common"] = Package("common")
         // pkg with std types like Int
         commonProject.packages["core"] = corePackage
         // package with main function
-        commonProject.packages["main"] = mainPackage
+        commonProject.packages["mainNiva"] = mainPackage
 
 
         /////init basic types/////
@@ -344,7 +344,7 @@ class Resolver(
             name = "Error",
             typeArgumentList = listOf(),
             fields = mutableListOf(TypeField("message", stringType)),
-            pkg = "kotlin",
+            pkg = "core",
         )
         errorType.isBinding = true
         errorType.protocols.putAll(
