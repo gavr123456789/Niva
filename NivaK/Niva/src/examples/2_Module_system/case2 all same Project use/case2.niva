@@ -1,0 +1,8 @@
+// no imports needed!
+// resolver will use the type from a pkg, because of `use:`
+Project use: "a"
+
+person1 = Person age: 42
+//> 1
+>person1 kek
+

@@ -1,3 +1,4 @@
+// no imports is needed
 Person buy = [
     wallet = Wallet money: 23
     wallet something

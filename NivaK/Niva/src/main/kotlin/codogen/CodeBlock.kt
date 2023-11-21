@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.CodeBlock
+import frontend.parser.types.ast.generateType
 
 fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}
@@ -13,7 +14,13 @@ fun CodeBlock.generateCodeBlock() = buildString {
 
     // x: Int, ->
     inputList.forEach {
-        append(it.name, ": ", it.type!!.name, ", ")
+        append(it.name, ": ")
+        if (it.typeAST != null) {
+            append(it.typeAST.generateType())
+        } else {
+            append(it.type!!.name)
+        }
+        append(", ")
     }
     val isThereArgs = inputList.isNotEmpty()
     // generate single line lambda or not

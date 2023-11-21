@@ -40,12 +40,12 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     // }
     append("fun ")
     // TODO also every argument can be generic, not only return type
-    if (returnType != null) {
-        val isThereUnresolvedTypeArgs = returnType.name.count() == 1 && returnType.name[0].isUpperCase()
+    if (returnTypeAST != null) {
+        val isThereUnresolvedTypeArgs = returnTypeAST.name.count() == 1 && returnTypeAST.name[0].isUpperCase()
         if (isThereUnresolvedTypeArgs) {
             // There can be resolved type args like box::Box::Int, then we don't need to add them
             append("<")
-            append(returnType.name)
+            append(returnTypeAST.name)
             append(">")
         }
     }
@@ -137,8 +137,8 @@ private fun bodyPart(
     messageDeclaration: MessageDeclaration,
     stringBuilder: StringBuilder
 ) {
-    if (messageDeclaration.returnType != null) {
-        stringBuilder.append(": ", messageDeclaration.returnType.generateType())
+    if (messageDeclaration.returnTypeAST != null) {
+        stringBuilder.append(": ", messageDeclaration.returnTypeAST.generateType())
     }
     if (messageDeclaration.body.isEmpty()) {
         stringBuilder.append(" { }\n")
