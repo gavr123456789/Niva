@@ -1,11 +1,16 @@
 set1 = #(1 2 3)
-set2 = #(3 4 5)
-set3 = set1 + set2
-//> [1, 2, 3, 4, 5]
+set2 = #(2 3 4)
+
+intersect = set1 intersect: set2
+>intersect
+
+
+set3 = set1 + set2 + 0 - 4
+//> [1, 2, 3, 0]
 >set3
 
-set4 = set3 - #(4 5)
-//> [1, 2, 3]
+set4 = set3 - #(3 0)
+//> [1, 2]
 >set4
 
 set1 add: 10

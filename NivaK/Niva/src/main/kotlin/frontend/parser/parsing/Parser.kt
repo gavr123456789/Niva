@@ -11,7 +11,7 @@ import frontend.parser.types.ast.*
 
 // Declaration without end of line
 fun Parser.statement(): Statement {
-    val codeAttributes = if (check("@")) codeAttributes() else mutableListOf()
+    val pragmas = if (check("@")) codeAttributes() else mutableListOf()
     val tok = peek()
     val kind = tok.kind
 
@@ -26,7 +26,7 @@ fun Parser.statement(): Statement {
         return varDeclaration()
     }
     if (kind == TokenType.Type) {
-        return typeDeclaration(codeAttributes)
+        return typeDeclaration(pragmas)
     }
     if (kind == TokenType.Alias) {
         return typeAliasDeclaration()
@@ -35,7 +35,7 @@ fun Parser.statement(): Statement {
         return unionDeclaration()
     }
     if (kind == TokenType.Constructor) {
-        return constructorDeclaration(codeAttributes)
+        return constructorDeclaration(pragmas)
     }
 
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
@@ -70,7 +70,7 @@ fun Parser.statement(): Statement {
 
     val isItMsgDeclaration = checkTypeOfMessageDeclaration()
     if (isItMsgDeclaration != null) {
-        return messageDeclaration(isItMsgDeclaration, codeAttributes)
+        return messageDeclaration(isItMsgDeclaration, pragmas)
     }
 
 
@@ -124,6 +124,8 @@ fun Parser.primary(): Primary? =
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
+        TokenType.Char -> LiteralExpression.CharExpr(step())
+
         TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
 
 //        TokenType.OpenParen -> TODO()
@@ -189,7 +191,9 @@ fun Token.isPrimaryToken(): Boolean =
         TokenType.False,
         TokenType.Integer,
         TokenType.Float,
-        TokenType.String -> true
+        TokenType.Char,
+        TokenType.String,
+        -> true
 
         else -> false
     }
@@ -229,6 +233,10 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
 fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expression {
+    if (check(TokenType.Return)) {
+        TODO()// надо сделать ретурн экспрешоном
+    }
+
     if (check(TokenType.Pipe)) {
         return ifOrSwitch()
     }

@@ -41,7 +41,7 @@ fun Lexer.fillSymbolTable() {
         "alias" to TokenType.Alias,
         "union" to TokenType.Union,
         "constructor" to TokenType.Constructor,
-        "use" to TokenType.Use,
+//        "use" to TokenType.Use,
 
         "true" to TokenType.True,
         "false" to TokenType.False,

@@ -181,12 +181,14 @@ fun createStringProtocols(
                 listOf(KeywordArg("replace", intType), KeywordArg("with", intType)), stringType
             )
                 .rename("replace"),
-
+            createForEachKeyword(charType, unitType),
+            createFilterKeyword(charType, boolType, stringType),
             createKeyword("get", KeywordArg("get", intType), charType),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
             createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
         ),
     )
+    
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }
@@ -440,7 +442,9 @@ fun createSetProtocols(
             createBinary("==", setType, boolType),
             createBinary("!=", setType, boolType),
             createBinary("+", setType, setType),
+            createBinary("+", genericTypeOfSetElements, setType),
             createBinary("-", setType, setType),
+            createBinary("-", genericTypeOfSetElements, setType),
 
             ),
         keywordMsgs = mutableMapOf(
@@ -453,6 +457,8 @@ fun createSetProtocols(
 
             createKeyword("addAll", KeywordArg("addAll", setType), boolType),
 
+            createKeyword("intersect", KeywordArg("intersect", setType), setType),
+
 
             )
     )
@@ -462,7 +468,7 @@ fun createSetProtocols(
 }
 
 private fun createForEachKeyword(
-    genericTypeOfSetElements: Type.UnknownGenericType,
+    genericTypeOfSetElements: Type,
     unitType: Type.InternalType
 ) = createKeyword(
     "forEach",
@@ -574,7 +580,7 @@ fun createMapProtocols(
 }
 
 private fun createMapKeyword(
-    genericTypeOfListElements: Type.UnknownGenericType,
+    genericTypeOfListElements: Type,
     differentGenericType: Type.UnknownGenericType,
     listTypeOfDifferentGeneric: Type.UserType
 ) = createKeyword(
@@ -590,14 +596,14 @@ private fun createMapKeyword(
 )
 
 private fun createFilterKeyword(
-    genericTypeOfSetElements: Type.UnknownGenericType,
+    genericTypeOfSetElements: Type,
     boolType: Type.InternalType,
-    setType: Type.UserType
+    returnType: Type
 ) = createKeyword(
     "filter",
     KeywordArg(
         "filter",
         Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfSetElements)), boolType)
     ),
-    setType
+    returnType
 )
