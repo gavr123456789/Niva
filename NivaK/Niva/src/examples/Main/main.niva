@@ -1,7 +1,64 @@
 
-Project use: "a"
 
-person1 = Person age: 42
-//> 1
->person1 kek
+Bind package: "java.io" content: [
+    type File pathname: String
+    File exists -> Boolean
+    File readText -> String
+]
 
+Bind package: "java.util" content: [
+    type Stack::T
+    Stack push::T -> Unit
+    Stack pop -> T
+]
+
+
+a = "abc"
+w = a forEach: [ it echo ]
+
+
+pathToFile = "/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/bench.b"
+
+f = File pathname: pathToFile
+| f exists isFalse => ^
+
+program = f readText
+
+
+
+type BrainFuck
+
+stack2::Stack::String = Stack
+stack2 push: "sas"
+qwe = stack2 pop
+(qwe + qwe) echo
+
+BrainFuck matchJumps: program::String -> MutableMap(Int, Int) = [
+
+    stack::MutableList::Int = {}
+    jumpMap::MutableMap(Int, Int) = #{}
+    mut i = 0
+    program forEach: [
+        | it
+        | '[' => stack add: i
+        | ']' => [
+//            other =
+            1 echo
+        ]
+
+        i <- i inc
+    ]
+
+
+
+    Error throwWithMessage: "TODO"
+]
+
+
+BrainFuck runProgram: p::String = [
+    1 echo
+    // jumps = matchJumps(program)
+    // mem = MutableList(30000, init = { 0 })
+    // pc = 0
+    // cursor = 0
+]

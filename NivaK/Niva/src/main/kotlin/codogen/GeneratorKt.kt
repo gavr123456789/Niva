@@ -47,7 +47,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("main.MainKt")
+    mainClass.set("mainNiva.MainKt")
 }
 
 """
@@ -92,7 +92,7 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
 }
 
 fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package) = buildString {
-    append("package main\n")
+    append("package ${mainPkg.packageName}\n")
     val code1 = ktCode.addIndentationForEachString(1)
     val mainCode = putInMainKotlinCode(code1)
     val code3 = addNivaStd(mainCode)
@@ -141,12 +141,15 @@ fun GeneratorKt.generateKtProject(
     // 1 recreate pathToSrcKtFolder
     deleteAndRecreateKotlinFolder(path)
     // 2 generate Main.kt
-    val mainPkg = mainProject.packages["main"]!!
+    val mainPkg = mainProject.packages["mainNiva"]!!
+
+
     val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg)
     val mainFile = createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
     generatePackages(path.toPath(), notBindedPackages)
+
 
     // 4 regenerate gradle
     regenerateGradle(pathToGradle)
@@ -157,7 +160,7 @@ fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null
 
         append("package ${pkg.packageName}\n\n")
         if (pkg.packageName != "core")
-            append("import main.*\n")
+            append("import mainNiva.*\n")
 
         append(pkg.generateImports())
 

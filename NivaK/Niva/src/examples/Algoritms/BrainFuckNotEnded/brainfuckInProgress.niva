@@ -16,7 +16,7 @@ w = a forEach: [ it echo ]
 pathToFile = "/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/bench.b"
 
 f = File pathname: pathToFile
-| f exists isFalse -> ^
+| f exists isFalse => ^
 
 program = f readText
 

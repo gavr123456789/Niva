@@ -29,6 +29,6 @@ kotlin {
 }
 
 application {
-    mainClass.set("main.MainKt")
+    mainClass.set("mainNiva.MainKt")
 }
 

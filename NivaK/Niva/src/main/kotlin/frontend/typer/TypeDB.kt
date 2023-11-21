@@ -9,6 +9,8 @@ enum class TypeDBResultKind { FOUND, HAS }
 
 sealed class TypeDBResult {
     class FoundOneUser(val type: Type.UserLike) : TypeDBResult()
+    class FoundOneLambda(val type: Type.Lambda) : TypeDBResult()
+
     class FoundOneInternal(val type: Type.InternalType) : TypeDBResult()
     class FoundMoreThanOne(val packagesToTypes: Map<String, Type>) : TypeDBResult()
     class NotFound(val notFountName: String) : TypeDBResult()
@@ -16,6 +18,7 @@ sealed class TypeDBResult {
 
 class TypeDB(
     val internalTypes: MutableMap<String, Type.InternalType> = mutableMapOf(),
+    val lambdaTypes: MutableMap<String, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf()
 )
 
@@ -61,8 +64,11 @@ fun TypeDB.getType(
                 return when (type) {
                     is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
                     is Type.UserLike -> TypeDBResult.FoundOneUser(type)
+                    is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
+
                     else -> {
-                        throw Exception("Type can be only internal or user like")
+
+                        throw Exception("Type can be only internal or user like, but its ${type::class.simpleName}")
                     }
                 }
             }
@@ -74,6 +80,7 @@ fun TypeDB.getType(
                 return when (type) {
                     is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
                     is Type.UserLike -> TypeDBResult.FoundOneUser(type)
+                    is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
                     else -> {
                         throw Exception("Type can be only internal or user like")
                     }
@@ -87,16 +94,25 @@ fun TypeDB.getType(
 // adding
 
 fun TypeDB.add(type: Type, token: Token) {
-    if (type is Type.InternalType) {
-        addInternalType(type.name, type)
+    when (type) {
+        is Type.UserLike -> addUserLike(type.name, type, token)
+        is Type.InternalType -> addInternalType(type.name, type)
+        is Type.Lambda -> {
+            addLambdaType(type.name, type)
+        }
+
+        Type.RecursiveType -> TODO()
+        is Type.NullableInternalType -> TODO()
     }
-    if (type is Type.UserLike) {
-        addUserLike(type.name, type, token)
-    }
+
 }
 
 fun TypeDB.addInternalType(typeName: TypeName, type: Type.InternalType) {
     internalTypes[typeName] = type
+}
+
+fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
+    lambdaTypes[typeName] = type
 }
 
 fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
@@ -165,9 +181,9 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
     // we have 2 or more absolutely same types defined in different packages
     // need to check if current package has some import
 
-    val qwe = set.find { imports.contains(it.pkg) }
-    if (qwe != null) {
-        return qwe
+    val type = set.find { imports.contains(it.pkg) }
+    if (type != null) {
+        return type
     } else {
         statement.token.compileError(
             "Type `${statement.receiver}` is defined in may packages: ${set.map { it.pkg }},\n\t" +
@@ -175,9 +191,6 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
                     "or `Project use: \"${set.first().pkg}\"` "
         )
     }
-
-
-    TODO()
 }
 
 
@@ -189,10 +202,12 @@ fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg, imports: Set<Str
         }
 
         is TypeDBResult.FoundOneInternal -> this.type
-
         is TypeDBResult.FoundOneUser -> this.type
+        is TypeDBResult.FoundOneLambda -> this.type
+
         is TypeDBResult.NotFound -> {
             statement.token.compileError("Cant find type: ${this.notFountName}")
         }
+
     }
 }

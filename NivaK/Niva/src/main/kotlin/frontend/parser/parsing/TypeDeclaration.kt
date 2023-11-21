@@ -14,6 +14,10 @@ fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDecl
     val typeName = matchAssertAnyIdent("after \"type\" type identifier expected")
     // type Person^ name: string age: int
 
+    val genericTypeParam = if (match(TokenType.DoubleColon)) {
+        matchAssertAnyIdent("inside type declaration after `Type::` generic param expected")
+    } else null
+
     // if type decl separated
     val apostropheOrIdentWithColon = check(TokenType.Apostrophe) ||
             (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
@@ -31,6 +35,9 @@ fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDecl
         token = typeToken,
         codeAttributes = codeAttributes
     )
+    if (genericTypeParam != null) {
+        result.genericFields.add(genericTypeParam.lexeme)
+    }
     return result
 }
 
