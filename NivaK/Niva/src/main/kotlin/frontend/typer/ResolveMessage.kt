@@ -385,14 +385,8 @@ fun Resolver.resolveMessage(
 
                         // replace every Generic type with real
                         if (receiverType.typeArgumentList.isNotEmpty()) {
-                            replacerTypeIfItGeneric = Type.UserType(
-                                name = receiverType.name,
-                                typeArgumentList = receiverType.typeArgumentList.toList(),
-                                fields = receiverType.fields,
-                                isPrivate = receiverType.isPrivate,
-                                pkg = receiverType.pkg,
-                                protocols = receiverType.protocols.toMutableMap()
-                            )
+                            replacerTypeIfItGeneric = receiverType.copy()
+
                             // match every type argument with fields
                             // replace fields types to real one
                             val map = mutableMapOf<String, Type>()
@@ -594,7 +588,15 @@ fun Resolver.resolveMessage(
             // if this is message for type
             val isStaticCall =
                 receiver is IdentifierExpr && typeTable[receiver.str] != null//testing
-            val testDB = typeDB.getType(receiver.str)
+
+            val testDB = if (receiver is IdentifierExpr)
+                typeDB.getTypeOfIdentifierReceiver(
+                    receiver,
+                    receiver,
+                    getCurrentImports(receiver.token),
+                    currentScope,
+                    previousScope
+                ) else null
 
             val receiverType = receiver.type!!
 
@@ -637,9 +639,21 @@ fun Resolver.resolveMessage(
 
                 if (!isStaticCall) {
                     val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token)
-
+                    val receiverType = receiver.type
                     statement.kind = if (messageReturnType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
-                    statement.type = messageReturnType.returnType
+
+
+                    statement.type = if (messageReturnType.returnType is Type.UnknownGenericType) {
+                        if (receiverType is Type.UserLike) {
+                            receiverType.typeArgumentList.find { it.beforeGenericResolvedName == messageReturnType.returnType.name }
+                                ?: statement.token.compileError("Cant infer return generic type of unary ${statement.selectorName}")
+                        } else {
+                            throw Exception("Return type is generic, but receiver of ${statement.selectorName} is not user type")
+                        }
+                    } else {
+                        messageReturnType.returnType
+                    }
+
                     statement.pragmas = messageReturnType.pragmas
                 } else {
                     val (messageReturnType, isGetter) = findStaticMessageType(

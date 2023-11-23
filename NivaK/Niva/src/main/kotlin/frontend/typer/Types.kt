@@ -143,7 +143,18 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
+        fun copy() =
+            UserType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields,
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                protocols = this.protocols.toMutableMap()
+            )
+
+    }
 
     class UserUnionRootType(
         var branches: List<UserUnionBranchType>,
@@ -310,7 +321,7 @@ fun SomeTypeDeclaration.toType(
     typeTable: Map<TypeName, Type>,
     typeDB: TypeDB,
     isUnion: Boolean = false,
-    root: Type.UserUnionRootType? = null
+    root: Type.UserUnionRootType? = null,
 ): Type.UserLike {
 
     val result = if (isUnion)
@@ -360,20 +371,7 @@ fun SomeTypeDeclaration.toType(
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)
 
-        }
-//        else if (astType != null && astType is TypeAST.UserType && astType.typeArgumentList.find { it.name == typeName } != null) {
-//            println()
-//            // this field's type contains the type itself
-//            val fieldType = TypeField(
-//                name = it.name,
-//                type = Type.RecursiveType
-//            )
-//            fieldsTyped.add(fieldType)
-//            unresolvedSelfTypeGenericFields[it] = fieldType
-//        }
-        else fieldsTyped.add(it.toTypeField(typeDB, typeTable, selfType = result))
-
-//        fieldsTyped.add(it.toTypeField(typeTable))
+        } else fieldsTyped.add(it.toTypeField(typeDB, typeTable, selfType = result))
     }
 
     fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
@@ -407,33 +405,27 @@ fun SomeTypeDeclaration.toType(
 
     val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
     val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
-    val typeFields = typeFields1 + typeFieldsGeneric
+
+
+    val typeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
 
 
     unresolvedSelfTypeFields.forEach {
         it.type = result
     }
-//    unresolvedSelfTypeGenericFields.forEach { (astField, field) ->
-//        // сопоставить с оригиналом, нет, это просто должна быть хешмапа оригиналов Аст к реальным филдам
-//        // найти на каком уровне собственно содержится рекурсивность
-//        println(astField)
-//        println(field)
-//        val astType = astField.type
-//
-//        if (astType is TypeAST.UserType) {
-//            var typeArgList = astType.typeArgumentList
-//            val q = typeArgList[0]
-//            if (q.name == typeName) {
-//                println()
-//            }
-//
-//        }
-//
-//    }
+
     result.typeArgumentList = typeFields
     result.fields = fieldsTyped
 
+
     this.genericFields.addAll(typeFields.map { it.name })
+
+    // add already declared generic fields(via `type Sas::T` syntax)
+    this.genericFields.forEach {
+        if (it.count() == 1 && it[0].isUpperCase()) {
+            typeFields.add(Type.UnknownGenericType(it))
+        }
+    }
 
     return result
 }

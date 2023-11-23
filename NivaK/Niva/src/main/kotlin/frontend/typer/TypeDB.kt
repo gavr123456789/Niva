@@ -4,6 +4,7 @@ import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
+import frontend.parser.types.ast.Receiver
 
 enum class TypeDBResultKind { FOUND, HAS }
 
@@ -23,12 +24,10 @@ class TypeDB(
 )
 
 // getting
-
 fun TypeDB.getType(
     name: String,
     currentScope: MutableMap<String, Type>? = null,
     previousScope: MutableMap<String, Type>? = null,
-    project: Project? = null
 ): TypeDBResult {
     // first check internal types
     val foundInInternal = internalTypes[name]
@@ -91,6 +90,23 @@ fun TypeDB.getType(
     }
 }
 
+fun TypeDB.getTypeOfIdentifierReceiver(
+    typeName: IdentifierExpr,
+    value: Receiver,
+    imports: Set<String>,
+    currentScope: MutableMap<String, Type>? = null,
+    previousScope: MutableMap<String, Type>? = null,
+): Type {
+
+
+    val q = getType(typeName.name, currentScope, previousScope)
+    val w = q.getTypeFromTypeDBResultConstructor(
+        KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())),
+        imports
+    )
+    return w
+}
+
 // adding
 
 fun TypeDB.add(type: Type, token: Token) {
@@ -142,7 +158,11 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 }
 
 
-fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: KeywordMsg, imports: Set<String>): Type {
+fun resolveTypeIfSameNamesFromConstructor(
+    result: TypeDBResult.FoundMoreThanOne,
+    statement: KeywordMsg,
+    imports: Set<String>
+): Type {
     // if statement has clarification already like a.Person
     val receiver = statement.receiver
     if (receiver is IdentifierExpr && receiver.names.count() > 1) {
@@ -194,11 +214,10 @@ fun resolveTypeIfSameNames(result: TypeDBResult.FoundMoreThanOne, statement: Key
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg, imports: Set<String>): Type {
-
+fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg, imports: Set<String>): Type {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
-            resolveTypeIfSameNames(this, statement, imports)
+            resolveTypeIfSameNamesFromConstructor(this, statement, imports)
         }
 
         is TypeDBResult.FoundOneInternal -> this.type
@@ -208,6 +227,5 @@ fun TypeDBResult.getTypeFromTypeDBResult(statement: KeywordMsg, imports: Set<Str
         is TypeDBResult.NotFound -> {
             statement.token.compileError("Cant find type: ${this.notFountName}")
         }
-
     }
 }

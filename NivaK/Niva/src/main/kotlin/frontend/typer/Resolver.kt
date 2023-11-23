@@ -192,14 +192,14 @@ class Resolver(
         /// Default packages
         val commonProject = Project("common")
         val corePackage = Package("core")
-        val mainPackage = Package("mainNiva")
+        val mainPackage = Package(MAIN_PKG_NAME)
 
         // pkg with everything that was declared without package specification
         commonProject.packages["common"] = Package("common")
         // pkg with std types like Int
         commonProject.packages["core"] = corePackage
         // package with main function
-        commonProject.packages["mainNiva"] = mainPackage
+        commonProject.packages[MAIN_PKG_NAME] = mainPackage
 
 
         /////init basic types/////
@@ -728,6 +728,41 @@ private fun Resolver.resolveStatement(
                 ?: statement.token.compileError("In var declaration ${statement.name} value doesn't got type")
             val statementDeclaredType = statement.valueType
 
+            // generics in right part, but real type in left, x::List::Int = List
+            var copyType: Type? = null
+            if (value is Receiver &&
+                valueType is Type.UserType &&
+                valueType.typeArgumentList.find { it.name.length == 1 && it.name[0].isUpperCase() } != null &&
+                statementDeclaredType is TypeAST.UserType && statementDeclaredType.typeArgumentList.find { it.name.length == 1 && it.name[0].isUpperCase() } == null
+            ) {
+                copyType = valueType.copy()
+
+                if (statementDeclaredType.typeArgumentList.count() != copyType.typeArgumentList.count()) {
+                    statement.token.compileError(
+                        "Not all generic type are presented, statement has ${
+                            statementDeclaredType.typeArgumentList.joinToString(
+                                ", "
+                            ) { it.name }
+                        } but type has ${copyType.typeArgumentList.joinToString(", ") { it.name }}"
+                    )
+                }
+                val newTypeArgList: MutableList<Type> = mutableListOf()
+                statementDeclaredType.typeArgumentList.forEachIndexed { i, typeAST ->
+                    // find every type of statement and replace it in type
+
+                    val e = typeDB.getTypeOfIdentifierReceiver(
+                        IdentifierExpr(typeAST.name, token = typeAST.token),
+                        value,
+                        getCurrentImports(statement.token)
+                    )
+                    e.beforeGenericResolvedName = copyType.typeArgumentList[i].name
+                    newTypeArgList.add(e)
+                }
+                copyType.typeArgumentList = newTypeArgList
+                value.type = copyType
+            }
+            //
+
             // if this is Type with zero fields constructor
             // replace Identifier with Keyword kind: Constructor
             if (value.str[0].isUpperCase() && value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
@@ -750,7 +785,7 @@ private fun Resolver.resolveStatement(
                 }
             }
 
-            currentScope[statement.name] = valueType
+            currentScope[statement.name] = copyType ?: valueType
 
             if (currentLevel == 0) {
                 topLevelStatements.add(statement)
@@ -1177,7 +1212,7 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token): Pair<Protocol, 
 }
 
 fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
-
+fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).currentImports
 
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
@@ -1321,11 +1356,14 @@ fun Resolver.changeProject(newCurrentProject: String, token: Token) {
     TODO()
 }
 
-fun Resolver.changePackage(newCurrentPackage: String, token: Token, isBinding: Boolean = false) {
+fun Resolver.changePackage(
+    newCurrentPackage: String,
+    token: Token,
+    isBinding: Boolean = false,
+    isMainFile: Boolean = false
+) {
     currentPackageName = newCurrentPackage
-
     val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $currentProjectName")
-
     val alreadyExistsPack = currentProject.packages[newCurrentPackage]
 
     // check that this package not exits already
@@ -1347,7 +1385,15 @@ fun Resolver.changePackage(newCurrentPackage: String, token: Token, isBinding: B
             packageName = newCurrentPackage,
             isBinding = isBinding
         )
+
         currentProject.packages[newCurrentPackage] = pack
+        // top level statements and default defenitions located in different pkgs
+        // so to add access from top level statements(mainNiva) to this defenitions
+        // we need to always import it
+        if (isMainFile) {
+            val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
+            mainNivaPkg.addImport(newCurrentPackage)
+        }
     }
 
 }
@@ -1388,7 +1434,7 @@ fun Resolver.getType2(
     val q = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement.token)
 
-    val type = q.getTypeFromTypeDBResult(statement, currentPackage.currentImports)
+    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.currentImports)
     return type
 }
 

@@ -2,6 +2,7 @@ package codogen
 
 import addNivaStd
 import frontend.parser.types.ast.Statement
+import frontend.typer.MAIN_PKG_NAME
 import frontend.typer.Package
 import frontend.typer.Project
 import frontend.util.addIndentationForEachString
@@ -129,7 +130,9 @@ fun GeneratorKt.generateKtProject(
     // remove imports of empty packages from other packages
     val notBindedPackages = mainProject.packages.values.filter { !it.isBinding }
     notBindedPackages.forEach { pkg ->
-        if (pkg.declarations.isEmpty()) {
+        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
+// ты тут выбрасываешь ВСЕ пакеты из пакетов в котором нет дефенишонов
+            // но в меин пакете всегда нет дефенишонов, ало
             notBindedPackages.forEach { pkg2 ->
                 pkg2.currentImports -= pkg.packageName
             }
@@ -141,7 +144,7 @@ fun GeneratorKt.generateKtProject(
     // 1 recreate pathToSrcKtFolder
     deleteAndRecreateKotlinFolder(path)
     // 2 generate Main.kt
-    val mainPkg = mainProject.packages["mainNiva"]!!
+    val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
 
     val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg)
@@ -160,7 +163,7 @@ fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null
 
         append("package ${pkg.packageName}\n\n")
         if (pkg.packageName != "core")
-            append("import mainNiva.*\n")
+            append("import $MAIN_PKG_NAME.*\n")
 
         append(pkg.generateImports())
 

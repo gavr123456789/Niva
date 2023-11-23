@@ -7,6 +7,8 @@ import frontend.parser.types.ast.Statement
 import lex
 import java.io.File
 
+const val MAIN_PKG_NAME = "mainNiva"
+
 fun Resolver.resolve() {
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
@@ -32,7 +34,9 @@ fun Resolver.resolve() {
 
 
     // create main package
-    changePackage(mainFile.nameWithoutExtension, createFakeToken())
+    changePackage(mainFile.nameWithoutExtension, createFakeToken(), isMainFile = true)
+
+
     resolveDeclarationsOnly(mainAST)
     otherASTs.forEach {
         // create package

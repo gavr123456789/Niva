@@ -311,9 +311,6 @@ fun <T> MyList<T>.add(data: T) {
     head = result
 }
 
-operator fun <K, V> MutableMap<K, V>.plus(map: MutableMap<K, V>): MutableMap<K, V> =
-    this.apply { putAll(map) }
-
 
 fun main(args: Array<String>) {
 
