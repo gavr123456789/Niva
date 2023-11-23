@@ -1098,13 +1098,23 @@ class ParserTest {
     }
 
     @Test
-    fun ghhjg() {
+    fun typeNoParamsButGeneric() {
         val source = """
             type Saas::T
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun lambdaNoArgs() {
+        val source = """
+            x::[-> Int] = [5]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {

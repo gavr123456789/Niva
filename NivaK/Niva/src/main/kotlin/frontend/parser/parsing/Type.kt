@@ -43,7 +43,9 @@ fun Parser.parseType(): TypeAST {
 
         // [int -> string]?
         // [anyType, anyType -> anyType]?
-        val listOfInputTypes = listOfInputTypes()
+        // [ -> anyType]
+
+        val listOfInputTypes = if (!check(TokenType.ReturnArrow)) listOfInputTypes() else listOf()
         matchAssert(TokenType.ReturnArrow, "-> expected after list of input types in lambda type declaration")
 
         val returnType = parseType()

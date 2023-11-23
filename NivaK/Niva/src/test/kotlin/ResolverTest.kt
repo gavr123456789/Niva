@@ -9,7 +9,6 @@ import java.io.File
 fun resolve(source: String): List<Statement> {
     val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
-
     return resolver.resolve(resolver.statements, mutableMapOf())
 }
 
@@ -19,7 +18,6 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     statements = statements.toMutableList()
 )
 
-
 class ResolverTest {
     @Test
     fun getterCall() {
@@ -28,9 +26,9 @@ class ResolverTest {
             person = Person name: "sas"
             person name
         """.trimIndent()
-        val ktCode = resolve(source)
-        assert(ktCode.count() == 3)
-        val q = ktCode[2] as MessageSendUnary
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val q = statements[2] as MessageSendUnary
         assert(q.type?.name == "String")
 
         val getter = q.messages[0]
@@ -46,8 +44,8 @@ class ResolverTest {
                 ^ this + add2
             ]
         """.trimIndent()
-        val ast = resolve(source)
-        assert(ast.count() == 1)
+        val statements = resolve(source)
+        assert(statements.count() == 1)
 
     }
 
@@ -59,10 +57,10 @@ class ResolverTest {
             person = Person name: x age: 5
         """.trimIndent()
 
-        val ast = resolve(source)
-        assert(ast.count() == 3)
+        val statements = resolve(source)
+        assert(statements.count() == 3)
 
-        val q = ast[2] as VarDeclaration
+        val q = statements[2] as VarDeclaration
 
         val value = q.value as MessageSendKeyword
         assert(value.type?.name == "Person")
@@ -88,10 +86,10 @@ class ResolverTest {
             ]
         """.trimIndent()
 
-        val ktCode = resolve(source)
-        assert(ktCode.count() == 3)
+        val statements = resolve(source)
+        assert(statements.count() == 3)
 
-        val q = ktCode[2] as MessageDeclarationUnary
+        val q = statements[2] as MessageDeclarationUnary
         val firstOfBody = q.body.first() as MessageSendKeyword
         val msg = firstOfBody.messages[0]
         val receiver = msg.receiver
@@ -111,10 +109,10 @@ class ResolverTest {
             ]
         """.trimIndent()
 
-        val ktCode = resolve(source)
-        assert(ktCode.count() == 3)
+        val statements = resolve(source)
+        assert(statements.count() == 3)
 
-        val q = ktCode[2] as MessageDeclarationUnary
+        val q = statements[2] as MessageDeclarationUnary
         val firstOfBody = q.body.first() as MessageSendUnary
         val msg = firstOfBody.messages[0]
         val receiver = msg.receiver
@@ -151,8 +149,8 @@ class ResolverTest {
             Project package: "files" protocol: "path"
             type Person name: String age: Int
         """.trimIndent()
-        val ast = getAstTest(source)
 
+        val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
 
         val q = resolver.projects["common"]!!
@@ -224,7 +222,7 @@ class ResolverTest {
 //        assert(resolver.topLevelStatements.isNotEmpty())
 //        assert(resolver.topLevelStatements.count() == 3)
 //    }
-    
+
 //
 //    @Test
 //    fun recreateKtFolder() {
@@ -300,11 +298,8 @@ class ResolverTest {
             x = [x::Int, y::Int -> x + y]
             x x: 1 y: 2
         """.trimIndent()
+        val statements = resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
         val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
         lambdaCall.args.forEach {
@@ -318,11 +313,8 @@ class ResolverTest {
         val source = """
             [x::Int, y::Int -> x + y]
         """.trimIndent()
+        resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        resolver.resolve(resolver.statements, mutableMapOf())
     }
 
     @Test
@@ -331,10 +323,8 @@ class ResolverTest {
         val source = """
             1 to: 3 do: [ 1 echo ]
         """.trimIndent()
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
         val lambdaCall = ((statements[0]) as MessageSendKeyword).messages[0] as KeywordMsg
         lambdaCall.args.forEach {
@@ -350,10 +340,8 @@ class ResolverTest {
             x do 
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
 //        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
 //        lambdaCall.args.forEach {
@@ -367,10 +355,8 @@ class ResolverTest {
             1 echo
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
 
@@ -383,16 +369,10 @@ class ResolverTest {
             ]
             1 to: 2 doo: [5 + 5]
         """.trimIndent()
+        val statements = resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
-//        val lambdaCall = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
-//        lambdaCall.args.forEach {
-//            assert(it.keywordArg.type != null)
-//        }
+
     }
 
     @Test
@@ -402,10 +382,8 @@ class ResolverTest {
             {1 2 3}
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
         val listCollection = statements[0] as ListCollection
         assert(listCollection.type != null)
@@ -425,10 +403,8 @@ class ResolverTest {
             |=> 7
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
 
@@ -444,10 +420,8 @@ class ResolverTest {
             ]
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
     }
 
@@ -477,11 +451,8 @@ class ResolverTest {
               x echo
             ]
         """.trimIndent()
+        val statements = resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
 
@@ -494,11 +465,8 @@ class ResolverTest {
               x echo
             ]
         """.trimIndent()
+        val statements = resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
 
@@ -509,11 +477,8 @@ class ResolverTest {
         val source = """
              6 > 5 && (6 < 10)
         """.trimIndent()
+        val statements = resolve(source)
 
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 1)
     }
 
@@ -529,10 +494,8 @@ class ResolverTest {
 
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
     }
 
@@ -556,12 +519,11 @@ class ResolverTest {
 
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 6)
     }
+
 
     @Test
     fun genericInferReturnTypeFromReceiver() {
@@ -573,10 +535,8 @@ class ResolverTest {
 
         """.trimIndent()
 
+        val statements = resolve(source)
 
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 3)
     }
 
@@ -589,15 +549,21 @@ class ResolverTest {
             ]
 
         """.trimIndent()
-
-
-        val ast = getAstTest(source)
-        val resolver = createDefaultResolver(ast)
-        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        val statements = resolve(source)
         assert(statements.count() == 1)
     }
 
+    @Test
+    fun typeNoParamsButGeneric() {
 
+        val source = """
+            type Saas::T
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        assert((statements[0] as TypeDeclaration).genericFields[0] == "T")
+    }
 }
 
 
