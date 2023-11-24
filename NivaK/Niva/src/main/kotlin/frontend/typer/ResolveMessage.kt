@@ -281,8 +281,8 @@ fun Resolver.resolveMessage(
 
                 statement.args.forEachIndexed { ii, it ->
                     // name check
-                    if (it.selectorName != receiverType.args[ii].name) {
-
+                    // if it lambda, then any arg name is valid
+                    if (it.keywordArg.type !is Type.Lambda && it.selectorName != receiverType.args[ii].name) {
                         statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
                     }
                     // type check
