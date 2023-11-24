@@ -36,79 +36,79 @@ fun Resolver.resolveCodeBlock(
     var itArgType: Type? = null
     // generics resolve
     val genericLetterToTypes = mutableMapOf<String, Type>()
-    if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1) {
-        if (rootStatement.receiver !is CodeBlock) {
-            val rootReceiverType = rootStatement.receiver.type!!
-            val metaDataFromDb = findKeywordMsgType(
-                rootReceiverType,
-                rootStatement.selectorName,
-                rootStatement.token
-            )
-            metaDataFound = metaDataFromDb
-            val currentArgType = metaDataFromDb.argTypes[currentArgumentNumber]
+    if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
 
-            // List(T, G) map::[T -> G] -> G = []
+        val rootReceiverType = rootStatement.receiver.type!!
+        val metaDataFromDb = findKeywordMsgType(
+            rootReceiverType,
+            rootStatement.selectorName,
+            rootStatement.token
+        )
+        metaDataFound = metaDataFromDb
+        val currentArgType = metaDataFromDb.argTypes[currentArgumentNumber]
 
-            val rootType = typeTable[rootReceiverType.name]//testing
-            val testDB = typeDB.getType(rootReceiverType.name)
-            if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
-                fillGenericsWithLettersByOrder(rootType)
+        // List(T, G) map::[T -> G] -> G = []
 
-                rootType.typeArgumentList.forEachIndexed { i, it ->
-                    val beforeName = it.beforeGenericResolvedName
+        val rootType = typeTable[rootReceiverType.name]//testing
+        val testDB = typeDB.getType(rootReceiverType.name)
+        if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
+            fillGenericsWithLettersByOrder(rootType)
 
-                    if (it.name.length == 1 && it.name[0].isUpperCase()) {
+            rootType.typeArgumentList.forEachIndexed { i, it ->
+                val beforeName = it.beforeGenericResolvedName
 
-                        val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
+                if (it.name.length == 1 && it.name[0].isUpperCase()) {
 
-                        if (sameButResolvedArg.name.length == 1) {
-                            throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
-                        }
-                        genericLetterToTypes[it.name] = sameButResolvedArg
-                    } else if (beforeName != null && beforeName.length == 1 && beforeName[0].isUpperCase()) {
-                        // was resolved somehow
-                        genericLetterToTypes[beforeName] = it
+                    val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
+                    if (sameButResolvedArg.name.length == 1) {
+                        throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
                     }
+                    genericLetterToTypes[it.name] = sameButResolvedArg
+                } else if (beforeName != null && beforeName.length == 1 && beforeName[0].isUpperCase()) {
+                    // was resolved somehow
+                    genericLetterToTypes[beforeName] = it
+
                 }
             }
+        }
 
-            if (currentArgType.type is Type.Lambda) {
-                // if this is lambda with one arg, and no namedArgs, then add "it" to scope
-                if (currentArgType.type.args.count() == 1 && namedLambdaArgs.isEmpty()) {
-                    val typeOfFirstArgs = currentArgType.type.args[0].type
-                    val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
-                        typeOfFirstArgs
-                    } else {
-                        val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                            ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving lambda")
-                        foundRealType
-                    }
-                    previousAndCurrentScope["it"] = typeForIt
-                    itArgType = typeForIt
-                } else if (currentArgType.type.args.isNotEmpty()) {
-                    if (currentArgType.type.args.count() != namedLambdaArgs.count()) {
-                        statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${namedLambdaArgs.count()}")
-                    }
+        if (currentArgType.type is Type.Lambda) {
+            // if this is lambda with one arg, and no namedArgs, then add "it" to scope
+            if (currentArgType.type.args.count() == 1 && namedLambdaArgs.isEmpty()) {
+                val typeOfFirstArgs = currentArgType.type.args[0].type
+                val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
+                    typeOfFirstArgs
+                } else {
+                    val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
+                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving lambda")
+                    foundRealType
+                }
+                previousAndCurrentScope["it"] = typeForIt
+                itArgType = typeForIt
+            } else if (currentArgType.type.args.isNotEmpty()) {
+                if (currentArgType.type.args.count() != namedLambdaArgs.count()) {
+                    statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${namedLambdaArgs.count()}")
+                }
 
 //                    rootType.typeArgumentList
-                    currentArgType.type.args.forEachIndexed { i, typeField ->
-                        val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
-                            typeField.type
-                        } else {
-                            val foundRealType = genericLetterToTypes[typeField.type.name]
-                                ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving lambda")
-                            foundRealType
-                        }
-
-                        namedLambdaArgs[i].type = typeForArg
+                currentArgType.type.args.forEachIndexed { i, typeField ->
+                    val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
+                        typeField.type
+                    } else {
+                        val foundRealType = genericLetterToTypes[typeField.type.name]
+                            ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving lambda")
+                        foundRealType
                     }
-                }
 
+                    namedLambdaArgs[i].type = typeForArg
+                }
             }
 
-            isThisWhileCycle = false
         }
+
+        isThisWhileCycle = false
+
     }
 
     namedLambdaArgs.forEach {
