@@ -131,8 +131,7 @@ fun GeneratorKt.generateKtProject(
     val notBindedPackages = mainProject.packages.values.filter { !it.isBinding }
     notBindedPackages.forEach { pkg ->
         if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
-// ты тут выбрасываешь ВСЕ пакеты из пакетов в котором нет дефенишонов
-            // но в меин пакете всегда нет дефенишонов, ало
+
             notBindedPackages.forEach { pkg2 ->
                 pkg2.currentImports -= pkg.packageName
             }

@@ -1,5 +1,8 @@
-package main
+package mainNiva
+import main.*
+import person.*
 import a.*
+import b.*
 
 // STD
 import java.io.BufferedWriter
@@ -14,7 +17,7 @@ fun Error.Companion.throwWithMessage(message: String): Nothing {
 }
 
 inline fun Any?.echo() = println(this)
-const val INLINE_REPL = """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/inline_repl.txt""" 
+const val INLINE_REPL = """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/artifacts/Niva_jar/inline_repl.txt""" 
 
 inline fun IntRange.forEach(action: (Int) -> Unit) {
     for (element in this) action(element)
@@ -75,8 +78,14 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val person1 = a.Person(age = 42)
-    inlineRepl(person1.kek(), """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/src/examples/Main/main.niva:::6""", 1)
+    val person = person.Person(name = "Alice", age = 37)
+    (person).say("Hello!")
+    val person2 = a.Person(age = 37)
+    person2.say()
+    val person3 = b.Person(name = "Bob")
+    person3.say()
+    val x = 5
+    inlineRepl(x, """/home/gavr/Documents/Projects/Fun/Niva/NivaK/Niva/out/artifacts/Niva_jar/main.scala:::24""", 1)
     
 }
 

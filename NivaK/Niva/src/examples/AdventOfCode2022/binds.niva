@@ -1,0 +1,5 @@
+Bind package: "java.io" content: [
+    type File pathname: String
+    File exists -> Boolean
+    File readText -> String
+]
