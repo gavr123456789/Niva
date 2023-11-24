@@ -88,7 +88,7 @@ fun Resolver.resolveKwArgsGenerics(
                 typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
                     val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
                     if (typeField.type.name.length == 1 && typeField.type.name[0].isUpperCase()) {
-                        letterToRealType[typeFromDBForThisArg.name] = argType.args[i].type
+                        letterToRealType[typeField.type.name] = argType.args[i].type
                     } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.length == 1 && beforeGenericResolvedName[0].isUpperCase()) {
                         letterToRealType[beforeGenericResolvedName] = argType.args[i].type
                     }
