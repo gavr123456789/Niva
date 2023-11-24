@@ -78,4 +78,10 @@ fun Resolver.resolve() {
         resolve(it.second, mutableMapOf())
     }
 
+    // need to add all imports from mainFile pkg to mainNiva pkg
+    val currentProject = projects[currentProjectName]!!
+    val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
+    val mainFilePkg = currentProject.packages[mainFile.nameWithoutExtension]!!
+    mainNivaPkg.currentImports += mainFilePkg.currentImports
+
 }

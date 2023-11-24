@@ -150,8 +150,17 @@ fun createStringProtocols(
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     charType: Type.InternalType,
-    any: Type.InternalType
+    any: Type.InternalType,
+    floatType: Type.InternalType
 ): MutableMap<String, Protocol> {
+
+
+    val listOfString = Type.UserType(
+        name = "List",
+        typeArgumentList = listOf(stringType),
+        fields = mutableListOf(),
+        pkg = "core",
+    )
 
     val result = mutableMapOf<String, Protocol>()
     val arithmeticProtocol = Protocol(
@@ -165,6 +174,8 @@ fun createStringProtocols(
             createUnary("isNotBlank", boolType),
             createUnary("isNotEmpty", boolType),
             createUnary("trimIndent", stringType),
+            createUnary("toInt", intType),
+            createUnary("toFloat", floatType),
 
 
             createUnary("echo", unitType),
@@ -185,10 +196,11 @@ fun createStringProtocols(
             createFilterKeyword(charType, boolType, stringType),
             createKeyword("get", KeywordArg("get", intType), charType),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
+            createKeyword("split", KeywordArg("split", stringType), listOfString),
             createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
         ),
     )
-    
+
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
 }

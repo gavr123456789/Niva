@@ -1,4 +1,4 @@
-
+//https://github.com/joaodelgado/fuck-kotlin/blob/master/src/fuck.kt
 
 Bind package: "java.io" content: [
     type File pathname: String

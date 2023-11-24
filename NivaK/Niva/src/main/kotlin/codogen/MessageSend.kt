@@ -14,9 +14,6 @@ fun MessageSend.generateMessageCall(): String {
 
     this.messages.forEachIndexed { i, it ->
         replaceNameFromPragma(it)
-        if (it.selectorName == "send") {
-            println("")
-        }
         when (it) {
             is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
             is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it))
@@ -127,9 +124,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->
-        if (keywordMsg.selectorName == "send") {
-            println()
-        }
+
         val expressionStr = it.keywordArg.generateExpression()
         if (keywordMsg.kind == KeywordLikeType.Constructor && receiverType is Type.UserLike && !receiverType.isBinding) {
             append(it.selectorName, " = ")

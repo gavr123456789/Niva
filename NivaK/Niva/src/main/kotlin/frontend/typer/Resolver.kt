@@ -130,7 +130,8 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     charType = charType,
-                    any = anyType
+                    any = anyType,
+                    floatType = floatType
                 )
             )
 

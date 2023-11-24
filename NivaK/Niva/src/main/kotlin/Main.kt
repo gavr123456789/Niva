@@ -13,16 +13,6 @@ import java.io.File
 import java.io.FileWriter
 import java.util.concurrent.TimeUnit
 
-
-//fun check(source: String, tokens: MutableList<TokenType>) {
-//    val lexer = Lexer(source, "sas")
-//    lexer.fillSymbolTable()
-//    val result = lexer.lex().map { it.kind }
-//    if (tokens != result) {
-//        throw Throwable("\n\ttokens: $tokens\n\tresult: $result")
-//    }
-//}
-
 fun lex(source: String, file: File): MutableList<Token> {
     val lexer = Lexer(source, file)
     lexer.fillSymbolTable()
@@ -72,17 +62,17 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
 
 fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String) {
 
-    fun listFilesRecursively(directory: File, ext: String): List<File> {
+    fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
 
         val filesAndDirs = directory.listFiles()
 
         if (filesAndDirs != null) {
             for (file in filesAndDirs) {
-                if (file.isFile && file.extension == ext) {
+                if (file.isFile && (file.extension == ext || file.extension == ext2)) {
                     fileList.add(file)
                 } else if (file.isDirectory) {
-                    fileList.addAll(listFilesRecursively(file, ext))
+                    fileList.addAll(listFilesRecursively(file, ext, ext2))
                 }
             }
         }
@@ -93,7 +83,7 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
 
     val mainFile = File(pathToProjectRootFile)
     val projectFolder = mainFile.absoluteFile.parentFile
-    val otherFilesPaths = listFilesRecursively(projectFolder, "niva").filter { it.name != mainFile.name }
+    val otherFilesPaths = listFilesRecursively(projectFolder, "niva", "scala").filter { it.name != mainFile.name }
     // we have main file, and all other files, so we can create resolver now
 
     val resolver = Resolver(
@@ -273,43 +263,43 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
         writer.close()
     }
 }
-
-sealed class Option<out T>
-class Some<T>(var value: T) : Option<T>()
-data object None : Option<Nothing>()
-
-class Node<T>(
-    val data: T,
-    var prev: Option<Node<T>>
-)
-
-fun <T> Node<T>.toList(): List<T> {
-    val result = mutableListOf<T>(data)
-    var q = prev
-    while (q != None) {
-        when (q) {
-            is None -> {}
-            is Some -> {
-                result.add(q.value.data)
-                q = q.value.prev
-            }
-        }
-    }
-    return result
-}
-
-class MyList<T>(
-    val initialVal: T,
-    var head: Node<T> = Node(initialVal, None)
-)
-
-// 1 next: []
-// 1 next: [2 next: []]
-
-fun <T> MyList<T>.add(data: T) {
-    val result = Node(data = data, prev = Some(head))
-    head = result
-}
+//
+//sealed class Option<out T>
+//class Some<T>(var value: T) : Option<T>()
+//data object None : Option<Nothing>()
+//
+//class Node<T>(
+//    val data: T,
+//    var prev: Option<Node<T>>
+//)
+//
+//fun <T> Node<T>.toList(): List<T> {
+//    val result = mutableListOf<T>(data)
+//    var q = prev
+//    while (q != None) {
+//        when (q) {
+//            is None -> {}
+//            is Some -> {
+//                result.add(q.value.data)
+//                q = q.value.prev
+//            }
+//        }
+//    }
+//    return result
+//}
+//
+//class MyList<T>(
+//    val initialVal: T,
+//    var head: Node<T> = Node(initialVal, None)
+//)
+//
+//// 1 next: []
+//// 1 next: [2 next: []]
+//
+//fun <T> MyList<T>.add(data: T) {
+//    val result = Node(data = data, prev = Some(head))
+//    head = result
+//}
 
 
 fun main(args: Array<String>) {
@@ -333,19 +323,21 @@ fun main(args: Array<String>) {
 
     compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt, pathToGradle)
 
+    val isShowTimeArg = args.count() > 2 && args[2] == "time"
 
     val secondTime = System.currentTimeMillis()
-    val executionTime = secondTime - startTime
-    println("Niva compilation time: $executionTime ms")
-
-
-    val isGradleWatching = args.count() > 1 && args[2] == "watch"
-    if (!isGradleWatching) {
-        runGradleRunInProject(pathToProjectRoot, inlineRepl)
+    if (isShowTimeArg) {
+        val executionTime = secondTime - startTime
+        println("Niva compilation time: $executionTime ms")
     }
 
 
-    val thirdTime = System.currentTimeMillis()
-    val executionTime2 = thirdTime - secondTime
-    println("Kotlin compilation + exec time: $executionTime2 ms")
+
+    runGradleRunInProject(pathToProjectRoot, inlineRepl)
+
+    if (isShowTimeArg) {
+        val thirdTime = System.currentTimeMillis()
+        val executionTime2 = thirdTime - secondTime
+        println("Kotlin compilation + exec time: $executionTime2 ms")
+    }
 }
