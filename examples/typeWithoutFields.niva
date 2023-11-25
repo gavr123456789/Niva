@@ -1,4 +1,0 @@
-type Foo
-Foo bar = "foobar" echo
-foo = Foo
-foo bara

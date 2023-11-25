@@ -1,4 +1,2 @@
-/node_modules
-/src/niva.ohm-bundle.*
-NivaK/Niva/out
-Nivak/.infroProject/*
+Niva/Niva/out
+Niva/.infroProject/*

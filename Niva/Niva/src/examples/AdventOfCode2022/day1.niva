@@ -1,0 +1,20 @@
+// read the file
+// split by lines
+// go line by line
+// if line contains number then add it to first elf
+// if line contains nothing change the elves we adding to
+path = "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/src/examples/Main/inputCalories.txt"
+text = (File pathname: path) readText
+
+lines = text split: "\n"
+
+mut sum = 0
+mut max = 0
+
+lines forEach: [
+    | it == "" => [
+        | sum > max => max <- sum
+        sum <- 0
+    ]
+    |=> sum <- sum + it toInt
+]
