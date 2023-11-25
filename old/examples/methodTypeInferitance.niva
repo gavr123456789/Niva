@@ -1,0 +1,25 @@
+type Passport number: int.
+
+type Person name: string age: int passport: Passport.
+
+
+fun bool replaceToKek = "Kek" // string
+fun string replaceToSix = 6 // string
+fun int replaceToTrue = true // string
+
+
+fun string + string::string = self & string // string
+
+fun Person itSelf = self // Person
+
+Person from: x::int = [
+  "hello world" echo
+  1
+]
+// int
+
+fun int % x = [
+  self mod: x
+]. // int
+
+fun int addFive = self + 5. // int

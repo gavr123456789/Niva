@@ -1,0 +1,296 @@
+Niva {
+
+
+  space := " " | lineTerminator | comment
+  // statement
+  statements = spaces statement (statementSeparator+ statement)* statementSeparator*
+  statementSeparator =  space | dot
+  lineTerminatorsAndSpaces = lineTerminator+ whiteSpaces
+  statement =
+    | returnStatement  -- returnStatement
+    | importStatement
+    | typeDeclaration -- typeDeclarationStatement
+    | methodDeclaration -- methodDeclarationStatement
+    | constructorDeclaration
+    | assignment -- assignmentStatement
+    | switchStatement -- switchStatement
+  	| expression  -- expressionStatement
+    | useStatement
+    | moduleStatement
+    | unionDeclaration -- unionDeclarationStatement
+
+
+importStatement = "import" whiteSpaces untypedIdentifier
+
+enumDeclaration = "union" spaces  untypedIdentifier spaces "=" spaces enumBranchs
+enumBranch =  "|"? spaces untypedIdentifier spaces
+enumBranchs = enumBranch (spaces enumBranch)*
+
+
+unionDeclaration = "union" spaces  untypedIdentifier spaces typedProperties? spaces "=" spaces unionBranchs
+
+
+unionBranch =  "|" spaces untypedIdentifier (whiteSpaces "," whiteSpaces  untypedIdentifier)* whiteSpaces ("=>" spaces typedProperties)?
+unionBranchs = unionBranch (spaces unionBranch)*
+
+
+useStatement = "use" whiteSpaces untypedIdentifier
+moduleStatement = "module" whiteSpaces untypedIdentifier
+
+  // TYPE DECLARATION
+	typeDeclaration = "type" spaces untypedIdentifier (spaces typedProperties)?
+    typedProperties = typedProperty (spaces typedProperty)*
+    typedProperty =
+	  untypedIdentifier ":" spaces (untypedIdentifier | nestedType)
+	nestedType = "(" spaces typeDeclaration spaces ")"
+
+
+  // METHOD DECLARATION
+
+  methodDeclarationKeyword = ("fun" | "-")
+
+  methodDeclaration = methodDeclarationKeyword? spaces
+  	(keywordMethodDeclaration
+    | binaryMethodDeclaration
+    | unaryMethodDeclaration )
+
+  constructorDeclaration = "construct" spaces
+  	(keywordMethodDeclaration
+    | binaryMethodDeclaration
+    | unaryMethodDeclaration )
+
+  comma = ","? spaces
+  keywordMethodDeclaration = untypedIdentifier keywordMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
+  keywordMethodDeclarationArgs = spaces keywordMethodDeclarationArg ( comma keywordMethodDeclarationArg spaces )*
+
+  //
+
+
+  keywordMethodDeclarationArg =
+    | keywordWithTypeWithLocalName
+    | keywordNoTypeWithLocalName
+    | keywordNoTypeNoLocalName
+    | keywordWithTypeNoLocalName
+
+
+
+
+
+
+  keywordNoTypeNoLocalName = ":" whiteSpaces untypedIdentifier
+  //int x: y: z:
+
+  keywordWithTypeNoLocalName = typedIdentifier
+  //int x::int y: z::int
+
+  keywordWithTypeWithLocalName = untypedIdentifier ":" whiteSpaces typedIdentifier
+  // x: a::int y: b::int
+
+  keywordNoTypeWithLocalName = untypedIdentifier ":" whiteSpaces untypedIdentifier
+  // x: a y: b
+
+
+
+
+  unaryMethodDeclaration = untypedIdentifier  whiteSpaces unaryMethodDeclarationArgs whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
+  unaryMethodDeclarationArgs = untypedIdentifier
+
+  binaryMethodDeclaration = untypedIdentifier whiteSpaces binaryMethodDeclarationArg whiteSpaces returnTypeDeclaration? spaces ("=" | "^=") spaces methodBody
+  // + x::int
+  binaryMethodDeclarationArg = binarySelector whiteSpaces identifier
+
+  // min: x::int max: y::int from: z
+
+
+  methodBody  = methodBodyFull | methodBodyShort
+  methodBodyFull = "[" spaces statements? spaces "]"
+  methodBodyShort = statement
+
+
+
+  switchExpression = spaces switchBranch spaces (switchBranch spaces)*  switchBranchElseStatement?
+  switchBranch = "|" whiteSpaces expressionList whiteSpaces "=>" spaces expression spaces
+  expressionList = expression ("," whiteSpaces expression)*
+  switchBranchElseStatement = "|=>" whiteSpaces expression
+
+
+
+
+  returnTypeDeclaration = returnTypeOperator whiteSpaces untypedIdentifier
+  returnTypeOperator = "->"
+
+
+  // Assignment statement
+
+  assignment = assignmentTarget spaces assignmentOp spaces expression
+  assignmentTarget = identifier
+
+  // Switch statement
+  switchStatement = receiver switchExpression
+
+  receiver =
+  	| primary
+    | "(" whiteSpaces expression whiteSpaces ")" -- expressionInBrackets
+    | blockConstructor
+    | collectionLiteral
+
+
+  expression = messageCall | switchExpression
+  messageCall = receiver (messages cascadedMessages)?
+
+
+
+  // MESSAGES
+  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
+  		   | (binaryMessage+ keywordMessage?) -- binaryFirst
+           | (keywordMessage) -- keywordFirst
+
+
+  keywordArgSeparation = whiteSpace+ | lineTerminatorAndSpaces
+  lineTerminatorAndSpaces = (lineTerminator whiteSpace+)
+
+  keywordMessage = spaces (keywordM spaces keywordArgument whiteSpaces)+ whiteSpaces
+
+
+
+  keywordM = identifier ":"
+  keywordArgument = receiver unaryMessage* binaryMessage*
+
+  binaryMessage = spaces binarySelector spaces binaryArgument
+  binaryArgument = receiver unaryMessage*
+
+  unaryMessage  = whiteSpaces unarySelector
+  unarySelector = untypedIdentifier ~":"
+
+  cascadedMessages = (";" messages)*
+
+
+
+  // BLOCKS
+  blockConstructor = "[" spaces blockBody spaces "]"
+  blockBody = (blockArgList)? spaces statements?
+  blockArgList = blockArgument* "|"
+  // blockArgument = ":" identifier spaces
+  blockArgument = identifier spaces
+
+  // STATEMENT
+  returnStatement = returnOp spaces expression
+
+  // IDENTEFIER
+
+  moduleName = untypedIdentifier "."
+  identifier = moduleName? (typedIdentifier | untypedIdentifier)
+
+  untypedIdentifier = ~reservedWord identifierName
+  typeName = untypedIdentifier
+  typedIdentifier = nestedTypedIdentifier | unaryTypedIdentifier
+  unaryTypedIdentifier = untypedIdentifier "::" unaryType
+  nestedTypedIdentifier = unaryTypedIdentifier "::" (nonUnaryType | unaryType)+
+
+
+
+  unaryType = typeName
+  nonUnaryType = (nestedTypedIdentifier | typeName) ("," whiteSpaces (nestedTypedIdentifier | typeName))+
+
+  identifierName = identifierStart identifierPart* identifierEnd?
+  identifierStart = letter
+  identifierPart = identifierStart | letter  | "_" | digit
+  identifierEnd = "?" | "!"
+
+
+  // LITERALS
+  primary =
+    | identifier
+    | simpleLiteral
+
+  simpleLiteral
+    = (stringLiteral | decimalLiteral | integerLiteral | boolLiteral)
+
+
+
+  // COLLECTIONS
+  collectionLiteral = listLiteral | mapLiteral | hashSetLiteral
+
+  listLiteral = "{" listElements "}"
+  listElements = primary? whiteSpaces (","? spaces primary)*
+
+  mapLiteral = "#{" mapElements "}"
+  mapElements = mapElement? (","? spaces mapElement)*
+  mapElement = primary whiteSpaces primary
+
+  hashSetLiteral =   "#(" listElements ")"
+
+
+
+  // StringLiteral
+  stringLiteral = "\"" doubleStringCharacter* "\""
+  doubleStringCharacter = ~("\"" | "\\" | lineTerminator) sourceCharacter -- nonEscaped
+                        | "\\" escapeSequence                             -- escaped
+                        | lineContinuation                                -- lineContinuation
+
+
+  // IntegerLiteral
+  integerLiteral = nonZeroDigit decimalDigit*  -- nonZero
+                        | "0"                         -- zero
+
+  decimalLiteral = integerLiteral "." decimalDigit+
+
+  decimalDigit = "0".."9"
+  nonZeroDigit = "1".."9"
+
+
+  // Booleans
+  trueLiteral
+    = "true"
+
+  falseLiteral
+    = "false"
+
+  boolLiteral
+    = (falseLiteral | trueLiteral)
+
+  // Null
+  nullLiteral = "null" ~identifierPart
+
+  // OTHER
+  sourceCharacter = any
+  lineTerminator = "\n" | "\r" | "\u2028" | "\u2029"
+  lineContinuation = "\\" lineTerminatorSequence
+  lineTerminatorSequence = "\n" | "\r" ~"\n" | "\u2028" | "\u2029" | "\r\n"
+
+  // Escapes
+  escapeSequence = unicodeEscapeSequence
+                 | characterEscapeSequence  // Must come last.
+  unicodeEscapeSequence = "u" hexDigit hexDigit hexDigit hexDigit
+  characterEscapeSequence = singleEscapeCharacter
+                          | nonEscapeCharacter
+  singleEscapeCharacter = "'" | "\"" | "\\" | "b" | "f" | "n" | "r" | "t" | "v"
+  nonEscapeCharacter = ~(escapeCharacter | lineTerminator) sourceCharacter
+  escapeCharacter = singleEscapeCharacter | decimalDigit | "x" | "u"
+
+
+  // Comment
+  comment = singleLineComment
+  singleLineComment = "//" (~lineTerminator sourceCharacter)* (lineTerminator | end)
+
+
+  // CONST
+  reservedWord = keyword | nullLiteral | boolLiteral
+  keyword = "type" | "construct" | "use" | "module" | "union" | "import"
+  separator = (comment | space)*
+
+  // for binary messages
+  binaryCharacter = "!" | "%" | "&" | "*" | "+" | "<" | "==" | ">" | "?" | "@" | "~" | "-" | "|>" | "<|" | "||" | "/" | "\\" //"|"   // | "," |
+  binarySelector =  binaryCharacter+
+
+
+  assignmentOp= "="
+  returnOp = "^"
+  whiteSpaceOrEnd = " " | lineTerminator | end
+  dot = ";"  spaces
+
+
+  whiteSpaces = whiteSpace*
+  whiteSpace = " "
+
+}

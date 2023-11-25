@@ -1,0 +1,9 @@
+// local names and types
+int between: x::int and: y::int -> bool =
+| x < self && (self < y) => true
+| x > self && (self > y) => false
+|=> false
+
+y = 5 between: 1 and: 10
+y echo
+

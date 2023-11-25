@@ -1,0 +1,29 @@
+union Shape area: int =
+| Nothing
+| Rectangle => width: int height: int
+| Circle    => radius: int
+
+rectangle = Rectangle area: 42 width: 7 height: 6
+
+rectangle area echo
+rectangle width echo
+rectangle height echo
+rectangle kind echo
+
+//int sas::int = [
+//  sas
+//  | 1 => "1" echo
+//  | 2 => "2" echo
+//  |=> 3 echo
+//]
+//1 sas: 2
+int shape::Shape = [
+//  kind = shape kind
+  shape
+  | Nothing => "1" echo
+  | Rectangle => shape width echo
+  | Circle => "3" echo
+  |=> "4" echo
+]
+
+5 shape: rectangle

@@ -1,0 +1,5 @@
+
+1 to: 3 do: [ it echo ]
+
+1 downto: 3 do: [ it echo ]
+

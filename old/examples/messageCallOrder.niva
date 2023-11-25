@@ -1,0 +1,7 @@
+int b = 1
+int d = self * 0
+
+a = 1
+c = 2
+result = a b - c d
+result echo

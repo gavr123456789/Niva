@@ -1,0 +1,5 @@
+-int sas -> void ^= [
+  5 echo
+].
+
+3 sas.
