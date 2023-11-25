@@ -324,7 +324,7 @@ fun main(args: Array<String>) {
     val isShowTimeArg = args.count() > 2 && args[2] == "time"
 
     val secondTime = System.currentTimeMillis()
-    if (isShowTimeArg || true) {
+    if (isShowTimeArg) {
         val executionTime = secondTime - startTime
         println("Niva compilation time: $executionTime ms")
     }
@@ -333,7 +333,7 @@ fun main(args: Array<String>) {
 
     runGradleRunInProject(pathToProjectRoot, inlineRepl)
 
-    if (isShowTimeArg || true) {
+    if (isShowTimeArg) {
         val thirdTime = System.currentTimeMillis()
         val executionTime2 = thirdTime - secondTime
         println("Kotlin compilation + exec time: $executionTime2 ms")

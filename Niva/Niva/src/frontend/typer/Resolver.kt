@@ -388,10 +388,10 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         it.token.compileError("Bind must have keyword message")
                     if (msg.args.count() < 2)
                         it.token.compileError("Bind must have at least 2 argument: package and content")
-                    val pkgArg = msg.args.find { it.selectorName == "package" }
+                    val pkgArg = msg.args.find { it.name == "package" }
                     if (pkgArg == null)
                         msg.token.compileError("'package' param is missing")
-                    val contentArg = msg.args.find { it.selectorName == "content" }
+                    val contentArg = msg.args.find { it.name == "content" }
                     if (contentArg == null)
                         msg.token.compileError("'content' param is missing")
 
@@ -414,7 +414,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         }
                     }
 
-                    val gettersArg = msg.args.find { it.selectorName == "getters" }
+                    val gettersArg = msg.args.find { it.name == "getters" }
                     if (gettersArg != null) {
                         if (gettersArg.keywordArg !is CodeBlock)
                             gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
@@ -641,17 +641,17 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
         when (it.keywordArg) {
             is LiteralExpression.StringExpr -> {
                 val substring = it.keywordArg.token.lexeme.removeDoubleQuotes()
-                when (it.selectorName) {
+                when (it.name) {
                     "name" -> changeProject(substring, statement.token)
                     "package" -> changePackage(substring, statement.token)
                     "protocol" -> changeProtocol(substring)
                     "use" -> usePackage(substring)
-                    else -> statement.token.compileError("Unexpected argument ${it.selectorName} for Project")
+                    else -> statement.token.compileError("Unexpected argument ${it.name} for Project")
                 }
             }
 
             is ListCollection -> {
-                when (it.selectorName) {
+                when (it.name) {
                     "loadPackages" -> {
                         if (it.keywordArg.initElements[0] !is LiteralExpression.StringExpr) {
                             it.keywordArg.token.compileError("packages must be listed as String")
@@ -662,7 +662,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                 }
             }
 
-            else -> it.keywordArg.token.compileError("Only String args allowed for ${it.selectorName}")
+            else -> it.keywordArg.token.compileError("Only String args allowed for ${it.name}")
         }
     }
 }

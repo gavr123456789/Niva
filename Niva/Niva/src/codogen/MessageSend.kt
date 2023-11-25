@@ -103,7 +103,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             }
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
-                append(receiver.name, ".", valueArg.selectorName, " = ")
+                append(receiver.name, ".", valueArg.name, " = ")
             } else {
                 TODO()
             }
@@ -127,7 +127,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
         val expressionStr = it.keywordArg.generateExpression()
         if (keywordMsg.kind == KeywordLikeType.Constructor && receiverType is Type.UserLike && !receiverType.isBinding) {
-            append(it.selectorName, " = ")
+            append(it.name, " = ")
         }
         append(expressionStr)
         if (i != keywordMsg.args.count() - 1)

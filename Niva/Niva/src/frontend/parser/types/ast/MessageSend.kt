@@ -75,7 +75,7 @@ class BinaryMsg(
 ) : Message(receiver, selectorName, path, type, token)
 
 data class KeywordArgAndItsMessages(
-    val selectorName: String,
+    val name: String,
     val keywordArg: Expression
 )
 
@@ -98,7 +98,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.selectorName + ": " + it.keywordArg.str }})"
+        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.name + ": " + it.keywordArg.str }})"
     }
 }
 

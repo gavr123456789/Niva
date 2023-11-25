@@ -1,4 +1,5 @@
 package mainNiva
+import main.*
 
 // STD
 import java.io.BufferedWriter
@@ -74,11 +75,8 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val truly = {t: () -> Unit, f: () -> Unit, -> t()}
-    val falsy = {t: () -> Unit, f: () -> Unit, -> f()}
-    val ify = {c: (() -> Unit,() -> Unit,) -> Unit, t: () -> Unit, f: () -> Unit, -> (c)(t, f)}
-    (ify)(truly, {"true".echo()}, {"false".echo()})
-    (ify)(falsy, {"true".echo()}, {"false".echo()})
+    val person = main.Person(name = "Alice", age = 24)
+    person.say()
     
 }
 

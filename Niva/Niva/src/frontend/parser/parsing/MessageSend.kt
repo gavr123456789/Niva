@@ -342,7 +342,7 @@ fun Parser.keywordMessageParsing(
         )
 
         val x = KeywordArgAndItsMessages(
-            selectorName = keywordPart.name,
+            name = keywordPart.name,
             keywordArg = argument,
         )
 
