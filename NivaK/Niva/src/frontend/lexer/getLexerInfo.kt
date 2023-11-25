@@ -11,4 +11,5 @@ fun Lexer.getRelPos(line: Int): Position {
     }
     return lines[line - 1]
 }
+
 fun Lexer.getCurrentLinePos() = Position(start = lastLine, end = linePos)

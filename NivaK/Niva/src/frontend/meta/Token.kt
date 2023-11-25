@@ -90,6 +90,7 @@ fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
     val red = "\u001b[31m"
     val reset = "\u001b[0m"
+//    error("\n$red\t$text.$fileLine$reset")
     println("$red\t$text.$fileLine$reset")
     exitProcess(1)
 }

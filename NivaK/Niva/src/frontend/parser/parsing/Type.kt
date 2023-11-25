@@ -1,11 +1,19 @@
 package frontend.parser.parsing
 
+import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.meta.isIdentifier
 import frontend.meta.isNullable
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.TypeAST
+import frontend.typer.createFakeToken
 import frontend.util.isSimpleTypes
+
+fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(
+    name = InternalTypes.Unit,
+    isNullable = false,
+    token = token,
+)
 
 // use only after ::
 fun Parser.parseType(): TypeAST {
@@ -44,11 +52,12 @@ fun Parser.parseType(): TypeAST {
         // [int -> string]?
         // [anyType, anyType -> anyType]?
         // [ -> anyType]
+        val thereIsReturnArrowAndCloseBracket = check(TokenType.ReturnArrow) || check(TokenType.CloseBracket)
+        val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else listOf()
+//        matchAssert(TokenType.ReturnArrow, "-> expected after list of input types in lambda type declaration")
+        match(TokenType.ReturnArrow)
 
-        val listOfInputTypes = if (!check(TokenType.ReturnArrow)) listOfInputTypes() else listOf()
-        matchAssert(TokenType.ReturnArrow, "-> expected after list of input types in lambda type declaration")
-
-        val returnType = parseType()
+        val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
         matchAssert(TokenType.CloseBracket, "closing paren expected in lambda type declaration")
         val isNullable = match("?")
 

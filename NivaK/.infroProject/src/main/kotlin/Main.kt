@@ -1,4 +1,5 @@
 package mainNiva
+import main.*
 
 // STD
 import java.io.BufferedWriter
@@ -74,11 +75,8 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val truly = {t: () -> Unit, f: () -> Unit, -> t()}
-    val falsy = {t: () -> Unit, f: () -> Unit, -> f()}
-    val ify = {c: (() -> Unit,() -> Unit,) -> Unit, t: () -> Unit, f: () -> Unit, -> (c)(t, f)}
-    (ify)(truly, {"true".echo()}, {"false".echo()})
-    (ify)(falsy, {"true".echo()}, {"false".echo()})
+    val sas = main.Sas()
+    (sas).lambda({23.echo()})
     
 }
 

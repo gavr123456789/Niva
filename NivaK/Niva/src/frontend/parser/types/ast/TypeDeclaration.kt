@@ -85,7 +85,7 @@ class TypeFieldAST(
     val token: Token,
 ) {
     override fun toString(): String {
-        return name +(type?.toString() ?: "")
+        return name + (type?.toString() ?: "")
     }
 }
 

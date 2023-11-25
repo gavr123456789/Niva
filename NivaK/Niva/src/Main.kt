@@ -32,6 +32,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, need
     if (needWait) {
         process.waitFor(60, TimeUnit.MINUTES)
     }
+
 }
 
 
@@ -325,7 +326,7 @@ fun main(args: Array<String>) {
     val isShowTimeArg = args.count() > 2 && args[2] == "time"
 
     val secondTime = System.currentTimeMillis()
-    if (isShowTimeArg) {
+    if (isShowTimeArg || true) {
         val executionTime = secondTime - startTime
         println("Niva compilation time: $executionTime ms")
     }
@@ -334,7 +335,7 @@ fun main(args: Array<String>) {
 
     runGradleRunInProject(pathToProjectRoot, inlineRepl)
 
-    if (isShowTimeArg) {
+    if (isShowTimeArg || true) {
         val thirdTime = System.currentTimeMillis()
         val executionTime2 = thirdTime - secondTime
         println("Kotlin compilation + exec time: $executionTime2 ms")

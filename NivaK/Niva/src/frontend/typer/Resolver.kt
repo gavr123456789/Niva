@@ -1310,7 +1310,7 @@ fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
 private class FakeToken {
     companion object {
         val fakeToken = Token(
-            TokenType.Identifier, "!!!Nothing!!!", 0, Position(0, 1),
+            TokenType.Identifier, "Fake Token", 0, Position(0, 1),
             Position(0, 1), File("Nothing")
         )
     }
