@@ -172,7 +172,7 @@ fun resolveTypeIfSameNamesFromConstructor(
         return resultType
     }
 
-    val setOfArgsNames = statement.args.map { it.selectorName }.toSet()
+    val setOfArgsNames = statement.args.map { it.name }.toSet()
     val setOfArgsTypeNames = statement.args.map {
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()

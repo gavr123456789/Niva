@@ -158,7 +158,7 @@ fun Resolver.resolveMessage(
             resolveKwArgs(statement, currentScope, previousScope, true)
 
             // resolve receiverType
-            val selectorName = statement.args.map { it.selectorName }.toCalmelCase()
+            val selectorName = statement.args.map { it.name }.toCalmelCase()
             if (statement.receiver.type == null) {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 currentLevel++
@@ -180,15 +180,7 @@ fun Resolver.resolveMessage(
                 }
                 val receiver = statement.receiver
                 val receiverText = receiver.toString()
-//                val keywordReceiverType2 = getType(receiverText, currentScope, previousScope)
-                // TODO! resolve type for Bracket expressions, maybe?
-//                val testDB = if (statement.receiver is IdentifierExpr) typeDB.getType(
-//                    receiverText,
-//                    currentScope,
-//                    previousScope
-//                ) else null
-//
-                val keywordReceiverType = receiverType//testDB?.getTypeFromTypeDBResult(statement)
+                val keywordReceiverType = receiverType
 
                 if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
@@ -215,7 +207,7 @@ fun Resolver.resolveMessage(
 
                 // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
                 if (statement.args.count() == 1 && receiverType is Type.UserType) {
-                    val keyArgText = statement.args[0].selectorName
+                    val keyArgText = statement.args[0].name
                     // find receiver arg same as keyArgText
                     val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
                     if (receiverArgWithSameName != null) {
@@ -260,7 +252,7 @@ fun Resolver.resolveMessage(
             if (receiverType is Type.Lambda) {
 
                 if (receiverType.args.count() != statement.args.count()) {
-                    val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
+                    val setOfHaveFields = statement.args.map { it.name }.toSet()
                     val setOfNeededFields = receiverType.args.map { it.name }.toSet()
                     val extraOrMissed = statement.args.count() > receiverType.args.count()
                     val whatIsMissingOrExtra =
@@ -270,7 +262,7 @@ fun Resolver.resolveMessage(
                             (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
 
                     val beginText =
-                        statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
+                        statement.receiver.str + " " + statement.args.joinToString(": ") { it.name } + ":"
                     val text =
                         if (extraOrMissed)
                             "For $beginText code block eval, extra fields are listed: $whatIsMissingOrExtra"
@@ -282,14 +274,14 @@ fun Resolver.resolveMessage(
                 statement.args.forEachIndexed { ii, it ->
                     // name check
                     // if it lambda, then any arg name is valid
-                    if (it.keywordArg.type !is Type.Lambda && it.selectorName != receiverType.args[ii].name) {
-                        statement.token.compileError("${it.selectorName} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
+                    if (it.keywordArg.type !is Type.Lambda && it.name != receiverType.args[ii].name) {
+                        statement.token.compileError("${it.name} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
                     }
                     // type check
                     val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
                     if (!isTypesEqual) {
                         statement.token.compileError(
-                            "${it.selectorName} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
+                            "${it.name} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
                         )
                     }
                 }
@@ -317,7 +309,7 @@ fun Resolver.resolveMessage(
                             if (beforeName != null) {
                                 val typeFromReceiver = receiverTable[beforeName]
                                 if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it)) {
-                                    statement.token.compileError("Generic param of receiver: `${typeFromReceiver.name}` is different from\n\targ: `${kwArg.selectorName}: ${kwArg.keywordArg.str}::${it.name}` but both must be $beforeName")
+                                    statement.token.compileError("Generic param of receiver: `${typeFromReceiver.name}` is different from\n\targ: `${kwArg.name}: ${kwArg.keywordArg.str}::${it.name}` but both must be $beforeName")
                                 }
                             }
                         }
@@ -354,7 +346,7 @@ fun Resolver.resolveMessage(
                         // check that amount of arguments if right
                         if (statement.args.count() != receiverFields.count()) { // && !thisIsCustomConstructor
 
-                            val setOfHaveFields = statement.args.map { it.selectorName }.toSet()
+                            val setOfHaveFields = statement.args.map { it.name }.toSet()
                             val setOfNeededFields = receiverFields.map { it.name }.toSet()
                             val extraOrMissed = statement.args.count() > receiverFields.count()
                             val whatIsMissingOrExtra =
@@ -365,7 +357,7 @@ fun Resolver.resolveMessage(
 
 
                             val errorText =
-                                statement.receiver.str + " " + statement.args.joinToString(": ") { it.selectorName } + ":"
+                                statement.receiver.str + " " + statement.args.joinToString(": ") { it.name } + ":"
                             val text =
                                 if (extraOrMissed)
                                     "For $errorText constructor call, extra fields are listed: $whatIsMissingOrExtra"
@@ -373,8 +365,18 @@ fun Resolver.resolveMessage(
                                     "For $errorText constructor call, not all fields are listed, you missed: $whatIsMissingOrExtra"
                             statement.token.compileError(text)
                         }
+                        // check types
+                        statement.args.forEach { kwArg ->
+                            val argFromDB = receiverFields.find { it.name == kwArg.name }
+                            if (argFromDB == null) {
+                                kwArg.keywordArg.token.compileError("Constructor of ${statement.receiver} has fields: ${receiverFields.map { it.name }}, not ${kwArg.name} ")
+                            }
+                            if (!compare2Types(kwArg.keywordArg.type!!, argFromDB.type)) {
+                                kwArg.keywordArg.token.compileError("In constructor, type of ${kwArg.name} must be ${argFromDB.type.name}, not ${kwArg.keywordArg.type?.name} ")
+                            }
+                        }
 
-                        val typeFieldsNamesSet = statement.args.map { it.selectorName }.toSet()
+                        val typeFieldsNamesSet = statement.args.map { it.name }.toSet()
                         val receiverFieldsSet = receiverFields.map { it.name }.toSet()
 
 
@@ -395,10 +397,10 @@ fun Resolver.resolveMessage(
                                     replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
                                 fieldsOfThisType.forEach { genericField ->
                                     // find real type from arguments
-                                    val real = statement.args.find { it.selectorName == genericField.name }
+                                    val real = statement.args.find { it.name == genericField.name }
                                         ?: statement.token.compileError("Can't find real type for field: ${genericField.name} of generic type: ${genericField.type.name}")
                                     val realType = real.keywordArg.type
-                                        ?: real.keywordArg.token.compileError("Panic: ${real.selectorName} doesn't have type")
+                                        ?: real.keywordArg.token.compileError("Panic: ${real.name} doesn't have type")
                                     genericField.type = realType
                                     map[typeArg.name] = realType
                                 }
@@ -471,7 +473,7 @@ fun Resolver.resolveMessage(
                                 compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration)
                             if (!sameTypes) {
                                 argAndItsMessages.keywordArg.token.compileError(
-                                    "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.selectorName} doesn't match ${typeOfArgFromDb.name}"
+                                    "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.name} doesn't match ${typeOfArgFromDb.name}"
                                 )
                             }
                         }

@@ -150,7 +150,7 @@ class ParserTest {
         val messageSend = ast[0] as MessageSendKeyword
         assert(messageSend.messages.count() == 1)
         val kwMessage = messageSend.messages[0] as KeywordMsg
-        assert(kwMessage.args[0].selectorName == "to")
+        assert(kwMessage.args[0].name == "to")
         assert(kwMessage.receiver is MessageSendBinary)
         val binaryReceiver = kwMessage.receiver as MessageSendBinary
         val binMsg = binaryReceiver.messages[0] as BinaryMsg
@@ -168,7 +168,7 @@ class ParserTest {
         val messageSend: MessageSend = ast[0] as MessageSend
         assert(messageSend.messages.count() == 1)
         val kwMessage = messageSend.messages[0] as KeywordMsg
-        assert(kwMessage.args[0].selectorName == "to")
+        assert(kwMessage.args[0].name == "to")
         assert(kwMessage.receiver is MessageSend)
 
     }

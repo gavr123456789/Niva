@@ -92,5 +92,5 @@ fun Token.compileError(text: String): Nothing {
     val reset = "\u001b[0m"
 //    error("\n$red\t$text.$fileLine$reset")
     println("$red\t$text.$fileLine$reset")
-    exitProcess(1)
+    exitProcess(0)
 }
