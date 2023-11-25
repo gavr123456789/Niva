@@ -1,0 +1,9 @@
+int between: x and: y -> bool =
+| x < self && (self < y) => true
+| x > self && (self > y) => false
+|=> false
+
+(5 between: 1 and: 10) echo
+(12 between: 1 and: 10) echo
+
+

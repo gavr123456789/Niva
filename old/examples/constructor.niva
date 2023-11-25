@@ -1,0 +1,11 @@
+// type declaration
+type Wallet money: int
+type Person name: string wallet: Wallet
+// custom constructor for type Wallet
+construct Wallet empty = Wallet money: 0
+// construct types
+emptyWallet = Wallet empty
+person = Person name: "bob" wallet: emptyWallet
+
+person wallet money echo
+

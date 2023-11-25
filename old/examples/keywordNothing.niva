@@ -1,0 +1,4 @@
+// nothing
+int :odd :even = self + even + odd
+z = 0 odd: 1 even: 2
+z echo

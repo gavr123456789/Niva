@@ -1,0 +1,5 @@
+int /++/ x = self toStr & " and " & x toStr
+int add1 = self + 1
+
+x = (5 * 3 add1) /++/ (3 + (3 - 4))
+x echo

@@ -1,0 +1,20 @@
+x = {3 2 1 0}
+(x at: 1) echo
+x toStr echo
+
+0 to: x len - 2 do: [
+  i = it
+  0 to: x len - i - 2 do: [
+    j = it
+    curr = x at: j
+    next = x at: j + 1
+    | curr > next => [
+      temp = curr
+      x at: j put: next
+      x at: j + 1 put: temp
+    ]
+  ]
+]
+
+x toStr echo
+
