@@ -1,6 +1,0 @@
-int sas: x -> void = [
-  | x > 4 => "sas" echo
-  | x < 4 => "sus" echo
-]
-
-2 sas: 1

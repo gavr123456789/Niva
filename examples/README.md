@@ -1,1 +1,0 @@
-All of this examples works now ^_^ !
