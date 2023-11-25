@@ -1,9 +1,8 @@
 import frontend.parser.types.ast.MessageSendBinary
 import frontend.parser.types.ast.MessageSendUnary
 import frontend.parser.types.ast.toStr.toNivaStr
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class AstToNivaTest {
 

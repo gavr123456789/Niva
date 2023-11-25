@@ -2,9 +2,9 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ParserTest {
     @Test
@@ -191,7 +191,7 @@ class ParserTest {
         val messageSend: MessageSend = ast[0] as MessageSend
         val q = messageSend.messages
         val first = q[1]
-        Assertions.assertEquals(first.receiver.str, "name")
+        assertEquals(first.receiver.str, "name")
     }
 
     @Test

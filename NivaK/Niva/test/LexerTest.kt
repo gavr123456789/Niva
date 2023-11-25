@@ -2,9 +2,9 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.TokenType
 import frontend.meta.TokenType.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 
 val helloWorldProgram = """

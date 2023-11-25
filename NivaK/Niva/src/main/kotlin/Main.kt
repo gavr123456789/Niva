@@ -308,7 +308,6 @@ fun main(args: Array<String>) {
 
     val isThereArgs = args.count() >= 2
 
-
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"

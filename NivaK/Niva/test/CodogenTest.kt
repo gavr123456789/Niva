@@ -1,9 +1,9 @@
 import codogen.codegenKt
 import frontend.typer.Resolver
 import frontend.typer.resolve
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 fun generateKotlin(source: String): String {
     val ast = getAstTest(source)
@@ -473,7 +473,7 @@ class CodogenTest {
     }
 
     @Test
-    fun `binary with binary in brackets?`() {
+    fun `binary with binary in brackets`() {
         val source = """
             true && (x < 10)
         """.trimIndent()

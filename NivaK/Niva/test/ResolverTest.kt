@@ -2,9 +2,9 @@ import frontend.parser.types.ast.*
 import frontend.typer.Resolver
 import frontend.typer.Type
 import frontend.typer.resolve
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 fun resolve(source: String): List<Statement> {
     val ast = getAstTest(source)
