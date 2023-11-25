@@ -1,0 +1,8 @@
+truly  = [t::[ -> Unit], f::[ -> Unit] -> t do]
+falsy = [t::[ -> Unit], f::[ -> Unit] -> f do]
+
+ify = [c::[[ -> Unit], [ -> Unit] -> Unit], t::[ -> Unit], f::[ -> Unit] -> c x: t y: f]
+
+
+ify c: truly t: ["true" echo] f: ["false" echo]
+ify c: falsy t: ["true" echo] f: ["false" echo]
