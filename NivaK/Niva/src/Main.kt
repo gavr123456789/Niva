@@ -1,3 +1,5 @@
+package main
+
 import codogen.generateKtProject
 import frontend.Lexer
 import frontend.lex

@@ -4,7 +4,7 @@ import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
-import lex
+import main.lex
 import java.io.File
 
 const val MAIN_PKG_NAME = "mainNiva"

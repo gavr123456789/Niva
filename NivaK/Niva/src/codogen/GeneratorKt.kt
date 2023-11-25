@@ -1,12 +1,12 @@
 package codogen
 
-import addNivaStd
 import frontend.parser.types.ast.Statement
 import frontend.typer.MAIN_PKG_NAME
 import frontend.typer.Package
 import frontend.typer.Project
 import frontend.util.addIndentationForEachString
-import putInMainKotlinCode
+import main.addNivaStd
+import main.putInMainKotlinCode
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
