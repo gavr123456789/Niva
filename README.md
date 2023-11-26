@@ -1,13 +1,6 @@
 # Niva
 It will be Smalltalk like language, but statically typed.
 
-## What's going on
-The simple implementation is ready on TS, now I rewriting it on Kotlin without parser generator(ohm)
-To check TS version run `yarn` and `yarn ohm generateBundles --withTypes src/niva.ohm` and to run code `yarn ts-node ./src/main.ts ./examples/controlFlow.niva`  
-UPD:  
-The implementation on Kotlin has already overtaken TS in terms of functionality.  
-`gradle run` will compile main.niva file from NivaK/Niva/src/examples/Main
-    
 ## Backend
 Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
 A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
@@ -17,6 +10,7 @@ I haven't decided on the final name yet, so far I've chosen niva because my 2 fa
 
 ## Compile from sources
 P.S. u can find binary releases in the releases  
+After running compile.sh you will get niva_compiler folder that contains jvm or native binary.  
 
 ### JVM
 1) `sh compile.sh jvm`  
