@@ -68,7 +68,9 @@ class Resolver(
     val unResolvedTypeDeclarations: MutableSet<SomeTypeDeclaration> = mutableSetOf(),
     var allDeclarationResolvedAlready: Boolean = false,
 
-    val generator: GeneratorKt = GeneratorKt()
+    val generator: GeneratorKt = GeneratorKt(),
+
+    var compilationTarget: CompilationTarget = CompilationTarget.jvm
 ) {
     companion object {
 
@@ -646,6 +648,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "package" -> changePackage(substring, statement.token)
                     "protocol" -> changeProtocol(substring)
                     "use" -> usePackage(substring)
+                    "target" -> changeTarget(substring, statement.token)
                     else -> statement.token.compileError("Unexpected argument ${it.name} for Project")
                 }
             }
@@ -1406,6 +1409,26 @@ fun Resolver.changeProtocol(protocolName: String) {
 fun Resolver.usePackage(packageName: String) {
     val currentPkg = getCurrentPackage(this.statements.last().token)
     currentPkg.addImport(packageName)
+}
+
+enum class CompilationTarget {
+    jvm,
+    linux,
+    macos,
+//    windows,
+}
+
+fun Resolver.targetFromString(target: String, token: Token): CompilationTarget = when (target) {
+    "jvm" -> CompilationTarget.jvm
+    "linux" -> CompilationTarget.linux
+    "macos" -> CompilationTarget.macos
+    "windows" -> token.compileError("Windows native target not supported yet")
+    "js" -> token.compileError("js target not supported yet")
+    else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.toTypedArray()}")
+}
+fun Resolver.changeTarget(target: String, token: Token) {
+    val target = targetFromString(target, token)
+    compilationTarget = target
 }
 
 fun Resolver.getTypeForIdentifier(

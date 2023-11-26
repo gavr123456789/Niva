@@ -4,6 +4,7 @@ import codogen.generateKtProject
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
+import frontend.typer.CompilationTarget
 import frontend.typer.Resolver
 import frontend.typer.resolve
 import frontend.util.OS_Type
@@ -38,7 +39,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, need
 }
 
 
-fun runGradleRunInProject(path: String, inlineReplPath: File) {
+fun runGradleRunInProject(path: String, inlineReplPath: File, compilationTarget: CompilationTarget) {
     // remove repl log file since it will be recreated
     val removeReplFile = {
         if (inlineReplPath.exists()) {
@@ -51,19 +52,30 @@ fun runGradleRunInProject(path: String, inlineReplPath: File) {
     if (!file.exists()) {
         throw Exception("Path to infra project doesn't exists")
     }
+
+    val run = when (compilationTarget) {
+        CompilationTarget.jvm -> "run"
+        CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
+        CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+    }
+
     when (getOSType()) {
-        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.LINUX -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.MAC -> "./gradlew -q run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        OS_Type.LINUX -> "./gradlew -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        OS_Type.MAC -> "./gradlew -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
     }
 
     if (inlineReplPath.exists()) {
-        inlineReplSystem(inlineReplPath)
-        removeReplFile()
+        if (compilationTarget == CompilationTarget.jvm) {
+            inlineReplSystem(inlineReplPath)
+            removeReplFile()
+        } else {
+            println("Warning: inline repl currently supported only in jvm target")
+        }
     }
 }
 
-fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String) {
+fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String, pathToAmper: String): CompilationTarget {
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
@@ -97,8 +109,18 @@ fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: St
     )
 
     resolver.resolve()
-    val mainProject = resolver.projects["common"]!!
-    resolver.generator.generateKtProject(pathWhereToGenerateKt, pathToGradle, mainProject, resolver.topLevelStatements)
+    val defaultProject = resolver.projects["common"]!!
+
+    resolver.generator.generateKtProject(
+        pathWhereToGenerateKt,
+        pathToGradle,
+        pathToAmper,
+        defaultProject,
+        resolver.topLevelStatements,
+        resolver.compilationTarget
+    )
+
+    return resolver.compilationTarget
 }
 
 
@@ -109,14 +131,38 @@ fun putInMainKotlinCode(code: String) = buildString {
 }
 
 
-fun addNivaStd(mainCode: String): String {
+fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
+
+
     val quote = "\"\"\""
-    val nivaStd = """
-        // STD
+
+    val jvmSpecific = if (compilationTarget == CompilationTarget.jvm)"""
         import java.io.BufferedWriter
         import java.io.FileWriter
         import java.io.IOException
+        
+        fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
+            val q = x.toString()
+            // x/y/z.niva:6 5
+            val content = pathToNivaFileAndLine + "|||" + q + "***" + count
+        
+            try {
+                val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
+                writer.append(content)
+                writer.newLine()
+                writer.close()
+            } catch (e: IOException) {
+                println("File error" + e.message)
+            }
+        
+            return x
+        }
+    """.trimIndent() else ""
+
+    val nivaStd = """
+        // STD
+        $jvmSpecific
         
         class Error {
             companion object
@@ -164,22 +210,6 @@ fun addNivaStd(mainCode: String): String {
             LinkedHashMap(this).apply { putAll(map) }
         
         
-        fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
-            val q = x.toString()
-            // x/y/z.niva:6 5
-            val content = pathToNivaFileAndLine + "|||" + q + "***" + count
-        
-            try {
-                val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
-                writer.append(content)
-                writer.newLine()
-                writer.close()
-            } catch (e: IOException) {
-                println("File error" + e.message)
-            }
-        
-            return x
-        }
         
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
@@ -309,17 +339,19 @@ fun main(args: Array<String>) {
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
-    val pathToProjectRoot = if (isThereArgs) args[0] else ".." / ".infroProject"
-    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
+    val pathToProjectRoot = if (isThereArgs) args[0] else ".." / "infroProject"
+//    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
+    val pathWhereToGenerateKtAmper = pathToProjectRoot / "src" // / "main" / "kotlin"
     val pathToTheMainExample = File("src" / "examples" / "Main" / "main.niva").absolutePath
     val pathToNivaProjectRootFile = if (isThereArgs) args[1] else pathToTheMainExample
     val pathToGradle = pathToProjectRoot / "build.gradle.kts"
-
+    val pathToAmper = pathToProjectRoot / "module.yaml"
 
     val startTime = System.currentTimeMillis()
 
 
-    compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKt, pathToGradle)
+    val compilationTarget = compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
+        pathToAmper)
 
     val isShowTimeArg = args.count() > 2 && args[2] == "time"
 
@@ -331,7 +363,7 @@ fun main(args: Array<String>) {
 
 
 
-    runGradleRunInProject(pathToProjectRoot, inlineRepl)
+    runGradleRunInProject(pathToProjectRoot, inlineRepl, compilationTarget)
 
     if (isShowTimeArg) {
         val thirdTime = System.currentTimeMillis()
