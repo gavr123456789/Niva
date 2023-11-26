@@ -39,7 +39,14 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, need
 }
 
 
-fun runGradleRunInProject(path: String, inlineReplPath: File, compilationTarget: CompilationTarget) {
+fun runGradleRunInProject(
+    path: String,
+    inlineReplPath: File,
+    compilationTarget: CompilationTarget,
+    pathToNativeExe: String,
+    mainNivaFileName: String,
+    needMoveBinary: Boolean = false
+) {
     // remove repl log file since it will be recreated
     val removeReplFile = {
         if (inlineReplPath.exists()) {
@@ -73,9 +80,30 @@ fun runGradleRunInProject(path: String, inlineReplPath: File, compilationTarget:
             println("Warning: inline repl currently supported only in jvm target")
         }
     }
+    if (needMoveBinary) {
+        when (compilationTarget) {
+            CompilationTarget.jvm -> {}
+            CompilationTarget.linux -> {
+                val exec = File("./$mainNivaFileName")
+                File(pathToNativeExe).copyTo(exec, true)
+                val sas = exec.setExecutable(true)
+                println("Set executable: $sas")
+
+            }
+
+            CompilationTarget.macos -> {}
+        }
+    }
+
+
 }
 
-fun compileProjFromFile(pathToProjectRootFile: String, pathWhereToGenerateKt: String, pathToGradle: String, pathToAmper: String): CompilationTarget {
+fun compileProjFromFile(
+    pathToProjectRootFile: String,
+    pathWhereToGenerateKt: String,
+    pathToGradle: String,
+    pathToAmper: String
+): CompilationTarget {
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
@@ -137,7 +165,7 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
     val quote = "\"\"\""
 
-    val jvmSpecific = if (compilationTarget == CompilationTarget.jvm)"""
+    val jvmSpecific = if (compilationTarget == CompilationTarget.jvm) """
         import java.io.BufferedWriter
         import java.io.FileWriter
         import java.io.IOException
@@ -158,7 +186,7 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
         
             return x
         }
-    """.trimIndent() else ""
+    """.trimIndent() else "fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int) {}"
 
     val nivaStd = """
         // STD
@@ -342,16 +370,21 @@ fun main(args: Array<String>) {
     val pathToProjectRoot = if (isThereArgs) args[0] else ".." / "infroProject"
 //    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathWhereToGenerateKtAmper = pathToProjectRoot / "src" // / "main" / "kotlin"
-    val pathToTheMainExample = File("src" / "examples" / "Main" / "main.niva").absolutePath
+    val mainNivaFile = File("src" / "examples" / "Main" / "main.niva")
+    val pathToTheMainExample = mainNivaFile.absolutePath
     val pathToNivaProjectRootFile = if (isThereArgs) args[1] else pathToTheMainExample
     val pathToGradle = pathToProjectRoot / "build.gradle.kts"
     val pathToAmper = pathToProjectRoot / "module.yaml"
 
+    val pathToNativeExe = pathToProjectRoot / "build" / "bin" / "linuxX64" / "linuxX64DebugExecutable" / "kotlin.kexe"
+
     val startTime = System.currentTimeMillis()
 
 
-    val compilationTarget = compileProjFromFile(pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
-        pathToAmper)
+    val compilationTarget = compileProjFromFile(
+        pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
+        pathToAmper
+    )
 
     val isShowTimeArg = args.count() > 2 && args[2] == "time"
 
@@ -362,8 +395,12 @@ fun main(args: Array<String>) {
     }
 
 
+    val needMoveBinary = args.find { it == "-c" } != null || true
 
-    runGradleRunInProject(pathToProjectRoot, inlineRepl, compilationTarget)
+    runGradleRunInProject(
+        pathToProjectRoot, inlineRepl, compilationTarget, pathToNativeExe, mainNivaFile.nameWithoutExtension,
+        needMoveBinary
+    )
 
     if (isShowTimeArg) {
         val thirdTime = System.currentTimeMillis()

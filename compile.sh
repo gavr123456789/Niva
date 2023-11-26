@@ -23,6 +23,8 @@ if [ "$1" == "bin" ]; then
 
   cd ../..
   cp -r ../Niva/infroProject .
+  # remove dir with jars
+  rm -rf Niva-SNAPSHOT-1.0
 
   echo 'type Person name: String age: Int
 Person say::String = (name + " saying " + say) echo
