@@ -24,16 +24,16 @@ if [ "$1" == "bin" ]; then
   pwd
   cd ../..
   pwd
-  cp -r ../Niva/.infroProject .
+  cp -r ../Niva/infroProject .
 
   echo 'type Person name: String age: Int
-Person say = (name + " saying Hello World!") echo
+Person say::String = (name + " saying " + say) echo
 person = Person name: "Alice" age: 24
-person say
+person say: "Hello world!"
 
 list = {1 2 3}
-list2 = list filter: [ it > 1]
+list2 = list filter: [it > 1]
 >list' > main.scala
   xdg-open main.scala
-  ./niva .infroProject main.scala
+  ./niva infroProject main.scala
 fi
