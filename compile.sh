@@ -21,9 +21,7 @@ if [ "$1" == "bin" ]; then
   native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar:kotlin-stdlib-1.9.20.jar:Niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
   mv niva ../..
 
-  pwd
   cd ../..
-  pwd
   cp -r ../Niva/infroProject .
 
   echo 'type Person name: String age: Int
