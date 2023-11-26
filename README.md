@@ -9,15 +9,32 @@ The implementation on Kotlin has already overtaken TS in terms of functionality.
 `gradle run` will compile main.niva file from NivaK/Niva/src/examples/Main
     
 ## Backend
-~~Now the backend is Nim. Yes it's quite fun `niva` -> `nim` -> `C`.  
-I made this decision because I saw how many new languages die quickly, due to lack of time or being disappointed in ideas, so I decided to transpile into a language of a sufficiently high level so as not to mess with LLVM and be able to quickly test ideas. Also nim gives free Js transpile and simple interaction with `C`, `C++` and `Js`.  
-That can be changed in future.~~
-Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich. 
-  
+Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
 A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
 
 ## Name
 I haven't decided on the final name yet, so far I've chosen niva because my 2 favorite static languages are nim and vala.
+
+## Compile from sources
+P.S. u can find binary releases in the releases  
+
+### JVM
+1) `sh compile.sh jvm`  
+2) run compiler from bin folder
+You will get 
+### Native
+1) install graalvm `yay -S jdk21-graalvm-bin` on Arch   
+2) `sh compile.sh bin`  
+### Usage
+
+Niva can eat .niva and .scala files, because Scala highlight fits well for Niva :3  
+if you are using Visual Studio Code, install Scala Syntax ext.  
+Right now 2 paths is needed, one to kotlin project(its included in repo Niva/NivaK/.infroProject and inside niva_compiler folder)
+and the second to `.niva` file.  
+`./niva pathToInfroProj main.scala`  
+inside niva_compiler it would be:  
+`./niva .infroProject main.scala`
+
 
 # Core
 
