@@ -1,10 +1,7 @@
 package mainNiva
-import main.*
 
 // STD
-import java.io.BufferedWriter
-import java.io.FileWriter
-import java.io.IOException
+
 
 class Error {
     companion object
@@ -52,22 +49,6 @@ operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): Mutabl
     LinkedHashMap(this).apply { putAll(map) }
 
 
-fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
-    val q = x.toString()
-    // x/y/z.niva:6 5
-    val content = pathToNivaFileAndLine + "|||" + q + "***" + count
-
-    try {
-        val writer = BufferedWriter(FileWriter(INLINE_REPL, true))
-        writer.append(content)
-        writer.newLine()
-        writer.close()
-    } catch (e: IOException) {
-        println("File error" + e.message)
-    }
-
-    return x
-}
 
 inline fun Boolean.isFalse() = !this
 inline fun Boolean.isTrue() = this
@@ -75,8 +56,11 @@ inline fun Boolean.isTrue() = this
 // end of STD
 
 fun main() {
-    val person = main.Person(name = "Alice", age = 24)
-    person.say()
+    val truly = {t: () -> Unit, f: () -> Unit, -> t()}
+    val falsy = {t: () -> Unit, f: () -> Unit, -> f()}
+    val ify = {c: (() -> Unit,() -> Unit,) -> Unit, t: () -> Unit, f: () -> Unit, -> (c)(t, f)}
+    (ify)(truly, {"true".echo()}, {"false".echo()})
+    (ify)(falsy, {"true".echo()}, {"false".echo()})
     
 }
 

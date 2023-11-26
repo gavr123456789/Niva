@@ -1,3 +1,5 @@
+Project target: "linux"
+
 truly  = [t::[ -> Unit], f::[ -> Unit] -> t do]
 falsy = [t::[ -> Unit], f::[ -> Unit] -> f do]
 

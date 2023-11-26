@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.Statement
+import frontend.typer.CompilationTarget
 import frontend.typer.MAIN_PKG_NAME
 import frontend.typer.Package
 import frontend.typer.Project
@@ -17,6 +18,7 @@ class GeneratorKt(
 ) {
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
+        const val TARGET = "%TARGET%"
         const val GRADLE_TEMPLATE = """
 plugins {
     kotlin("jvm") version "1.9.20-Beta"
@@ -52,6 +54,14 @@ application {
 }
 
 """
+
+        const val AMPER_TEMPLATE = """
+product: %TARGET%/app
+
+dependencies:
+  - org.jetbrains.kotlinx:kotlinx-datetime:0.4.1
+  //%IMPL%
+"""
     }
 }
 
@@ -67,7 +77,18 @@ fun GeneratorKt.regenerateGradle(pathToGradle: String) {
 
     val gradleFile = File(pathToGradle)
     gradleFile.writeText(newGradle)
-//    TODO()
+}
+
+fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) {
+    val implementations = dependencies.joinToString("\n") {
+        "  - $it"
+    }
+    val newGradle = GeneratorKt.AMPER_TEMPLATE
+        .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, implementations)
+        .replace(GeneratorKt.TARGET, target.name )
+
+    val gradleFile = File(pathToAmper)
+    gradleFile.writeText(newGradle)
 }
 
 fun GeneratorKt.deleteAndRecreateKotlinFolder(path: File) {
@@ -92,11 +113,11 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
     return baseDir
 }
 
-fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package) = buildString {
+fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilationTarget: CompilationTarget) = buildString {
     append("package ${mainPkg.packageName}\n")
     val code1 = ktCode.addIndentationForEachString(1)
     val mainCode = putInMainKotlinCode(code1)
-    val code3 = addNivaStd(mainCode)
+    val code3 = addNivaStd(mainCode, compilationTarget)
     append(mainPkg.generateImports(), "\n")
     append(code3, "\n")
 }
@@ -124,8 +145,10 @@ fun Package.generateImports() = buildString {
 fun GeneratorKt.generateKtProject(
     pathToSrcKtFolder: String,
     pathToGradle: String,
+    pathToAmper: String,
     mainProject: Project,
     topLevelStatements: List<Statement>,
+    compilationTarget: CompilationTarget
 ) {
     // remove imports of empty packages from other packages
     val notBindedPackages = mainProject.packages.values.filter { !it.isBinding }
@@ -146,15 +169,18 @@ fun GeneratorKt.generateKtProject(
     val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
 
-    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg)
+    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget)
     val mainFile = createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
     generatePackages(path.toPath(), notBindedPackages)
 
 
+    // 4 regenerate amper
+    regenerateAmper(pathToAmper, compilationTarget)
+
     // 4 regenerate gradle
-    regenerateGradle(pathToGradle)
+//    regenerateGradle(pathToGradle)
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
