@@ -1424,7 +1424,7 @@ fun Resolver.targetFromString(target: String, token: Token): CompilationTarget =
     "macos" -> CompilationTarget.macos
     "windows" -> token.compileError("Windows native target not supported yet")
     "js" -> token.compileError("js target not supported yet")
-    else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.toTypedArray()}")
+    else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.map { it.name }}")
 }
 fun Resolver.changeTarget(target: String, token: Token) {
     val target = targetFromString(target, token)
