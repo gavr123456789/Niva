@@ -3,7 +3,6 @@
 archive_path="Niva/Niva/build/distributions/Niva-SNAPSHOT-1.0.zip"
 
 
-
 cd ./Niva/Niva/
 ./gradlew distZip -quiet
 cd ../..
@@ -12,7 +11,8 @@ unzip -o -q "$archive_path" -d niva_compiler
 if [ "$1" == "jvm" ]; then
   echo "jvm build..."
   cd niva_compiler/Niva-SNAPSHOT-1.0/bin/
-  cp -r ../../../Niva/infroProject .
+  cp -r ../../../Niva/infroProject ~/.niva/
+
 fi
 
 if [ "$1" == "bin" ]; then
@@ -26,7 +26,7 @@ if [ "$1" == "bin" ]; then
   mv niva ../..
 
   cd ../..
-  cp -r ../Niva/infroProject .
+  cp -r ../Niva/infroProject ~/.niva/infroProject
   # remove dir with jars
   rm -rf Niva-SNAPSHOT-1.0
 fi
@@ -39,10 +39,11 @@ person say: "Hello world!"
 list = {1 2 3}
 list2 = list filter: [it > 1]
 >list' > main.scala
-xdg-open main.scala
+# xdg-open main.scala
+
 if [ "$1" == "bin" ]; then
-  ./niva infroProject main.scala
+  ./niva main.scala
 fi
 if [ "$1" == "jvm" ]; then
-  ./Niva infroProject main.scala
+  ./Niva main.scala
 fi
