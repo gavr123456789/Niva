@@ -2,6 +2,10 @@
 
 archive_path="Niva/Niva/build/distributions/Niva-SNAPSHOT-1.0.zip"
 
+if [ "$1" == "" ]; then
+  echo "use jvm or bin argument"
+  exit 1
+fi
 
 cd ./Niva/Niva/
 ./gradlew distZip -quiet
@@ -11,6 +15,7 @@ unzip -o -q "$archive_path" -d niva_compiler
 if [ "$1" == "jvm" ]; then
   echo "jvm build..."
   cd niva_compiler/Niva-SNAPSHOT-1.0/bin/
+  mkdir -p ~/.niva/infroProject
   cp -r ../../../Niva/infroProject ~/.niva/
 
 fi
@@ -26,7 +31,8 @@ if [ "$1" == "bin" ]; then
   mv niva ../..
 
   cd ../..
-  cp -r ../Niva/infroProject ~/.niva/infroProject
+  mkdir -p ~/.niva/infroProject
+  cp -r ../Niva/infroProject ~/.niva/
   # remove dir with jars
   rm -rf Niva-SNAPSHOT-1.0
 fi
