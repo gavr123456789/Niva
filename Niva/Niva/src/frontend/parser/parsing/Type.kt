@@ -63,7 +63,7 @@ fun Parser.parseType(): TypeAST {
 
 
         return TypeAST.Lambda(
-            name = listOfInputTypes.map { it.name }.joinToString { it } + returnType.name,
+            name = "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
             inputTypesList = listOfInputTypes,
             token = tok,
             returnType = returnType,

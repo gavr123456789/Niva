@@ -432,8 +432,8 @@ fun main(args: Array<String>) {
             compileOnly
         )
     } else {
-        val x = generateInfo(resolver, infoUserOnly)
-        println(x)
+        val mdInfo = generateInfo(resolver, infoUserOnly)
+        println(mdInfo)
     }
 
 

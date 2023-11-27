@@ -9,6 +9,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.typer.Type.RecursiveType.name
 import frontend.util.div
 import frontend.util.removeDoubleQuotes
 import java.io.File
@@ -527,14 +528,6 @@ fun Resolver.resolveDeclarations(
     currentLevel -= 1
 }
 
-private fun Resolver.inferReturnType(msgDeclaration: MessageDeclaration) {
-    this
-    if (msgDeclaration.returnTypeAST == null) {
-
-    }
-
-}
-
 private fun Resolver.resolveMessageDeclaration(
     statement: MessageDeclaration,
     needResolveBody: Boolean,
@@ -593,6 +586,44 @@ private fun Resolver.resolveMessageDeclaration(
 
     val resolveBody = {
         bodyScope["this"] = forType
+
+        // add args to scope
+        when (statement) {
+            is MessageDeclarationKeyword -> {
+                statement.args.forEach {
+                    if (it.type == null) {
+                        statement.token.compileError("Can't parse type for argument ${it.name}")
+                    }
+                    val astType = it.type
+                    val type = astType.toType(typeDB, typeTable)//fix
+
+                    bodyScope[it.localName ?: it.name] = type
+
+                    if (type is Type.UnknownGenericType) {
+                        statement.typeArgs.add(type.name)
+                    }
+                    // add generic params to scope
+                    if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
+                        statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
+                        // T == T
+                        if (type.name == it.type.name) {
+                            bodyScope[it.name] = type
+                        }
+                    }
+
+                }
+            }
+            is MessageDeclarationUnary -> {
+                // unary has zero args
+            }
+            is MessageDeclarationBinary -> {
+                val arg = statement.arg
+                val argType = arg.type?.toType(typeDB, typeTable)
+                    ?: statement.token.compileError("Cant infer type of argument: `${arg.name}` for binary message declaration `${statement.forTypeAst.name} ${statement.name}`")
+                bodyScope[arg.name] = argType
+            }
+            is ConstructorDeclaration -> {}
+        }
         // add args to bodyScope
         if (forType is Type.UserLike) {
             forType.fields.forEach {
@@ -602,14 +633,17 @@ private fun Resolver.resolveMessageDeclaration(
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
     }
 
-    // мы не резолвим боди в моменте когда добавляем стейтменты, следовательно тип в дб останется не правильный
     // we need to resolve body anyway, if there is single expression
     // to write right signature to db
-    if (statement.body.count() == 1) {
+    if (statement.isSingleExpression) {
         val lastStatement = statement.body[0]
         if (lastStatement is Expression) {
             if (lastStatement.type == null) {
                 resolveBody()
+            }
+            // check that ast type equal to real type
+            if (statement.returnTypeAST != null && !compareAstWithType(statement.returnTypeAST, lastStatement.type!!)){
+                lastStatement.token.compileError("Declarated return type of `${statement.forTypeAst.name} ${statement.name}` is `${statement.returnTypeAST.name}` but you returning `${lastStatement.type}`")
             }
 
             val typeOfLastStatement = lastStatement.type!!
@@ -617,6 +651,10 @@ private fun Resolver.resolveMessageDeclaration(
                 statement.returnType = typeOfLastStatement
             }
 
+        } else {
+            if (lastStatement !is ReturnStatement && lastStatement !is Assign && lastStatement !is VarDeclaration) {
+                lastStatement.token.compileError("You can use only expressions in single expression message declaration")
+            }
         }
     }
 
@@ -631,26 +669,7 @@ private fun Resolver.resolveMessageDeclaration(
         is MessageDeclarationUnary -> if (addToDb) addNewUnaryMessage(statement)
         is MessageDeclarationBinary -> if (addToDb) addNewBinaryMessage(statement)
         is MessageDeclarationKeyword -> {
-            statement.args.forEach {
-                if (it.type == null) {
-                    statement.token.compileError("Can't parse type for argument ${it.name}")
-                }
-                val astType = it.type
-                val type = astType.toType(typeDB, typeTable)//fix
 
-                bodyScope[it.localName ?: it.name] = type
-
-                if (type is Type.UnknownGenericType) {
-                    statement.typeArgs.add(type.name)
-                }
-                if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                    statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                    if (type.name == type.name) {
-                        bodyScope[it.name] = type
-                    }
-                }
-
-            }
             if (addToDb)
                 addNewKeywordMessage(statement)
         }
@@ -828,7 +847,8 @@ private fun Resolver.resolveStatement(
             if (statementDeclaredType != null) {
                 if (statementDeclaredType.name != valueType.name) {
                     val text = "${statementDeclaredType.name} != ${valueType.name}"
-                    statement.token.compileError("Type declared for ${statement.name} is not equal for it's value type($text)")
+
+                    statement.token.compileError("Type declared for ${statement.name} is not equal for it's value type `$text`")
                 }
             }
 
@@ -1082,6 +1102,9 @@ fun Resolver.resolveExpressionInBrackets(
     return lastExpr.type!!
 }
 
+fun compareAstWithType(astType: TypeAST, type: Type): Boolean {
+    return astType.name == type.name
+}
 
 fun compare2Types(type1: Type, type2: Type): Boolean {
     // TODO temp
