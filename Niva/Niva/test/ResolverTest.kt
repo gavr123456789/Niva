@@ -564,6 +564,26 @@ class ResolverTest {
         assert(statements.count() == 1)
         assert((statements[0] as TypeDeclaration).genericFields[0] == "T")
     }
+
+    @Test
+    fun inferReturnTypeOfSingleExpressionInMessageDeclaration() {
+
+        val source = """
+            type Person 
+            Person say::String = "sas"
+            Person say= "sas"
+            Person + arg::Int = "sas"
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+        assert((statements[1] as MessageDeclarationKeyword).returnType?.name == "String")
+        assert((statements[2] as MessageDeclarationUnary).returnType?.name == "String")
+        assert((statements[3] as MessageDeclarationBinary).returnType?.name == "String")
+    }
+
+
+
 }
 
 

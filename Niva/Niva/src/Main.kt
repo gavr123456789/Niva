@@ -422,10 +422,13 @@ fun main(args: Array<String>) {
     val infoOnly = args.find { it == "-i" } != null
     val infoUserOnly = args.find { it == "-iu" } != null
 
-    if (!(infoOnly || infoUserOnly)) {
+    if (!(infoOnly || infoUserOnly) ) {
         runGradleRunInProject(
-            pathToProjectRoot, inlineRepl, resolver.compilationTarget,
-            resolver.compilationMode, mainNivaFile.nameWithoutExtension,
+            pathToProjectRoot,
+            inlineRepl,
+            resolver.compilationTarget,
+            resolver.compilationMode,
+            mainNivaFile.nameWithoutExtension,
             compileOnly
         )
     } else {
