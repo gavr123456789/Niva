@@ -60,25 +60,25 @@ fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
     return false
 }
 
-enum class OS_Type {
+enum class CurrentOS {
     WINDOWS,
     LINUX,
     MAC
 }
 
-fun getOSType(): OS_Type {
+fun getOSType(): CurrentOS {
     val osName = System.getProperty("os.name").lowercase()
     return when {
-        osName.contains("dows") -> OS_Type.WINDOWS
-        osName.contains("nux") -> OS_Type.LINUX
-        osName.contains("mac") -> OS_Type.MAC
+        osName.contains("dows") -> CurrentOS.WINDOWS
+        osName.contains("nux") -> CurrentOS.LINUX
+        osName.contains("mac") -> CurrentOS.MAC
         else -> throw Error("Unknown OS: $osName")
     }
 }
 
 fun getOsPathSeparator() = when (getOSType()) {
-    OS_Type.WINDOWS -> "\\"
-    OS_Type.LINUX, OS_Type.MAC -> "/"
+    CurrentOS.WINDOWS -> "\\"
+    CurrentOS.LINUX, CurrentOS.MAC -> "/"
 }
 
 operator fun String.div(arg: String) = this + getOsPathSeparator() + arg

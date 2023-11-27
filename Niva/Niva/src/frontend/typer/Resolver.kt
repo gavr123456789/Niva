@@ -9,6 +9,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.util.div
 import frontend.util.removeDoubleQuotes
 import java.io.File
 
@@ -70,7 +71,9 @@ class Resolver(
 
     val generator: GeneratorKt = GeneratorKt(),
 
-    var compilationTarget: CompilationTarget = CompilationTarget.jvm
+    var compilationTarget: CompilationTarget = CompilationTarget.jvm,
+    var compilationMode: CompilationMode = CompilationMode.debug
+
 ) {
     companion object {
 
@@ -649,6 +652,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "protocol" -> changeProtocol(substring)
                     "use" -> usePackage(substring)
                     "target" -> changeTarget(substring, statement.token)
+                    "mode" -> changeCompilationMode(substring, statement.token)
                     else -> statement.token.compileError("Unexpected argument ${it.name} for Project")
                 }
             }
@@ -1418,18 +1422,74 @@ enum class CompilationTarget {
 //    windows,
 }
 
-fun Resolver.targetFromString(target: String, token: Token): CompilationTarget = when (target) {
-    "jvm" -> CompilationTarget.jvm
-    "linux" -> CompilationTarget.linux
-    "macos" -> CompilationTarget.macos
-    "windows" -> token.compileError("Windows native target not supported yet")
-    "js" -> token.compileError("js target not supported yet")
-    else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.map { it.name }}")
+enum class CompilationMode {
+    release,
+    debug,
+//    windows,
 }
+
+
 fun Resolver.changeTarget(target: String, token: Token) {
+    fun targetFromString(target: String, token: Token): CompilationTarget = when (target) {
+        "jvm" -> CompilationTarget.jvm
+        "linux" -> CompilationTarget.linux
+        "macos" -> CompilationTarget.macos
+        "windows" -> token.compileError("Windows native target not supported yet")
+        "js" -> token.compileError("js target not supported yet")
+        else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.map { it.name }}, default: jvm")
+    }
+
     val target = targetFromString(target, token)
     compilationTarget = target
 }
+
+fun CompilationMode.toRunTask() = when (this) {
+    CompilationMode.release -> "runLinuxX64ReleaseExecutableLinuxX64"
+    CompilationMode.debug -> "runLinuxX64DebugExecutableLinuxX64"
+}
+
+fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String {
+    if (target == CompilationTarget.jvm) return "dist"
+    val targetStr = when (target) {
+        CompilationTarget.linux -> "LinuxX64"
+        CompilationTarget.macos -> "MacosArm64"
+        else -> TODO()
+    }
+    val compMode = when (this) {
+        CompilationMode.release -> "Release"
+        CompilationMode.debug -> "Debug"
+    }
+
+    return "link$targetStr${compMode}Executable$targetStr"
+}
+
+fun CompilationMode.toBinaryPath(target: CompilationTarget, pathToProjectRoot: String): String {
+    if (target == CompilationTarget.jvm) return ""
+    val targetStr = when (target) {
+        CompilationTarget.linux -> "linuxX64"
+        CompilationTarget.macos -> "macosArm64"
+        else -> TODO()
+    }
+    val compMode = when (this) {
+        CompilationMode.release -> "${targetStr}ReleaseExecutable"
+        CompilationMode.debug -> "${targetStr}DebugExecutable"
+    }
+
+    return pathToProjectRoot / "build" / "bin" / targetStr / compMode / "kotlin.kexe"
+}
+
+
+fun Resolver.changeCompilationMode(mode: String, token: Token) {
+    fun modeFromString(mode: String, token: Token): CompilationMode = when (mode) {
+        "release" -> CompilationMode.release
+        "debug" -> CompilationMode.debug
+        else -> token.compileError("There is no such compilation mode as $mode, supported targets are ${CompilationMode.entries.map { it.name }}, default: debug")
+    }
+
+    val modeEnum = modeFromString(mode, token)
+    compilationMode = modeEnum
+}
+
 
 fun Resolver.getTypeForIdentifier(
     x: IdentifierExpr,

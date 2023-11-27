@@ -59,8 +59,7 @@ application {
 product: %TARGET%/app
 
 dependencies:
-  - org.jetbrains.kotlinx:kotlinx-datetime:0.4.1
-  //%IMPL%
+//%IMPL%
 """
     }
 }
@@ -85,7 +84,7 @@ fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) 
     }
     val newGradle = GeneratorKt.AMPER_TEMPLATE
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, implementations)
-        .replace(GeneratorKt.TARGET, target.name )
+        .replace(GeneratorKt.TARGET, target.name)
 
     val gradleFile = File(pathToAmper)
     gradleFile.writeText(newGradle)
@@ -151,11 +150,11 @@ fun GeneratorKt.generateKtProject(
     compilationTarget: CompilationTarget
 ) {
     // remove imports of empty packages from other packages
-    val notBindedPackages = mainProject.packages.values.filter { !it.isBinding }
-    notBindedPackages.forEach { pkg ->
+    val notBindPackages = mainProject.packages.values.filter { !it.isBinding }
+    notBindPackages.forEach { pkg ->
         if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
 
-            notBindedPackages.forEach { pkg2 ->
+            notBindPackages.forEach { pkg2 ->
                 pkg2.currentImports -= pkg.packageName
             }
         }
@@ -170,10 +169,10 @@ fun GeneratorKt.generateKtProject(
 
 
     val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget)
-    val mainFile = createCodeKtFile(path, "Main.kt", mainCode)
+    createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
-    generatePackages(path.toPath(), notBindedPackages)
+    generatePackages(path.toPath(), notBindPackages)
 
 
     // 4 regenerate amper

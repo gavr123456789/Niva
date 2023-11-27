@@ -20,10 +20,6 @@ fun Resolver.resolveCodeBlock(
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeDB, typeTable)//fix
         }
-//        else {
-//            it.type = getTypeForIdentifier(it, previousScope, currentScope)
-//            println()
-//        }
 
 
     }

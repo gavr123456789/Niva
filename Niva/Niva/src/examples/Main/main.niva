@@ -1,10 +1,35 @@
-Project target: "linux"
+Project loadPackages: {"org.jetbrains.kotlinx:kotlinx-datetime:0.4.1"}
 
-truly  = [t::[ -> Unit], f::[ -> Unit] -> t do]
-falsy = [t::[ -> Unit], f::[ -> Unit] -> f do]
+Bind package: "kotlinx.datetime" content: [
+    type Clock
+    type Instant
+    type LocalDateTime hour: Int
+    type TimeZone id: String
+        constructor TimeZone currentSystemDefault
+        constructor TimeZone of::String = []
+    type FixedOffsetTimeZone
+    Clock now -> Instant
+    Instant toLocalDateTime::TimeZone -> LocalDateTime
+] getters: [
+    LocalDateTime dayOfYear -> Int
+    Clock System -> Clock
+    TimeZone UTC -> TimeZone
+]
 
-ify = [c::[[ -> Unit], [ -> Unit] -> Unit], t::[ -> Unit], f::[ -> Unit] -> c x: t y: f]
+now = Clock System now
+utc = now toLocalDateTime: TimeZone UTC
+
+systemTime = now toLocalDateTime: TimeZone currentSystemDefault
+tzBerlin = TimeZone of: "Europe/Berlin"
+berlinTime = now toLocalDateTime: tzBerlin
+
+utc echo
+berlinTime echo
+systemTime echo
+berlinTime dayOfYear echo
+
+1 echo
 
 
-ify c: truly t: ["true" echo] f: ["false" echo]
-ify c: falsy t: ["true" echo] f: ["false" echo]
+
+

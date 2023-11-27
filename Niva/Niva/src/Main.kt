@@ -1,13 +1,13 @@
+@file:Suppress("unused")
+
 package main
 
 import codogen.generateKtProject
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
-import frontend.typer.CompilationTarget
-import frontend.typer.Resolver
-import frontend.typer.resolve
-import frontend.util.OS_Type
+import frontend.typer.*
+import frontend.util.CurrentOS
 import frontend.util.div
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
@@ -15,6 +15,16 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 import java.util.concurrent.TimeUnit
+
+const val ANSI_RESET = "\u001B[0m"
+const val ANSI_BLACK = "\u001B[30m"
+const val ANSI_RED = "\u001B[31m"
+const val ANSI_GREEN = "\u001B[32m"
+const val ANSI_YELLOW = "\u001B[33m"
+const val ANSI_BLUE = "\u001B[34m"
+const val ANSI_PURPLE = "\u001B[35m"
+const val ANSI_CYAN = "\u001B[36m"
+const val ANSI_WHITE = "\u001B[37m"
 
 fun lex(source: String, file: File): MutableList<Token> {
     val lexer = Lexer(source, file)
@@ -35,17 +45,16 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, need
     if (needWait) {
         process.waitFor(60, TimeUnit.MINUTES)
     }
-
 }
 
 
 fun runGradleRunInProject(
-    path: String,
+    pathToProjectRoot: String,
     inlineReplPath: File,
     compilationTarget: CompilationTarget,
-    pathToNativeExe: String,
+    compilationMode: CompilationMode,
     mainNivaFileName: String,
-    needMoveBinary: Boolean = false
+    compileOnlyNoRun: Boolean = false
 ) {
     // remove repl log file since it will be recreated
     val removeReplFile = {
@@ -55,21 +64,32 @@ fun runGradleRunInProject(
     }
     removeReplFile()
 
-    val file = File(path)
+    val file = File(pathToProjectRoot)
     if (!file.exists()) {
         throw Exception("Path to infra project doesn't exists")
     }
 
-    val run = when (compilationTarget) {
-        CompilationTarget.jvm -> "run"
-        CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
-        CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+    val cmd = if (!compileOnlyNoRun)
+        when (compilationTarget) { // native run is always debug
+            CompilationTarget.jvm -> "run"
+            CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
+            CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+        } else
+        when (compilationTarget) {
+            CompilationTarget.jvm -> "distZip"
+            CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
+            CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
+        }
+
+    if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
+        println("${ANSI_YELLOW}Warning: It's useless to use release mode with jvm target$ANSI_RESET")
     }
 
+
     when (getOSType()) {
-        OS_Type.WINDOWS -> "cmd.exe /c gradlew.bat -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.LINUX -> "./gradlew -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        OS_Type.MAC -> "./gradlew -q $run -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        CurrentOS.LINUX -> "./gradlew -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        CurrentOS.MAC -> "./gradlew -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
     }
 
     if (inlineReplPath.exists()) {
@@ -80,15 +100,18 @@ fun runGradleRunInProject(
             println("Warning: inline repl currently supported only in jvm target")
         }
     }
-    if (needMoveBinary) {
+    if (compileOnlyNoRun) {
         when (compilationTarget) {
-            CompilationTarget.jvm -> {}
+            CompilationTarget.jvm -> {
+                val zipName = File("./${mainNivaFileName}.zip")
+                val pathToNativeExe = pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                File(pathToNativeExe).copyTo(zipName, true)
+            }
             CompilationTarget.linux -> {
-                val exec = File("./$mainNivaFileName")
-                File(pathToNativeExe).copyTo(exec, true)
-                val sas = exec.setExecutable(true)
-                println("Set executable: $sas")
-
+                val execName = File("./$mainNivaFileName")
+                val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
+                File(pathToNativeExe).copyTo(execName, true)
+                execName.setExecutable(true)
             }
 
             CompilationTarget.macos -> {}
@@ -103,7 +126,7 @@ fun compileProjFromFile(
     pathWhereToGenerateKt: String,
     pathToGradle: String,
     pathToAmper: String
-): CompilationTarget {
+): Pair<CompilationTarget, CompilationMode> {
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
@@ -125,10 +148,10 @@ fun compileProjFromFile(
 
 
     val mainFile = File(pathToProjectRootFile)
-    val projectFolder = mainFile.absoluteFile.parentFile
-    val otherFilesPaths = listFilesRecursively(projectFolder, "niva", "scala").filter { it.name != mainFile.name }
-    // we have main file, and all other files, so we can create resolver now
+    val nivaProjectFolder = mainFile.absoluteFile.parentFile
+    val otherFilesPaths = listFilesRecursively(nivaProjectFolder, "niva", "scala").filter { it.name != mainFile.name }
 
+    // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
         mainFile = mainFile,
@@ -148,7 +171,7 @@ fun compileProjFromFile(
         resolver.compilationTarget
     )
 
-    return resolver.compilationTarget
+    return Pair(resolver.compilationTarget, resolver.compilationMode)
 }
 
 
@@ -165,8 +188,8 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
     val quote = "\"\"\""
 
-    val jvmSpecific = if (compilationTarget == CompilationTarget.jvm) """
-        import java.io.BufferedWriter
+    val jvmSpecific = if (compilationTarget == CompilationTarget.jvm)
+        """import java.io.BufferedWriter
         import java.io.FileWriter
         import java.io.IOException
         
@@ -363,30 +386,29 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 
 fun main(args: Array<String>) {
 
-    val isThereArgs = args.count() >= 2
+    val isThereArgs = args.isNotEmpty()
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
-    val pathToProjectRoot = if (isThereArgs) args[0] else ".." / "infroProject"
+    val pathToProjectRoot = System.getProperty("user.home") / ".niva" / "infroProject" //if (isThereArgs) args[0] else ".." / "infroProject"
 //    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
     val pathWhereToGenerateKtAmper = pathToProjectRoot / "src" // / "main" / "kotlin"
     val mainNivaFile = File("src" / "examples" / "Main" / "main.niva")
     val pathToTheMainExample = mainNivaFile.absolutePath
-    val pathToNivaProjectRootFile = if (isThereArgs) args[1] else pathToTheMainExample
+    val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
     val pathToGradle = pathToProjectRoot / "build.gradle.kts"
     val pathToAmper = pathToProjectRoot / "module.yaml"
 
-    val pathToNativeExe = pathToProjectRoot / "build" / "bin" / "linuxX64" / "linuxX64DebugExecutable" / "kotlin.kexe"
 
     val startTime = System.currentTimeMillis()
 
 
-    val compilationTarget = compileProjFromFile(
+    val (compilationTarget, compilationMode) = compileProjFromFile(
         pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
         pathToAmper
     )
 
-    val isShowTimeArg = args.count() > 2 && args[2] == "time"
+    val isShowTimeArg = args.count() > 1 && args[1] == "time"
 
     val secondTime = System.currentTimeMillis()
     if (isShowTimeArg) {
@@ -395,11 +417,11 @@ fun main(args: Array<String>) {
     }
 
 
-    val needMoveBinary = args.find { it == "-c" } != null || true
+    val compileOnly = args.find { it == "-c" } != null
 
     runGradleRunInProject(
-        pathToProjectRoot, inlineRepl, compilationTarget, pathToNativeExe, mainNivaFile.nameWithoutExtension,
-        needMoveBinary
+        pathToProjectRoot, inlineRepl, compilationTarget, compilationMode, mainNivaFile.nameWithoutExtension,
+        compileOnly
     )
 
     if (isShowTimeArg) {
