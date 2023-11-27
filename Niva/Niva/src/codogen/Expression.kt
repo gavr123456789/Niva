@@ -4,7 +4,7 @@ import frontend.parser.types.ast.*
 
 fun replaceKeywords(str: String) =
     when (str) {
-        "do", "val", "var", "class", "if" -> "`$str`"
+        "do", "val", "var", "class", "in" -> "`$str`"
         else -> str
     }
 

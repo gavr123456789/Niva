@@ -7,11 +7,12 @@ import frontend.parser.types.ast.*
 fun Parser.ifOrSwitch(): ControlFlow {
 
     val wasFirstPipe = check(TokenType.Pipe)
-    var x = 1 // because first is pipe already matched
+    var x = 1 // because first is pipe already matched outside of this function
     do {
         if (check(TokenType.ReturnArrow, x)) {
             peek(x).compileError("-> detected, but => expected")
         }
+        // | x > 5 ^ =>
         if (check(TokenType.Then, x)) {
             return ifStatementOrExpression()
         }
@@ -21,8 +22,13 @@ fun Parser.ifOrSwitch(): ControlFlow {
         }
         x++
     } while (!check(TokenType.EndOfLine, x))
+    // | x > 6 =>
+    // 1 echo
 
-    println("That's very strange control flow on line: ${peek(x).line}")
+
+    // many line switch
+    // | x
+    // | 5 => ...
     return switchStatementOrExpression()
 }
 
