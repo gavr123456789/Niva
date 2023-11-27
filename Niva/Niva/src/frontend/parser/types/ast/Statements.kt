@@ -72,7 +72,7 @@ class Assign(
     pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "Assign(${name} = ${value.str})"
+        return "$name = ${value.str})"
     }
 }
 

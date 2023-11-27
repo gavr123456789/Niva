@@ -69,7 +69,7 @@ class MessageDeclarationKeyword(
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnTypeAST?.name ?: "Unit"}"
+        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
 }
 
