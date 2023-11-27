@@ -17,7 +17,7 @@ After running compile.sh you will get niva_compiler folder that contains jvm or 
 2) run compiler from bin folder
 You will get 
 ### Native
-1) install graalvm `yay -S jdk21-graalvm-bin` on Arch   
+1) install graalvm `yay -S jdk21-graalvm-bin` on Arch, `nix shell nixpkgs#graalvm-ce` on nix   
 2) `sh compile.sh bin`  
 ### Usage
 
