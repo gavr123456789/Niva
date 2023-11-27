@@ -21,7 +21,15 @@ sealed class MessageMetadata(
     val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf()
-)
+) {
+    override fun toString(): String {
+        return when (this) {
+            is BinaryMsgMetaData -> this.toString()
+            is KeywordMsgMetaData -> this.toString()
+            is UnaryMsgMetaData -> this.toString()
+        }
+    }
+}
 
 class UnaryMsgMetaData(
     name: String,
@@ -30,7 +38,11 @@ class UnaryMsgMetaData(
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
     val isGetter: Boolean = false
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+    override fun toString(): String {
+        return "$name -> $returnType"
+    }
+}
 
 class BinaryMsgMetaData(
     name: String,
@@ -39,12 +51,20 @@ class BinaryMsgMetaData(
     pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+    override fun toString(): String {
+        return "$name $argType -> $returnType"
+    }
+}
 
 class KeywordArg(
     val name: String,
     val type: Type,
-)
+) {
+    override fun toString(): String {
+        return "$name: $type"
+    }
+}
 
 class KeywordMsgMetaData(
     name: String,
@@ -53,7 +73,12 @@ class KeywordMsgMetaData(
     pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends)
+) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+    override fun toString(): String {
+        val args = argTypes.joinToString(" ") { it.toString() }
+        return "$args -> $returnType"
+    }
+}
 
 //class ConstructorMsgMetaData(
 //    name: String,
@@ -94,7 +119,10 @@ sealed class Type(
 //    var bind: Boolean = false
 ) {
     override fun toString(): String {
-        return "Type: $name"
+        if (this is InternalLike)
+            return name
+        else
+            return "$pkg.$name"
     }
 
 
