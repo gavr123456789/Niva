@@ -11,6 +11,7 @@ import frontend.util.CurrentOS
 import frontend.util.div
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
+import main.utils.generateInfo
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -126,7 +127,7 @@ fun compileProjFromFile(
     pathWhereToGenerateKt: String,
     pathToGradle: String,
     pathToAmper: String
-): Pair<CompilationTarget, CompilationMode> {
+): Resolver {
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
@@ -171,7 +172,7 @@ fun compileProjFromFile(
         resolver.compilationTarget
     )
 
-    return Pair(resolver.compilationTarget, resolver.compilationMode)
+    return resolver
 }
 
 
@@ -403,7 +404,7 @@ fun main(args: Array<String>) {
     val startTime = System.currentTimeMillis()
 
 
-    val (compilationTarget, compilationMode) = compileProjFromFile(
+    val resolver = compileProjFromFile(
         pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
         pathToAmper
     )
@@ -418,11 +419,21 @@ fun main(args: Array<String>) {
 
 
     val compileOnly = args.find { it == "-c" } != null
+    val infoOnly = args.find { it == "-i" } != null
+    val infoUserOnly = args.find { it == "-iu" } != null
 
-    runGradleRunInProject(
-        pathToProjectRoot, inlineRepl, compilationTarget, compilationMode, mainNivaFile.nameWithoutExtension,
-        compileOnly
-    )
+    if (!(infoOnly || infoUserOnly)) {
+        runGradleRunInProject(
+            pathToProjectRoot, inlineRepl, resolver.compilationTarget,
+            resolver.compilationMode, mainNivaFile.nameWithoutExtension,
+            compileOnly
+        )
+    } else {
+        val x = generateInfo(resolver, infoUserOnly)
+        println(x)
+    }
+
+
 
     if (isShowTimeArg) {
         val thirdTime = System.currentTimeMillis()
