@@ -1,11 +1,9 @@
 package main.utils
 
-import frontend.parser.types.ast.UnionBranch
 import frontend.typer.Package
 import frontend.typer.Protocol
 import frontend.typer.Resolver
 import frontend.typer.Type
-import frontend.typer.Type.RecursiveType.fields
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 

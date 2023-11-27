@@ -527,9 +527,17 @@ fun Resolver.resolveDeclarations(
     currentLevel -= 1
 }
 
+private fun Resolver.inferReturnType(msgDeclaration: MessageDeclaration) {
+    this
+    if (msgDeclaration.returnTypeAST == null) {
+
+    }
+
+}
+
 private fun Resolver.resolveMessageDeclaration(
     statement: MessageDeclaration,
-    resolveBody: Boolean,
+    needResolveBody: Boolean,
     previousScope: MutableMap<String, Type>,
     addToDb: Boolean = true
 ): Boolean {
@@ -568,7 +576,12 @@ private fun Resolver.resolveMessageDeclaration(
         statement.forType = forType
     }
 
+
     // check that there is no field with the same name (because of getter has the same signature)
+    // TODO! check only unary and keywords with one arg
+    // no, check this when kind already resolved
+
+
     if (forType is Type.UserType) {
         val fieldWithTheSameName = forType.fields.find { it.name == statement.name }
         if (fieldWithTheSameName != null) {
@@ -577,6 +590,43 @@ private fun Resolver.resolveMessageDeclaration(
     }
 
     val bodyScope = mutableMapOf<String, Type>()
+
+    val resolveBody = {
+        bodyScope["this"] = forType
+        // add args to bodyScope
+        if (forType is Type.UserLike) {
+            forType.fields.forEach {
+                bodyScope[it.name] = it.type
+            }
+        }
+        resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
+    }
+
+    // мы не резолвим боди в моменте когда добавляем стейтменты, следовательно тип в дб останется не правильный
+    // we need to resolve body anyway, if there is single expression
+    // to write right signature to db
+    if (statement.body.count() == 1) {
+        val lastStatement = statement.body[0]
+        if (lastStatement is Expression) {
+            if (lastStatement.type == null) {
+                resolveBody()
+            }
+
+            val typeOfLastStatement = lastStatement.type!!
+            if (statement.returnTypeAST == null) {
+                statement.returnType = typeOfLastStatement
+            }
+
+        }
+    }
+
+
+    if (needResolveBody) {
+        resolveBody()
+    }
+
+
+    // addToDb
     when (statement) {
         is MessageDeclarationUnary -> if (addToDb) addNewUnaryMessage(statement)
         is MessageDeclarationBinary -> if (addToDb) addNewBinaryMessage(statement)
@@ -607,7 +657,7 @@ private fun Resolver.resolveMessageDeclaration(
 
         is ConstructorDeclaration -> {
             if (statement.returnTypeAST == null) {
-                statement.returnTypeDeclared = forType
+                statement.returnType = forType
 //                statement.returnTypeAST = TypeAST.UserType(
 //                    name = forType.name,
 //                    typeArgumentList = listOf(),
@@ -617,17 +667,6 @@ private fun Resolver.resolveMessageDeclaration(
             }
             if (addToDb) addStaticDeclaration(statement)
         }
-    }
-
-    if (resolveBody) {
-        bodyScope["this"] = forType
-        // add args to bodyScope
-        if (forType is Type.UserLike) {
-            forType.fields.forEach {
-                bodyScope[it.name] = it.type
-            }
-        }
-        resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
     }
 
 
@@ -1234,7 +1273,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
             // if return type is not declared then use receiver
             val returnType = if (statement.returnTypeAST == null)
                 typeOfReceiver
-            else statement.returnTypeDeclared ?: statement.returnTypeAST.toType(typeDB, typeTable)
+            else
+                statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
 
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
@@ -1282,7 +1322,6 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
 
     val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
-
     protocol.unaryMsgs[statement.name] = messageData
 
     addMsgToPackageDeclarations(statement)
@@ -1425,7 +1464,6 @@ enum class CompilationTarget {
 enum class CompilationMode {
     release,
     debug,
-//    windows,
 }
 
 

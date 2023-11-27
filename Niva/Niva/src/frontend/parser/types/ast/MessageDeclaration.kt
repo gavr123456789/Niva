@@ -15,10 +15,10 @@ sealed class MessageDeclaration(
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     var forType: Type? = null,
-    var returnTypeDeclared: Type? = null,
+    var returnType: Type? = null,
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forTypeAst.name} $name -> ${returnTypeAST?.name ?: "Unit"}"
+        return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
 }
 
