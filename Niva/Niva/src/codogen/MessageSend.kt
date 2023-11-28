@@ -16,7 +16,7 @@ fun MessageSend.generateMessageCall(): String {
         replaceNameFromPragma(it)
         when (it) {
             is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
-            is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it))
+            is BinaryMsg ->b.append(generateSingleBinary(i, receiver, it))
             is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it))
         }
     }
@@ -169,15 +169,19 @@ fun generateSingleBinary(
     receiver: Receiver,
     it: BinaryMsg
 ) = buildString {
+
     if (i == 0) {
+
         // 1 inc + 2 dec + 3 sas
         // 1 inc^ + 2 dec + 3 sas
-
+        append("(")
         append(generateUnarySends(receiver, it.unaryMsgsForReceiver))
         append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
+        append(")")
     } else {
         append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
     }
+
 }

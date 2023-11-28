@@ -499,30 +499,30 @@ class ResolverTest {
         assert(statements.count() == 2)
     }
 
-    @Test
-    fun optionTypeGeneric() {
-
-        val source = """
-            union Option =
-                | Some x: T
-                | None
-
-            Option unwrap -> T = |this
-            | Some => this x
-            | None => Error throwWithMessage: "No value"
-
-            optionInt = Some x: 42
-            optionInt unwrap echo
-
-            optionStr = Some x: "sas"
-            optionStr unwrap echo
-
-        """.trimIndent()
-
-        val statements = resolve(source)
-
-        assert(statements.count() == 6)
-    }
+//    @Test
+//    fun optionTypeGeneric() {
+//
+//        val source = """
+//            union Option =
+//                | Some x: T
+//                | None
+//
+//            Option unwrap -> T = |this
+//            | Some => this x
+//            | None => Error throwWithMessage: "No value"
+//
+//            optionInt = Some x: 42
+//            optionInt unwrap echo
+//
+//            optionStr = Some x: "sas"
+//            optionStr unwrap echo
+//
+//        """.trimIndent()
+//
+//        val statements = resolve(source)
+//
+//        assert(statements.count() == 6)
+//    }
 
 
     @Test

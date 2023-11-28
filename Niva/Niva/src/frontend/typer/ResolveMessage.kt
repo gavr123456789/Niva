@@ -470,7 +470,7 @@ fun Resolver.resolveMessage(
                             val typeOfArgFromDb = kwTypeFromDB.argTypes[i].type
                             val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
                             val sameTypes =
-                                compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration)
+                                compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                             if (!sameTypes) {
                                 argAndItsMessages.keywordArg.token.compileError(
                                     "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.name} doesn't match ${typeOfArgFromDb.name}"

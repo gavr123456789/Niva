@@ -20,8 +20,6 @@ fun Resolver.resolveCodeBlock(
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeDB, typeTable)//fix
         }
-
-
     }
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -30,7 +28,7 @@ fun Resolver.resolveCodeBlock(
     var isThisWhileCycle = true
     var metaDataFound: KeywordMsgMetaData? = null
     var itArgType: Type? = null
-    // generics resolve
+    // resolve generic args and just args, kinda
     val genericLetterToTypes = mutableMapOf<String, Type>()
     if (rootStatement != null && rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
 
@@ -96,8 +94,11 @@ fun Resolver.resolveCodeBlock(
                             ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving lambda")
                         foundRealType
                     }
-
-                    namedLambdaArgs[i].type = typeForArg
+                    // check declared type of argument first
+//                    if ()
+//                    namedLambdaArgs[i].typeAST
+                    if (namedLambdaArgs[i].type == null)
+                        namedLambdaArgs[i].type = typeForArg
                 }
             }
 
