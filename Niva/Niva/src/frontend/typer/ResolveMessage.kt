@@ -54,12 +54,22 @@ fun Resolver.resolveKwArgsGenerics(
         // we need to check for generic args only if it is Keyword
         if (kwTypeFromDB != null) {
             val argType = it.keywordArg.type!!
-
-
             val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
 
             // this is T
             if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
+                // check that receiver wasn't already resolved to different type
+                val receiverType = statement.receiver.type
+                if (receiverType != null && receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
+                    // find the arg with same letter
+                    val argTypeWithSameLetter = receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
+                    if (argTypeWithSameLetter != null) {
+                        // receiver has the same generic param resolved
+                        if (!compare2Types(argType, argTypeWithSameLetter)) {
+                            it.keywordArg.token.compileError("`${it.name}` has type `$argType` but generic type of `${statement.receiver.type}` was resolved to `$argTypeWithSameLetter`")
+                        }
+                    }
+                }
                 letterToRealType[typeFromDBForThisArg.name] = argType
             }
             // This is Box::T
@@ -301,7 +311,7 @@ fun Resolver.resolveMessage(
                         receiverTable[beforeResolveName] = it
                     }
                 }
-                statement.args.forEach { kwArg ->
+                statement.args.forEachIndexed { i, kwArg ->
                     val argType = kwArg.keywordArg.type
                     if (argType is Type.UserLike && argType.typeArgumentList.isNotEmpty()) {
                         argType.typeArgumentList.forEach {
@@ -312,6 +322,18 @@ fun Resolver.resolveMessage(
                                     statement.token.compileError("Generic param of receiver: `${typeFromReceiver.name}` is different from\n\targ: `${kwArg.name}: ${kwArg.keywordArg.str}::${it.name}` but both must be $beforeName")
                                 }
                             }
+                        }
+                    }
+                    // check that kw from db is the same as real arg type
+                    // like x = {1}, x add: "str" is error
+                    val kwArgFromDb = kwTypeFromDB?.argTypes?.get(i)
+                    val kwArgFromDbType = kwArgFromDb?.type
+                    val currentArgType = kwArg.keywordArg.type
+                    if (kwArgFromDb != null && kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDbType is Type.UnknownGenericType) {
+                        val realTypeForKwFromDb = letterToRealType[kwArgFromDbType.name]!!
+                        val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType)
+                        if (!isResolvedGenericParamEqualRealParam) {
+                            statement.token.compileError("generic type error, type ${kwArgFromDbType.name} of $statement was resolved to $realTypeForKwFromDb but found $currentArgType")
                         }
                     }
                 }
@@ -476,6 +498,7 @@ fun Resolver.resolveMessage(
                                     "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.name} doesn't match ${typeOfArgFromDb.name}"
                                 )
                             }
+
                         }
                     }
                     statement.type = returnType

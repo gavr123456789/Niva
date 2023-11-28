@@ -1,35 +1,6 @@
 
 
-//type Person name: String age: Int
-//
-//person = Person age: 23 name: "Alice"
-//
-//person age: 25
-////> 25
-//>person age
-//
-//
-//
-//Person - x::Person = age - x age
-//
-//person1 = Person age: 23 name: "Alice"
-//person2 = Person age: 19 name: "Bob"
-////> 4
-//>person1 - person2
 
 
-
-Int sas::[Int -> String] -> Int = [
-    | 5 > 2 => ^ 5
-    |=> 1 echo
-
-    | 5 > 2 => 1 echo
-    |=> ^ 5
-]
-
-1 sas: [x -> x toString]
-
-
-
-//x = {1}
-//x add: "sas"
+x = {1}
+x add: "sas"
