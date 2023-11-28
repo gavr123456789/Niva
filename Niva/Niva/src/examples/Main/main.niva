@@ -1,35 +1,35 @@
-Project loadPackages: {"org.jetbrains.kotlinx:kotlinx-datetime:0.4.1"}
 
-Bind package: "kotlinx.datetime" content: [
-    type Clock
-    type Instant
-    type LocalDateTime hour: Int
-    type TimeZone id: String
-        constructor TimeZone currentSystemDefault
-        constructor TimeZone of::String = []
-    type FixedOffsetTimeZone
-    Clock now -> Instant
-    Instant toLocalDateTime::TimeZone -> LocalDateTime
-] getters: [
-    LocalDateTime dayOfYear -> Int
-    Clock System -> Clock
-    TimeZone UTC -> TimeZone
+
+//type Person name: String age: Int
+//
+//person = Person age: 23 name: "Alice"
+//
+//person age: 25
+////> 25
+//>person age
+//
+//
+//
+//Person - x::Person = age - x age
+//
+//person1 = Person age: 23 name: "Alice"
+//person2 = Person age: 19 name: "Bob"
+////> 4
+//>person1 - person2
+
+
+
+Int sas::[Int -> String] -> Int = [
+    | 5 > 2 => ^ 5
+    |=> 1 echo
+
+    | 5 > 2 => 1 echo
+    |=> ^ 5
 ]
 
-now = Clock System now
-utc = now toLocalDateTime: TimeZone UTC
-
-systemTime = now toLocalDateTime: TimeZone currentSystemDefault
-tzBerlin = TimeZone of: "Europe/Berlin"
-berlinTime = now toLocalDateTime: tzBerlin
-
-utc echo
-berlinTime echo
-systemTime echo
-berlinTime dayOfYear echo
-
-1 echo
+1 sas: [x -> x toString]
 
 
 
-
+//x = {1}
+//x add: "sas"
