@@ -582,6 +582,21 @@ class ResolverTest {
         assert((statements[3] as MessageDeclarationBinary).returnType?.name == "String")
     }
 
+    @Test
+    fun recursiveUnary() {
+
+        val source = """
+            Int factorial -> Int = |this
+            | 0 => 1
+            |=> (this - 1) factorial * this
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+
+    }
+
+
 
 
 }

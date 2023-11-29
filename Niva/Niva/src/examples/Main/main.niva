@@ -1,6 +1,17 @@
+Int
+    from::Int
+    to::Int
+    kek::Int
+= [1 echo]
+
+
+1 from: 1 to: 1 kek: 1
+
+1
+    from: 1
+    to: 1
+    kek: 1
 
 
 
 
-x = {1}
-x add: "sas"

@@ -42,8 +42,7 @@ enum class TokenType {
     NoMatch,   // Used internally by the symbol table
     Comment,   // Useful for documentation comments, pragmas, etc.
     BinarySymbol,    // A generic symbol
-    Pragma,
-    Assign, // =, ==, !=
+    Assign, // =,
     DoubleColon,
     EndOfLine, // \n and next line starts not from the dot
 

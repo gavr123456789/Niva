@@ -12,7 +12,7 @@ fun Resolver.resolveMessageDeclaration(
 ): Boolean {
     // check if the type already registered
     val forType = typeTable[statement.forTypeAst.name]//testing
-    val testDB = typeDB.getType(statement.forTypeAst.name)
+//    val testDB = typeDB.getType(statement.forTypeAst.name)
     if (forType == null) {
         unResolvedMessageDeclarations.add(statement)
         currentLevel--
@@ -86,7 +86,6 @@ fun Resolver.resolveMessageDeclaration(
                             bodyScope[it.name] = type
                         }
                     }
-
                 }
             }
 
@@ -111,71 +110,47 @@ fun Resolver.resolveMessageDeclaration(
         }
         wasThereReturn = null
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
-        if (wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
-            statement.token.compileError("You missed returning a value of type: ${statement.returnTypeAST.name}")
+        if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
+            statement.token.compileError("You missed returning(^) a value of type: ${statement.returnTypeAST.name}")
         }
-
-    }
-
-    // we need to resolve body anyway, if there is single expression
-    // to write right signature to db
-    if (statement.isSingleExpression) {
-        val lastStatement = statement.body[0]
-        if (lastStatement is Expression) {
-            if (lastStatement.type == null) {
-                resolveBody()
-            }
-            // check that ast type equal to real type
-            val returnAstType = statement.returnTypeAST
-
-            val isReturnTypeGeneric =
-                (returnAstType != null && returnAstType.name.count() == 1 && returnAstType.name[0].isUpperCase())
-
-            if (!isReturnTypeGeneric) {
-                if (returnAstType != null && !compareAstWithType(returnAstType, lastStatement.type!!)) {
-                    lastStatement.token.compileError("Declarated return type of `${returnAstType.name} ${statement.name}` is `${returnAstType.name}` but you returning `${lastStatement.type}`")
+        // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
+        if (statement.isSingleExpression ) {
+            val expr = statement.body[0]
+            if (expr is Expression) {
+                val returnType = expr.type!!
+                val mdgData = when (statement) {
+                    is ConstructorDeclaration -> findStaticMessageType(forType, statement.name, statement.token).first
+                    is MessageDeclarationBinary -> findBinaryMessageType(forType, statement.name, statement.token)
+                    is MessageDeclarationKeyword -> findKeywordMsgType(forType, statement.name, statement.token)
+                    is MessageDeclarationUnary -> findUnaryMessageType(forType, statement.name, statement.token)
                 }
-            }
 
-            if (returnAstType == null && lastStatement.type != null) {
-                statement.returnType = lastStatement.type
-            }
-
-        } else {
-            if (lastStatement !is ReturnStatement && lastStatement !is Assign && lastStatement !is VarDeclaration) {
-                lastStatement.token.compileError("You can use only expressions in single expression message declaration")
+                mdgData.returnType = returnType
+                statement.returnType = returnType
             }
         }
+
     }
 
 
-    if (needResolveBody) {
-        resolveBody()
-    }
 
 
     // addToDb
-    when (statement) {
-        is MessageDeclarationUnary -> if (addToDb) addNewUnaryMessage(statement)
-        is MessageDeclarationBinary -> if (addToDb) addNewBinaryMessage(statement)
-        is MessageDeclarationKeyword -> {
-
-            if (addToDb)
-                addNewKeywordMessage(statement)
-        }
+    if (addToDb) when (statement) {
+        is MessageDeclarationUnary ->  addNewUnaryMessage(statement)
+        is MessageDeclarationBinary -> addNewBinaryMessage(statement)
+        is MessageDeclarationKeyword ->  addNewKeywordMessage(statement)
 
         is ConstructorDeclaration -> {
             if (statement.returnTypeAST == null) {
                 statement.returnType = forType
-//                statement.returnTypeAST = TypeAST.UserType(
-//                    name = forType.name,
-//                    typeArgumentList = listOf(),
-//                    isNullable = false,
-//                    token = createFakeToken(),
-//                )
             }
-            if (addToDb) addStaticDeclaration(statement)
+            addStaticDeclaration(statement)
         }
+    }
+
+    if (needResolveBody) {
+        resolveBody()
     }
 
 

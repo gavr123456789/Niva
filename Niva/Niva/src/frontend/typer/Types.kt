@@ -16,7 +16,7 @@ data class MsgSend(
 
 sealed class MessageMetadata(
     val name: String,
-    val returnType: Type,
+    var returnType: Type, // need to change in single expression case
     val pkg: String,
     val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")

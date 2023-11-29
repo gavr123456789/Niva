@@ -124,10 +124,12 @@ fun Resolver.resolveReturnTypeIfGeneric(
     receiverType: Type,
     letterToRealType: MutableMap<String, Type>
 ) {
-    val returnName = kwTypeFromDB?.returnType?.name ?: ""
+    val returnType = kwTypeFromDB?.returnType
+    val returnName = returnType?.name ?: ""
     val returnTypeIsSingleGeneric = returnName.length == 1 && returnName[0].isUpperCase()
+
     val returnTypeIsNestedGeneric =
-        kwTypeFromDB != null && kwTypeFromDB.returnType is Type.UserLike && kwTypeFromDB.returnType.typeArgumentList.isNotEmpty()
+        kwTypeFromDB != null && returnType is Type.UserLike && returnType.typeArgumentList.isNotEmpty()
 
     // infer return generic type from args or receiver
     if (kwTypeFromDB != null &&
@@ -451,18 +453,18 @@ fun Resolver.resolveMessage(
                         return
 
                     val msgTypeFromDB = findKeywordMsgType(receiverType, statement.selectorName, statement.token)
+                    val returnTypeFromDb = msgTypeFromDB.returnType
 
-                    val returnType = if (msgTypeFromDB.returnType is Type.UnknownGenericType) {
-                        val realTypeFromTable = letterToRealType[msgTypeFromDB.returnType.name]
-                            ?: throw Exception("Cant find generic type ${msgTypeFromDB.returnType.name} in letterToRealType table $letterToRealType")
+                    val returnType = if (returnTypeFromDb is Type.UnknownGenericType) {
+                        val realTypeFromTable = letterToRealType[returnTypeFromDb.name]
+                            ?: throw Exception("Cant find generic type ${returnTypeFromDb.name} in letterToRealType table $letterToRealType")
                         realTypeFromTable
-                    } else if (msgTypeFromDB.returnType is Type.UserType && msgTypeFromDB.returnType.typeArgumentList.find { it.name.length == 1 } != null) {
+                    } else if (returnTypeFromDb is Type.UserType && returnTypeFromDb.typeArgumentList.find { it.name.length == 1 } != null) {
                         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
-                        val returnType = msgTypeFromDB.returnType
                         val newResolvedTypeArgs = mutableListOf<Type>()
 
                         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
-                        returnType.typeArgumentList.forEach { typeArg ->
+                        returnTypeFromDb.typeArgumentList.forEach { typeArg ->
                             val isNotResolved = typeArg.name.length == 1 && typeArg.name[0].isUpperCase()
                             if (isNotResolved) {
                                 val resolvedLetterType = letterToRealType[typeArg.name]
@@ -475,12 +477,12 @@ fun Resolver.resolveMessage(
                         }
 
                         Type.UserType(
-                            name = returnType.name,
+                            name = returnTypeFromDb.name,
                             typeArgumentList = newResolvedTypeArgs,
-                            fields = returnType.fields,
-                            isPrivate = returnType.isPrivate,
-                            pkg = returnType.pkg,
-                            protocols = returnType.protocols
+                            fields = returnTypeFromDb.fields,
+                            isPrivate = returnTypeFromDb.isPrivate,
+                            pkg = returnTypeFromDb.pkg,
+                            protocols = returnTypeFromDb.protocols
                         )
                     } else msgTypeFromDB.returnType
 
