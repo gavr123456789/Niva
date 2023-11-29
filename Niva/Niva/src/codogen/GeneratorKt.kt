@@ -8,6 +8,7 @@ import frontend.typer.Project
 import frontend.util.addIndentationForEachString
 import main.addNivaStd
 import main.putInMainKotlinCode
+import main.utils.appendnl
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
@@ -136,8 +137,11 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
 }
 
 fun Package.generateImports() = buildString {
-    currentImports.forEach {
-        append("import $it.*\n")
+    imports.forEach {
+        appendnl("import $it.*")
+    }
+    concreteImports.forEach {
+        appendnl("import $it")
     }
 }
 
@@ -155,7 +159,7 @@ fun GeneratorKt.generateKtProject(
         if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
 
             notBindPackages.forEach { pkg2 ->
-                pkg2.currentImports -= pkg.packageName
+                pkg2.imports -= pkg.packageName
             }
         }
     }

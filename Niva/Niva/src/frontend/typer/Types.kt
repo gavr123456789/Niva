@@ -250,7 +250,10 @@ class Package(
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
 //    val usingPackages: MutableList<Package> = mutableListOf(),
-    val currentImports: MutableSet<String> = mutableSetOf(),
+    // import x.y.*
+    val imports: MutableSet<String> = mutableSetOf(),
+    // import x.y
+    val concreteImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false
 ) {
     override fun toString(): String {

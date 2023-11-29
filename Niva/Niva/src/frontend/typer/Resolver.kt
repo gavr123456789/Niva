@@ -9,7 +9,6 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
-import frontend.typer.Type.RecursiveType.name
 import frontend.util.div
 import frontend.util.removeDoubleQuotes
 import main.frontend.typer.resolveMessageDeclaration
@@ -408,6 +407,8 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         }
                     }
 
+
+
                     val gettersArg = msg.args.find { it.name == "getters" }
                     if (gettersArg != null) {
                         if (gettersArg.keywordArg !is CodeBlock)
@@ -416,7 +417,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         gettersDeclarations.forEach { getter ->
 
                             if (getter !is MessageDeclarationUnary) {
-                                getter.token.compileError("Union declaration expected")
+                                getter.token.compileError("Unary declaration expected inside getters block")
                             }
                             addNewUnaryMessage(getter, isGetter = true)
 
@@ -517,8 +518,6 @@ fun Resolver.resolveDeclarations(
 }
 
 
-
-
 fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
     // add to the current project
     assert(statement.messages.count() == 1)
@@ -534,6 +533,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "package" -> changePackage(substring, statement.token)
                     "protocol" -> changeProtocol(substring)
                     "use" -> usePackage(substring)
+                    "import" -> usePackage(substring, true)
                     "target" -> changeTarget(substring, statement.token)
                     "mode" -> changeCompilationMode(substring, statement.token)
                     else -> statement.token.compileError("Unexpected argument ${it.name} for Project")
@@ -943,10 +943,10 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     }
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
-       if (type1.args.count() != type2.args.count()) {
-           token?.compileError("Lambda `${type1.name}` has ${type1.args.count()} arguments but `${type2.name}` has ${type2.args.count()}")
-           return false
-       }
+        if (type1.args.count() != type2.args.count()) {
+            token?.compileError("Lambda `${type1.name}` has ${type1.args.count()} arguments but `${type2.name}` has ${type2.args.count()}")
+            return false
+        }
 
         type1.args.forEachIndexed { i, it ->
             val it2 = type2.args[i]
@@ -997,17 +997,21 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     }
 
 
-
     // comparing with nothing is always true, its bottom type, subtype of all types
     // so we can return nothing from switch expr branches, beside u cant do it with different types
     val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
     return type1 == nothing || type2 == nothing
 }
 
-fun Package.addImport(pkg: String) {
+fun Package.addImport(pkg: String, concrete: Boolean = false) {
     if (packageName != pkg) {
-        currentImports.add(pkg)
+        if (!concrete) {
+            imports.add(pkg)
+        } else {
+            concreteImports.add(pkg)
+        }
     }
+
 }
 
 //fun Resolver.findAnyMessage(receiverType: Type)
@@ -1143,7 +1147,7 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token): Pair<Protocol, 
 }
 
 fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
-fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).currentImports
+fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).imports
 
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
@@ -1333,9 +1337,9 @@ fun Resolver.changeProtocol(protocolName: String) {
     currentProtocolName = protocolName
 }
 
-fun Resolver.usePackage(packageName: String) {
+fun Resolver.usePackage(packageName: String, noStarImport: Boolean = false) {
     val currentPkg = getCurrentPackage(this.statements.last().token)
-    currentPkg.addImport(packageName)
+    currentPkg.addImport(packageName, noStarImport)
 }
 
 enum class CompilationTarget {
@@ -1440,7 +1444,7 @@ fun Resolver.getType2(
     val q = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement.token)
 
-    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.currentImports)
+    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports)
     return type
 }
 

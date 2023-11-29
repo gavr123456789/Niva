@@ -45,7 +45,11 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             // when message is receiver
             is BinaryMsg -> TODO()
             is KeywordMsg -> {
-                replaceNameFromPragma(this@generateExpression)
+                if (this@generateExpression.pragmas.isNotEmpty()) {
+                    replaceNameFromPragma(this@generateExpression)
+                    emitFromPragma(this@generateExpression)
+                    noPkgEmit(this@generateExpression)
+                }
                 generateSingleKeyword(0, receiver, this@generateExpression)
             }
 

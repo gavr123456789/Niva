@@ -423,8 +423,7 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(): Boolean {
             if ((check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) ||
                 (check(TokenType.Identifier) && check(TokenType.Colon, 1) && check(TokenType.Identifier, 2))
             ) {
-                val kw = keyArg()
-//                println()
+                keyArg()
 
             } else {
                 return isThereEndOfMessageDeclaration()
