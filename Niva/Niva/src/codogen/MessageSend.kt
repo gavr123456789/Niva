@@ -13,11 +13,20 @@ fun MessageSend.generateMessageCall(): String {
     }
 
     this.messages.forEachIndexed { i, it ->
-        replaceNameFromPragma(it)
-        when (it) {
-            is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
-            is BinaryMsg ->b.append(generateSingleBinary(i, receiver, it))
-            is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it))
+        if (it.pragmas.isNotEmpty()) {
+            replaceNameFromPragma(it)
+            emitFromPragma(it)
+            noPkgEmit(it)
+        }
+
+        if (it.pragmas.isNotEmpty() && it.pragmas.find { it.name == Pragmas.EMIT.v } != null) {
+            b.append(it.selectorName)
+        } else {
+            when (it) {
+                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
+                is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it))
+                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it))
+            }
         }
     }
     return b.toString()
@@ -33,7 +42,13 @@ fun MessageSend.generateMessageCall(): String {
 }
 
 enum class Pragmas(val v: String) {
-    RENAME("rename")
+    RENAME("rename"),
+    EMIT("emit"),
+    NO_PKG_EMIT("noPkgEmit")
+}
+
+fun noPkgEmit(msg: Message) {
+
 }
 
 fun replaceNameFromPragma(msg: Message) {
@@ -43,11 +58,54 @@ fun replaceNameFromPragma(msg: Message) {
             is LiteralExpression.StringExpr ->
                 value.toString()
 
-            else -> null
+            else -> null //msg.token.compileError("String literal for pragma ${Pragmas.RENAME.v} expected")
         }
     if (replacedSelectorName != null) {
         msg.selectorName = replacedSelectorName
     }
+}
+
+fun emitFromPragma(msg: Message) {
+    val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value
+    val list = mutableListOf<String>()
+
+    fun replacePatternsWithValues(inputString: String, valueMap: Map<String, String>): String {
+        var resultString = inputString
+
+        // Используем регулярное выражение для поиска паттернов "$число"
+        val pattern = Regex("\\$(\\d+)")
+
+        // Находим все совпадения с паттерном в строке
+        val matches = pattern.findAll(inputString)
+
+        // Заменяем найденные паттерны на соответствующие значения из карты
+        for (match in matches) {
+            val patternMatch = match.value
+            val number = match.groupValues[1]
+            val replacement = valueMap[number] ?: patternMatch // Если значение не найдено, оставляем как есть
+            resultString = resultString.replace(patternMatch, replacement)
+        }
+
+        return resultString
+    }
+
+
+    when (value) {
+        is LiteralExpression.StringExpr -> {
+            if (msg is KeywordMsg) {
+
+                val str = value.toString()
+                val map = mutableMapOf<String, String>()
+                msg.args.forEachIndexed {i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
+                val q = replacePatternsWithValues(str, map)
+                msg.selectorName = q
+            } else
+                msg.selectorName = value.toString()
+        }
+
+        else -> {}//msg.token.compileError("String literal for pragma ${Pragmas.RENAME.v} expected")
+    }
+
 }
 
 
@@ -58,6 +116,13 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 //            is LiteralExpression.StringExpr -> value.toString()
 //            else -> null
 //        }
+
+//    val isThereEmitPragma = keywordMsg.pragmas.find { it.name == Pragmas.EMIT.v }
+//    if (isThereEmitPragma != null) {
+//        append(keywordMsg.selectorName)
+//        return@buildString
+//    }
+
 
 
     val receiverCode = buildString {

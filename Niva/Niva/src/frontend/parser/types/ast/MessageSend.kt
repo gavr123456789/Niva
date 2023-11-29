@@ -57,6 +57,7 @@ sealed class Message(
     var receiver: Receiver,
     var selectorName: String,
     val path: List<String>,
+
     type: Type?,
     token: Token
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)

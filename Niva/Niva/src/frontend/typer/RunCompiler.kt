@@ -82,6 +82,7 @@ fun Resolver.resolve() {
     val currentProject = projects[currentProjectName]!!
     val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
     val mainFilePkg = currentProject.packages[mainFile.nameWithoutExtension]!!
-    mainNivaPkg.currentImports += mainFilePkg.currentImports
+    mainNivaPkg.imports += mainFilePkg.imports
+    mainNivaPkg.concreteImports += mainFilePkg.concreteImports
 
 }
