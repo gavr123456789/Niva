@@ -51,7 +51,11 @@ class KeywordDeclarationArg(
     val name: String,
     val localName: String? = null,
     val type: TypeAST? = null,
-)
+) {
+    override fun toString(): String {
+        return "$name: ${type?.name}"
+    }
+}
 
 fun KeywordDeclarationArg.name() = localName ?: name
 

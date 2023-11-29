@@ -1117,6 +1117,25 @@ class ParserTest {
     }
 
 
+    @Test
+    fun manyLinesKeywordDecl() {
+        val source = """
+            Int
+                from::Int
+                to::Int
+            = []
+            Ште from::Int to::String = []
+            
+            Int + x::int = []
+            Int unary -> Int = []
+            
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 4)
+    }
+
+
 //    @Test
 //    fun unaryOnManyLines() {
 //

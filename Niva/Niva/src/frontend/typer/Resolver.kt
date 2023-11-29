@@ -1010,6 +1010,8 @@ fun Package.addImport(pkg: String) {
     }
 }
 
+//fun Resolver.findAnyMessage(receiverType: Type)
+
 fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData {
 
     fun findUnary(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData? {
@@ -1143,11 +1145,11 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token): Pair<Protocol, 
 fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
 fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).currentImports
 
-fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
+fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
-    val testDB = typeDB.getType(statement.forTypeAst.name)
+//    val testDB = typeDB.getType(statement.forTypeAst.name)
 
-    when (statement.msgDeclaration) {
+    val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
 //            staticUnaryForType[statement.name] = statement.msgDeclaration
             val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
@@ -1166,6 +1168,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
             )
 
             protocol.staticMsgs[statement.name] = messageData
+            messageData
         }
 
         is MessageDeclarationBinary -> {
@@ -1191,43 +1194,42 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration) {
                 pkg = pkg.packageName
             )
             protocol.staticMsgs[statement.name] = messageData
+            messageData
         }
 
         is ConstructorDeclaration -> TODO()
     }
     addMsgToPackageDeclarations(statement)
-
+    return messageData
 }
 
-fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false) {
-//    unaryForType[statement.name] = statement // will be reloaded when package changed
+fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false): MessageMetadata {
 
     val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
     protocol.unaryMsgs[statement.name] = messageData
 
     addMsgToPackageDeclarations(statement)
+    return messageData
 }
 
-fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary) {
-//    binaryForType[statement.name] = statement // will be reloaded when package changed
-
+fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary): MessageMetadata {
     val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
     protocol.binaryMsgs[statement.name] = messageData
 
     addMsgToPackageDeclarations(statement)
+    return messageData
 }
 
-fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword) {
-//    keywordForType[statement.name] = statement // will be reloaded when package changed
-
+fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword): MessageMetadata {
     val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
     protocol.keywordMsgs[statement.name] = messageData
 
     // add msg to package declarations
     addMsgToPackageDeclarations(statement)
+    return messageData
 }
 
 fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {

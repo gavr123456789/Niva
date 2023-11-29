@@ -68,7 +68,7 @@ fun Parser.statement(): Statement {
         tok.compileError("Nothing to compile :(")
     }
 
-    val isItMsgDeclaration = checkTypeOfMessageDeclaration()
+    val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
     if (isItMsgDeclaration != null) {
         return messageDeclaration(isItMsgDeclaration, pragmas)
     }
