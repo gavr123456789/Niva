@@ -22,12 +22,14 @@ You will get
 ### Usage
 
 Niva can eat .niva and .scala files, because Scala highlight fits well for Niva :3  
-if you are using Visual Studio Code, install Scala Syntax ext.  
-Right now 2 paths is needed, one to kotlin project(its included in repo Niva/NivaK/.infroProject and inside niva_compiler folder)
-and the second to `.niva` file.  
-`./niva pathToInfroProj main.scala`  
-inside niva_compiler it would be:  
-`./niva .infroProject main.scala`
+if you are using Visual Studio Code, install "Scala Syntax" ext.  
+`./niva main.scala` - compile and run  
+
+`Project target: "linux" mode: "debug"` inside code will change backend to native
+`./niva main.scala -с` - compile only, will create binary for native target and jar for jvm
+`./niva main.scala -i > info.md` - will generate info about all code base of the projects, `-iu` - only user defined files
+
+
 
 
 # Core
