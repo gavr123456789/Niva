@@ -1,0 +1,21 @@
+Project target: "linux"
+
+Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
+Project import: "okio.Path.Companion.toPath"
+
+
+Bind package: "okio.Path" content: [
+    type Path name: String
+    String toPath -> Path
+]
+Bind package: "okio" content: [
+    type FileSystem
+//    FileSystem read::Path -> String
+    @emit: "okio.FileSystem.SYSTEM.read($1) { readUtf8() }"
+    constructor FileSystem read::Path -> String
+]
+
+
+x = "/home/gavr/.niva/infroProject/settings.gradle.kts" toPath
+y = FileSystem read: x
+y echo

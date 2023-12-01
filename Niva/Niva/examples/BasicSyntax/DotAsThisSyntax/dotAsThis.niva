@@ -1,0 +1,16 @@
+type Person age: Int
+
+Person + x::Int = (age + x) echo
+Person add::Int = (age + add) echo
+Person birthday = age <- age inc
+
+Person test = [
+    . + 5
+    . add: 4
+    . birthday
+    age echo
+]
+
+person = Person age: 25
+person test
+
