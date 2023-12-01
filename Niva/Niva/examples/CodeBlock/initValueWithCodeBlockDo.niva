@@ -1,0 +1,22 @@
+x = [
+    x = 5 + 5
+    y = x - 1
+    z = x + y + 22
+    z
+] do
+
+y = x + 1
+y echo
+
+
+
+q = [
+    x = 5 + 5
+    y = x - 2
+    z = x + y + 24
+    [
+        x + y + z + y
+    ]
+] do do
+w = q + 1
+w echo
