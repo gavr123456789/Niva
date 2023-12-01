@@ -589,7 +589,10 @@ fun Resolver.resolveMessage(
                 receiver.type = when (receiver) {
 
                     is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, currentScope, previousScope)
-                    is CodeBlock -> TODO()
+                    is CodeBlock -> {
+                        resolveCodeBlock(receiver, previousScope, currentScope, statement)
+                        receiver.type!!
+                    }
                     is ListCollection -> {
                         currentLevel++
                         resolve(listOf(receiver), (currentScope + previousScope).toMutableMap())

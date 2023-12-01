@@ -227,7 +227,7 @@ class Resolver(
                 boolType = boolType,
                 listType = listType,
                 listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
-                genericTypeOfListElements = genericType,
+                itType = genericType,
                 differentGenericType = differentGenericType
             )
         )
@@ -256,7 +256,7 @@ class Resolver(
                 boolType = boolType,
                 listType = mutableListType,
                 listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
-                genericTypeOfListElements = genericType,
+                itType = genericType,
                 differentGenericType = differentGenericType
             )
         )
