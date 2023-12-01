@@ -391,10 +391,9 @@ fun main(args: Array<String>) {
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
-    val pathToProjectRoot = System.getProperty("user.home") / ".niva" / "infroProject" //if (isThereArgs) args[0] else ".." / "infroProject"
-//    val pathWhereToGenerateKt = pathToProjectRoot / "src" / "main" / "kotlin"
-    val pathWhereToGenerateKtAmper = pathToProjectRoot / "src" // / "main" / "kotlin"
-    val mainNivaFile = File("src" / "examples" / "Main" / "main.niva")
+    val pathToProjectRoot = System.getProperty("user.home") / ".niva" / "infroProject"
+    val pathWhereToGenerateKtAmper = pathToProjectRoot / "src"
+    val mainNivaFile = File("examples" / "Main" / "main.niva")
     val pathToTheMainExample = mainNivaFile.absolutePath
     val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
     val pathToGradle = pathToProjectRoot / "build.gradle.kts"

@@ -19,6 +19,11 @@ fun Parser.statement(): Statement {
     // List::Int sas = [] - unary
     // x::[Int->Int] = [] - value
     // x::Int = 5
+
+    if (tok.kind == TokenType.Dot) {
+        return expression(dot = true)
+    }
+
     if (tok.isIdentifier() && tok.lexeme[0].isLowerCase() &&
         (check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1))
         || kind == TokenType.Mut
@@ -41,6 +46,8 @@ fun Parser.statement(): Statement {
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()
     }
+
+
     val isInlineReplWithNum = tok.kind == TokenType.InlineReplWithNum
     if (tok.lexeme == ">" || isInlineReplWithNum) {
         val q = step()
@@ -232,16 +239,13 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // message or control flow
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
-fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false): Expression {
-    if (check(TokenType.Return)) {
-        TODO()// надо сделать ретурн экспрешоном
-    }
+fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: Boolean = false): Expression {
 
     if (check(TokenType.Pipe)) {
         return ifOrSwitch()
     }
 
-    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines)
+    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
     // unwrap unnecessary MessageSend
     return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver

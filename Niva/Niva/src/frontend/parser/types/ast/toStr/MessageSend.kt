@@ -25,6 +25,7 @@ fun Receiver.toNivaStr(): String {
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
         is LiteralExpression.CharExpr -> this.str
+        is DotReceiver -> "."
     }
 }
 

@@ -584,7 +584,6 @@ class ResolverTest {
 
     @Test
     fun recursiveUnary() {
-
         val source = """
             Int factorial -> Int = |this
             | 0 => 1
@@ -593,7 +592,24 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 1)
+    }
 
+    @Test
+    fun dotAsThis() {
+        val source = """
+            Int from::Int = from
+            
+            Int
+                from::Int
+                to::Int
+            = [
+                . from: 1
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        assert(((statements[1] as MessageDeclaration).body[0] as Expression).type?.name == "Int")
     }
 
 

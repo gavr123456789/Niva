@@ -104,7 +104,7 @@ fun Parser.binaryMessagesMatching(
 
 fun Parser.unaryOrBinary(
     customReceiver: Receiver? = null,
-    parsePipeAndCascade: Boolean = true
+    parsePipeAndCascade: Boolean = true,
 ): MessageSend {
     var wasPipe = false
 //    var wasCascade = false
@@ -240,7 +240,7 @@ fun Parser.checkForKeyword(): Boolean {
 }
 
 
-fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
+fun Parser.messageSend(dontParseKeywords: Boolean, dotReceiver: Boolean = false): MessageSend {
 
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
         val savepoint = current
@@ -250,9 +250,24 @@ fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
         result
     }
 
-    val receiver = if (!keywordOnReceiverWithoutMessages)
-        unaryOrBinaryMessageOrPrimaryReceiver()
-    else simpleReceiver()
+    val receiver = when {
+        // not keyword then parse unaryBinary with custom receiver
+        !keywordOnReceiverWithoutMessages && dotReceiver -> {
+
+            unaryOrBinaryMessageOrPrimaryReceiver(
+                DotReceiver(
+                    null,
+                    matchAssert(TokenType.Dot)
+                ))
+        }
+        // pure keyword, then add dot receiver
+        keywordOnReceiverWithoutMessages && dotReceiver -> DotReceiver(
+            null,
+            matchAssert(TokenType.Dot)
+        )
+        !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver()
+        else -> simpleReceiver()
+    }
 
     val isNextKeyword = if (dontParseKeywords) false else checkForKeyword()
     val isReceiverUnaryOrBinaryOrCodeBlock =

@@ -1,5 +1,6 @@
 package frontend.parser.types.ast
 
+import com.sun.org.apache.xml.internal.serializer.utils.Utils.messages
 import frontend.meta.Token
 import frontend.typer.Type
 
@@ -115,5 +116,15 @@ class UnaryMsg(
     token: Token,
     var kind: UnaryMsgKind = UnaryMsgKind.Unary
 ) : Message(receiver, selectorName, identifier, type, token)
+
+
+class DotReceiver(
+    type: Type?,
+    token: Token
+) : Receiver(type, token) {
+    override fun toString(): String {
+        return "Dot"
+    }
+}
 
 
