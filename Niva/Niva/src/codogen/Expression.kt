@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
+import frontend.typer.createEmptyKwConstructor
 
 fun replaceKeywords(str: String) =
     when (str) {
@@ -14,14 +15,32 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
         append("inlineRepl(")
     }
 
-
+    val keywordGenerate = {kw: KeywordMsg ->
+        if (kw.pragmas.isNotEmpty()) {
+            replaceNameFromPragma(kw)
+            emitFromPragma(kw)
+            noPkgEmit(kw)
+        }
+        generateSingleKeyword(0, kw.receiver, kw)
+    }
 
     append(
         when (this@generateExpression) {
             is ExpressionInBrackets -> generateExpressionInBrackets()
 
             is MessageSend -> generateMessageCall()
-            is IdentifierExpr -> replaceKeywords(replaceLiteral ?: name)
+            is IdentifierExpr -> if (isConstructor) {
+                // prevent stack overflow, since keywordGenerate contains generate expression for receiver
+                this@generateExpression.isConstructor = false
+                keywordGenerate(
+                    createEmptyKwConstructor(
+                        this@generateExpression, this@generateExpression.type!!,
+                        this@generateExpression.token
+                    )
+                )
+            }
+            else
+                replaceKeywords(replaceLiteral ?: name)
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FloatExpr -> str
@@ -45,14 +64,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
 
             // when message is receiver
             is BinaryMsg -> TODO()
-            is KeywordMsg -> {
-                if (this@generateExpression.pragmas.isNotEmpty()) {
-                    replaceNameFromPragma(this@generateExpression)
-                    emitFromPragma(this@generateExpression)
-                    noPkgEmit(this@generateExpression)
-                }
-                generateSingleKeyword(0, receiver, this@generateExpression)
-            }
+            is KeywordMsg -> keywordGenerate(this@generateExpression)
 
             is UnaryMsg -> TODO()
 

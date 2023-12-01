@@ -193,6 +193,7 @@ fun createStringProtocols(
             )
                 .rename("replace"),
             createForEachKeyword(charType, unitType),
+            createForEachKeywordIndexed(intType, charType, unitType),
             createFilterKeyword(charType, boolType, stringType),
             createKeyword("get", KeywordArg("get", intType), charType),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
@@ -388,7 +389,7 @@ fun createListProtocols(
     boolType: Type.InternalType,
     listType: Type.UserType,
     listTypeOfDifferentGeneric: Type.UserType,
-    genericTypeOfListElements: Type.UnknownGenericType,
+    itType: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -401,22 +402,23 @@ fun createListProtocols(
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
-            createForEachKeyword(genericTypeOfListElements, unitType),
-            createMapKeyword(genericTypeOfListElements, differentGenericType, listTypeOfDifferentGeneric),
-            createFilterKeyword(genericTypeOfListElements, boolType, listType),
+            createForEachKeyword(itType, unitType),
+            createForEachKeywordIndexed(intType, itType, unitType),
+            createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),
+            createFilterKeyword(itType, boolType, listType),
 
-            createKeyword("add", KeywordArg("add", genericTypeOfListElements), unitType),
-            createKeyword("get", KeywordArg("get", intType), genericTypeOfListElements),
+            createKeyword("add", KeywordArg("add", itType), unitType),
+            createKeyword("get", KeywordArg("get", intType), itType),
             createKeyword("removeAt", KeywordArg("removeAt", intType), unitType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType),
-            createKeyword("atPut", KeywordArg("at", genericTypeOfListElements), unitType),
+            createKeyword("atPut", KeywordArg("at", itType), unitType),
             createKeyword("drop", KeywordArg("drop", intType), listType),
             createKeyword("dropLast", KeywordArg("dropLast", intType), listType),
             createKeyword(
                 "atPut",
                 listOf(
                     KeywordArg("at", intType),
-                    KeywordArg("put", genericTypeOfListElements)
+                    KeywordArg("put", itType)
                 ),
                 unitType
             )
@@ -497,6 +499,28 @@ private fun createForEachKeyword(
     ),
     unitType
 )
+
+private fun createForEachKeywordIndexed(
+    intType: Type.InternalType,
+    itType: Type,
+    unitType: Type.InternalType
+) = createKeyword(
+    "forEachIndexed",
+    listOf(
+        KeywordArg(
+            "forEachIndexed",
+            Type.Lambda(
+                mutableListOf(
+                    TypeField("i", intType),
+                    TypeField("it", itType),
+                ),
+                unitType
+            )
+        )
+    ),
+    unitType
+)
+
 
 
 private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(

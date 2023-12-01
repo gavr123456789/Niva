@@ -612,6 +612,18 @@ class ResolverTest {
         assert(((statements[1] as MessageDeclaration).body[0] as Expression).type?.name == "Int")
     }
 
+    @Test
+    fun sasas() {
+        val source = """
+            type Sas
+            Int sas -> Sas = [ ^ Sas ] 
+            x = Sas
+            x echo
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+    }
 
 
 

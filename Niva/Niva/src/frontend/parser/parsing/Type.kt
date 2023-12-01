@@ -58,7 +58,7 @@ fun Parser.parseType(): TypeAST {
         match(TokenType.ReturnArrow)
 
         val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
-        matchAssert(TokenType.CloseBracket, "closing paren expected in lambda type declaration")
+        matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
         val isNullable = match("?")
 
 
