@@ -1135,6 +1135,23 @@ class ParserTest {
         assert(ast.count() == 4)
     }
 
+    @Test
+    fun dotAsThisInsideMethods() {
+        val source = """
+            Int from::Int = from
+            
+            Int
+                from::Int
+                to::Int
+            = [
+                . from: 1
+            ]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {

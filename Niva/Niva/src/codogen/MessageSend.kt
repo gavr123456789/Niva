@@ -96,7 +96,7 @@ fun emitFromPragma(msg: Message) {
 
                 val str = value.toString()
                 val map = mutableMapOf<String, String>()
-                msg.args.forEachIndexed {i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
+                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
                 val q = replacePatternsWithValues(str, map)
                 msg.selectorName = q
             } else
@@ -110,28 +110,19 @@ fun emitFromPragma(msg: Message) {
 
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
-//    val value = (keywordMsg.pragmas.find { it.name == Pragmas.RENAME.v })?.value
-//    val replacedSelectorName =
-//        when (value) {
-//            is LiteralExpression.StringExpr -> value.toString()
-//            else -> null
-//        }
 
-//    val isThereEmitPragma = keywordMsg.pragmas.find { it.name == Pragmas.EMIT.v }
-//    if (isThereEmitPragma != null) {
-//        append(keywordMsg.selectorName)
-//        return@buildString
-//    }
-
-
-
+    val receiverIsDot = receiver is DotReceiver
     val receiverCode = buildString {
         val needBrackets =
-            keywordMsg.kind != KeywordLikeType.Constructor && keywordMsg.kind != KeywordLikeType.CustomConstructor || keywordMsg.kind == KeywordLikeType.ForCodeBlock || receiver is ExpressionInBrackets
+            keywordMsg.kind != KeywordLikeType.Constructor &&
+                    keywordMsg.kind != KeywordLikeType.CustomConstructor && !receiverIsDot ||
+                    keywordMsg.kind == KeywordLikeType.ForCodeBlock ||
+                    receiver is ExpressionInBrackets
+
         if (needBrackets) append("(")
 
         val kwReceiver = keywordMsg.receiver
-        if (kwReceiver.type?.pkg != "core" && (keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor) && kwReceiver is IdentifierExpr) {
+        if (!receiverIsDot && kwReceiver.type?.pkg != "core" && (keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor) && kwReceiver is IdentifierExpr) {
             val type = kwReceiver.type
             if (type != null) {
                 append(type.pkg, ".")
@@ -148,7 +139,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
-            if (i == 0) {
+            if (i == 0 && !receiverIsDot) {
                 append(receiverCode, ".")
             }
             append(keywordMsg.selectorName)
@@ -169,8 +160,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
                 append(receiver.name, ".", valueArg.name, " = ")
-            } else {
-                TODO()
+            } else if (receiverIsDot) {
+                append(valueArg.name, " = ")
             }
         }
 
@@ -210,11 +201,15 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
     }
     when (it.kind) {
         UnaryMsgKind.Unary -> {
-
-            append(".${it.selectorName}()")
+            if (receiver !is DotReceiver) append(".")
+            append("${it.selectorName}()")
         }
 
-        UnaryMsgKind.Getter -> append(".${it.selectorName}")
+        UnaryMsgKind.Getter -> {
+            if (receiver !is DotReceiver) append(".")
+            append(it.selectorName)
+        }
+
         UnaryMsgKind.ForCodeBlock -> append("()")
     }
 }
@@ -225,6 +220,7 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
         append(generateSingleUnary(i, it.receiver, it))
     }
     if (messages.isEmpty()) {
+//        val expr =
         append(receiver.generateExpression())
     }
 }
@@ -239,11 +235,19 @@ fun generateSingleBinary(
 
         // 1 inc + 2 dec + 3 sas
         // 1 inc^ + 2 dec + 3 sas
-        append("(")
-        append(generateUnarySends(receiver, it.unaryMsgsForReceiver))
+        if (receiver !is DotReceiver) {
+            append(
+                generateUnarySends(
+                    receiver,
+                    it.unaryMsgsForReceiver
+                )
+            )
+        } else {
+            append("this")
+        }
+
         append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
-        append(")")
     } else {
         append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))

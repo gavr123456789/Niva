@@ -903,11 +903,12 @@ private fun Resolver.resolveStatement(
                     if (!isReturnTypeEqualToReturnExprType) {
                         statement.token.compileError("return type is `${w.name}` but found `${q.name}`")
                     }
-
                 }
-
             }
+        }
 
+        is DotReceiver -> {
+            statement.type = findThis(statement.token, currentScope, previousScope)
         }
 
     }

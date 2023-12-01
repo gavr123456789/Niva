@@ -1,5 +1,6 @@
 package frontend.typer
 
+import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
@@ -157,6 +158,13 @@ fun Resolver.resolveReturnTypeIfGeneric(
         }
     }
 }
+
+fun findThis(
+    token: Token,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>,
+) = previousScope["this"] ?: currentScope["this"] ?: token.compileError("Cant resolve type of receiver for dot expression")
+
 
 fun Resolver.resolveMessage(
     statement: Message,
@@ -525,6 +533,7 @@ fun Resolver.resolveMessage(
                 is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
                 is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
                 is LiteralExpression.CharExpr -> Resolver.defaultTypes[InternalTypes.Char]
+                is DotReceiver -> findThis(statement.token, currentScope, previousScope)
 
                 is KeywordMsg, is UnaryMsg, is BinaryMsg -> receiver.type
 
@@ -576,8 +585,6 @@ fun Resolver.resolveMessage(
             // if a type already has a field with the same name, then this is getter, not unary send
             val receiver = statement.receiver
 
-            // for constructors
-
             if (receiver.type == null)
                 receiver.type = when (receiver) {
 
@@ -599,6 +606,7 @@ fun Resolver.resolveMessage(
                     is KeywordMsg -> TODO()
 
                     is MessageSend -> TODO()
+                    is DotReceiver -> findThis(statement.token, currentScope, previousScope)
 
 
                     is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)

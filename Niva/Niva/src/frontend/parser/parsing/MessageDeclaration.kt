@@ -21,11 +21,11 @@ import frontend.util.capitalizeFirstLetter
 // also code blocks
 
 
-fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(): Receiver {
+fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = null): Receiver {
 
     val safePoint = current
     try {
-        when (val messageSend = unaryOrBinary()) {
+        when (val messageSend = unaryOrBinary(customReceiver = customReceiver)) {
             is MessageSendUnary, is MessageSendBinary -> {
                 if (messageSend.messages.isNotEmpty()) {
                     return messageSend
@@ -379,7 +379,7 @@ fun Parser.isThereEndOfMessageDeclaration(): Boolean {
     var isThereEqual = false
 
     val returnArrow = match(TokenType.ReturnArrow)
-    if (returnArrow){
+    if (returnArrow) {
         isThereReturn = true
         val type = identifierMayBeTyped()
     }
@@ -402,7 +402,7 @@ fun Parser.tryUnary(): Boolean {
 fun Parser.tryBinary(): Boolean {
     val savepoint = current
 
-    if (match(TokenType.BinarySymbol) && check(TokenType.Identifier) ) {
+    if (match(TokenType.BinarySymbol) && check(TokenType.Identifier)) {
         // + ^x::Type
         identifierMayBeTyped()
         // + x::Type^
@@ -440,7 +440,7 @@ fun Parser.tryKeyword(): Boolean {
     val savepoint = current
 
     if (kwArgsAndEndOfMessageDeclaration()) {
-       return true
+        return true
     }
 
 
@@ -471,6 +471,7 @@ fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false): Messa
     }
     return null
 }
+
 fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): MessageDeclarationType? {
 
     val savepoint = current
@@ -594,7 +595,8 @@ fun Parser.messageDeclaration(
 fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
-    val isItKeywordDeclaration = checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
+    val isItKeywordDeclaration =
+        checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
     val msgDecl = if (isItKeywordDeclaration != null) {
         messageDeclaration(isItKeywordDeclaration, codeAttributes)
     } else null
