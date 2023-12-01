@@ -93,7 +93,7 @@ fun Resolver.resolveKwArgsGenerics(
 
             if (typeFromDBForThisArg is Type.Lambda) {
                 if (argType !is Type.Lambda) {
-                    throw Exception("If typeFromDBForThisArg is lambda then argType must be lambda")
+                    throw Exception("If typeFromDBForThisArg is codeblock then argType must be codeblock too")
                 }
                 /// remember letter to type args
                 typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
@@ -295,13 +295,13 @@ fun Resolver.resolveMessage(
                     // name check
                     // if it lambda, then any arg name is valid
                     if (it.keywordArg.type !is Type.Lambda && it.name != receiverType.args[ii].name) {
-                        statement.token.compileError("${it.name} is not valid arguments for lambda ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
+                        statement.token.compileError("${it.name} is not valid arguments for codeblock ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
                     }
                     // type check
                     val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
                     if (!isTypesEqual) {
                         statement.token.compileError(
-                            "${it.name} is not valid type for lambda ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
+                            "${it.name} is not valid type for codeblock ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
                         )
                     }
                 }
@@ -524,22 +524,12 @@ fun Resolver.resolveMessage(
         is BinaryMsg -> {
             val receiver = statement.receiver
 
-            receiver.type = when (receiver) {
-                is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, previousScope, currentScope)
-                is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
-                is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
-                is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
-                is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
-                is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
-                is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
-                is LiteralExpression.CharExpr -> Resolver.defaultTypes[InternalTypes.Char]
-                is DotReceiver -> findThis(statement.token, currentScope, previousScope)
-
-                is KeywordMsg, is UnaryMsg, is BinaryMsg -> receiver.type
-
-                is MessageSend, is MapCollection, is ListCollection, is SetCollection, is CodeBlock -> TODO()
+            if (receiver.type == null) {
+                resolve(listOf(receiver), (currentScope + previousScope).toMutableMap(), statement)
             }
-            val receiverType = receiver.type!!
+
+            val receiverType = receiver.type
+                ?: statement.token.compileError("Can't resolve return type of ${statement.selectorName} binary msg")
 
 
             // resolve messages
@@ -585,43 +575,10 @@ fun Resolver.resolveMessage(
             // if a type already has a field with the same name, then this is getter, not unary send
             val receiver = statement.receiver
 
-            if (receiver.type == null)
-                receiver.type = when (receiver) {
-
-                    is ExpressionInBrackets -> resolveExpressionInBrackets(receiver, currentScope, previousScope)
-                    is CodeBlock -> {
-                        resolveCodeBlock(receiver, previousScope, currentScope, statement)
-                        receiver.type!!
-                    }
-                    is ListCollection -> {
-                        currentLevel++
-                        resolve(listOf(receiver), (currentScope + previousScope).toMutableMap())
-                        currentLevel--
-                        receiver.type!!
-                    }
-
-                    is MapCollection -> TODO()
-                    is SetCollection -> TODO()
-
-                    // receiver
-                    is UnaryMsg -> TODO()
-                    is BinaryMsg -> TODO()
-                    is KeywordMsg -> TODO()
-
-                    is MessageSend -> TODO()
-                    is DotReceiver -> findThis(statement.token, currentScope, previousScope)
-
-
-                    is IdentifierExpr -> getTypeForIdentifier(receiver, currentScope, previousScope)
-
-
-                    is LiteralExpression.FalseExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
-                    is LiteralExpression.TrueExpr -> Resolver.defaultTypes[InternalTypes.Boolean]
-                    is LiteralExpression.FloatExpr -> Resolver.defaultTypes[InternalTypes.Float]
-                    is LiteralExpression.IntExpr -> Resolver.defaultTypes[InternalTypes.Int]
-                    is LiteralExpression.StringExpr -> Resolver.defaultTypes[InternalTypes.String]
-                    is LiteralExpression.CharExpr -> Resolver.defaultTypes[InternalTypes.Char]
-                }
+            if (receiver.type == null) {
+                resolve(listOf(receiver), (currentScope + previousScope).toMutableMap(), statement)
+                receiver.type ?: statement.token.compileError("Can't resolve return type of ${statement.selectorName} unary msg")
+            }
 
             // if this is message for type
             val isStaticCall =
@@ -643,14 +600,14 @@ fun Resolver.resolveMessage(
             if (receiverType is Type.Lambda) {
                 if (statement.selectorName != "do") {
                     if (receiverType.args.isNotEmpty())
-                        statement.token.compileError("Lambda ${statement.str} takes more than 0 arguments, please use keyword message with it's args names")
+                        statement.token.compileError("Codeblock ${statement.str} takes more than 0 arguments, please use keyword message with it's args names")
                     else
-                        statement.token.compileError("For lambda ${statement.str} you can use only unary 'do' message")
+                        statement.token.compileError("For codeblock ${statement.str} you can use only unary 'do' message")
                 }
 
 
                 if (receiverType.args.isNotEmpty()) {
-                    statement.token.compileError("Lambda ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                    statement.token.compileError("Codeblock ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
                 }
 
                 statement.type = receiverType.returnType

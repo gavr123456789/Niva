@@ -556,6 +556,15 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
         }
     }
 }
+fun createEmptyKwConstructor(value: IdentifierExpr, valueType: Type, token: Token) = KeywordMsg(
+    receiver = value, //IdentifierExpr("", token = createFakeToken()),
+    selectorName = value.str,
+    type = valueType,
+    token = token,
+    args = listOf(),
+    path = listOf(),
+    kind = KeywordLikeType.Constructor
+)
 
 private fun Resolver.resolveStatement(
     statement: Statement,
@@ -656,17 +665,10 @@ private fun Resolver.resolveStatement(
 
             // if this is Type with zero fields constructor
             // replace Identifier with Keyword kind: Constructor
-            if (value.str[0].isUpperCase() && value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
-                statement.value = KeywordMsg(
-                    receiver = value, //IdentifierExpr("", token = createFakeToken()),
-                    selectorName = value.str,
-                    type = valueType,
-                    token = statement.value.token,
-                    args = listOf(),
-                    path = listOf(),
-                    kind = KeywordLikeType.Constructor
-                )
-            }
+//            if (value.str[0].isUpperCase() && value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
+//                statement.value = createEmptyKwConstructor(value, valueType, statement.token)
+//            }
+
 
             // check that declared type == inferred type
             if (statementDeclaredType != null) {
@@ -704,6 +706,11 @@ private fun Resolver.resolveStatement(
             getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
+            val type = statement.type
+            if (type is Type.UserLike && type.fields.isEmpty() && statement.str == type.name) {
+                statement.isConstructor = true
+            }
+
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
@@ -945,7 +952,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
         if (type1.args.count() != type2.args.count()) {
-            token?.compileError("Lambda `${type1.name}` has ${type1.args.count()} arguments but `${type2.name}` has ${type2.args.count()}")
+            token?.compileError("Codeblock `${type1.name}` has ${type1.args.count()} arguments but `${type2.name}` has ${type2.args.count()}")
             return false
         }
 

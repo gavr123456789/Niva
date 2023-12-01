@@ -75,7 +75,7 @@ fun Resolver.resolveCodeBlock(
                     typeOfFirstArgs
                 } else {
                     val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
-                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving lambda")
+                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock")
                     foundRealType
                 }
                 previousAndCurrentScope["it"] = typeForIt
@@ -91,7 +91,7 @@ fun Resolver.resolveCodeBlock(
                         typeField.type
                     } else {
                         val foundRealType = genericLetterToTypes[typeField.type.name]
-                            ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving lambda")
+                            ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving codeblock")
                         foundRealType
                     }
                     // check declared type of argument first
