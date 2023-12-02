@@ -109,7 +109,7 @@ fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
         step()
         tok
     } else {
-        error(errorMessage)
+        peek().compileError(errorMessage)
     }
 }
 

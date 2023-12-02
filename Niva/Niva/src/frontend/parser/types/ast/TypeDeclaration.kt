@@ -117,6 +117,7 @@ class UnionBranch(
     token: Token,
     genericFields: MutableList<String> = mutableListOf(),
     val root: UnionDeclaration,
+    var isRoot: Boolean = false,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = codeAttributes) {
     override fun toString(): String {

@@ -408,7 +408,6 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     }
 
 
-
                     val gettersArg = msg.args.find { it.name == "getters" }
                     if (gettersArg != null) {
                         if (gettersArg.keywordArg !is CodeBlock)
@@ -459,6 +458,16 @@ fun Resolver.resolve(
     return statements
 }
 
+fun containSameFields(fields1: MutableList<TypeField>, fields2: MutableList<TypeField>): Boolean {
+    if (fields1.count() != fields2.count()) return false
+
+    fields1.forEachIndexed { i, t1 ->
+        val t2 = fields2.find { compare2Types(t1.type, it.type) }
+        if (t2 == null) return false
+    }
+    return true
+}
+
 fun Resolver.resolveDeclarations(
     statement: Declaration,
     previousScope: MutableMap<String, Type>,
@@ -488,11 +497,25 @@ fun Resolver.resolveDeclarations(
                 val branchType =
                     it.toType(currentPackageName, typeTable, typeDB, root = rootType) as Type.UserUnionBranchType//fix
                 branchType.parent = rootType
+
+
+                // check if type already exist, and it doesn't have fields,
+                // than it's not a new type, but branch with branches
+                val tok = it.token
+                val alreadyRegisteredType = typeAlreadyRegisteredInCurrentPkg(branchType, getCurrentPackage(tok), tok)
+                if (alreadyRegisteredType == null) {
+                    addNewType(branchType, it, checkedOnUniq = true)
+                } else {
+
+                    // check that it has the same fields as current root
+                    if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
+                        it.token.compileError("Union Root inside other union declaration must have same fields, ${branchType.name}: ${branchType.fields.map { it.name }} != ${rootType.name}: ${rootType.fields.map { it.name }}")
+                    }
+                    it.isRoot = true
+                }
+
                 branchType.fields += rootType.fields
                 branches.add(branchType)
-
-                addNewType(branchType, it)
-
                 genericsOfBranches.addAll(branchType.typeArgumentList)
             }
             rootType.branches = branches
@@ -556,6 +579,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
         }
     }
 }
+
 fun createEmptyKwConstructor(value: IdentifierExpr, valueType: Type, token: Token) = KeywordMsg(
     receiver = value, //IdentifierExpr("", token = createFakeToken()),
     selectorName = value.str,
@@ -707,6 +731,13 @@ private fun Resolver.resolveStatement(
                 statement, previousScope, currentScope, kw
             )
             val type = statement.type
+            if (type is Type.UserLike && statement.str == type.name) {
+                if (type.fields.isEmpty()) {
+                    statement.isConstructor = true
+                } else if (kw == null) {
+                    statement.token.compileError("You forget to add params to construct type `${statement.name}` expected: ${type.fields} ")
+                }
+            }
             if (type is Type.UserLike && type.fields.isEmpty() && statement.str == type.name) {
                 statement.isConstructor = true
             }
@@ -1260,11 +1291,25 @@ private class FakeToken {
 
 fun createFakeToken(): Token = FakeToken.fakeToken
 
+fun Resolver.typeAlreadyRegisteredInCurrentPkg(type: Type, pkg: Package? = null, token: Token? = null): Type.UserLike? {
+    val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
+    val result = pack.types[type.name]
+    return result as? Type.UserLike
+}
 
-fun Resolver.addNewType(type: Type, statement: SomeTypeDeclaration?, pkg: Package? = null) {
-    val pack = pkg ?: getPackage(currentPackageName, statement?.token ?: createFakeToken())
-    if (pack.types.containsKey(type.name)) {
-        throw Exception("Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName")
+fun Resolver.addNewType(
+    type: Type,
+    statement: SomeTypeDeclaration?,
+    pkg: Package? = null,
+    checkedOnUniq: Boolean = false
+) {
+    val pack = pkg ?: getCurrentPackage(
+        statement?.token ?: createFakeToken()
+    ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
+
+    if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type, pkg, statement?.token) != null) {
+        val err = "Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName"
+        statement?.token?.compileError(err) ?: throw Exception(err)
     }
 
     if (statement != null) {
