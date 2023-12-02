@@ -146,7 +146,7 @@ fun Package.generateImports() = buildString {
 }
 
 fun GeneratorKt.generateKtProject(
-    pathToSrcKtFolder: String,
+    pathToDotNivaFolder: String,
     pathToGradle: String,
     pathToAmper: String,
     mainProject: Project,
@@ -165,7 +165,7 @@ fun GeneratorKt.generateKtProject(
     }
 
 
-    val path = File(pathToSrcKtFolder)
+    val path = File(pathToDotNivaFolder)
     // 1 recreate pathToSrcKtFolder
     deleteAndRecreateKotlinFolder(path)
     // 2 generate Main.kt

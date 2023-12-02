@@ -6,6 +6,7 @@ import codogen.generateKtProject
 import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
+import frontend.meta.compileError
 import frontend.typer.*
 import frontend.util.CurrentOS
 import frontend.util.div
@@ -385,19 +386,25 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 //}
 
 
+class Error(): Exception()
+
 fun main(args: Array<String>) {
 
     val isThereArgs = args.isNotEmpty()
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
-    val pathToProjectRoot = System.getProperty("user.home") / ".niva" / "infroProject"
-    val pathWhereToGenerateKtAmper = pathToProjectRoot / "src"
+    val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
+    if (!File(pathToInfroProject).exists()) {
+        createFakeToken().compileError("Path `$pathToInfroProject` doesn't exist, please move the infroProject there from `/Niva/infroProject` there or run compile.sh")
+    }
+
+    val pathWhereToGenerateKtAmper = pathToInfroProject / "src"
     val mainNivaFile = File("examples" / "Main" / "main.niva")
     val pathToTheMainExample = mainNivaFile.absolutePath
     val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
-    val pathToGradle = pathToProjectRoot / "build.gradle.kts"
-    val pathToAmper = pathToProjectRoot / "module.yaml"
+    val pathToGradle = pathToInfroProject / "build.gradle.kts"
+    val pathToAmper = pathToInfroProject / "module.yaml"
 
 
     val startTime = System.currentTimeMillis()
@@ -423,7 +430,7 @@ fun main(args: Array<String>) {
 
     if (!(infoOnly || infoUserOnly) ) {
         runGradleRunInProject(
-            pathToProjectRoot,
+            pathToInfroProject,
             inlineRepl,
             resolver.compilationTarget,
             resolver.compilationMode,
