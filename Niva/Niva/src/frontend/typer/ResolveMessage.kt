@@ -207,6 +207,14 @@ fun Resolver.resolveMessage(
                 }
                 val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
                 if (isThisConstructor) {
+//                    when (keywordReceiverType) {
+//                        is frontend.typer.Type.UserUnionBranchType -> TODO()
+//                        is frontend.typer.Type.UserUnionRootType -> TODO()
+//                        else -> {
+//                            statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
+//
+//                        }
+//                    }
                     if (keywordReceiverType is Type.UserUnionRootType) {
                         statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
                     }

@@ -1,17 +1,34 @@
-type Person age: Int
 
-Person + x::Int = (age + x) echo
-Person add::Int = (age + add) echo
-Person birthday = age <- age inc
+//type Person name: String
+//
+//x = Person name: "sas"
 
-Person test = [
-    . + 5
-    . add: 4
-    . birthday
-    age echo
-]
+union Hat =
+| TopHat
+| Bowler
+| Fedora
 
-person = Person age: 25
-person test
+union LoggedIn hat: Hat =
+| Admin
+| Moder
+| Usual
+
+union User hat: Hat =
+| LoggedIn
+| Guest
 
 
+
+user = Moder hat: TopHat
+user hat echo
+
+
+//sealed class Hat()
+//class TopHat() : Hat()
+//class Bowler() : Hat()
+//class Fedora() : Hat()
+//
+//sealed class User(var hat: Hat)
+//sealed class LoggedIn(var name: String, hat: Hat) : User(hat)
+//class Admin(name: String, hat: Hat): LoggedIn(name, hat)
+//class Guest(hat: Hat) : User(hat)

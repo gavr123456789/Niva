@@ -488,8 +488,8 @@ class ResolverTest {
 
         val source = """
             union Shape area: Int =
-            | Rectangle => width: Int height: Int
-            | Circle    => radius: Int
+            | Rectangle width: Int height: Int
+            | Circle    radius: Int
             circle = Circle radius: 25
 
         """.trimIndent()

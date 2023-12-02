@@ -276,7 +276,7 @@ private fun Parser.codeAttributes(): MutableList<CodeAttribute> {
         )
 
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
-    skipEndOfLineOrFile()
+    skipOneEndOfLineOrFile()
     return codeAttributes
 }
 
@@ -300,10 +300,12 @@ fun Parser.statements(): List<Statement> {
 
 
 fun Parser.checkEndOfLineOrFile(i: Int = 0) =
-    check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i)
+    check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i) || check(TokenType.Comment)
 
-fun Parser.skipEndOfLineOrFile() =
-    match(TokenType.EndOfLine) || match(TokenType.EndOfFile)
+
+fun Parser.skipOneEndOfLineOrFile() =
+    match(TokenType.EndOfLine) || match(TokenType.EndOfFile) || match(TokenType.Comment)
+
 
 
 fun Parser.skipNewLinesAndComments() {
