@@ -12,6 +12,8 @@ I haven't decided on the final name yet, so far I've chosen niva because my 2 fa
 P.S. u can find binary releases in the releases  
 After running compile.sh you will get niva_compiler folder that contains jvm or native binary.  
 
+On Windows double click on compile.bat, to run `.\Niva .\main.scala`
+
 ### JVM
 1) `sh compile.sh jvm`  
 2) run compiler from bin folder
