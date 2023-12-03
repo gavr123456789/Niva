@@ -114,7 +114,11 @@ fun SomeTypeDeclaration.generateTypeDeclaration(isUnionRoot: Boolean = false, ro
         /// Override toString
         append(" {\n")
         append("\toverride fun toString(): String {\n")
-        append("\t\treturn \"", typeName, " ")
+        append("\t\treturn \"", typeName)
+
+        if (fields.isNotEmpty()) {
+            append(" ")
+        }
 
         val toStringFields = fields.joinToString(" ") {
             it.name + ": " + "$" + it.name

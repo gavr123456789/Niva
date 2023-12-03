@@ -100,7 +100,8 @@ class Resolver(
                     boolType = boolType,
                     floatType = floatType,
                     intRangeType = intRangeType,
-                    anyType = anyType
+                    anyType = anyType,
+                    charType = charType
                 )
             )
 
@@ -148,6 +149,8 @@ class Resolver(
                     any = anyType
                 )
             )
+
+
             anyType.protocols.putAll(
                 createAnyProtocols(
                     unitType = unitType,
@@ -734,10 +737,14 @@ private fun Resolver.resolveStatement(
             if (type is Type.UserLike && statement.str == type.name) {
                 if (type.fields.isEmpty()) {
                     statement.isConstructor = true
-                } else if (kw == null) {
-                    statement.token.compileError("You forget to add params to construct type `${statement.name}` expected: ${type.fields} ")
+                } else if (kw == null ) {
+
+                    // this can be a custom constructor like Person sas
+                    // so there is fields, but not kw message of that fields(constructor)
+//                    statement.token.compileError("You forget to add params to construct type `${statement.name}` expected: ${type.fields} ")
                 }
             }
+
             if (type is Type.UserLike && type.fields.isEmpty() && statement.str == type.name) {
                 statement.isConstructor = true
             }
@@ -1164,6 +1171,8 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
 fun Resolver.getPackage(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("there are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: token.compileError("there are no such package: $packageName")
+    val q = "asdasd"
+    q.substring(1, 2)
     return pack
 }
 
@@ -1548,10 +1557,13 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
     }
 
     is IfBranch.IfBranchWithBody -> {
-        when (val last = body.last()) {
-            is Expression -> last.type!!
-//            is ReturnStatement -> last.expression.type!!
-            else -> Resolver.defaultTypes[InternalTypes.Unit]!!
-        }
+        if (body.isEmpty())
+            Resolver.defaultTypes[InternalTypes.Unit]!!
+        else
+            when (val last = body.last()) {
+                is Expression -> last.type!!
+    //            is ReturnStatement -> last.expression.type!!
+                else -> Resolver.defaultTypes[InternalTypes.Unit]!!
+            }
     }
 }

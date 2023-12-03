@@ -35,9 +35,6 @@ val operators = hashMapOf(
 )
 
 fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
-    // fun Int.sas(): unit {
-    //   this.echo()
-    // }
     append("fun ")
     // TODO also every argument can be generic, not only return type
     if (returnTypeAST != null) {

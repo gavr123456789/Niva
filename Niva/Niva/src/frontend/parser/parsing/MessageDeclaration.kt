@@ -374,7 +374,7 @@ fun Parser.methodBody(isControlFlow: Boolean = false): Pair<MutableList<Statemen
 
 
 // Int sas ^ (-> Type)? =?
-fun Parser.isThereEndOfMessageDeclaration(): Boolean {
+fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     var isThereReturn = false
     var isThereEqual = false
 
@@ -386,27 +386,31 @@ fun Parser.isThereEndOfMessageDeclaration(): Boolean {
     val equal = match(TokenType.Assign)
     if (equal) isThereEqual = true
 
-    return isThereReturn || isThereEqual
+//    return
+
+    return isThereReturn || isThereEqual || isConstructor
 }
 
-fun Parser.tryUnary(): Boolean {
+fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     val savepoint = current
-    if (match(TokenType.Identifier)) {
-        val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration()
+
+    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1)) ) {
+        match(TokenType.Identifier)
+        val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
         if (isThereEndOfMsgDecl) return true
     }
     current = savepoint
     return false
 }
 
-fun Parser.tryBinary(): Boolean {
+fun Parser.tryBinary(isConstructor: Boolean): Boolean {
     val savepoint = current
 
     if (match(TokenType.BinarySymbol) && check(TokenType.Identifier)) {
         // + ^x::Type
         identifierMayBeTyped()
         // + x::Type^
-        if (isThereEndOfMessageDeclaration())
+        if (isThereEndOfMessageDeclaration(isConstructor))
             return true
     }
 
@@ -416,7 +420,7 @@ fun Parser.tryBinary(): Boolean {
 }
 
 
-fun Parser.kwArgsAndEndOfMessageDeclaration(): Boolean {
+fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow))) {
         try {
             skipNewLinesAndComments()
@@ -426,20 +430,20 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(): Boolean {
                 keyArg()
 
             } else {
-                return isThereEndOfMessageDeclaration()
+                return isThereEndOfMessageDeclaration(isConstructor)
             }
         } catch (e: Exception) {
-            return isThereEndOfMessageDeclaration()
+            return isThereEndOfMessageDeclaration(isConstructor)
         }
     }
-    return isThereEndOfMessageDeclaration()
+    return isThereEndOfMessageDeclaration(isConstructor)
 
 }
 
-fun Parser.tryKeyword(): Boolean {
+fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
     val savepoint = current
 
-    if (kwArgsAndEndOfMessageDeclaration()) {
+    if (kwArgsAndEndOfMessageDeclaration(isConstructor)) {
         return true
     }
 
@@ -452,23 +456,26 @@ fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false): Messa
     val savepoint = current
     val reveiver = identifierMayBeTyped()
 
-    if (tryUnary()) {
+
+    if (tryUnary(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Unary
     }
-    if (tryKeyword()) {
+
+    if (tryKeyword(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Keyword
     }
-    if (tryBinary()) {
+
+    if (tryBinary(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Binary
     }
 
     current = savepoint
-    if (isConstructor) {
-        peek().compileError("Cant parse constructor, you need to declare return type with `-> Type` if its binding or body `= [...]`")
-    }
+//    if (isConstructor) {
+//        peek().compileError("Cant parse constructor, you need to declare return type with `-> Type` if its binding or body `= [...]`")
+//    }
     return null
 }
 

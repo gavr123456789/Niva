@@ -3,6 +3,11 @@ package frontend.typer
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 
+
+fun Statement.isNotExpression(): Boolean =
+    this !is Expression && this !is ReturnStatement && this !is Assign
+
+
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -59,8 +64,8 @@ fun Resolver.resolveControlFlow(
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {
                                 val lastExpr = it.body.last()
-                                if (lastExpr !is Expression) {
-                                    lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                                if (lastExpr.isNotExpression()) {
+                                    lastExpr.token.compileError("In if expression body last statement must be an expression")
                                 }
                             }
                         }
@@ -95,10 +100,16 @@ fun Resolver.resolveControlFlow(
                 currentLevel--
                 if (statement.kind == ControlFlowKind.Expression) {
                     val lastExpr = statement.elseBranch.last()
-                    if (lastExpr !is Expression) {
-                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
+//                    if (lastExpr.notExpression()) {
+//                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
+//                    }
+                    val elseReturnType = when(lastExpr) {
+                        is Expression -> lastExpr.type!!
+                        is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+                        is Assign -> lastExpr.value.type!!
+                        else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                     }
-                    val elseReturnType = lastExpr.type!!
+//                    val elseReturnType =  lastExpr.type!!
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
                     if (elseReturnTypeName != firstReturnTypeName) {
@@ -192,8 +203,8 @@ fun Resolver.resolveControlFlow(
                             currentLevel--
 
                             val lastExpr = it.body.last()
-                            if (lastExpr !is Expression) {
-                                lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                            if (lastExpr.isNotExpression()) {
+                                lastExpr.token.compileError("In if expression body last statement must be an expression")
                             }
                         }
                     }
@@ -224,10 +235,16 @@ fun Resolver.resolveControlFlow(
                 resolve(statement.elseBranch, previousAndCurrentScope, statement)
                 currentLevel--
                 val lastExpr = statement.elseBranch.last()
-                if (lastExpr !is Expression) {
-                    lastExpr.token.compileError("In switch expression body last statement must be an expression")
+//                if (lastExpr !is Expression) {
+//                    lastExpr.token.compileError("In switch expression body last statement must be an expression")
+//                }
+                val elseReturnType = when (lastExpr) {
+                    is Expression -> lastExpr.type!!
+                    is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+                    is Assign -> lastExpr.value.type!!
+                    else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                 }
-                val elseReturnType = lastExpr.type!!
+//                val elseReturnType = lastExpr.type!!
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
                 if (elseReturnTypeName != firstReturnTypeName) {
