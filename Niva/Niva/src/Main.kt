@@ -13,10 +13,7 @@ import frontend.util.div
 import frontend.util.fillSymbolTable
 import frontend.util.getOSType
 import main.utils.generateInfo
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileWriter
-import java.util.concurrent.TimeUnit
+import java.io.*
 
 const val ANSI_RESET = "\u001B[0m"
 const val ANSI_BLACK = "\u001B[30m"
@@ -34,19 +31,50 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
+
+
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, needWait: Boolean = true) {
+
     val p = ProcessBuilder(*split(" ").toTypedArray())
         .directory(workingDir)
 
-    if (withOutputCapture) {
-        p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
-            .redirectError(ProcessBuilder.Redirect.INHERIT)
-    }
+//    if (withOutputCapture) {
+//        p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+//            .redirectError(ProcessBuilder.Redirect.INHERIT)
+//    }
 
     val process = p.start()
-    if (needWait) {
-        process.waitFor(60, TimeUnit.MINUTES)
+
+    val closeChildThread: Thread = object : Thread() {
+        override fun run() {
+//            println("Process shutdowned!")
+            process.destroy()
+        }
     }
+
+    Runtime.getRuntime().addShutdownHook(closeChildThread)
+
+//    sun.misc.Signal.handle(Signal("INT")) { sig ->
+//        println(sig.name)
+//        process.destroyForcibly()
+//    }
+
+    var output: String = ""
+    /// read errors
+    val inputStream = BufferedReader(InputStreamReader(process.inputStream))
+    while (inputStream.readLine()?.also { output = it } != null) {
+        println("Debug: " + output)
+    }
+    inputStream.close()
+
+    ///
+
+    val stillExist = process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
+//    if (stillExist) process.destroy()
+
+
+
+
 }
 
 
@@ -178,8 +206,30 @@ fun compileProjFromFile(
 
 
 fun putInMainKotlinCode(code: String) = buildString {
+//    try {
+//        listOf(1).get(232)
+//    } catch (e: Exception) {
+//        println(e.message)
+//        println("-----------")
+//        val q = e.stackTrace
+//        println(e.stackTraceToString())
+//    }
+
     append("fun main() {\n")
+    append("try {\n")
+
     append(code, "\n")
+
+    append("""
+        } catch (e: Exception) {
+        println("----------")
+        println(e.message)
+        println("----------")
+        println(e.stackTraceToString())
+    }
+    """.trimIndent())
+
+
     append("}\n")
 }
 
