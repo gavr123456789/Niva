@@ -41,7 +41,7 @@ fun Parser.ifBranches(): List<IfBranch> {
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
         var (body, isSingleExpression) = methodBody(true)
-        if (body[0] is ReturnStatement) isSingleExpression = false
+        if (body.isNotEmpty() && body[0] is ReturnStatement) isSingleExpression = false
 
         result.add(
             if (isSingleExpression) {

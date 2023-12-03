@@ -1,0 +1,18 @@
+union Hat =
+| TopHat
+| Bowler
+| Fedora
+
+union LoggedIn hat: Hat =
+| Admin
+| Moder
+| Usual
+
+union User hat: Hat =
+| LoggedIn
+| Guest
+
+
+
+user = Moder hat: TopHat
+user hat echo

@@ -115,11 +115,38 @@ fun Resolver.resolveCodeBlock(
     currentLevel++
     resolve(statement.statements, previousAndCurrentScope, statement)
     currentLevel--
-    val lastExpression = statement.statements.last()
+    if (statement.statements.isEmpty() ) {
+        statement.token.compileError("Codeblock doesn't contain code")
+    }
 
+    val lastExpression = statement.statements.last()
     // Add lambda type to code-block itself
+    val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
     val returnType =
-        if (lastExpression is Expression) lastExpression.type!! else Resolver.defaultTypes[InternalTypes.Unit]!!
+        when (lastExpression) {
+            is ControlFlow -> {
+                if (lastExpression.kind != ControlFlowKind.Statement && lastExpression.kind != ControlFlowKind.StatementTypeMatch) {
+                    lastExpression.type!!
+                } else unitType
+            }
+            is Expression -> lastExpression.type!!
+            else -> unitType
+        }
+
+
+//        if (lastExpression is Expression) lastExpression.type!! else Resolver.defaultTypes[InternalTypes.Unit]!!
+
+
+//    if (lastExpression is Expression) {
+//        if (lastExpression is ControlFlow &&
+//            lastExpression.kind != ControlFlowKind.Statement &&
+//            lastExpression.kind != ControlFlowKind.StatementTypeMatch
+//        ) {
+//            lastExpression.type!!
+//        } else Resolver.defaultTypes[InternalTypes.Unit]!!
+//    } else
+//        Resolver.defaultTypes[InternalTypes.Unit]!!
+
 
     val args = statement.inputList.map {
         TypeField(name = it.name, type = it.type!!)

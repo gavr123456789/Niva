@@ -31,48 +31,39 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-
-
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, needWait: Boolean = true) {
-
     val p = ProcessBuilder(*split(" ").toTypedArray())
         .directory(workingDir)
 
-//    if (withOutputCapture) {
-//        p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
-//            .redirectError(ProcessBuilder.Redirect.INHERIT)
-//    }
+    if (withOutputCapture) {
+        p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+    }
 
     val process = p.start()
 
     val closeChildThread: Thread = object : Thread() {
         override fun run() {
-//            println("Process shutdowned!")
+//            println("DESTROY")
             process.destroy()
         }
     }
 
     Runtime.getRuntime().addShutdownHook(closeChildThread)
 
-//    sun.misc.Signal.handle(Signal("INT")) { sig ->
-//        println(sig.name)
-//        process.destroyForcibly()
-//    }
 
-    var output: String = ""
-    /// read errors
-    val inputStream = BufferedReader(InputStreamReader(process.inputStream))
-    while (inputStream.readLine()?.also { output = it } != null) {
-        println("Debug: " + output)
-    }
-    inputStream.close()
+//    var output = ""
+//    val inputStream = BufferedReader(InputStreamReader(process.inputStream))
+//    while ( process.isAlive) {
+//        inputStream.readLine()?.also { output = it } //!= null ||
+//        println(output)
+//    }
 
     ///
 
     val stillExist = process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
 //    if (stillExist) process.destroy()
-
-
+//    inputStream.close()
 
 
 }
@@ -275,6 +266,9 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
         }
         
         inline fun Any?.echo() = println(this)
+        inline fun Any?.echonnl() = print(this)
+        
+        
         const val INLINE_REPL = $quote$inlineReplPath$quote 
         
         inline fun IntRange.forEach(action: (Int) -> Unit) {
@@ -435,8 +429,6 @@ fun addCommentAboveLine(lineNumberToContent: Map<String, MutableList<LineAndCont
 //    head = result
 //}
 
-
-class Error(): Exception()
 
 fun main(args: Array<String>) {
 

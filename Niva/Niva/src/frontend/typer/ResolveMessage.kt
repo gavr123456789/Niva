@@ -585,7 +585,7 @@ fun Resolver.resolveMessage(
 
             if (receiver.type == null) {
                 resolve(listOf(receiver), (currentScope + previousScope).toMutableMap(), statement)
-                receiver.type ?: statement.token.compileError("Can't resolve return type of ${statement.selectorName} unary msg")
+                receiver.type ?: statement.token.compileError("Can't resolve type of ${statement.selectorName} unary msg: ${receiver.str}")
             }
 
             // if this is message for type
@@ -657,14 +657,19 @@ fun Resolver.resolveMessage(
                         messageReturnType.returnType
                     }
 
+
                     statement.pragmas = messageReturnType.pragmas
                 } else {
+                    // static call
                     val (messageReturnType, isGetter) = findStaticMessageType(
                         receiverType,
                         statement.selectorName,
                         statement.token,
                         MessageDeclarationType.Unary
                     )
+                    if (receiver is IdentifierExpr) {
+                        receiver.isConstructor = false
+                    }
 
                     statement.kind = if (isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType.returnType

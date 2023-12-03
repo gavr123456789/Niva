@@ -18,6 +18,7 @@ fun createIntProtocols(
     floatType: Type.InternalType,
     intRangeType: Type.InternalType,
     anyType: Type.InternalType,
+    charType: Type.InternalType
 
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -30,6 +31,7 @@ fun createIntProtocols(
             createUnary("dec", intType),
             createUnary("toFloat", floatType),
             createUnary("toString", stringType),
+            createUnary("toChar", charType),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("==", intType, boolType),
@@ -131,7 +133,7 @@ val createUnary = { name: String, returnType: Type ->
 val createBinary = { name: String, argType: Type, returnType: Type ->
     name to BinaryMsgMetaData(name, argType, returnType, "core")
 }
-val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type.InternalType ->
+val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type ->
     name to KeywordMsgMetaData(name, args, returnType, "core")
 }
 
@@ -166,7 +168,7 @@ fun createStringProtocols(
     val arithmeticProtocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("length", stringType),
+            createUnary("count", intType),
             createUnary("isDigit", boolType),
             createUnary("isBlank", boolType),
             createUnary("isEmpty", boolType),
@@ -195,6 +197,11 @@ fun createStringProtocols(
             createForEachKeyword(charType, unitType),
             createForEachKeywordIndexed(intType, charType, unitType),
             createFilterKeyword(charType, boolType, stringType),
+
+            createKeyword("substring", KeywordArg("substring", intType), stringType),
+            createKeyword("fromTo", listOf(KeywordArg("from", intType), KeywordArg("to", intType)) , stringType).rename("substring"),
+
+
             createKeyword("get", KeywordArg("get", intType), charType),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
             createKeyword("split", KeywordArg("split", stringType), listOfString),
@@ -296,7 +303,8 @@ fun createAnyProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType)
+            createUnary("echo", unitType),
+            createUnary("echonnl", unitType),
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(),
@@ -414,6 +422,9 @@ fun createListProtocols(
             createKeyword("atPut", KeywordArg("at", itType), unitType),
             createKeyword("drop", KeywordArg("drop", intType), listType),
             createKeyword("dropLast", KeywordArg("dropLast", intType), listType),
+
+            createKeyword("viewFromTo", listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)) , listType).rename("subList"),
+
             createKeyword(
                 "atPut",
                 listOf(
@@ -520,7 +531,6 @@ private fun createForEachKeywordIndexed(
     ),
     unitType
 )
-
 
 
 private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(
