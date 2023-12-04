@@ -1,0 +1,11 @@
+
+
+b.Person bar = 3 echo
+
+person1 = a.Person age: 42
+person1 foo
+
+person2 = b.Person age: 56
+person2 foo
+
+person2 bar
