@@ -36,7 +36,6 @@ val operators = hashMapOf(
 
 fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
     append("fun ")
-    // TODO also every argument can be generic, not only return type
     if (returnTypeAST != null) {
         val isThereUnresolvedTypeArgs = returnTypeAST.name.count() == 1 && returnTypeAST.name[0].isUpperCase()
         if (isThereUnresolvedTypeArgs) {
@@ -46,7 +45,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
             append(">")
         }
     }
-    append(forTypeAst.name)
+    append(forTypeAst.generateType())
     if (isStatic) {
         append(".Companion")
     }
@@ -78,7 +77,8 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     //              this.echo()
     //            }
 
-    append("operator fun ", forTypeAst.name)
+    append("operator fun ")
+    append(forTypeAst.generateType())
     if (isStatic) {
         append(".Companion")
     }

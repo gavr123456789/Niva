@@ -1,22 +1,3 @@
 // no imports is needed!
 // resolver will find the correct type from args
 
-Project package: "a"
-
-type Person age: Int
-Person kek = 1 echo
-
-
-Project package: "b"
-
-type Person name: String
-Person kek = 2 echo
-
-
-
-
-person1 = Person age: 42
-person1 kek
-
-person2 = Person name: "sas"
-person2 kek

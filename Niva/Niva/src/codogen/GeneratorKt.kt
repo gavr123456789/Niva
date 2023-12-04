@@ -1,13 +1,13 @@
 package codogen
 
+import main.utils.addNivaStd
+import main.utils.putInMainKotlinCode
 import frontend.parser.types.ast.Statement
 import frontend.typer.CompilationTarget
 import frontend.typer.MAIN_PKG_NAME
 import frontend.typer.Package
 import frontend.typer.Project
 import frontend.util.addIndentationForEachString
-import main.addNivaStd
-import main.putInMainKotlinCode
 import main.utils.appendnl
 import java.io.File
 import java.nio.file.Path

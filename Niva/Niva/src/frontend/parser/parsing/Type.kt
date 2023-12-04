@@ -123,10 +123,18 @@ fun Parser.parseType(): TypeAST {
         // x::List::Map::(int, string)
         return parseGenericType()
     } else if (tok.isIdentifier()) {
-        step() // skip ident
+        step() // skip tok ident
+        // can be dot separated
+
+        val path = mutableListOf(tok.lexeme)
+        while (match(TokenType.Dot)) {
+            path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
+        }
+
         // one identifier
         return TypeAST.UserType(
-            name = tok.lexeme,
+            name = path.last(),
+            names = path,
             typeArgumentList = listOf(),
             isNullable = tok.isNullable(),
             token = tok

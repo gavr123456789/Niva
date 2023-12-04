@@ -25,6 +25,21 @@ inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.Inte
     )
 }
 
+typealias PkgToUnresolvedDecl<T> = MutableMap<String, MutableSet<T>>
+
+fun <T> PkgToUnresolvedDecl<T>.add(pkg: String, decl: T) {
+    val q = this[pkg]
+    if (q == null) {
+        this[pkg] = mutableSetOf(decl)
+    } else {
+        q.add(decl)
+    }
+}
+fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
+    this[pkg]?.remove(decl)
+}
+
+
 @Suppress("UNUSED_VARIABLE")
 class Resolver(
     val projectName: String,
@@ -51,8 +66,8 @@ class Resolver(
     var currentArgumentNumber: Int = -1,
 
     // for recursive types
-    val unResolvedMessageDeclarations: MutableSet<MessageDeclaration> = mutableSetOf(),
-    val unResolvedTypeDeclarations: MutableSet<SomeTypeDeclaration> = mutableSetOf(),
+    val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration>  = mutableMapOf(),
+    val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
     var allDeclarationResolvedAlready: Boolean = false,
 
     val generator: GeneratorKt = GeneratorKt(),
@@ -477,7 +492,6 @@ fun Resolver.resolveDeclarations(
     resolveBody: Boolean = true,
 ) {
     currentLevel += 1
-
     when (statement) {
         is TypeDeclaration -> {
             val newType = statement.toType(currentPackageName, typeTable, typeDB)// fixed
@@ -678,10 +692,12 @@ private fun Resolver.resolveStatement(
                     // find every type of statement and replace it in type
 
                     val e = typeDB.getTypeOfIdentifierReceiver(
-                        IdentifierExpr(typeAST.name, token = typeAST.token),
+                        typeAST.name,
                         value,
-                        getCurrentImports(statement.token)
-                    )
+                        getCurrentImports(statement.token),
+                        currentPackageName
+                    ) ?: typeAST.token.compileError("Cant find type ${typeAST.name}")
+
                     e.beforeGenericResolvedName = copyType.typeArgumentList[i].name
                     newTypeArgList.add(e)
                 }
@@ -1097,7 +1113,7 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    token.compileError("Cant find unary message: $selectorName for type ${receiverType.name}")
+    token.compileError("Cant find unary message: $selectorName for type ${receiverType.pkg}.${receiverType.name}")
 }
 
 
@@ -1177,18 +1193,18 @@ fun Resolver.getPackage(packageName: String, token: Token): Package {
 }
 
 
-fun Resolver.getCurrentProtocol(typeName: String, token: Token): Pair<Protocol, Package> {
-    val pack = getPackage(currentPackageName, token)
-    val type2 = pack.types[typeName]
+fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
+    val pack = customPkg ?: getPackage(currentPackageName, token)
+    val type = pack.types[typeName]
         ?: getPackage("common", token).types[typeName]
         ?: getPackage("core", token).types[typeName]
         ?: token.compileError("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
 
-    val protocol =
-        type2.protocols[currentProtocolName]
+    val protocol = type.protocols[currentProtocolName]
+
     if (protocol == null) {
         val newProtocol = Protocol(currentProtocolName)
-        type2.protocols[currentProtocolName] = newProtocol
+        type.protocols[currentProtocolName] = newProtocol
         return Pair(newProtocol, pack)
     }
     return Pair(protocol, pack)
@@ -1256,8 +1272,11 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 }
 
 fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false): MessageMetadata {
+    val customPkg = if (statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.names.count() > 1) {
+        getPackage(statement.forTypeAst.names.dropLast(1).joinToString("."), statement.token)
+    } else null
+    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token, customPkg)
 
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
     protocol.unaryMsgs[statement.name] = messageData
 
@@ -1484,7 +1503,7 @@ fun Resolver.getTypeForIdentifier(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     kw: KeywordMsg? = null
-): Type {
+): Type? {
     val type = if (kw != null) getType2(x.name, currentScope, previousScope, kw) else getType(
         x.name,
         currentScope,
@@ -1502,11 +1521,11 @@ fun Resolver.getType2(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     statement: KeywordMsg
-): Type {
+): Type? {
     val q = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement.token)
 
-    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports)
+    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
     return type
 }
 

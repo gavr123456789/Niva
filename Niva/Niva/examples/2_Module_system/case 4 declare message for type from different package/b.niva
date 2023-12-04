@@ -1,0 +1,2 @@
+type Person age: Int
+Person foo = 2 echo

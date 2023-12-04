@@ -174,7 +174,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 //    val receiverTypeNameToken =
 //        matchAssertAnyIdent("Its unary message Declaration, name of type expected")
     val receiverTypeNameToken = peek()
-    val forType = parseType()
+    val forTypeAst = parseType()
     // int^ inc = []
 
     val unarySelector = matchAssertAnyIdent("Its unary message declaration, unary selector expected")
@@ -193,7 +193,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
 
     val result = MessageDeclarationUnary(
         name = unarySelector.lexeme,
-        forType = forType,
+        forType = forTypeAst,
         token = receiverTypeNameToken,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -210,7 +210,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
 
     // int^ + x = []
 
-    val binarySelector = matchAssert(TokenType.BinarySymbol, "Its unary message declaration, unary selector expected")
+    val binarySelector = matchAssert(TokenType.BinarySymbol, "Its binary message declaration, binary selector expected")
     // int + ^x = []
     // int + ^x::int = []
 

@@ -1152,6 +1152,16 @@ class ParserTest {
         assert(ast.count() == 2)
     }
 
+    @Test
+    fun constructorForGeneric() {
+        val source = """
+            List::Int create
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {

@@ -594,11 +594,13 @@ fun Resolver.resolveMessage(
 
             val testDB = if (receiver is IdentifierExpr)
                 typeDB.getTypeOfIdentifierReceiver(
-                    receiver,
+                    receiver.name,
                     receiver,
                     getCurrentImports(receiver.token),
+                    currentPackageName,
                     currentScope,
-                    previousScope
+                    previousScope,
+                    names = receiver.names
                 ) else null
 
             val receiverType = receiver.type!!
