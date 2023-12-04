@@ -19,12 +19,18 @@ sealed class TypeAST(
 
     class UserType(
         name: String,
+
         val typeArgumentList: List<TypeAST>,
         isNullable: Boolean,
         token: Token,
+        val names: List<String> = listOf(name),
         isPrivate: Boolean = false,
         pragmas: MutableList<CodeAttribute> = mutableListOf()
-    ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas) {
+        override fun toString(): String {
+            return names.joinToString(".")
+        }
+    }
 
     class InternalType(
         name: InternalTypes,
@@ -56,7 +62,7 @@ fun TypeAST.generateType(): String {
     return when (this) {
         is TypeAST.InternalType -> name
         is TypeAST.UserType -> buildString {
-            append(name)
+            append(names.joinToString("."))
             if (typeArgumentList.isNotEmpty()) {
                 append("<${typeArgumentList.joinToString(", ") { it.name }}>")
             }

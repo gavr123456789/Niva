@@ -4,17 +4,35 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.typer.*
 
+
+// returns true if unresolved
 fun Resolver.resolveMessageDeclaration(
     statement: MessageDeclaration,
     needResolveBody: Boolean,
     previousScope: MutableMap<String, Type>,
     addToDb: Boolean = true
 ): Boolean {
-    // check if the type already registered
-    val forType = typeTable[statement.forTypeAst.name]//testing
+    // here u need not check for UserType, but allow typeDB search for all kinds of types
+    val forTypeAst = statement.forTypeAst
+    val forType = if (forTypeAst is TypeAST.UserType) {
+        val ident = IdentifierExpr(
+            name = forTypeAst.name,
+            names = forTypeAst.names,
+            token = forTypeAst.token
+        )
+
+        val q = typeDB.getTypeOfIdentifierReceiver(forTypeAst.name, ident, getCurrentImports(statement.token), currentPackageName, names = forTypeAst.names)
+        if (q == null) {
+            unResolvedMessageDeclarations.add(currentPackageName, statement)
+            currentLevel--
+            return true
+        } else q
+
+    } else typeTable[statement.forTypeAst.name]
+
 //    val testDB = typeDB.getType(statement.forTypeAst.name)
     if (forType == null) {
-        unResolvedMessageDeclarations.add(statement)
+        unResolvedMessageDeclarations.add(currentPackageName, statement)
         currentLevel--
         return true
     } else {
@@ -36,12 +54,12 @@ fun Resolver.resolveMessageDeclaration(
             if (alTypeArgsAreFound) {
                 forType.typeArgumentList = newListOfTypeArgs
             } else {
-                unResolvedMessageDeclarations.add(statement)
+                unResolvedMessageDeclarations.add(currentPackageName, statement)
                 currentLevel--
                 return true
             }
         }
-        unResolvedMessageDeclarations.remove(statement)
+        unResolvedMessageDeclarations.remove(currentPackageName, statement)
         statement.forType = forType
     }
 
@@ -154,6 +172,5 @@ fun Resolver.resolveMessageDeclaration(
     }
 
 
-    // TODO check that return type is the same as declared return type, or if it not declared -> assign it
     return false
 }

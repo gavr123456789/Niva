@@ -28,19 +28,22 @@ fun TypeDB.getType(
     name: String,
     currentScope: MutableMap<String, Type>? = null,
     previousScope: MutableMap<String, Type>? = null,
+    names: List<String> = listOf()
 ): TypeDBResult {
+
     // first check internal types
     val foundInInternal = internalTypes[name]
     if (foundInInternal != null) {
         return TypeDBResult.FoundOneInternal(foundInInternal)
     }
+
     // then userTypes
     val listOfUserTypes = userTypes[name]
     if (listOfUserTypes != null) {
         val countOfTypes = listOfUserTypes.count()
-        return when {
+        when {
             countOfTypes == 1 -> {
-                TypeDBResult.FoundOneUser(listOfUserTypes[0])
+                return TypeDBResult.FoundOneUser(listOfUserTypes[0])
             }
 
             countOfTypes > 1 -> {
@@ -48,10 +51,19 @@ fun TypeDB.getType(
                 listOfUserTypes.forEach {
                     map[it.pkg] = it
                 }
-                TypeDBResult.FoundMoreThanOne(map)
+                // if already qualified
+                if (names.count() > 1) {
+                    val pkgName = names.dropLast(1).joinToString(".")
+                    val q = listOfUserTypes.find { it.pkg == pkgName }
+
+                    if (q != null) {
+                        return TypeDBResult.FoundOneUser(q)
+                    }
+                }
+                return TypeDBResult.FoundMoreThanOne(map)
             }
 
-            countOfTypes == 0 -> TypeDBResult.NotFound(name)
+            countOfTypes == 0 -> return TypeDBResult.NotFound(name)
             else -> throw Exception("???")
         }
 
@@ -91,18 +103,21 @@ fun TypeDB.getType(
 }
 
 fun TypeDB.getTypeOfIdentifierReceiver(
-    typeName: IdentifierExpr,
+    typeName: String,
     value: Receiver,
     imports: Set<String>,
+    curPkg: String,
     currentScope: MutableMap<String, Type>? = null,
     previousScope: MutableMap<String, Type>? = null,
-): Type {
+    names: List<String> = listOf()
+): Type? {
 
 
-    val q = getType(typeName.name, currentScope, previousScope)
+    val q = getType(typeName, currentScope, previousScope, names = names)
     val w = q.getTypeFromTypeDBResultConstructor(
         KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())),
-        imports
+        imports,
+        curPkg
     )
     return w
 }
@@ -161,8 +176,20 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 fun resolveTypeIfSameNamesFromConstructor(
     result: TypeDBResult.FoundMoreThanOne,
     statement: KeywordMsg,
-    imports: Set<String>
+    imports2: Set<String>,
+    currentPkgName: String
 ): Type {
+
+    // case 0 we are in the same package as statement
+    // if there type in this pkg, but there is more than one type with same name
+    // than just Person is this type, and b.Person is type from some pkg
+    val typeDeclaredInTheCurrentPkg = result.packagesToTypes[currentPkgName]
+    if (typeDeclaredInTheCurrentPkg  != null) {
+        return typeDeclaredInTheCurrentPkg
+    }
+
+
+    val imports = imports2 + currentPkgName
     // if statement has clarification already like a.Person
     val receiver = statement.receiver
     if (receiver is IdentifierExpr && receiver.names.count() > 1) {
@@ -191,13 +218,13 @@ fun resolveTypeIfSameNamesFromConstructor(
             if (sameNames && sameTypes) {
                 set.add(type)
             }
-
         }
     }
 
     if (set.count() == 1) {
         return set.first()
     }
+
     // we have 2 or more absolutely same types defined in different packages
     // need to check if current package has some import
 
@@ -206,18 +233,18 @@ fun resolveTypeIfSameNamesFromConstructor(
         return type
     } else {
         statement.token.compileError(
-            "Type `${statement.receiver}` is defined in may packages: ${set.map { it.pkg }},\n\t" +
-                    "please specify what package you wanna use with for example `${set.first().pkg}.${statement.receiver}`\n\t" +
-                    "or `Project use: \"${set.first().pkg}\"` "
+            "Type `${statement.receiver}` is defined in many packages: ${set.map { it.pkg }},\n\t" +
+                    "please specify what package you wanna use with for example `${currentPkgName}.${statement.receiver}`\n\t" +
+                    "or `Project use: \"${currentPkgName}\"` "
         )
     }
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg, imports: Set<String>): Type {
+fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg, imports: Set<String>, curPkg: String): Type? {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
-            resolveTypeIfSameNamesFromConstructor(this, statement, imports)
+            resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg)
         }
 
         is TypeDBResult.FoundOneInternal -> this.type
@@ -225,7 +252,7 @@ fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg, impor
         is TypeDBResult.FoundOneLambda -> this.type
 
         is TypeDBResult.NotFound -> {
-            statement.token.compileError("Cant find type: ${this.notFountName}")
+            null
         }
     }
 }

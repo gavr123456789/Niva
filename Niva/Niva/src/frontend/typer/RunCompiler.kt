@@ -45,25 +45,32 @@ fun Resolver.resolve() {
         resolveDeclarationsOnly(it.second)
     }
 
-    if (unResolvedMessageDeclarations.isNotEmpty()) {
-        resolveDeclarationsOnly(unResolvedMessageDeclarations.toMutableList())
+    // unresolved methods
+    unResolvedMessageDeclarations.forEach { (t, u) ->
+        changePackage(t, createFakeToken())
+        resolveDeclarationsOnly(u.toMutableList())
     }
-    if (unResolvedMessageDeclarations.isNotEmpty()) {
-        unResolvedMessageDeclarations.forEach {
-            it.token.compileError("Method `$it` for unresolved type: `${it.forTypeAst.name}`")
+    unResolvedMessageDeclarations.forEach { (_, u) ->
+        if (u.isNotEmpty()) {
+            val decl = u.first()
+            decl.token.compileError("Method `${decl}` for unresolved type: `${decl.forTypeAst.name}`")
         }
-        throw Exception("Not all message declarations resolved: $unResolvedMessageDeclarations")
     }
+    unResolvedMessageDeclarations.clear()
 
-    if (unResolvedTypeDeclarations.isNotEmpty()) {
-        resolveDeclarationsOnly(unResolvedTypeDeclarations.toMutableList())
+    // unresolved types
+    unResolvedTypeDeclarations.forEach { (t, u) ->
+        changePackage(t, createFakeToken())
+        resolveDeclarationsOnly(u.toMutableList())
     }
-    if (unResolvedTypeDeclarations.isNotEmpty()) {
-        unResolvedTypeDeclarations.forEach {
-            it.token.compileError("Unresolved type: $it")
+    unResolvedTypeDeclarations.forEach { (_, u) ->
+        if (u.isNotEmpty()) {
+            val decl = u.first()
+            decl.token.compileError("Type `${decl}` for unresolved type: `${decl.typeName}`")
         }
-        throw Exception("Not all type declarations resolved: $unResolvedTypeDeclarations")
     }
+    unResolvedTypeDeclarations.clear()
+
     /// end of resolve all declarations
 
     allDeclarationResolvedAlready = true
