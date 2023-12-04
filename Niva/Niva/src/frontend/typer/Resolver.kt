@@ -1022,7 +1022,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         // check return types
         val return1 = type1.returnType
         val return2 = type2.returnType
-        val isReturnTypesEqual = compare2Types(return1, return2)
+        val isReturnTypesEqual = (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(return1, return2)
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: $type1 != $type2")
         }
