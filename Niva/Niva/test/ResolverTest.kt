@@ -531,7 +531,7 @@ class ResolverTest {
         val source = """
                 x = { 1 2 3 }
                 y = x map: [it + 5]
-                z = y get: 1
+                z = y at: 1
 
         """.trimIndent()
 
@@ -625,7 +625,19 @@ class ResolverTest {
         assert(statements.count() == 4)
     }
 
+    @Test
+    fun switchIf() {
+        val source = """
+            x = "sas"
+            | x
+            | "sas" => 1 echo
+            
+            | 5 > 5 => "sas" echo
+        """.trimIndent()
 
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
 
 }
 

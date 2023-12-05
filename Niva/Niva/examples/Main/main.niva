@@ -1,54 +1,7 @@
-program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+x = 5
+| x
+| 4 => 1 echo
+| 5 => 1 echo
+|=> 0 echo
 
-
-mut ip = 0
-mut buf::MutableList::Int = {}
-mut ptr = 0
-
-
-[ip == program count] whileFalse: [
-  char = program get: ip
-  | buf count dec < ptr => buf add: 0
-  bufAtPtr = buf get: ptr
-
-  | char
-  | '>' => ptr <- ptr inc
-  | '<' => ptr <- ptr dec
-  | '+' => buf at: ptr put: bufAtPtr inc
-  | '-' => buf at: ptr put: bufAtPtr dec
-  | '.' => ((buf viewFrom: ptr to: ptr inc) get: 0) toChar echonnl
-  | ',' => "readln needed" echo
-  | '[' =>
-    | bufAtPtr == 0 => [
-      ip <- ip inc
-      mut layer = 0
-      [layer == 0 && ((program get: ip) == ']')] whileFalse: [
-        char = program get: ip
-        | char
-        | '[' => layer <- layer inc
-        | ']' => layer <- layer dec
-
-        ip <- ip inc
-      ]
-    ]
-
-  | ']' =>
-    | bufAtPtr == 0 => [
-      // exit loop
-    ]
-    |=> [
-      ip <- ip dec
-      mut layer = 0
-      [layer == 0 && ((program get: ip) == '[')] whileFalse: [
-        char = program get: ip
-        | char
-        | '[' => layer <- layer dec
-        | ']' => layer <- layer inc
-
-        ip <- ip dec
-      ]
-    ]
-
-  ip <- ip inc
-]
-
+| x > 3 => 10 echo

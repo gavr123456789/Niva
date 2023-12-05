@@ -18,7 +18,7 @@ sealed class Statement(
     var pragmas: MutableList<CodeAttribute>,
 ) : ASTNode2(token) {
     override fun toString(): String {
-        return "Declaration(${token.lexeme})"
+        return token.lexeme
     }
 }
 

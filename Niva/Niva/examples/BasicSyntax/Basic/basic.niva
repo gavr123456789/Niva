@@ -43,5 +43,5 @@ mappedList = list map: [it toString + "a"]
 map = #{1 "a" 2 "b"}
 map key: 3 value: "c"
 // "a"
-a = map get: 1
+a = map at: 1
 | a != null => a echo

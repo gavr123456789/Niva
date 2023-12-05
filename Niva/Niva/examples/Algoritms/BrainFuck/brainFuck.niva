@@ -7,23 +7,23 @@ mut ptr = 0
 
 
 [ip == program count] whileFalse: [
-  char = program get: ip
+  char = program at: ip
   | buf count dec < ptr => buf add: 0
-  bufAtPtr = buf get: ptr
+  bufAtPtr = buf at: ptr
 
   | char
   | '>' => ptr <- ptr inc
   | '<' => ptr <- ptr dec
   | '+' => buf at: ptr put: bufAtPtr inc
   | '-' => buf at: ptr put: bufAtPtr dec
-  | '.' => ((buf viewFrom: ptr to: ptr inc) get: 0) toChar echonnl
+  | '.' => ((buf viewFrom: ptr to: ptr inc) at: 0) toChar echonnl
   | ',' => "readln needed" echo
   | '[' =>
     | bufAtPtr == 0 => [
       ip <- ip inc
       mut layer = 0
-      [layer == 0 && ((program get: ip) == ']')] whileFalse: [
-        char = program get: ip
+      [layer == 0 && ((program at: ip) == ']')] whileFalse: [
+        char = program at: ip
         | char
         | '[' => layer <- layer inc
         | ']' => layer <- layer dec
@@ -39,8 +39,8 @@ mut ptr = 0
     |=> [
       ip <- ip dec
       mut layer = 0
-      [layer == 0 && ((program get: ip) == '[')] whileFalse: [
-        char = program get: ip
+      [layer == 0 && ((program at: ip) == '[')] whileFalse: [
+        char = program at: ip
         | char
         | '[' => layer <- layer dec
         | ']' => layer <- layer inc

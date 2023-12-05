@@ -4,8 +4,8 @@ MutableList::Int bubble = [
     array = this
     0 to: array count do: [ i ->
         0 to: array count - 2 - i do: [ j ->
-            curr = array get: j
-            next = array get: j + 1
+            curr = array at: j
+            next = array at: j + 1
             | curr > next => [
                 temp = curr
                 array at: j put: next

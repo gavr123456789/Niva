@@ -179,12 +179,6 @@ fun compileProjFromFile(
     return resolver
 }
 
-
-
-
-
-
-
 fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
 
@@ -259,6 +253,17 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun <T> WhileIf.whileFalse(x: () -> T) {
             while (!this()) {
+                x()
+            }
+        }
+        
+        inline fun <T> Boolean.ifTrue(x: () -> T) {
+            if (this) {
+                x()
+            }
+        }
+        inline fun <T> Boolean.ifFalse(x: () -> T) {
+            if (!this) {
                 x()
             }
         }
