@@ -245,27 +245,34 @@ fun createBoolProtocols(
             createKeyword("and", KeywordArg("and", boolType), boolType),
             createKeyword("xor", KeywordArg("xor", boolType), boolType),
 
-            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(
-                mutableListOf(
-//                    TypeField("x", genericParam)
+            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(mutableListOf(), unitType)), unitType),
+
+
+            createKeyword("ifFalse", KeywordArg("ifFalse", Type.Lambda(mutableListOf(), unitType)), unitType),
+
+            createKeyword("ifTrueIfFalse",
+
+                listOf(
+                    KeywordArg("ifTrue", Type.Lambda(mutableListOf(), unitType)),
+                    KeywordArg("ifFalse", Type.Lambda(mutableListOf(), unitType))
                 ),
+
                 unitType
-            )), unitType),
-
-
+            ),
             createKeyword(
-                "ifFalse", KeywordArg(
-                    "ifFalse", Type.Lambda(
-                        mutableListOf(
-//                            TypeField("x", genericParam)
-                        ),
-                        unitType
-                    )
-                ), unitType
-            ),
+                "ifFalseIfTrue",
+
+                listOf(
+                    KeywordArg("ifFalse", Type.Lambda(mutableListOf(), unitType)),
+                    KeywordArg("ifTrue", Type.Lambda(mutableListOf(), unitType))
+                ),
+
+                unitType
+            )
 
 
-            ),
+
+        ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result

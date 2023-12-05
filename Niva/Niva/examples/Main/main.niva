@@ -1,7 +1,9 @@
-x = 5
-| x
-| 4 => 1 echo
-| 5 => 1 echo
-|=> 0 echo
+x = 55
 
-| x > 3 => 10 echo
+x > 5 ifTrue: [
+    "yes!" echo
+] ifFalse: [
+    "nnno!" echo
+]
+
+
