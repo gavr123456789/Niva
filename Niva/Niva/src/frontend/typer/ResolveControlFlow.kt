@@ -44,11 +44,24 @@ fun Resolver.resolveControlFlow(
             statement.kind = detectExprOrStatement()
 
 
+            val isStatement =
+                statement.kind == ControlFlowKind.StatementTypeMatch || statement.kind == ControlFlowKind.Statement
+
+
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if
                 currentLevel++
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
+
+                if (isStatement) {
+                    val ifType = it.ifExpression.type!!
+                    if (ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
+                        it.ifExpression.token.compileError("if branch ${it.ifExpression} must be of the `Boolean` type, but found `$ifType`")
+
+                    }
+                }
+
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
@@ -181,10 +194,9 @@ fun Resolver.resolveControlFlow(
                 }
 
 
-                // TODO!
                 if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
-                    curTok.compileError("If branch ${curTok.lexeme} on line: ${curTok.line} is not of switching Expr type: ${statement.switch.type!!.name}")
+                    curTok.compileError("If branch `${it.ifExpression}` of type: `$currentType` is not of switching type: `${statement.switch.type!!.name}`")
                 }
                 /// resolving then, if() ^
                 val scopeWithFields =

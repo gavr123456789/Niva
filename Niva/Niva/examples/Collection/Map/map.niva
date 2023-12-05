@@ -6,7 +6,7 @@ map at: 3 put: "three"
 
 map forEach: [ k, v ->
     k inc echo
-    (v get: 0) echo
+    (v at: 0) echo
 ]
 
 // empty collection

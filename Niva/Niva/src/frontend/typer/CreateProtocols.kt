@@ -220,7 +220,8 @@ fun createBoolProtocols(
     stringType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
-    any: Type.InternalType
+    any: Type.InternalType,
+    genericParam: Type.UnknownGenericType
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
@@ -243,7 +244,28 @@ fun createBoolProtocols(
             createKeyword("or", KeywordArg("or", boolType), boolType),
             createKeyword("and", KeywordArg("and", boolType), boolType),
             createKeyword("xor", KeywordArg("xor", boolType), boolType),
-        ),
+
+            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(
+                mutableListOf(
+//                    TypeField("x", genericParam)
+                ),
+                unitType
+            )), unitType),
+
+
+            createKeyword(
+                "ifFalse", KeywordArg(
+                    "ifFalse", Type.Lambda(
+                        mutableListOf(
+//                            TypeField("x", genericParam)
+                        ),
+                        unitType
+                    )
+                ), unitType
+            ),
+
+
+            ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result

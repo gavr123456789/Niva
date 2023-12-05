@@ -11,7 +11,7 @@ mappedList = list map: [x -> x toString + "s"]
 //> [1s, 2s, 3s, 4s, 5s]
 > mappedList
 
-mappedList2 = mappedList map: [(it get: 0) digitToInt + 1]
+mappedList2 = mappedList map: [(it at: 0) digitToInt + 1]
 //> [2, 3, 4, 5, 6]
 > mappedList2
 

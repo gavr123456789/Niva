@@ -341,7 +341,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 
 // returns true if it's single expression
-fun Parser.methodBody(isControlFlow: Boolean = false): Pair<MutableList<Statement>, Boolean> {
+fun Parser.methodBody(isControlFlow: Boolean = false, skipLines: Boolean = false): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
@@ -360,7 +360,16 @@ fun Parser.methodBody(isControlFlow: Boolean = false): Pair<MutableList<Statemen
     } else {
         isSingleExpression = true
         // one expression in body
-        messagesOrVarStatements.add(statementWithEndLine())
+        // if we inside control flow then dont skip lines, because
+        // switch with if after, without new line can't be parsed
+        // | switch
+        // | cond => do
+        // | cond => do // I wanna If here, but it will be another case
+        if (isControlFlow){
+            messagesOrVarStatements.add(statementWithEndLine())
+        } else {
+            messagesOrVarStatements.add(statement())
+        }
     }
 
     val realIsSingleExpression = isSingleExpression && messagesOrVarStatements[0] is Expression

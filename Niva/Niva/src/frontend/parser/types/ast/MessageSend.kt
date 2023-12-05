@@ -74,7 +74,11 @@ class BinaryMsg(
     path: List<String>,
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-) : Message(receiver, selectorName, path, type, token)
+) : Message(receiver, selectorName, path, type, token) {
+    override fun toString(): String {
+        return "$receiver $selectorName $argument"
+    }
+}
 
 data class KeywordArgAndItsMessages(
     val name: String,

@@ -513,7 +513,7 @@ fun Resolver.resolveMessage(
                                 compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                             if (!sameTypes) {
                                 argAndItsMessages.keywordArg.token.compileError(
-                                    "In keyword message ${statement.selectorName} type ${typeOfArgFromDeclaration.name} for argument ${argAndItsMessages.name} doesn't match ${typeOfArgFromDb.name}"
+                                    "In keyword message `${statement.selectorName}` type `${typeOfArgFromDeclaration.name}` for argument `${argAndItsMessages.name}` doesn't match `${typeOfArgFromDb.name}`"
                                 )
                             }
 
@@ -556,7 +556,7 @@ fun Resolver.resolveMessage(
                 currentLevel--
             }
 
-            // 1 < (this get: 0)
+            // 1 < (this at: 0)
             if (statement.argument is ExpressionInBrackets) {
                 resolveExpressionInBrackets(statement.argument, currentScope, previousScope)
             }

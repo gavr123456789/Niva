@@ -24,8 +24,8 @@ lines = (text split: "\n") dropLast: 1
 
 lines forEach: [ line ->
     r = line split: " "
-    first = r get: 0
-    second = r get: 1
+    first = r at: 0
+    second = r at: 1
 //> monday, tuesday, wednesday, thursday, friday
     >10 first
 //> 5, 3, 7, 6, 8

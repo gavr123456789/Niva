@@ -150,7 +150,8 @@ class Resolver(
                     stringType = stringType,
                     unitType = unitType,
                     boolType = boolType,
-                    any = anyType
+                    any = anyType,
+                    genericParam = Type.UnknownGenericType("T")
                 )
             )
 

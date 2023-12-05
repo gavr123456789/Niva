@@ -40,7 +40,8 @@ fun Parser.ifBranches(): List<IfBranch> {
         val ifExpression = expression()
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
-        var (body, isSingleExpression) = methodBody(true)
+//        skipOneEndOfLineOrFile()
+        var (body, isSingleExpression) = methodBody(true, true)
         if (body.isNotEmpty() && body[0] is ReturnStatement) isSingleExpression = false
 
         result.add(
@@ -57,9 +58,20 @@ fun Parser.ifBranches(): List<IfBranch> {
             }
         )
 
+        if (isSingleExpression) {
+            if (tokens.count() > 2 && check(TokenType.EndOfLine, -1) && check(TokenType.EndOfLine, -2)) {
+                return result
+            }
+        }
+//        else {
+//            if (tokens.count() > current && check(TokenType.EndOfLine) && check(TokenType.EndOfLine, 1)) {
+//                return result
+//            }
+//        }
+//        } else {
+            skipNewLinesAndComments()
+//        }
 
-        match(TokenType.EndOfLine)
-        match(TokenType.EndOfFile)
     } while (check(TokenType.Pipe))
 
     return result
@@ -68,6 +80,9 @@ fun Parser.ifBranches(): List<IfBranch> {
 fun Parser.ifStatementOrExpression(): ControlFlow.If {
 
     val pipeTok = peek()
+    if (pipeTok.kind != TokenType.Pipe) {
+        pipeTok.compileError("| expected but found: ${pipeTok.lexeme}")
+    }
     val ifBranches = ifBranches()
 
     val elseBranch = if (match(TokenType.Else)) {
@@ -90,13 +105,14 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
     matchAssert(TokenType.Pipe, "| expected")
 
     val switchExpression = expression()
-    skipNewLinesAndComments()
+    skipOneEndOfLineOrFile()
+//    skipNewLinesAndComments()
     val otherPart = ifStatementOrExpression()
-
     val result = ControlFlow.Switch(
         switch = switchExpression,
         iF = otherPart
     )
     return result
+
 
 }

@@ -21,7 +21,7 @@ y echo
 t = | y - 2
 | 10 => "sas"
 | 11 => "ses"
-| 12 => "sus"
+| 12 => // MISSING TOKEN ERROR
 |=> "?"
 t echo
 
