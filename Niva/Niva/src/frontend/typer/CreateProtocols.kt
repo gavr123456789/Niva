@@ -202,7 +202,7 @@ fun createStringProtocols(
             createKeyword("fromTo", listOf(KeywordArg("from", intType), KeywordArg("to", intType)) , stringType).rename("substring"),
 
 
-            createKeyword("get", KeywordArg("get", intType), charType),
+            createKeyword("at", KeywordArg("at", intType), charType).rename("get"),
             createKeyword("drop", KeywordArg("drop", intType), stringType),
             createKeyword("split", KeywordArg("split", stringType), listOfString),
             createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
@@ -416,7 +416,7 @@ fun createListProtocols(
             createFilterKeyword(itType, boolType, listType),
 
             createKeyword("add", KeywordArg("add", itType), unitType),
-            createKeyword("get", KeywordArg("get", intType), itType),
+            createKeyword("at", KeywordArg("at", intType), itType).rename("get"),
             createKeyword("removeAt", KeywordArg("removeAt", intType), unitType),
             createKeyword("addAll", KeywordArg("addAll", listType), boolType),
             createKeyword("atPut", KeywordArg("at", itType), unitType),
@@ -432,8 +432,7 @@ fun createListProtocols(
                     KeywordArg("put", itType)
                 ),
                 unitType
-            )
-                .rename("set"),
+            ).rename("set"),
 
 
             )
