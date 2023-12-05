@@ -1,3 +1,13 @@
+// Messages (Smalltalk like)
+
+// single ifTrue:
+9 > 5 ifTrue: [1 echo]
+
+// ifTrue:ifFalse:
+9 > 5 ifTrue: ["yes!" echo] ifFalse: ["nnno!" echo]
+// there is also ifFalse:ifTrue:
+
+
 // simple if statement
 x = 6
 | x > 10 => x echo
