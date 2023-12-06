@@ -1,7 +1,0 @@
-// no imports is needed
-Person buy = [
-    wallet = Wallet money: 23
-    wallet something
-    "buy" echo
-]
-type Wallet money: Int

@@ -1,6 +1,20 @@
+1 > 2 => [
+    1 echo
+    1 echo
+]|=>[
+    2 echo
+    2 echo
+]
+
+| 5
+| 4 => 1 echo
+| 5 => 1 > 2 => "wat?" echo |=> "yay!" echo
+
+
 x = 1
 
-x > 5 ifTrue: ["yes!" echo] ifFalse: ["nnno!" echo]
+
+x < 5 ifTrue: ["yes!" echo] ifFalse: ["nnno!" echo]
 x > 5 ifFalse: ["yes!" echo] ifTrue: ["nnno!" echo]
 
 // multiline switch
@@ -15,6 +29,15 @@ _
 | x < 0 => "x < 10" echo
 |=> "x > 0 and < 10" echo
 
+_
+| x > 5 => "x > 10" echo
+| x < 0 => "x < 10" echo
+42 > 0 => "Single Expression if!" echo
+42 < 0 => "Nothing" echo
 // single line if
 _| 1 > 2 => 3 echo |=> 4 echo
 _| 5 < 6 => 7 echo
+
+
+42 > 0 => "Single Expression if!" echo
+42 < 0 => "Nothing" echo
