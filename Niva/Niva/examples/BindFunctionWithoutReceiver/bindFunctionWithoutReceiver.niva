@@ -1,0 +1,6 @@
+Bind package: "kotlin.io" content: [
+    @emit: "println($0)" // $0 is receiver, $n is args
+    String println -> Unit
+]
+
+"sas" println
