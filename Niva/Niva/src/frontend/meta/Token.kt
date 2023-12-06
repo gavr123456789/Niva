@@ -47,6 +47,7 @@ enum class TokenType {
     EndOfLine, // \n and next line starts not from the dot
 
     InlineReplWithNum, // >Number, >3
+    Underscore, // _
 
 }
 

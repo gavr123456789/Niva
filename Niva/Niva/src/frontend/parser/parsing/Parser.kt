@@ -20,7 +20,7 @@ fun Parser.statement(): Statement {
     // x::[Int->Int] = [] - value
     // x::Int = 5
 
-    if (tok.kind == TokenType.Dot) {
+    if (kind == TokenType.Dot) {
         return expression(dot = true)
     }
 
@@ -48,7 +48,7 @@ fun Parser.statement(): Statement {
     }
 
 
-    val isInlineReplWithNum = tok.kind == TokenType.InlineReplWithNum
+    val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
     if (tok.lexeme == ">" || isInlineReplWithNum) {
         val q = step()
         val w = statement()
@@ -242,7 +242,11 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: Boolean = false): Expression {
 
     if (check(TokenType.Pipe)) {
-        return ifOrSwitch()
+        return switchStatementOrExpression()
+    }
+
+    if (check(TokenType.Underscore)) {
+        return ifStatementOrExpression()
     }
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
@@ -253,6 +257,29 @@ fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: B
         messageSend
     }
 }
+
+// attempt to x | expr as switch
+//fun Parser.expression2(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: Boolean = false): Expression {
+//
+//    if (check(TokenType.Underscore)) {
+//        TODO()
+//    }
+//
+//    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
+//    // unwrap unnecessary MessageSend
+//    val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
+//        messageSend.receiver
+//    } else {
+//        messageSend
+//    }
+//    skipNewLinesAndComments()
+//
+//    if (check(TokenType.Pipe)) {
+//        return switchStatementOrExpression(unwrapped)
+//    }
+//    return unwrapped
+//}
+
 
 class CodeAttribute(
     val name: String,

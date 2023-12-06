@@ -363,7 +363,7 @@ fun Lexer.next() {
         return result
     }
 
-
+    val p = peek()
     when {
         done() -> return
         match("\r") -> return
@@ -394,7 +394,7 @@ fun Lexer.next() {
 
         match("..") -> createToken(TokenType.BinarySymbol)
 
-        peek().isDigit() -> {
+        p.isDigit() -> {
             step()
             parseNumber()
         }
@@ -406,7 +406,7 @@ fun Lexer.next() {
         }
 
         // String
-        peek().isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
+        p.isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
 
             //  Prefixed string literal (i.e. f"Hi {name}!")
             when (step()) {
@@ -416,8 +416,14 @@ fun Lexer.next() {
                 else -> error("unknown string prefix '${peek(-1)}'")
             }
         }
+
+        // if elseif chain
+        match("_") -> {
+            createToken(TokenType.Underscore)
+        }
+
         // Identifier
-        peek().isAlphaNumeric() || check("_") -> parseIdentifier()
+        p.isAlphaNumeric() || check("_") -> parseIdentifier()
         // Comment
         match("//") -> {
             // inline comments

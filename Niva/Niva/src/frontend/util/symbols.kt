@@ -24,7 +24,7 @@ fun Lexer.fillSymbolTable() {
         ":" to TokenType.Colon,
         ";" to TokenType.Cascade,
 
-
+        "_" to TokenType.Underscore,
         "|" to TokenType.Switch,
         "=>" to TokenType.Then,
         "|=>" to TokenType.Else,
