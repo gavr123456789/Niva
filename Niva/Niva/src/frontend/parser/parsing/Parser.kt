@@ -81,7 +81,7 @@ fun Parser.statement(): Statement {
     }
 
 
-    return expression()
+    return expression(parseSingleIf = true)
 }
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
@@ -239,7 +239,11 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // message or control flow
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
-fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: Boolean = false): Expression {
+fun Parser.expression(
+    dontParseKeywordsAndUnaryNewLines: Boolean = false,
+    dot: Boolean = false,
+    parseSingleIf: Boolean = false
+): Expression {
 
     if (check(TokenType.Pipe)) {
         return switchStatementOrExpression()
@@ -251,35 +255,44 @@ fun Parser.expression(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: B
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
     // unwrap unnecessary MessageSend
-    return if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
+    val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver
     } else {
         messageSend
     }
+
+    if (parseSingleIf && match(TokenType.Then)) {
+        val (thenDo, isSingleExpr) = methodBody(true) //expression(dot = dot)
+
+        skipNewLinesAndComments()
+        val elseBranch = if (match(TokenType.Else)) {
+            methodBody(true).first.toList()
+        } else null
+
+        val singleIf = ControlFlow.If(
+            type = null,
+            ifBranches = listOf(
+                if (isSingleExpr)
+                    IfBranch.IfBranchSingleExpr(
+                        ifExpression = unwrapped,
+                        thenDoExpression = thenDo.first() as Expression
+                    )
+                else
+                    IfBranch.IfBranchWithBody(
+                        ifExpression = unwrapped,
+                        body = thenDo
+                    )
+            ),
+            kind = ControlFlowKind.Statement,
+            elseBranch = elseBranch,
+            token = unwrapped.token,
+        )
+
+        return singleIf
+    }
+
+    return unwrapped
 }
-
-// attempt to x | expr as switch
-//fun Parser.expression2(dontParseKeywordsAndUnaryNewLines: Boolean = false, dot: Boolean = false): Expression {
-//
-//    if (check(TokenType.Underscore)) {
-//        TODO()
-//    }
-//
-//    val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
-//    // unwrap unnecessary MessageSend
-//    val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
-//        messageSend.receiver
-//    } else {
-//        messageSend
-//    }
-//    skipNewLinesAndComments()
-//
-//    if (check(TokenType.Pipe)) {
-//        return switchStatementOrExpression(unwrapped)
-//    }
-//    return unwrapped
-//}
-
 
 class CodeAttribute(
     val name: String,
@@ -332,7 +345,6 @@ fun Parser.checkEndOfLineOrFile(i: Int = 0) =
 
 fun Parser.skipOneEndOfLineOrFile() =
     match(TokenType.EndOfLine) || match(TokenType.EndOfFile) || match(TokenType.Comment)
-
 
 
 fun Parser.skipNewLinesAndComments() {
