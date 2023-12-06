@@ -625,6 +625,7 @@ class ParserTest {
     @Test
     fun ifStatement() {
         val source = """
+        _
         | x count == 22 => 1 echo
         | 7 < 6 => [
           y = x count + 10
@@ -1156,6 +1157,39 @@ class ParserTest {
     fun constructorForGeneric() {
         val source = """
             List::Int create
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun newIfSingleline() {
+        val source = """
+            _| 1 > 2 => 3 |=> 4
+            _| 5 > 6 => 7
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
+    @Test
+    fun newIfMultiline() {
+        val source = """
+            _
+            | 1 > 2 => 4
+            |=> 7
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun newSingleIfSyntax() {
+        val source = """
+            1 > 2 => 4 echo
         """.trimIndent()
 
         val ast = getAstTest(source)

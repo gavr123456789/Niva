@@ -6,25 +6,22 @@ import frontend.parser.types.ast.*
 
 fun Parser.ifOrSwitch(): ControlFlow {
 
-    val wasFirstPipe = check(TokenType.Pipe)
-    var x = 1 // because first is pipe already matched outside of this function
-    do {
-        if (check(TokenType.ReturnArrow, x)) {
-            peek(x).compileError("-> detected, but => expected")
-        }
-        // | x > 5 ^ =>
-        if (check(TokenType.Then, x)) {
-            return ifStatementOrExpression()
-        }
-        // one-line switch
-        if (wasFirstPipe && check(TokenType.Pipe, x)) {
-            return switchStatementOrExpression()
-        }
-        x++
-    } while (!check(TokenType.EndOfLine, x))
-    // | x > 6 =>
-    // 1 echo
-
+//    val wasFirstPipe = check(TokenType.Pipe)
+//    var x = 1 // because first is pipe already matched outside of this function
+//    do {
+//        if (check(TokenType.ReturnArrow, x)) {
+//            peek(x).compileError("-> detected, but => expected")
+//        }
+//        // | x > 5 ^ =>
+//        if (check(TokenType.Then, x)) {
+//            return ifStatementOrExpression()
+//        }
+//        // one-line switch
+//        if (wasFirstPipe && check(TokenType.Pipe, x)) {
+//            return switchStatementOrExpression()
+//        }
+//        x++
+//    } while (!check(TokenType.EndOfLine, x))
 
     // many line switch
     // | x
@@ -77,10 +74,16 @@ fun Parser.ifBranches(): List<IfBranch> {
     return result
 }
 
-fun Parser.ifStatementOrExpression(): ControlFlow.If {
+fun Parser.ifStatementOrExpression(fromSwitch: Boolean = false): ControlFlow.If {
+    // pure is _|
+    // !pure is for switch parsing branches reuse |
+    val pipeTok = if (!fromSwitch) {
+        val token = matchAssert(TokenType.Underscore)
+        skipNewLinesAndComments()
+        token
+    } else peek()
 
-    val pipeTok = peek()
-    if (pipeTok.kind != TokenType.Pipe) {
+    if (fromSwitch && pipeTok.kind != TokenType.Pipe) {
         pipeTok.compileError("| expected but found: ${pipeTok.lexeme}")
     }
     val ifBranches = ifBranches()
@@ -107,7 +110,7 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
     val switchExpression = expression()
     skipOneEndOfLineOrFile()
 //    skipNewLinesAndComments()
-    val otherPart = ifStatementOrExpression()
+    val otherPart = ifStatementOrExpression(fromSwitch = true)
     val result = ControlFlow.Switch(
         switch = switchExpression,
         iF = otherPart
