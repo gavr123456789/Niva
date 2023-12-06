@@ -67,22 +67,16 @@ fun replaceNameFromPragma(msg: Message) {
 
 fun emitFromPragma(msg: Message) {
     val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value
-    val list = mutableListOf<String>()
 
     fun replacePatternsWithValues(inputString: String, valueMap: Map<String, String>): String {
         var resultString = inputString
-
-        // Используем регулярное выражение для поиска паттернов "$число"
         val pattern = Regex("\\$(\\d+)")
-
-        // Находим все совпадения с паттерном в строке
         val matches = pattern.findAll(inputString)
 
-        // Заменяем найденные паттерны на соответствующие значения из карты
         for (match in matches) {
             val patternMatch = match.value
             val number = match.groupValues[1]
-            val replacement = valueMap[number] ?: patternMatch // Если значение не найдено, оставляем как есть
+            val replacement = valueMap[number] ?: patternMatch
             resultString = resultString.replace(patternMatch, replacement)
         }
 
@@ -97,10 +91,18 @@ fun emitFromPragma(msg: Message) {
                 val str = value.toString()
                 val map = mutableMapOf<String, String>()
                 msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
+                map["0"] = msg.receiver.toString()
                 val q = replacePatternsWithValues(str, map)
                 msg.selectorName = q
-            } else
-                msg.selectorName = value.toString()
+            } else{
+                val str = value.toString()
+                val qwe = if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.toString() else msg.receiver.token.lexeme
+                val map = mutableMapOf("0" to qwe)
+                val q = replacePatternsWithValues(str, map)
+
+                msg.selectorName = q
+
+            }
         }
 
         else -> {}//msg.token.compileError("String literal for pragma ${Pragmas.RENAME.v} expected")
