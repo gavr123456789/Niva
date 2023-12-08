@@ -43,10 +43,8 @@ fun Resolver.resolveControlFlow(
 
             statement.kind = detectExprOrStatement()
 
-
             val isStatement =
                 statement.kind == ControlFlowKind.StatementTypeMatch || statement.kind == ControlFlowKind.Statement
-
 
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if

@@ -1,9 +1,18 @@
-union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
+enum Color =
+| Red
+| Green
+| Blue
+
+c = Color.Red
+//> Red
+> c
+
+union Shape =
+ Circle r: Int | Square side: Int
 
 
-x = Red r: "sas"
-
-//> main.Red$Companion@38af3868
+x = Circle r: 42
+//> Circle r: 42
 > x
 
 

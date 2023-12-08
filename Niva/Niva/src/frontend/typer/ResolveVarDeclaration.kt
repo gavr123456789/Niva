@@ -5,6 +5,7 @@ import frontend.parser.types.ast.Receiver
 import frontend.parser.types.ast.TypeAST
 import frontend.parser.types.ast.VarDeclaration
 import frontend.typer.*
+import frontend.typer.Type.RecursiveType.copy
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
