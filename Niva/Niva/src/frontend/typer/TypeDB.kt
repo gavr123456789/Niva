@@ -5,6 +5,7 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 import frontend.parser.types.ast.Receiver
+import frontend.util.createFakeToken
 
 sealed class TypeDBResult {
     class FoundOneUser(val type: Type.UserLike) : TypeDBResult()

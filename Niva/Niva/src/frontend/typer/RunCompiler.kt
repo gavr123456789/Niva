@@ -4,6 +4,8 @@ import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
+import frontend.util.createFakeToken
+import main.frontend.typer.resolveDeclarationsOnly
 import main.lex
 import java.io.File
 

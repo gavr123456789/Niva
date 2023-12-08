@@ -278,10 +278,7 @@ fun Resolver.resolveControlFlow(
                 }
             }
 
-
         }
 
     }
-
-    if (currentLevel == 0) topLevelStatements.add(statement)
 }
