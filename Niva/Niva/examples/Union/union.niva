@@ -1,3 +1,7 @@
+// short syntax
+union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
+//
+
 union Shape area: Int =
     | Rectangle width: Int height: Int
     | Circle    radius: Int
@@ -58,3 +62,6 @@ user welcome
 guest welcome
 
 user getName2
+
+
+
