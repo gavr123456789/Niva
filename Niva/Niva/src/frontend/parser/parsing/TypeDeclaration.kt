@@ -56,19 +56,7 @@ fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDecl
 
             // enum Sas = Q | W | E
 
-            val pipeTok = if (firstBranch) {
-                if (match(TokenType.EndOfLine)) {
-                    skipNewLinesAndComments()
-                    matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
-                } else {
-                    val tok = peek()
-                    skipNewLinesAndComments()
-                    tok
-                }
-            } else {
-                skipNewLinesAndComments()
-                matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
-            }
+            val pipeTok = getPipeTok(firstBranch)
 
             val branchName = matchAssertAnyIdent("Name of the enum branch expected")
             val fields = enumFields()
@@ -104,6 +92,20 @@ fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDecl
     }
 
     return root
+}
+
+private fun Parser.getPipeTok(firstBranch: Boolean) = if (firstBranch) {
+    if (match(TokenType.EndOfLine)) {
+        skipNewLinesAndComments()
+        matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
+    } else {
+        val tok = peek()
+        skipNewLinesAndComments()
+        tok
+    }
+} else {
+    skipNewLinesAndComments()
+    matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
 }
 
 
@@ -177,12 +179,16 @@ fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDe
 
     fun unionFields(root: UnionDeclaration): List<UnionBranch> {
         val unionBranches = mutableListOf<UnionBranch>()
+        var firstBranch = true
 
         do {
             skipNewLinesAndComments()
 
             // | Rectangle => width: int height: int
-            val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
+            val pipeTok = getPipeTok(firstBranch)//matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
+
+
+
             val branchName = matchAssertAnyIdent("Name of the union branch expected")
             val fields = typeFields()
 
@@ -194,6 +200,9 @@ fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDe
                     root = root
                 )
             )
+
+            firstBranch = false
+            skipNewLinesAndComments()
         } while (check(TokenType.Pipe))
 
         return unionBranches
