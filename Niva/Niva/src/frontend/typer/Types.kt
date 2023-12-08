@@ -57,14 +57,6 @@ class BinaryMsgMetaData(
     }
 }
 
-class KeywordArg(
-    val name: String,
-    val type: Type,
-) {
-    override fun toString(): String {
-        return "$name: $type"
-    }
-}
 
 class KeywordMsgMetaData(
     name: String,
@@ -86,14 +78,34 @@ class KeywordMsgMetaData(
 //    msgSends: List<MsgSend> = listOf()
 //) : MessageMetadata(name, returnType, msgSends)
 
-class TypeField(
+sealed class FieldWithType(
     val name: String,
-    var type: Type //when generic, we need to reassign it to real type
+    var type: Type,
 ) {
     override fun toString(): String {
         return "$name: $type"
     }
 }
+class KeywordArg(
+    name: String,
+    type: Type,
+) : FieldWithType(name, type)
+
+class TypeField(
+    name: String,
+    type: Type //when generic, we need to reassign it to real type
+) : FieldWithType(name, type)
+
+
+class FieldWithValue(
+    val name: String,
+    var value: Expression
+) {
+    override fun toString(): String {
+        return "$name: $value"
+    }
+}
+
 
 fun Type.isDescendantOf(type: Type): Boolean {
     if (this !is Type.UserLike || type !is Type.UserLike) {
@@ -204,8 +216,29 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
+
+    class UserEnumRootType(
+        var branches: List<UserEnumBranchType>,
+        name: String,
+        typeArgumentList: List<Type>, // for <T, G>
+        fields: MutableList<TypeField>,
+        isPrivate: Boolean = false,
+        pkg: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
+    class UserEnumBranchType(
+        val root: UserEnumRootType,
+        name: String,
+        typeArgumentList: List<Type>, // for <T, G>
+        fields: MutableList<TypeField>,
+        isPrivate: Boolean = false,
+        pkg: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
+
     class KnownGenericType(
-//        val mainType: Type,
         name: String,
         typeArgumentList: List<Type>,
         pkg: String,
@@ -352,7 +385,9 @@ fun SomeTypeDeclaration.toType(
     typeTable: Map<TypeName, Type>,
     typeDB: TypeDB,
     isUnion: Boolean = false,
-    root: Type.UserUnionRootType? = null,
+    isEnum: Boolean = false,
+    unionRootType: Type.UserUnionRootType? = null, // if not null, then this is branch
+    enumRootType: Type.UserEnumRootType? = null,
 ): Type.UserLike {
 
     val result = if (isUnion)
@@ -365,9 +400,30 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
-    else if (root != null)
+    else if (isEnum)
+        Type.UserEnumRootType(
+            branches = listOf(),
+            name = typeName,
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    else if (enumRootType != null) {
+        Type.UserEnumBranchType(
+            root = enumRootType,
+            name = typeName,
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf()
+        )
+    }
+    else if (unionRootType != null)
         Type.UserUnionBranchType(
-            root = root,
+            root = unionRootType,
             name = typeName,
             typeArgumentList = listOf(),
             fields = mutableListOf(),
@@ -468,8 +524,8 @@ fun MessageDeclarationUnary.toMessageData(
     pkg: Package,
     isGetter: Boolean = false
 ): UnaryMsgMetaData {
-    val returnType = this.returnType ?:  this.returnTypeAST?.toType(typeDB, typeTable)
-        ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+    val returnType = this.returnType ?: this.returnTypeAST?.toType(typeDB, typeTable)
+    ?: Resolver.defaultTypes[InternalTypes.Unit]!!
     this.returnType = returnType
 
     val result = UnaryMsgMetaData(
@@ -510,7 +566,7 @@ fun MessageDeclarationKeyword.toMessageData(
     pkg: Package
 ): KeywordMsgMetaData {
     val returnType = this.returnType ?: this.returnTypeAST?.toType(typeDB, typeTable)
-        ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+    ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     this.returnType = returnType
 

@@ -28,10 +28,11 @@ fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = 
             is AliasDeclaration -> TODO()
 
 
-            is UnionDeclaration -> {
+            is UnionDeclaration -> statement.generateUnionDeclaration()
 
-                statement.generateUnionDeclaration()
-            }
+
+            is EnumDeclarationRoot -> statement.generateEnumDeclaration()
+            is EnumBranch -> TODO()
 
             is TypeAST.InternalType -> TODO()
             is TypeAST.Lambda -> TODO()

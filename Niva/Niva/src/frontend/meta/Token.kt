@@ -48,6 +48,7 @@ enum class TokenType {
 
     InlineReplWithNum, // >Number, >3
     Underscore, // _
+    Enum, // enum
 
 }
 

@@ -40,6 +40,7 @@ fun Lexer.fillSymbolTable() {
         "mut" to TokenType.Mut,
         "alias" to TokenType.Alias,
         "union" to TokenType.Union,
+        "enum" to TokenType.Enum,
         "constructor" to TokenType.Constructor,
 //        "use" to TokenType.Use,
 

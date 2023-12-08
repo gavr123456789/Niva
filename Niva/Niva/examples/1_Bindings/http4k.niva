@@ -1,0 +1,34 @@
+Project loadPackages: {"org.http4k:http4k-bom:5.10.5.0" "org.http4k:http4k-core:3.37.0"}
+
+Bind package: "org.http4k.core" content: [
+    type HttpHandler
+    type Method
+    @emit: "Method.OK"
+    Method GET -> Method
+
+    type Request
+    type Status
+    @emit: "Status.OK"
+    Status OK -> Status
+
+    type Response status: Status
+    Response body::String
+
+    HttpHandler handle::[Request -> Response] -> Unit
+]
+
+app::[Request -> Response] = [request::Request ->
+    Response
+]
+
+
+
+//val app: HttpHandler = { request: Request ->
+//            Response(Status.OK).body("Hello, ${request.query("name")}!")
+//        }
+//
+//val request = Request(Method.GET, "/").query("name", "John Doe")
+//
+//val response = app(request)
+//
+//println(response)

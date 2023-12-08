@@ -5,7 +5,7 @@ import frontend.typer.createEmptyKwConstructor
 
 fun replaceKeywords(str: String) =
     when (str) {
-        "do", "val", "var", "class", "in" -> "`$str`"
+        "do", "val", "var", "class", "in", "for" -> "`$str`"
         else -> str
     }
 
@@ -15,7 +15,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
         append("inlineRepl(")
     }
 
-    val keywordGenerate = {kw: KeywordMsg ->
+    val keywordGenerate = { kw: KeywordMsg ->
         if (kw.pragmas.isNotEmpty()) {
             replaceNameFromPragma(kw)
             emitFromPragma(kw)
@@ -38,9 +38,13 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
                         this@generateExpression.token
                     )
                 )
+            } else {
+                if (names.count() == 1) {
+                    replaceKeywords(replaceLiteral ?: name)
+                } else
+                    names.dropLast(1).joinToString(".") + "." + replaceKeywords(replaceLiteral ?: name)
             }
-            else
-                replaceKeywords(replaceLiteral ?: name)
+
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FloatExpr -> str

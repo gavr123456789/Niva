@@ -6,8 +6,6 @@ import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 import frontend.parser.types.ast.Receiver
 
-enum class TypeDBResultKind { FOUND, HAS }
-
 sealed class TypeDBResult {
     class FoundOneUser(val type: Type.UserLike) : TypeDBResult()
     class FoundOneLambda(val type: Type.Lambda) : TypeDBResult()
@@ -175,7 +173,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
 
 fun resolveTypeIfSameNamesFromConstructor(
     result: TypeDBResult.FoundMoreThanOne,
-    statement: KeywordMsg,
+    statement: KeywordMsg?,
     imports2: Set<String>,
     currentPkgName: String
 ): Type {
@@ -186,6 +184,11 @@ fun resolveTypeIfSameNamesFromConstructor(
     val typeDeclaredInTheCurrentPkg = result.packagesToTypes[currentPkgName]
     if (typeDeclaredInTheCurrentPkg  != null) {
         return typeDeclaredInTheCurrentPkg
+    }
+
+    if (statement == null) {
+        val typesList = result.packagesToTypes.values.map { it.name to it.pkg}
+        createFakeToken().compileError("Found more the one types with same name in different packages: $typesList" )
     }
 
 
@@ -241,7 +244,7 @@ fun resolveTypeIfSameNamesFromConstructor(
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg, imports: Set<String>, curPkg: String): Type? {
+fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg?, imports: Set<String>, curPkg: String): Type? {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
             resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg)

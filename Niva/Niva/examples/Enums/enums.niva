@@ -1,0 +1,18 @@
+enum Color r: Int g: Int b: Int =
+| RED   r: 255 g: 0 b: 0
+| GREEN r: 0 g: 255 b: 0
+| PURPLE r: 128 g: 0 b: 128
+
+Color sumOfColors = r + g + b
+
+Color.PURPLE sumOfColors echo
+
+rg = Color.RED r + Color.GREEN g
+rg echo
+
+// Simple
+
+enum Letter = A | B | C
+
+x = Letter.A
+> x

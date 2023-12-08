@@ -39,12 +39,12 @@ fun Resolver.resolveCodeBlock(
             rootStatement.token
         )
         metaDataFound = metaDataFromDb
-        val currentArgType = metaDataFromDb.argTypes[currentArgumentNumber]
+        val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
 
         // List(T, G) map::[T -> G] -> G = []
 
         val rootType = typeTable[rootReceiverType.name]//testing
-        val testDB = typeDB.getType(rootReceiverType.name)
+//        val testDB = typeDB.getType(rootReceiverType.name)
         if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
             fillGenericsWithLettersByOrder(rootType)
 
@@ -66,11 +66,11 @@ fun Resolver.resolveCodeBlock(
                 }
             }
         }
-
-        if (currentArgType.type is Type.Lambda) {
+        val currentArgType = currentArg.type
+        if (currentArgType is Type.Lambda) {
             // if this is lambda with one arg, and no namedArgs, then add "it" to scope
-            if (currentArgType.type.args.count() == 1 && namedLambdaArgs.isEmpty()) {
-                val typeOfFirstArgs = currentArgType.type.args[0].type
+            if (currentArgType.args.count() == 1 && namedLambdaArgs.isEmpty()) {
+                val typeOfFirstArgs = currentArgType.args[0].type
                 val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
                     typeOfFirstArgs
                 } else {
@@ -80,13 +80,12 @@ fun Resolver.resolveCodeBlock(
                 }
                 previousAndCurrentScope["it"] = typeForIt
                 itArgType = typeForIt
-            } else if (currentArgType.type.args.isNotEmpty()) {
-                if (currentArgType.type.args.count() != namedLambdaArgs.count()) {
-                    statement.token.compileError("Number of arguments for code block: ${currentArgType.type.args.count()}, you passed ${namedLambdaArgs.count()}")
+            } else if (currentArgType.args.isNotEmpty()) {
+                if (currentArgType.args.count() != namedLambdaArgs.count()) {
+                    statement.token.compileError("Number of arguments for code block: ${currentArgType.args.count()}, you passed ${namedLambdaArgs.count()}")
                 }
 
-//                    rootType.typeArgumentList
-                currentArgType.type.args.forEachIndexed { i, typeField ->
+                currentArgType.args.forEachIndexed { i, typeField ->
                     val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
                         typeField.type
                     } else {
@@ -94,18 +93,13 @@ fun Resolver.resolveCodeBlock(
                             ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving codeblock")
                         foundRealType
                     }
-                    // check declared type of argument first
-//                    if ()
-//                    namedLambdaArgs[i].typeAST
+
                     if (namedLambdaArgs[i].type == null)
                         namedLambdaArgs[i].type = typeForArg
                 }
             }
-
         }
-
         isThisWhileCycle = false
-
     }
 
     namedLambdaArgs.forEach {
@@ -132,22 +126,6 @@ fun Resolver.resolveCodeBlock(
             is Expression -> lastExpression.type!!
             else -> unitType
         }
-
-
-//        if (lastExpression is Expression) lastExpression.type!! else Resolver.defaultTypes[InternalTypes.Unit]!!
-
-
-//    if (lastExpression is Expression) {
-//        if (lastExpression is ControlFlow &&
-//            lastExpression.kind != ControlFlowKind.Statement &&
-//            lastExpression.kind != ControlFlowKind.StatementTypeMatch
-//        ) {
-//            lastExpression.type!!
-//        } else Resolver.defaultTypes[InternalTypes.Unit]!!
-//    } else
-//        Resolver.defaultTypes[InternalTypes.Unit]!!
-
-
     val args = statement.inputList.map {
         TypeField(name = it.name, type = it.type!!)
     }.toMutableList()
@@ -156,8 +134,9 @@ fun Resolver.resolveCodeBlock(
     if (itArgType != null && args.isEmpty()) {
         if (compare2Types(returnType, itArgType) && metaDataFound != null) {
             val e = metaDataFound.argTypes[0]
-            if (e.type is Type.Lambda) {
-                returnType.beforeGenericResolvedName = e.type.returnType.name
+            val type=e.type
+            if (type is Type.Lambda) {
+                returnType.beforeGenericResolvedName = type.returnType.name
             }
         }
         args.add(TypeField("it", itArgType))
