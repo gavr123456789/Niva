@@ -86,6 +86,7 @@ sealed class FieldWithType(
         return "$name: $type"
     }
 }
+
 class KeywordArg(
     name: String,
     type: Type,
@@ -176,6 +177,46 @@ sealed class Type(
         var isBinding: Boolean = false
     ) : Type(name, pkg, isPrivate, protocols)
 
+    fun UserLike.copy(): UserLike =
+        when (this) {
+            is UserType -> UserType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields.toMutableList(),
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                protocols = this.protocols.toMutableMap(),
+            ).also { it.isBinding = this.isBinding }
+
+            is UserEnumRootType -> UserEnumRootType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields.toMutableList(),
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                branches = this.branches.toList(),
+                protocols = this.protocols.toMutableMap(),
+            ).also { it.isBinding = this.isBinding }
+
+            is UserUnionRootType -> UserUnionRootType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields.toMutableList(),
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                branches = this.branches.toList(),
+                protocols = this.protocols.toMutableMap(),
+            ).also { it.isBinding = this.isBinding }
+
+            is UserEnumBranchType -> TODO()
+            is UserUnionBranchType -> TODO()
+            is KnownGenericType -> TODO()
+            is NullableUserType -> TODO()
+            is UnknownGenericType -> TODO()
+            RecursiveType -> TODO()
+        }
+
+
     class UserType(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
@@ -183,18 +224,7 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
-        fun copy() =
-            UserType(
-                name = this.name,
-                typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields,
-                isPrivate = this.isPrivate,
-                pkg = this.pkg,
-                protocols = this.protocols.toMutableMap()
-            )
-
-    }
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
     class UserUnionRootType(
         var branches: List<UserUnionBranchType>,
@@ -420,8 +450,7 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
-    }
-    else if (unionRootType != null)
+    } else if (unionRootType != null)
         Type.UserUnionBranchType(
             root = unionRootType,
             name = typeName,

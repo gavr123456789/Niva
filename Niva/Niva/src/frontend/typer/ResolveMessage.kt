@@ -4,6 +4,7 @@ import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.typer.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
@@ -371,7 +372,7 @@ fun Resolver.resolveMessage(
                 KeywordLikeType.Constructor -> {
                     // check that all fields are filled
                     var replacerTypeIfItGeneric: Type? = null
-                    if (receiverType is Type.UserType) {
+                    if (receiverType is Type.UserLike) {
                         // collect all fields from parents
                         val listOfAllParentsFields = mutableListOf<TypeField>()
                         var parent = receiverType.parent

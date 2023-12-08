@@ -94,19 +94,20 @@ fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDecl
     return root
 }
 
-private fun Parser.getPipeTok(firstBranch: Boolean) = if (firstBranch) {
-    if (match(TokenType.EndOfLine)) {
+private fun Parser.getPipeTok(firstBranch: Boolean) =
+    if (firstBranch) {
+        if (match(TokenType.EndOfLine) || check(TokenType.Pipe)) {
+            skipNewLinesAndComments()
+            matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
+        } else {
+            val tok = peek()
+            skipNewLinesAndComments()
+            tok
+        }
+    } else {
         skipNewLinesAndComments()
         matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
-    } else {
-        val tok = peek()
-        skipNewLinesAndComments()
-        tok
     }
-} else {
-    skipNewLinesAndComments()
-    matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
-}
 
 
 fun Parser.enumFields(): MutableList<EnumFieldAST> {
@@ -185,8 +186,8 @@ fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDe
             skipNewLinesAndComments()
 
             // | Rectangle => width: int height: int
-            val pipeTok = getPipeTok(firstBranch)//matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
-
+            val pipeTok =
+                getPipeTok(firstBranch)//matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
 
 
             val branchName = matchAssertAnyIdent("Name of the union branch expected")

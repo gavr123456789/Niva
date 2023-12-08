@@ -5,6 +5,7 @@ import frontend.typer.resolve
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 fun resolve(source: String): List<Statement> {
     val ast = getAstTest(source)
@@ -490,7 +491,7 @@ class ResolverTest {
             union Shape area: Int =
             | Rectangle width: Int height: Int
             | Circle    radius: Int
-            circle = Circle radius: 25
+            circle = Circle radius: 25 area: 5
 
         """.trimIndent()
 
@@ -632,11 +633,23 @@ class ResolverTest {
             | x
             | "sas" => 1 echo
             
-            | 5 > 5 => "sas" echo
+            _| 5 > 5 => "sas" echo
         """.trimIndent()
 
         val statements = resolve(source)
         assert(statements.count() == 3)
+    }
+
+    @Test
+    fun ifSingle() {
+        val source = """
+            x = "sas"
+            x == "sas" => "yay!" echo
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        assertTrue(statements[1] is ControlFlow.If)
     }
 
     @Test
@@ -652,6 +665,17 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 3)
+    }
+
+    @Test
+    fun unionDeclaration() {
+        val source = """
+            union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
+            x = Red r: 66
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
     }
 
 
