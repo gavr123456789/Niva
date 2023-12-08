@@ -1,39 +1,53 @@
-// Messages (Smalltalk like)
+// messages
+x = 1
+x < 5 ifTrue: ["yes!" echo] ifFalse: ["nnno!" echo]
+x > 5 ifFalse: ["yes!" echo] ifTrue: ["nnno!" echo]
+// single ifTrue: also works
+true ifTrue: ["true!" echo]
 
-// single ifTrue:
-9 > 5 ifTrue: [1 echo]
+// multiline switch
+| x
+| 1 => "switch 1" echo
+| 2 => "switch 2" echo
+|=> "what?" echo
 
-// ifTrue:ifFalse:
-9 > 5 ifTrue: ["yes!" echo] ifFalse: ["nnno!" echo]
-// there is also ifFalse:ifTrue:
+// multiline if
+_
+| x > 5 => "x > 10" echo
+| x < 0 => "x < 10" echo
+|=> "x > 0 and < 10" echo
+
+_
+| x > 5 => "x > 10" echo
+| x < 0 => "x < 10" echo
+42 > 0 => "Single Expression if!" echo
+42 < 0 => "Nothing" echo
 
 
-// simple if statement
-x = 6
-| x > 10 => x echo
-| x > 5 && (x < 10) => "sas" echo
-| x > 1 && (x < 5) => "sus" echo
-| x < 0 => "x is negative" echo
-|=> "x is something" echo
+// single line if
+_| 1 > 2 => 3 echo |=> 4 echo
+_| 5 < 6 => 7 echo
 
-// if as expression
-y = | x > 10 => 11
-    | x > 5 && (x < 10) => 12
-    |=> 13
-y echo
-// switch
-| y
-| 10 => "sas" echo
-| 11 => "ses" echo
-| 12 => "sus" echo
-|=> "?" echo
-// switch expression
-t = | y - 2
-| 10 => "sas"
-| 11 => "ses"
-| 12 => // MISSING TOKEN ERROR
-|=> "?"
-t echo
+
+// single expression
+42 > 0 => "Single Expression if!" echo
+// can contain else (|=>)
+42 < 0 => "Nothing" echo |=> "Something" echo
+
+// codeblock can be used as well
+1 > 2 => [
+    1 echo
+    1 echo
+]|=>[
+    2 echo
+    2 echo
+]
+
+// single if expression inside switch
+| 5
+| 4 => 1 echo
+| 5 => 1 > 2 => "wat?" echo |=> "yay!" echo
+
 
 
 // control flow expressions as arguments
@@ -41,5 +55,5 @@ Boolean to::Boolean = [
     to echo
 ]
 o = 5
-(| o > 5 => true |=> false) to: (| o == 5 => true |=> false)
+(o > 5 => true |=> false) to: (o == 5 => true |=> false)
 

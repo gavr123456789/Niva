@@ -71,8 +71,9 @@ fun lex(source: String, file: File): MutableList<Token> {
 //}
 
 
-fun main(args: Array<String>) {
 
+
+fun main(args: Array<String>) {
     val isThereArgs = args.isNotEmpty()
 
     val inlineRepl = File("inline_repl.txt").absoluteFile

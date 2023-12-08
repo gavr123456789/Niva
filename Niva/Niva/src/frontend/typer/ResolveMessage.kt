@@ -45,8 +45,6 @@ fun Resolver.resolveKwArgs(
 
 fun Resolver.resolveKwArgsGenerics(
     statement: KeywordMsg,
-    previousScope: MutableMap<String, Type>,
-    currentScope: MutableMap<String, Type>,
     kwTypeFromDB: KeywordMsgMetaData?,
     letterToRealType: MutableMap<String, Type>
 ) {
@@ -271,7 +269,7 @@ fun Resolver.resolveMessage(
             // выход, резолвнуть аргументы, резолвнуть тип, резолвнуть дженерики
 
             // resolve generic args types
-            resolveKwArgsGenerics(statement, currentScope, previousScope, kwTypeFromDB, letterToRealType)
+            resolveKwArgsGenerics(statement, kwTypeFromDB, letterToRealType)
 
 
             resolveReturnTypeIfGeneric(statement, kwTypeFromDB, receiverType, letterToRealType)
@@ -588,20 +586,24 @@ fun Resolver.resolveMessage(
                 receiver.type ?: statement.token.compileError("Can't resolve type of ${statement.selectorName} unary msg: ${receiver.str}")
             }
 
-            // if this is message for type
-            val isStaticCall =
-                receiver is IdentifierExpr && typeTable[receiver.str] != null//testing
+            fun checkForStatic(receiver: Receiver): Boolean =
+                if (receiver.type is Type.UserEnumRootType) false
+                else receiver is IdentifierExpr && typeTable[receiver.str] != null
 
-            val testDB = if (receiver is IdentifierExpr)
-                typeDB.getTypeOfIdentifierReceiver(
-                    receiver.name,
-                    receiver,
-                    getCurrentImports(receiver.token),
-                    currentPackageName,
-                    currentScope,
-                    previousScope,
-                    names = receiver.names
-                ) else null
+
+            // if this is message for type
+            val isStaticCall = checkForStatic(receiver)
+
+//            val testDB = if (receiver is IdentifierExpr)
+//                typeDB.getTypeOfIdentifierReceiver(
+//                    receiver.name,
+//                    receiver,
+//                    getCurrentImports(receiver.token),
+//                    currentPackageName,
+//                    currentScope,
+//                    previousScope,
+//                    names = receiver.names
+//                ) else null
 
             val receiverType = receiver.type!!
 

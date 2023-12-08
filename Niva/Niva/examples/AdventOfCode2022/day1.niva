@@ -12,8 +12,8 @@ mut sum = 0
 mut max = 0
 
 lines forEach: [
-    | it == "" => [
-        | sum > max => max <- sum
+    it == "" => [
+        sum > max => max <- sum
         sum <- 0
     ]
     |=> sum <- sum + it toInt

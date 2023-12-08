@@ -33,11 +33,14 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Type) {
         return typeDeclaration(pragmas)
     }
-    if (kind == TokenType.Alias) {
-        return typeAliasDeclaration()
+    if (kind == TokenType.Enum) {
+        return enumDeclaration(pragmas)
     }
+//    if (kind == TokenType.Alias) {
+//        return typeAliasDeclaration()
+//    }
     if (kind == TokenType.Union) {
-        return unionDeclaration()
+        return unionDeclaration(pragmas)
     }
     if (kind == TokenType.Constructor) {
         return constructorDeclaration(pragmas)
@@ -244,7 +247,6 @@ fun Parser.expression(
     dot: Boolean = false,
     parseSingleIf: Boolean = false
 ): Expression {
-
     if (check(TokenType.Pipe)) {
         return switchStatementOrExpression()
     }

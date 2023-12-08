@@ -1189,11 +1189,36 @@ class ParserTest {
     @Test
     fun newSingleIfSyntax() {
         val source = """
-            1 > 2 => 4 echo
+            42 > 0 => "Single Expression if!" echo
         """.trimIndent()
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+    }
+
+    @Test
+    fun newSingleIfSyntaxAfterIfElseIfChain() {
+        val source = """
+            _| 5 > 6 => 7
+            42 > 0 => "Single Expression if!" echo
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
+    @Test
+    fun enumDecl() {
+        val source = """
+            enum Color r: Int g: Int b: Int =
+            | RED   r: 255 g: 0 b: 0
+            | GREEN r: 0 g: 255 b: 0
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is EnumDeclarationRoot)
+        assert((ast[0] as EnumDeclarationRoot).branches.count() == 2)
     }
 
 

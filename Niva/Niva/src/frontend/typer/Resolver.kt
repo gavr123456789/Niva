@@ -35,6 +35,7 @@ fun <T> PkgToUnresolvedDecl<T>.add(pkg: String, decl: T) {
         q.add(decl)
     }
 }
+
 fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
@@ -66,7 +67,7 @@ class Resolver(
     var currentArgumentNumber: Int = -1,
 
     // for recursive types
-    val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration>  = mutableMapOf(),
+    val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
     val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
     var allDeclarationResolvedAlready: Boolean = false,
 
@@ -513,7 +514,12 @@ fun Resolver.resolveDeclarations(
             val genericsOfBranches = mutableSetOf<Type>()
             statement.branches.forEach {
                 val branchType =
-                    it.toType(currentPackageName, typeTable, typeDB, root = rootType) as Type.UserUnionBranchType//fix
+                    it.toType(
+                        currentPackageName,
+                        typeTable,
+                        typeDB,
+                        unionRootType = rootType
+                    ) as Type.UserUnionBranchType//fix
                 branchType.parent = rootType
 
 
@@ -537,7 +543,7 @@ fun Resolver.resolveDeclarations(
                 genericsOfBranches.addAll(branchType.typeArgumentList)
             }
             rootType.branches = branches
-            rootType.typeArgumentList = rootType.typeArgumentList + genericsOfBranches
+            rootType.typeArgumentList += genericsOfBranches
 
 
             /// generics
@@ -548,14 +554,70 @@ fun Resolver.resolveDeclarations(
             // not only to statement, but to Type too
         }
 
+        is EnumDeclarationRoot -> {
+            resolveEnumDeclaration(statement, previousScope)
+        }
+
+        is EnumBranch -> TODO()
         is AliasDeclaration -> TODO()
 
 
         is UnionBranch -> {
             println("Union branch???")
         }
+
+
     }
     currentLevel -= 1
+}
+
+fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
+    if (x.count() == y.count() || x.count() > y.count())
+        return x - y
+    else (x.count() < y.count())
+    return y - x
+}
+
+fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScope: MutableMap<String, Type>) {
+    // resolve types of fields of root
+    val rootType = statement.toType(currentPackageName, typeTable, typeDB, isEnum = true) as Type.UserEnumRootType
+    addNewType(rootType, statement)
+
+    // TODO check that this enum in unique in this package
+    val namesOfRootFields = rootType.fields.map { it.name }.toSet()
+    val branches = mutableListOf<Type.UserEnumBranchType>()
+//    val genericsOfBranches = mutableSetOf<Type>()
+    statement.branches.forEach {
+        val brachFields = it.fieldsValues.map { x -> x.name }.toSet()
+        val diff = setDiff(namesOfRootFields, brachFields)
+        if (diff.isNotEmpty()) {
+            it.token.compileError("Some enum fields are missing in ${it.typeName}: $diff")
+        }
+
+        val branchType =
+            it.toType(currentPackageName, typeTable, typeDB, enumRootType = rootType) as Type.UserEnumBranchType
+        branchType.parent = rootType
+
+        // Check fields
+        it.fieldsValues.forEach { fieldAST ->
+            currentLevel++
+            resolve(listOf(fieldAST.value), previousScope)
+            currentLevel--
+            val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
+                ?: fieldAST.token.compileError("Each branch of enum must define values for each field, ${rootType.name} ${rootType.fields.map { x -> x.name }}")
+
+            if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type)) {
+                fieldAST.token.compileError("In enum branch: `${it.typeName}` field `${fieldAST.name}` has type `${fieldAST.value.type}` but `${rootFieldWithSameName.type}` expected")
+            }
+
+        }
+
+        branchType.fields += rootType.fields
+        branches.add(branchType)
+    }
+
+    rootType.branches = branches
+
 }
 
 
@@ -705,14 +767,6 @@ private fun Resolver.resolveStatement(
                 copyType.typeArgumentList = newTypeArgList
                 value.type = copyType
             }
-            //
-
-            // if this is Type with zero fields constructor
-            // replace Identifier with Keyword kind: Constructor
-//            if (value.str[0].isUpperCase() && value is IdentifierExpr && valueType is Type.UserLike && valueType.fields.isEmpty()) {
-//                statement.value = createEmptyKwConstructor(value, valueType, statement.token)
-//            }
-
 
             // check that declared type == inferred type
             if (statementDeclaredType != null) {
@@ -751,18 +805,18 @@ private fun Resolver.resolveStatement(
                 statement, previousScope, currentScope, kw
             )
             val type = statement.type
-            if (type is Type.UserLike && statement.str == type.name) {
-                if (type.fields.isEmpty()) {
-                    statement.isConstructor = true
-                } else if (kw == null ) {
+//            if (type is Type.UserLike && statement.str == type.name && type !is Type.UserEnumRootType) {
+//                if (type.fields.isEmpty()) {
+//                    statement.isConstructor = true
+//                } else if (kw == null) {
+//
+//                    // this can be a custom constructor like Person sas
+//                    // so there is fields, but not kw message of that fields(constructor)
+////                    statement.token.compileError("You forget to add params to construct type `${statement.name}` expected: ${type.fields} ")
+//                }
+//            }
 
-                    // this can be a custom constructor like Person sas
-                    // so there is fields, but not kw message of that fields(constructor)
-//                    statement.token.compileError("You forget to add params to construct type `${statement.name}` expected: ${type.fields} ")
-                }
-            }
-
-            if (type is Type.UserLike && type.fields.isEmpty() && statement.str == type.name) {
+            if (type is Type.UserLike && type.fields.isEmpty() && statement.str == type.name && type !is Type.UserEnumRootType) {
                 statement.isConstructor = true
             }
 
@@ -790,7 +844,6 @@ private fun Resolver.resolveStatement(
 
                     // try to find list with the same generic type
                     val typeName = "MutableList"
-                    val currentPkg = getCurrentPackage(statement.token)
 
                     val listProtocols = listType.protocols
 
@@ -1023,7 +1076,11 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         // check return types
         val return1 = type1.returnType
         val return2 = type2.returnType
-        val isReturnTypesEqual = (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(return1, return2)
+        val isReturnTypesEqual =
+            (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(
+                return1,
+                return2
+            )
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: $type1 != $type2")
         }
@@ -1188,8 +1245,6 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
 fun Resolver.getPackage(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("there are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: token.compileError("there are no such package: $packageName")
-    val q = "asdasd"
-    q.substring(1, 2)
     return pack
 }
 
@@ -1451,11 +1506,6 @@ fun Resolver.changeTarget(target: String, token: Token) {
     compilationTarget = target
 }
 
-fun CompilationMode.toRunTask() = when (this) {
-    CompilationMode.release -> "runLinuxX64ReleaseExecutableLinuxX64"
-    CompilationMode.debug -> "runLinuxX64DebugExecutableLinuxX64"
-}
-
 fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String {
     if (target == CompilationTarget.jvm) return "dist"
     val targetStr = when (target) {
@@ -1505,11 +1555,14 @@ fun Resolver.getTypeForIdentifier(
     previousScope: MutableMap<String, Type>,
     kw: KeywordMsg? = null
 ): Type? {
-    val type = if (kw != null) getType2(x.name, currentScope, previousScope, kw) else getType(
-        x.name,
-        currentScope,
-        previousScope
-    )
+
+    val type =
+        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
+//    else getType(
+//        x.name,
+//        currentScope,
+//        previousScope
+//    )
         ?: x.token.compileError("Unresolved reference: ${x.str}")
 
     x.type = type
@@ -1521,41 +1574,13 @@ fun Resolver.getType2(
     typeName: String,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
-    statement: KeywordMsg
+    statement: KeywordMsg?
 ): Type? {
     val q = typeDB.getType(typeName, currentScope, previousScope)
-    val currentPackage = getCurrentPackage(statement.token)
+    val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
     val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
     return type
-}
-
-fun Resolver.getType(
-    typeName: String,
-    currentScope: MutableMap<String, Type>,
-    previousScope: MutableMap<String, Type>
-): Type? {
-    return typeTable[typeName]//get
-        ?: currentScope[typeName]
-        ?: previousScope[typeName]
-        ?: findTypeInAllPackages(typeName)
-}
-
-
-inline fun Resolver.getCurrentProject(): Project {
-    return projects[currentProjectName]!!
-}
-
-fun Project.findTypeInAllPackages(x: String): Type? {
-    val packages = this.packages.values
-    packages.forEach {
-        val result = it.types[x]
-        if (result != null) {
-            return result
-        }
-    }
-
-    return null
 }
 
 fun Resolver.findTypeInAllPackages(x: String): Type? {
@@ -1566,7 +1591,6 @@ fun Resolver.findTypeInAllPackages(x: String): Type? {
             return result
         }
     }
-
     return null
 }
 
@@ -1582,7 +1606,7 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
         else
             when (val last = body.last()) {
                 is Expression -> last.type!!
-    //            is ReturnStatement -> last.expression.type!!
+                //            is ReturnStatement -> last.expression.type!!
                 else -> Resolver.defaultTypes[InternalTypes.Unit]!!
             }
     }

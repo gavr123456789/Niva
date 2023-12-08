@@ -41,6 +41,95 @@ fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDecl
     return result
 }
 
+fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDeclarationRoot {
+    val enumTok = matchAssert(TokenType.Enum, "")
+    val enumName = matchAssertAnyIdent("name of the enum expected")
+    val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
+    val isThereBrunches = match(TokenType.Assign)
+
+
+    fun enumBranches(root: EnumDeclarationRoot): List<EnumBranch> {
+        val enumBranches = mutableListOf<EnumBranch>()
+        var firstBranch = true
+        do {
+            // | Rectangle width: int height: int
+
+            // enum Sas = Q | W | E
+
+            val pipeTok = if (firstBranch) {
+                if (match(TokenType.EndOfLine)) {
+                    skipNewLinesAndComments()
+                    matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
+                } else {
+                    val tok = peek()
+                    skipNewLinesAndComments()
+                    tok
+                }
+            } else {
+                skipNewLinesAndComments()
+                matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
+            }
+
+            val branchName = matchAssertAnyIdent("Name of the enum branch expected")
+            val fields = enumFields()
+
+            enumBranches.add(
+                EnumBranch(
+                    name = branchName.lexeme,
+                    fieldsValues = fields,
+                    token = pipeTok,
+                    root = root
+                )
+            )
+
+            firstBranch = false
+            skipNewLinesAndComments()
+        } while (check(TokenType.Pipe))
+
+        return enumBranches
+    }
+
+
+    val root = EnumDeclarationRoot(
+        typeName = enumName.lexeme,
+        branches = mutableListOf(),
+        token = enumTok,
+        fields = localFields,
+        codeAttributes = codeAttributes
+    )
+
+    if (isThereBrunches) {
+        val unionBranches = enumBranches(root)
+        root.branches = unionBranches
+    }
+
+    return root
+}
+
+
+fun Parser.enumFields(): MutableList<EnumFieldAST> {
+    val fields = mutableListOf<EnumFieldAST>()
+    if (checkEndOfLineOrFile() || check(TokenType.Pipe)) {
+        skipNewLinesAndComments()
+        return mutableListOf()
+    }
+    do {
+        val name = matchAssertAnyIdent("Identifier expected")
+        matchAssert(TokenType.Colon)
+        val expr = simpleReceiver() //?: peek().compileError("Primary expected")
+//        skipOneEndOfLineOrFile()
+
+        fields.add(
+            EnumFieldAST(
+                name = name.lexeme,
+                value = expr,
+                token = name,
+            )
+        )
+    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))
+    return fields
+}
+
 
 fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
@@ -49,12 +138,13 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
         skipNewLinesAndComments()
         return mutableListOf()
     }
+
     do {
         val isGeneric = match(TokenType.Apostrophe)
         val name = matchAssertAnyIdent("Identifier expected")
         val type: TypeAST? = if (!isGeneric) {
             val isThereFields = match(TokenType.Colon)
-            val isThereEndOfLine = skipOneEndOfLineOrFile()// match(TokenType.EndOfLine)
+            val isThereEndOfLine = skipOneEndOfLineOrFile()
             if (!isThereFields && !isThereEndOfLine) {
                 name.compileError("Syntax error, expected : fields or new line, but found \"$name\"")
             }
@@ -65,11 +155,8 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
         } else {
             null
         }
-
         // type declaration can be separated on many lines
         skipOneEndOfLineOrFile()
-//        match(TokenType.EndOfLine)
-//        match(TokenType.EndOfFile)
 
         fields.add(
             TypeFieldAST(
@@ -82,16 +169,11 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
     return fields
 }
 
-fun Parser.unionDeclaration(): UnionDeclaration {
+fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDeclaration {
     val unionTok = matchAssert(TokenType.Union, "")
     val unionName = matchAssertAnyIdent("name of the union expected")
-
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
-
-//    matchAssert(TokenType.Assign, "Equal expected")
     val isThereBrunches = match(TokenType.Assign)
-
-//    skipNewLinesAndComments()
 
     fun unionFields(root: UnionDeclaration): List<UnionBranch> {
         val unionBranches = mutableListOf<UnionBranch>()
@@ -102,8 +184,6 @@ fun Parser.unionDeclaration(): UnionDeclaration {
             // | Rectangle => width: int height: int
             val pipeTok = matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
             val branchName = matchAssertAnyIdent("Name of the union branch expected")
-
-//            match(TokenType.Then)
             val fields = typeFields()
 
             unionBranches.add(
@@ -114,20 +194,17 @@ fun Parser.unionDeclaration(): UnionDeclaration {
                     root = root
                 )
             )
-//            match(TokenType.EndOfLine)
-//            match(TokenType.EndOfFile)
-
         } while (check(TokenType.Pipe))
 
         return unionBranches
     }
 
-
     val root = UnionDeclaration(
         typeName = unionName.lexeme,
         branches = mutableListOf(),
         token = unionTok,
-        fields = localFields
+        fields = localFields,
+        codeAttributes = codeAttributes
     )
     if (isThereBrunches) {
         val unionBranches = unionFields(root)

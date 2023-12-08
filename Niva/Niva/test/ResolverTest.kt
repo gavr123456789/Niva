@@ -639,6 +639,23 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
+    @Test
+    fun enumDeclaration() {
+        val source = """
+            enum Color r: Int g: Int b: Int =
+            | RED   r: 255 g: 0 b: 0
+            | GREEN r: 0 g: 255 b: 0
+            
+            c = Color.RED
+            r = c r
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
+
+
+
 }
 
 

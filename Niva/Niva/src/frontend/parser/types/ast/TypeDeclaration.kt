@@ -2,6 +2,9 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
+import frontend.typer.Type.RecursiveType.fields
+import frontend.typer.Type.RecursiveType.isPrivate
+import frontend.typer.Type.RecursiveType.name
 
 
 sealed class TypeAST(
@@ -83,7 +86,15 @@ fun TypeAST.generateType(): String {
 
     }
 }
-
+class EnumFieldAST(
+    val name: String,
+    val value: Expression,
+    val token: Token,
+) {
+    override fun toString(): String {
+        return "$name: $value"
+    }
+}
 
 class TypeFieldAST(
     val name: String,
@@ -91,7 +102,7 @@ class TypeFieldAST(
     val token: Token,
 ) {
     override fun toString(): String {
-        return name + (type?.toString() ?: "")
+        return name + ":" + (type?.toString() ?: "")
     }
 }
 
@@ -116,6 +127,27 @@ class TypeDeclaration(
         return "TypeDeclaration($typeName)"
     }
 }
+
+class EnumBranch(
+    name: String,
+    val fieldsValues: List<EnumFieldAST>,
+    token: Token,
+    val root: EnumDeclarationRoot,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+) : SomeTypeDeclaration(name, listOf(), token, mutableListOf(), isPrivate, codeAttributes) {
+    override fun toString(): String {
+        return name + " " + fields.joinToString(", ") { it.name + ": " + it.toString() }
+    }
+}
+
+class EnumDeclarationRoot(
+    typeName: String,
+    var branches: List<EnumBranch>,
+    fields: List<TypeFieldAST>,
+    token: Token,
+    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    isPrivate: Boolean = false,
+) : SomeTypeDeclaration(typeName, fields, token, mutableListOf(), isPrivate, codeAttributes)
 
 class UnionBranch(
     typeName: String,
