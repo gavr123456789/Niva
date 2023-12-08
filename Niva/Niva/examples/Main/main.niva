@@ -1,8 +1,9 @@
-enum Color = RED | GREEN | PURPLE
+union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
 
-x = Color.RED
 
-//> RED
+x = Red r: "sas"
+
+//> main.Red$Companion@38af3868
 > x
 
 

@@ -6,7 +6,7 @@ import frontend.meta.isIdentifier
 import frontend.meta.isNullable
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.TypeAST
-import frontend.typer.createFakeToken
+import frontend.util.createFakeToken
 import frontend.util.isSimpleTypes
 
 fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(

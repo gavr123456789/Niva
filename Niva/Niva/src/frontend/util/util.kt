@@ -1,9 +1,14 @@
 package frontend.util
 
+import frontend.meta.Position
+import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.check
 import frontend.parser.types.ast.InternalTypes
+import frontend.typer.TypeField
+import frontend.typer.compare2Types
+import java.io.File
 
 fun List<String>.toCalmelCase(): String =
     this[0] + this.drop(1).map { it.capitalizeFirstLetter() }.joinToString("") { it }
@@ -82,3 +87,34 @@ fun getOsPathSeparator() = when (getOSType()) {
 }
 
 operator fun String.div(arg: String) = this + getOsPathSeparator() + arg
+
+
+fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
+    if (x.count() == y.count() || x.count() > y.count())
+        return x - y
+    else (x.count() < y.count())
+    return y - x
+}
+
+
+fun containSameFields(fields1: MutableList<TypeField>, fields2: MutableList<TypeField>): Boolean {
+    if (fields1.count() != fields2.count()) return false
+
+    fields1.forEachIndexed { i, t1 ->
+        val t2 = fields2.find { compare2Types(t1.type, it.type) }
+        if (t2 == null) return false
+    }
+    return true
+}
+
+
+private class FakeToken {
+    companion object {
+        val fakeToken = Token(
+            TokenType.Identifier, "Fake Token", 0, Position(0, 1),
+            Position(0, 1), File("Nothing")
+        )
+    }
+}
+
+fun createFakeToken(): Token = FakeToken.fakeToken

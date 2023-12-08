@@ -7,6 +7,7 @@ import frontend.lex
 import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.typer.*
+import frontend.util.createFakeToken
 import frontend.util.div
 import frontend.util.fillSymbolTable
 import main.utils.generateInfo

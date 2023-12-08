@@ -171,8 +171,4 @@ fun Resolver.resolveCodeBlock(
             )
         }
     }
-
-    if (currentLevel == 0) {
-        topLevelStatements.add(statement)
-    }
 }
