@@ -1,23 +1,30 @@
-enum Color =
-| Red
-| Green
-| Blue
+3.14d
 
-c = Color.Red
-//> Red
-> c
+//enum Color =
+//| Red
+//| Green
+//| Blue
+//
+//c = Color.Red
+////> Red
+//> c
+//
+//union Shape =
+// Circle r: Int | Square side: Int
+//
+//
+//x = Circle r: 42
+////> Circle r: 42
+//> x
+//
+//Int sas = (this + 7) echo
+//
+//35 sas
 
-union Shape =
- Circle r: Int | Square side: Int
+x = 3.14d
+Double foo = this echo
+x foo
 
-
-x = Circle r: 42
-//> Circle r: 42
-> x
-
-Int sas = (this + 7) echo
-
-35 sas
 
 
 

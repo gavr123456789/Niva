@@ -16,6 +16,7 @@ fun createIntProtocols(
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     floatType: Type.InternalType,
+    doubleType: Type.InternalType,
     intRangeType: Type.InternalType,
     anyType: Type.InternalType,
     charType: Type.InternalType
@@ -30,6 +31,7 @@ fun createIntProtocols(
             createUnary("inc", intType),
             createUnary("dec", intType),
             createUnary("toFloat", floatType),
+            createUnary("toDouble", doubleType),
             createUnary("toString", stringType),
             createUnary("toChar", charType),
         ),
@@ -103,7 +105,7 @@ fun createFloatProtocols(
             createUnary("echo", unitType),
             createUnary("inc", intType),
             createUnary("dec", intType),
-            createUnary("toInt", floatType),
+            createUnary("toInt", intType),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("==", intType, boolType),
@@ -153,7 +155,8 @@ fun createStringProtocols(
     boolType: Type.InternalType,
     charType: Type.InternalType,
     any: Type.InternalType,
-    floatType: Type.InternalType
+    floatType: Type.InternalType,
+    doubleType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
 
@@ -178,6 +181,7 @@ fun createStringProtocols(
             createUnary("trimIndent", stringType),
             createUnary("toInt", intType),
             createUnary("toFloat", floatType),
+            createUnary("toDouble", doubleType),
 
 
             createUnary("echo", unitType),

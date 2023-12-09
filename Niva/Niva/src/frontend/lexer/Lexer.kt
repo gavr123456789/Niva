@@ -147,18 +147,20 @@ fun Lexer.match(args: Array<String>): Boolean {
     return false
 }
 
-fun Lexer.createToken(tokenType: TokenType) {
+fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null) {
     try {
-        val lexeme = source.slice(start until current)
-
+        val lexeme2 = source.slice(start until current)
+        val end = current - 1 - endPositionMinus
+        val lexeme3 = if (addToLexeme == null) lexeme2 else lexeme2 + addToLexeme
+        val lexeme = lexeme3.dropLast(endPositionMinus)
         tokens.add(
             Token(
                 kind = tokenType,
                 lexeme = lexeme,
                 line = line,
                 spaces = spaces,
-                pos = Position(start = start, end = current - 1),
-                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = linePos - 1),
+                pos = Position(start = start, end = end),
+                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = end),
                 file = file
             )
         )
@@ -321,11 +323,18 @@ fun Lexer.parseNumber() {
         }
         stepWhileDigit()
     }
-
     if (match("'")) {
         stepWhileAlphaNumeric()
     }
-    createToken(kind)
+    // 3.5d == Double
+    if (match("d")) {
+        kind = TokenType.Double
+        createToken(kind, 1) // don't generate this d in kotlin
+    } else if (kind == TokenType.Float) {
+        createToken(kind, addToLexeme = "f")
+    } else
+        createToken(kind)
+
 }
 
 fun Lexer.parseIdentifier() {

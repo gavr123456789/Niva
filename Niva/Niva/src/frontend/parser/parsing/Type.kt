@@ -76,6 +76,7 @@ fun Parser.parseType(): TypeAST {
     when (tok.kind) {
         TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, false, tok)
         TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, false, tok)
+        TokenType.Double -> return TypeAST.InternalType(InternalTypes.Double, false, tok)
         TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, false, tok)
         TokenType.String -> return TypeAST.InternalType(InternalTypes.String, false, tok)
         TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, false, tok)
