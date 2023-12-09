@@ -22,6 +22,7 @@ fun Receiver.toNivaStr(): String {
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"
         is LiteralExpression.FloatExpr -> this.str
+        is LiteralExpression.DoubleExpr -> this.str
         is LiteralExpression.IntExpr -> this.str
         is LiteralExpression.StringExpr -> this.str
         is LiteralExpression.CharExpr -> this.str
@@ -35,6 +36,7 @@ fun Message.toNivaStr(): String {
         is BinaryMsg -> TODO()
         is KeywordMsg -> TODO()
     }
+
 }
 
 fun UnaryMsg.toNivaStr(): String {

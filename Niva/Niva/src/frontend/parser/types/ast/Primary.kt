@@ -34,6 +34,9 @@ sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, l
 
     class FloatExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.Float, false, literal), literal)
+    class DoubleExpr(literal: Token) :
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Double, false, literal), literal)
+
 }
 
 class IdentifierExpr(

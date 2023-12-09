@@ -48,6 +48,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.TrueExpr -> "true"
             is LiteralExpression.FloatExpr -> str
+            is LiteralExpression.DoubleExpr -> str
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
             is LiteralExpression.CharExpr -> str

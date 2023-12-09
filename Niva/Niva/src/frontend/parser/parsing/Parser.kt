@@ -128,11 +128,13 @@ fun Parser.identifierMayBeTyped(): IdentifierExpr {
 }
 
 fun Parser.primary(): Primary? =
+
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
+        TokenType.Double -> LiteralExpression.DoubleExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Char -> LiteralExpression.CharExpr(step())
 
@@ -201,6 +203,7 @@ fun Token.isPrimaryToken(): Boolean =
         TokenType.False,
         TokenType.Integer,
         TokenType.Float,
+        TokenType.Double,
         TokenType.Char,
         TokenType.String,
         -> true

@@ -601,8 +601,8 @@ class ParserTest {
     fun typeDeclarationUnion() {
         val source = """
         union Shape area: int =
-            | Rectangle => width: int height: int
-            | Circle    => radius: int
+            | Rectangle width: int height: int
+            | Circle    radius: int
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
@@ -1219,6 +1219,17 @@ class ParserTest {
         assert(ast.count() == 1)
         assert(ast[0] is EnumDeclarationRoot)
         assert((ast[0] as EnumDeclarationRoot).branches.count() == 2)
+    }
+
+    @Test
+    fun double() {
+        val source = """
+            3.14d
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is LiteralExpression.DoubleExpr)
     }
 
 

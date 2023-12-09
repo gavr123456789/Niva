@@ -127,6 +127,8 @@ private fun Resolver.resolveStatement(
 
         is LiteralExpression.FloatExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Float]
+        is LiteralExpression.DoubleExpr ->
+            statement.type = Resolver.defaultTypes[InternalTypes.Double]
 
         is LiteralExpression.IntExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Int]
@@ -874,6 +876,7 @@ class Resolver(
             createDefaultType(InternalTypes.String),
             createDefaultType(InternalTypes.Char),
             createDefaultType(InternalTypes.Float),
+            createDefaultType(InternalTypes.Double),
             createDefaultType(InternalTypes.Boolean),
             createDefaultType(InternalTypes.Unit),
 
@@ -890,6 +893,7 @@ class Resolver(
             val stringType = defaultTypes[InternalTypes.String]!!
             val charType = defaultTypes[InternalTypes.Char]!!
             val floatType = defaultTypes[InternalTypes.Float]!!
+            val doubleType = defaultTypes[InternalTypes.Double]!!
             val boolType = defaultTypes[InternalTypes.Boolean]!!
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
@@ -902,6 +906,7 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
+                    doubleType = doubleType,
                     intRangeType = intRangeType,
                     anyType = anyType,
                     charType = charType
@@ -917,8 +922,22 @@ class Resolver(
                     floatType = floatType,
                     intRangeType = intRangeType,
                     anyType = anyType
-                )
+                ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) }
             )
+
+
+            doubleType.protocols.putAll(
+                createFloatProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    floatType = floatType,
+                    intRangeType = intRangeType,
+                    anyType = anyType
+                ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) }
+            )
+
 
             stringType.protocols.putAll(
                 createStringProtocols(
@@ -928,7 +947,8 @@ class Resolver(
                     boolType = boolType,
                     charType = charType,
                     any = anyType,
-                    floatType = floatType
+                    floatType = floatType,
+                    doubleType = doubleType
                 )
             )
 
