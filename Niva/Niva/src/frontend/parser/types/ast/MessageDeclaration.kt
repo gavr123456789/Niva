@@ -14,6 +14,7 @@ sealed class MessageDeclaration(
     val returnTypeAST: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    val isInline: Boolean = false,
     var forType: Type? = null,
     var returnType: Type? = null,
 ) : Declaration(token, isPrivate, pragmas) {
@@ -30,8 +31,10 @@ class MessageDeclarationUnary(
     body: List<Statement>,
     returnType: TypeAST?,
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf()
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    isInline: Boolean = false
+
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline)
 
 class MessageDeclarationBinary(
     name: String,
@@ -42,8 +45,9 @@ class MessageDeclarationBinary(
     returnType: TypeAST?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf()
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas)
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    isInline: Boolean = false
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline)
 
 
 // key: localName::type
@@ -71,7 +75,8 @@ class MessageDeclarationKeyword(
     val typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas) {
+    isInline: Boolean = false
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline) {
     override fun toString(): String {
         return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
