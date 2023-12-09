@@ -45,7 +45,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
             append(">")
         }
     }
-    append(forTypeAst.generateType())
+    append(forTypeAst.generateType(false))
     if (isStatic) {
         append(".Companion")
     }

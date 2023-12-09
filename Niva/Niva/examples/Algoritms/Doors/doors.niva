@@ -3,7 +3,7 @@ mut increment = 3
 
 1 to: 100 do: [
   ("door number " + it) echo
-  | it == square => [
+  it == square => [
       " is open" echo
       square <- square + increment
       increment <- increment + 2

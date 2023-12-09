@@ -1,31 +1,7 @@
-3.14d
-
-//enum Color =
-//| Red
-//| Green
-//| Blue
+//MutableList::Int isSorted = true
 //
-//c = Color.Red
-////> Red
-//> c
+//x = {1 2 3}
 //
-//union Shape =
-// Circle r: Int | Square side: Int
-//
-//
-//x = Circle r: 42
-////> Circle r: 42
-//> x
-//
-//Int sas = (this + 7) echo
-//
-//35 sas
-
-x = 3.14d
-Double foo = this echo
-x foo
-
-
-
+//x isSorted echo
 
 

@@ -10,7 +10,8 @@ import kotlin.test.assertTrue
 fun resolve(source: String): List<Statement> {
     val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
-    return resolver.resolve(resolver.statements, mutableMapOf())
+    val resolved = resolver.resolve(resolver.statements, mutableMapOf())
+    return resolved
 }
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
@@ -35,7 +36,6 @@ class ResolverTest {
         val getter = q.messages[0]
         assert(getter.type?.name == "String")
         assert((getter as UnaryMsg).kind == UnaryMsgKind.Getter)
-
     }
 
     @Test
@@ -676,6 +676,37 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 2)
+    }
+
+    @Test
+    fun unionInsideSwitch() {
+        val source = """
+                union Shape area: Int =
+                | Rectangle width: Int height: Int
+                
+                x = Rectangle width: 2 height: 3 area: 6
+                | x
+                | Rectangle => x width echo // Rectangle not constructor
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
+
+    @Test
+    fun msgForGenericType() {
+        val source = """
+            MutableList::Int bogosort = [
+               
+            ]
+
+            list = {9 8 7}
+            list bogosort
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
     }
 
 

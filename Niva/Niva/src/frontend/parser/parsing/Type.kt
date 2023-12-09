@@ -88,7 +88,7 @@ fun Parser.parseType(): TypeAST {
         // identifier ("(" | "::")
 
         // x::List::Map(int, string)
-        val identifier = matchAssertAnyIdent("in type declaration identifier expected")
+        val identifier = matchAssertAnyIdent("in type declaration identifier expected, but found ${peek().lexeme}")
         val isIdentifierNullable = identifier.kind == TokenType.NullableIdentifier
         val simpleTypeMaybe = identifier.lexeme.isSimpleTypes()
         // if there is simple type, there cant be any other types like int:: is impossible

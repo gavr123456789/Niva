@@ -60,13 +60,13 @@ sealed class TypeAST(
 }
 
 
-fun TypeAST.generateType(): String {
+fun TypeAST.generateType(generateGeneric: Boolean = true): String {
 //    val x: (String, Int) -> Int = {}
     return when (this) {
         is TypeAST.InternalType -> name
         is TypeAST.UserType -> buildString {
             append(names.joinToString("."))
-            if (typeArgumentList.isNotEmpty()) {
+            if (generateGeneric && typeArgumentList.isNotEmpty()) {
                 append("<${typeArgumentList.joinToString(", ") { it.name }}>")
             }
         }

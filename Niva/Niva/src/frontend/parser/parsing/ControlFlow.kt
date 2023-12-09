@@ -9,7 +9,7 @@ fun Parser.ifBranches(): List<IfBranch> {
 
     do {
         step() // skip Pipe
-        val ifExpression = expression()
+        val ifExpression = expression(dot = true)
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
 //        skipOneEndOfLineOrFile()

@@ -1,9 +1,8 @@
-
 MutableList::Int isSorted =
-    | this count < 2 => true
+    this count < 2 => true
     |=> [
         1..<this count forEach: [
-            | (this at: it) < (this at: it - 1) => ^false
+            (this at: it) < (this at: it - 1) => ^false
         ]
         true
     ]
@@ -15,7 +14,7 @@ MutableList::Int shuffle = [
         a at: b put: (a at: c)
         a at: c put: temp
     ]
-    | n < 2 => ^
+    n < 2 => ^
     0..<n forEach: [
         swap a:this b:it c: (0..<n) random
     ]
@@ -31,5 +30,5 @@ MutableList::Int bogosort = [
     "iterations: $i" echo
 ]
 
-list = {9 8 7 6 5 4 3 2 1}
+list = {9 8 7}
 list bogosort
