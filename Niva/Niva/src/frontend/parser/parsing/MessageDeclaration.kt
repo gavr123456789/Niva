@@ -182,6 +182,8 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
     val returnType = returnType()
     ///// BODY PARSING
 
+    val isInline = match(TokenType.Return)
+
     val pair = methodBody() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
@@ -197,7 +199,8 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
         token = receiverTypeNameToken,
         body = messagesOrVarDeclarations,
         returnType = returnType,
-        isSingleExpression = isSingleExpression
+        isSingleExpression = isSingleExpression,
+        isInline = isInline
     )
     return result
 }
@@ -392,6 +395,7 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
         isThereReturn = true
         val type = identifierMayBeTyped()
     }
+    match(TokenType.Return)
     val equal = match(TokenType.Assign)
     if (equal) isThereEqual = true
 

@@ -161,6 +161,7 @@ private fun bodyPart(
 }
 
 fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
+    if (isInline) append("inline ")
     append(
         when (this@generateMessageDeclaration) {
             is ConstructorDeclaration -> generateConstructorDeclaration()
