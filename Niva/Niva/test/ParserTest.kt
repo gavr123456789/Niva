@@ -1232,6 +1232,28 @@ class ParserTest {
         assert(ast[0] is LiteralExpression.DoubleExpr)
     }
 
+    @Test
+    fun singleIfExpr() {
+        val source = """
+            o = 4 < 0 => "yes" |=> "no"
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is VarDeclaration)
+    }
+
+    @Test
+    fun returnSingleIfExpr() {
+        val source = """
+            ^ this > 0 => 1 |=> -1
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is ReturnStatement)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {

@@ -583,7 +583,9 @@ fun Resolver.resolveMessage(
             val receiver = statement.receiver
 
             if (receiver.type == null) {
+                currentLevel++
                 resolve(listOf(receiver), (currentScope + previousScope).toMutableMap(), statement)
+                currentLevel--
                 receiver.type ?: statement.token.compileError("Can't resolve type of ${statement.selectorName} unary msg: ${receiver.str}")
             }
 

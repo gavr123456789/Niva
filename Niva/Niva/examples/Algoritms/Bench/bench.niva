@@ -3,9 +3,9 @@ mut num = 20000
 
 1 until: num do: [ i ->
     1 until: num do: [ j ->
-        | num % j == 0 => sum <- sum + j
+        num % j == 0 ifTrue: [sum <- sum + j]
     ]
-    | num == sum => sum echo
+    num == sum ifTrue: [sum echo]
     sum <- 0
     num <- num dec
 ]

@@ -67,7 +67,7 @@ fun Parser.statement(): Statement {
 
     if (kind == TokenType.Return) {
         val returnTok = step()
-        val expression = if (checkEndOfLineOrFile()) null else expression()
+        val expression = if (checkEndOfLineOrFile()) null else expression(parseSingleIf = true)
         return ReturnStatement(
             expression = expression,
             token = returnTok,
@@ -83,7 +83,7 @@ fun Parser.statement(): Statement {
         return messageDeclaration(isItMsgDeclaration, pragmas)
     }
 
-
+    skipNewLinesAndComments()
     return expression(parseSingleIf = true)
 }
 
@@ -96,7 +96,7 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
         do {
-            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot")
+            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot, but found ${peek().lexeme}")
             listOfIdentifiersPath.add(q.lexeme)
         } while (match(TokenType.Dot))
     }
@@ -111,7 +111,7 @@ fun Parser.identifierMayBeTyped(): IdentifierExpr {
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
         do {
-            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot")
+            val q = matchAssert(TokenType.Identifier, "Identifier expected after dot, but found ${peek().lexeme}")
             listOfIdentifiersPath.add(q.lexeme)
         } while (match(TokenType.Dot))
     }
@@ -162,7 +162,7 @@ fun Parser.varDeclaration(): VarDeclaration {
     when (typeOrEqual.kind) {
         TokenType.Assign -> {
             val isNextReceiver = isNextSimpleReceiver()
-            value = if (isNextReceiver) simpleReceiver() else expression()
+            value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
             valueType = null
         }
         // ::^int
@@ -248,8 +248,9 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 fun Parser.expression(
     dontParseKeywordsAndUnaryNewLines: Boolean = false,
     dot: Boolean = false,
-    parseSingleIf: Boolean = false
+    parseSingleIf: Boolean = false // TODO replace on checking root, make root always required
 ): Expression {
+
     if (check(TokenType.Pipe)) {
         return switchStatementOrExpression()
     }

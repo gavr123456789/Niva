@@ -257,27 +257,27 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
             }
         }
         
-        inline fun Boolean.ifTrue(x: () -> Unit) {
+        inline fun <T> Boolean.ifTrue(x: () -> T) =
             if (this) {
                 x()
-            }
-        }
-        inline fun Boolean.ifFalse(x: () -> Unit) {
-            if (!this) {
-                x()
-            }
-        }
+            } else Unit
         
-        inline fun Boolean.ifTrueIfFalse(x: () -> Unit, y: () -> Unit) {
+        inline fun <T> Boolean.ifFalse(x: () -> T) =
+            if (!this) {
+                x()
+            } else Unit
+        
+        
+        inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T) =
             if (this) {
                 x()
             } else y()
-        }
-        inline fun Boolean.ifFalseIfTrue(x: () -> Unit, y: () -> Unit) {
+        
+        inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T) =
             if (!this) {
                 x()
             } else y()
-        }
+        
 
         operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): MutableMap<K, V> =
             LinkedHashMap(this).apply { putAll(map) }

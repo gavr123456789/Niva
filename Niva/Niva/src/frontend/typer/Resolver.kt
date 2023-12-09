@@ -91,7 +91,7 @@ private fun Resolver.resolveStatement(
             if (type is Type.UserLike && statement.str == type.name && type !is Type.UserEnumRootType) {
                 if (type.fields.isEmpty()) {
                     statement.isConstructor = true
-                } else if (kw == null) {
+                } else if (kw == null && rootStatement !is ControlFlow) {
                     val typeFields = type.fields.joinToString(": value") {it.name} + ": value"
                     statement.token.compileError("to construct type use `${statement.name} $typeFields`")
                 }
@@ -649,8 +649,8 @@ fun Resolver.changePackage(
         )
 
         currentProject.packages[newCurrentPackage] = pack
-        // top level statements and default defenitions located in different pkgs
-        // so to add access from top level statements(mainNiva) to this defenitions
+        // top level statements and default definitions located in different pkgs
+        // so to add access from top level statements(mainNiva) to this definitions
         // we need to always import it
         if (isMainFile) {
             val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
