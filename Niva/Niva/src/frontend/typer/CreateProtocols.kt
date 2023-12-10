@@ -249,10 +249,8 @@ fun createBoolProtocols(
             createKeyword("and", KeywordArg("and", boolType), boolType),
             createKeyword("xor", KeywordArg("xor", boolType), boolType),
 
-            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(mutableListOf(), genericParam)), genericParam),
-
-
-            createKeyword("ifFalse", KeywordArg("ifFalse", Type.Lambda(mutableListOf(), genericParam)), genericParam),
+            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(mutableListOf(), genericParam)), unitType),
+            createKeyword("ifFalse", KeywordArg("ifFalse", Type.Lambda(mutableListOf(), genericParam)), unitType),
 
             createKeyword("ifTrueIfFalse",
 

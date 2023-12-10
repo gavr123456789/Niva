@@ -252,7 +252,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean, dotReceiver: Boolean = false)
 
     val receiver = when {
         // not keyword then parse unaryBinary with custom receiver
-        !keywordOnReceiverWithoutMessages && dotReceiver -> {
+        !keywordOnReceiverWithoutMessages && check(TokenType.Dot) && dotReceiver -> {
 
             unaryOrBinaryMessageOrPrimaryReceiver(
                 DotReceiver(
@@ -261,7 +261,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean, dotReceiver: Boolean = false)
                 ))
         }
         // pure keyword, then add dot receiver
-        keywordOnReceiverWithoutMessages && dotReceiver -> DotReceiver(
+        keywordOnReceiverWithoutMessages && check(TokenType.Dot) && dotReceiver -> DotReceiver(
             null,
             matchAssert(TokenType.Dot)
         )
