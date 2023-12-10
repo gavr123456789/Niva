@@ -263,7 +263,7 @@ fun Resolver.resolveControlFlow(
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
                 // check that this is exhaustive checking
-                val root = savedSwitchType!!.parent
+                val root = if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent ?: throw Exception("Pattern matching on not union root?")
                 if (root is Type.UserUnionRootType) {
                     val realBranchTypes = mutableSetOf<Type>()
                     root.branches.forEach {
@@ -272,6 +272,10 @@ fun Resolver.resolveControlFlow(
                     if (realBranchTypes != typesAlreadyChecked) {
                         val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
                         statement.token.compileError("Not all types are checked: ($difference)")
+                    }
+
+                    if (statement.type == null) {
+                        statement.type = root
                     }
                 }
             }

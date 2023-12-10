@@ -6,7 +6,7 @@ MutableList::Int bubble = [
         0 to: array count - 2 - i do: [ j ->
             curr = array at: j
             next = array at: j + 1
-            | curr > next => [
+            curr > next ifTrue: [
                 temp = curr
                 array at: j put: next
                 array at: j + 1 put: temp
