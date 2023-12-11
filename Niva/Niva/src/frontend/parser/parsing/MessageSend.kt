@@ -132,18 +132,22 @@ fun Parser.unaryOrBinary(
 
     // Pipe operator
 
-    while (parsePipeAndCascade && match(TokenType.PipeOperator)) {
+    while (parsePipeAndCascade && matchAfterSkip(TokenType.PipeOperator)) {
         wasPipe = true
+        // 1 inc
+        // |>       // matchAfterSkip skipped to this
+        //   inc    // but we also need to skip after
+        skipNewLinesAndComments()
         when {
 
             check(TokenType.Identifier) -> {
                 val lastMsg = takeLastMessage()
-                val unary = unaryMessagesMatching(lastMsg)
+                val unary = unaryMessagesMatching(lastMsg)//.onEach { it.isPiped = true }
                 binaryMessages.forEach {
-                    it.inBracket = true
+                    it.isPiped = true
                 }
                 unaryMessages.forEach {
-                    it.inBracket = true
+                    it.isPiped = true
                 }
                 unaryMessages.addAll(unary)
 
@@ -156,7 +160,7 @@ fun Parser.unaryOrBinary(
             check(TokenType.BinarySymbol) -> {
                 val binary = binaryMessagesMatching(takeLastMessage(), mutableListOf())
                 binaryMessages.forEach {
-                    it.inBracket = true
+                    it.isPiped = true
                 }
                 binaryMessages.addAll(binary)
             }
@@ -313,7 +317,18 @@ fun Parser.keyword(
     messages.add(keyColonCycle())
     while (match(TokenType.PipeOperator)) {
         skipNewLinesAndComments()
-        messages.add(keyColonCycle())
+        // any msg
+        if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+            messages.add(keyColonCycle().also { it.isPiped = true })
+        } else if (check(TokenType.Identifier)) {
+            messages.addAll (unaryMessagesMatching(receiver).onEach { it.isPiped = true })
+        } else if (check(TokenType.BinarySymbol)) {
+            messages.addAll(binaryMessagesMatching(receiver, mutableListOf()).onEach { it.isPiped = true })
+        } else {
+            peek().compileError("Can't parse message after pipe operator |>")
+        }
+
+
     }
 
 

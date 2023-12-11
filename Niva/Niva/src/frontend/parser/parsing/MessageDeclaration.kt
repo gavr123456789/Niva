@@ -155,7 +155,7 @@ fun Parser.simpleReceiver(): Receiver {
     }
 
     if (tryPrimary == null) {
-        peek().compileError("Can't parse primary token")
+        peek().compileError("Can't parse primary token, got ${peek().lexeme}")
     }
     return tryPrimary
 }

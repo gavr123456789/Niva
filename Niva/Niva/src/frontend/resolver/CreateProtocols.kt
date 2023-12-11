@@ -350,7 +350,8 @@ fun createIntRangeProtocols(
 
     intType: Type.InternalType,
     unitType: Type.InternalType,
-    any: Type.InternalType
+    any: Type.InternalType,
+    intRangeType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
     val result = mutableMapOf<String, Protocol>()
@@ -370,21 +371,24 @@ fun createIntRangeProtocols(
         keywordMsgs = mutableMapOf(
             createKeyword("step", KeywordArg("step", intType), rangeType),
 
-            createKeyword(
-                "forEach",
-                listOf(
-                    KeywordArg(
-                        "forEach",
-                        Type.Lambda(
-                            mutableListOf(
-                                TypeField("forEach", intType)
-                            ),
-                            unitType
-                        )
-                    )
-                ),
-                unitType
-            ),
+            createForEachKeyword(intType, unitType),
+            createForEachKeywordIndexed(intType, intType, unitType),
+            createFilterKeyword(intType, boolType, intRangeType),
+//            createKeyword(
+//                "forEach",
+//                listOf(
+//                    KeywordArg(
+//                        "forEach",
+//                        Type.Lambda(
+//                            mutableListOf(
+//                                TypeField("forEach", intType)
+//                            ),
+//                            unitType
+//                        )
+//                    )
+//                ),
+//                unitType
+//            ),
 
             createKeyword("contains", KeywordArg("contains", intType), boolType),
 

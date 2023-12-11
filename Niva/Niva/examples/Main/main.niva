@@ -1,14 +1,32 @@
+Int min::Int = this > min => min |=> this
 
-type Person name: String age: Int
+20 min: 1 |> min: 0 |> echo
 
-Person sleep = "zzz" echo
-Person birthday = age <- age inc
-Person changeName::String -> Person = [
-    name <- changeName
-    ^this
-]
+1..<10 filter: [it % 2 == 0] |> forEach: [it echo]
 
->? Boolean
+
+Int unary = this + 7
+
+7 unary |>
+  unary |>
+  unary |>
+  unary |>
+  unary |> echo
+
+
+
+//
+//Int then1::Int = this + then1
+//Int then2::Int = this + then2
+//Int then3::Int = this + then3
+//1 then1: 1 |> - 10 |> then2: 2 |> unary |> then3: 3 |> echo
+
+//(25 min: 1) echo
+
+//(1..<10 filter: [it % 2 == 0]) forEach: [it echo]
+
+
+
 
 //// 1 type declaration
 //type Person name: String age: Int

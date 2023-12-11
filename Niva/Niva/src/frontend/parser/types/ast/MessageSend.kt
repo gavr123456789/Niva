@@ -7,7 +7,7 @@ import frontend.resolver.Type
 //  | BlockConstructor
 //  | BracketExpression
 //  | CollectionLiteral
-sealed class Receiver(type: Type?, token: Token, var inBracket: Boolean = false) : Expression(type, token)
+sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false) : Expression(type, token)
 
 
 // Message send is for pipe operations
@@ -59,7 +59,8 @@ sealed class Message(
     val path: List<String>,
 
     type: Type?,
-    token: Token
+    token: Token,
+//    var isPiped: Boolean = false
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
 
 class BinaryMsg(
