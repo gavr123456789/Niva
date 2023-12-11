@@ -12,12 +12,15 @@ fun MessageSend.generateMessageCall(): String {
         this.token.compileError("Message list for ${this.str} can't be empty")
     }
 
+    b.append("(".repeat(messages.count { it.isPiped }))
     this.messages.forEachIndexed { i, it ->
         if (it.pragmas.isNotEmpty()) {
             replaceNameFromPragma(it)
             emitFromPragma(it)
             noPkgEmit(it)
         }
+
+
 
         if (it.pragmas.isNotEmpty() && it.pragmas.find { it.name == Pragmas.EMIT.v } != null) {
             b.append(it.selectorName)
@@ -28,6 +31,8 @@ fun MessageSend.generateMessageCall(): String {
                 is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it))
             }
         }
+        if (it.isPiped)
+            b.append(")")
     }
     return b.toString()
 
@@ -94,9 +99,10 @@ fun emitFromPragma(msg: Message) {
                 map["0"] = msg.receiver.toString()
                 val q = replacePatternsWithValues(str, map)
                 msg.selectorName = q
-            } else{
+            } else {
                 val str = value.toString()
-                val qwe = if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.toString() else msg.receiver.token.lexeme
+                val qwe =
+                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.toString() else msg.receiver.token.lexeme
                 val map = mutableMapOf("0" to qwe)
                 val q = replacePatternsWithValues(str, map)
 
@@ -113,6 +119,7 @@ fun emitFromPragma(msg: Message) {
 
 fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
 
+    // generate receiver
     val receiverIsDot = receiver is DotReceiver
     val receiverCode = buildString {
         val needBrackets =
@@ -138,11 +145,14 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         if (needBrackets) append(")")
 
     }
+    // end of receiver
 
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
-            if (i == 0 && !receiverIsDot) {
+            if ((i == 0) && !receiverIsDot) {
                 append(receiverCode, ".")
+            } else if (keywordMsg.isPiped) {
+                append(".")
             }
             append(keywordMsg.selectorName)
         }
@@ -194,6 +204,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     }
 
     append(")")
+
+
 }
 
 fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString {

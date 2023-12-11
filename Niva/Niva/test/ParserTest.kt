@@ -760,6 +760,10 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+        // all msgs except first must be in brackets, for correct codegen
+        val q = (ast[0] as MessageSendKeyword).messages as List<KeywordMsg>
+        assert(q[1].isPiped)
+        assert(q[2].isPiped)
     }
 
     @Test
@@ -776,8 +780,18 @@ class ParserTest {
         val source = """
         this - 1 |> factorial * this
         """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
-
+    @Test
+    fun pipeOperatorManyLines() {
+        val source = """
+        1 inc |> 
+          inc |> 
+          inc |> 
+          inc 
+        """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }

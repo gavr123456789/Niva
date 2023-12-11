@@ -97,6 +97,19 @@ fun Parser.match(kind: TokenType) =
         false
     }
 
+// skip lines and comments, and then match token
+fun Parser.matchAfterSkip(kind: TokenType): Boolean {
+    val savePoint = current
+    skipNewLinesAndComments()
+
+    return if (match(kind)) {
+         true
+    } else {
+        current = savePoint
+        false
+    }
+}
+
 fun Parser.checkIdentifier(): Boolean {
     val tok = peek()
     return tok.isIdentifier()

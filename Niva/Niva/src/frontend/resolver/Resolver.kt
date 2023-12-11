@@ -1001,7 +1001,8 @@ class Resolver(
                     boolType = boolType,
                     intType = intType,
                     unitType = unitType,
-                    any = anyType
+                    any = anyType,
+                    intRangeType
                 )
             )
 
