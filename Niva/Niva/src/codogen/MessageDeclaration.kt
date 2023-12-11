@@ -1,7 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.typer.Type
+import frontend.resolver.Type
 
 
 val operators = hashMapOf(

@@ -4,7 +4,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
-import frontend.typer.Type
+import frontend.resolver.Type
 import frontend.util.capitalizeFirstLetter
 
 // also recevier can be unary or binary message

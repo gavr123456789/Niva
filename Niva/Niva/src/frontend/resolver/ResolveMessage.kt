@@ -1,10 +1,10 @@
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
-import frontend.typer.Type.RecursiveType.copy
+import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {

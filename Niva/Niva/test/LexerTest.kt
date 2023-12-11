@@ -21,7 +21,7 @@ class LexerTest {
     @Test
     fun identifierColon() {
         val manyExpr = "sas:"
-        check(manyExpr, listOf(Identifier, Colon, EndOfFile))
+        checkWithEnd(manyExpr, listOf(Identifier, Colon))
     }
 
 
@@ -31,7 +31,7 @@ class LexerTest {
             x sas
             y sus
         """.trimIndent()
-        check(manyExpr, listOf(Identifier, Identifier, EndOfLine, Identifier, Identifier, EndOfFile))
+        checkWithEnd(manyExpr, listOf(Identifier, Identifier, EndOfLine, Identifier, Identifier))
     }
 
     @Test
@@ -41,7 +41,7 @@ class LexerTest {
 x sas
 """
         // there no end of line after "sas" because there end of file
-        check(
+        checkWithEnd(
             oneExpr, listOf(
                 Identifier,
                 Identifier,
@@ -61,42 +61,42 @@ x sas
 
     @Test
     fun emptySource() {
-        check("", listOf(EndOfFile))
+        checkWithEnd("", listOf(EndOfFile))
     }
 
     @Test
     fun string() {
-        check("\"sas\"", listOf(TokenType.String, EndOfFile))
+        checkWithEnd("\"sas\"", listOf(TokenType.String))
     }
 
     @Test
     fun helloWorld() {
-        check(helloWorldProgram, listOf(TokenType.String, Identifier, EndOfFile))
+        checkWithEnd(helloWorldProgram, listOf(TokenType.String, Identifier))
     }
 
     @Test
     fun createVariable() {
-        check("x = 42", listOf(Identifier, Assign, Integer, EndOfFile))
+        checkWithEnd("x = 42", listOf(Identifier, Assign, Integer))
     }
 
     @Test
     fun typedVar() {
-        check("x::int", listOf(Identifier, DoubleColon, Identifier, EndOfFile))
+        checkWithEnd("x::int", listOf(Identifier, DoubleColon, Identifier))
     }
 
     @Test
     fun sass() {
-        check("|=>", listOf(Else, EndOfFile))
+        checkWithEnd("|=>", listOf(Else))
     }
 
     @Test
     fun singleIdentifier() {
-        check("sas", listOf(Identifier, EndOfFile))
+        checkWithEnd("sas", listOf(Identifier))
     }
 
     @Test
     fun rawString() {
-        check(rawString, listOf(Identifier, Assign, TokenType.String, EndOfFile))
+        checkWithEnd(rawString, listOf(Identifier, Assign, TokenType.String))
     }
 
     @Test
@@ -107,7 +107,7 @@ x sas
               x echo
             ]       
         """.trimIndent()
-        check(
+        checkWithEnd(
             functionDeclaration, listOf(
                 Identifier,
                 Identifier,
@@ -127,72 +127,72 @@ x sas
 
     @Test
     fun brackets() {
-        check("{} () []", listOf(OpenBrace, CloseBrace, OpenParen, CloseParen, OpenBracket, CloseBracket, EndOfFile))
+        checkWithEnd("{} () []", listOf(OpenBrace, CloseBrace, OpenParen, CloseParen, OpenBracket, CloseBracket))
     }
 
     @Test
     fun keywords() {
-        check("true false type use union constructor", listOf(True, False, Type, Use, Union, Constructor, EndOfFile))
+        checkWithEnd("true false type use union constructor", listOf(True, False, Type, Use, Union, Constructor))
     }
 
     @Test
     fun hardcodedBinarySymbols() {
-        check(
+        checkWithEnd(
             "^ |> | |=> = ::", listOf(
-                Return, PipeOperator, Pipe, Else, Assign, DoubleColon, EndOfFile
+                Return, PipeOperator, Pipe, Else, Assign, DoubleColon
             )
         )
     }
 
     @Test
     fun binarySymbols2() {
-        check(
+        checkWithEnd(
             "|| && == !=", listOf(
-                BinarySymbol, BinarySymbol, BinarySymbol, BinarySymbol, EndOfFile
+                BinarySymbol, BinarySymbol, BinarySymbol, BinarySymbol
             )
         )
     }
 
     @Test
     fun punctuation() {
-        check(". ; , : ", listOf(Dot, Cascade, Comma, Colon, EndOfFile))
+        checkWithEnd(". ; , : ", listOf(Dot, Cascade, Comma, Colon))
     }
 
     @Test
     fun pipeOperator() {
-        check("|>", listOf(PipeOperator, EndOfFile))
-        check("|||", listOf(BinarySymbol, Pipe, EndOfFile)) // || is OR
+        checkWithEnd("|>", listOf(PipeOperator))
+        checkWithEnd("|||", listOf(BinarySymbol, Pipe)) // || is OR
     }
 
     @Test
     fun comment() {
-        check("// some important info", listOf(Comment, EndOfFile))
+        checkWithEnd("// some important info", listOf(Comment))
     }
 
     @Test
     fun typeAlias() {
-        check("alias", listOf(Alias, EndOfFile))
+        checkWithEnd("alias", listOf(Alias))
     }
 
     @Test
     fun nn() {
-        check(
+        checkWithEnd(
             """
                     min
     
                     ^
-            """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return, EndOfFile)
+            """.trimIndent(), listOf(Identifier, EndOfLine, EndOfLine, Return)
         )
     }
 
     @Test
     fun dotDotOp() {
-        check("1..2", listOf(Integer, BinarySymbol, Integer, EndOfFile))
+        checkWithEnd("1..2", listOf(Integer, BinarySymbol, Integer))
     }
 
     @Test
     fun codeAttributes() {
-        check(
+        checkWithEnd(
             """
                 @ a: 1 b: "sas"
                 type Person
@@ -207,16 +207,22 @@ x sas
                 EndOfLine,
                 Type,
                 Identifier,
-                EndOfFile
             )
         )
     }
 
+    @Test
+    fun inlineQuestion() {
+        val manyExpr = ">?"
+        checkWithEnd(manyExpr, listOf(InlineReplWithQuestion))
+    }
 
-    private fun check(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
+
+    private fun checkWithEnd(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, File("Niva.iml"))
 //        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
+            .dropLast(1) // drop end of file
         assertEquals(tokens, result)
         if (showTokens) {
             println("$result")

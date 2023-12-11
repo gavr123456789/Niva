@@ -2,7 +2,7 @@ package main.frontend.typer
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.typer.*
+import frontend.resolver.*
 
 
 // returns true if unresolved
@@ -170,6 +170,8 @@ fun Resolver.resolveMessageDeclaration(
     if (needResolveBody) {
         resolveBody()
     }
+
+
 
 
     return false

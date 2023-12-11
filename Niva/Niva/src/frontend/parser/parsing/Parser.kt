@@ -52,16 +52,23 @@ fun Parser.statement(): Statement {
 
 
     val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
-    if (tok.lexeme == ">" || isInlineReplWithNum) {
-        val q = step()
-        val w = statement()
-        if (w is Expression) {
-            w.isInlineRepl = true
+    val isInlineReplWithQuestion = kind == TokenType.InlineReplWithQuestion
+
+    if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
+        val inlineTok = step()
+        val inlineExpr = statement()
+        if (inlineExpr is Expression) {
+            inlineExpr.isInlineRepl = true
             if (isInlineReplWithNum)
-                w.inlineReplCounter = tok.lexeme.substring(1).toInt()
-            return w
+                inlineExpr.inlineReplCounter = tok.lexeme.substring(1).toInt()
+            else if(isInlineReplWithQuestion) {
+                inlineExpr.isInfoRepl = true
+            }
+
+
+            return inlineExpr
         } else {
-            q.compileError("> can only be used with expressions")
+            inlineTok.compileError("> can only be used with expressions")
         }
     }
 

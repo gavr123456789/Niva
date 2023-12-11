@@ -2,7 +2,7 @@ package main.frontend.typer
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.typer.*
+import frontend.resolver.*
 
 fun Resolver.resolveList(statement: ListCollection, rootStatement: Statement?) {
     if (statement.initElements.isNotEmpty()) {

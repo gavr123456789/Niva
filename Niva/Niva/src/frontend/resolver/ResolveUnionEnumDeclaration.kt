@@ -4,7 +4,7 @@ import codogen.collectAllGenericsFromBranches
 import frontend.meta.compileError
 import frontend.parser.types.ast.EnumDeclarationRoot
 import frontend.parser.types.ast.UnionDeclaration
-import frontend.typer.*
+import frontend.resolver.*
 import frontend.util.containSameFields
 import frontend.util.setDiff
 

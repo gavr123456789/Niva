@@ -2,9 +2,8 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
-import frontend.typer.Type.RecursiveType.fields
-import frontend.typer.Type.RecursiveType.isPrivate
-import frontend.typer.Type.RecursiveType.name
+import frontend.resolver.Type.RecursiveType.isPrivate
+import frontend.resolver.Type.RecursiveType.name
 
 
 sealed class TypeAST(

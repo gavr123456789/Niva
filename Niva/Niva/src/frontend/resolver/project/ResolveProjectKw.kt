@@ -6,7 +6,7 @@ import frontend.parser.types.ast.KeywordMsg
 import frontend.parser.types.ast.ListCollection
 import frontend.parser.types.ast.LiteralExpression
 import frontend.parser.types.ast.MessageSend
-import frontend.typer.*
+import frontend.resolver.*
 import frontend.util.removeDoubleQuotes
 
 fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {

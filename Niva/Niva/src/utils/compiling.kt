@@ -1,7 +1,7 @@
 package main.utils
 
 import codogen.generateKtProject
-import frontend.typer.*
+import frontend.resolver.*
 import frontend.util.CurrentOS
 import frontend.util.div
 import frontend.util.getOSType
