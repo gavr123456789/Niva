@@ -6,7 +6,7 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.typer.*
+import frontend.resolver.printInfo
 import frontend.util.createFakeToken
 import frontend.util.div
 import frontend.util.fillSymbolTable
@@ -99,6 +99,7 @@ fun main(args: Array<String>) {
         pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
         pathToAmper
     )
+    resolver.printInfo()
 
     val isShowTimeArg = args.count() > 1 && args[1] == "time"
 

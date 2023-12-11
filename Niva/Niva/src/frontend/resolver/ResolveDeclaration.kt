@@ -2,7 +2,7 @@ package main.frontend.typer
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.typer.*
+import frontend.resolver.*
 import frontend.util.createFakeToken
 import main.frontend.typer.project.resolveProjectKeyMessage
 

@@ -1,4 +1,4 @@
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*

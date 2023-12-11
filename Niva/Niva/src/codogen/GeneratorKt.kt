@@ -3,10 +3,10 @@ package codogen
 import main.utils.addNivaStd
 import main.utils.putInMainKotlinCode
 import frontend.parser.types.ast.Statement
-import frontend.typer.CompilationTarget
-import frontend.typer.MAIN_PKG_NAME
-import frontend.typer.Package
-import frontend.typer.Project
+import frontend.resolver.CompilationTarget
+import frontend.resolver.MAIN_PKG_NAME
+import frontend.resolver.Package
+import frontend.resolver.Project
 import frontend.util.addIndentationForEachString
 import main.utils.appendnl
 import java.io.File

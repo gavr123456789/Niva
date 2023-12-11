@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.parsing.CodeAttribute
@@ -317,7 +317,8 @@ class Package(
     val imports: MutableSet<String> = mutableSetOf(),
     // import x.y
     val concreteImports: MutableSet<String> = mutableSetOf(),
-    val isBinding: Boolean = false
+    val isBinding: Boolean = false,
+    val comment: String = ""
 ) {
     override fun toString(): String {
         return packageName

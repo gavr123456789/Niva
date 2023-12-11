@@ -1,4 +1,4 @@
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.parsing.Parser
@@ -7,6 +7,7 @@ import frontend.parser.types.ast.Statement
 import frontend.util.createFakeToken
 import main.frontend.typer.resolveDeclarationsOnly
 import main.lex
+import main.utils.infoPrint
 import java.io.File
 
 const val MAIN_PKG_NAME = "mainNiva"
@@ -94,4 +95,11 @@ fun Resolver.resolve() {
     mainNivaPkg.imports += mainFilePkg.imports
     mainNivaPkg.concreteImports += mainFilePkg.concreteImports
 
+}
+
+fun Resolver.printInfo() {
+    infoTypesToPrint.forEach {
+        val content = it.infoPrint()
+        println(content)
+    }
 }

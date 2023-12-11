@@ -1,7 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.typer.createEmptyKwConstructor
+import frontend.resolver.createEmptyKwConstructor
 
 fun replaceKeywords(str: String) =
     when (str) {
@@ -10,6 +10,10 @@ fun replaceKeywords(str: String) =
     }
 
 fun Expression.generateExpression(replaceLiteral: String? = null): String = buildString {
+
+    if (isInfoRepl) {
+        return@buildString
+    }
 
     if (isInlineRepl) {
         append("inlineRepl(")

@@ -2,7 +2,7 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
-import frontend.typer.Type
+import frontend.resolver.Type
 
 // https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
 sealed class ASTNode2(
@@ -41,6 +41,7 @@ sealed class Expression(
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
+    var isInfoRepl: Boolean = false
 ) : Statement(token, isPrivate, pragmas)
 
 class ReturnStatement(

@@ -2,7 +2,7 @@ package frontend.parser.types.ast
 
 import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
-import frontend.typer.Type
+import frontend.resolver.Type
 
 // [it toString]
 class CodeBlock(

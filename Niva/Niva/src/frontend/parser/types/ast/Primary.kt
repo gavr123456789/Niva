@@ -1,7 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.typer.Type
+import frontend.resolver.Type
 
 // PRIMARY
 // identifier | LiteralExpression

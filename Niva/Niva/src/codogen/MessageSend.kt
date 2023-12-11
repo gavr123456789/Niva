@@ -2,7 +2,7 @@ package codogen
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.typer.Type
+import frontend.resolver.Type
 
 fun MessageSend.generateMessageCall(): String {
 

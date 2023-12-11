@@ -1,8 +1,7 @@
 package frontend.parser.types.ast
 
-import com.sun.org.apache.xml.internal.serializer.utils.Utils.messages
 import frontend.meta.Token
-import frontend.typer.Type
+import frontend.resolver.Type
 
 //  | Primary
 //  | BlockConstructor

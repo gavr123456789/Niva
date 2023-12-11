@@ -1,7 +1,7 @@
 import frontend.parser.types.ast.*
-import frontend.typer.Resolver
-import frontend.typer.Type
-import frontend.typer.resolve
+import frontend.resolver.Resolver
+import frontend.resolver.Type
+import frontend.resolver.resolve
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -709,7 +709,18 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
+    @Test
+    fun inlineQuestion() {
+        val source = """
+            type Person name: String age: Int
+            Person sleep = 1 echo
+            >? Person
+        """.trimIndent()
 
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
 
 }
 

@@ -1,6 +1,6 @@
 @file:Suppress("UNUSED_PARAMETER")
 
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.Position
 import frontend.meta.Token

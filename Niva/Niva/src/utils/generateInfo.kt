@@ -1,9 +1,9 @@
 package main.utils
 
-import frontend.typer.Package
-import frontend.typer.Protocol
-import frontend.typer.Resolver
-import frontend.typer.Type
+import frontend.resolver.Package
+import frontend.resolver.Protocol
+import frontend.resolver.Resolver
+import frontend.resolver.Type
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 
@@ -37,9 +37,50 @@ private fun Protocol.generateInfo() = buildString {
 
 }
 
+private fun Type.UserEnumRootType.generateInfo() = buildString {
+    appendnl("\n## enum root $name")
+    fields.forEach {
+        appendnl("- ${it.name}: ${it.type}  ")
+    }
+    protocols.values.forEach {
+        append(it.generateInfo())
+    }
+    if (this@generateInfo.branches.isNotEmpty()) {
+        append("### branches")
+        this@generateInfo.branches.forEach {
+            append("- ${it.name}")
+            fields.forEach { enumField ->
+                appendnl("  - ${enumField.name}: ${enumField.type}  ")
+            }
+        }
+    }
+}
 
+fun Type.infoPrint() = buildString {
+    append(when (this@infoPrint) {
+        is Type.UserType -> this@infoPrint.generateInfo()
+        is Type.UserUnionRootType -> this@infoPrint.generateInfo()
+        is Type.UserEnumRootType -> this@infoPrint.generateInfo()
+        is Type.InternalType -> this@infoPrint.generateInfo()
+        is Type.Lambda -> TODO("Can't print lambda info yet")
+
+        is Type.UserEnumBranchType -> TODO()
+        is Type.UserUnionBranchType -> TODO()
+
+        is Type.UnknownGenericType -> TODO()
+        is Type.KnownGenericType -> TODO()
+
+        is Type.NullableUserType -> TODO()
+        is Type.NullableInternalType -> TODO()
+        Type.RecursiveType -> TODO()
+    })
+
+}
+
+// only UserType and Internal
 private fun Type.generateInfo() = buildString {
     this@generateInfo.name
+
     appendnl("\n## type $name")
 
     if (this@generateInfo is Type.UserType) {

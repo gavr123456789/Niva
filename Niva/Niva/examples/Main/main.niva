@@ -1,6 +1,14 @@
 
-x = 1 > 5 ifTrue: ["sas"]
-(x + "www") echo
+type Person name: String age: Int
+
+Person sleep = "zzz" echo
+Person birthday = age <- age inc
+Person changeName::String -> Person = [
+    name <- changeName
+    ^this
+]
+
+>? Boolean
 
 //// 1 type declaration
 //type Person name: String age: Int

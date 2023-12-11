@@ -1,4 +1,4 @@
-package frontend.typer
+package frontend.resolver
 
 import frontend.meta.Token
 import frontend.meta.compileError

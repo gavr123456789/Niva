@@ -6,8 +6,8 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.check
 import frontend.parser.types.ast.InternalTypes
-import frontend.typer.TypeField
-import frontend.typer.compare2Types
+import frontend.resolver.TypeField
+import frontend.resolver.compare2Types
 import java.io.File
 
 fun List<String>.toCalmelCase(): String =

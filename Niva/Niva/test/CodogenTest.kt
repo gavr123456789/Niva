@@ -1,6 +1,6 @@
 import codogen.codegenKt
-import frontend.typer.Resolver
-import frontend.typer.resolve
+import frontend.resolver.Resolver
+import frontend.resolver.resolve
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals

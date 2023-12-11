@@ -1,4 +1,4 @@
-package frontend.typer
+package frontend.resolver
 
 import codogen.GeneratorKt
 import frontend.meta.Token
@@ -10,6 +10,9 @@ import frontend.util.div
 import main.frontend.typer.*
 import java.io.File
 
+private fun Resolver.addPrintingInfoAboutType(type: Type) {
+    infoTypesToPrint.add(type)
+}
 
 private fun Resolver.resolveStatement(
     statement: Statement,
@@ -85,15 +88,23 @@ private fun Resolver.resolveStatement(
             getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
-
             val type = statement.type
 
-            if (type is Type.UserLike && statement.str == type.name && type !is Type.UserEnumRootType) {
-                if (type.fields.isEmpty()) {
-                    statement.isConstructor = true
-                } else if (kw == null && rootStatement !is ControlFlow) {
-                    val typeFields = type.fields.joinToString(": value") {it.name} + ": value"
-                    statement.token.compileError("to construct type use `${statement.name} $typeFields`")
+            if (type != null && statement.str == type.name && type !is Type.UserEnumRootType) {
+                if (type is Type.UserLike) {
+                    if (type.fields.isEmpty()) {
+                        statement.isConstructor = true
+                    } else if (kw == null && rootStatement !is ControlFlow) {
+                        val typeFields = type.fields.joinToString(": value") { it.name } + ": value"
+
+                        // Inline question
+                        if (statement.isInfoRepl) {
+                            addPrintingInfoAboutType(type)
+                        } else
+                            statement.token.compileError("to construct type use `${statement.name} $typeFields`")
+                    }
+                } else if (statement.isInfoRepl){
+                    addPrintingInfoAboutType(type)
                 }
             }
 
@@ -866,7 +877,9 @@ class Resolver(
     var compilationMode: CompilationMode = CompilationMode.debug,
 
     // set to null before body resolve, check after to know was there return or not
-    var wasThereReturn: Type? = null
+    var wasThereReturn: Type? = null,
+
+    val infoTypesToPrint: MutableSet<Type> = mutableSetOf()
 ) {
     companion object {
 

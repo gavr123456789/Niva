@@ -443,6 +443,7 @@ fun Lexer.next() {
             incLine(true)
         }
 
+        match(">?") -> createToken(TokenType.InlineReplWithQuestion)
         // inlineRepl
         check(">") && peek(1).isDigit() -> {
             step()

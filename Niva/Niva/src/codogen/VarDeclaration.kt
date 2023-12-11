@@ -2,7 +2,7 @@ package codogen
 
 import frontend.parser.types.ast.VarDeclaration
 import frontend.parser.types.ast.generateType
-import frontend.typer.Type
+import frontend.resolver.Type
 
 fun VarDeclaration.generateVarDeclaration(): String {
     val valueCode = value.generateExpression()
