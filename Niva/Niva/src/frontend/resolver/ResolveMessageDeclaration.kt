@@ -8,19 +8,20 @@ import frontend.resolver.*
 // returns true if unresolved
 fun Resolver.resolveMessageDeclaration(
     statement: MessageDeclaration,
-    needResolveBody: Boolean,
+    needResolveOnlyBody: Boolean,
     previousScope: MutableMap<String, Type>,
     addToDb: Boolean = true
 ): Boolean {
-    // here u need not check for UserType, but allow typeDB search for all kinds of types
     val forTypeAst = statement.forTypeAst
-    val forType = if (forTypeAst is TypeAST.UserType) {
+
+
+
+    val forType = statement.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
             token = forTypeAst.token
         )
-
         val q = typeDB.getTypeOfIdentifierReceiver(forTypeAst.name, ident, getCurrentImports(statement.token), currentPackageName, names = forTypeAst.names)
         if (q == null) {
             unResolvedMessageDeclarations.add(currentPackageName, statement)
@@ -29,6 +30,7 @@ fun Resolver.resolveMessageDeclaration(
         } else q
 
     } else typeTable[statement.forTypeAst.name]
+
 
 //    val testDB = typeDB.getType(statement.forTypeAst.name)
     if (forType == null) {
@@ -167,7 +169,7 @@ fun Resolver.resolveMessageDeclaration(
         }
     }
 
-    if (needResolveBody) {
+    if (needResolveOnlyBody) {
         resolveBody()
     }
 

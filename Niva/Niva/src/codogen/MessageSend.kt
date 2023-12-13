@@ -131,7 +131,16 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         if (needBrackets) append("(")
 
         val kwReceiver = keywordMsg.receiver
-        if (!receiverIsDot && kwReceiver.type?.pkg != "core" && (keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor) && kwReceiver is IdentifierExpr) {
+
+        val isConstructor =
+            keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor
+        // if it is a.b.Person already, then generateExpression will add this names
+        val hasNoDotNames = kwReceiver is IdentifierExpr && kwReceiver.names.count() == 1
+
+        if (!receiverIsDot && kwReceiver.type?.pkg != "core" &&
+            isConstructor
+            && hasNoDotNames)
+        {
             val type = kwReceiver.type
             if (type != null) {
                 append(type.pkg, ".")
