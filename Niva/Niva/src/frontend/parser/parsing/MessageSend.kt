@@ -10,9 +10,9 @@ import main.WHITE
 
 ////   // MESSAGES
 ////  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
-////  		 | (binaryMessage+ keywordMessage?) -- binaryFirst
+////  		   | (binaryMessage+ keywordMessage?) -- binaryFirst
 ////           | (keywordMessage) -- keywordFirst
-//fun Parser.messageSend(dontParseKeywords: Boolean): MessageSend {
+
 //    // x echo // identifier
 //    // 1 echo // primary
 //    // (1 + 1) echo // parens
@@ -20,33 +20,18 @@ import main.WHITE
 //
 //    // 3 + (1 / 2)
 //    // 3 + 8 to: 7
-//
-//
-////    return anyMessageSend2(mutableListOf())
-//    return anyMessageSend(dontParseKeywords)
-//}
+
 
 // 1^ sas sus sos -> {sas sus sos}
 fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     val unaryMessages = mutableListOf<UnaryMsg>()
 
-    // if we have
-    // a
-    //   b
-    // situation, where b is unary for a
-//    if (check(TokenType.EndOfLine) && check(TokenType.Identifier, 1) && !check(TokenType.Colon, 2) &&
-//        peek(1).spaces > receiver.token.spaces
-//    ) {
-//        step()
-//    }
-
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
         if (identifier.typeAST != null) {
-            identifier.token.compileError("Error: You can't put type on a unary message send: ${CYAN}${identifier.token.lexeme + "::" + identifier.typeAST.name}${RED}, line: ${WHITE}${identifier.token.line}")
+            identifier.token.compileError("Error: You can't put type on a unary message send: $CYAN${identifier.token.lexeme + "::" + identifier.typeAST.name}$RED, line: $WHITE${identifier.token.line}")
         }
         if (check(TokenType.Colon)) {
-//            identifier.token.compileError("Error: This is not unary, but a keyword with path")
             throw Exception("This is not unary, but a keyword with path")
         }
         // each unary message must have previous unary as receiver because
@@ -365,7 +350,7 @@ fun Parser.keywordMessageParsing(
         val argument = expression(true)
 
         if (argument is KeywordMsg) {
-            argument.token.compileError("argument can't be another keyword message, use ${WHITE}()$RED, ${CYAN}foo: $WHITE(x ${CYAN}bar: ${WHITE}y)")
+            argument.token.compileError("Argument can't be another keyword message, use ${WHITE}()$RED, ${CYAN}foo: $WHITE(x ${CYAN}bar: ${WHITE}y)")
         }
 
         // making fun name camelCase

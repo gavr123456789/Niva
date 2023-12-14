@@ -2,6 +2,8 @@ package codogen
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import main.RED
+import main.WHITE
 
 fun UnionDeclaration.collectAllGenericsFromBranches(): Set<String> {
     val genericsOfBranches = mutableSetOf<String>()
@@ -36,7 +38,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     fun generateFieldArguments(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
 
         if (it.type == null) {
-            it.token.compileError("arg must have type")
+            it.token.compileError("Arg $WHITE${it.name}$RED must have type")
         }
         // TODO var or val?, maybe add  mut modifier
 

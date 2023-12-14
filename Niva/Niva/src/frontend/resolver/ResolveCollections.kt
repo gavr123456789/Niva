@@ -1,8 +1,7 @@
-package main.frontend.typer
+package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.resolver.*
 import main.CYAN
 import main.WHITE
 
@@ -37,8 +36,8 @@ fun Resolver.resolveList(statement: ListCollection, rootStatement: Statement?) {
         statement.type = type
     }
 
-
 }
+
 
 
 fun Resolver.resolveSet(

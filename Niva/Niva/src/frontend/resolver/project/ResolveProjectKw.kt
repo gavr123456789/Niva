@@ -38,7 +38,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                 when (it.name) {
                     "loadPackages" -> {
                         if (it.keywordArg.initElements[0] !is LiteralExpression.StringExpr) {
-                            it.keywordArg.token.compileError("packages must be listed as String")
+                            it.keywordArg.token.compileError("Packages must be listed as ${YEL}String")
                         }
 
                         generator.addToGradleDependencies(it.keywordArg.initElements.map {x -> x.token.lexeme })

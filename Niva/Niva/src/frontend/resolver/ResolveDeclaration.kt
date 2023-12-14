@@ -4,6 +4,8 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.*
 import frontend.util.createFakeToken
+import main.RED
+import main.WHITE
 import main.frontend.typer.project.resolveProjectKeyMessage
 
 
@@ -63,12 +65,12 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         it.token.compileError("Bind must have keyword message")
                     if (msg.args.count() < 2)
                         it.token.compileError("Bind must have at least 2 argument: package and content")
-                    val pkgArg = msg.args.find { it.name == "package" }
+                    val pkgArg = msg.args.find { x -> x.name == "package" }
                     if (pkgArg == null)
-                        msg.token.compileError("'package' param is missing")
-                    val contentArg = msg.args.find { it.name == "content" }
+                        msg.token.compileError("${WHITE}package$RED param is missing")
+                    val contentArg = msg.args.find {x -> x.name == "content" }
                     if (contentArg == null)
-                        msg.token.compileError("'content' param is missing")
+                        msg.token.compileError("${WHITE}content$RED param is missing")
 
 
                     if (pkgArg.keywordArg !is LiteralExpression)
@@ -85,7 +87,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         if (decl is Declaration) {
                             resolveDeclarations(decl, mutableMapOf(), resolveBody = false)
                         } else {
-                            decl.token.compileError("There can be only declarations inside Bind, but found $decl")
+                            decl.token.compileError("There can be only declarations inside Bind, but found $WHITE$decl")
                         }
                     }
 
