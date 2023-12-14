@@ -71,13 +71,56 @@ fun lex(source: String, file: File): MutableList<Token> {
 //    head = result
 //}
 
+const val HELP = """
+Usage:
+    niva FILE — compile and run project with file as main entry
+Flags:
+    -c      — compile only
+    -i      — get info about packages(it is usable to pipe it to .md file)
+    -iu     — print info only about user-defined types
+    -i pkg  — print info only about specific pkg
 
+In code: 
+Project configuration:
+    Messages for Project:
+    target: "TARGET" — target to jvm/linux/macos/windows(not supported yet)
+    mode: "MODE"     — debug/release only for native targets, use debug for faster compilation
+    
+    package: "PKG"   — set package for the definitions in code below
+    protocol: "NAME" — set protocol for the definitions in code below
+    use: "PKG"       — set default pkg, like using namespace in C#/Vala
+    
+    Example: Project target: "linux" mode: "debug" 
+
+Kotlin\Java interop:
+    Messages for Bind:
+    package: "PKG"  — bind package
+    content: [CODE] — bindings
+    
+    Example:
+    Bind package: "java.io" content: [
+        type File pathname: String
+        File exists -> Boolean
+        File readText -> String
+    ]
+    file = File pathname: "path/to/file"
+    text = file readText
+    
+    Messages for Project:
+    loadPackages: {"PKG1" "PKG2"} — load package from Maven Central
+    import: "PATH_TO_PKG" — add direct import to generated code
+
+"""
 
 
 fun main(args: Array<String>) {
     val isThereArgs = args.isNotEmpty()
 
-    val inlineRepl = File("inline_repl.txt").absoluteFile
+    if (isThereArgs && args[0] == "--help" || args[0] == "-help") {
+        println(HELP)
+        return
+    }
+
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
     if (!File(pathToInfroProject).exists()) {
@@ -87,10 +130,9 @@ fun main(args: Array<String>) {
     val pathWhereToGenerateKtAmper = pathToInfroProject / "src"
     val mainNivaFile = File("examples" / "Main" / "main.niva")
     val pathToTheMainExample = mainNivaFile.absolutePath
-    val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
     val pathToGradle = pathToInfroProject / "build.gradle.kts"
     val pathToAmper = pathToInfroProject / "module.yaml"
-
+    val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
 
     val startTime = System.currentTimeMillis()
 
@@ -115,6 +157,8 @@ fun main(args: Array<String>) {
     val infoUserOnly = args.find { it == "-iu" } != null
 
     if (!(infoOnly || infoUserOnly) ) {
+        val inlineRepl = File("inline_repl.txt").absoluteFile
+
         runGradleRunInProject(
             pathToInfroProject,
             inlineRepl,
