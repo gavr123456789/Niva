@@ -13,6 +13,7 @@ import frontend.util.fillSymbolTable
 import main.utils.generateInfo
 import java.io.*
 import main.utils.compileProjFromFile
+import main.utils.generatePkgInfo
 import main.utils.runGradleRunInProject
 
 
@@ -86,19 +87,19 @@ In code:
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
-    ${CYAN}target: $GREEN"TARGET" — target to jvm/linux/macos/windows(not supported yet)
-    ${CYAN}mode: $GREEN"MODE"     — debug/release only for native targets, use debug for faster compilation
+    ${CYAN}target: $GREEN"TARGET"${RESET} — target to jvm/linux/macos/windows(not supported yet)
+    ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
     
-    ${CYAN}package: $GREEN"PKG"   — set package for the definitions in code below
-    ${CYAN}protocol: $GREEN"NAME" — set protocol for the definitions in code below
-    ${CYAN}use: $GREEN"PKG"       — set default pkg, like using namespace in C#/Vala
+    ${CYAN}package: $GREEN"PKG"$RESET   — set package for the definitions in code below
+    ${CYAN}protocol: $GREEN"NAME"$RESET — set protocol for the definitions in code below
+    ${CYAN}use: $GREEN"PKG"$RESET       — set default pkg, like using namespace in C#/Vala
     
-    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug" 
+    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET 
 
 Kotlin\Java interop:
     Messages for ${YEL}Bind$RESET:
-    ${CYAN}package: "PKG"  — bind package
-    ${CYAN}content: [CODE] — bindings
+    ${CYAN}package: $GREEN"PKG"$RESET  — bind package
+    ${CYAN}content: $WHITE[CODE]$RESET — bindings
     
     Example:
     ${YEL}Bind ${CYAN}package: $GREEN"java.io" ${CYAN}content: $RESET[
@@ -106,17 +107,18 @@ Kotlin\Java interop:
         ${YEL}File ${CYAN}exists ${RED}-> ${YEL}Boolean
         ${YEL}File ${CYAN}readText ${RED}-> ${YEL}String
     $RESET]
-    ${WHITE}file = ${YEL}File ${CYAN}pathname: "path/to/file"
-    ${WHITE}text = ${WHITE}file ${CYAN}readText
+    ${WHITE}file = ${YEL}File ${CYAN}pathname: $GREEN"path/to/file"
+    ${WHITE}text = ${WHITE}file ${CYAN}readText$RESET
     
-    Messages for Project:
-    ${CYAN}loadPackages: $RESET{"PKG1" "PKG2"$RESET} — load package from Maven Central
-    ${CYAN}import: "PATH_TO_PKG" — add direct import to generated code
+    Messages for ${YEL}Project$RESET:
+    ${CYAN}loadPackages: $RESET{$GREEN"PKG1" "PKG2"$RESET} — load package from Maven Central
+    ${CYAN}import: $GREEN"PATH_TO_PKG"$RESET — add direct import to generated code
 
 """
 
 
 fun main(args: Array<String>) {
+//    val args = listOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
     val isThereArgs = args.isNotEmpty()
 
     if (isThereArgs && (args[0] == "--help" || args[0] == "-help")) {
@@ -156,9 +158,9 @@ fun main(args: Array<String>) {
 
 
     val compileOnly = args.find { it == "-c" } != null
-    val infoOnly = args.find { it == "-i" } != null
+    val infoIndex = args.indexOf("-i")
+    val infoOnly = infoIndex != -1
     val infoUserOnly = args.find { it == "-iu" } != null
-
     if (!(infoOnly || infoUserOnly) ) {
         val inlineRepl = File("inline_repl.txt").absoluteFile
 
@@ -171,8 +173,17 @@ fun main(args: Array<String>) {
             compileOnly
         )
     } else {
-        val mdInfo = generateInfo(resolver, infoUserOnly)
-        println(mdInfo)
+        // is there pkg name after -i
+        if (infoOnly && args.count()-1 > infoIndex) {
+            val w = args[infoIndex + 1]
+            println(w)
+            val pkgInko = generatePkgInfo(resolver, w)
+            println(pkgInko)
+        } else {
+            val mdInfo = generateInfo(resolver, infoUserOnly)
+            println(mdInfo)
+        }
+
     }
 
 

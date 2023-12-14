@@ -1,52 +1,48 @@
-package main.frontend.typer
+package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import frontend.resolver.*
-import main.CYAN
-import main.RED
-import main.WHITE
-import main.YEL
+import main.*
 
 
 // returns true if unresolved
 fun Resolver.resolveMessageDeclaration(
-    statement: MessageDeclaration,
+    st: MessageDeclaration,
     needResolveOnlyBody: Boolean,
     previousScope: MutableMap<String, Type>,
     addToDb: Boolean = true
 ): Boolean {
-    val forTypeAst = statement.forTypeAst
+    val forTypeAst = st.forTypeAst
 
 
 
-    val forType = statement.forType ?: if (forTypeAst is TypeAST.UserType) {
+    val forType = st.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
             token = forTypeAst.token
         )
-        val q = typeDB.getTypeOfIdentifierReceiver(forTypeAst.name, ident, getCurrentImports(statement.token), currentPackageName, names = forTypeAst.names)
+        val q = typeDB.getTypeOfIdentifierReceiver(forTypeAst.name, ident, getCurrentImports(st.token), currentPackageName, names = forTypeAst.names)
         if (q == null) {
-            unResolvedMessageDeclarations.add(currentPackageName, statement)
+            unResolvedMessageDeclarations.add(currentPackageName, st)
             currentLevel--
             return true
         } else q
 
-    } else typeTable[statement.forTypeAst.name]
+    } else typeTable[st.forTypeAst.name]
 
 
 //    val testDB = typeDB.getType(statement.forTypeAst.name)
     if (forType == null) {
-        unResolvedMessageDeclarations.add(currentPackageName, statement)
+        unResolvedMessageDeclarations.add(currentPackageName, st)
         currentLevel--
         return true
     } else {
         // but wait maybe some generic param's type is unresolved
-        if (statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.isNotEmpty() && forType is Type.UserLike) {
+        if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty() && forType is Type.UserLike) {
             var alTypeArgsAreFound = true
             val newListOfTypeArgs = mutableListOf<Type>()
-            statement.forTypeAst.typeArgumentList.forEach {
+            st.forTypeAst.typeArgumentList.forEach {
                 val type = typeTable[it.name]//testing
                 val testDB = typeDB.getType(it.name)
 
@@ -60,13 +56,13 @@ fun Resolver.resolveMessageDeclaration(
             if (alTypeArgsAreFound) {
                 forType.typeArgumentList = newListOfTypeArgs
             } else {
-                unResolvedMessageDeclarations.add(currentPackageName, statement)
+                unResolvedMessageDeclarations.add(currentPackageName, st)
                 currentLevel--
                 return true
             }
         }
-        unResolvedMessageDeclarations.remove(currentPackageName, statement)
-        statement.forType = forType
+        unResolvedMessageDeclarations.remove(currentPackageName, st)
+        st.forType = forType
     }
 
 
@@ -76,9 +72,9 @@ fun Resolver.resolveMessageDeclaration(
 
 
     if (forType is Type.UserType) {
-        val fieldWithTheSameName = forType.fields.find { it.name == statement.name }
+        val fieldWithTheSameName = forType.fields.find { it.name == st.name }
         if (fieldWithTheSameName != null) {
-            statement.token.compileError("Type $WHITE${statement.forTypeAst.name}$RED already has field with name $WHITE${statement.name}")
+            st.token.compileError("Type $WHITE${st.forTypeAst.name}$RED already has field with name $WHITE${st.name}")
         }
     }
 
@@ -88,11 +84,11 @@ fun Resolver.resolveMessageDeclaration(
         bodyScope["this"] = forType
 
         // add args to scope
-        when (statement) {
+        when (st) {
             is MessageDeclarationKeyword -> {
-                statement.args.forEach {
+                st.args.forEach {
                     if (it.type == null) {
-                        statement.token.compileError("Can't parse type for argument $WHITE${it.name}")
+                        st.token.compileError("Can't parse type for argument $WHITE${it.name}")
                     }
                     val astType = it.type
                     val type = astType.toType(typeDB, typeTable)//fix
@@ -100,11 +96,11 @@ fun Resolver.resolveMessageDeclaration(
                     bodyScope[it.localName ?: it.name] = type
 
                     if (type is Type.UnknownGenericType) {
-                        statement.typeArgs.add(type.name)
+                        st.typeArgs.add(type.name)
                     }
                     // add generic params to scope
                     if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                        statement.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
+                        st.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
                         // T == T
                         if (type.name == it.type.name) {
                             bodyScope[it.name] = type
@@ -118,9 +114,9 @@ fun Resolver.resolveMessageDeclaration(
             }
 
             is MessageDeclarationBinary -> {
-                val arg = statement.arg
+                val arg = st.arg
                 val argType = arg.type?.toType(typeDB, typeTable)
-                    ?: statement.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `$YEL${statement.forTypeAst.name} $CYAN${statement.name}`")
+                    ?: st.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `$YEL${st.forTypeAst.name} $CYAN${st.name}`")
                 bodyScope[arg.name] = argType
             }
 
@@ -133,26 +129,39 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
         wasThereReturn = null
-        resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
-        if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
-            statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
+        resolve(st.body, (previousScope + bodyScope).toMutableMap(), st)
+        if (!st.isSingleExpression && wasThereReturn == null && st.returnTypeAST != null && st.returnTypeAST.name != InternalTypes.Unit.name) {
+            st.token.compileError("You missed returning(^) a value of type: ${YEL}${st.returnTypeAST.name}")
         }
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
-        if (statement.isSingleExpression ) {
-            val expr = statement.body[0]
+        if (st.isSingleExpression ) {
+            val expr = st.body[0]
             if (expr is Expression) {
                 val returnType = expr.type!!
-                val mdgData = when (statement) {
-                    is ConstructorDeclaration -> findStaticMessageType(forType, statement.name, statement.token).first
-                    is MessageDeclarationBinary -> findBinaryMessageType(forType, statement.name, statement.token)
-                    is MessageDeclarationKeyword -> findKeywordMsgType(forType, statement.name, statement.token)
-                    is MessageDeclarationUnary -> findUnaryMessageType(forType, statement.name, statement.token)
+                val mdgData = when (st) {
+                    is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
+                    is MessageDeclarationBinary -> findBinaryMessageType(forType, st.name, st.token)
+                    is MessageDeclarationKeyword -> findKeywordMsgType(forType, st.name, st.token)
+                    is MessageDeclarationUnary -> findUnaryMessageType(forType, st.name, st.token)
                 }
 
+                val declaredReturnType = st.returnType
                 mdgData.returnType = returnType
-                statement.returnType = returnType
+                st.returnType = returnType
+
+                // in single expr declared type not matching real type
+                if (declaredReturnType != null && !compare2Types(returnType, declaredReturnType)) {
+                    st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
+                }
+            }
+        }else {
+            val declaredReturnType = wasThereReturn
+            val returnType = st.returnType
+            if (declaredReturnType != null && returnType != null && !compare2Types(returnType, declaredReturnType)) {
+                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
             }
         }
+
 
     }
 
@@ -160,25 +169,22 @@ fun Resolver.resolveMessageDeclaration(
 
 
     // addToDb
-    if (addToDb) when (statement) {
-        is MessageDeclarationUnary ->  addNewUnaryMessage(statement)
-        is MessageDeclarationBinary -> addNewBinaryMessage(statement)
-        is MessageDeclarationKeyword ->  addNewKeywordMessage(statement)
+    if (addToDb) when (st) {
+        is MessageDeclarationUnary ->  addNewUnaryMessage(st)
+        is MessageDeclarationBinary -> addNewBinaryMessage(st)
+        is MessageDeclarationKeyword ->  addNewKeywordMessage(st)
 
         is ConstructorDeclaration -> {
-            if (statement.returnTypeAST == null) {
-                statement.returnType = forType
+            if (st.returnTypeAST == null) {
+                st.returnType = forType
             }
-            addStaticDeclaration(statement)
+            addStaticDeclaration(st)
         }
     }
 
     if (needResolveOnlyBody) {
         resolveBody()
     }
-
-
-
 
     return false
 }

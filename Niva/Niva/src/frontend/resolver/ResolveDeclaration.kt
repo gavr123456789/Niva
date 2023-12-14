@@ -5,7 +5,9 @@ import frontend.parser.types.ast.*
 import frontend.resolver.*
 import frontend.util.createFakeToken
 import main.RED
+import main.RESET
 import main.WHITE
+import main.YEL
 import main.frontend.typer.project.resolveProjectKeyMessage
 
 
@@ -49,7 +51,6 @@ fun Resolver.resolveDeclarations(
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     statements.forEach {
         if (it is Declaration) {
-//            changePackage(savedPackageName, createFakeToken())
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
         if (it is MessageSendKeyword) {
@@ -62,9 +63,9 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
                     val msg = it.messages[0]
                     if (msg !is KeywordMsg)
-                        it.token.compileError("Bind must have keyword message")
+                        it.token.compileError("${YEL}Bind$RESET must have keyword message")
                     if (msg.args.count() < 2)
-                        it.token.compileError("Bind must have at least 2 argument: package and content")
+                        it.token.compileError("${YEL}Bind$RESET must have at least 2 argument: package and content")
                     val pkgArg = msg.args.find { x -> x.name == "package" }
                     if (pkgArg == null)
                         msg.token.compileError("${WHITE}package$RED param is missing")

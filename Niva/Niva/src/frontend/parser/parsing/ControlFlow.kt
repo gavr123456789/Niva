@@ -14,7 +14,7 @@ fun Parser.ifBranches(): List<IfBranch> {
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
 //        skipOneEndOfLineOrFile()
-        var (body, isSingleExpression) = methodBody(true, true)
+        var (body, isSingleExpression) = methodBody(true)
         if (body.isNotEmpty() && body[0] is ReturnStatement) isSingleExpression = false
 
         result.add(
