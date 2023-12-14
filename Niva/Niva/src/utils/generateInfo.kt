@@ -1,9 +1,11 @@
 package main.utils
 
+import frontend.meta.compileError
 import frontend.resolver.Package
 import frontend.resolver.Protocol
 import frontend.resolver.Resolver
 import frontend.resolver.Type
+import frontend.util.createFakeToken
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 
@@ -162,6 +164,12 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
         }
     }
 
+}
+
+fun generatePkgInfo(resolver: Resolver, pkgName: String) = buildString {
+    val mainProject = resolver.projects[resolver.projectName]!!
+    val pkg = mainProject.packages[pkgName] ?: createFakeToken().compileError("$pkgName not found")
+    append(pkg.generateInfo(false))
 }
 
 

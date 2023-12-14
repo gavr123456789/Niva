@@ -190,15 +190,6 @@ private fun Resolver.resolveStatement(
             val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
             val q = if (expr == null) unit else expr.type!!
             wasThereReturn = q
-            if (rootStatement is MessageDeclaration) {
-                val w = rootStatement.returnTypeAST?.toType(typeDB, typeTable)//fix
-                if (w != null) {
-                    val isReturnTypeEqualToReturnExprType = compare2Types(q, w)
-                    if (!isReturnTypeEqualToReturnExprType) {
-                        statement.token.compileError("Return type is `$YEL${w.name}${RESET}` but found `${YEL}${q.name}`")
-                    }
-                }
-            }
         }
 
         is DotReceiver -> {
@@ -868,7 +859,7 @@ class Resolver(
     var compilationTarget: CompilationTarget = CompilationTarget.jvm,
     var compilationMode: CompilationMode = CompilationMode.debug,
 
-    // set to null before body resolve, check after to know was there return or not
+    // set to null before body resolve, set to real inside body, check after to know was there return or not
     var wasThereReturn: Type? = null,
 
     val infoTypesToPrint: MutableSet<Type> = mutableSetOf()
