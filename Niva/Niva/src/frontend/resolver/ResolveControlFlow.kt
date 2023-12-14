@@ -3,6 +3,7 @@ package frontend.resolver
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import main.RED
+import main.RESET
 import main.WHITE
 import main.YEL
 
@@ -94,8 +95,8 @@ fun Resolver.resolveControlFlow(
                     val currType = it.getReturnTypeOrThrow()
                     if (prevType.name != currType.name) {
                         it.ifExpression.token.compileError(
-                            "In if Expression return type of branch on line: ${WHITE}${prev.ifExpression.token.line}${RED} is ${WHITE}${prevType.name}${RED} " +
-                                    "\n\tBut return type of branch on line ${WHITE}${it.ifExpression.token.line}${RED} is ${WHITE}${currType.name}${RED}, all branches must return the same type"
+                            "In if Expression return type of branch on line: ${WHITE}${prev.ifExpression.token.line}$RESET is ${WHITE}${prevType.name}${RESET} " +
+                                    "\n\tBut return type of branch on line ${WHITE}${it.ifExpression.token.line}${RESET} is ${WHITE}${currType.name}${RESET}, all branches must return the same type"
                         )
                     }
                 } else {
@@ -127,7 +128,7 @@ fun Resolver.resolveControlFlow(
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
                     if (elseReturnTypeName != firstReturnTypeName) {
-                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same(${WHITE}$firstReturnTypeName ${RED}!= ${WHITE}$elseReturnTypeName)")
+                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName)")
                     }
                     elseReturnType
                 } else {
@@ -197,7 +198,7 @@ fun Resolver.resolveControlFlow(
 
                 if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
-                    curTok.compileError("If branch ${WHITE}`${it.ifExpression}`${RED} of type: ${YEL}`$currentType`${RED} is not of switching type: ${WHITE}`${statement.switch.type!!.name}`")
+                    curTok.compileError("If branch ${WHITE}`${it.ifExpression}`${RESET} of type: ${YEL}`$currentType`${RESET} is not of switching type: ${WHITE}`${statement.switch.type!!.name}`")
                 }
                 /// resolving then, if() ^
                 val scopeWithFields =

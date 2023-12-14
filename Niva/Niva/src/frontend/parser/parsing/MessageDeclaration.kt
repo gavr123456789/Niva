@@ -4,9 +4,8 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
-import frontend.resolver.Type
 import frontend.util.capitalizeFirstLetter
-import main.RED
+import main.RESET
 import main.WHITE
 
 // also recevier can be unary or binary message
@@ -99,7 +98,7 @@ fun Parser.simpleReceiver(): Receiver {
                 peek().compileError("Map must contain even elements")
             }
 
-        } while (primaryTok != null && primaryTok2 != null)
+        } while (primaryTok != null)
 
         initElementsPairs
     }
@@ -129,12 +128,12 @@ fun Parser.simpleReceiver(): Receiver {
 
                 match(TokenType.CloseBrace)
 
-                val keyType = if (initElements.isNotEmpty()) initElements[0].first.type else null
-                val valType = if (initElements.isNotEmpty()) initElements[0].second.type else null
+//                val keyType = if (initElements.isNotEmpty()) initElements[0].first.type else null
+//                val valType = if (initElements.isNotEmpty()) initElements[0].second.type else null
 
-                val mapType = if (keyType != null && valType != null)
-                    Type.KnownGenericType("MutableMap", listOf(keyType, valType), pkg = "common")
-                else null
+//                val mapType = if (keyType != null && valType != null)
+//                    Type.KnownGenericType("MutableMap", listOf(keyType, valType), pkg = "common")
+//                else null
 
                 return MapCollection(initElements, null, q)
             }
@@ -346,7 +345,9 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 
 // returns true if it's single expression
-fun Parser.methodBody(isControlFlow: Boolean = false, skipLines: Boolean = false): Pair<MutableList<Statement>, Boolean> {
+fun Parser.methodBody(
+    isControlFlow: Boolean = false,
+): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
@@ -370,7 +371,7 @@ fun Parser.methodBody(isControlFlow: Boolean = false, skipLines: Boolean = false
         // | switch
         // | cond => do
         // | cond => do // I wanna If here, but it will be another case
-        if (isControlFlow){
+        if (isControlFlow) {
             messagesOrVarStatements.add(statementWithEndLine())
         } else {
             messagesOrVarStatements.add(statement())
@@ -409,7 +410,7 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
 fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     val savepoint = current
 
-    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1)) ) {
+    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1))) {
         match(TokenType.Identifier)
         val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
         if (isThereEndOfMsgDecl) return true
@@ -469,7 +470,8 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
 
 fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false): MessageDeclarationType? {
     val savepoint = current
-    val reveiver = identifierMayBeTyped()
+    @Suppress("UNUSED_VARIABLE")
+    val receiver = identifierMayBeTyped()
 
 
     if (tryUnary(isConstructor)) {
@@ -488,107 +490,7 @@ fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false): Messa
     }
 
     current = savepoint
-//    if (isConstructor) {
-//        peek().compileError("Cant parse constructor, you need to declare return type with `-> Type` if its binding or body `= [...]`")
-//    }
-    return null
-}
 
-fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): MessageDeclarationType? {
-
-    val savepoint = current
-    while (check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) {
-        step()
-        step()
-    }
-    // Person sas = []
-
-    // Person sas::Int -> Int = []
-    // Person sas: x::Int -> Int = []
-    // Person sas: x -> Int = []
-    // Person :sas :sus -> Int = []
-
-    // Person + sas -> Int = []
-
-    // receiver is first
-    if (!check(TokenType.Identifier)) {
-        return null
-    }
-
-    // flags for keyword
-    // from[:] ... [=]
-    var isThereKeyLikeArg = false
-    // ...: = ...
-    var isThereEqualAfterThat = false
-    // for unary
-    var isThereEqual = false
-
-    var peekCounter = 0
-    var afterReturn = false
-    // is there ident: and = after that before end of line?
-    while (!(check(TokenType.EndOfLine, peekCounter) || check(TokenType.EndOfFile, peekCounter))) {
-        val q = peek(peekCounter)
-
-        if (!afterReturn) {
-            afterReturn = check(TokenType.ReturnArrow, peekCounter) && !check(TokenType.EndOfLine, peekCounter + 1)
-        }
-
-        // :: can be inside return type like List::Int
-        val noLocalParam = check(TokenType.DoubleColon, peekCounter + 1) && !check(
-            TokenType.BinarySymbol,
-            peekCounter - 1
-        ) && !afterReturn
-
-        val localParam = check(TokenType.Colon, peekCounter + 1)
-        // keyword checks
-        if (q.isIdentifier() && (localParam || noLocalParam)) {
-            isThereKeyLikeArg = true
-        }
-
-        if (isThereKeyLikeArg && check(TokenType.Assign, peekCounter)) {
-            isThereEqualAfterThat = true
-            isThereEqual = true
-            break
-        }
-        if (check(TokenType.Assign, peekCounter)) {
-            isThereEqual = true
-            // we don't need to parse things after "=", there may be another type of message
-            // Person sas = person from: 5
-            break
-        }
-        peekCounter++
-
-    }
-    // we need "= []" or -> or constructor and non of this
-    val isThisMsgDeclaration = isThereEqual || afterReturn || isConstructor
-
-    // int + arg =
-    if (check(TokenType.BinarySymbol, 1) && check(TokenType.Identifier, 2) && (isThisMsgDeclaration)) {
-        current = savepoint
-        return MessageDeclarationType.Binary
-    }
-
-    if (isThereKeyLikeArg && isThereEqualAfterThat || isThereKeyLikeArg && afterReturn || isThereKeyLikeArg && isConstructor) {
-        // constructor Sas from::Int
-        // no body, no return type
-        if (isThereKeyLikeArg && isConstructor && !afterReturn && !isThereEqual) {
-            peek().compileError("Please add return type or body for type ${WHITE}${peek().lexeme}${RED} constructor")
-        }
-        current = savepoint
-        return MessageDeclarationType.Keyword
-    }
-
-    // unary and binary
-    // Identifier checked already
-
-    // int inc = []
-    if (check(TokenType.Identifier, 1) && (isThisMsgDeclaration)) {
-        current = savepoint
-        return MessageDeclarationType.Unary
-    }
-
-
-    current = savepoint
     return null
 }
 

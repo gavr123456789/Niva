@@ -81,6 +81,9 @@ Flags:
     -i pkg  — print info only about specific pkg
 
 In code: 
+> EXPR  — inline print result of expression in comment above
+>? TYPE — print all info about TYPE
+
 Project configuration:
     Messages for ${YEL}Project$RESET:
     ${CYAN}target: $GREEN"TARGET" — target to jvm/linux/macos/windows(not supported yet)
@@ -124,7 +127,7 @@ fun main(args: Array<String>) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
     if (!File(pathToInfroProject).exists()) {
-        createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RED} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
+        createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
     }
 
     val pathWhereToGenerateKtAmper = pathToInfroProject / "src"

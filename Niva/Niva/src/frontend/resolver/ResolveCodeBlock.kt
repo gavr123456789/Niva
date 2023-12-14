@@ -2,7 +2,7 @@ package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import main.RED
+import main.RESET
 import main.WHITE
 
 fun Resolver.resolveCodeBlock(
@@ -84,7 +84,7 @@ fun Resolver.resolveCodeBlock(
                 itArgType = typeForIt
             } else if (currentArgType.args.isNotEmpty()) {
                 if (currentArgType.args.count() != namedLambdaArgs.count()) {
-                    statement.token.compileError("Number of arguments for code block: ${WHITE}${currentArgType.args.count()}${RED}, you passed ${WHITE}${namedLambdaArgs.count()}")
+                    statement.token.compileError("Number of arguments for code block: ${WHITE}${currentArgType.args.count()}$RESET, you passed ${WHITE}${namedLambdaArgs.count()}")
                 }
 
                 currentArgType.args.forEachIndexed { i, typeField ->
