@@ -6,6 +6,8 @@ import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
 import frontend.util.capitalizeFirstLetter
+import main.RED
+import main.WHITE
 
 // also recevier can be unary or binary message
 
@@ -155,7 +157,7 @@ fun Parser.simpleReceiver(): Receiver {
     }
 
     if (tryPrimary == null) {
-        peek().compileError("Can't parse primary token, got ${peek().lexeme}")
+        peek().compileError("Can't parse primary token, got ${WHITE}${peek().lexeme}")
     }
     return tryPrimary
 }
@@ -570,7 +572,7 @@ fun Parser.checkTypeOfMessageDeclaration(isConstructor: Boolean = false): Messag
         // constructor Sas from::Int
         // no body, no return type
         if (isThereKeyLikeArg && isConstructor && !afterReturn && !isThereEqual) {
-            peek().compileError("Please add return type or body for type ${peek().lexeme} constructor")
+            peek().compileError("Please add return type or body for type ${WHITE}${peek().lexeme}${RED} constructor")
         }
         current = savepoint
         return MessageDeclarationType.Keyword

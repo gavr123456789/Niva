@@ -6,6 +6,7 @@ import frontend.parser.types.ast.TypeAST
 import frontend.parser.types.ast.VarDeclaration
 import frontend.resolver.*
 import frontend.resolver.Type.RecursiveType.copy
+import main.YEL
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
@@ -49,7 +50,7 @@ fun Resolver.resolveVarDeclaration(
                 value,
                 getCurrentImports(statement.token),
                 currentPackageName
-            ) ?: typeAST.token.compileError("Cant find type ${typeAST.name}")
+            ) ?: typeAST.token.compileError("Cant find type $YEL${typeAST.name}")
 
             e.beforeGenericResolvedName = copyType.typeArgumentList[i].name
             newTypeArgList.add(e)
@@ -63,7 +64,7 @@ fun Resolver.resolveVarDeclaration(
         if (statementDeclaredType.name != valueType.name) {
             val text = "${statementDeclaredType.name} != ${valueType.name}"
 
-            statement.token.compileError("Type declared for ${statement.name} is not equal for it's value type `$text`")
+            statement.token.compileError("Type declared for ${YEL}${statement.name} is not equal for it's value type ${YEL}`$text`")
         }
     }
 

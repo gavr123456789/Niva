@@ -3,6 +3,10 @@ package main.frontend.typer
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.*
+import main.CYAN
+import main.RED
+import main.WHITE
+import main.YEL
 
 
 // returns true if unresolved
@@ -74,7 +78,7 @@ fun Resolver.resolveMessageDeclaration(
     if (forType is Type.UserType) {
         val fieldWithTheSameName = forType.fields.find { it.name == statement.name }
         if (fieldWithTheSameName != null) {
-            statement.token.compileError("Type ${statement.forTypeAst.name} already has field with name ${statement.name}")
+            statement.token.compileError("Type $WHITE${statement.forTypeAst.name}$RED already has field with name $WHITE${statement.name}")
         }
     }
 
@@ -88,7 +92,7 @@ fun Resolver.resolveMessageDeclaration(
             is MessageDeclarationKeyword -> {
                 statement.args.forEach {
                     if (it.type == null) {
-                        statement.token.compileError("Can't parse type for argument ${it.name}")
+                        statement.token.compileError("Can't parse type for argument $WHITE${it.name}")
                     }
                     val astType = it.type
                     val type = astType.toType(typeDB, typeTable)//fix
@@ -116,7 +120,7 @@ fun Resolver.resolveMessageDeclaration(
             is MessageDeclarationBinary -> {
                 val arg = statement.arg
                 val argType = arg.type?.toType(typeDB, typeTable)
-                    ?: statement.token.compileError("Cant infer type of argument: `${arg.name}` for binary message declaration `${statement.forTypeAst.name} ${statement.name}`")
+                    ?: statement.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `$YEL${statement.forTypeAst.name} $CYAN${statement.name}`")
                 bodyScope[arg.name] = argType
             }
 
@@ -131,7 +135,7 @@ fun Resolver.resolveMessageDeclaration(
         wasThereReturn = null
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
         if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
-            statement.token.compileError("You missed returning(^) a value of type: ${statement.returnTypeAST.name}")
+            statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
         }
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
         if (statement.isSingleExpression ) {

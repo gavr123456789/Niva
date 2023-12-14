@@ -6,6 +6,8 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
+import main.RED
+import main.YEL
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     if (type.typeArgumentList.count() > 2) {
@@ -66,7 +68,7 @@ fun Resolver.resolveKwArgsGenerics(
                     if (argTypeWithSameLetter != null) {
                         // receiver has the same generic param resolved
                         if (!compare2Types(argType, argTypeWithSameLetter)) {
-                            it.keywordArg.token.compileError("`${it.name}` has type `$argType` but generic type of `${statement.receiver.type}` was resolved to `$argTypeWithSameLetter`")
+                            it.keywordArg.token.compileError("${YEL}`${it.name}` has type `$YEL$argType${RED}` but generic type of `${YEL}${statement.receiver.type}$RED` was resolved to `${YEL}$argTypeWithSameLetter$RED`")
                         }
                     }
                 }

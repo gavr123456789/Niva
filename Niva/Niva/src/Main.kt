@@ -16,15 +16,15 @@ import main.utils.compileProjFromFile
 import main.utils.runGradleRunInProject
 
 
-const val ANSI_RESET = "\u001B[0m"
-const val ANSI_BLACK = "\u001B[30m"
-const val ANSI_RED = "\u001B[31m"
-const val ANSI_GREEN = "\u001B[32m"
-const val ANSI_YELLOW = "\u001B[33m"
-const val ANSI_BLUE = "\u001B[34m"
-const val ANSI_PURPLE = "\u001B[35m"
-const val ANSI_CYAN = "\u001B[36m"
-const val ANSI_WHITE = "\u001B[37m"
+const val RESET = "\u001B[0m"
+const val BLACK = "\u001B[30m"
+const val RED = "\u001B[31m"
+const val GREEN = "\u001B[32m"
+const val YEL = "\u001B[33m"
+const val BLUE = "\u001B[34m"
+const val PURP = "\u001B[35m"
+const val CYAN = "\u001B[36m"
+const val WHITE = "\u001B[37m"
 
 fun lex(source: String, file: File): MutableList<Token> {
     val lexer = Lexer(source, file)
@@ -82,33 +82,33 @@ Flags:
 
 In code: 
 Project configuration:
-    Messages for Project:
-    target: "TARGET" — target to jvm/linux/macos/windows(not supported yet)
-    mode: "MODE"     — debug/release only for native targets, use debug for faster compilation
+    Messages for ${YEL}Project$RESET:
+    ${CYAN}target: $GREEN"TARGET" — target to jvm/linux/macos/windows(not supported yet)
+    ${CYAN}mode: $GREEN"MODE"     — debug/release only for native targets, use debug for faster compilation
     
-    package: "PKG"   — set package for the definitions in code below
-    protocol: "NAME" — set protocol for the definitions in code below
-    use: "PKG"       — set default pkg, like using namespace in C#/Vala
+    ${CYAN}package: $GREEN"PKG"   — set package for the definitions in code below
+    ${CYAN}protocol: $GREEN"NAME" — set protocol for the definitions in code below
+    ${CYAN}use: $GREEN"PKG"       — set default pkg, like using namespace in C#/Vala
     
-    Example: Project target: "linux" mode: "debug" 
+    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug" 
 
 Kotlin\Java interop:
-    Messages for Bind:
-    package: "PKG"  — bind package
-    content: [CODE] — bindings
+    Messages for ${YEL}Bind$RESET:
+    ${CYAN}package: "PKG"  — bind package
+    ${CYAN}content: [CODE] — bindings
     
     Example:
-    Bind package: "java.io" content: [
-        type File pathname: String
-        File exists -> Boolean
-        File readText -> String
-    ]
-    file = File pathname: "path/to/file"
-    text = file readText
+    ${YEL}Bind ${CYAN}package: $GREEN"java.io" ${CYAN}content: $RESET[
+        ${RED}type ${YEL}File ${CYAN}pathname: ${YEL}String
+        ${YEL}File ${CYAN}exists ${RED}-> ${YEL}Boolean
+        ${YEL}File ${CYAN}readText ${RED}-> ${YEL}String
+    $RESET]
+    ${WHITE}file = ${YEL}File ${CYAN}pathname: "path/to/file"
+    ${WHITE}text = ${WHITE}file ${CYAN}readText
     
     Messages for Project:
-    loadPackages: {"PKG1" "PKG2"} — load package from Maven Central
-    import: "PATH_TO_PKG" — add direct import to generated code
+    ${CYAN}loadPackages: $RESET{"PKG1" "PKG2"$RESET} — load package from Maven Central
+    ${CYAN}import: "PATH_TO_PKG" — add direct import to generated code
 
 """
 
@@ -116,7 +116,7 @@ Kotlin\Java interop:
 fun main(args: Array<String>) {
     val isThereArgs = args.isNotEmpty()
 
-    if (isThereArgs && args[0] == "--help" || args[0] == "-help") {
+    if (isThereArgs && (args[0] == "--help" || args[0] == "-help")) {
         println(HELP)
         return
     }
@@ -124,7 +124,7 @@ fun main(args: Array<String>) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
     if (!File(pathToInfroProject).exists()) {
-        createFakeToken().compileError("Path `$pathToInfroProject` doesn't exist, please move the infroProject there from `/Niva/infroProject` there or run compile.sh")
+        createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RED} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
     }
 
     val pathWhereToGenerateKtAmper = pathToInfroProject / "src"

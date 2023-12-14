@@ -7,6 +7,9 @@ import frontend.parser.types.ast.UnionDeclaration
 import frontend.resolver.*
 import frontend.util.containSameFields
 import frontend.util.setDiff
+import main.RED
+import main.WHITE
+import main.YEL
 
 fun Resolver.resolveUnionDeclaration(statement: UnionDeclaration, previousScope: MutableMap<String, Type>) {
     val rootType =
@@ -37,7 +40,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionDeclaration, previousScope:
 
             // check that it has the same fields as current root
             if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
-                it.token.compileError("Union Root inside other union declaration must have same fields, ${branchType.name}: ${branchType.fields.map { it.name }} != ${rootType.name}: ${rootType.fields.map { it.name }}")
+                it.token.compileError("Union Root inside other union declaration must have same fields, $YEL${branchType.name}: ${WHITE}${branchType.fields.map { it.name }} $RED!=${YEL} ${rootType.name}${RED}: $WHITE${rootType.fields.map { it.name }}")
             }
             it.isRoot = true
         }
@@ -71,7 +74,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
         val brachFields = it.fieldsValues.map { x -> x.name }.toSet()
         val diff = setDiff(namesOfRootFields, brachFields)
         if (diff.isNotEmpty()) {
-            it.token.compileError("Some enum fields are missing in ${it.typeName}: $diff")
+            it.token.compileError("Some enum fields are missing in${YEL} ${it.typeName}$RED: $YEL$diff")
         }
 
         val branchType =
@@ -84,7 +87,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
             resolve(listOf(fieldAST.value), previousScope)
             currentLevel--
             val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
-                ?: fieldAST.token.compileError("Each branch of enum must define values for each field, ${rootType.name} ${rootType.fields.map { x -> x.name }}")
+                ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")
 
             if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type)) {
                 fieldAST.token.compileError("In enum branch: `${it.typeName}` field `${fieldAST.name}` has type `${fieldAST.value.type}` but `${rootFieldWithSameName.type}` expected")

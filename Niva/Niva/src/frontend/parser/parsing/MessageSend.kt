@@ -4,6 +4,9 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
+import main.CYAN
+import main.RED
+import main.WHITE
 
 ////   // MESSAGES
 ////  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
@@ -40,7 +43,7 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
     while (check(TokenType.Identifier) && !check(TokenType.Colon, 1)) {
         val identifier = identifierMayBeTyped()
         if (identifier.typeAST != null) {
-            identifier.token.compileError("Error: You can't put type on a unary message send: ${identifier.token.lexeme + "::" + identifier.typeAST.name}, line: ${identifier.token.line}")
+            identifier.token.compileError("Error: You can't put type on a unary message send: ${CYAN}${identifier.token.lexeme + "::" + identifier.typeAST.name}${RED}, line: ${WHITE}${identifier.token.line}")
         }
         if (check(TokenType.Colon)) {
 //            identifier.token.compileError("Error: This is not unary, but a keyword with path")
@@ -362,7 +365,7 @@ fun Parser.keywordMessageParsing(
         val argument = expression(true)
 
         if (argument is KeywordMsg) {
-            argument.token.compileError("argument can't be another keyword message, use (), foo: (x bar: y)")
+            argument.token.compileError("argument can't be another keyword message, use ${WHITE}()$RED, ${CYAN}foo: $WHITE(x ${CYAN}bar: ${WHITE}y)")
         }
 
         // making fun name camelCase

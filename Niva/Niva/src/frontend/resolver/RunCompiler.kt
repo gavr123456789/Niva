@@ -5,6 +5,9 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
 import frontend.util.createFakeToken
+import main.CYAN
+import main.RED
+import main.YEL
 import main.frontend.typer.resolveDeclarationsOnly
 import main.lex
 import main.utils.infoPrint
@@ -56,7 +59,7 @@ fun Resolver.resolve() {
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Method `${decl}` for unresolved type: `${decl.forTypeAst.name}`")
+            decl.token.compileError("Method `$CYAN${decl}$RED` for unresolved type: `$YEL${decl.forTypeAst.name}$RED`")
         }
     }
     unResolvedMessageDeclarations.clear()
@@ -69,7 +72,7 @@ fun Resolver.resolve() {
     unResolvedTypeDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Type `${decl}` for unresolved type: `${decl.typeName}`")
+            decl.token.compileError("Type `${YEL}${decl}$RED` for unresolved type: `${YEL}${decl.typeName}$RED`")
         }
     }
     unResolvedTypeDeclarations.clear()
