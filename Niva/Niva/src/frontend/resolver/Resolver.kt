@@ -1,3 +1,5 @@
+@file:Suppress("EnumEntryName", "NAME_SHADOWING")
+
 package frontend.resolver
 
 import codogen.GeneratorKt
@@ -57,7 +59,7 @@ private fun Resolver.resolveStatement(
             if (!allDeclarationResolvedAlready)
                 resolveDeclarations(statement, previousScope, true)
             else if (statement is MessageDeclaration) {
-                // first time all declarations resolved without bodyes, now we need to resolve them
+                // first time all declarations resolved without bodies, now we need to resolve them
                 currentLevel++
                 resolveMessageDeclaration(
                     statement,
@@ -212,7 +214,7 @@ private fun Resolver.resolveStatement(
 fun Resolver.resolve(
     statements: List<Statement>,
     previousScope: MutableMap<String, Type>,
-    rootStatement: Statement? = null, // since we in recursion, and can't define on what level of it, its the only way to know previous statement
+    rootStatement: Statement? = null, // since we in recursion, and can't define on what level of it, it's the only way to know previous statement
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
 
@@ -331,7 +333,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     }
 
 
-    // comparing with nothing is always true, its bottom type, subtype of all types
+    // comparing with nothing is always true, its bottom type, subtype of all types,
     // so we can return nothing from switch expr branches, beside u cant do it with different types
     val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
     return type1 == nothing || type2 == nothing
@@ -407,12 +409,12 @@ fun Resolver.findStaticMessageType(
 
     // if this is binding, then getters are static, calls without ()
     if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
-        when (msgType) {
+        return when (msgType) {
             MessageDeclarationType.Unary ->
-                return Pair(findUnaryMessageType(receiverType, selectorName, token), true)
+                Pair(findUnaryMessageType(receiverType, selectorName, token), true)
 
             MessageDeclarationType.Keyword ->
-                return Pair(findKeywordMsgType(receiverType, selectorName, token), true)
+                Pair(findKeywordMsgType(receiverType, selectorName, token), true)
 
             MessageDeclarationType.Binary -> TODO()
         }
@@ -786,17 +788,6 @@ fun Resolver.getType2(
 
     val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
     return type
-}
-
-fun Resolver.findTypeInAllPackages(x: String): Type? {
-    val packages = projects[currentProjectName]!!.packages.values
-    packages.forEach {
-        val result = it.types[x]
-        if (result != null) {
-            return result
-        }
-    }
-    return null
 }
 
 
