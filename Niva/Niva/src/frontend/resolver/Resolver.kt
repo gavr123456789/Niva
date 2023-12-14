@@ -109,7 +109,7 @@ private fun Resolver.resolveStatement(
                         } else
                             statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields`")
                     }
-                } else if (statement.isInfoRepl){
+                } else if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type)
                 }
             }
@@ -124,16 +124,16 @@ private fun Resolver.resolveStatement(
 
         is CodeBlock -> {
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
-            if (currentLevel == 0)  topLevelStatements.add(statement)
+            if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
         is ListCollection -> {
-            resolveList(statement, rootStatement)
+            resolveCollection(statement, "MutableList", (previousScope + currentScope).toMutableMap(), rootStatement)
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
         is SetCollection -> {
-            resolveSet(statement, rootStatement)
+            resolveSet(statement, (previousScope + currentScope).toMutableMap(), rootStatement)
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
@@ -144,6 +144,7 @@ private fun Resolver.resolveStatement(
 
         is LiteralExpression.FloatExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Float]
+
         is LiteralExpression.DoubleExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Double]
 
@@ -265,7 +266,6 @@ fun Resolver.resolveExpressionInBrackets(
     statement.type = lastExpr.type
     return lastExpr.type!!
 }
-
 
 
 fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
@@ -581,7 +581,6 @@ fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
 }
 
 
-
 fun Resolver.typeAlreadyRegisteredInCurrentPkg(type: Type, pkg: Package? = null, token: Token? = null): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
     val result = pack.types[type.name]
@@ -642,7 +641,8 @@ fun Resolver.changePackage(
     isMainFile: Boolean = false
 ) {
     currentPackageName = newCurrentPackage
-    val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $WHITE$currentProjectName")
+    val currentProject =
+        projects[currentProjectName] ?: token.compileError("Can't find project: $WHITE$currentProjectName")
     val alreadyExistsPack = currentProject.packages[newCurrentPackage]
 
     // check that this package not exits already
