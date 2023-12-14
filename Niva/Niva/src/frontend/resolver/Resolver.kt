@@ -292,12 +292,36 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         return true
     }
 
-    // TODO temp, there could be types with same names in different packages
-    if (type1.name == type2.name) {
-        return true
-    }
+
 
     if (type1 is Type.UserLike && type2 is Type.UserLike) {
+        // if types from different packages, and its not core
+        val pkg1 = type1.pkg
+        val pkg2 = type2.pkg
+        if (pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core") {
+            token?.compileError("$YEL$type1$RESET is from $WHITE$pkg1$RESET pkg, and $YEL$type2$RESET from $WHITE$pkg2")
+            return false
+        }
+
+        // if both types has generic params
+        if (type1.typeArgumentList.isNotEmpty() && type2.typeArgumentList.isNotEmpty()) {
+            val args1 = type1.typeArgumentList
+            val args2 = type2.typeArgumentList
+            if (args1.count() != args2.count()) {
+                token?.compileError("Types: $YEL$type1$RESET and $YEL$type2$RESET have a different number of generic parameters")
+                return false
+            }
+            args1.forEachIndexed { index, arg1 ->
+                val arg2 = args2[index]
+                val sameArgs = compare2Types(arg1, arg2)
+                if (!sameArgs) {
+                    token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
+                }
+            }
+            TODO()
+        }
+
+
         // first is parent of the second
         var parent1: Type? = type1.parent
         while (parent1 != null) {
@@ -320,6 +344,10 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         return true
     }
 
+    // TODO temp, there could be types with same names in different packages, or with different generic params
+    if (type1.name == type2.name) {
+        return true
+    }
 
     // comparing with nothing is always true, its bottom type, subtype of all types,
     // so we can return nothing from switch expr branches, beside u cant do it with different types

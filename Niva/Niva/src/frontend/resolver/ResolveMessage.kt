@@ -309,7 +309,7 @@ fun Resolver.resolveMessage(
                 return
             }
 
-            // check all generics are same type
+            // check all generics of receiver are same type
             // if resolver is generic then
             if (receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
                 val receiverTable = mutableMapOf<String, Type>()
