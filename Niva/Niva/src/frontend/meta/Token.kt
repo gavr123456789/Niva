@@ -1,5 +1,7 @@
 package frontend.meta
 
+import main.RED
+import main.RESET
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -12,7 +14,7 @@ enum class TokenType {
     String, Char,
     Double, // 4.2d
     Identifier, NullableIdentifier,
-    Binary, Octal, Hex,
+//    Binary, Octal, Hex,
 
     // Keywords
     Alias, Type, Union, Use, Constructor, Mut,
@@ -93,9 +95,8 @@ fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 fun Token.compileError(text: String): Nothing {
     ":" + this.relPos.start
     val fileLine = "(" + file.name + ":" + line + ")"
-    val red = "\u001b[31m"
-    val reset = "\u001b[0m"
+
 //    error("\n$red\t$text.$fileLine$reset")
-    println("$red\t$text.$fileLine$reset")
+    println("$RED Error:$RESET $text$RESET.$fileLine")
     exitProcess(0)
 }

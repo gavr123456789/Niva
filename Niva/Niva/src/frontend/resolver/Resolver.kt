@@ -9,10 +9,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.util.createFakeToken
 import frontend.util.div
-import main.CYAN
-import main.RED
-import main.WHITE
-import main.YEL
+import main.*
 import main.frontend.typer.*
 import java.io.File
 
@@ -198,7 +195,7 @@ private fun Resolver.resolveStatement(
                 if (w != null) {
                     val isReturnTypeEqualToReturnExprType = compare2Types(q, w)
                     if (!isReturnTypeEqualToReturnExprType) {
-                        statement.token.compileError("Return type is `$YEL${w.name}$RED` but found `${YEL}${q.name}`")
+                        statement.token.compileError("Return type is `$YEL${w.name}${RESET}` but found `${YEL}${q.name}`")
                     }
                 }
             }
@@ -276,7 +273,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
         if (type1.args.count() != type2.args.count()) {
-            token?.compileError("Codeblock `${YEL}${type1.name}${RED}` has ${CYAN}${type1.args.count()}${RED} arguments but `${YEL}${type2.name}$RED` has ${CYAN}${type2.args.count()}")
+            token?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${type1.args.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${type2.args.count()}")
             return false
         }
 
@@ -284,7 +281,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
             val it2 = type2.args[i]
             val isEqual = compare2Types(it.type, it2.type)
             if (!isEqual) {
-                token?.compileError("argument $WHITE${it.name}$RED has type ${YEL}${it.type}$RED but ${WHITE}${it2.name}$RED has type ${YEL}${it2.type}")
+                token?.compileError("argument $WHITE${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
             }
         }
@@ -298,7 +295,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                 return2
             )
         if (!isReturnTypesEqual) {
-            token?.compileError("return types are not equal: ${YEL}$type1 ${RED}!= ${YEL}$type2")
+            token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
         }
 
         return true
@@ -387,7 +384,7 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    token.compileError("Cant find unary message: $CYAN$selectorName$RED for type $YEL${receiverType.pkg}$RED.$YEL${receiverType.name}")
+    token.compileError("Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}")
 }
 
 
@@ -437,7 +434,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
-    token.compileError("Cant find binary message: $YEL$selectorName$RED for type $YEL${receiverType.name}$RED")
+    token.compileError("Cant find binary message: $YEL$selectorName${RESET} for type $YEL${receiverType.name}${RESET}")
 }
 
 fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
@@ -454,7 +451,7 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
             return q
         }
     }
-    token.compileError("Cant find keyword message: $CYAN$selectorName$RED for type $YEL${receiverType.name}")
+    token.compileError("Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.name}")
 }
 
 
@@ -470,7 +467,7 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Packa
     val type = pack.types[typeName]
         ?: getPackage("common", token).types[typeName]
         ?: getPackage("core", token).types[typeName]
-        ?: token.compileError("There are no such type: $YEL$typeName$RED in package $WHITE$currentPackageName$RED in project: $WHITE$currentProjectName$RED")
+        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
 
     val protocol = type.protocols[currentProtocolName]
 
@@ -523,7 +520,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 KeywordArg(
                     name = it.name,
                     type = it.type?.toType(typeDB, typeTable)//fix
-                        ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}$RED's arg $WHITE${it.name}$RED not registered")
+                        ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}${RESET}'s arg $WHITE${it.name}${RESET} not registered")
                 )
             }
             val messageData = KeywordMsgMetaData(
@@ -598,7 +595,7 @@ fun Resolver.addNewType(
     ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
 
     if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type, pkg, statement?.token) != null) {
-        val err = "Type ${YEL}${type.name}$RED already registered in package: $WHITE$currentPackageName"
+        val err = "Type ${YEL}${type.name}${RESET} already registered in package: $WHITE$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }
 
@@ -706,7 +703,7 @@ fun Resolver.changeTarget(target: String, token: Token) {
         "macos" -> CompilationTarget.macos
         "windows" -> token.compileError("Windows native target not supported yet")
         "js" -> token.compileError("js target not supported yet")
-        else -> token.compileError("There is no such target as $WHITE$target$RED, supported targets are $WHITE${CompilationTarget.entries.map { it.name }}$RED, default: ${WHITE}jvm")
+        else -> token.compileError("There is no such target as $WHITE$target${RESET}, supported targets are $WHITE${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
     }
 
     val target = targetFromString(target, token)
@@ -748,7 +745,7 @@ fun Resolver.changeCompilationMode(mode: String, token: Token) {
     fun modeFromString(mode: String, token: Token): CompilationMode = when (mode) {
         "release" -> CompilationMode.release
         "debug" -> CompilationMode.debug
-        else -> token.compileError("There is no such compilation mode as $WHITE$mode, supported targets are $WHITE${CompilationMode.entries.map { it.name }}$RED, default: ${WHITE}debug")
+        else -> token.compileError("There is no such compilation mode as $WHITE$mode, supported targets are $WHITE${CompilationMode.entries.map { it.name }}${RESET}, default: ${WHITE}debug")
     }
 
     val modeEnum = modeFromString(mode, token)
