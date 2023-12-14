@@ -107,7 +107,7 @@ private fun Resolver.resolveStatement(
                         if (statement.isInfoRepl) {
                             addPrintingInfoAboutType(type)
                         } else
-                            statement.token.compileError("to construct type use `${YEL}${statement.name} $CYAN$typeFields`")
+                            statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields`")
                     }
                 } else if (statement.isInfoRepl){
                     addPrintingInfoAboutType(type)
@@ -197,7 +197,7 @@ private fun Resolver.resolveStatement(
                 if (w != null) {
                     val isReturnTypeEqualToReturnExprType = compare2Types(q, w)
                     if (!isReturnTypeEqualToReturnExprType) {
-                        statement.token.compileError("return type is `$YEL${w.name}$RED` but found `${YEL}${q.name}`")
+                        statement.token.compileError("Return type is `$YEL${w.name}$RED` but found `${YEL}${q.name}`")
                     }
                 }
             }
@@ -387,7 +387,7 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    token.compileError("Cant find unary message: $selectorName for type ${receiverType.pkg}.${receiverType.name}")
+    token.compileError("Cant find unary message: $CYAN$selectorName$RED for type $YEL${receiverType.pkg}$RED.$YEL${receiverType.name}")
 }
 
 
@@ -437,7 +437,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
-    token.compileError("Cant find binary message: $selectorName for type ${receiverType.name}")
+    token.compileError("Cant find binary message: $YEL$selectorName$RED for type $YEL${receiverType.name}$RED")
 }
 
 fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
@@ -454,13 +454,13 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
             return q
         }
     }
-    token.compileError("Cant find keyword message: $selectorName for type ${receiverType.name}")
+    token.compileError("Cant find keyword message: $CYAN$selectorName$RED for type $YEL${receiverType.name}")
 }
 
 
 fun Resolver.getPackage(packageName: String, token: Token): Package {
-    val p = this.projects[currentProjectName] ?: token.compileError("there are no such project: $currentProjectName")
-    val pack = p.packages[packageName] ?: token.compileError("there are no such package: $packageName")
+    val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
+    val pack = p.packages[packageName] ?: token.compileError("There are no such package: $packageName")
     return pack
 }
 
@@ -470,7 +470,7 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Packa
     val type = pack.types[typeName]
         ?: getPackage("common", token).types[typeName]
         ?: getPackage("core", token).types[typeName]
-        ?: token.compileError("there are no such type: $typeName in package $currentPackageName in project: $currentProjectName")
+        ?: token.compileError("There are no such type: $YEL$typeName$RED in package $WHITE$currentPackageName$RED in project: $WHITE$currentProjectName$RED")
 
     val protocol = type.protocols[currentProtocolName]
 
@@ -523,7 +523,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 KeywordArg(
                     name = it.name,
                     type = it.type?.toType(typeDB, typeTable)//fix
-                        ?: statement.token.compileError("Type of keyword message ${statement.msgDeclaration.name}'s arg ${it.name} not registered")
+                        ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}$RED's arg $WHITE${it.name}$RED not registered")
                 )
             }
             val messageData = KeywordMsgMetaData(
@@ -642,7 +642,7 @@ fun Resolver.changePackage(
     isMainFile: Boolean = false
 ) {
     currentPackageName = newCurrentPackage
-    val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $currentProjectName")
+    val currentProject = projects[currentProjectName] ?: token.compileError("Can't find project: $WHITE$currentProjectName")
     val alreadyExistsPack = currentProject.packages[newCurrentPackage]
 
     // check that this package not exits already
@@ -706,7 +706,7 @@ fun Resolver.changeTarget(target: String, token: Token) {
         "macos" -> CompilationTarget.macos
         "windows" -> token.compileError("Windows native target not supported yet")
         "js" -> token.compileError("js target not supported yet")
-        else -> token.compileError("There is no such target as $target, supported targets are ${CompilationTarget.entries.map { it.name }}, default: jvm")
+        else -> token.compileError("There is no such target as $WHITE$target$RED, supported targets are $WHITE${CompilationTarget.entries.map { it.name }}$RED, default: ${WHITE}jvm")
     }
 
     val target = targetFromString(target, token)
@@ -748,7 +748,7 @@ fun Resolver.changeCompilationMode(mode: String, token: Token) {
     fun modeFromString(mode: String, token: Token): CompilationMode = when (mode) {
         "release" -> CompilationMode.release
         "debug" -> CompilationMode.debug
-        else -> token.compileError("There is no such compilation mode as $mode, supported targets are ${CompilationMode.entries.map { it.name }}, default: debug")
+        else -> token.compileError("There is no such compilation mode as $WHITE$mode, supported targets are $WHITE${CompilationMode.entries.map { it.name }}$RED, default: ${WHITE}debug")
     }
 
     val modeEnum = modeFromString(mode, token)
@@ -770,7 +770,7 @@ fun Resolver.getTypeForIdentifier(
 //        currentScope,
 //        previousScope
 //    )
-        ?: x.token.compileError("Unresolved reference: ${x.str}")
+        ?: x.token.compileError("Unresolved reference: $WHITE${x.str}")
 
     x.type = type
     return type

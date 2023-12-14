@@ -6,8 +6,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
-import main.RED
-import main.YEL
+import main.*
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     if (type.typeArgumentList.count() > 2) {
@@ -188,7 +187,7 @@ fun Resolver.resolveMessage(
             }
             val receiverType =
                 statement.receiver.type
-                    ?: statement.token.compileError("Can't infer receiver ${statement.receiver.str} type")
+                    ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}$RED type")
 
             resolveKwArgs(statement, currentScope, previousScope, false)
 
@@ -208,16 +207,9 @@ fun Resolver.resolveMessage(
                 }
                 val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
                 if (isThisConstructor) {
-//                    when (keywordReceiverType) {
-//                        is frontend.typer.Type.UserUnionBranchType -> TODO()
-//                        is frontend.typer.Type.UserUnionRootType -> TODO()
-//                        else -> {
-//                            statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
-//
-//                        }
-//                    }
+
                     if (keywordReceiverType is Type.UserUnionRootType) {
-                        statement.token.compileError("You can't instantiate Union root: ${keywordReceiverType.name}")
+                        statement.token.compileError("You can't instantiate Union root: $YEL${keywordReceiverType.name}")
                     }
                     // check if custom
                     if (keywordReceiverType is Type.UserLike) {
@@ -304,13 +296,13 @@ fun Resolver.resolveMessage(
                     // name check
                     // if it lambda, then any arg name is valid
                     if (it.keywordArg.type !is Type.Lambda && it.name != receiverType.args[ii].name) {
-                        statement.token.compileError("${it.name} is not valid arguments for codeblock ${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
+                        statement.token.compileError("$YEL${it.name}$RED is not valid arguments for codeblock $WHITE${statement.receiver.str}, the valid arguments are: ${receiverType.args.map { it.name }} on Line ${statement.token.line}")
                     }
                     // type check
                     val isTypesEqual = compare2Types(it.keywordArg.type!!, receiverType.args[ii].type)
                     if (!isTypesEqual) {
                         statement.token.compileError(
-                            "${it.name} is not valid type for codeblock ${statement.receiver.str}, the valid arguments are: ${statement.args.map { it.keywordArg.type?.name }}"
+                            "$YEL${it.name} is not valid type for codeblock $WHITE${statement.receiver.str}$RED, the valid arguments are: $CYAN${statement.args.map { it.keywordArg.type?.name }}"
                         )
                     }
                 }
@@ -338,7 +330,7 @@ fun Resolver.resolveMessage(
                             if (beforeName != null) {
                                 val typeFromReceiver = receiverTable[beforeName]
                                 if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it)) {
-                                    statement.token.compileError("Generic param of receiver: `${typeFromReceiver.name}` is different from\n\targ: `${kwArg.name}: ${kwArg.keywordArg.str}::${it.name}` but both must be $beforeName")
+                                    statement.token.compileError("Generic param of receiver: `$YEL${typeFromReceiver.name}$RED` is different from\n\targ: `$WHITE${kwArg.name}$RED: $YEL${kwArg.keywordArg.str}$GREEN::$YEL${it.name}$RED` but both must be $YEL$beforeName")
                                 }
                             }
                         }
@@ -352,7 +344,7 @@ fun Resolver.resolveMessage(
                         val realTypeForKwFromDb = letterToRealType[kwArgFromDbType.name]!!
                         val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType)
                         if (!isResolvedGenericParamEqualRealParam) {
-                            statement.token.compileError("generic type error, type ${kwArgFromDbType.name} of $statement was resolved to $realTypeForKwFromDb but found $currentArgType")
+                            statement.token.compileError("Generic type error, type $YEL${kwArgFromDbType.name}$RED of $WHITE$statement$RED was resolved to $YEL$realTypeForKwFromDb$RED but found $YEL$currentArgType")
                         }
                     }
                 }
@@ -398,7 +390,7 @@ fun Resolver.resolveMessage(
 
 
                             val errorText =
-                                statement.receiver.str + " " + statement.args.joinToString(": ") { it.name } + ":"
+                                "$YEL${statement.receiver.str} $CYAN${statement.args.joinToString(": ") { it.name }}:$RED"
                             val text =
                                 if (extraOrMissed)
                                     "For $errorText constructor call, extra fields are listed: $whatIsMissingOrExtra"
@@ -410,10 +402,10 @@ fun Resolver.resolveMessage(
                         statement.args.forEach { kwArg ->
                             val argFromDB = receiverFields.find { it.name == kwArg.name }
                             if (argFromDB == null) {
-                                kwArg.keywordArg.token.compileError("Constructor of ${statement.receiver} has fields: ${receiverFields.map { it.name }}, not ${kwArg.name} ")
+                                kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}$RED, not ${CYAN}${kwArg.name} ")
                             }
                             if (!compare2Types(kwArg.keywordArg.type!!, argFromDB.type)) {
-                                kwArg.keywordArg.token.compileError("In constructor, type of ${kwArg.name} must be ${argFromDB.type.name}, not ${kwArg.keywordArg.type?.name} ")
+                                kwArg.keywordArg.token.compileError("In constructor, type of ${WHITE}${kwArg.name}${RED} must be ${YEL}${argFromDB.type.name}$RED, not ${YEL}${kwArg.keywordArg.type?.name} ")
                             }
                         }
 
@@ -423,7 +415,7 @@ fun Resolver.resolveMessage(
 
 
                         if (typeFieldsNamesSet != receiverFieldsSet) { // !thisIsCustomConstructor &&
-                            statement.token.compileError("In constructor message for type ${statement.receiver.str} fields $typeFieldsNamesSet != $receiverFieldsSet")
+                            statement.token.compileError("In constructor message for type ${YEL}${statement.receiver.str}$RED fields $CYAN$typeFieldsNamesSet$RED != $CYAN$receiverFieldsSet")
                         }
 
                         // replace every Generic type with real
@@ -439,9 +431,9 @@ fun Resolver.resolveMessage(
                                 fieldsOfThisType.forEach { genericField ->
                                     // find real type from arguments
                                     val real = statement.args.find { it.name == genericField.name }
-                                        ?: statement.token.compileError("Can't find real type for field: ${genericField.name} of generic type: ${genericField.type.name}")
+                                        ?: statement.token.compileError("Can't find real type for field: $YEL${genericField.name}$RED of generic type: $YEL${genericField.type.name}$RED")
                                     val realType = real.keywordArg.type
-                                        ?: real.keywordArg.token.compileError("Panic: ${real.name} doesn't have type")
+                                        ?: real.keywordArg.token.compileError("Panic: $YEL${real.name}$RED doesn't have type")
                                     genericField.type = realType
                                     map[typeArg.name] = realType
                                 }
@@ -474,7 +466,7 @@ fun Resolver.resolveMessage(
 
                     val returnType = if (returnTypeFromDb is Type.UnknownGenericType) {
                         val realTypeFromTable = letterToRealType[returnTypeFromDb.name]
-                            ?: throw Exception("Cant find generic type ${returnTypeFromDb.name} in letterToRealType table $letterToRealType")
+                            ?: throw Exception("Cant find generic type $YEL${returnTypeFromDb.name}$RED in letterToRealType table $YEL$letterToRealType")
                         realTypeFromTable
                     } else if (returnTypeFromDb is Type.UserType && returnTypeFromDb.typeArgumentList.find { it.name.length == 1 } != null) {
                         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
@@ -485,7 +477,7 @@ fun Resolver.resolveMessage(
                             val isNotResolved = typeArg.name.length == 1 && typeArg.name[0].isUpperCase()
                             if (isNotResolved) {
                                 val resolvedLetterType = letterToRealType[typeArg.name]
-                                    ?: throw Exception("Can't find generic type: ${typeArg.name} in letter table")
+                                    ?: throw Exception("Can't find generic type: $YEL${typeArg.name}$RED in letter table")
                                 newResolvedTypeArgs.add(resolvedLetterType)
                                 resolvedLetterType.beforeGenericResolvedName = typeArg.name
                             } else {
@@ -514,7 +506,7 @@ fun Resolver.resolveMessage(
                                 compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                             if (!sameTypes) {
                                 argAndItsMessages.keywordArg.token.compileError(
-                                    "In keyword message `${statement.selectorName}` type `${typeOfArgFromDeclaration.name}` for argument `${argAndItsMessages.name}` doesn't match `${typeOfArgFromDb.name}`"
+                                    "In keyword message `$CYAN${statement.selectorName}$RED` type `$YEL${typeOfArgFromDeclaration.name}$RED` for argument `$CYAN${argAndItsMessages.name}$RED` doesn't match `$YEL${typeOfArgFromDb.name}$RED`"
                                 )
                             }
 
@@ -538,7 +530,7 @@ fun Resolver.resolveMessage(
             }
 
             val receiverType = receiver.type
-                ?: statement.token.compileError("Can't resolve return type of ${statement.selectorName} binary msg")
+                ?: statement.token.compileError("Can't resolve return type of $CYAN${statement.selectorName}$RED binary msg")
 
 
             // resolve messages
@@ -588,7 +580,7 @@ fun Resolver.resolveMessage(
                 currentLevel++
                 resolve(listOf(receiver), (currentScope + previousScope).toMutableMap(), statement)
                 currentLevel--
-                receiver.type ?: statement.token.compileError("Can't resolve type of ${statement.selectorName} unary msg: ${receiver.str}")
+                receiver.type ?: statement.token.compileError("Can't resolve type of $CYAN${statement.selectorName}$RED unary msg: $YEL${receiver.str}")
             }
 
             fun checkForStatic(receiver: Receiver): Boolean =
@@ -617,14 +609,14 @@ fun Resolver.resolveMessage(
             if (receiverType is Type.Lambda) {
                 if (statement.selectorName != "do") {
                     if (receiverType.args.isNotEmpty())
-                        statement.token.compileError("Codeblock ${statement.str} takes more than 0 arguments, please use keyword message with it's args names")
+                        statement.token.compileError("Codeblock $WHITE${statement.str}$RED takes more than 0 arguments, please use keyword message with it's args names")
                     else
-                        statement.token.compileError("For codeblock ${statement.str} you can use only unary 'do' message")
+                        statement.token.compileError("For codeblock $WHITE${statement.str}$RED you can use only unary 'do' message")
                 }
 
 
                 if (receiverType.args.isNotEmpty()) {
-                    statement.token.compileError("Codeblock ${statement.str} on Line ${statement.token.line} takes more than 0 arguments, please use keyword message with it's args names")
+                    statement.token.compileError("Codeblock $WHITE${statement.str}$RED takes more than 0 arguments, please use keyword message with it's args names")
                 }
 
                 statement.type = receiverType.returnType
@@ -658,9 +650,9 @@ fun Resolver.resolveMessage(
                     statement.type = if (messageReturnType.returnType is Type.UnknownGenericType) {
                         if (receiverType is Type.UserLike) {
                             receiverType.typeArgumentList.find { it.beforeGenericResolvedName == messageReturnType.returnType.name }
-                                ?: statement.token.compileError("Cant infer return generic type of unary ${statement.selectorName}")
+                                ?: statement.token.compileError("Cant infer return generic type of unary $CYAN${statement.selectorName}")
                         } else {
-                            throw Exception("Return type is generic, but receiver of ${statement.selectorName} is not user type")
+                            throw Exception("Return type is generic, but receiver of $YEL${statement.selectorName}$RED is not user type")
                         }
                     } else {
                         messageReturnType.returnType
@@ -670,7 +662,7 @@ fun Resolver.resolveMessage(
                     statement.pragmas = messageReturnType.pragmas
                 } else {
                     // static call
-                    val (messageReturnType, isGetter) = findStaticMessageType(
+                    val (messageReturnType, isGetter2) = findStaticMessageType(
                         receiverType,
                         statement.selectorName,
                         statement.token,
@@ -680,7 +672,7 @@ fun Resolver.resolveMessage(
                         receiver.isConstructor = false
                     }
 
-                    statement.kind = if (isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
+                    statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType.returnType
                     statement.pragmas = messageReturnType.pragmas
                 }

@@ -7,6 +7,7 @@ import frontend.parser.types.ast.UnionDeclaration
 import frontend.resolver.*
 import frontend.util.containSameFields
 import frontend.util.setDiff
+import main.CYAN
 import main.RED
 import main.WHITE
 import main.YEL
@@ -90,7 +91,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
                 ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")
 
             if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type)) {
-                fieldAST.token.compileError("In enum branch: `${it.typeName}` field `${fieldAST.name}` has type `${fieldAST.value.type}` but `${rootFieldWithSameName.type}` expected")
+                fieldAST.token.compileError("In enum branch: `$YEL${it.typeName}$RED` field `$WHITE${fieldAST.name}$RED` has type `$YEL${fieldAST.value.type}$RED` but `$YEL${rootFieldWithSameName.type}$RED` expected")
             }
 
         }
