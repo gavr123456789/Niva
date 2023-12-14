@@ -8,6 +8,9 @@ import frontend.parser.types.ast.LiteralExpression
 import frontend.parser.types.ast.MessageSend
 import frontend.resolver.*
 import frontend.util.removeDoubleQuotes
+import main.RED
+import main.WHITE
+import main.YEL
 
 fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
     // add to the current project
@@ -27,7 +30,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "import" -> usePackage(substring, true)
                     "target" -> changeTarget(substring, statement.token)
                     "mode" -> changeCompilationMode(substring, statement.token)
-                    else -> statement.token.compileError("Unexpected argument ${it.name} for Project")
+                    else -> statement.token.compileError("Unexpected argument $WHITE${it.name} ${RED}for Project")
                 }
             }
 
@@ -38,12 +41,12 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                             it.keywordArg.token.compileError("packages must be listed as String")
                         }
 
-                        generator.addToGradleDependencies(it.keywordArg.initElements.map { it.token.lexeme })
+                        generator.addToGradleDependencies(it.keywordArg.initElements.map {x -> x.token.lexeme })
                     }
                 }
             }
 
-            else -> it.keywordArg.token.compileError("Only String args allowed for ${it.name}")
+            else -> it.keywordArg.token.compileError("Only ${YEL}String$WHITE args allowed for $YEL${it.name}")
         }
     }
 }

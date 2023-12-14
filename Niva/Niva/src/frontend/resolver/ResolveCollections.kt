@@ -3,6 +3,8 @@ package main.frontend.typer
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.*
+import main.CYAN
+import main.WHITE
 
 fun Resolver.resolveList(statement: ListCollection, rootStatement: Statement?) {
     if (statement.initElements.isNotEmpty()) {
@@ -96,8 +98,8 @@ fun Resolver.resolveMap(
     resolve(listOf(value), (currentScope + previousScope).toMutableMap(), statement)
     currentLevel--
 
-    val keyType = key.type ?: key.token.compileError("Can't resolve type of key: ${key.str}")
-    val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${value.str}")
+    val keyType = key.type ?: key.token.compileError("Can't resolve type of key: ${CYAN}${key.str}")
+    val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${WHITE}${value.str}")
 
     val mapTypeFromDb =
         this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType

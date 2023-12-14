@@ -7,6 +7,10 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.util.createFakeToken
 import frontend.util.div
+import main.CYAN
+import main.RED
+import main.WHITE
+import main.YEL
 import main.frontend.typer.*
 import java.io.File
 
@@ -32,7 +36,7 @@ private fun Resolver.resolveStatement(
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
                         statement2.messages.last().type
-                            ?: statement2.token.compileError("Not all messages of ${statement2.str} has types")
+                            ?: statement2.token.compileError("Not all messages of $YEL${statement2.str} ${WHITE}has types")
                 } else {
                     // every single expressions is unary message without messages
                     if (statement2.type == null) {
@@ -41,7 +45,7 @@ private fun Resolver.resolveStatement(
                         currentLevel--
                     }
                     statement2.type = statement2.receiver.type
-                        ?: statement2.token.compileError("Can't find type for ${statement2.str} on line ${statement2.token.line}")
+                        ?: statement2.token.compileError("Can't find type for ${YEL}${statement2.str} on line ${WHITE}${statement2.token.line}")
                 }
             }
         }
@@ -101,7 +105,7 @@ private fun Resolver.resolveStatement(
                         if (statement.isInfoRepl) {
                             addPrintingInfoAboutType(type)
                         } else
-                            statement.token.compileError("to construct type use `${statement.name} $typeFields`")
+                            statement.token.compileError("to construct type use `${YEL}${statement.name} $CYAN$typeFields`")
                     }
                 } else if (statement.isInfoRepl){
                     addPrintingInfoAboutType(type)
@@ -191,7 +195,7 @@ private fun Resolver.resolveStatement(
                 if (w != null) {
                     val isReturnTypeEqualToReturnExprType = compare2Types(q, w)
                     if (!isReturnTypeEqualToReturnExprType) {
-                        statement.token.compileError("return type is `${w.name}` but found `${q.name}`")
+                        statement.token.compileError("return type is `$YEL${w.name}$RED` but found `${YEL}${q.name}`")
                     }
                 }
             }
@@ -270,7 +274,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
         if (type1.args.count() != type2.args.count()) {
-            token?.compileError("Codeblock `${type1.name}` has ${type1.args.count()} arguments but `${type2.name}` has ${type2.args.count()}")
+            token?.compileError("Codeblock `${YEL}${type1.name}${RED}` has ${CYAN}${type1.args.count()}${RED} arguments but `${YEL}${type2.name}$RED` has ${CYAN}${type2.args.count()}")
             return false
         }
 
@@ -278,7 +282,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
             val it2 = type2.args[i]
             val isEqual = compare2Types(it.type, it2.type)
             if (!isEqual) {
-                token?.compileError("argument ${it.name} has type ${it.type} but ${it2.name} has type ${it2.type}")
+                token?.compileError("argument $WHITE${it.name}$RED has type ${YEL}${it.type}$RED but ${WHITE}${it2.name}$RED has type ${YEL}${it2.type}")
                 return false
             }
         }
@@ -292,7 +296,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                 return2
             )
         if (!isReturnTypesEqual) {
-            token?.compileError("return types are not equal: $type1 != $type2")
+            token?.compileError("return types are not equal: ${YEL}$type1 ${RED}!= ${YEL}$type2")
         }
 
         return true
@@ -593,7 +597,7 @@ fun Resolver.addNewType(
     ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
 
     if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type, pkg, statement?.token) != null) {
-        val err = "Type ${type.name} already registered in project: $currentProjectName in package: $currentPackageName"
+        val err = "Type ${YEL}${type.name}$RED already registered in package: $WHITE$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }
 

@@ -3,13 +3,15 @@ package codogen
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
+import main.RED
+import main.YEL
 
 fun MessageSend.generateMessageCall(): String {
 
     val b = StringBuilder()
 
     if (this.messages.isEmpty()) {
-        this.token.compileError("Message list for ${this.str} can't be empty")
+        this.token.compileError("Message list for ${YEL}${this.str}${RED} can't be empty")
     }
 
     b.append("(".repeat(messages.count { it.isPiped }))

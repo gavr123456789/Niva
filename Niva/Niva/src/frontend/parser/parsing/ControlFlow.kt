@@ -3,6 +3,7 @@ package frontend.parser.parsing
 import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import main.WHITE
 
 fun Parser.ifBranches(): List<IfBranch> {
     val result = mutableListOf<IfBranch>()
@@ -47,7 +48,7 @@ fun Parser.ifStatementOrExpression(fromSwitch: Boolean = false): ControlFlow.If 
     } else peek()
 
     if (fromSwitch && pipeTok.kind != TokenType.Pipe) {
-        pipeTok.compileError("| expected but found: ${pipeTok.lexeme}")
+        pipeTok.compileError("| expected but found: ${WHITE}${pipeTok.lexeme}")
     }
     val ifBranches = ifBranches()
 

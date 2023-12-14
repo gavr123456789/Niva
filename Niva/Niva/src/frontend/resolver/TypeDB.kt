@@ -6,6 +6,10 @@ import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 import frontend.parser.types.ast.Receiver
 import frontend.util.createFakeToken
+import main.CYAN
+import main.RED
+import main.WHITE
+import main.YEL
 
 sealed class TypeDBResult {
     class FoundOneUser(val type: Type.UserLike) : TypeDBResult()
@@ -156,7 +160,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
         if (listHasTypeWithThisName != null) {
             // check that their defined in different packages, if not than drop
             if (type.pkg == listHasTypeWithThisName.pkg) {
-                println("typeDB: Type with name ${type.name} already defined in package ${type.pkg}")
+//                println("typeDB: Type with name ${type.name} already defined in package ${type.pkg}")
 //                token.compileError("Type with name ${type.name} already defined in package ${type.pkg}")
             } else {
                 // add new type to list
@@ -189,7 +193,7 @@ fun resolveTypeIfSameNamesFromConstructor(
 
     if (statement == null) {
         val typesList = result.packagesToTypes.values.map { it.name to it.pkg}
-        createFakeToken().compileError("Found more the one types with same name in different packages: $typesList" )
+        createFakeToken().compileError("Found more the one types with same name in different packages: $WHITE$typesList" )
     }
 
 
@@ -199,7 +203,7 @@ fun resolveTypeIfSameNamesFromConstructor(
     if (receiver is IdentifierExpr && receiver.names.count() > 1) {
         val packageName = receiver.names.dropLast(1).joinToString(".")
         val resultType = result.packagesToTypes[packageName]
-            ?: statement.token.compileError("Can't find type ${receiver.name} inside $packageName package")
+            ?: statement.token.compileError("Can't find type $YEL${receiver.name}$RED inside ${WHITE}$packageName$RED package")
         return resultType
     }
 

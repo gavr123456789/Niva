@@ -6,8 +6,8 @@ import frontend.util.CurrentOS
 import frontend.util.div
 import frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
-import main.ANSI_RESET
-import main.ANSI_YELLOW
+import main.RESET
+import main.YEL
 import java.io.*
 
 
@@ -83,7 +83,7 @@ fun runGradleRunInProject(
         }
 
     if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
-        println("${ANSI_YELLOW}Warning: It's useless to use release mode with jvm target$ANSI_RESET")
+        println("${YEL}Warning: It's useless to use release mode with jvm target$RESET")
     }
 
 

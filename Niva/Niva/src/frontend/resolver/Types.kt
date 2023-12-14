@@ -6,6 +6,10 @@ import frontend.meta.compileError
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import main.CYAN
+import main.RED
+import main.WHITE
+import main.YEL
 
 data class MsgSend(
     val pkg: String,
@@ -336,7 +340,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
     when (this) {
         is TypeAST.InternalType -> {
             return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
-                this.token.compileError("Can't find default type: $name")
+                this.token.compileError("Can't find default type: ${YEL}$name")
                 // TODO better inference, depend on context
             }
         }
@@ -352,7 +356,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 // need to know, what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val type = typeTable[name] ?: this.token.compileError("Can't find user type: $name")
+                val type = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
                 //TODO DB
                 if (type is Type.UserLike) {
                     val letterToTypeMap = mutableMapOf<String, Type>()
@@ -377,11 +381,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                     }
                     return type
                 } else {
-                    this.token.compileError("Panic: type: ${this.name} with typeArgumentList cannot but be Type.UserType")
+                    this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
             }
             return typeTable[name]
-                ?: this.token.compileError("Can't find user type: $name")
+                ?: this.token.compileError("Can't find user type: ${YEL}$name")
         }
 
         is TypeAST.Lambda -> {
@@ -605,7 +609,7 @@ fun MessageDeclarationKeyword.toMessageData(
         KeywordArg(
             name = it.name,
             type = it.type?.toType(typeDB, typeTable)
-                ?: token.compileError("Type of keyword message ${this.name}'s arg ${it.name} not registered")
+                ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${it.name}${RED} not registered")
         )
     }
     val result = KeywordMsgMetaData(
