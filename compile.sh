@@ -46,10 +46,14 @@ list = {1 2 3}
 list2 = list filter: [it > 1]
 >list' > main.scala
 # xdg-open main.scala
+printf "\n\n"
 
 if [ "$1" == "bin" ]; then
   ./niva main.scala
+  echo "niva compiler binary is located inside the niva_compiler folder"
 fi
 if [ "$1" == "jvm" ]; then
   ./Niva main.scala
+  echo "niva compiler jar is located inside the niva_compiler/Niva-SNAPSHOT-1.0/bin folder"
 fi
+

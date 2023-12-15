@@ -53,11 +53,12 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append(", ")
         }
     }
+
     fun generateEnumArgs(enumRoot: EnumDeclarationRoot) {
         enumRoot.branches.forEach {
             append("    ", it.typeName)
             val hasFields = it.fieldsValues.isNotEmpty()
-            if (hasFields){
+            if (hasFields) {
                 append("(")
             }
 
@@ -158,13 +159,11 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         // for static methods like constructor
         append(
             """
-            
-        }
-        companion object
-    """.trimIndent()
+    }
+    companion object"""
         )
     }
-    append("}")
+    append("\n}\n")
 
 }
 

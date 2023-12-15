@@ -390,9 +390,9 @@ fun Resolver.resolveMessage(
                                 "$YEL${statement.receiver.str} $CYAN${statement.args.joinToString(": ") { it.name }}:${RESET}"
                             val text =
                                 if (extraOrMissed)
-                                    "For $errorText constructor call, extra fields are listed: $whatIsMissingOrExtra"
+                                    "For $errorText constructor call, extra fields are listed: $CYAN$whatIsMissingOrExtra"
                                 else
-                                    "For $errorText constructor call, not all fields are listed, you missed: $whatIsMissingOrExtra"
+                                    "For $errorText constructor call, not all fields are listed, you missed: $CYAN$whatIsMissingOrExtra"
                             statement.token.compileError(text)
                         }
                         // check types

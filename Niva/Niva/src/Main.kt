@@ -76,7 +76,7 @@ const val HELP = """
 Usage:
     niva FILE — compile and run project with file as main entry
 Flags:
-    -c      — compile only
+    -c      — compile only(creates binary in current folder)
     -i      — get info about packages(it is usable to pipe it to .md file)
     -iu     — print info only about user-defined types
     -i pkg  — print info only about specific pkg
@@ -117,7 +117,18 @@ Kotlin\Java interop:
 """
 
 
+
+
 fun main(args: Array<String>) {
+
+    val x = "sas"
+
+    with(x) {
+        chars()
+        length
+        hashCode()
+    }
+
 //    val args = listOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
     val isThereArgs = args.isNotEmpty()
 
