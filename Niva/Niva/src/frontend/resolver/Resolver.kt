@@ -318,7 +318,6 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                     token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
                 }
             }
-            TODO()
         }
 
 

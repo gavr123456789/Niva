@@ -22,7 +22,10 @@ sealed class MessageSend(
     token: Token
 ) : Receiver(type, token) {
     override fun toString(): String {
-        return "${receiver.token.lexeme} ${messages.map { it.toString() }}"
+        val msg = if (messages.count() == 1) {
+            messages[0].toString()
+        } else messages.joinToString(" ") { it.toString() }
+        return "${receiver.token.lexeme} $msg"
     }
 }
 
