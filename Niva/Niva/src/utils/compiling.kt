@@ -155,7 +155,9 @@ fun compileProjFromFile(
     val mainFile = File(pathToProjectRootFile)
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths = listFilesRecursively(nivaProjectFolder, "niva", "scala").filter { it.name != mainFile.name }
+    val allFiles = listOf( mainFile.absoluteFile.toString()) + otherFilesPaths.map { it.absoluteFile.toString() }
 
+    println("Compiling: $allFiles")
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
