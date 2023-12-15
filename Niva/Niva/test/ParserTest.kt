@@ -3,6 +3,7 @@ import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
 import main.lex
+import org.junit.experimental.theories.suppliers.TestedOn
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1266,6 +1267,42 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert(ast[0] is ReturnStatement)
+    }
+
+    @Test
+    fun pipeUnaryAfterBinary() {
+        val source = """
+            width * height |> toFloat
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val send = ast[0] as MessageSendBinary
+        assert(send.messages.count() == 2)
+    }
+
+    @Test
+    fun pipeUnaryAfterKw() {
+        val source = """
+            LoggedIn name: "Oleг" |> welcome
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val send = ast[0] as MessageSendKeyword
+        assert(send.messages.count() == 2)
+    }
+
+    @Test
+    fun pipeUnaryAfterTypeConstructor() {
+        val source = """
+            Guest |> welcome
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val send = ast[0] as MessageSendUnary
+        assert(send.messages.count() == 1 && send.messages[0].selectorName == "welcome")
     }
 
 

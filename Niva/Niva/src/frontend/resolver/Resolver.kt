@@ -88,16 +88,20 @@ private fun Resolver.resolveStatement(
                 rootStatement
             } else null
 
+            if (statement.token.lexeme == "Guest") {
+                6
+            }
+
             getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
             val type = statement.type
 
-            if (type != null && statement.str == type.name && type !is Type.UserEnumRootType) {
+            if (type != null && statement.str == type.name && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
                 if (type is Type.UserLike) {
                     if (type.fields.isEmpty()) {
                         statement.isConstructor = true
-                    } else if (kw == null && rootStatement !is ControlFlow) {
+                    } else if (kw == null) {
                         val typeFields = type.fields.joinToString(": value") { it.name } + ": value"
 
                         // Inline question

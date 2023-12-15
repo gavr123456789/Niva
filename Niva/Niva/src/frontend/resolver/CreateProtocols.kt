@@ -7,6 +7,7 @@ import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.types.ast.LiteralExpression
+import frontend.resolver.Type.RecursiveType.name
 import java.io.File
 
 
@@ -21,7 +22,7 @@ fun createIntProtocols(
     anyType: Type.InternalType,
     charType: Type.InternalType
 
-    ): MutableMap<String, Protocol> {
+): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
     val arithmeticProtocol = Protocol(
@@ -52,9 +53,9 @@ fun createIntProtocols(
 
             ),
         keywordMsgs = mutableMapOf(
-            createKeyword("plus", KeywordArg("plus", intType), intType),
-            createKeyword("to", KeywordArg("to", intType), intRangeType),
-            createKeyword("downTo", KeywordArg("downTo", intType), intRangeType),
+            createKeyword( KeywordArg("plus", intType), intType),
+            createKeyword( KeywordArg("to", intType), intRangeType),
+            createKeyword( KeywordArg("downTo", intType), intRangeType),
             createKeyword(
                 "toDo",
                 listOf(
@@ -99,13 +100,19 @@ fun createFloatProtocols(
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
+    3.24.mod(3.4)
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
-            createUnary("inc", intType),
-            createUnary("dec", intType),
+            createUnary("inc", floatType),
+            createUnary("dec", floatType),
             createUnary("toInt", intType),
+            createUnary("toString", stringType),
+
+            createUnary("isInfinite", boolType),
+            createUnary("isFinite", boolType),
+            createUnary("isNaN", boolType),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("==", intType, boolType),
@@ -114,15 +121,30 @@ fun createFloatProtocols(
             createBinary("<", intType, boolType),
             createBinary("<=", intType, boolType),
             createBinary(">=", intType, boolType),
-            createBinary("+", intType, intType),
-            createBinary("-", intType, intType),
-            createBinary("*", intType, intType),
-            createBinary("%", intType, intType),
-            createBinary("/", intType, intType),
+
+            createBinary("==", floatType, boolType),
+            createBinary("!=", floatType, boolType),
+            createBinary(">", floatType, boolType),
+            createBinary("<", floatType, boolType),
+            createBinary("<=", floatType, boolType),
+            createBinary(">=", floatType, boolType),
+
+            createBinary("+", intType, floatType),
+            createBinary("-", intType, floatType),
+            createBinary("*", intType, floatType),
+            createBinary("%", intType, floatType),
+            createBinary("/", intType, floatType),
+
+            createBinary("+", floatType, floatType),
+            createBinary("-", floatType, floatType),
+            createBinary("*", floatType, floatType),
+            createBinary("%", floatType, floatType),
+            createBinary("/", floatType, floatType),
         ),
         keywordMsgs = mutableMapOf(
+            createKeyword(KeywordArg("mod", intType), floatType).rename("get"),
 
-        ),
+            ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
     return result
@@ -139,8 +161,8 @@ val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type ->
     name to KeywordMsgMetaData(name, args, returnType, "core")
 }
 
-fun createKeyword(name: String, arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
-    return name to KeywordMsgMetaData(name, listOf(arg), returnType, "core")
+fun createKeyword(arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
+    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core")
 }
 
 fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMsgMetaData> {
@@ -202,14 +224,18 @@ fun createStringProtocols(
             createForEachKeywordIndexed(intType, charType, unitType),
             createFilterKeyword(charType, boolType, stringType),
 
-            createKeyword("substring", KeywordArg("substring", intType), stringType),
-            createKeyword("fromTo", listOf(KeywordArg("from", intType), KeywordArg("to", intType)) , stringType).rename("substring"),
+            createKeyword(KeywordArg("substring", intType), stringType),
+            createKeyword(
+                "fromTo",
+                listOf(KeywordArg("from", intType), KeywordArg("to", intType)),
+                stringType
+            ).rename("substring"),
 
 
-            createKeyword("at", KeywordArg("at", intType), charType).rename("get"),
-            createKeyword("drop", KeywordArg("drop", intType), stringType),
-            createKeyword("split", KeywordArg("split", stringType), listOfString),
-            createKeyword("dropLast", KeywordArg("dropLast", intType), stringType),
+            createKeyword(KeywordArg("at", intType), charType).rename("get"),
+            createKeyword(KeywordArg("drop", intType), stringType),
+            createKeyword(KeywordArg("split", stringType), listOfString),
+            createKeyword(KeywordArg("dropLast", intType), stringType),
         ),
     )
 
@@ -245,14 +271,15 @@ fun createBoolProtocols(
             createBinary("||", boolType, boolType),
         ),
         keywordMsgs = mutableMapOf(
-            createKeyword("or", KeywordArg("or", boolType), boolType),
-            createKeyword("and", KeywordArg("and", boolType), boolType),
-            createKeyword("xor", KeywordArg("xor", boolType), boolType),
+            createKeyword(KeywordArg("or", boolType), boolType),
+            createKeyword(KeywordArg("and", boolType), boolType),
+            createKeyword(KeywordArg("xor", boolType), boolType),
 
-            createKeyword("ifTrue", KeywordArg("ifTrue", Type.Lambda(mutableListOf(), genericParam)), unitType),
-            createKeyword("ifFalse", KeywordArg("ifFalse", Type.Lambda(mutableListOf(), genericParam)), unitType),
+            createKeyword(KeywordArg("ifTrue", Type.Lambda(mutableListOf(), genericParam)), unitType),
+            createKeyword(KeywordArg("ifFalse", Type.Lambda(mutableListOf(), genericParam)), unitType),
 
-            createKeyword("ifTrueIfFalse",
+            createKeyword(
+                "ifTrueIfFalse",
 
                 listOf(
                     KeywordArg("ifTrue", Type.Lambda(mutableListOf(), genericParam)),
@@ -271,7 +298,6 @@ fun createBoolProtocols(
 
                 genericParam
             )
-
 
 
         ),
@@ -369,7 +395,7 @@ fun createIntRangeProtocols(
             createBinary("!=", rangeType, boolType)
         ),
         keywordMsgs = mutableMapOf(
-            createKeyword("step", KeywordArg("step", intType), rangeType),
+            createKeyword(KeywordArg("step", intType), rangeType),
 
             createForEachKeyword(intType, unitType),
             createForEachKeywordIndexed(intType, intType, unitType),
@@ -390,7 +416,7 @@ fun createIntRangeProtocols(
 //                unitType
 //            ),
 
-            createKeyword("contains", KeywordArg("contains", intType), boolType),
+            createKeyword(KeywordArg("contains", intType), boolType),
 
 
             ),
@@ -415,10 +441,10 @@ fun createExceptionProtocols(
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
-            createKeyword("addSuppressed", KeywordArg("addSuppressed", errorType), unitType),
+            createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword("throwWithMessage", KeywordArg("throwWithMessage", stringType), nothingType),
+            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType),
         )
     )
     result[protocol.name] = protocol
@@ -450,15 +476,19 @@ fun createListProtocols(
             createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),
             createFilterKeyword(itType, boolType, listType),
 
-            createKeyword("add", KeywordArg("add", itType), unitType),
-            createKeyword("at", KeywordArg("at", intType), itType).rename("get"),
-            createKeyword("removeAt", KeywordArg("removeAt", intType), unitType),
-            createKeyword("addAll", KeywordArg("addAll", listType), boolType),
-            createKeyword("atPut", KeywordArg("at", itType), unitType),
-            createKeyword("drop", KeywordArg("drop", intType), listType),
-            createKeyword("dropLast", KeywordArg("dropLast", intType), listType),
+            createKeyword(KeywordArg("add", itType), unitType),
+            createKeyword(KeywordArg("at", intType), itType).rename("get"),
+            createKeyword(KeywordArg("removeAt", intType), unitType),
+            createKeyword(KeywordArg("addAll", listType), boolType),
+            createKeyword(KeywordArg("at", itType), unitType),
+            createKeyword(KeywordArg("drop", intType), listType),
+            createKeyword(KeywordArg("dropLast", intType), listType),
 
-            createKeyword("viewFromTo", listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)) , listType).rename("subList"),
+            createKeyword(
+                "viewFromTo",
+                listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)),
+                listType
+            ).rename("subList"),
 
             createKeyword(
                 "atPut",
@@ -511,15 +541,11 @@ fun createSetProtocols(
             createMapKeyword(genericTypeOfSetElements, differentGenericType, setTypeOfDifferentGeneric),
             createFilterKeyword(genericTypeOfSetElements, boolType, setType),
 
-            createKeyword("add", KeywordArg("add", genericTypeOfSetElements), unitType),
-            createKeyword("remove", KeywordArg("remove", genericTypeOfSetElements), boolType),
-
-            createKeyword("addAll", KeywordArg("addAll", setType), boolType),
-
-            createKeyword("intersect", KeywordArg("intersect", setType), setType),
-
-
-            )
+            createKeyword(KeywordArg("add", genericTypeOfSetElements), unitType),
+            createKeyword(KeywordArg("remove", genericTypeOfSetElements), boolType),
+            createKeyword(KeywordArg("addAll", setType), boolType),
+            createKeyword(KeywordArg("intersect", setType), setType)
+        )
     )
 
     result[collectionProtocol.name] = collectionProtocol
@@ -643,16 +669,14 @@ fun createMapProtocols(
             )
                 .rename("set"),
 
-            createKeyword("at", KeywordArg("at", keyType), valueType)
+            createKeyword(KeywordArg("at", keyType), valueType)
                 .rename("get"),
 
-            createKeyword("remove", KeywordArg("remove", keyType), intType),
-            createKeyword("putAll", KeywordArg("addAll", mapType), unitType),
-            createKeyword("containsKey", KeywordArg("containsKey", keyType), boolType),
-            createKeyword("containsValue", KeywordArg("containsValue", valueType), boolType),
-
-
-            )
+            createKeyword(KeywordArg("remove", keyType), intType),
+            createKeyword(KeywordArg("addAll", mapType), unitType),
+            createKeyword(KeywordArg("containsKey", keyType), boolType),
+            createKeyword(KeywordArg("containsValue", valueType), boolType)
+        )
     )
 
     result[collectionProtocol.name] = collectionProtocol
@@ -664,7 +688,6 @@ private fun createMapKeyword(
     differentGenericType: Type.UnknownGenericType,
     listTypeOfDifferentGeneric: Type.UserType
 ) = createKeyword(
-    "map",
     KeywordArg(
         "map",
         Type.Lambda(
@@ -680,7 +703,6 @@ private fun createFilterKeyword(
     boolType: Type.InternalType,
     returnType: Type
 ) = createKeyword(
-    "filter",
     KeywordArg(
         "filter",
         Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfSetElements)), boolType)

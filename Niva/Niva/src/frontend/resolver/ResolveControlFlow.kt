@@ -239,6 +239,9 @@ fun Resolver.resolveControlFlow(
                     firstBranchReturnType = it.getReturnTypeOrThrow()
                 }
             }
+            if (firstBranchReturnType == null) {
+                statement.token.compileError("Can't infer return type of the first branch, probably bug")
+            }
 
             statement.switch.type = savedSwitchType
 
@@ -277,7 +280,7 @@ fun Resolver.resolveControlFlow(
                     }
 
                     if (statement.type == null) {
-                        statement.type = root
+                        statement.type = firstBranchReturnType!!
                     }
                 }
             }

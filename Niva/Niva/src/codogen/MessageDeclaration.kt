@@ -54,7 +54,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty()) {
         append("<")
         val typeArgs = mutableListOf<String>()
-        typeArgs.addAll(forType2.typeArgumentList.map { it.name })
+        typeArgs.addAll(forType2.typeArgumentList.map { it.name }.toSet())
 
         forType2.typeArgumentList.forEach {
             append(it.name)
@@ -102,7 +102,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     if (isThereUnresolvedTypeArgs.isNotEmpty()) {
         // There can be resolved type args like box::Box::Int, then we don't need to add them
         append("<")
-        append(isThereUnresolvedTypeArgs.joinToString(", "))
+        append(isThereUnresolvedTypeArgs.toSet().joinToString(", "))
         append(">")
     }
 

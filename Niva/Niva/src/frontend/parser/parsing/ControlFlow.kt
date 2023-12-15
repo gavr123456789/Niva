@@ -73,7 +73,7 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
 
     val switchExpression = expression()
     skipOneEndOfLineOrFile()
-//    skipNewLinesAndComments()
+
     val otherPart = ifStatementOrExpression(fromSwitch = true)
     val result = ControlFlow.Switch(
         switch = switchExpression,

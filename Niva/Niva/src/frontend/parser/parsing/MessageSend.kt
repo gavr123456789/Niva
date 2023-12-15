@@ -109,9 +109,9 @@ fun Parser.unaryOrBinary(
     val takeLastMessage = {
         if (binaryMessages.isNotEmpty()) {
             binaryMessages.last()
-        } else {
+        } else if (unaryMessages.isNotEmpty()) {
             unaryMessages.last()
-        }
+        } else null //throw Exception("Both unary and binary messages are empty")
     }
 
     // 1 inc |> inc useless!
@@ -119,6 +119,7 @@ fun Parser.unaryOrBinary(
     // 1 + 2 |> inc to: 3
 
     // Pipe operator
+    val pipedMsgs = mutableListOf<Message>()
 
     while (parsePipeAndCascade && matchAfterSkip(TokenType.PipeOperator)) {
         wasPipe = true
@@ -129,24 +130,24 @@ fun Parser.unaryOrBinary(
         when {
 
             check(TokenType.Identifier) -> {
-                val lastMsg = takeLastMessage()
-                val unary = unaryMessagesMatching(lastMsg)//.onEach { it.isPiped = true }
+                val lastMsg = takeLastMessage() ?:firstReceiver
+                val unary = unaryMessagesMatching(lastMsg)
                 binaryMessages.forEach {
                     it.isPiped = true
                 }
                 unaryMessages.forEach {
                     it.isPiped = true
                 }
-                unaryMessages.addAll(unary)
+                pipedMsgs.addAll(unary)
 
                 if (check(TokenType.BinarySymbol)) {
-                    val binary = binaryMessagesMatching(takeLastMessage(), mutableListOf())
+                    val binary = binaryMessagesMatching(lastMsg, mutableListOf())
                     binaryMessages.addAll(binary)
                 }
             }
 
             check(TokenType.BinarySymbol) -> {
-                val binary = binaryMessagesMatching(takeLastMessage(), mutableListOf())
+                val binary = binaryMessagesMatching(takeLastMessage() ?: firstReceiver, mutableListOf())
                 binaryMessages.forEach {
                     it.isPiped = true
                 }
@@ -193,13 +194,13 @@ fun Parser.unaryOrBinary(
     if (binaryMessages.isEmpty()) {
         return MessageSendUnary(
             firstReceiver,
-            messages = unaryMessages + cascadedMsgs,
+            messages = unaryMessages + cascadedMsgs + pipedMsgs,
             null,
             firstReceiver.token
         )
     }
     // its binary msg
-    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs, null, firstReceiver.token)
+    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs + pipedMsgs, null, firstReceiver.token)
 }
 
 // Receiver ^ from: to:
