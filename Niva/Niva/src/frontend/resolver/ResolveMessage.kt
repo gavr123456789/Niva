@@ -283,9 +283,9 @@ fun Resolver.resolveMessage(
                         statement.receiver.str + " " + statement.args.joinToString(": ") { it.name } + ":"
                     val text =
                         if (extraOrMissed)
-                            "For $beginText code block eval, extra fields are listed: $whatIsMissingOrExtra"
+                            "For $WHITE$beginText$RESET code block eval, extra fields are listed: $CYAN$whatIsMissingOrExtra"
                         else
-                            "For $beginText code block eval, not all fields are listed, you missed: $whatIsMissingOrExtra"
+                            "For $WHITE$beginText$RESET code block eval, not all fields are listed, you missed: $CYAN$whatIsMissingOrExtra"
                     statement.token.compileError(text)
                 }
 

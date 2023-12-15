@@ -2,7 +2,6 @@ package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
-import main.RED
 import main.RESET
 import main.WHITE
 import main.YEL
@@ -59,8 +58,7 @@ fun Resolver.resolveControlFlow(
                 if (isStatement) {
                     val ifType = it.ifExpression.type!!
                     if (ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
-                        it.ifExpression.token.compileError("if branch ${WHITE}${it.ifExpression} must be of the `${YEL}Boolean$RED` type, but found ${YEL}`$ifType`")
-
+                        it.ifExpression.token.compileError("if branch ${WHITE}${it.ifExpression}$RESET must be of the ${YEL}Boolean$RESET type, but found ${YEL}$ifType")
                     }
                 }
 
@@ -198,7 +196,7 @@ fun Resolver.resolveControlFlow(
 
                 if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
-                    curTok.compileError("If branch ${WHITE}`${it.ifExpression}`${RESET} of type: ${YEL}`$currentType`${RESET} is not of switching type: ${WHITE}`${statement.switch.type!!.name}`")
+                    curTok.compileError("If branch ${WHITE}${it.ifExpression}${RESET} of type: ${YEL}$currentType${RESET} is not of switch's type: ${YEL}${statement.switch.type!!.name}")
                 }
                 /// resolving then, if() ^
                 val scopeWithFields =
@@ -233,8 +231,8 @@ fun Resolver.resolveControlFlow(
                     val isTypeEqual = compare2Types(prevType, currType)
                     if (!isTypeEqual) {
                         it.ifExpression.token.compileError(
-                            "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RED is $YEL${prevType.name}$RED "
-                                    + "\n\tBut return type of branch on line $WHITE${it.ifExpression.token.line}$RED is $YEL${currType.name}$RED, all branches must return the same type"
+                            "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RESET is $YEL${prevType.name}$RESET "
+                                    + "\n\tBut return type of branch on line $WHITE${it.ifExpression.token.line}$RESET is $YEL${currType.name}$RESET, all branches must return the same type"
                         )
                     }
                 } else {
@@ -262,7 +260,7 @@ fun Resolver.resolveControlFlow(
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
                 if (elseReturnTypeName != firstReturnTypeName) {
-                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstReturnTypeName$RED != $YEL$elseReturnTypeName$RED)")
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstReturnTypeName$RESET != $YEL$elseReturnTypeName$RESET)")
                 }
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
@@ -275,7 +273,7 @@ fun Resolver.resolveControlFlow(
                     }
                     if (realBranchTypes != typesAlreadyChecked) {
                         val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
-                        statement.token.compileError("Not all types are checked: ($YEL$difference$RED)")
+                        statement.token.compileError("Not all types are checked: ($YEL$difference$RESET)")
                     }
 
                     if (statement.type == null) {
