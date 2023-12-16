@@ -88,10 +88,6 @@ private fun Resolver.resolveStatement(
                 rootStatement
             } else null
 
-            if (statement.token.lexeme == "Guest") {
-                6
-            }
-
             getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
@@ -438,6 +434,19 @@ fun Resolver.findStaticMessageType(
             MessageDeclarationType.Binary -> TODO()
         }
 
+    }
+
+    if (selectorName == "new") {
+        if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
+            val result = UnaryMsgMetaData(
+                name = "new!",
+                returnType = receiverType,
+                pkg = currentPackageName,
+            )
+            return Pair(result, false)
+        } else {
+            token.compileError("${WHITE}new$RESET can't bew used with $YEL$receiverType$RESET, it has fields(use them as constructor), or its basic type ")
+        }
     }
 
     throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")

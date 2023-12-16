@@ -7,7 +7,6 @@ import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.types.ast.LiteralExpression
-import frontend.resolver.Type.RecursiveType.name
 import java.io.File
 
 
@@ -400,24 +399,8 @@ fun createIntRangeProtocols(
             createForEachKeyword(intType, unitType),
             createForEachKeywordIndexed(intType, intType, unitType),
             createFilterKeyword(intType, boolType, intRangeType),
-//            createKeyword(
-//                "forEach",
-//                listOf(
-//                    KeywordArg(
-//                        "forEach",
-//                        Type.Lambda(
-//                            mutableListOf(
-//                                TypeField("forEach", intType)
-//                            ),
-//                            unitType
-//                        )
-//                    )
-//                ),
-//                unitType
-//            ),
 
             createKeyword(KeywordArg("contains", intType), boolType),
-
 
             ),
     )
@@ -468,10 +451,16 @@ fun createListProtocols(
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
             createUnary("echo", unitType),
-        ),
+            createUnary("first", itType),
+            createUnary("last", itType),
+            createUnary("clear", unitType),
+
+            ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
+            createOnEach(listType, itType, unitType),
+
             createForEachKeywordIndexed(intType, itType, unitType),
             createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),
             createFilterKeyword(itType, boolType, listType),
@@ -524,8 +513,9 @@ fun createSetProtocols(
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
             createUnary("echo", unitType),
-            createUnary("removeAll", boolType),
-            createUnary("clear", boolType),
+            createUnary("clear", unitType),
+            createUnary("first", genericTypeOfSetElements),
+            createUnary("last", genericTypeOfSetElements),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("==", setType, boolType),
@@ -538,6 +528,8 @@ fun createSetProtocols(
             ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(genericTypeOfSetElements, unitType),
+            createOnEach(setType, genericTypeOfSetElements, unitType),
+
             createMapKeyword(genericTypeOfSetElements, differentGenericType, setTypeOfDifferentGeneric),
             createFilterKeyword(genericTypeOfSetElements, boolType, setType),
 
@@ -551,6 +543,26 @@ fun createSetProtocols(
     result[collectionProtocol.name] = collectionProtocol
     return result
 }
+
+private fun createOnEach(
+    collectionType: Type.UserType,
+    genericTypeOfSetElements: Type,
+    unitType: Type.InternalType
+) = createKeyword(
+    "onEach",
+    listOf(
+        KeywordArg(
+            "onEach",
+            Type.Lambda(
+                mutableListOf(
+                    TypeField("onEach", genericTypeOfSetElements)
+                ),
+                unitType
+            )
+        )
+    ),
+    collectionType
+)
 
 private fun createForEachKeyword(
     genericTypeOfSetElements: Type,

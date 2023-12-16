@@ -253,7 +253,7 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
 fun Parser.expression(
-    dontParseKeywordsAndUnaryNewLines: Boolean = false,
+    dontParseKeywordsAndUnaryNewLines: Boolean = false, // true if it's a keyword argument
     dot: Boolean = false,
     parseSingleIf: Boolean = false // TODO replace on checking root, make root always required
 ): Expression {

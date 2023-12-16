@@ -120,7 +120,8 @@ fun Parser.unaryOrBinary(
 
     // Pipe operator
     val pipedMsgs = mutableListOf<Message>()
-
+    // x |> y
+    // x must become a receiver for y
     while (parsePipeAndCascade && matchAfterSkip(TokenType.PipeOperator)) {
         wasPipe = true
         // 1 inc
@@ -130,8 +131,9 @@ fun Parser.unaryOrBinary(
         when {
 
             check(TokenType.Identifier) -> {
-                val lastMsg = takeLastMessage() ?:firstReceiver
-                val unary = unaryMessagesMatching(lastMsg)
+                val lastMsgOrFirstReceiver = takeLastMessage() ?: firstReceiver
+                val unary = unaryMessagesMatching(lastMsgOrFirstReceiver)
+                unary.forEach { it.receiver = lastMsgOrFirstReceiver }
                 binaryMessages.forEach {
                     it.isPiped = true
                 }
@@ -141,7 +143,7 @@ fun Parser.unaryOrBinary(
                 pipedMsgs.addAll(unary)
 
                 if (check(TokenType.BinarySymbol)) {
-                    val binary = binaryMessagesMatching(lastMsg, mutableListOf())
+                    val binary = binaryMessagesMatching(lastMsgOrFirstReceiver, mutableListOf())
                     binaryMessages.addAll(binary)
                 }
             }
@@ -233,7 +235,10 @@ fun Parser.checkForKeyword(): Boolean {
 }
 
 
-fun Parser.messageSend(dontParseKeywords: Boolean, dotReceiver: Boolean = false): MessageSend {
+fun Parser.messageSend(
+    dontParseKeywords: Boolean, // true if we inside keyword argument
+    dotReceiver: Boolean = false
+): MessageSend {
 
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
         val savepoint = current
@@ -258,7 +263,7 @@ fun Parser.messageSend(dontParseKeywords: Boolean, dotReceiver: Boolean = false)
             null,
             matchAssert(TokenType.Dot)
         )
-        !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver()
+        !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
         else -> simpleReceiver()
     }
 
@@ -302,17 +307,28 @@ fun Parser.keyword(
         keywordMessageParsing(receiver)
     }
 
-    val messages = mutableListOf<Message>()
-    messages.add(keyColonCycle())
+    val messages = mutableListOf<Message>(keyColonCycle())
+
+
     while (match(TokenType.PipeOperator)) {
         skipNewLinesAndComments()
         // any msg
         if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+            // keyword pipe
             messages.add(keyColonCycle().also { it.isPiped = true })
         } else if (check(TokenType.Identifier)) {
-            messages.addAll (unaryMessagesMatching(receiver).onEach { it.isPiped = true })
+            // unary pipe
+            messages.addAll (unaryMessagesMatching(receiver).onEach {
+                it.isPiped = true
+                it.receiver = messages.last()
+            })
         } else if (check(TokenType.BinarySymbol)) {
-            messages.addAll(binaryMessagesMatching(receiver, mutableListOf()).onEach { it.isPiped = true })
+            // binary pipe
+            messages.addAll(binaryMessagesMatching(receiver, mutableListOf()).onEach {
+                it.isPiped = true
+                it.receiver = messages.last()
+            })
+
         } else {
             peek().compileError("Can't parse message after pipe operator |>")
         }

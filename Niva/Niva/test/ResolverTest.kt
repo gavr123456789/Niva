@@ -722,6 +722,22 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
+    @Test
+    fun pipe() {
+        val source = """
+            type Person name: String
+            Person getName = name
+            Person name: "Alice" |> getName
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
+
+
+
+
 }
 
 
