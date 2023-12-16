@@ -6,13 +6,11 @@ import frontend.util.CurrentOS
 import frontend.util.div
 import frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
-import main.RESET
-import main.YEL
+import main.PathManager
 import java.io.*
 
 
-
-fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, needWait: Boolean = true) {
+fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
     val p = ProcessBuilder(*this.split(" ").toTypedArray())
         .directory(workingDir)
 
@@ -49,29 +47,15 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, need
 
 }
 
-
-fun runGradleRunInProject(
-    pathToProjectRoot: String,
-    inlineReplPath: File,
-    compilationTarget: CompilationTarget,
-    compilationMode: CompilationMode,
-    mainNivaFileName: String,
-    compileOnlyNoRun: Boolean = false
+class Compiler(
+    private val pathToProjectRoot: String,
+    private val inlineReplPath: File,
+    private val compilationTarget: CompilationTarget,
+    private val compilationMode: CompilationMode,
+    private val mainNivaFileName: String,
+    private val resolver: Resolver
 ) {
-    // remove repl log file since it will be recreated
-    val removeReplFile = {
-        if (inlineReplPath.exists()) {
-            inlineReplPath.delete()
-        }
-    }
-    removeReplFile()
-
-    val file = File(pathToProjectRoot)
-    if (!file.exists()) {
-        throw Exception("Path to infra project doesn't exists")
-    }
-
-    val cmd = (if (!compileOnlyNoRun)
+    private fun cmd(compileOnlyNoRun: Boolean = false) = (if (!compileOnlyNoRun)
         when (compilationTarget) { // native run is always debug
             CompilationTarget.jvm -> "run"
             CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
@@ -83,59 +67,86 @@ fun runGradleRunInProject(
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
         }) + " -Pkotlin.experimental.tryK2=true"
 
-    if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
-        println("${YEL}Warning: It's useless to use release mode with jvm target$RESET")
-    }
 
-    when (getOSType()) {
-        CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd".runCommand(file, true)
-        CurrentOS.LINUX -> "./gradlew -q $cmd".runCommand(file, true)
-        CurrentOS.MAC -> "./gradlew -q $cmd".runCommand(file, true)
-    }
+    fun run(compileOnlyNoRun: Boolean = false, singleFile: Boolean = false) {
+        // remove repl log file since it will be recreated
+        val removeReplFile = {
+            if (inlineReplPath.exists()) {
+                inlineReplPath.delete()
+            }
+        }
+        removeReplFile()
 
-    if (inlineReplPath.exists()) {
-        if (compilationTarget == CompilationTarget.jvm) {
-            inlineReplSystem(inlineReplPath)
-            removeReplFile()
-        } else {
-            println("Warning: inline repl currently supported only in jvm target")
+        val file = File(pathToProjectRoot)
+        if (!file.exists()) {
+            throw Exception("Infro project doesn't exists, run compile script from niva repo")
+        }
+
+        if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
+            warning("Release mode is useless with jvm target")
+        }
+
+        val cmd = cmd(compileOnlyNoRun)
+        when (getOSType()) {
+            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd".runCommand(file, true)
+            CurrentOS.LINUX -> "./gradlew -q $cmd".runCommand(file, true)
+            CurrentOS.MAC -> "./gradlew -q $cmd".runCommand(file, true)
+        }
+
+        if (inlineReplPath.exists()) {
+            if (compilationTarget == CompilationTarget.jvm) {
+                inlineReplSystem(inlineReplPath)
+                removeReplFile()
+            } else {
+                warning("inline repl currently supported only in jvm target")
+            }
+        }
+        if (compileOnlyNoRun) {
+            when (compilationTarget) {
+                CompilationTarget.jvm -> {
+                    val zipName = File("./${mainNivaFileName}.zip")
+                    val pathToNativeExe =
+                        pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                    File(pathToNativeExe).copyTo(zipName, true)
+                }
+
+                CompilationTarget.linux -> {
+                    val execName = File("./$mainNivaFileName")
+                    val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
+                    File(pathToNativeExe).copyTo(execName, true)
+                    execName.setExecutable(true)
+                }
+
+                CompilationTarget.macos -> {}
+            }
         }
     }
-    if (compileOnlyNoRun) {
-        when (compilationTarget) {
-            CompilationTarget.jvm -> {
-                val zipName = File("./${mainNivaFileName}.zip")
-                val pathToNativeExe = pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
-                File(pathToNativeExe).copyTo(zipName, true)
-            }
-            CompilationTarget.linux -> {
-                val execName = File("./$mainNivaFileName")
-                val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
-                File(pathToNativeExe).copyTo(execName, true)
-                execName.setExecutable(true)
-            }
 
-            CompilationTarget.macos -> {}
+    fun infoPrint(onlyUserDefined: Boolean, specialPkg: String?) {
+        if (specialPkg != null) {
+            println("info for package: $specialPkg")
+            val pkgInko = generatePkgInfo(resolver, specialPkg)
+            println(pkgInko)
+            return
         }
+        val mdInfo = generateInfo(resolver, onlyUserDefined)
+        println(mdInfo)
     }
-
-
 }
 
 
-
 fun compileProjFromFile(
-    pathToProjectRootFile: String,
-    pathWhereToGenerateKt: String,
-    pathToGradle: String,
-    pathToAmper: String
+    pm: PathManager,
+    singleFile: Boolean
 ): Resolver {
+    val pathToNivaMainFile = pm.pathToNivaMainFile
+    val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
+    val pathToGradle = pm.pathToGradle
+    val pathToAmper = pm.pathToAmper
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
         val fileList = mutableListOf<File>()
-
         val filesAndDirs = directory.listFiles()
-
         if (filesAndDirs != null) {
             for (file in filesAndDirs) {
                 if (file.isFile && (file.extension == ext || file.extension == ext2)) {
@@ -145,26 +156,30 @@ fun compileProjFromFile(
                 }
             }
         }
-
         return fileList
     }
 
 
-    val mainFile = File(pathToProjectRootFile)
+    val mainFile = File(pathToNivaMainFile)
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
-    val otherFilesPaths = listFilesRecursively(nivaProjectFolder, "niva", "scala").filter { it.name != mainFile.name }
+    val otherFilesPaths =
+        if (!singleFile)
+            listFilesRecursively(nivaProjectFolder, "niva", "scala").filter { it.name != mainFile.name }
+        else
+            listOf()
+
 //    val allFiles = listOf( mainFile.absoluteFile.toString()) + otherFilesPaths.map { it.absoluteFile.toString() }
 
 //    println("Compiling: $allFiles")
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
-        mainFile = mainFile,
+//        mainFile = mainFile,
         otherFilesPaths = otherFilesPaths,
         statements = mutableListOf()
     )
 
-    resolver.resolve()
+    resolver.resolve(mainFile)
     val defaultProject = resolver.projects["common"]!!
 
     resolver.generator.generateKtProject(
@@ -175,7 +190,8 @@ fun compileProjFromFile(
         resolver.topLevelStatements,
         resolver.compilationTarget
     )
-
+    // printing all >?
+    resolver.printInfoFromCode()
     return resolver
 }
 
@@ -302,10 +318,6 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 }
 
 
-
-
-
-
 fun putInMainKotlinCode(code: String) = buildString {
 //    try {
 //        listOf(1).get(232)
@@ -321,14 +333,16 @@ fun putInMainKotlinCode(code: String) = buildString {
 
     append(code, "\n")
 
-    append("""
+    append(
+        """
         } catch (e: Exception) {
         println("----------")
         println(e.message)
         println("----------")
         println(e.stackTraceToString())
     }
-    """.trimIndent())
+    """.trimIndent()
+    )
 
 
     append("}\n")

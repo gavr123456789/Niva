@@ -5,17 +5,14 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.Statement
 import frontend.util.createFakeToken
-import main.CYAN
-import main.RED
-import main.YEL
+import main.*
 import main.frontend.typer.resolveDeclarationsOnly
-import main.lex
 import main.utils.infoPrint
 import java.io.File
 
 const val MAIN_PKG_NAME = "mainNiva"
 
-fun Resolver.resolve() {
+fun Resolver.resolve(mainFile: File) {
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
         val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
@@ -52,14 +49,14 @@ fun Resolver.resolve() {
     }
 
     // unresolved methods
-    unResolvedMessageDeclarations.forEach { (t, u) ->
-        changePackage(t, createFakeToken())
-        resolveDeclarationsOnly(u.toMutableList())
+    unResolvedMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
+        changePackage(pkgName, createFakeToken())
+        resolveDeclarationsOnly(unresolvedDecl.toMutableList())
     }
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Method `$CYAN${decl}$RED` for unresolved type: `$YEL${decl.forTypeAst.name}$RED`")
+            decl.token.compileError("Method `$CYAN${decl}$RESET` for unresolved type: `$YEL${decl.forTypeAst.name}$RESET`")
         }
     }
     unResolvedMessageDeclarations.clear()
@@ -72,7 +69,7 @@ fun Resolver.resolve() {
     unResolvedTypeDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Type `${YEL}${decl}$RED` for unresolved type: `${YEL}${decl.typeName}$RED`")
+            decl.token.compileError("Type `${YEL}${decl}$RESET` for unresolved type: `${YEL}${decl.typeName}$RESET`")
         }
     }
     unResolvedTypeDeclarations.clear()
@@ -84,12 +81,13 @@ fun Resolver.resolve() {
 
     currentPackageName = mainFile.nameWithoutExtension
     resolve(mainAST, mutableMapOf())
-//    currentPackageName = "common"
-    otherASTs.forEach {
-        currentPackageName = it.first
-        statements = it.second.toMutableList()
-        resolve(it.second, mutableMapOf())
-    }
+
+    // here we are resolving all statements, not only declarations
+//    otherASTs.forEach {
+//        currentPackageName = it.first
+//        statements = it.second.toMutableList()
+//        resolve(it.second, mutableMapOf())
+//    }
 
     // need to add all imports from mainFile pkg to mainNiva pkg
     val currentProject = projects[currentProjectName]!!
@@ -100,7 +98,7 @@ fun Resolver.resolve() {
 
 }
 
-fun Resolver.printInfo() {
+fun Resolver.printInfoFromCode() {
     infoTypesToPrint.forEach {
         val content = it.infoPrint()
         println(content)

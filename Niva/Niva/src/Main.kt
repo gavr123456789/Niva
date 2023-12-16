@@ -6,15 +6,13 @@ import frontend.Lexer
 import frontend.lex
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.resolver.printInfo
 import frontend.util.createFakeToken
 import frontend.util.div
 import frontend.util.fillSymbolTable
-import main.utils.generateInfo
+import main.utils.Compiler
 import java.io.*
 import main.utils.compileProjFromFile
-import main.utils.generatePkgInfo
-import main.utils.runGradleRunInProject
+import java.awt.SystemColor.info
 
 
 const val RESET = "\u001B[0m"
@@ -117,91 +115,177 @@ Kotlin\Java interop:
 """
 
 
+enum class MainArgument {
+    BUIlD,
+    RUN,
+    SINGLE_FILE_PATH,
+    INFO_ONLY, // only means no kotlin compilation
+    USER_DEFINED_INFO_ONLY,
+    RUN_FROM_IDE
+}
 
 
-fun main(args: Array<String>) {
-
-    val x = "sas"
-
-    with(x) {
-        chars()
-        length
-        hashCode()
-    }
-
-//    val args = listOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
-    val isThereArgs = args.isNotEmpty()
-
-    if (isThereArgs && (args[0] == "--help" || args[0] == "-help")) {
-        println(HELP)
-        return
-    }
-
+class PathManager(val args: Array<String>, mainArg: MainArgument) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
-    if (!File(pathToInfroProject).exists()) {
-        createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
-    }
 
     val pathWhereToGenerateKtAmper = pathToInfroProject / "src"
     val mainNivaFile = File("examples" / "Main" / "main.niva")
     val pathToTheMainExample = mainNivaFile.absolutePath
     val pathToGradle = pathToInfroProject / "build.gradle.kts"
     val pathToAmper = pathToInfroProject / "module.yaml"
-    val pathToNivaProjectRootFile = if (isThereArgs) args[0] else pathToTheMainExample
 
-    val startTime = System.currentTimeMillis()
+    private fun getPathToMain() =
+        // just `run` means default file is main.niva, run file runs with this file as root
+        if (args.count() >= 2) {
+            // first arg is run already
+            val fileNameArg = args[1]
+            if (File(fileNameArg).exists()) {
+                fileNameArg
+            } else {
+                createFakeToken().compileError("File $fileNameArg doesn't exist")
+            }
+
+        } else {
+            val mainNiva = "main.niva"
+            val mainScala = "main.scala"
+            if (File(mainNiva).exists())
+                mainNiva
+            else if (File(mainScala).exists())
+                mainScala
+            else
+                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+        }
 
 
-    val resolver = compileProjFromFile(
-        pathToNivaProjectRootFile, pathWhereToGenerateKtAmper, pathToGradle,
-        pathToAmper
-    )
-    resolver.printInfo()
+    val pathToNivaMainFile = when (mainArg) {
+        MainArgument.SINGLE_FILE_PATH -> args[0]
+        MainArgument.RUN_FROM_IDE -> pathToTheMainExample
 
-    val isShowTimeArg = args.count() > 1 && args[1] == "time"
-
-    val secondTime = System.currentTimeMillis()
-    if (isShowTimeArg) {
-        val executionTime = secondTime - startTime
-        println("Niva compilation time: $executionTime ms")
+        MainArgument.RUN,
+        MainArgument.INFO_ONLY,
+        MainArgument.USER_DEFINED_INFO_ONLY,
+        MainArgument.BUIlD -> getPathToMain()
     }
 
+    init {
+        if (!File(pathToInfroProject).exists()) {
+            createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
+        }
+    }
+}
+
+class ArgsManager(val args: Array<String>) {
 
     val compileOnly = args.find { it == "-c" } != null
     val infoIndex = args.indexOf("-i")
     val infoOnly = infoIndex != -1
     val infoUserOnly = args.find { it == "-iu" } != null
-    if (!(infoOnly || infoUserOnly) ) {
-        val inlineRepl = File("inline_repl.txt").absoluteFile
+    val isShowTimeArg = args.find { it == "time" } != null
 
-        runGradleRunInProject(
-            pathToInfroProject,
-            inlineRepl,
-            resolver.compilationTarget,
-            resolver.compilationMode,
-            mainNivaFile.nameWithoutExtension,
-            compileOnly
-        )
-    } else {
-        // is there pkg name after -i
-        if (infoOnly && args.count()-1 > infoIndex) {
-            val w = args[infoIndex + 1]
-            println(w)
-            val pkgInko = generatePkgInfo(resolver, w)
-            println(pkgInko)
-        } else {
-            val mdInfo = generateInfo(resolver, infoUserOnly)
-            println(mdInfo)
+    fun mainArg(): MainArgument {
+        return if (args.isNotEmpty()) {
+            when (val arg = args[0]) {
+                "run" -> MainArgument.RUN
+                "build" -> MainArgument.BUIlD
+                "info", "i" -> MainArgument.INFO_ONLY
+                "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
+                else -> {
+                    if (!File(arg).exists()) {
+                        createFakeToken().compileError("File $arg is not exist, to run full project use ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
+                    }
+                    MainArgument.SINGLE_FILE_PATH
+                }
+            }
+        } else MainArgument.RUN_FROM_IDE
+    }
+}
+
+fun help(args: Array<String>): Boolean {
+    if (args.isNotEmpty() && (args[0] == "--help" || args[0] == "-help")) {
+        println(HELP)
+        return true
+    }
+    return false
+}
+
+fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
+    if (isShowTimeArg) {
+        if (kotlinPhase)
+            println("Niva compilation time: $executionTime ms")
+        else
+            println("Kotlin compilation + exec time: $executionTime ms")
+    }
+}
+
+fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
+    val specialPkgToInfoPrint = if (minusIindex != -1)
+        // get word after -i
+        if (args.count() - 1 > minusIindex)
+            args[minusIindex + 1]
+        else null
+    else if (args[0] == "info" && args.count() > 1) {
+        // if info filename then its getting all info, so return null
+        // if info name then its getting special pkg
+        if (File(args[1]).exists()) {
+            null
+        } else
+            args[1]
+    } else null
+
+    return specialPkgToInfoPrint
+}
+
+fun main(args: Array<String>) {
+//    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
+//    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+
+    if (help(args)) return
+
+
+    val am = ArgsManager(args)
+    val startTime = System.currentTimeMillis()
+    val mainArg = am.mainArg()
+    val pm = PathManager(args, mainArg)
+    val resolver = compileProjFromFile(pm, singleFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+
+    val secondTime = System.currentTimeMillis()
+    am.time(secondTime - startTime, false)
+
+
+    val inlineRepl = File("inline_repl.txt").absoluteFile
+
+    val compiler = Compiler(
+        pm.pathToInfroProject,
+        inlineRepl,
+        resolver.compilationTarget,
+        resolver.compilationMode,
+        pm.mainNivaFile.nameWithoutExtension,
+        resolver
+    )
+
+
+    val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
+
+    when (mainArg) {
+        MainArgument.BUIlD -> compiler.run(compileOnlyNoRun = true)
+        MainArgument.RUN ->
+            compiler.run()
+
+        MainArgument.SINGLE_FILE_PATH -> {
+            compiler.run(compileOnlyNoRun = am.compileOnly, singleFile = true)
         }
 
+        MainArgument.INFO_ONLY ->
+            compiler.infoPrint(false, specialPkgToInfoPrint)
+
+        MainArgument.USER_DEFINED_INFO_ONLY ->
+            compiler.infoPrint(true, specialPkgToInfoPrint)
+
+        MainArgument.RUN_FROM_IDE -> {
+            compiler.run(compileOnlyNoRun = false, singleFile = true)
+        }
     }
 
-
-
-    if (isShowTimeArg) {
-        val thirdTime = System.currentTimeMillis()
-        val executionTime2 = thirdTime - secondTime
-        println("Kotlin compilation + exec time: $executionTime2 ms")
-    }
+    am.time(System.currentTimeMillis() - secondTime, true)
 }
