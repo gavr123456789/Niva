@@ -870,7 +870,7 @@ class Resolver(
 
     var statements: MutableList<Statement>,
 
-    val mainFile: File,
+//    val mainFile: File,
     val otherFilesPaths: List<File> = listOf(),
 
     val projects: MutableMap<String, Project> = mutableMapOf(),
