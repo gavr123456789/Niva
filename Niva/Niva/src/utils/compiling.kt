@@ -11,8 +11,9 @@ import main.YEL
 import java.io.*
 
 
+
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, needWait: Boolean = true) {
-    val p = ProcessBuilder(*split(" ").toTypedArray())
+    val p = ProcessBuilder(*this.split(" ").toTypedArray())
         .directory(workingDir)
 
     if (withOutputCapture) {
@@ -70,7 +71,7 @@ fun runGradleRunInProject(
         throw Exception("Path to infra project doesn't exists")
     }
 
-    val cmd = if (!compileOnlyNoRun)
+    val cmd = (if (!compileOnlyNoRun)
         when (compilationTarget) { // native run is always debug
             CompilationTarget.jvm -> "run"
             CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
@@ -80,17 +81,16 @@ fun runGradleRunInProject(
             CompilationTarget.jvm -> "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }
+        }) + " -Pkotlin.experimental.tryK2=true"
 
     if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
         println("${YEL}Warning: It's useless to use release mode with jvm target$RESET")
     }
 
-
     when (getOSType()) {
-        CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        CurrentOS.LINUX -> "./gradlew -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
-        CurrentOS.MAC -> "./gradlew -q $cmd -Pkotlin.experimental.tryK2=true".runCommand(file, true)
+        CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd".runCommand(file, true)
+        CurrentOS.LINUX -> "./gradlew -q $cmd".runCommand(file, true)
+        CurrentOS.MAC -> "./gradlew -q $cmd".runCommand(file, true)
     }
 
     if (inlineReplPath.exists()) {
@@ -121,8 +121,6 @@ fun runGradleRunInProject(
 
 
 }
-
-
 
 
 
@@ -181,7 +179,7 @@ fun compileProjFromFile(
     return resolver
 }
 
-fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
+fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
 
 
@@ -259,26 +257,30 @@ fun addNivaStd(mainCode: String, compilationTarget: CompilationTarget): String {
             }
         }
         
-        inline fun <T> Boolean.ifTrue(x: () -> T) =
+        inline fun <T> Boolean.ifTrue(x: () -> T) {
             if (this) {
                 x()
-            } else Unit
+            }
+        }
         
-        inline fun <T> Boolean.ifFalse(x: () -> T) =
+        inline fun <T> Boolean.ifFalse(x: () -> T) {
             if (!this) {
                 x()
-            } else Unit
+            }
+        }
         
-        
-        inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T) =
+        inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T) {
             if (this) {
                 x()
             } else y()
+        }
         
-        inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T) =
+        inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T) {
             if (!this) {
                 x()
             } else y()
+        }
+
         
 
         operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): MutableMap<K, V> =
