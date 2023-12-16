@@ -2,10 +2,8 @@ package frontend.parser.parsing
 
 import frontend.meta.TokenType
 import frontend.meta.compileError
-import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
-import main.RESET
 import main.WHITE
 
 // also recevier can be unary or binary message
@@ -22,15 +20,19 @@ import main.WHITE
 // also code blocks
 
 
-fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = null): Receiver {
+fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = null, insideKeywordArgument: Boolean = false): Receiver {
 
     val safePoint = current
     try {
-        when (val messageSend = unaryOrBinary(customReceiver = customReceiver)) {
+        // we don't need to parse cascade if we are inside keyword argument parsing, since this cascade will be applied to
+        // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
+        // or Person name: "Alice" |> getName
+        when (val messageSend = unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
             is MessageSendUnary, is MessageSendBinary -> {
-                if (messageSend.messages.isNotEmpty()) {
-                    return messageSend
-                }
+                return if (messageSend.messages.isNotEmpty()) {
+                    messageSend
+                } else
+                    messageSend.receiver
             }
 
             is MessageSendKeyword -> error("keyword cant be a receiver, for now")
@@ -389,6 +391,7 @@ fun Parser.methodBody(
 
 
 // Int sas ^ (-> Type)? =?
+@Suppress("UNUSED_VARIABLE")
 fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     var isThereReturn = false
     var isThereEqual = false

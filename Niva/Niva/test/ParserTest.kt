@@ -3,7 +3,6 @@ import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
 import frontend.parser.types.ast.*
 import main.lex
-import org.junit.experimental.theories.suppliers.TestedOn
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1304,6 +1303,22 @@ class ParserTest {
         val send = ast[0] as MessageSendUnary
         assert(send.messages.count() == 1 && send.messages[0].selectorName == "welcome")
     }
+
+    @Test
+    fun pipeInsideKwArgInsideParenthesise() {
+        val source = """
+            Person name: ("Alice" |> getName)
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val send = ast[0] as MessageSendUnary
+        assert(send.messages.count() == 1 && send.messages[0].selectorName == "welcome")
+    }
+
+
+
+
 
 
 //    @Test

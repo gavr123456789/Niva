@@ -226,8 +226,12 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
     }
     when (it.kind) {
         UnaryMsgKind.Unary -> {
-            if (receiver !is DotReceiver) append(".")
-            append("${it.selectorName}()")
+            if (it.selectorName != "new") {
+                if (receiver !is DotReceiver) append(".")
+                append("${it.selectorName}()")
+            } else {
+                append("()")
+            }
         }
 
         UnaryMsgKind.Getter -> {
