@@ -65,7 +65,7 @@ fun replaceNameFromPragma(msg: Message) {
             is LiteralExpression.StringExpr ->
                 value.toString()
 
-            else -> null //msg.token.compileError("String literal for pragma ${Pragmas.RENAME.v} expected")
+            else -> null
         }
     if (replacedSelectorName != null) {
         msg.selectorName = replacedSelectorName

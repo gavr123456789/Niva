@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-archive_path="Niva/Niva/build/distributions/Niva-SNAPSHOT-1.0.zip"
+archive_path="Niva/Niva/build/distributions/niva-SNAPSHOT-1.0.zip"
 
 if [ "$1" == "" ]; then
   echo "use jvm or bin argument"
@@ -14,7 +14,7 @@ unzip -o -q "$archive_path" -d niva_compiler
 
 if [ "$1" == "jvm" ]; then
   echo "jvm build..."
-  cd niva_compiler/Niva-SNAPSHOT-1.0/bin/
+  cd niva_compiler/niva-SNAPSHOT-1.0/bin/
   mkdir -p ~/.niva/infroProject
   cp -r ../../../Niva/infroProject ~/.niva/
 
@@ -26,15 +26,15 @@ if [ "$1" == "bin" ]; then
     echo "cant find native-image, on Arch linux do 'yay -S jdk21-graalvm-bin', 'nix shell nixpkgs#graalvm-ce' on nix"
     exit 1
   fi
-  cd niva_compiler/Niva-SNAPSHOT-1.0/lib/
-  native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar:kotlin-stdlib-1.9.20.jar:Niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
+  cd niva_compiler/niva-SNAPSHOT-1.0/lib/
+  native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar:kotlin-stdlib-1.9.20.jar:niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
   mv niva ../..
 
   cd ../..
   mkdir -p ~/.niva/infroProject
   cp -r ../Niva/infroProject ~/.niva/
   # remove dir with jars
-  rm -rf Niva-SNAPSHOT-1.0
+  rm -rf niva-SNAPSHOT-1.0
 fi
 
 echo 'type Person name: String age: Int
@@ -53,7 +53,7 @@ if [ "$1" == "bin" ]; then
   echo "niva compiler binary is located inside the niva_compiler folder"
 fi
 if [ "$1" == "jvm" ]; then
-  ./Niva main.scala
+  ./niva main.scala
   echo "niva compiler jar is located inside the niva_compiler/Niva-SNAPSHOT-1.0/bin folder"
 fi
 

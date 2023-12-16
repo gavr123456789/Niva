@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set "archive_path=Niva\Niva\build\distributions\Niva-SNAPSHOT-1.0.zip"
+set "archive_path=Niva\Niva\build\distributions\niva-SNAPSHOT-1.0.zip"
 
 @REM if "%1"=="" (
 @REM   echo use jvm or bin argument
@@ -15,7 +15,7 @@ cd ..\..
 powershell -Command "Expand-Archive -Path '%archive_path%' -DestinationPath niva_compiler -Force"
 @REM if "%1"=="jvm" (
   echo jvm build...
-  cd niva_compiler\Niva-SNAPSHOT-1.0\bin\
+  cd niva_compiler\niva-SNAPSHOT-1.0\bin\
   mkdir "%USERPROFILE%\.niva\infroProject"
   xcopy /E /I /Y /Q ..\..\..\Niva\infroProject "%USERPROFILE%\.niva\infroProject"
 @REM )
@@ -30,14 +30,14 @@ if "%1"=="bin" (
     exit /b 1
   )
 
-  cd niva_compiler\Niva-SNAPSHOT-1.0\lib\
-  native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar;kotlin-stdlib-1.9.20.jar;Niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
+  cd niva_compiler\niva-SNAPSHOT-1.0\lib\
+  native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar;kotlin-stdlib-1.9.20.jar;niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
   move niva ..\..
 
   cd ..\..
   mkdir "%USERPROFILE%\.niva\infroProject"
   xcopy /E /I /Y ..\Niva\infroProject "%USERPROFILE%\.niva\infroProject"
-  rmdir /s /q Niva-SNAPSHOT-1.0
+  rmdir /s /q niva-SNAPSHOT-1.0
 )
 
 (
@@ -55,6 +55,6 @@ if "%1"=="bin" (
   .\niva main.scala
 )
 @REM if "%1"=="jvm" (
-call .\Niva.bat main.scala
+call .\niva.bat main.scala
 @REM )
 pause

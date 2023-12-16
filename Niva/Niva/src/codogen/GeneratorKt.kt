@@ -1,6 +1,6 @@
 package codogen
 
-import main.utils.addNivaStd
+import main.utils.addStd
 import main.utils.putInMainKotlinCode
 import frontend.parser.types.ast.Statement
 import frontend.resolver.CompilationTarget
@@ -63,11 +63,22 @@ dependencies:
 //%IMPL%
 """
     }
+
+    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String) =
+        "getTasksByName(\"run\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
 }
 
 fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
     this.dependencies.addAll(dependenciesList)
 }
+
+
+fun GeneratorKt.regenerateGradleForAmper(pathToGradle: String) {
+    val newGradle = GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath)
+    val gradleFile = File(pathToGradle)
+    gradleFile.writeText(newGradle)
+}
+
 
 fun GeneratorKt.regenerateGradle(pathToGradle: String) {
     val implementations = dependencies.joinToString("\n") {
@@ -113,14 +124,15 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
     return baseDir
 }
 
-fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilationTarget: CompilationTarget) = buildString {
-    append("package ${mainPkg.packageName}\n")
-    val code1 = ktCode.addIndentationForEachString(1)
-    val mainCode = putInMainKotlinCode(code1)
-    val code3 = addNivaStd(mainCode, compilationTarget)
-    append(mainPkg.generateImports(), "\n")
-    append(code3, "\n")
-}
+fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilationTarget: CompilationTarget) =
+    buildString {
+        append("package ${mainPkg.packageName}\n")
+        val code1 = ktCode.addIndentationForEachString(1)
+        val mainCode = putInMainKotlinCode(code1)
+        val code3 = addStd(mainCode, compilationTarget)
+        append(mainPkg.generateImports(), "\n")
+        append(code3, "\n")
+    }
 
 
 fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Package>) {
@@ -183,7 +195,7 @@ fun GeneratorKt.generateKtProject(
     regenerateAmper(pathToAmper, compilationTarget)
 
     // 4 regenerate gradle
-//    regenerateGradle(pathToGradle)
+    regenerateGradleForAmper(pathToGradle)
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
