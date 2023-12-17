@@ -12,7 +12,6 @@ import frontend.util.fillSymbolTable
 import main.utils.Compiler
 import java.io.*
 import main.utils.compileProjFromFile
-import java.awt.SystemColor.info
 
 
 const val RESET = "\u001B[0m"
@@ -224,7 +223,7 @@ fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
         if (args.count() - 1 > minusIindex)
             args[minusIindex + 1]
         else null
-    else if (args[0] == "info" && args.count() > 1) {
+    else if (args.count() > 1 && args[0] == "info") {
         // if info filename then its getting all info, so return null
         // if info name then its getting special pkg
         if (File(args[1]).exists()) {
@@ -242,9 +241,9 @@ fun main(args: Array<String>) {
 
     if (help(args)) return
 
+    val startTime = System.currentTimeMillis()
 
     val am = ArgsManager(args)
-    val startTime = System.currentTimeMillis()
     val mainArg = am.mainArg()
     val pm = PathManager(args, mainArg)
     val resolver = compileProjFromFile(pm, singleFile = mainArg == MainArgument.SINGLE_FILE_PATH)

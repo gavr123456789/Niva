@@ -1317,6 +1317,21 @@ class ParserTest {
     }
 
 
+    @Test
+    fun extendTypeWithManyMsgs() {
+        val source = """
+            extend Person [
+              unary -> Int = 1 echo
+              + binary::Int = 1 echo
+              key::Int word::String = 1 echo
+            ]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+
 
 
 

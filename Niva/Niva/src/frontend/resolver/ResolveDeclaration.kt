@@ -26,6 +26,14 @@ fun Resolver.resolveDeclarations(
         is MessageDeclaration -> {
             if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
+        is ExtendDeclaration -> {
+            var atLeastOneUnresolved = false
+            statement.messageDeclarations.forEach {
+                val cantBeResolve = resolveMessageDeclaration(it, resolveBody, previousScope)
+                if (!atLeastOneUnresolved && cantBeResolve) atLeastOneUnresolved = true
+            }
+            if (atLeastOneUnresolved) return
+        }
 
         is UnionDeclaration -> {
             resolveUnionDeclaration(statement, previousScope)

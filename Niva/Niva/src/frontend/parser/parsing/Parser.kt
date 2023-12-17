@@ -46,6 +46,10 @@ fun Parser.statement(): Statement {
         return constructorDeclaration(pragmas)
     }
 
+    if (kind == TokenType.Identifier && tok.lexeme == "extend") {
+        return extendDeclaration(pragmas)
+    }
+
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()
     }

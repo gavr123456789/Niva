@@ -50,7 +50,7 @@ fun Parser.codeBlock(): CodeBlock {
             listOf()
 
 
-    val statements = statementsUntilCloseBracket(TokenType.CloseBracket)
+    val statements = if (!match(TokenType.CloseBracket)) statementsUntilCloseBracket(TokenType.CloseBracket) else listOf()
 
 
     val result = CodeBlock(

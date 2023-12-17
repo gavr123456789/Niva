@@ -1,42 +1,13 @@
-//type Guest
-//
-//x = Guest new
 
-//x = {1 2 3} onEach: [it - 10 |> echo]
-//x first echo
+type Person name: String
 
-//union User =
-//    | LoggedIn name: String
-//    | Guest
-//
-//User getName -> String =
-//    | this
-//    | Guest => "Welcome guest"
-//    | LoggedIn => ("Welcome " + this name)
-//
-//
-//User welcome =
-//    ("Welcome " + this getName) echo
-//
-//LoggedIn name: "Oleг" |> getName
-//
-//user = LoggedIn name: "Oleг"
-//guest = Guest
-//user welcome
-//guest welcome
-//
-
-
-Bind package: "java.io" content: [
-    type File pathname: String
-    File exists -> Boolean = []
-    File readText -> String
-    File absolutePath -> String
-] getters: [
-    File absolutePath -> String
+extend Person [
+    say::String = ["$name saying $say" echo]
+    hello = ["$name saying Hello" echo]
 ]
 
-file = File pathname: "."
-// text = file readText
+person = Person name: "Alice"
 
-file absolutePath echo
+person hello
+person say: "hii!!"
+

@@ -4,6 +4,7 @@ import frontend.parser.types.ast.*
 import frontend.util.addIndentationForEachString
 
 
+@Suppress("UnusedReceiverParameter")
 fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = buildString {
     append(
         when (statement) {
@@ -11,6 +12,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = 
             is VarDeclaration -> statement.generateVarDeclaration()
 
             is MessageDeclaration -> statement.generateMessageDeclaration()
+            is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateMessageDeclaration() }
 
             is TypeDeclaration -> statement.generateTypeDeclaration()
 
