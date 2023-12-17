@@ -4,6 +4,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
+import main.RED
 import main.WHITE
 
 // also recevier can be unary or binary message
@@ -172,12 +173,10 @@ fun Parser.returnType(): TypeAST? {
     return returnType
 }
 
-fun Parser.unaryDeclaration(): MessageDeclarationUnary {
+fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
 
-//    val receiverTypeNameToken =
-//        matchAssertAnyIdent("Its unary message Declaration, name of type expected")
-    val receiverTypeNameToken = peek()
-    val forTypeAst = parseType()
+
+
     // int^ inc = []
 
     val unarySelector = matchAssertAnyIdent("Its unary message declaration, unary selector expected")
@@ -199,7 +198,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
     val result = MessageDeclarationUnary(
         name = unarySelector.lexeme,
         forType = forTypeAst,
-        token = receiverTypeNameToken,
+        token = forTypeAst.token,
         body = messagesOrVarDeclarations,
         returnType = returnType,
         isSingleExpression = isSingleExpression,
@@ -208,12 +207,7 @@ fun Parser.unaryDeclaration(): MessageDeclarationUnary {
     return result
 }
 
-fun Parser.binaryDeclaration(): MessageDeclarationBinary {
-
-    val receiverTypeNameToken = peek()
-//        matchAssertAnyIdent("Its Keyword message Declaration, name of type expected")
-    val forType = parseType()
-
+fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
     // int^ + x = []
 
     val binarySelector = matchAssert(TokenType.BinarySymbol, "Its binary message declaration, binary selector expected")
@@ -243,7 +237,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
     val result = MessageDeclarationBinary(
         name = binarySelector.lexeme,
         forType = forType,
-        token = receiverTypeNameToken,
+        token = forType.token,
         arg = arg,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -261,11 +255,7 @@ fun Parser.binaryDeclaration(): MessageDeclarationBinary {
  * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
  * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
  */
-fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
-
-    val receiverTypeNameToken = peek()
-    val forType = parseType()
-
+fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
     val args = mutableListOf<KeywordDeclarationArg>()
 
     do {
@@ -295,7 +285,7 @@ fun Parser.keywordDeclaration(): MessageDeclarationKeyword {
     val result = MessageDeclarationKeyword(
         name = keywordMessageName,
         forType = forType,
-        token = receiverTypeNameToken,
+        token = forType.token,
         args = args,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -329,7 +319,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
     }
     // key: localName(::int)?
     else {
-        val key = matchAssert(TokenType.Identifier)//step()
+        val key = matchAssert(TokenType.Identifier)
         match(TokenType.Colon)
         val local = step()
         val type: TypeAST? = if (check(TokenType.DoubleColon)) {
@@ -471,10 +461,10 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
     return false
 }
 
-fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false): MessageDeclarationType? {
+fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false, parseReceiver: Boolean = true): MessageDeclarationType? {
     val savepoint = current
     @Suppress("UNUSED_VARIABLE")
-    val receiver = identifierMayBeTyped()
+    val receiver = if (parseReceiver) identifierMayBeTyped() else null
 
 
     if (tryUnary(isConstructor)) {
@@ -505,18 +495,51 @@ enum class MessageDeclarationType {
 
 fun Parser.messageDeclaration(
     type: MessageDeclarationType,
-    codeAttributes: MutableList<CodeAttribute>? = null
+    codeAttributes: MutableList<CodeAttribute>? = null,
+    customForTypeAst: TypeAST? = null
 ): MessageDeclaration {
+
+    val forTypeAst = customForTypeAst ?: parseType()
     val result = when (type) {
-        MessageDeclarationType.Unary -> unaryDeclaration()
-        MessageDeclarationType.Binary -> binaryDeclaration()
-        MessageDeclarationType.Keyword -> keywordDeclaration()
+        MessageDeclarationType.Unary -> unaryDeclaration(forTypeAst)
+        MessageDeclarationType.Binary -> binaryDeclaration(forTypeAst)
+        MessageDeclarationType.Keyword -> keywordDeclaration(forTypeAst)
     }
     if (codeAttributes != null) {
         result.pragmas = codeAttributes
     }
     return result
 }
+
+fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclaration {
+    // extend Person [
+    match("extend")
+
+    val forTypeAst = parseType()
+    skipNewLinesAndComments()
+    matchAssert(TokenType.OpenBracket)
+    skipNewLinesAndComments()
+
+
+    val list = mutableListOf<MessageDeclaration>()
+    do {
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
+            ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
+
+        val msgDecl = messageDeclaration(isItMsgDeclaration, pragmas, forTypeAst)
+        list.add(msgDecl)
+        skipNewLinesAndComments()
+    } while (!match(TokenType.CloseBracket))
+
+
+    return ExtendDeclaration(
+        forTypeAst = forTypeAst,
+        messageDeclarations = list,
+        token =  forTypeAst.token
+    )
+
+}
+
 
 // constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {

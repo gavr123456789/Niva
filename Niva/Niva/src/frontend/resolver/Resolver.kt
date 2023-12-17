@@ -104,7 +104,7 @@ private fun Resolver.resolveStatement(
                         if (statement.isInfoRepl) {
                             addPrintingInfoAboutType(type)
                         } else
-                            statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields`")
+                            statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields$RESET`")
                     }
                 } else if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type)

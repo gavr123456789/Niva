@@ -4,7 +4,6 @@ import frontend.meta.Token
 import frontend.parser.parsing.CodeAttribute
 import frontend.resolver.Type
 
-
 sealed class MessageDeclaration(
     val name: String,
     val forTypeAst: TypeAST,
@@ -95,3 +94,13 @@ class ConstructorDeclaration(
     msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
 )
+
+
+class ExtendDeclaration(
+    @Suppress("unused")
+    val forTypeAst: TypeAST,
+    val messageDeclarations: List<MessageDeclaration>,
+    token: Token,
+    isPrivate: Boolean = false,
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+) : Declaration(token, isPrivate, pragmas)

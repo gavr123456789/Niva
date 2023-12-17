@@ -2,7 +2,6 @@ import frontend.parser.types.ast.*
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,7 +15,6 @@ fun resolve(source: String): List<Statement> {
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
-    mainFile = File("sas.niva"),
     statements = statements.toMutableList()
 )
 
