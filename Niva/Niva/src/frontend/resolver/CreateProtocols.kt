@@ -469,7 +469,6 @@ fun createListProtocols(
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("removeAt", intType), unitType),
             createKeyword(KeywordArg("addAll", listType), boolType),
-            createKeyword(KeywordArg("at", itType), unitType),
             createKeyword(KeywordArg("drop", intType), listType),
             createKeyword(KeywordArg("dropLast", intType), listType),
 

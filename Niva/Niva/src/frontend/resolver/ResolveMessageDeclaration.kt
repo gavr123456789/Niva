@@ -15,14 +15,19 @@ fun Resolver.resolveMessageDeclaration(
     val forTypeAst = st.forTypeAst
 
 
-
     val forType = st.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
             token = forTypeAst.token
         )
-        val q = typeDB.getTypeOfIdentifierReceiver(forTypeAst.name, ident, getCurrentImports(st.token), currentPackageName, names = forTypeAst.names)
+        val q = typeDB.getTypeOfIdentifierReceiver(
+            forTypeAst.name,
+            ident,
+            getCurrentImports(st.token),
+            currentPackageName,
+            names = forTypeAst.names
+        )
         if (q == null) {
             unResolvedMessageDeclarations.add(currentPackageName, st)
             currentLevel--
@@ -129,12 +134,14 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
         wasThereReturn = null
+        resolvingMessageDeclaration = st
         resolve(st.body, (previousScope + bodyScope).toMutableMap(), st)
         if (!st.isSingleExpression && wasThereReturn == null && st.returnTypeAST != null && st.returnTypeAST.name != InternalTypes.Unit.name) {
             st.token.compileError("You missed returning(^) a value of type: ${YEL}${st.returnTypeAST.name}")
         }
+        resolvingMessageDeclaration = null
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
-        if (st.isSingleExpression ) {
+        if (st.isSingleExpression) {
             val expr = st.body[0]
             if (expr is Expression) {
                 val returnType = expr.type!!
@@ -150,11 +157,11 @@ fun Resolver.resolveMessageDeclaration(
                 st.returnType = returnType
 
                 // in single expr declared type not matching real type
-                if (declaredReturnType != null && !compare2Types(returnType, declaredReturnType)) {
+                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType)) {
                     st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
                 }
             }
-        }else {
+        } else {
             val declaredReturnType = wasThereReturn
             val returnType = st.returnType
             if (declaredReturnType != null && returnType != null && !compare2Types(returnType, declaredReturnType)) {
@@ -166,13 +173,11 @@ fun Resolver.resolveMessageDeclaration(
     }
 
 
-
-
     // addToDb
     if (addToDb) when (st) {
-        is MessageDeclarationUnary ->  addNewUnaryMessage(st)
+        is MessageDeclarationUnary -> addNewUnaryMessage(st)
         is MessageDeclarationBinary -> addNewBinaryMessage(st)
-        is MessageDeclarationKeyword ->  addNewKeywordMessage(st)
+        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
 
         is ConstructorDeclaration -> {
             if (st.returnTypeAST == null) {

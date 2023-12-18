@@ -71,20 +71,26 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 const val HELP = """
 Usage:
-    niva FILE — compile and run project with file as main entry
-Flags:
+    ${WHITE}FILE$RESET — compile and run single file
+    ${WHITE}run$RESET — compile and run project from "main" file
+    ${WHITE}run FILE$RESET — compile and run project from root file
+    ${WHITE}build$RESET — compile only(creates binary in current folder)
+    ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
+    ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
+
+Flags for single file run:
     -c      — compile only(creates binary in current folder)
     -i      — get info about packages(it is usable to pipe it to .md file)
     -iu     — print info only about user-defined types
     -i pkg  — print info only about specific pkg
 
 In code: 
-> EXPR  — inline print result of expression in comment above
->? TYPE — print all info about TYPE
+    > EXPR  — inline print result of expression in comment above
+    >? TYPE — print all info about TYPE
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
-    ${CYAN}target: $GREEN"TARGET"${RESET} — target to jvm/linux/macos/windows(not supported yet)
+    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
     ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
     
     ${CYAN}package: $GREEN"PKG"$RESET   — set package for the definitions in code below
@@ -130,7 +136,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
 
     val pathWhereToGenerateKtAmper = pathToInfroProject / "src"
     val mainNivaFile = File("examples" / "Main" / "main.niva")
-    val pathToTheMainExample = mainNivaFile.absolutePath
+    private val pathToTheMainExample = mainNivaFile.absolutePath
     val pathToGradle = pathToInfroProject / "build.gradle.kts"
     val pathToAmper = pathToInfroProject / "module.yaml"
 

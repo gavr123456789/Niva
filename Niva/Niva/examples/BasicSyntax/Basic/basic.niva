@@ -16,7 +16,7 @@ person = Person name: "sas" age: 6
 person haveBirthday
 
 // 7 create function for type
-// 6 change instance field
+// 6 change instance's field
 // yes, assign can be used as expression here
 Person haveBirthday = age <- age + 1
 

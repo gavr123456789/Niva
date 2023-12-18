@@ -55,7 +55,7 @@ enum class Pragmas(val v: String) {
 }
 
 fun noPkgEmit(msg: Message) {
-    TODO()
+//    TODO()
 }
 
 fun replaceNameFromPragma(msg: Message) {

@@ -62,12 +62,14 @@ fun Resolver.resolveControlFlow(
                     }
                 }
 
+//                var kekType: Type? = null
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
                         resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
                         currentLevel--
+//                        kekType = it.thenDoExpression.type
                     }
 
                     is IfBranch.IfBranchWithBody -> {
@@ -77,13 +79,21 @@ fun Resolver.resolveControlFlow(
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {
                                 val lastExpr = it.body.last()
+
                                 if (lastExpr.isNotExpression()) {
                                     lastExpr.token.compileError("In if expression body last statement must be an expression")
+                                } else {
+//                                    kekType = (lastExpr as Expression).type
                                 }
                             }
                         }
                     }
                 }
+
+//                val q =this.resolvingMessageDeclaration
+//                if ( q != null && q.returnType == null ) {
+//                    q.returnType = kekType
+//                }
 
                 // compare the current branch type with the last one
                 if (i > 0) {
