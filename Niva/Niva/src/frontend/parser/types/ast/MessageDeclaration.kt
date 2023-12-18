@@ -5,17 +5,18 @@ import frontend.parser.parsing.CodeAttribute
 import frontend.resolver.Type
 
 sealed class MessageDeclaration(
-    val name: String,
-    val forTypeAst: TypeAST,
-    token: Token,
-    val isSingleExpression: Boolean,
-    val body: List<Statement>,
-    val returnTypeAST: TypeAST?,
-    isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
-    val isInline: Boolean = false,
-    var forType: Type? = null,
-    var returnType: Type? = null,
+        val name: String,
+        val forTypeAst: TypeAST,
+        token: Token,
+        val isSingleExpression: Boolean,
+        val body: List<Statement>,
+        val returnTypeAST: TypeAST?,
+        isPrivate: Boolean = false,
+        pragmas: MutableList<CodeAttribute> = mutableListOf(),
+        val isInline: Boolean = false,
+        var forType: Type? = null,
+        var returnType: Type? = null,
+        var isRecursive: Boolean = false,
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
@@ -33,7 +34,7 @@ class MessageDeclarationUnary(
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isInline: Boolean = false
 
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, )
 
 class MessageDeclarationBinary(
     name: String,
@@ -46,7 +47,7 @@ class MessageDeclarationBinary(
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isInline: Boolean = false
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline)
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, )
 
 
 // key: localName::type
@@ -75,7 +76,7 @@ class MessageDeclarationKeyword(
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isInline: Boolean = false
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline) {
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, ) {
     override fun toString(): String {
         return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -85,14 +86,14 @@ class ConstructorDeclaration(
     val msgDeclaration: MessageDeclaration,
     token: Token,
 ) : MessageDeclaration(
-    msgDeclaration.name,
-    msgDeclaration.forTypeAst,
-    token,
-    msgDeclaration.isSingleExpression,
-    msgDeclaration.body,
-    msgDeclaration.returnTypeAST,
-    msgDeclaration.isPrivate,
-    msgDeclaration.pragmas,
+        msgDeclaration.name,
+        msgDeclaration.forTypeAst,
+        token,
+        msgDeclaration.isSingleExpression,
+        msgDeclaration.body,
+        msgDeclaration.returnTypeAST,
+        msgDeclaration.isPrivate,
+        msgDeclaration.pragmas,
 )
 
 

@@ -465,6 +465,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
+    
     token.compileError("Cant find binary message: $YEL$selectorName${RESET} for type $YEL${receiverType.name}${RESET}")
 }
 
@@ -901,6 +902,7 @@ class Resolver(
 
     // set to null before body resolve, set to real inside body, check after to know was there return or not
     var wasThereReturn: Type? = null,
+    var resolvingMessageDeclaration: MessageDeclaration? = null,
 
     val infoTypesToPrint: MutableSet<Type> = mutableSetOf()
 ) {

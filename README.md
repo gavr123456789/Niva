@@ -81,7 +81,7 @@ type Person name: String age: Int
 // Instantiation
 person = Person name: "Bob" age: 42
 ```
-To declare function for type just type `Type function_signature = body`
+To declare method for type just type `Type function_signature = body`
 ```Scala
 // unary method declaration for Person receiver
 Person sleep = [...]
@@ -93,38 +93,108 @@ TimeInterval from: x::Date to: y::Date = [
 ]
 ```
 
-In the last example you can see a problem, we dont need local names for from and to, because of that there are 3 different way to declare keyword messages: with locals and types, with locals only, with types only.  
-Don't think too much about it for now.
-![image](https://user-images.githubusercontent.com/30507409/219905868-bcde0079-9c0c-443d-9bf3-41be072c491c.png)
 
+In the last example you can see a problem, we dont need local names for from and to.
+Because of that there are another way to declare keyword message:
+```Scala
+Random from::Int to::Int = ... // `from` and `to` are local arguments
+```
+
+All methods are extension methods(like in Kotlin or C#), so you can add new methods for default types like `Int`
+You can also define many methods at once
+```Scala
+extend Int [
+    unary1 = []
+    unary2 = []
+]
+
+// instead of
+Int unary1 = []
+Int unary2 = []
+```
 
 # Control frow
 
-There only one control flow operator: `|` that replace if, elif and switch, it can work both as statement and expression.
-`obj | exp -> do |=> else_do` - expression, else branch is necessary  
-`x = y > 0 | true |-> false` - expression, every branch must return a value  
-`| exp -> do` - statement  
-`|-> do` - else branch
+## Messages
+```Scala
+1 < 2 ifTrue: ["yes!" echo]
+1 > 2 ifFalse: ["no!" echo]
+// `ifTrue:ifFalse:` is single keyword message with 2 arguments and boolean receiver
+1 > 2 ifTrue: [...] ifFalse: [...]
+// ifTrue:ifFalse: can be used as expression
+x = 42 < 69 ifTrue: [1] ifFalse: [0] // x == 1
 
-#### Factorial
+// Loops
+{1 2 3} forEach: [it echo] // 1 2 3
+1..3
+```
+
+
+
+## Syntax
+
+### If
+```Scala
+// single expression
+1 < 2 => "yes!" echo
+// with body
+1 < 2 => [
+  ...
+]
+// with else
+1 > 2 => "yes" echo |=> "no" echo
+// as expression
+x = 1 > 2 => "yes" |=> "no" // x == "no"
+```
+### Switch
+```Scala
+// multiline switch
+x = 1
+| x
+| 1 => "switch 1" echo
+| 2 => "switch 2" echo
+|=> "what?" echo
+
+// single line switch
+m = |x| 1 => x inc | 2 => x dec |=> 0
+// m == 2 because of x inc
+```
+### If Elif Else chain
+You can think of that as pattern matching on true(`_`) the first expression that matches will evaluate then expression.
+The ball of execution flow seems to fall from above along the flow of execution onto this stick, and rolls out of one of the conditions
+
+```Scala
+// multiline
+_
+| x > 5 => 1  // if
+| x > 4 => 2  // elif
+| x < 4 => 3  // else
+|=> 0
+
+single line
+y = _| x > 5 => 1 |=> 2
+```
+
+
+#### Program exmaple: Factorial
 `factorial` is a message for `Int` type, that returns `Int`.
 `self` is context-dependent variable that represents Int on which factorial is called.
 The whole function is one expression, we pattern matching on self with `|` operator that acts as swith expression here.
 ```Scala
-Int factorial -> Int = self
-| 0 => 1 // switch on self, self is Int
-|=> self * (self - 1) factorial.
+// switching on this(Int receiver)
+Int factorial -> Int = | this
+| 0 => 1
+|=> (this - 1) factorial * this
 
 5 factorial echo
 ```
 
 #### Fibonacci
 ```F#
-Int fib -> Int = [
-  n = self.
-  | n < 2 => 1
-  |=> (n - 2) fib + (n - 1) fib
-]
+//
+Int fib -> Int = _
+| this < 2 => 1
+|=> (this - 2) fib + (this - 1) fib
 
 5 fib echo
 ```
@@ -182,7 +252,7 @@ a = add(a, 2);
 a = add(a, 1);
 ``` 
 Lest imagine its Java, and int itself has add method then:
-```Java
+```C
 int a = 0;
 a = a.add(1).add(2).add(3).add(4);
 ```

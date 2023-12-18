@@ -635,9 +635,18 @@ fun Resolver.resolveMessage(
                 statement.type = w!!.type
 
             } else {
-                // usual message
-                // find this message
+                // usual message or static message
 
+                // check for recursion
+                val resolvingMsgDecl = this.resolvingMessageDeclaration
+                if (resolvingMsgDecl?.name == statement.selectorName && !resolvingMsgDecl.isRecursive) {
+                    resolvingMsgDecl.isRecursive = true
+                    if (resolvingMsgDecl.isSingleExpression && resolvingMsgDecl.returnTypeAST == null) {
+                        resolvingMsgDecl.token.compileError("Recursive single expression methods must describe its return type explicitly")
+                    }
+                }
+
+                // resolve message from db and its generic params
                 if (!isStaticCall) {
                     val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token)
                     val receiverType2 = receiver.type

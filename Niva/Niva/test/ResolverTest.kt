@@ -733,6 +733,19 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
+    @Test
+    fun recursiveFunc() {
+        val source = """
+        Int fib -> Int = _
+        | this < 2 => 1
+        |=> (this - 2) fib + (this - 1) fib
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
+
 
 
 
