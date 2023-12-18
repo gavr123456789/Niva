@@ -34,6 +34,12 @@ fun Resolver.resolveControlFlow(
             is ControlFlow -> {
                 rootStatement.kind
             }
+            is MessageDeclaration -> {
+                if (rootStatement.isSingleExpression)
+                    ControlFlowKind.Expression
+                else
+                    ControlFlowKind.Statement
+            }
 
             else -> ControlFlowKind.Statement
         }
