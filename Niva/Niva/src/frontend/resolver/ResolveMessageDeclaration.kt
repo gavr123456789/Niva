@@ -157,8 +157,8 @@ fun Resolver.resolveMessageDeclaration(
                 st.returnType = returnType
 
                 // in single expr declared type not matching real type
-                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType)) {
-                    st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
+                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType) && st.returnTypeAST != null) {
+                    st.returnTypeAST.token.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
                 }
             }
         } else {
