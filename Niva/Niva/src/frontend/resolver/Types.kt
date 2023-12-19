@@ -6,10 +6,12 @@ import frontend.meta.compileError
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.resolver.Type.RecursiveType.copy
 import main.CYAN
 import main.RED
 import main.WHITE
 import main.YEL
+import main.utils.isGeneric
 
 data class MsgSend(
     val pkg: String,
@@ -126,6 +128,18 @@ fun Type.isDescendantOf(type: Type): Boolean {
     return false
 }
 
+
+fun MutableList<TypeField>.copy(): MutableList<TypeField> =
+     this.map {
+        val type = it.type
+        TypeField(
+            name = it.name,
+            type = if (type is Type.UserLike) type.copy() else type
+        )
+    }.toMutableList()
+
+
+
 sealed class Type(
     val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField
     val pkg: String,
@@ -185,8 +199,8 @@ sealed class Type(
         when (this) {
             is UserType -> UserType(
                 name = this.name,
-                typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.toMutableList(),
+                typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
+                fields = this.fields.copy(),
                 isPrivate = this.isPrivate,
                 pkg = this.pkg,
                 protocols = this.protocols.toMutableMap(),
@@ -216,7 +230,7 @@ sealed class Type(
             is UserUnionBranchType -> TODO()
             is KnownGenericType -> TODO()
             is NullableUserType -> TODO()
-            is UnknownGenericType -> TODO()
+            is UnknownGenericType -> this
             RecursiveType -> TODO()
         }
 
@@ -347,7 +361,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
 
 
         is TypeAST.UserType -> {
-            if (name.length == 1 && name[0].isUpperCase()) {
+            if (name.isGeneric()) {
                 return Type.UnknownGenericType(name)
             }
             if (selfType != null && name == selfType.name) return selfType
@@ -535,18 +549,20 @@ fun SomeTypeDeclaration.toType(
         it.type = result
     }
 
-    result.typeArgumentList = typeFields
-    result.fields = fieldsTyped
+
 
 
     this.genericFields.addAll(typeFields.map { it.name })
 
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.count() == 1 && it[0].isUpperCase()) {
+        if (it.isGeneric() && typeFields.find { x ->  x.name == it } == null) {
             typeFields.add(Type.UnknownGenericType(it))
         }
     }
+
+    result.typeArgumentList = typeFields
+    result.fields = fieldsTyped
 
     return result
 }

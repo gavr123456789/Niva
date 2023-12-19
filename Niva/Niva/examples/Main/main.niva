@@ -1,60 +1,7 @@
-//Int from::Int to::Int = 1 echo
-//
-//1 from: 5 inc to: 2 inc
+type Box field: T
 
+x = Box field: 7
+y = Box field: "uh"
 
-
-program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
-
-
-mut ip = 0
-mut buf::MutableList::Int = {}
-mut ptr = 0
-
-
-[ip == program count] whileFalse: [
-  char = program at: ip
-  buf count dec < ptr => buf add: 0 // bool then(=>) buf add: 0
-  bufAtPtr = buf at: ptr
-
-  | char
-  | '>' => ptr <- ptr inc
-  | '<' => ptr <- ptr dec
-  | '+' => buf at: ptr put: bufAtPtr inc
-  | '-' => buf at: ptr put: bufAtPtr dec
-  | '.' => ((buf viewFrom: ptr to: ptr inc) at: 0) toChar echonnl
-  | ',' => "readln needed" echo
-  | '[' =>
-    bufAtPtr == 0 => [
-      ip <- ip inc
-      mut layer = 0
-      [layer == 0 && ((program at: ip) == ']')] whileFalse: [
-        char = program at: ip
-        | char
-        | '[' => layer <- layer inc
-        | ']' => layer <- layer dec
-
-        ip <- ip inc
-      ]
-    ]
-
-  | ']' =>
-    bufAtPtr == 0 => [
-      // exit loop
-    ]
-    |=> [
-      ip <- ip dec
-      mut layer = 0
-      [layer == 0 && ((program at: ip) == '[')] whileFalse: [
-        char = program at: ip
-        | char
-        | '[' => layer <- layer dec
-        | ']' => layer <- layer inc
-
-        ip <- ip dec
-      ]
-    ]
-
-  ip <- ip inc
-]
-
+x field + 5
+y field + "sas"

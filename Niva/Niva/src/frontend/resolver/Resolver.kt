@@ -11,6 +11,7 @@ import frontend.util.createFakeToken
 import frontend.util.div
 import main.*
 import main.frontend.typer.*
+import main.utils.isGeneric
 import java.io.File
 
 private fun Resolver.addPrintingInfoAboutType(type: Type) {
@@ -454,7 +455,7 @@ fun Resolver.findStaticMessageType(
 }
 
 fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): BinaryMsgMetaData {
-    if (receiverType.name.length == 1 && receiverType.name[0].isUpperCase()) {
+    if (receiverType.name.isGeneric()) {
         throw Exception("Can't receive generic type to find binary method for it")
     }
     receiverType.protocols.forEach { (_, v) ->
@@ -470,7 +471,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
 }
 
 fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
-    if (receiverType.name.length == 1 && receiverType.name[0].isUpperCase()) {
+    if (receiverType.name.isGeneric()) {
         throw Exception("Can't receive generic type to find keyword method for it")
     }
 
