@@ -7,6 +7,7 @@ import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
 import main.*
+import main.utils.isGeneric
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     if (type.typeArgumentList.count() > 2) {
@@ -58,7 +59,7 @@ fun Resolver.resolveKwArgsGenerics(
             val typeFromDBForThisArg = kwTypeFromDB.argTypes[argNum].type
 
             // this is T
-            if (typeFromDBForThisArg.name.length == 1 && typeFromDBForThisArg.name[0].isUpperCase()) {
+            if (typeFromDBForThisArg.name.isGeneric()) {
                 // check that receiver wasn't already resolved to different type
                 val receiverType = statement.receiver.type
                 if (receiverType != null && receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
@@ -79,7 +80,7 @@ fun Resolver.resolveKwArgsGenerics(
                 if (argType.name == typeFromDBForThisArg.name && argType.typeArgumentList.count() == typeFromDBForThisArg.typeArgumentList.count()) {
                     argType.typeArgumentList.forEachIndexed { i, type ->
                         val fromDb = typeFromDBForThisArg.typeArgumentList[i]
-                        if (fromDb.name.length == 1 && fromDb.name[0].isUpperCase() && !(type.name.length == 1 && type.name[0].isUpperCase())) {
+                        if (fromDb.name.isGeneric() && !(type.name.isGeneric())) {
                             letterToRealType[fromDb.name] = type
                         }
                     }
@@ -98,18 +99,18 @@ fun Resolver.resolveKwArgsGenerics(
                 /// remember letter to type args
                 typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
                     val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
-                    if (typeField.type.name.length == 1 && typeField.type.name[0].isUpperCase()) {
+                    if (typeField.type.name.isGeneric()) {
                         letterToRealType[typeField.type.name] = argType.args[i].type
-                    } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.length == 1 && beforeGenericResolvedName[0].isUpperCase()) {
+                    } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.isGeneric()) {
                         letterToRealType[beforeGenericResolvedName] = argType.args[i].type
                     }
                 }
                 /// remember letter to return type
                 val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
 
-                if (typeFromDBForThisArg.returnType.name.length == 1 && typeFromDBForThisArg.returnType.name[0].isUpperCase()) {
+                if (typeFromDBForThisArg.returnType.name.isGeneric()) {
                     letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
-                } else if (returnTypeBefore != null && returnTypeBefore.length == 1 && returnTypeBefore[0].isUpperCase()) {
+                } else if (returnTypeBefore != null && returnTypeBefore.isGeneric()) {
                     letterToRealType[returnTypeBefore] = argType.returnType
                 }
 
@@ -127,7 +128,7 @@ fun Resolver.resolveReturnTypeIfGeneric(
 ) {
     val returnType = kwTypeFromDB?.returnType
     val returnName = returnType?.name ?: ""
-    val returnTypeIsSingleGeneric = returnName.length == 1 && returnName[0].isUpperCase()
+    val returnTypeIsSingleGeneric = returnName.isGeneric()
 
     // infer return generic type from args or receiver
     if (kwTypeFromDB != null &&
@@ -362,7 +363,7 @@ fun Resolver.resolveMessage(
 
                 KeywordLikeType.Constructor -> {
                     // check that all fields are filled
-                    var replacerTypeIfItGeneric: Type? = null
+                    var replacerTypeIfItGeneric: Type.UserLike? = null
                     if (receiverType is Type.UserLike) {
                         // collect all fields from parents
                         val listOfAllParentsFields = mutableListOf<TypeField>()
@@ -430,8 +431,8 @@ fun Resolver.resolveMessage(
                                     val real = statement.args.find { it.name == genericField.name }
                                         ?: statement.token.compileError("Can't find real type for field: $YEL${genericField.name}${RESET} of generic type: $YEL${genericField.type.name}${RESET}")
                                     val realType = real.keywordArg.type
-                                        ?: real.keywordArg.token.compileError("Panic: $YEL${real.name}${RESET} doesn't have type")
-                                    genericField.type = realType
+                                        ?: real.keywordArg.token.compileError("Compiler bug: $YEL${real.name}${RESET} doesn't have type")
+                                    // genericField.type = realType
                                     map[typeArg.name] = realType
                                 }
                             }
@@ -440,6 +441,12 @@ fun Resolver.resolveMessage(
                             map.forEach { (fieldName, fieldRealType) ->
                                 val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
                                 realTypes[fieldIndex] = fieldRealType
+                                // replace all fields of generic type
+                                replacerTypeIfItGeneric.fields.forEach {
+                                    if (it.type.name == fieldName) {
+                                        it.type = fieldRealType
+                                    }
+                                }
                             }
                             replacerTypeIfItGeneric.typeArgumentList = realTypes
                         }
@@ -471,7 +478,7 @@ fun Resolver.resolveMessage(
 
                         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
                         returnTypeFromDb.typeArgumentList.forEach { typeArg ->
-                            val isNotResolved = typeArg.name.length == 1 && typeArg.name[0].isUpperCase()
+                            val isNotResolved = typeArg.name.isGeneric()
                             if (isNotResolved) {
                                 val resolvedLetterType = letterToRealType[typeArg.name]
                                     ?: throw Exception("Can't find generic type: $YEL${typeArg.name}${RESET} in letter table")

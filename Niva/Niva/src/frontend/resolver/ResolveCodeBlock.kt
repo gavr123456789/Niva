@@ -4,6 +4,7 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import main.RESET
 import main.WHITE
+import main.utils.isGeneric
 
 fun Resolver.resolveCodeBlock(
     statement: CodeBlock,
@@ -53,7 +54,7 @@ fun Resolver.resolveCodeBlock(
             rootType.typeArgumentList.forEachIndexed { i, it ->
                 val beforeName = it.beforeGenericResolvedName
 
-                if (it.name.length == 1 && it.name[0].isUpperCase()) {
+                if (it.name.isGeneric()) {
 
                     val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
@@ -61,7 +62,7 @@ fun Resolver.resolveCodeBlock(
                         throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
                     }
                     genericLetterToTypes[it.name] = sameButResolvedArg
-                } else if (beforeName != null && beforeName.length == 1 && beforeName[0].isUpperCase()) {
+                } else if (beforeName != null && beforeName.isGeneric()) {
                     // was resolved somehow
                     genericLetterToTypes[beforeName] = it
 

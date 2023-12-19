@@ -9,6 +9,7 @@ import frontend.resolver.Type.RecursiveType.copy
 import main.RED
 import main.WHITE
 import main.YEL
+import main.utils.isGeneric
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
@@ -29,8 +30,8 @@ fun Resolver.resolveVarDeclaration(
     var copyType: Type? = null
     if (value is Receiver &&
         valueType is Type.UserType &&
-        valueType.typeArgumentList.find { it.name.length == 1 && it.name[0].isUpperCase() } != null &&
-        statementDeclaredType is TypeAST.UserType && statementDeclaredType.typeArgumentList.find { it.name.length == 1 && it.name[0].isUpperCase() } == null
+        valueType.typeArgumentList.find { it.name.isGeneric() } != null &&
+        statementDeclaredType is TypeAST.UserType && statementDeclaredType.typeArgumentList.find { it.name.isGeneric() } == null
     ) {
         copyType = valueType.copy()
 

@@ -24,14 +24,13 @@ Person haveBirthday = age <- age + 1
 // 8 loop
 1 to: 3 do: [ it echo ]
 // 9 if
-| true => "true" echo
+true => "true" echo
 
 // 10 switch
-
 // smart casted inside branches
 User getName = | this
 | Guest => "Guest" echo
-| LoggedIn => this name
+| LoggedIn => name echo // field of LoggedIn in scope
 
 // 11 list
 list = {1 2 3}
@@ -41,7 +40,7 @@ mappedList = list map: [it toString + "a"]
 
 // map
 map = #{1 "a" 2 "b"}
-map key: 3 value: "c"
+map at: 3 put: "c"
 // "a"
 a = map at: 1
-| a != null => a echo
+a != null => a echo

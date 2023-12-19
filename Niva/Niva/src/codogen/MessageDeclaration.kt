@@ -2,6 +2,7 @@ package codogen
 
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
+import main.utils.isGeneric
 
 
 val operators = hashMapOf(
@@ -37,7 +38,7 @@ val operators = hashMapOf(
 fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
     append("fun ")
     if (returnTypeAST != null) {
-        val isThereUnresolvedTypeArgs = returnTypeAST.name.count() == 1 && returnTypeAST.name[0].isUpperCase()
+        val isThereUnresolvedTypeArgs = returnTypeAST.name.isGeneric()
         if (isThereUnresolvedTypeArgs) {
             // There can be resolved type args like box::Box::Int, then we don't need to add them
             append("<")
@@ -98,7 +99,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     // if this is the constructor, then method on Companion
     append("fun ")
 
-    val isThereUnresolvedTypeArgs = typeArgs.filter { it.count() == 1 && it[0].isUpperCase() }
+    val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
     if (isThereUnresolvedTypeArgs.isNotEmpty()) {
         // There can be resolved type args like box::Box::Int, then we don't need to add them
         append("<")

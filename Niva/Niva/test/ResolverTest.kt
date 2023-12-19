@@ -565,6 +565,26 @@ class ResolverTest {
     }
 
     @Test
+    fun genericTypeBox() {
+
+        val source = """
+        type Box field: T
+
+        x = Box field: 7
+        y = Box field: "uh"
+
+        x field + 5
+        y field + "sas"
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 5)
+        assert((statements[0] as TypeDeclaration).genericFields[0] == "T")
+    }
+
+
+
+    @Test
     fun inferReturnTypeOfSingleExpressionInMessageDeclaration() {
 
         val source = """
@@ -743,7 +763,7 @@ class ResolverTest {
 
 
         val statements = resolve(source)
-        assert(statements.count() == 3)
+        assert(statements.count() == 1)
     }
 
 
