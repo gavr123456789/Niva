@@ -7,6 +7,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import frontend.resolver.Resolver
 
 
 // Declaration without end of line
@@ -143,7 +144,7 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? =
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
-        TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: throw Exception("To declare Null expression type needed"), step())
+        TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: TypeAST.InternalType(InternalTypes.Any, peek()), step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.Double -> LiteralExpression.DoubleExpr(step())

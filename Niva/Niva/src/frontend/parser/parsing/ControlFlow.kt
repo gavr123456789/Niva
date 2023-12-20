@@ -45,7 +45,11 @@ fun Parser.ifStatementOrExpression(fromSwitch: Boolean = false): ControlFlow.If 
         val token = matchAssert(TokenType.Underscore)
         skipNewLinesAndComments()
         token
-    } else peek()
+    } else {
+        skipNewLinesAndComments()
+        peek()
+    }
+
 
     if (fromSwitch && pipeTok.kind != TokenType.Pipe) {
         pipeTok.compileError("| expected but found: ${WHITE}${pipeTok.lexeme}")

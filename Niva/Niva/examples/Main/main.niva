@@ -1,3 +1,4 @@
 mut x::Int? = null
 
 
+x != null => x + 5 |=> "x is null" echo
