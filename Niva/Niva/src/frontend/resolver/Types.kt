@@ -8,6 +8,11 @@ import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
+import frontend.resolver.Type.RecursiveType.isNullable
+import frontend.resolver.Type.RecursiveType.isPrivate
+import frontend.resolver.Type.RecursiveType.name
+import frontend.resolver.Type.RecursiveType.pkg
+import frontend.resolver.Type.RecursiveType.protocols
 import main.CYAN
 import main.RED
 import main.WHITE
@@ -150,11 +155,28 @@ sealed class Type(
     var beforeGenericResolvedName: String? = null,
 //    var bind: Boolean = false
 ) {
-    override fun toString(): String {
+    override fun toString(): String =
         if (this is InternalLike)
-            return name
+            name
         else
-            return "$pkg.$name"
+            "$pkg.$name"
+
+
+    class NullableType(
+        val realType: Type?,
+    ) : Type(
+        realType?.name ?: name,
+        realType?.pkg ?: pkg,
+        realType?.isPrivate ?: isPrivate,
+        realType?.isNullable ?: isNullable,
+        realType?.protocols ?: protocols
+    ) {
+        fun getTypeOrNullType(): Type {
+            if (realType != null)
+                return realType
+
+            return Resolver.defaultTypes[InternalTypes.Null]!!
+        }
     }
 
 
@@ -398,7 +420,13 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 ?: this.token.compileError("Can't find user type: ${YEL}$name")
 
             val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
-            return type.also { it.isNullable = isNullable }
+            type.isNullable = isNullable
+
+            return if (isNullable) {
+                Type.NullableType(realType = type)
+            } else {
+                type
+            }
         }
 
         is TypeAST.Lambda -> {

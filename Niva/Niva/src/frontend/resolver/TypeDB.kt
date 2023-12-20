@@ -71,25 +71,32 @@ fun TypeDB.getType(
 
 
     } else {
+        val getType = { type: Type ->
+            when (type) {
+                is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
+                is Type.UserLike -> TypeDBResult.FoundOneUser(type)
+                is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
+                is Type.NullableType -> {
+                    when (val w = type.getTypeOrNullType()) {
+                        is Type.InternalType -> TypeDBResult.FoundOneInternal(w)
+                        is Type.UserLike -> TypeDBResult.FoundOneUser(w)
+                        is Type.Lambda -> TypeDBResult.FoundOneLambda(w)
+                        is Type.NullableType -> TODO()
+                    }
+                }
+            }
+        }
         if (currentScope != null) {
             val type = currentScope[name]
             if (type != null) {
-                return when (type) {
-                    is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
-                    is Type.UserLike -> TypeDBResult.FoundOneUser(type)
-                    is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
-                }
+                return getType(type)
             }
         }
 
         if (previousScope != null) {
             val type = previousScope[name]
             if (type != null) {
-                return when (type) {
-                    is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
-                    is Type.UserLike -> TypeDBResult.FoundOneUser(type)
-                    is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
-                }
+                return getType(type)
             }
         }
         return TypeDBResult.NotFound(name)
@@ -122,9 +129,9 @@ fun TypeDB.add(type: Type, token: Token) {
     when (type) {
         is Type.UserLike -> addUserLike(type.name, type, token)
         is Type.InternalType -> addInternalType(type.name, type)
-        is Type.Lambda -> {
-            addLambdaType(type.name, type)
-        }
+        is Type.Lambda -> addLambdaType(type.name, type)
+
+        is Type.NullableType -> TODO()
 
         Type.RecursiveType -> TODO()
     }
