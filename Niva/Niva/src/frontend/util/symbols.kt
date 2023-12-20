@@ -46,6 +46,7 @@ fun Lexer.fillSymbolTable() {
 
         "true" to TokenType.True,
         "false" to TokenType.False,
+        "null" to TokenType.Null
     )
 
     // add possible binary

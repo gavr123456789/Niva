@@ -6,7 +6,6 @@ import frontend.parser.types.ast.IdentifierExpr
 import frontend.parser.types.ast.KeywordMsg
 import frontend.parser.types.ast.Receiver
 import frontend.util.createFakeToken
-import main.CYAN
 import main.RED
 import main.WHITE
 import main.YEL
@@ -79,11 +78,6 @@ fun TypeDB.getType(
                     is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
                     is Type.UserLike -> TypeDBResult.FoundOneUser(type)
                     is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
-
-                    else -> {
-
-                        throw Exception("Type can be only internal or user like, but its ${type::class.simpleName}")
-                    }
                 }
             }
         }
@@ -95,9 +89,6 @@ fun TypeDB.getType(
                     is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
                     is Type.UserLike -> TypeDBResult.FoundOneUser(type)
                     is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
-                    else -> {
-                        throw Exception("Type can be only internal or user like")
-                    }
                 }
             }
         }
@@ -136,7 +127,6 @@ fun TypeDB.add(type: Type, token: Token) {
         }
 
         Type.RecursiveType -> TODO()
-        is Type.NullableInternalType -> TODO()
     }
 
 }
@@ -149,7 +139,7 @@ fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
     lambdaTypes[typeName] = type
 }
 
-fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, token: Token) {
+fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSED_PARAMETER") token: Token) {
     val list = userTypes[typeName]
     if (list == null) {
         // create list with single new type

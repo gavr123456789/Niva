@@ -1,7 +1,3 @@
-type Box field: T
+mut x::Int? = null
 
-x = Box field: 7
-y = Box field: "uh"
 
-x field + 5
-y field + "sas"

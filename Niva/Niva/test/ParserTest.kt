@@ -1332,7 +1332,18 @@ class ParserTest {
     }
 
 
+    @Test
+    fun nullVarDecl() {
+        val source = """
+            mut x::Int? = null
+        """.trimIndent()
 
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert((ast[0] as VarDeclaration).valueType?.name == "Int?")
+        val value = (ast[0] as VarDeclaration).value as LiteralExpression.NullExpr
+        assert(value.typeAST?.name == "Int?")
+    }
 
 
 

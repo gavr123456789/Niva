@@ -8,7 +8,7 @@ import frontend.resolver.Type
 sealed class Primary(val typeAST: TypeAST?, token: Token) : Receiver(null, token)
 
 // LITERALS
-sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, literal) {
+sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(typeAST, literal) {
 
     class IntExpr(literal: Token) : LiteralExpression(TypeAST.InternalType(InternalTypes.Int, false, literal), literal)
 
@@ -31,6 +31,9 @@ sealed class LiteralExpression(type: TypeAST?, literal: Token) : Primary(type, l
 
     class TrueExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, false, literal), literal)
+
+    class NullExpr(typeAST: TypeAST, literal: Token) :
+        LiteralExpression(typeAST, literal)
 
     class FloatExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.Float, false, literal), literal)
