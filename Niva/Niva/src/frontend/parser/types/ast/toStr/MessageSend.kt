@@ -21,6 +21,7 @@ fun Receiver.toNivaStr(): String {
 
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"
+        is LiteralExpression.NullExpr -> "null"
         is LiteralExpression.FloatExpr -> this.str
         is LiteralExpression.DoubleExpr -> this.str
         is LiteralExpression.IntExpr -> this.str

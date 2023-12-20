@@ -116,7 +116,8 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 }
 
-fun Parser.identifierMayBeTyped(): IdentifierExpr {
+// if inside var decl with type, then we're getting type from it
+fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
     val x = step()
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
@@ -128,32 +129,28 @@ fun Parser.identifierMayBeTyped(): IdentifierExpr {
     }
 
 
-    val isTyped = check(TokenType.DoubleColon)
+    val isTyped = match(TokenType.DoubleColon)
     return if (isTyped) {
-        step() // skip double colon
         val type = parseType()
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
     } else {
-        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x) // look for type in table
+        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, typeAST, x) // look for type in table
     }
 }
 
-fun Parser.primary(): Primary? =
+fun Parser.primary(typeAST: TypeAST? = null): Primary? =
 
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
+        TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: throw Exception("To declare Null expression type needed"), step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.Double -> LiteralExpression.DoubleExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Char -> LiteralExpression.CharExpr(step())
 
-        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
-
-//        TokenType.OpenParen -> TODO()
-//        TokenType.OpenBraceHash -> TODO() // set or map
-//        TokenType.OpenParenHash -> TODO() // ?
+        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped(typeAST)
         else -> null
     }
 
@@ -181,7 +178,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Assign)
-            value = this.simpleReceiver()
+            value = this.simpleReceiver(valueType)
         }
 
         else -> error("after ${peek(-1)} needed type or expression")

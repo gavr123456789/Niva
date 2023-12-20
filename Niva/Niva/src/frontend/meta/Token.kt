@@ -6,7 +6,7 @@ import java.io.File
 import kotlin.system.exitProcess
 
 enum class TokenType {
-    True, False,
+    True, False, Null,
 
     // Literal types
     Integer,

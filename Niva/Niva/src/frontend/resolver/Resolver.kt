@@ -158,6 +158,9 @@ private fun Resolver.resolveStatement(
         is LiteralExpression.TrueExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
+        is LiteralExpression.NullExpr ->
+           TODO()
+
         is LiteralExpression.FalseExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
@@ -466,7 +469,7 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
-    
+
     token.compileError("Cant find binary message: $YEL$selectorName${RESET} for type $YEL${receiverType.name}${RESET}")
 }
 

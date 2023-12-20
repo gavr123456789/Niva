@@ -74,8 +74,6 @@ fun Type.infoPrint() = buildString {
         is Type.UnknownGenericType -> TODO()
         is Type.KnownGenericType -> TODO()
 
-        is Type.NullableUserType -> TODO()
-        is Type.NullableInternalType -> TODO()
         Type.RecursiveType -> TODO()
     })
 

@@ -53,7 +53,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = nul
 // receiver like collection, code block, identifier,
 
 // simple means not message
-fun Parser.simpleReceiver(): Receiver {
+fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
 
     if (check(TokenType.OpenBracket)) {
         return codeBlock()
@@ -67,7 +67,7 @@ fun Parser.simpleReceiver(): Receiver {
 
         var lastPrimary: Primary? = null
         do {
-            val primaryTok = primary()
+            val primaryTok = primary(typeAst)
             match(TokenType.Comma)
             if (primaryTok != null) {
                 if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
@@ -84,12 +84,12 @@ fun Parser.simpleReceiver(): Receiver {
     val readPrimaryMap = {
         val initElementsPairs: MutableList<Pair<Receiver, Receiver>> = mutableListOf()
         do {
-            val primaryTok = primary()
+            val primaryTok = primary(typeAst)
             if (match(TokenType.Comma)) {
                 peek().compileError("Only map pairs can be separated by commas")
             }
 
-            val primaryTok2 = primary()
+            val primaryTok2 = primary(typeAst)
             match(TokenType.Comma)
             skipOneEndOfLineOrFile()
 
@@ -106,7 +106,8 @@ fun Parser.simpleReceiver(): Receiver {
         initElementsPairs
     }
 
-    var tryPrimary: Receiver? = primary()
+    var tryPrimary: Receiver? = primary(typeAst)
+    // check for collections
     if (tryPrimary == null) {
         val q = step()
         skipOneEndOfLineOrFile()
@@ -130,13 +131,6 @@ fun Parser.simpleReceiver(): Receiver {
                 skipOneEndOfLineOrFile()
 
                 match(TokenType.CloseBrace)
-
-//                val keyType = if (initElements.isNotEmpty()) initElements[0].first.type else null
-//                val valType = if (initElements.isNotEmpty()) initElements[0].second.type else null
-
-//                val mapType = if (keyType != null && valType != null)
-//                    Type.KnownGenericType("MutableMap", listOf(keyType, valType), pkg = "common")
-//                else null
 
                 return MapCollection(initElements, null, q)
             }

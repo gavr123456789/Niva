@@ -217,6 +217,12 @@ x sas
         checkWithEnd(manyExpr, listOf(InlineReplWithQuestion))
     }
 
+    @Test
+    fun nullTok() {
+        val manyExpr = "null"
+        checkWithEnd(manyExpr, listOf(Null))
+    }
+
 
     private fun checkWithEnd(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, File("Niva.iml"))

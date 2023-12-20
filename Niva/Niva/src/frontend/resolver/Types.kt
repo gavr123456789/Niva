@@ -130,7 +130,7 @@ fun Type.isDescendantOf(type: Type): Boolean {
 
 
 fun MutableList<TypeField>.copy(): MutableList<TypeField> =
-     this.map {
+    this.map {
         val type = it.type
         TypeField(
             name = it.name,
@@ -139,11 +139,11 @@ fun MutableList<TypeField>.copy(): MutableList<TypeField> =
     }.toMutableList()
 
 
-
 sealed class Type(
     val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField
     val pkg: String,
     val isPrivate: Boolean,
+    var isNullable: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
     var beforeGenericResolvedName: String? = null,
@@ -161,39 +161,37 @@ sealed class Type(
         val args: MutableList<TypeField>,
         val returnType: Type,
         pkg: String = "common",
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
-    ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
+    ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate, isNullable)
 
     sealed class InternalLike(
         typeName: InternalTypes,
         pkg: String,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol>
-    ) : Type(typeName.name, pkg, isPrivate, protocols)
+    ) : Type(typeName.name, pkg, isPrivate, isNullable, protocols)
 
     class InternalType(
         typeName: InternalTypes,
         pkg: String,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : InternalLike(typeName, pkg, isPrivate, protocols)
+    ) : InternalLike(typeName, pkg, isPrivate, isNullable, protocols)
 
-    class NullableInternalType(
-        name: InternalTypes,
-        pkg: String,
-        isPrivate: Boolean = false,
-        protocols: MutableMap<String, Protocol>
-    ) : InternalLike(name, pkg, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,
         var typeArgumentList: List<Type>,
         var fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false
-    ) : Type(name, pkg, isPrivate, protocols)
+    ) : Type(name, pkg, isPrivate, isNullable, protocols)
 
     fun UserLike.copy(): UserLike =
         when (this) {
@@ -229,7 +227,6 @@ sealed class Type(
             is UserEnumBranchType -> TODO()
             is UserUnionBranchType -> TODO()
             is KnownGenericType -> TODO()
-            is NullableUserType -> TODO()
             is UnknownGenericType -> this
             RecursiveType -> TODO()
         }
@@ -239,30 +236,33 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
     class UserUnionRootType(
         var branches: List<UserUnionBranchType>,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
     class UserUnionBranchType(
         val root: UserUnionRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
 
     class UserEnumRootType(
@@ -270,20 +270,22 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
     class UserEnumBranchType(
         val root: UserEnumRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
 
     class KnownGenericType(
@@ -291,30 +293,23 @@ sealed class Type(
         typeArgumentList: List<Type>,
         pkg: String,
         fields: MutableList<TypeField> = mutableListOf(),
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
     class UnknownGenericType(
         name: String,
         typeArgumentList: List<Type> = listOf(),
         fields: MutableList<TypeField> = mutableListOf(),
+        isNullable: Boolean = false,
         isPrivate: Boolean = true,
         pkg: String = "common",
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, isNullable, pkg, protocols)
 
-    object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, "common", mutableMapOf())
+    object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, false, "common", mutableMapOf())
 
-
-    class NullableUserType(
-        name: String,
-        typeArgumentList: List<Type>,
-        fields: MutableList<TypeField>,
-        isPrivate: Boolean = false,
-        pkg: String,
-        protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
 }
 
@@ -510,12 +505,12 @@ fun SomeTypeDeclaration.toType(
     }
 
     fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
-        val result = mutableListOf<Type.UserLike>()
+        val result2 = mutableListOf<Type.UserLike>()
         fields2.forEachIndexed { i, it ->
             val type = it.type
 
             if (type is Type.UserLike) {
-                val qwe = type.typeArgumentList.mapIndexed { i2, it2 ->
+                val qwe = List(type.typeArgumentList.size) { i2 ->
                     val field = fields[i].type
                     val typeName =
                         if (field is TypeAST.UserType) {
@@ -528,14 +523,14 @@ fun SomeTypeDeclaration.toType(
                     )
                 }
 
-                result.addAll(qwe)
+                result2.addAll(qwe)
 
                 if (type.fields.isNotEmpty()) {
-                    result.addAll(getAllGenericTypesFromFields(type.fields, fields))
+                    result2.addAll(getAllGenericTypesFromFields(type.fields, fields))
                 }
             }
         }
-        return result
+        return result2
     }
 
     val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
@@ -556,7 +551,7 @@ fun SomeTypeDeclaration.toType(
 
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.isGeneric() && typeFields.find { x ->  x.name == it } == null) {
+        if (it.isGeneric() && typeFields.find { x -> x.name == it } == null) {
             typeFields.add(Type.UnknownGenericType(it))
         }
     }
