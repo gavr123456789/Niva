@@ -1,7 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.CodeBlock
-import frontend.parser.types.ast.generateType
+import main.codogen.generateType
 
 fun CodeBlock.generateCodeBlock() = buildString {
     // {x: Int, y: Int -> x + y}

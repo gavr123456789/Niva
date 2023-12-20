@@ -74,17 +74,18 @@ fun Parser.parseType(): TypeAST {
 
     // check for basic type
     when (tok.kind) {
-        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, false, tok)
-        TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, false, tok)
-        TokenType.Double -> return TypeAST.InternalType(InternalTypes.Double, false, tok)
-        TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, false, tok)
-        TokenType.String -> return TypeAST.InternalType(InternalTypes.String, false, tok)
-        TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, false, tok)
+        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, tok)
+        TokenType.Null -> return TypeAST.InternalType(InternalTypes.Null, tok)
+
+        TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, tok)
+        TokenType.Double -> return TypeAST.InternalType(InternalTypes.Double, tok)
+        TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, tok)
+        TokenType.String -> return TypeAST.InternalType(InternalTypes.String, tok)
+        TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, tok)
         else -> {}
     }
 
     fun parseGenericType(): TypeAST {
-
         // identifier ("(" | "::")
 
         // x::List::Map(int, string)
@@ -94,7 +95,7 @@ fun Parser.parseType(): TypeAST {
         // if there is simple type, there cant be any other types like int:: is impossible
         return if (simpleTypeMaybe != null) {
             // int string float or bool
-            TypeAST.InternalType(simpleTypeMaybe, isIdentifierNullable, identifier)
+            TypeAST.InternalType(simpleTypeMaybe, identifier, isIdentifierNullable)
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
@@ -109,10 +110,8 @@ fun Parser.parseType(): TypeAST {
                 matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
                 return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
-
             }
             // ::Person
-
             TypeAST.UserType(identifier.lexeme, listOf(), isIdentifierNullable, identifier)
         }
 

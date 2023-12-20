@@ -158,8 +158,17 @@ private fun Resolver.resolveStatement(
         is LiteralExpression.TrueExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
-        is LiteralExpression.NullExpr ->
-           TODO()
+        is LiteralExpression.NullExpr -> {
+            if (rootStatement is VarDeclaration) {
+                val astValueType = rootStatement.valueType
+                if (astValueType != null) {
+                    val type = astValueType.toType(typeDB, typeTable)
+                    statement.type = type
+                }
+            } else {
+                statement.type = Resolver.defaultTypes[InternalTypes.Null]
+            }
+        }
 
         is LiteralExpression.FalseExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
@@ -928,6 +937,7 @@ class Resolver(
 
             createDefaultType(InternalTypes.Any),
             createDefaultType(InternalTypes.Nothing),
+            createDefaultType(InternalTypes.Null),
         )
 
         init {
@@ -940,6 +950,7 @@ class Resolver(
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
+            val nullType = defaultTypes[InternalTypes.Null]!!
 
             intType.protocols.putAll(
                 createIntProtocols(

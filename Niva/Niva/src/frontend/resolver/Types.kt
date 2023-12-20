@@ -2,6 +2,7 @@
 
 package frontend.resolver
 
+import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
@@ -393,8 +394,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
             }
-            return typeTable[name]
+            val type = typeTable[name]
                 ?: this.token.compileError("Can't find user type: ${YEL}$name")
+
+            val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
+            return type.also { it.isNullable = isNullable }
         }
 
         is TypeAST.Lambda -> {
