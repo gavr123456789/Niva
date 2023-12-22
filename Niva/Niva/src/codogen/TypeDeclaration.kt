@@ -4,6 +4,7 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import main.RED
 import main.WHITE
+import main.codogen.generateType
 
 fun UnionDeclaration.collectAllGenericsFromBranches(): Set<String> {
     val genericsOfBranches = mutableSetOf<String>()
@@ -40,11 +41,10 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         if (it.type == null) {
             it.token.compileError("Arg $WHITE${it.name}$RED must have type")
         }
-        // TODO var or val?, maybe add  mut modifier
-
-        val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
-            it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
-        } else it.type.name
+//        val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
+//            it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
+//        } else it.type.name
+        val typeName = it.type.generateType()
         if (!rootFields) {
             append("var ")
         }

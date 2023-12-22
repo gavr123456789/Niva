@@ -1346,6 +1346,20 @@ class ParserTest {
         assert(value.typeAST?.isNullable == true)
     }
 
+    @Test
+    fun switchOnNothing() {
+        val source = """
+            |
+            | y > 6 => 1 echo
+            | x == 6 => 2 echo
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
 
 
 //    @Test

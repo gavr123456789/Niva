@@ -369,12 +369,24 @@ class Project(
 
 fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
 
+    val replaceToNullableIfNeeded = { type: Type ->
+        val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
+        type.isNullable = isNullable
+
+        if (isNullable) {
+            Type.NullableType(realType = type)
+        } else {
+            type
+        }
+    }
+
     when (this) {
         is TypeAST.InternalType -> {
-            return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
+            val type = Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
                 this.token.compileError("Can't find default type: ${YEL}$name")
-                // TODO better inference, depend on context
             }
+
+            return replaceToNullableIfNeeded(type)
         }
 
 
@@ -419,14 +431,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
             val type = typeTable[name]
                 ?: this.token.compileError("Can't find user type: ${YEL}$name")
 
-            val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
-            type.isNullable = isNullable
-
-            return if (isNullable) {
-                Type.NullableType(realType = type)
-            } else {
-                type
-            }
+            return replaceToNullableIfNeeded(type)
         }
 
         is TypeAST.Lambda -> {
@@ -437,10 +442,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                         name = it.name
                     )
                 }.toMutableList(),
-                returnType = this.returnType.toType(typeDB, typeTable, selfType)
+                returnType = this.returnType.toType(typeDB, typeTable, selfType),
+                isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
             )
-            return lambdaType
 
+            return replaceToNullableIfNeeded(lambdaType)
         }
 
 

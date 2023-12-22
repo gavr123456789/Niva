@@ -1,4 +1,20 @@
-mut x::Int? = null
+//mut x::Int? = null
 
 
-x != null => x + 5 |=> "x is null" echo
+//x != null => x + 5 |=> "x is null" echo
+
+type Person name: String?
+type Person2 name: String
+
+person = Person name: null
+person2 = Person2 name: null
+
+y = person name
+y echo
+x = y + "sas"
+
+
+//x != null => [
+//  x + 6 |> echo
+//]
+
