@@ -18,6 +18,19 @@ private fun Resolver.addPrintingInfoAboutType(type: Type) {
     infoTypesToPrint.add(type)
 }
 
+
+//enum class VariableFlag {
+//    Mutable,
+//    Nullable
+//}
+//
+//data class Context(
+//    val x: MutableSet<VariableFlag> = mutableSetOf()
+//)
+
+//data class TypeWithContext(val type: Type, val context: Context = Context())
+//typealias NameToTypeWithContext = MutableMap<String, TypeWithContext>
+
 private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
@@ -25,14 +38,18 @@ private fun Resolver.resolveStatement(
     rootStatement: Statement?
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
-        when (statement2.receiver.str) {
-            "Project", "Bind" -> {}
+        when (statement2.receiver.token.lexeme) {
+            "Project", "Bind", "Compiler" -> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
-                // TODO check then return parameter of each send match the next input parameter
+                if (statement2.receiver.type?.isNullable == true && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
+                    val text = "$statement2"
+                    statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
+                }
+
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
                         statement2.messages.last().type
@@ -178,6 +195,11 @@ private fun Resolver.resolveStatement(
         is TypeAST.UserType -> {}
 
         is ControlFlow -> {
+//            val qwe = mutableMapOf<String, TypeWithContext>()
+//            val kek = (previousScope + currentScope)
+//            kek.forEach { (t, u) ->
+//                qwe[t] = TypeWithContext(u)
+//            }
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
@@ -206,7 +228,7 @@ private fun Resolver.resolveStatement(
         }
 
         is DotReceiver -> {
-            statement.type = findThis(statement.token, currentScope, previousScope)
+            statement.type = findThisInScopes(statement.token, currentScope, previousScope)
         }
 
     }
@@ -269,6 +291,7 @@ fun Resolver.resolveExpressionInBrackets(
 }
 
 
+// if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     // one of the types is Any
     if (type1.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
@@ -352,12 +375,19 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         }
     }
 
+
+    // x::Int? = null
+    if (type1.isNullable && type2 is Type.InternalType && type2.name == "Null") {
+        return true
+    }
+
+
     if (type1 is Type.UnknownGenericType || type2 is Type.UnknownGenericType) {
         return true
     }
 
     // TODO temp, there could be types with same names in different packages, or with different generic params
-    if (type1.name == type2.name) {
+    if (type1.name == type2.name && type1.pkg == type2.pkg) {
         return true
     }
 

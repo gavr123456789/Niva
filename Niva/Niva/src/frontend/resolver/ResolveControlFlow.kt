@@ -11,6 +11,56 @@ fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
 
+//returns list of all non-null value names
+fun isThereNullCheck(ifExpt: Expression): Pair <List<String>, List<String>> {
+    if (ifExpt is MessageSendBinary) {
+
+        val messages = ifExpt.messages
+        // if there is equal and its receiver and arg, or wise-versa, is null
+//        val isThereEqual = messages.find { it.selectorName == equal }
+
+        val listOfEqual = mutableListOf<BinaryMsg>()
+        val listOfNotEqual = mutableListOf<BinaryMsg>()
+        val listOfAnd = mutableListOf<BinaryMsg>()
+
+//        val isThereCheckOnNulls: Boolean = { binaryMsg: BinaryMsg ->
+//            if (binaryMsg.receiver is IdentifierExpr && binaryMsg.argument.token.kind == TokenType.Null) {
+//                true
+//            } else if (binaryMsg.receiver.token.kind == TokenType.Null && binaryMsg.argument is IdentifierExpr) {
+//                true
+//            } else
+//                false
+//        }
+
+
+        val checkedForNull = mutableListOf<String>()
+        val checkedForNullInElse = mutableListOf<String>()
+
+        messages.forEach {
+            val selector = it.selectorName
+            if (selector == "==") {
+                listOfEqual.add(it as BinaryMsg)
+//                val q = isThereCheckOnNulls(it)
+//                if (q) {
+//
+//                }
+            }
+            if (selector == "!=") {
+                listOfNotEqual.add(it as BinaryMsg)
+            }
+            if (selector == "&&") {
+                listOfAnd.add(it as BinaryMsg)
+            }
+        }
+
+
+//        TODO()
+
+    }
+    TODO()
+}
+
+
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -34,6 +84,7 @@ fun Resolver.resolveControlFlow(
             is ControlFlow -> {
                 rootStatement.kind
             }
+
             is MessageDeclaration -> {
                 if (rootStatement.isSingleExpression)
                     ControlFlowKind.Expression
@@ -61,6 +112,12 @@ fun Resolver.resolveControlFlow(
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
 
+                val ifExpt = it.ifExpression
+//                val isCheckingForNull = isThereNullCheck(ifExpt)
+
+
+
+
                 if (isStatement) {
                     val ifType = it.ifExpression.type!!
                     if (ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
@@ -81,6 +138,7 @@ fun Resolver.resolveControlFlow(
                     is IfBranch.IfBranchWithBody -> {
                         if (it.body.isNotEmpty()) {
                             currentLevel++
+                            // TODO NULL, add checking was there null check
                             resolve(it.body, previousAndCurrentScope, statement)
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {
@@ -132,7 +190,7 @@ fun Resolver.resolveControlFlow(
 //                    if (lastExpr.notExpression()) {
 //                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
 //                    }
-                    val elseReturnType = when(lastExpr) {
+                    val elseReturnType = when (lastExpr) {
                         is Expression -> lastExpr.type!!
                         is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
                         is Assign -> lastExpr.value.type!!
@@ -284,7 +342,9 @@ fun Resolver.resolveControlFlow(
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
                 // check that this is exhaustive checking
-                val root = if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent ?: throw Exception("Pattern matching on not union root?")
+                val root =
+                    if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent
+                        ?: throw Exception("Pattern matching on not union root?")
                 if (root is Type.UserUnionRootType) {
                     val realBranchTypes = mutableSetOf<Type>()
                     root.branches.forEach {

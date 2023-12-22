@@ -25,7 +25,7 @@ sealed class MessageSend(
         val msg = if (messages.count() == 1) {
             messages[0].toString()
         } else messages.joinToString(" ") { it.toString() }
-        return "${receiver.token.lexeme} $msg"
+        return msg
     }
 }
 
