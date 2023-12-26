@@ -10,57 +10,6 @@ import main.YEL
 fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
-
-//returns list of all non-null value names
-fun isThereNullCheck(ifExpt: Expression): Pair <List<String>, List<String>> {
-    if (ifExpt is MessageSendBinary) {
-
-        val messages = ifExpt.messages
-        // if there is equal and its receiver and arg, or wise-versa, is null
-//        val isThereEqual = messages.find { it.selectorName == equal }
-
-        val listOfEqual = mutableListOf<BinaryMsg>()
-        val listOfNotEqual = mutableListOf<BinaryMsg>()
-        val listOfAnd = mutableListOf<BinaryMsg>()
-
-//        val isThereCheckOnNulls: Boolean = { binaryMsg: BinaryMsg ->
-//            if (binaryMsg.receiver is IdentifierExpr && binaryMsg.argument.token.kind == TokenType.Null) {
-//                true
-//            } else if (binaryMsg.receiver.token.kind == TokenType.Null && binaryMsg.argument is IdentifierExpr) {
-//                true
-//            } else
-//                false
-//        }
-
-
-        val checkedForNull = mutableListOf<String>()
-        val checkedForNullInElse = mutableListOf<String>()
-
-        messages.forEach {
-            val selector = it.selectorName
-            if (selector == "==") {
-                listOfEqual.add(it as BinaryMsg)
-//                val q = isThereCheckOnNulls(it)
-//                if (q) {
-//
-//                }
-            }
-            if (selector == "!=") {
-                listOfNotEqual.add(it as BinaryMsg)
-            }
-            if (selector == "&&") {
-                listOfAnd.add(it as BinaryMsg)
-            }
-        }
-
-
-//        TODO()
-
-    }
-    TODO()
-}
-
-
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -112,16 +61,11 @@ fun Resolver.resolveControlFlow(
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
 
-                val ifExpt = it.ifExpression
-//                val isCheckingForNull = isThereNullCheck(ifExpt)
-
-
-
-
+                val ifExpr = it.ifExpression
                 if (isStatement) {
-                    val ifType = it.ifExpression.type!!
-                    if (ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
-                        it.ifExpression.token.compileError("if branch ${WHITE}${it.ifExpression}$RESET must be of the ${YEL}Boolean$RESET type, but found ${YEL}$ifType")
+                    val ifType = ifExpr.type!!
+                    if (ifType !is Type.NullableType && ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
+                        ifExpr.token.compileError("if branch ${WHITE}${ifExpr}$RESET must be of the ${YEL}Boolean$RESET or nullable type, but found ${YEL}$ifType")
                     }
                 }
 
@@ -136,13 +80,39 @@ fun Resolver.resolveControlFlow(
                     }
 
                     is IfBranch.IfBranchWithBody -> {
-                        if (it.body.isNotEmpty()) {
+                        if (it.body.statements.isNotEmpty()) {
                             currentLevel++
                             // TODO NULL, add checking was there null check
-                            resolve(it.body, previousAndCurrentScope, statement)
+                            // add args to scope
+                            if (it.body.inputList.isNotEmpty()) {
+                                val inputList = it.body.inputList
+//                                val ifExpr = it.ifExpression
+                                if (ifExpr.type !is Type.NullableType) {
+                                    ifExpr.token.compileError("You can smart cast only on nullable types, but the type of right part is: ${ifExpr.type}")
+                                }
+                                if (ifExpr is MessageSend) {
+                                    // if receiver is expressions separated with comma inside branches, then add them
+                                    // (a, b) => [a, b -> a and b is not null]
+
+                                    val type = ifExpr.type!!
+                                    // if receiver is message and input list has only one arg, then add it
+                                    if (inputList.count() == 1) {
+                                        val param = inputList[0]
+                                        val realType = type.unpackNull()
+                                        currentScope[param.name] = realType
+                                        param.type = realType
+                                    } else {
+                                        val args = inputList.joinToString(", ") { it.name }
+                                        it.body.token.compileError("There is only one expr: $WHITE${it.ifExpression}$RESET, but more than one arg: $WHITE${args} ")
+                                    }
+                                } else {
+                                    it.ifExpression.token.compileError("If you trying to smart cast something, then left part must be message send, not $ifExpr")
+                                }
+                            }
+                            resolveCodeBlock(it.body, previousScope, currentScope, statement)
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {
-                                val lastExpr = it.body.last()
+                                val lastExpr = it.body.statements.last()
 
                                 if (lastExpr.isNotExpression()) {
                                     lastExpr.token.compileError("In if expression body last statement must be an expression")
@@ -283,12 +253,13 @@ fun Resolver.resolveControlFlow(
                     }
 
                     is IfBranch.IfBranchWithBody -> {
-                        if (it.body.isNotEmpty()) {
+                        if (it.body.statements.isNotEmpty()) {
                             currentLevel++
-                            resolve(it.body, scopeWithFields, statement)
+//                            resolve(it.body, scopeWithFields, statement)
+                            resolveCodeBlock(it.body, previousScope,currentScope, statement)
                             currentLevel--
 
-                            val lastExpr = it.body.last()
+                            val lastExpr = it.body.statements.last()
                             if (lastExpr.isNotExpression()) {
                                 lastExpr.token.compileError("In if expression body last statement must be an expression")
                             }

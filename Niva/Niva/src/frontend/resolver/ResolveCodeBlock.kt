@@ -10,11 +10,12 @@ fun Resolver.resolveCodeBlock(
     statement: CodeBlock,
     previousScope: MutableMap<String, Type>,
     currentScope: MutableMap<String, Type>,
-    rootStatement: Statement?
+    rootStatement: Statement?,
+//    typesForArgsIfControlFlow: List<Type>? = null
 ) {
 
     // [] vs x = []
-    if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message)) || rootStatement == null) {
+    if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message && rootStatement !is ControlFlow)) || rootStatement == null) {
         statement.isSingle = true
     }
 
@@ -23,7 +24,11 @@ fun Resolver.resolveCodeBlock(
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeDB, typeTable)//fix
         }
+        if (it.type == null) {
+            it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name} parameter")
+        }
     }
+
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
@@ -106,7 +111,7 @@ fun Resolver.resolveCodeBlock(
     }
 
     namedLambdaArgs.forEach {
-        previousAndCurrentScope[it.name] = it.type!!
+        previousAndCurrentScope.putIfAbsent(it.name, it.type!!)
     }
 
     currentLevel++

@@ -9,7 +9,7 @@ fun replaceKeywords(str: String) =
         else -> str
     }
 
-fun Expression.generateExpression(replaceLiteral: String? = null): String = buildString {
+fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks: Boolean = false): String = buildString {
 
     if (isInfoRepl) {
         return@buildString
@@ -30,9 +30,9 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
 
     append(
         when (this@generateExpression) {
-            is ExpressionInBrackets -> generateExpressionInBrackets()
+            is ExpressionInBrackets -> generateExpressionInBrackets(withNullChecks)
 
-            is MessageSend -> generateMessageCall()
+            is MessageSend -> generateMessageCall(withNullChecks)
             is IdentifierExpr -> if (isConstructor) {
                 // prevent stack overflow, since keywordGenerate contains generate expression for receiver
                 this@generateExpression.isConstructor = false
@@ -90,7 +90,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null): String = buil
 
 }
 
-fun ExpressionInBrackets.generateExpressionInBrackets() = buildString {
+fun ExpressionInBrackets.generateExpressionInBrackets(withNullChecks: Boolean = false) = buildString {
+    if (withNullChecks) throw Exception("Compiler error, not realized nullable check with brackets")
     append("(")
     val statementsCode = codegenKt(statements, 0).removeSuffix("\n")
     append(statementsCode)

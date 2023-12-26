@@ -369,9 +369,6 @@ fun Parser.methodBody(
     return Pair(messagesOrVarStatements, realIsSingleExpression)
 }
 
-// returns null if it's not a message declaration
-// very bad function
-// TODO refactor
 
 
 // Int sas ^ (-> Type)? =?
@@ -424,6 +421,7 @@ fun Parser.tryBinary(isConstructor: Boolean): Boolean {
 
 
 fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
+    var keyArgsCounter = 0
     while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow))) {
         try {
             skipNewLinesAndComments()
@@ -431,9 +429,12 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
                 (check(TokenType.Identifier) && check(TokenType.Colon, 1) && check(TokenType.Identifier, 2))
             ) {
                 keyArg()
-
+                keyArgsCounter++
             } else {
-                return isThereEndOfMessageDeclaration(isConstructor)
+                return if (keyArgsCounter > 0)
+                    isThereEndOfMessageDeclaration(isConstructor)
+                else
+                    false
             }
         } catch (e: Exception) {
             return isThereEndOfMessageDeclaration(isConstructor)

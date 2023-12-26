@@ -7,7 +7,6 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
-import frontend.resolver.Resolver
 
 
 // Declaration without end of line
@@ -276,8 +275,18 @@ fun Parser.expression(
         messageSend
     }
 
+    // x > 5 ^ => ...
     if (parseSingleIf && match(TokenType.Then)) {
-        val (thenDo, isSingleExpr) = methodBody(true) //expression(dot = dot)
+        var codeBlock: CodeBlock? = null
+        var singleExpr: Statement? = null
+        if (check(TokenType.OpenBracket)) {
+            codeBlock = codeBlock()
+        } else {
+            singleExpr = statementWithEndLine()
+        }
+
+        val isSingleExpression = singleExpr is Expression
+
 
         skipNewLinesAndComments()
         val elseBranch = if (match(TokenType.Else)) {
@@ -287,16 +296,31 @@ fun Parser.expression(
         val singleIf = ControlFlow.If(
             type = null,
             ifBranches = listOf(
-                if (isSingleExpr)
+                if (isSingleExpression) {
+
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = thenDo.first() as Expression
+                        thenDoExpression = singleExpr as Expression
                     )
-                else
+                }
+                else {
+                    // this single expression is statement
+                    val body = if(singleExpr != null) {
+                        // codeBlock With single expr
+                        CodeBlock(
+                            inputList = listOf(),
+                            statements = listOf(singleExpr),
+                            type = null,
+                            token = singleExpr.token
+                        )
+                    } else {
+                        codeBlock!!
+                    }
                     IfBranch.IfBranchWithBody(
                         ifExpression = unwrapped,
-                        body = thenDo
+                        body = body
                     )
+                }
             ),
             kind = ControlFlowKind.Statement,
             elseBranch = elseBranch,
