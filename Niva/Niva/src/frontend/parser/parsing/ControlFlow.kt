@@ -26,7 +26,7 @@ fun Parser.ifBranches(): List<IfBranch> {
             } else {
                 IfBranch.IfBranchWithBody(
                     ifExpression = ifExpression,
-                    body = body
+                    body = CodeBlock(listOf(), body, token = ifExpression.token)
                 )
             }
         )

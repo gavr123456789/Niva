@@ -4,16 +4,35 @@ import frontend.parser.types.ast.*
 import frontend.resolver.Type
 
 
+fun codegenIfLet(x: IfBranch.IfBranchWithBody) = buildString {
+    // person name  => [name -> name echo ]
+    // letIfAllNotNull(person?.name, {(name) -> ...})
+    append("letIfAllNotNull(")
+    append(x.ifExpression.generateExpression(withNullChecks = true))
+    append(") ")
+    append(x.body.generateCodeBlock(withTypeDeclaration = false, putArgListInBrackets = true))
+}
+
 fun ControlFlow.If.generateIf(): String = buildString {
 
-    append("if (")
+
+    if (ifBranches.count() == 1) {
+        val first = ifBranches[0]
+        if (first is IfBranch.IfBranchWithBody) {
+            return codegenIfLet(first)
+        }
+    }
+
     val firstIfBranch = ifBranches[0]
+
+    append("if (")
     append(firstIfBranch.ifExpression.generateExpression())
     append(") {\n")
     append("    ")
+
     when (firstIfBranch) {
         is IfBranch.IfBranchSingleExpr -> append(firstIfBranch.thenDoExpression.generateExpression())
-        is IfBranch.IfBranchWithBody -> append(codegenKt(firstIfBranch.body, 1))
+        is IfBranch.IfBranchWithBody -> append(codegenKt(firstIfBranch.body.statements, 1))
     }
     append("\n}")
 
@@ -25,7 +44,7 @@ fun ControlFlow.If.generateIf(): String = buildString {
         append("    ")
         when (ifBranch) {
             is IfBranch.IfBranchSingleExpr -> append(ifBranch.thenDoExpression.generateExpression())
-            is IfBranch.IfBranchWithBody -> append(codegenKt(ifBranch.body, 1))
+            is IfBranch.IfBranchWithBody -> append(codegenKt(ifBranch.body.statements, 1))
         }
         append("\n}")
 
@@ -46,41 +65,20 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     append(") {\n")
     ifBranches.forEach {
         append("    ")
-        val type = it.ifExpression.type
-        var genericTypeNameIfSingle: String? = null
-        val isMatchingOnGeneric = if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
-            if (type.typeArgumentList.count() == 1) {
-                genericTypeNameIfSingle = type.typeArgumentList[0].name
-            }
-            true
-        } else {
-            false
-        }
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
             append(it.ifExpression.generateExpression())
         } else {
             append("is ", it.ifExpression.generateExpression())
-            // if this is Generic then we need to add <*>, because type erasing(
-//            if (isMatchingOnGeneric) {
-//                append("<*>")
-//            }
         }
 
         append(" -> ")
         when (it) {
             is IfBranch.IfBranchSingleExpr -> {
-
-//                if (genericTypeNameIfSingle != null) {
-//                    append("(")
-//                    append(it.thenDoExpression.generateExpression())
-//                    append(") as $genericTypeNameIfSingle")
-//                } else {
                 append(it.thenDoExpression.generateExpression())
-//                }
             }
 
-            is IfBranch.IfBranchWithBody -> append(codegenKt(it.body, 1))
+            is IfBranch.IfBranchWithBody -> append(codegenKt(it.body.statements, 1))
         }
         append("\n")
     }

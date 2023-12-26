@@ -15,25 +15,8 @@ fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> 
     return result
 }
 
-fun Parser.codeBlock(): CodeBlock {
 
-
-    fun beforeStatementsPart(): List<IdentifierExpr> {
-        val result = mutableListOf<IdentifierExpr>()
-
-        // a, b, c
-        do {
-            val identifier = identifierMayBeTyped()
-            result.add(identifier)
-        } while (match(TokenType.Comma))
-
-        matchAssert(TokenType.ReturnArrow, "-> expected inside code block after input list")
-
-        return result
-    }
-
-
-    val openBracket = matchAssert(TokenType.OpenBracket, "")
+fun Parser.codeBlockArgs(): List<IdentifierExpr> {
 
     val isThereBeforeStatementPart =
         check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) ||
@@ -43,11 +26,34 @@ fun Parser.codeBlock(): CodeBlock {
 
     //checkTokUntilEndOfLine(TokenType.ReturnArrow)
     // [{a, b -> } statements]
-    val beforeStatementsPart: List<IdentifierExpr> =
-        if (isThereBeforeStatementPart)
+    return if (isThereBeforeStatementPart)
             beforeStatementsPart()
         else
             listOf()
+}
+
+fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
+    val result = mutableListOf<IdentifierExpr>()
+
+    // ^a, b, c ->
+    do {
+        val identifier = identifierMayBeTyped()
+        result.add(identifier)
+    } while (match(TokenType.Comma))
+
+    // a, b, c ^->
+    matchAssert(TokenType.ReturnArrow, "-> expected inside code block after input list")
+
+    return result
+}
+
+fun Parser.codeBlock(): CodeBlock {
+    val openBracket = matchAssert(TokenType.OpenBracket, "")
+
+    //checkTokUntilEndOfLine(TokenType.ReturnArrow)
+    // [{a, b -> } statements]
+    val beforeStatementsPart: List<IdentifierExpr> =
+        codeBlockArgs()
 
 
     val statements = if (!match(TokenType.CloseBracket)) statementsUntilCloseBracket(TokenType.CloseBracket) else listOf()

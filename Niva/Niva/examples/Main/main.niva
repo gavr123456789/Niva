@@ -1,20 +1,12 @@
-//mut x::Int? = null
 
-
-//x != null => x + 5 |=> "x is null" echo
-
+// if let
 type Person name: String?
-type Person2 name: String
-
 person = Person name: null
-person2 = Person2 name: null
 
-y = person name
-y echo
-x = y + "sas"
+person name => [name -> name echo]
+
+person2 = Person name: "Alice"
+person2 name => [name -> name echo]
 
 
-//x != null => [
-//  x + 6 |> echo
-//]
 

@@ -45,7 +45,7 @@ private fun Resolver.resolveStatement(
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
-                if (statement2.receiver.type?.isNullable == true && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
+                if (statement2.receiver.type is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
                     val text = "$statement2"
                     statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
                 }
@@ -377,7 +377,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
 
     // x::Int? = null
-    if (type1.isNullable && type2 is Type.InternalType && type2.name == "Null") {
+    if (type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
         return true
     }
 
@@ -864,20 +864,8 @@ fun Resolver.getType2(
 
 
 fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
-    is IfBranch.IfBranchSingleExpr -> {
-        this.thenDoExpression.type!!
-    }
-
-    is IfBranch.IfBranchWithBody -> {
-        if (body.isEmpty())
-            Resolver.defaultTypes[InternalTypes.Unit]!!
-        else
-            when (val last = body.last()) {
-                is Expression -> last.type!!
-                //            is ReturnStatement -> last.expression.type!!
-                else -> Resolver.defaultTypes[InternalTypes.Unit]!!
-            }
-    }
+    is IfBranch.IfBranchSingleExpr -> this.thenDoExpression.type!!
+    is IfBranch.IfBranchWithBody -> body.type!!
 }
 
 

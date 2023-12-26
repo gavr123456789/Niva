@@ -237,6 +237,12 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)
+        
+        inline fun <T : Any, R : Any> letIfAllNotNull(vararg arguments: T?, block: (List<T>) -> R): R? {
+            return if (arguments.all { it != null }) {
+                block(arguments.toList() as List<T>)
+            } else null
+        }
 
 
         const val INLINE_REPL = $quote$inlineReplPath$quote
