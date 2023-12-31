@@ -41,9 +41,6 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         if (it.type == null) {
             it.token.compileError("Arg $WHITE${it.name}$RED must have type")
         }
-//        val typeName = if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
-//            it.type.name + "<" + it.type.typeArgumentList.joinToString(", ") { it.name } + ">"
-//        } else it.type.name
         val typeName = it.type.generateType()
         if (!rootFields) {
             append("var ")

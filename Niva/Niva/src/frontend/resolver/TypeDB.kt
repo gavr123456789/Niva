@@ -37,8 +37,6 @@ fun TypeDB.getType(
         return TypeDBResult.FoundOne(fromScope)
     }
 
-//    if (fromCurr != null) return
-
     // first check internal types
     val foundInInternal = internalTypes[name]
     if (foundInInternal != null) {

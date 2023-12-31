@@ -160,7 +160,7 @@ sealed class Type(
     override fun toString(): String =
         when(this) {
             is InternalLike -> name
-            is NullableType -> this.realType.toString()
+            is NullableType ->  "$realType?"
             else -> "$pkg.$name"
         }
 
