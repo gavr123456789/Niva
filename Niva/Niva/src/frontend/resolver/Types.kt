@@ -8,10 +8,7 @@ import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
-import frontend.resolver.Type.RecursiveType.isPrivate
-import frontend.resolver.Type.RecursiveType.name
-import frontend.resolver.Type.RecursiveType.pkg
-import frontend.resolver.Type.RecursiveType.protocols
+
 import main.CYAN
 import main.RED
 import main.WHITE
@@ -146,7 +143,7 @@ fun MutableList<TypeField>.copy(): MutableList<TypeField> =
 
 fun Type.unpackNull(): Type =
     if (this is Type.NullableType) {
-        realType ?: throw Exception("Compiler bug: Can't unpack nullable type $YEL$name")
+        realType
     } else
         this
 
@@ -163,7 +160,7 @@ sealed class Type(
     override fun toString(): String =
         when(this) {
             is InternalLike -> name
-            is NullableType -> this.realType?.toString() ?: "!!null!!"
+            is NullableType -> this.realType.toString()
             else -> "$pkg.$name"
         }
 
@@ -171,18 +168,17 @@ sealed class Type(
 
 
     class NullableType(
-        val realType: Type?,
+        val realType: Type
     ) : Type(
-        realType?.name ?: name,
-        realType?.pkg ?: pkg,
-        realType?.isPrivate ?: isPrivate,
-        realType?.protocols ?: protocols
+        realType.name,
+        realType.pkg,
+        realType.isPrivate,
+        createNullableAnyProtocols(realType)
     ) {
         fun getTypeOrNullType(): Type {
-            if (realType != null)
-                return realType
+            return realType
 
-            return Resolver.defaultTypes[InternalTypes.Null]!!
+//            return Resolver.defaultTypes[InternalTypes.Null]!!
         }
     }
 
