@@ -11,7 +11,6 @@ fun Resolver.resolveCodeBlock(
     previousScope: MutableMap<String, Type>,
     currentScope: MutableMap<String, Type>,
     rootStatement: Statement?,
-//    typesForArgsIfControlFlow: List<Type>? = null
 ) {
 
     // [] vs x = []

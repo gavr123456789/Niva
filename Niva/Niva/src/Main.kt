@@ -242,9 +242,6 @@ fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
 }
 
 
-class Waller(val money: Int?)
-class Person(val wallet: Waller?)
-
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")

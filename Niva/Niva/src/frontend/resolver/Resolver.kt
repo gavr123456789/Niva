@@ -18,19 +18,6 @@ private fun Resolver.addPrintingInfoAboutType(type: Type) {
     infoTypesToPrint.add(type)
 }
 
-
-//enum class VariableFlag {
-//    Mutable,
-//    Nullable
-//}
-//
-//data class Context(
-//    val x: MutableSet<VariableFlag> = mutableSetOf()
-//)
-
-//data class TypeWithContext(val type: Type, val context: Context = Context())
-//typealias NameToTypeWithContext = MutableMap<String, TypeWithContext>
-
 private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
@@ -44,13 +31,6 @@ private fun Resolver.resolveStatement(
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
-
-
-//                val receiverType = statement2.receiver.type
-//                if (receiverType is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
-//                    val text = "$statement2"
-//                    statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
-//                }
 
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
@@ -197,11 +177,6 @@ private fun Resolver.resolveStatement(
         is TypeAST.UserType -> {}
 
         is ControlFlow -> {
-//            val qwe = mutableMapOf<String, TypeWithContext>()
-//            val kek = (previousScope + currentScope)
-//            kek.forEach { (t, u) ->
-//                qwe[t] = TypeWithContext(u)
-//            }
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
