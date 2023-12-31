@@ -58,8 +58,8 @@ fun Resolver.resolveCollection(
         } else {
             statement.token.compileError("Cant get type of elements of list literal")
         }
-    } else if (rootStatement is VarDeclaration && rootStatement.valueType != null) {
-        val type = rootStatement.valueType!!.toType(typeDB, typeTable)//fix
+    } else if (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null) {
+        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
     }
 
@@ -94,8 +94,8 @@ fun Resolver.resolveMap(
 ) {
     // get type of the first key
     // get type of the first value
-    if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueType != null)) {
-        val type = rootStatement.valueType!!.toType(typeDB, typeTable)//fix
+    if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
+        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
         return
     }

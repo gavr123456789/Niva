@@ -6,7 +6,7 @@ import frontend.resolver.Type
 import main.RESET
 import main.YEL
 
-fun MessageSend.generateMessageCall(): String {
+fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     val b = StringBuilder()
 
@@ -28,9 +28,9 @@ fun MessageSend.generateMessageCall(): String {
             b.append(it.selectorName)
         } else {
             when (it) {
-                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it))
+                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it, withNullChecks))
                 is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it))
-                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it))
+                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it, withNullChecks))
             }
         }
         if (it.isPiped)
@@ -119,7 +119,7 @@ fun emitFromPragma(msg: Message) {
 }
 
 
-fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = buildString {
+fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, withNullChecks: Boolean = false) = buildString {
 
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
@@ -145,9 +145,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
         {
             val type = kwReceiver.type
             if (type != null) {
-                append(type.pkg, ".")
+                append(type.pkg)
+                dotAppend(this, withNullChecks)
             } else {
-                append(".")
+                dotAppend(this, withNullChecks)
             }
         }
         append(
@@ -161,9 +162,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if ((i == 0) && !receiverIsDot) {
-                append(receiverCode, ".")
+                append(receiverCode)
+                dotAppend(this, withNullChecks)
             } else if (keywordMsg.isPiped) {
-                append(".")
+                dotAppend(this, withNullChecks)
             }
             append(keywordMsg.selectorName)
         }
@@ -183,6 +185,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
                 append(receiver.name, ".", valueArg.name, " = ")
+
+
             } else if (receiverIsDot) {
                 append(valueArg.name, " = ")
             }
@@ -219,15 +223,22 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg) = 
 
 }
 
-fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString {
+val dotAppend = { b: StringBuilder, withNullChecks: Boolean ->
+    if (!withNullChecks) b.append(".") else b.append("?.")
+}
+
+fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg, withNullChecks: Boolean = false) = buildString {
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
         append(receiverCode)
     }
+
+
+
     when (it.kind) {
         UnaryMsgKind.Unary -> {
             if (it.selectorName != "new") {
-                if (receiver !is DotReceiver) append(".")
+                if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
                 append("${it.selectorName}()")
             } else {
                 append("()")
@@ -235,7 +246,7 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg) = buildString 
         }
 
         UnaryMsgKind.Getter -> {
-            if (receiver !is DotReceiver) append(".")
+            if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
             append(it.selectorName)
         }
 
@@ -257,7 +268,7 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
 fun generateSingleBinary(
     i: Int,
     receiver: Receiver,
-    it: BinaryMsg
+    it: BinaryMsg,
 ) = buildString {
 
     if (i == 0) {

@@ -25,14 +25,13 @@ private fun Resolver.resolveStatement(
     rootStatement: Statement?
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
-        when (statement2.receiver.str) {
-            "Project", "Bind" -> {}
+        when (statement2.receiver.token.lexeme) {
+            "Project", "Bind", "Compiler" -> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
-                // TODO check then return parameter of each send match the next input parameter
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
                         statement2.messages.last().type
@@ -158,6 +157,18 @@ private fun Resolver.resolveStatement(
         is LiteralExpression.TrueExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
+        is LiteralExpression.NullExpr -> {
+            if (rootStatement is VarDeclaration) {
+                val astValueType = rootStatement.valueTypeAst
+                if (astValueType != null) {
+                    val type = astValueType.toType(typeDB, typeTable)
+                    statement.type = type
+                }
+            } else {
+                statement.type = Resolver.defaultTypes[InternalTypes.Null]
+            }
+        }
+
         is LiteralExpression.FalseExpr ->
             statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
@@ -194,7 +205,7 @@ private fun Resolver.resolveStatement(
         }
 
         is DotReceiver -> {
-            statement.type = findThis(statement.token, currentScope, previousScope)
+            statement.type = findThisInScopes(statement.token, currentScope, previousScope)
         }
 
     }
@@ -257,6 +268,7 @@ fun Resolver.resolveExpressionInBrackets(
 }
 
 
+// if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     // one of the types is Any
     if (type1.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
@@ -340,12 +352,19 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         }
     }
 
+
+    // x::Int? = null
+    if (type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
+        return true
+    }
+
+
     if (type1 is Type.UnknownGenericType || type2 is Type.UnknownGenericType) {
         return true
     }
 
     // TODO temp, there could be types with same names in different packages, or with different generic params
-    if (type1.name == type2.name) {
+    if (type1.name == type2.name && type1.pkg == type2.pkg) {
         return true
     }
 
@@ -403,7 +422,13 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    token.compileError("Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}")
+
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
+
+    token.compileError(errorText)
 }
 
 
@@ -466,8 +491,12 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
-    
-    token.compileError("Cant find binary message: $YEL$selectorName${RESET} for type $YEL${receiverType.name}${RESET}")
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find binary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
+
+    token.compileError(errorText)
 }
 
 fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
@@ -484,7 +513,14 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
             return q
         }
     }
-    token.compileError("Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.name}")
+
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
+
+
+    token.compileError(errorText)
 }
 
 
@@ -794,7 +830,8 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
+        getType2(x.names.first(), currentScope, previousScope, kw) ?:
+        getType2(x.name, currentScope, previousScope, kw)
 //    else getType(
 //        x.name,
 //        currentScope,
@@ -813,29 +850,17 @@ fun Resolver.getType2(
     previousScope: MutableMap<String, Type>,
     statement: KeywordMsg?
 ): Type? {
-    val q = typeDB.getType(typeName, currentScope, previousScope)
+    val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
-    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
+    val type = typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
     return type
 }
 
 
 fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
-    is IfBranch.IfBranchSingleExpr -> {
-        this.thenDoExpression.type!!
-    }
-
-    is IfBranch.IfBranchWithBody -> {
-        if (body.isEmpty())
-            Resolver.defaultTypes[InternalTypes.Unit]!!
-        else
-            when (val last = body.last()) {
-                is Expression -> last.type!!
-                //            is ReturnStatement -> last.expression.type!!
-                else -> Resolver.defaultTypes[InternalTypes.Unit]!!
-            }
-    }
+    is IfBranch.IfBranchSingleExpr -> this.thenDoExpression.type!!
+    is IfBranch.IfBranchWithBody -> body.type!!
 }
 
 
@@ -925,6 +950,7 @@ class Resolver(
 
             createDefaultType(InternalTypes.Any),
             createDefaultType(InternalTypes.Nothing),
+            createDefaultType(InternalTypes.Null),
         )
 
         init {
@@ -937,6 +963,7 @@ class Resolver(
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
+            val nullType = defaultTypes[InternalTypes.Null]!!
 
             intType.protocols.putAll(
                 createIntProtocols(

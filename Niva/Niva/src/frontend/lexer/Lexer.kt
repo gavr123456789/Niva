@@ -344,7 +344,8 @@ fun Lexer.parseIdentifier() {
         symbolTable.keywords[name]?.let { createToken(it) }
     } else {
         if (match("?")) {
-            createToken(TokenType.NullableIdentifier)
+
+            createToken(TokenType.NullableIdentifier, 1)
         } else {
             createToken(TokenType.Identifier)
         }

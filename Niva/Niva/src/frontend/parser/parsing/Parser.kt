@@ -116,7 +116,8 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 }
 
-fun Parser.identifierMayBeTyped(): IdentifierExpr {
+// if inside var decl with type, then we're getting type from it
+fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
     val x = step()
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
@@ -128,32 +129,28 @@ fun Parser.identifierMayBeTyped(): IdentifierExpr {
     }
 
 
-    val isTyped = check(TokenType.DoubleColon)
+    val isTyped = match(TokenType.DoubleColon)
     return if (isTyped) {
-        step() // skip double colon
         val type = parseType()
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
     } else {
-        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x) // look for type in table
+        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, typeAST, x) // look for type in table
     }
 }
 
-fun Parser.primary(): Primary? =
+fun Parser.primary(typeAST: TypeAST? = null): Primary? =
 
     when (peek().kind) {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
+        TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: TypeAST.InternalType(InternalTypes.Any, peek()), step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.Double -> LiteralExpression.DoubleExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Char -> LiteralExpression.CharExpr(step())
 
-        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped()
-
-//        TokenType.OpenParen -> TODO()
-//        TokenType.OpenBraceHash -> TODO() // set or map
-//        TokenType.OpenParenHash -> TODO() // ?
+        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped(typeAST)
         else -> null
     }
 
@@ -181,7 +178,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Assign)
-            value = this.simpleReceiver()
+            value = this.simpleReceiver(valueType)
         }
 
         else -> error("after ${peek(-1)} needed type or expression")
@@ -278,8 +275,18 @@ fun Parser.expression(
         messageSend
     }
 
+    // x > 5 ^ => ...
     if (parseSingleIf && match(TokenType.Then)) {
-        val (thenDo, isSingleExpr) = methodBody(true) //expression(dot = dot)
+        var codeBlock: CodeBlock? = null
+        var singleExpr: Statement? = null
+        if (check(TokenType.OpenBracket)) {
+            codeBlock = codeBlock()
+        } else {
+            singleExpr = statementWithEndLine()
+        }
+
+        val isSingleExpression = singleExpr is Expression
+
 
         skipNewLinesAndComments()
         val elseBranch = if (match(TokenType.Else)) {
@@ -289,16 +296,31 @@ fun Parser.expression(
         val singleIf = ControlFlow.If(
             type = null,
             ifBranches = listOf(
-                if (isSingleExpr)
+                if (isSingleExpression) {
+
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = thenDo.first() as Expression
+                        thenDoExpression = singleExpr as Expression
                     )
-                else
+                }
+                else {
+                    // this single expression is statement
+                    val body = if(singleExpr != null) {
+                        // codeBlock With single expr
+                        CodeBlock(
+                            inputList = listOf(),
+                            statements = listOf(singleExpr),
+                            type = null,
+                            token = singleExpr.token
+                        )
+                    } else {
+                        codeBlock!!
+                    }
                     IfBranch.IfBranchWithBody(
                         ifExpression = unwrapped,
-                        body = thenDo
+                        body = body
                     )
+                }
             ),
             kind = ControlFlowKind.Statement,
             elseBranch = elseBranch,

@@ -2,6 +2,7 @@ package codogen
 
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
+import main.codogen.generateType
 import main.utils.isGeneric
 
 

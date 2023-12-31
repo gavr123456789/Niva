@@ -10,7 +10,6 @@ import main.YEL
 fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
-
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -34,6 +33,7 @@ fun Resolver.resolveControlFlow(
             is ControlFlow -> {
                 rootStatement.kind
             }
+
             is MessageDeclaration -> {
                 if (rootStatement.isSingleExpression)
                     ControlFlowKind.Expression
@@ -61,10 +61,11 @@ fun Resolver.resolveControlFlow(
                 resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
 
+                val ifExpr = it.ifExpression
                 if (isStatement) {
-                    val ifType = it.ifExpression.type!!
-                    if (ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
-                        it.ifExpression.token.compileError("if branch ${WHITE}${it.ifExpression}$RESET must be of the ${YEL}Boolean$RESET type, but found ${YEL}$ifType")
+                    val ifType = ifExpr.type!!
+                    if (ifType !is Type.NullableType && ifType != Resolver.defaultTypes[InternalTypes.Boolean]) {
+                        ifExpr.token.compileError("if branch ${WHITE}${ifExpr}$RESET must be of the ${YEL}Boolean$RESET or nullable type, but found ${YEL}$ifType")
                     }
                 }
 
@@ -79,12 +80,34 @@ fun Resolver.resolveControlFlow(
                     }
 
                     is IfBranch.IfBranchWithBody -> {
-                        if (it.body.isNotEmpty()) {
+                        if (it.body.statements.isNotEmpty()) {
                             currentLevel++
-                            resolve(it.body, previousAndCurrentScope, statement)
+
+//                            if (it.body.inputList.isNotEmpty()) {
+//                                val inputList = it.body.inputList
+//                                if (ifExpr.type !is Type.NullableType) {
+//                                    ifExpr.token.compileError("You can smart cast only on nullable types, but the type of right part is: ${ifExpr.type}")
+//                                }
+//                                // if receiver is expressions separated with comma inside branches, then add them
+//                                // (a, b) => [a, b -> a and b is not null]
+//
+//                                val type = ifExpr.type!!
+//                                // if receiver is message and input list has only one arg, then add it
+//                                if (inputList.count() == 1) {
+//                                    val param = inputList[0]
+//                                    val realType = type.unpackNull()
+//                                    currentScope[param.name] = realType
+//                                    param.type = realType
+//                                } else {
+//                                    val args = inputList.joinToString(", ") { it.name }
+//                                    it.body.token.compileError("There is only one expr: $WHITE${it.ifExpression}$RESET, but more than one arg: $WHITE${args} ")
+//                                }
+//                            }
+
+                            resolveCodeBlock(it.body, previousScope, currentScope, statement)
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {
-                                val lastExpr = it.body.last()
+                                val lastExpr = it.body.statements.last()
 
                                 if (lastExpr.isNotExpression()) {
                                     lastExpr.token.compileError("In if expression body last statement must be an expression")
@@ -132,7 +155,7 @@ fun Resolver.resolveControlFlow(
 //                    if (lastExpr.notExpression()) {
 //                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
 //                    }
-                    val elseReturnType = when(lastExpr) {
+                    val elseReturnType = when (lastExpr) {
                         is Expression -> lastExpr.type!!
                         is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
                         is Assign -> lastExpr.value.type!!
@@ -225,12 +248,13 @@ fun Resolver.resolveControlFlow(
                     }
 
                     is IfBranch.IfBranchWithBody -> {
-                        if (it.body.isNotEmpty()) {
+                        if (it.body.statements.isNotEmpty()) {
                             currentLevel++
-                            resolve(it.body, scopeWithFields, statement)
+//                            resolve(it.body, scopeWithFields, statement)
+                            resolveCodeBlock(it.body, previousScope,currentScope, statement)
                             currentLevel--
 
-                            val lastExpr = it.body.last()
+                            val lastExpr = it.body.statements.last()
                             if (lastExpr.isNotExpression()) {
                                 lastExpr.token.compileError("In if expression body last statement must be an expression")
                             }
@@ -284,7 +308,9 @@ fun Resolver.resolveControlFlow(
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
                 // check that this is exhaustive checking
-                val root = if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent ?: throw Exception("Pattern matching on not union root?")
+                val root =
+                    if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent
+                        ?: throw Exception("Pattern matching on not union root?")
                 if (root is Type.UserUnionRootType) {
                     val realBranchTypes = mutableSetOf<Type>()
                     root.branches.forEach {

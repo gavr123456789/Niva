@@ -40,7 +40,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
 
     ///
 
-    val stillExist = process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
+    process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
 //    if (stillExist) process.destroy()
 //    inputStream.close()
 
@@ -195,6 +195,7 @@ fun compileProjFromFile(
     return resolver
 }
 
+
 fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
 
@@ -237,6 +238,17 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)
+        
+        inline fun <T, R> T?.unpack(block: (T) -> R) {
+            if (this != null)
+                block(this)
+        }
+        
+        inline fun <T : Any, R : Any> letIfAllNotNull(vararg arguments: T?, block: (List<T>) -> R): R? {
+            return if (arguments.all { it != null }) {
+                block(arguments.toList() as List<T>)
+            } else null
+        }
 
 
         const val INLINE_REPL = $quote$inlineReplPath$quote
