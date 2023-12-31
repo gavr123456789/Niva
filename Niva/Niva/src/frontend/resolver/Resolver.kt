@@ -46,12 +46,11 @@ private fun Resolver.resolveStatement(
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
 
-                val receiverType = statement2.receiver.type
-
-                if (receiverType is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
-                    val text = "$statement2"
-                    statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
-                }
+//                val receiverType = statement2.receiver.type
+//                if (receiverType is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
+//                    val text = "$statement2"
+//                    statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
+//                }
 
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
@@ -448,7 +447,13 @@ fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, toke
         return messageFromAny
     }
 
-    token.compileError("Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}")
+
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
+
+    token.compileError(errorText)
 }
 
 
@@ -511,8 +516,12 @@ fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, tok
             return q
         }
     }
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find binary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
 
-    token.compileError("Cant find binary message: $YEL$selectorName${RESET} for type $YEL${receiverType.name}${RESET}")
+    token.compileError(errorText)
 }
 
 fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
@@ -529,7 +538,14 @@ fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token:
             return q
         }
     }
-    token.compileError("Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.name}")
+
+    val errorText = if (receiverType is Type.NullableType)
+        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+    else
+        "Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
+
+
+    token.compileError(errorText)
 }
 
 

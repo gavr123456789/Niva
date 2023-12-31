@@ -14,12 +14,11 @@
 //person2 name => [name -> name echo]
 
 
-Int sas -> Int? = [
-    ^null
-]
+Int sas -> Int? = ^41
+
 
 x = 5 sas
-
+x + 5
 
 
 
