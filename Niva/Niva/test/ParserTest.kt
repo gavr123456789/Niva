@@ -752,6 +752,7 @@ class ParserTest {
         assert(ast[0] is VarDeclaration)
     }
 
+    @Suppress("UNCHECKED_CAST")
     @Test
     fun pipeOperator() {
         val source = """
@@ -1340,7 +1341,7 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        assert((ast[0] as VarDeclaration).valueType?.name == "Int")
+        assert((ast[0] as VarDeclaration).valueTypeAst?.name == "Int")
         val value = (ast[0] as VarDeclaration).value as LiteralExpression.NullExpr
         assert(value.typeAST?.name == "Int")
         assert(value.typeAST?.isNullable == true)

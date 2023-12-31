@@ -82,33 +82,28 @@ fun Resolver.resolveControlFlow(
                     is IfBranch.IfBranchWithBody -> {
                         if (it.body.statements.isNotEmpty()) {
                             currentLevel++
-                            // TODO NULL, add checking was there null check
-                            // add args to scope
-                            if (it.body.inputList.isNotEmpty()) {
-                                val inputList = it.body.inputList
-//                                val ifExpr = it.ifExpression
-                                if (ifExpr.type !is Type.NullableType) {
-                                    ifExpr.token.compileError("You can smart cast only on nullable types, but the type of right part is: ${ifExpr.type}")
-                                }
-                                if (ifExpr is MessageSend) {
-                                    // if receiver is expressions separated with comma inside branches, then add them
-                                    // (a, b) => [a, b -> a and b is not null]
 
-                                    val type = ifExpr.type!!
-                                    // if receiver is message and input list has only one arg, then add it
-                                    if (inputList.count() == 1) {
-                                        val param = inputList[0]
-                                        val realType = type.unpackNull()
-                                        currentScope[param.name] = realType
-                                        param.type = realType
-                                    } else {
-                                        val args = inputList.joinToString(", ") { it.name }
-                                        it.body.token.compileError("There is only one expr: $WHITE${it.ifExpression}$RESET, but more than one arg: $WHITE${args} ")
-                                    }
-                                } else {
-                                    it.ifExpression.token.compileError("If you trying to smart cast something, then left part must be message send, not $ifExpr")
-                                }
-                            }
+//                            if (it.body.inputList.isNotEmpty()) {
+//                                val inputList = it.body.inputList
+//                                if (ifExpr.type !is Type.NullableType) {
+//                                    ifExpr.token.compileError("You can smart cast only on nullable types, but the type of right part is: ${ifExpr.type}")
+//                                }
+//                                // if receiver is expressions separated with comma inside branches, then add them
+//                                // (a, b) => [a, b -> a and b is not null]
+//
+//                                val type = ifExpr.type!!
+//                                // if receiver is message and input list has only one arg, then add it
+//                                if (inputList.count() == 1) {
+//                                    val param = inputList[0]
+//                                    val realType = type.unpackNull()
+//                                    currentScope[param.name] = realType
+//                                    param.type = realType
+//                                } else {
+//                                    val args = inputList.joinToString(", ") { it.name }
+//                                    it.body.token.compileError("There is only one expr: $WHITE${it.ifExpression}$RESET, but more than one arg: $WHITE${args} ")
+//                                }
+//                            }
+
                             resolveCodeBlock(it.body, previousScope, currentScope, statement)
                             currentLevel--
                             if (statement.kind == ControlFlowKind.Expression) {

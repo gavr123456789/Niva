@@ -10,11 +10,9 @@ import main.RED
 import main.WHITE
 import main.YEL
 
+@Suppress("unused")
 sealed class TypeDBResult {
-    class FoundOneUser(val type: Type.UserLike) : TypeDBResult()
-    class FoundOneLambda(val type: Type.Lambda) : TypeDBResult()
-
-    class FoundOneInternal(val type: Type.InternalType) : TypeDBResult()
+    class FoundOne(val type: Type) : TypeDBResult()
     class FoundMoreThanOne(val packagesToTypes: Map<String, Type>) : TypeDBResult()
     class NotFound(val notFountName: String) : TypeDBResult()
 }
@@ -33,33 +31,41 @@ fun TypeDB.getType(
     names: List<String> = listOf()
 ): TypeDBResult {
 
+    // found in scope
+    val fromScope = currentScope?.get(name) ?: previousScope?.get(name)
+    if (fromScope != null){
+        return TypeDBResult.FoundOne(fromScope)
+    }
+
+//    if (fromCurr != null) return
+
     // first check internal types
     val foundInInternal = internalTypes[name]
     if (foundInInternal != null) {
-        return TypeDBResult.FoundOneInternal(foundInInternal)
+        return TypeDBResult.FoundOne(foundInInternal)
     }
 
     // then userTypes
-    val listOfUserTypes = userTypes[name]
-    if (listOfUserTypes != null) {
-        val countOfTypes = listOfUserTypes.count()
+    val userTypesFromDifferentPkgs = userTypes[name]
+    if (userTypesFromDifferentPkgs != null) {
+        val countOfTypes = userTypesFromDifferentPkgs.count()
         when {
             countOfTypes == 1 -> {
-                return TypeDBResult.FoundOneUser(listOfUserTypes[0])
+                return TypeDBResult.FoundOne(userTypesFromDifferentPkgs[0])
             }
 
             countOfTypes > 1 -> {
                 val map = mutableMapOf<String, Type>()
-                listOfUserTypes.forEach {
+                userTypesFromDifferentPkgs.forEach {
                     map[it.pkg] = it
                 }
                 // if already qualified
                 if (names.count() > 1) {
                     val pkgName = names.dropLast(1).joinToString(".")
-                    val q = listOfUserTypes.find { it.pkg == pkgName }
+                    val q = userTypesFromDifferentPkgs.find { it.pkg == pkgName }
 
                     if (q != null) {
-                        return TypeDBResult.FoundOneUser(q)
+                        return TypeDBResult.FoundOne(q)
                     }
                 }
                 return TypeDBResult.FoundMoreThanOne(map)
@@ -71,34 +77,7 @@ fun TypeDB.getType(
 
 
     } else {
-        val getType = { type: Type ->
-            when (type) {
-                is Type.InternalType -> TypeDBResult.FoundOneInternal(type)
-                is Type.UserLike -> TypeDBResult.FoundOneUser(type)
-                is Type.Lambda -> TypeDBResult.FoundOneLambda(type)
-                is Type.NullableType -> {
-                    when (val w = type.getTypeOrNullType()) {
-                        is Type.InternalType -> TypeDBResult.FoundOneInternal(w)
-                        is Type.UserLike -> TypeDBResult.FoundOneUser(w)
-                        is Type.Lambda -> TypeDBResult.FoundOneLambda(w)
-                        is Type.NullableType -> TODO()
-                    }
-                }
-            }
-        }
-        if (currentScope != null) {
-            val type = currentScope[name]
-            if (type != null) {
-                return getType(type)
-            }
-        }
-
-        if (previousScope != null) {
-            val type = previousScope[name]
-            if (type != null) {
-                return getType(type)
-            }
-        }
+        // not in scope, not user type, not internal type
         return TypeDBResult.NotFound(name)
     }
 }
@@ -252,10 +231,7 @@ fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg?, impo
             resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg)
         }
 
-        is TypeDBResult.FoundOneInternal -> this.type
-        is TypeDBResult.FoundOneUser -> this.type
-        is TypeDBResult.FoundOneLambda -> this.type
-
+        is TypeDBResult.FoundOne -> this.type
         is TypeDBResult.NotFound -> {
             null
         }

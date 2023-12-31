@@ -24,7 +24,7 @@ fun Resolver.resolveVarDeclaration(
     val value = statement.value
     val valueType = value.type
         ?: statement.token.compileError("In var declaration $WHITE${statement.name}$RED value doesn't got type")
-    val statementDeclaredType = statement.valueType
+    val statementDeclaredType = statement.valueTypeAst
 
     // generics in right part, but real type in left, x::List::Int = List
     var copyType: Type? = null
@@ -72,7 +72,6 @@ fun Resolver.resolveVarDeclaration(
     }
 
     currentScope[statement.name] = copyType ?: valueType
-
     if (currentLevel == 0) {
         topLevelStatements.add(statement)
     }

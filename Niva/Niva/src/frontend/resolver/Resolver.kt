@@ -45,7 +45,10 @@ private fun Resolver.resolveStatement(
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
-                if (statement2.receiver.type is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
+
+                val receiverType = statement2.receiver.type
+
+                if (receiverType is Type.NullableType && !(statement2.messages.count() == 1 && statement2.messages[0].selectorName == "echo")) {
                     val text = "$statement2"
                     statement2.receiver.token.compileError("$WHITE${statement2.receiver}::$YEL${statement2.receiver.type}?$RESET is nullable, please check for null with $WHITE${statement2.receiver} $RED=>$WHITE [${statement2.receiver} $RED->$WHITE $text]")
                 }
@@ -177,7 +180,7 @@ private fun Resolver.resolveStatement(
 
         is LiteralExpression.NullExpr -> {
             if (rootStatement is VarDeclaration) {
-                val astValueType = rootStatement.valueType
+                val astValueType = rootStatement.valueTypeAst
                 if (astValueType != null) {
                     val type = astValueType.toType(typeDB, typeTable)
                     statement.type = type
@@ -836,7 +839,8 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
+        getType2(x.names.first(), currentScope, previousScope, kw) ?:
+        getType2(x.name, currentScope, previousScope, kw)
 //    else getType(
 //        x.name,
 //        currentScope,
@@ -855,10 +859,10 @@ fun Resolver.getType2(
     previousScope: MutableMap<String, Type>,
     statement: KeywordMsg?
 ): Type? {
-    val q = typeDB.getType(typeName, currentScope, previousScope)
+    val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
-    val type = q.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
+    val type = typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
     return type
 }
 
