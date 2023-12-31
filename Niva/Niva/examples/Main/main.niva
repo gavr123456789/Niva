@@ -1,7 +1,25 @@
-type Box field: T
+//x::Int? = null
+//y = x + 1
 
-x = Box field: 7
-y = Box field: "uh"
 
-x field + 5
-y field + "sas"
+// if let
+//type Person name: String?
+//person = Person name: null
+//person name echo
+//name::String = person name
+//
+//person name => [name -> name echo]
+//
+//person2 = Person name: "Alice"
+//person2 name => [name -> name echo]
+
+
+Int sas -> Int? = ^41
+
+
+x = 5 sas
+x + 5
+
+
+
+

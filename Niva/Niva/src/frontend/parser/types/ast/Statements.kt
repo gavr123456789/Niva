@@ -55,13 +55,14 @@ class VarDeclaration(
     token: Token,
     val name: String,
     var value: Expression,
-    var valueType: TypeAST? = null,
+    var valueTypeAst: TypeAST? = null,
     val mutable: Boolean = false,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "VarDeclaration(${name} = ${value.str}, valueType=${valueType?.name})"
+        val type = if (value.type != null) "::" + value.type.toString() else ""
+        return "$name$type = $value"
     }
 }
 

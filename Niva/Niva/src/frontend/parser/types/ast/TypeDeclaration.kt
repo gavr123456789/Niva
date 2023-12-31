@@ -36,8 +36,8 @@ sealed class TypeAST(
 
     class InternalType(
         name: InternalTypes,
-        isNullable: Boolean,
         token: Token,
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
@@ -59,32 +59,7 @@ sealed class TypeAST(
 }
 
 
-fun TypeAST.generateType(generateGeneric: Boolean = true): String {
-//    val x: (String, Int) -> Int = {}
-    return when (this) {
-        is TypeAST.InternalType -> name
-        is TypeAST.UserType -> buildString {
-            append(names.joinToString("."))
-            if (generateGeneric && typeArgumentList.isNotEmpty()) {
-                append("<${typeArgumentList.joinToString(", ") { it.name }}>")
-            }
-        }
 
-        is TypeAST.Lambda -> {
-            buildString {
-                append("(")
-                inputTypesList.forEach {
-                    append(it.generateType(), ",")
-                }
-                append(") -> ")
-
-                append(returnType.generateType())
-
-            }
-        }
-
-    }
-}
 class EnumFieldAST(
     val name: String,
     val value: Expression,
@@ -182,5 +157,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Nothing, Exception
+    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Nothing, Exception, Null
 }

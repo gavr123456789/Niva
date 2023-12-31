@@ -91,7 +91,6 @@ fun Resolver.resolveKwArgsGenerics(
             }
 
 
-
             if (typeFromDBForThisArg is Type.Lambda) {
                 if (argType !is Type.Lambda) {
                     throw Exception("If typeFromDBForThisArg is codeblock then argType must be codeblock too")
@@ -157,7 +156,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
     }
 }
 
-fun findThis(
+
+fun findThisInScopes(
     token: Token,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
@@ -402,7 +402,7 @@ fun Resolver.resolveMessage(
                             if (argFromDB == null) {
                                 kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}${RESET}, not ${CYAN}${kwArg.name} ")
                             }
-                            if (!compare2Types(kwArg.keywordArg.type!!, argFromDB.type)) {
+                            if (!compare2Types( argFromDB.type, kwArg.keywordArg.type!!)) {
                                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type?.name}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type.name}${RESET}, not ${YEL}${kwArg.keywordArg.type?.name} ")
                             }
                         }

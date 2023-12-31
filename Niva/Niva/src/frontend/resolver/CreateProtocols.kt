@@ -6,6 +6,7 @@ import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
 import frontend.parser.parsing.CodeAttribute
+import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.LiteralExpression
 import java.io.File
 
@@ -164,10 +165,27 @@ fun createKeyword(arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMet
     return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core")
 }
 
+fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createEmitAtttribure(str))
+    return this
+}
+fun Pair<String, KeywordMsgMetaData>.emitKw(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createEmitAtttribure(str))
+    return this
+}
+
 fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createRenameAtttribure(str))
     return this
 }
+//fun Pair<String, UnaryMsgMetaData>.rename(str: String): Pair<String, UnaryMsgMetaData> {
+//    this.second.pragmas.add(createRenameAtttribure(str))
+//    return this
+//}
+//fun Pair<String, BinaryMsgMetaData>.rename(str: String): Pair<String, BinaryMsgMetaData> {
+//    this.second.pragmas.add(createRenameAtttribure(str))
+//    return this
+//}
 
 fun createStringProtocols(
     intType: Type.InternalType,
@@ -350,12 +368,36 @@ fun createCharProtocols(
     return result
 }
 
+fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
+    val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
+    val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
+
+    val realTypeOrNothing = realType ?: nothingType
+
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("echo", unitType),
+            createUnary("echonnl", unitType),
+            createUnary("unpackOrError", realTypeOrNothing).emit("$0!!")
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword(KeywordArg("unpackOr", realTypeOrNothing), realTypeOrNothing)
+                .emitKw("$0 ?: $1"),
+
+            createKeyword(KeywordArg("unpack",
+                Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), unitType)
+            ), realTypeOrNothing),
+        ),
+    )
+    return mutableMapOf(protocol.name to protocol)
+}
+
 fun createAnyProtocols(
     unitType: Type.InternalType,
     any: Type.InternalType
 ): MutableMap<String, Protocol> {
-
-    val result = mutableMapOf<String, Protocol>()
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -365,8 +407,7 @@ fun createAnyProtocols(
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(),
     )
-    result[protocol.name] = protocol
-    return result
+    return mutableMapOf(protocol.name to protocol)
 }
 
 fun createIntRangeProtocols(
@@ -379,7 +420,6 @@ fun createIntRangeProtocols(
     intRangeType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
-    val result = mutableMapOf<String, Protocol>()
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -400,12 +440,10 @@ fun createIntRangeProtocols(
             createForEachKeywordIndexed(intType, intType, unitType),
             createFilterKeyword(intType, boolType, intRangeType),
 
-            createKeyword(KeywordArg("contains", intType), boolType),
-
-            ),
+            createKeyword(KeywordArg("contains", intType), boolType)
+        ),
     )
-    result[protocol.name] = protocol
-    return result
+    return mutableMapOf(protocol.name to protocol)
 }
 
 
@@ -416,7 +454,6 @@ fun createExceptionProtocols(
     stringType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
-    val result = mutableMapOf<String, Protocol>()
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -430,8 +467,7 @@ fun createExceptionProtocols(
             createKeyword(KeywordArg("throwWithMessage", stringType), nothingType),
         )
     )
-    result[protocol.name] = protocol
-    return result
+    return mutableMapOf(protocol.name to protocol)
 }
 
 
@@ -444,7 +480,6 @@ fun createListProtocols(
     itType: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
 ): MutableMap<String, Protocol> {
-    val result = mutableMapOf<String, Protocol>()
 
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
@@ -491,8 +526,7 @@ fun createListProtocols(
             )
     )
 
-    result[collectionProtocol.name] = collectionProtocol
-    return result
+    return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
 
 
@@ -505,8 +539,6 @@ fun createSetProtocols(
     genericTypeOfSetElements: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
 ): MutableMap<String, Protocol> {
-    val result = mutableMapOf<String, Protocol>()
-
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
@@ -539,8 +571,7 @@ fun createSetProtocols(
         )
     )
 
-    result[collectionProtocol.name] = collectionProtocol
-    return result
+    return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
 
 private fun createOnEach(
@@ -621,6 +652,8 @@ fun createCodeAttribute(k: String, v: String) =
 fun createRenameAtttribure(v: String) =
     createCodeAttribute("rename", v)
 
+fun createEmitAtttribure(v: String) =
+    createCodeAttribute("emit", v)
 
 fun createMapProtocols(
     intType: Type.InternalType,

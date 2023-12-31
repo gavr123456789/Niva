@@ -2,11 +2,13 @@
 
 package frontend.resolver
 
+import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
+
 import main.CYAN
 import main.RED
 import main.WHITE
@@ -130,7 +132,7 @@ fun Type.isDescendantOf(type: Type): Boolean {
 
 
 fun MutableList<TypeField>.copy(): MutableList<TypeField> =
-     this.map {
+    this.map {
         val type = it.type
         TypeField(
             name = it.name,
@@ -138,6 +140,12 @@ fun MutableList<TypeField>.copy(): MutableList<TypeField> =
         )
     }.toMutableList()
 
+
+fun Type.unpackNull(): Type =
+    if (this is Type.NullableType) {
+        realType
+    } else
+        this
 
 
 sealed class Type(
@@ -149,11 +157,29 @@ sealed class Type(
     var beforeGenericResolvedName: String? = null,
 //    var bind: Boolean = false
 ) {
-    override fun toString(): String {
-        if (this is InternalLike)
-            return name
-        else
-            return "$pkg.$name"
+    override fun toString(): String =
+        when(this) {
+            is InternalLike -> name
+            is NullableType ->  "$realType?"
+            else -> "$pkg.$name"
+        }
+
+
+
+
+    class NullableType(
+        val realType: Type
+    ) : Type(
+        realType.name,
+        realType.pkg,
+        realType.isPrivate,
+        createNullableAnyProtocols(realType)
+    ) {
+        fun getTypeOrNullType(): Type {
+            return realType
+
+//            return Resolver.defaultTypes[InternalTypes.Null]!!
+        }
     }
 
 
@@ -178,12 +204,6 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : InternalLike(typeName, pkg, isPrivate, protocols)
 
-    class NullableInternalType(
-        name: InternalTypes,
-        pkg: String,
-        isPrivate: Boolean = false,
-        protocols: MutableMap<String, Protocol>
-    ) : InternalLike(name, pkg, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,
@@ -229,7 +249,6 @@ sealed class Type(
             is UserEnumBranchType -> TODO()
             is UserUnionBranchType -> TODO()
             is KnownGenericType -> TODO()
-            is NullableUserType -> TODO()
             is UnknownGenericType -> this
             RecursiveType -> TODO()
         }
@@ -307,15 +326,6 @@ sealed class Type(
     object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, "common", mutableMapOf())
 
 
-    class NullableUserType(
-        name: String,
-        typeArgumentList: List<Type>,
-        fields: MutableList<TypeField>,
-        isPrivate: Boolean = false,
-        pkg: String,
-        protocols: MutableMap<String, Protocol>
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
-
 }
 
 data class Protocol(
@@ -351,12 +361,23 @@ class Project(
 
 fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
 
+    val replaceToNullableIfNeeded = { type: Type ->
+        val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
+
+        if (isNullable) {
+            Type.NullableType(realType = type)
+        } else {
+            type
+        }
+    }
+
     when (this) {
         is TypeAST.InternalType -> {
-            return Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
+            val type = Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
                 this.token.compileError("Can't find default type: ${YEL}$name")
-                // TODO better inference, depend on context
             }
+
+            return replaceToNullableIfNeeded(type)
         }
 
 
@@ -398,8 +419,10 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
             }
-            return typeTable[name]
+            val type = typeTable[name]
                 ?: this.token.compileError("Can't find user type: ${YEL}$name")
+
+            return replaceToNullableIfNeeded(type)
         }
 
         is TypeAST.Lambda -> {
@@ -410,10 +433,10 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                         name = it.name
                     )
                 }.toMutableList(),
-                returnType = this.returnType.toType(typeDB, typeTable, selfType)
+                returnType = this.returnType.toType(typeDB, typeTable, selfType),
             )
-            return lambdaType
 
+            return replaceToNullableIfNeeded(lambdaType)
         }
 
 
@@ -510,12 +533,12 @@ fun SomeTypeDeclaration.toType(
     }
 
     fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
-        val result = mutableListOf<Type.UserLike>()
+        val result2 = mutableListOf<Type.UserLike>()
         fields2.forEachIndexed { i, it ->
             val type = it.type
 
             if (type is Type.UserLike) {
-                val qwe = type.typeArgumentList.mapIndexed { i2, it2 ->
+                val qwe = List(type.typeArgumentList.size) { i2 ->
                     val field = fields[i].type
                     val typeName =
                         if (field is TypeAST.UserType) {
@@ -528,14 +551,14 @@ fun SomeTypeDeclaration.toType(
                     )
                 }
 
-                result.addAll(qwe)
+                result2.addAll(qwe)
 
                 if (type.fields.isNotEmpty()) {
-                    result.addAll(getAllGenericTypesFromFields(type.fields, fields))
+                    result2.addAll(getAllGenericTypesFromFields(type.fields, fields))
                 }
             }
         }
-        return result
+        return result2
     }
 
     val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
@@ -556,7 +579,7 @@ fun SomeTypeDeclaration.toType(
 
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.isGeneric() && typeFields.find { x ->  x.name == it } == null) {
+        if (it.isGeneric() && typeFields.find { x -> x.name == it } == null) {
             typeFields.add(Type.UnknownGenericType(it))
         }
     }

@@ -66,6 +66,8 @@ fun Type.infoPrint() = buildString {
         is Type.UserUnionRootType -> this@infoPrint.generateInfo()
         is Type.UserEnumRootType -> this@infoPrint.generateInfo()
         is Type.InternalType -> this@infoPrint.generateInfo()
+        is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfo()
+
         is Type.Lambda -> TODO("Can't print lambda info yet")
 
         is Type.UserEnumBranchType -> TODO()
@@ -74,8 +76,6 @@ fun Type.infoPrint() = buildString {
         is Type.UnknownGenericType -> TODO()
         is Type.KnownGenericType -> TODO()
 
-        is Type.NullableUserType -> TODO()
-        is Type.NullableInternalType -> TODO()
         Type.RecursiveType -> TODO()
     })
 

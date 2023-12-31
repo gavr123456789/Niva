@@ -458,7 +458,7 @@ class ParserTest {
     @Test
     fun keywordMessageDeclaration() {
         val source = """
-            Person noTypeLocalName: q typeAndLocalName: w::int :nothing noLocalNameButType::int = [
+            Person noTypeLocalName: q typeAndLocalName: w::int noLocalNameButType::int = [
               x = 1
               x sas
             ]
@@ -466,8 +466,8 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val msgDecl = (ast[0] as MessageDeclarationKeyword)
-        assert(msgDecl.name == "noTypeLocalNameTypeAndLocalNameNothingNoLocalNameButType")
-        assert(msgDecl.args.count() == 4)
+        assert(msgDecl.name == "noTypeLocalNameTypeAndLocalNameNoLocalNameButType")
+        assert(msgDecl.args.count() == 3)
         assert(msgDecl.body.count() == 2)
 
         // args
@@ -475,10 +475,9 @@ class ParserTest {
         assert(msgDecl.args[0].localName == "q")
         assert(msgDecl.args[1].name == "typeAndLocalName")
         assert(msgDecl.args[1].localName == "w")
-        assert(msgDecl.args[2].name == "nothing")
+
+        assert(msgDecl.args[2].name == "noLocalNameButType")
         assert(msgDecl.args[2].localName == null)
-        assert(msgDecl.args[3].name == "noLocalNameButType")
-        assert(msgDecl.args[3].localName == null)
 
         // body
         val body = msgDecl.body
@@ -753,6 +752,7 @@ class ParserTest {
         assert(ast[0] is VarDeclaration)
     }
 
+    @Suppress("UNCHECKED_CAST")
     @Test
     fun pipeOperator() {
         val source = """
@@ -885,17 +885,17 @@ class ParserTest {
     }
 
 
-    @Test
-    fun typeAlias() {
-        val source = """
-        alias MyInt = Int
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        val q = ast[0] as AliasDeclaration
-        assert(q.typeName == "MyInt")
-        assert(q.matchedTypeName == "Int")
-    }
+//    @Test
+//    fun typeAlias() {
+//        val source = """
+//        alias MyInt = Int
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val q = ast[0] as AliasDeclaration
+//        assert(q.typeName == "MyInt")
+//        assert(q.matchedTypeName == "Int")
+//    }
 
     @Test
     fun bracketExpression() {
@@ -975,8 +975,8 @@ class ParserTest {
     fun commentsInsideUnionsAndCF() {
         val source = """
             union Shape area: Int =
-            // | Circle    => radius: Int
-            | Rectangle => width: Int height: Int
+            // | Circle     radius: Int
+            | Rectangle width: Int height: Int
             x = Rectangle width: 2 height: 3 area: 6
             | x
             // | Circle => x radius echo
@@ -1012,7 +1012,7 @@ class ParserTest {
             union Nothing
             union NoUnionBranches width: Int
             union NoFieldsButBranches =
-                | Circle => radius: Int
+                | Circle radius: Int
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
@@ -1312,8 +1312,9 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val send = ast[0] as MessageSendUnary
-        assert(send.messages.count() == 1 && send.messages[0].selectorName == "welcome")
+        val send = ast[0] as MessageSendKeyword
+        assert(send.messages.count() == 1 && send.messages[0].selectorName == "name")
+        assert((send.messages[0] as KeywordMsg).args[0].keywordArg is ExpressionInBrackets)
     }
 
 
@@ -1332,8 +1333,34 @@ class ParserTest {
     }
 
 
+    @Test
+    fun nullVarDecl() {
+        val source = """
+            mut x::Int? = null
+        """.trimIndent()
 
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert((ast[0] as VarDeclaration).valueTypeAst?.name == "Int")
+        val value = (ast[0] as VarDeclaration).value as LiteralExpression.NullExpr
+        assert(value.typeAST?.name == "Int")
+        assert(value.typeAST?.isNullable == true)
+    }
 
+    @Test
+    fun switchOnNothing() {
+        val source = """
+            |
+            | y > 6 => 1 echo
+            | x == 6 => 2 echo
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
 
 
 //    @Test

@@ -766,6 +766,19 @@ class ResolverTest {
         assert(statements.count() == 1)
     }
 
+    @Test
+    fun nullableType() {
+        val source = """
+        mut x::Int? = null
+        x != null => [
+          x + 6
+        ]
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+    }
 
 
 

@@ -14,7 +14,7 @@ sealed class IfBranch(
 
     class IfBranchWithBody(
         ifExpression: Expression,
-        val body: List<Statement>
+        val body: CodeBlock//List<Statement> // replace with code block
     ) : IfBranch(ifExpression)
 }
 
