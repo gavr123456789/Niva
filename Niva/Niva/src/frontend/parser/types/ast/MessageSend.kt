@@ -22,10 +22,11 @@ sealed class MessageSend(
     token: Token
 ) : Receiver(type, token) {
     override fun toString(): String {
+        val receiver = receiver.toString()
         val msg = if (messages.count() == 1) {
             messages[0].toString()
         } else messages.joinToString(" ") { it.toString() }
-        return msg
+        return "$receiver $msg"
     }
 }
 
@@ -78,9 +79,9 @@ class BinaryMsg(
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, path, type, token) {
-    override fun toString(): String {
-        return "$receiver $selectorName $argument"
-    }
+//    override fun toString(): String {
+//        return "$receiver $selectorName $argument"
+//    }
 }
 
 data class KeywordArgAndItsMessages(

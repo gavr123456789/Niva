@@ -161,10 +161,13 @@ sealed class Type(
 //    var bind: Boolean = false
 ) {
     override fun toString(): String =
-        if (this is InternalLike)
-            name
-        else
-            "$pkg.$name"
+        when(this) {
+            is InternalLike -> name
+            is NullableType -> this.realType?.toString() ?: "!!null!!"
+            else -> "$pkg.$name"
+        }
+
+
 
 
     class NullableType(
