@@ -16,12 +16,12 @@ fun codegenIfLet(x: IfBranch.IfBranchWithBody) = buildString {
 fun ControlFlow.If.generateIf(): String = buildString {
 
 
-    if (ifBranches.count() == 1) {
-        val first = ifBranches[0]
-        if (first is IfBranch.IfBranchWithBody) {
-            return codegenIfLet(first)
-        }
-    }
+//    if (ifBranches.count() == 1) {
+//        val first = ifBranches[0]
+//        if (first is IfBranch.IfBranchWithBody) {
+//            return codegenIfLet(first)
+//        }
+//    }
 
     val firstIfBranch = ifBranches[0]
 

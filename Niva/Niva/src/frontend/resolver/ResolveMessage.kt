@@ -134,6 +134,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
         (returnTypeIsSingleGeneric) &&
         kwTypeFromDB.returnType is Type.UserLike && receiverType is Type.UserLike
     ) {
+
+
         fillGenericsWithLettersByOrder(receiverType)
 
         val inferredGenericTypeFromArgs = letterToRealType[kwTypeFromDB.returnType.name]
@@ -154,6 +156,9 @@ fun Resolver.resolveReturnTypeIfGeneric(
             statement.type = inferredGenericTypeFromArgs
         }
     }
+
+    //infer return type as last expression
+
 }
 
 
@@ -470,7 +475,7 @@ fun Resolver.resolveMessage(
 
                     val returnType = if (returnTypeFromDb is Type.UnknownGenericType) {
                         val realTypeFromTable = letterToRealType[returnTypeFromDb.name]
-                            ?: throw Exception("Cant find generic type $YEL${returnTypeFromDb.name}${RESET} in letterToRealType table $YEL$letterToRealType")
+                            ?: throw Exception("Cant find generic type $YEL${returnTypeFromDb.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
                         realTypeFromTable
                     } else if (returnTypeFromDb is Type.UserType && returnTypeFromDb.typeArgumentList.find { it.name.length == 1 } != null) {
                         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры

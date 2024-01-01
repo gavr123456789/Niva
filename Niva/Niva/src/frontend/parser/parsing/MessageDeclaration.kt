@@ -109,10 +109,10 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     var tryPrimary: Receiver? = primary(typeAst)
     // check for collections
     if (tryPrimary == null) {
-        val q = step()
+        val token = step()
         skipOneEndOfLineOrFile()
 
-        tryPrimary = when (q.kind) {
+        tryPrimary = when (token.kind) {
             TokenType.OpenBrace -> {
                 // {1, 2 3}
                 // for now, messages inside collection literals are impossible
@@ -122,7 +122,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseBrace)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                return ListCollection(initElements, type, q)
+                return ListCollection(initElements, type, token)
             }
 
             TokenType.OpenBraceHash -> {
@@ -132,7 +132,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
 
                 match(TokenType.CloseBrace)
 
-                return MapCollection(initElements, null, q)
+                return MapCollection(initElements, null, token)
             }
 
             TokenType.OpenParenHash -> {
@@ -143,7 +143,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseParen)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                return SetCollection(initElements, type, q)
+                return SetCollection(initElements, type, token)
             }
 
 
