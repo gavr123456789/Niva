@@ -251,7 +251,8 @@ fun Resolver.resolveControlFlow(
                         if (it.body.statements.isNotEmpty()) {
                             currentLevel++
 //                            resolve(it.body, scopeWithFields, statement)
-                            resolveCodeBlock(it.body, previousScope,currentScope, statement)
+                            resolveCodeBlockAsBody(it.body, previousScope,currentScope, statement)
+
                             currentLevel--
 
                             val lastExpr = it.body.statements.last()

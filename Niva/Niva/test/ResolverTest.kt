@@ -781,6 +781,29 @@ class ResolverTest {
     }
 
 
+    @Test
+    fun nullableTypeReturn() {
+        val source = """
+        Int sas -> Int? = ^41
+        x = 5 sas
+        x unpackOrError inc 
+        x unpack: [it inc]
+        y = x unpackOr: 5
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 5)
+
+        assert((statements[1] as VarDeclaration).value.type is Type.NullableType)
+        assert((statements[2] as MessageSendUnary).type is Type.InternalType)
+        assert((statements[3] as MessageSendKeyword).type is Type.InternalType)
+        assert((statements[4] as VarDeclaration).value.type is Type.InternalType)
+
+
+    }
+
+
 
 }
 

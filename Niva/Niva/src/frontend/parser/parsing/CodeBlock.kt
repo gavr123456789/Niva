@@ -1,10 +1,8 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
-import frontend.parser.types.ast.CodeBlock
-import frontend.parser.types.ast.ExpressionInBrackets
-import frontend.parser.types.ast.IdentifierExpr
-import frontend.parser.types.ast.Statement
+import frontend.parser.types.ast.*
+import frontend.resolver.Resolver
 
 fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
     val result = mutableListOf<Statement>()
@@ -49,20 +47,24 @@ fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
 
 fun Parser.codeBlock(): CodeBlock {
     val openBracket = matchAssert(TokenType.OpenBracket, "")
-
+    skipNewLinesAndComments()
     //checkTokUntilEndOfLine(TokenType.ReturnArrow)
     // [{a, b -> } statements]
     val beforeStatementsPart: List<IdentifierExpr> =
         codeBlockArgs()
 
+    skipNewLinesAndComments()
 
-    val statements = if (!match(TokenType.CloseBracket)) statementsUntilCloseBracket(TokenType.CloseBracket) else listOf()
+    val statements = if (!match(TokenType.CloseBracket))
+        statementsUntilCloseBracket(TokenType.CloseBracket)
+    else
+        listOf()
 
 
     val result = CodeBlock(
         inputList = beforeStatementsPart,
         statements = statements,
-        type = null,
+        type = if (statements.isNotEmpty()) null else Resolver.defaultTypes[InternalTypes.Unit] ,
         token = openBracket
     )
 
@@ -81,7 +83,6 @@ fun Parser.bracketExpression(): ExpressionInBrackets {
     )
 
 //    val closeBracket = matchAssert(TokenType.CloseBracket)
-
 
     return result
 }

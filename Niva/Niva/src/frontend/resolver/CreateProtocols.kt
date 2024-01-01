@@ -371,6 +371,7 @@ fun createCharProtocols(
 fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
     val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
     val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
+    val generic = Type.UnknownGenericType("T")
 
     val realTypeOrNothing = realType ?: nothingType
 
@@ -384,11 +385,14 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("unpackOr", realTypeOrNothing), realTypeOrNothing)
-                .emitKw("$0 ?: $1"),
+                .emitKw("($0 ?: $1)"),
 
             createKeyword(KeywordArg("unpack",
-                Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), unitType)
-            ), realTypeOrNothing),
+                Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), generic)
+            ), generic),
+
+            createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
+                .emitKw("$0 ?: $1"),
         ),
     )
     return mutableMapOf(protocol.name to protocol)

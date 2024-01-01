@@ -6,6 +6,16 @@ import main.RESET
 import main.WHITE
 import main.utils.isGeneric
 
+
+fun Resolver.resolveCodeBlockAsBody(
+    statement: CodeBlock,
+    previousScope: MutableMap<String, Type>,
+    currentScope: MutableMap<String, Type>,
+    rootStatement: Statement?,
+) {
+    resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
+    statement.type = (statement.type as Type.Lambda).returnType
+}
 fun Resolver.resolveCodeBlock(
     statement: CodeBlock,
     previousScope: MutableMap<String, Type>,

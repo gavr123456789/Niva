@@ -81,12 +81,12 @@ fun getOSType(): CurrentOS {
     }
 }
 
-fun getOsPathSeparator() = when (getOSType()) {
-    CurrentOS.WINDOWS -> "\\"
-    CurrentOS.LINUX, CurrentOS.MAC -> "/"
-}
+//fun getOsPathSeparator() = when (getOSType()) {
+//    CurrentOS.WINDOWS -> "\\"
+//    CurrentOS.LINUX, CurrentOS.MAC -> "/"
+//}
 
-operator fun String.div(arg: String) = this + getOsPathSeparator() + arg
+operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
 
 
 fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {

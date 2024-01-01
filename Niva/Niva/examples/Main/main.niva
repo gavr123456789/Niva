@@ -1,25 +1,54 @@
-//x::Int? = null
-//y = x + 1
+program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
 
 
-// if let
-//type Person name: String?
-//person = Person name: null
-//person name echo
-//name::String = person name
-//
-//person name => [name -> name echo]
-//
-//person2 = Person name: "Alice"
-//person2 name => [name -> name echo]
+mut ip = 0
+mut buf::MutableList::Int = {}
+mut ptr = 0
 
 
-Int sas -> Int? = ^41
+[ip == program count] whileFalse: [
+  char = program at: ip
+  buf count dec < ptr => buf add: 0 // bool then(=>) buf add: 0
+  bufAtPtr = buf at: ptr
 
+  | char
+  | '>' => ptr <- ptr inc
+  | '<' => ptr <- ptr dec
+  | '+' => buf at: ptr put: bufAtPtr inc
+  | '-' => buf at: ptr put: bufAtPtr dec
+  | '.' => ((buf viewFrom: ptr to: ptr inc) at: 0) toChar echonnl
+  | ',' => "readln needed" echo
+  | '[' =>
+    bufAtPtr == 0 => [
+      ip <- ip inc
+      mut layer = 0
+      [layer == 0 && ((program at: ip) == ']')] whileFalse: [
+        char = program at: ip
+        | char
+        | '[' => layer <- layer inc
+        | ']' => layer <- layer dec
 
-x = 5 sas
-x + 5
+        ip <- ip inc
+      ]
+    ]
 
+  | ']' =>
+    bufAtPtr == 0 => [
+      // exit loop
+    ]
+    |=> [
+      ip <- ip dec
+      mut layer = 0
+      [layer == 0 && ((program at: ip) == '[')] whileFalse: [
+        char = program at: ip
+        | char
+        | '[' => layer <- layer dec
+        | ']' => layer <- layer inc
 
+        ip <- ip dec
+      ]
+    ]
 
+  ip <- ip inc
+]
 

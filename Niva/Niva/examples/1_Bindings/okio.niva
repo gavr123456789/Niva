@@ -10,7 +10,6 @@ Bind package: "okio.Path" content: [
 ]
 Bind package: "okio" content: [
     type FileSystem
-//    FileSystem read::Path -> String
     @emit: "okio.FileSystem.SYSTEM.read($1) { readUtf8() }"
     constructor FileSystem read::Path -> String
 ]

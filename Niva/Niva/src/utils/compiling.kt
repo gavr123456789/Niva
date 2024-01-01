@@ -194,11 +194,16 @@ fun compileProjFromFile(
     resolver.printInfoFromCode()
     return resolver
 }
-
+inline fun <T, R> T?.unpackDo(block: (T) -> R, or: R): R {
+    return if (this != null)
+        block(this)
+    else or
+}
 
 fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
-
+    val q: Int? = null
+    val w = q.unpackDo ({ it + 5 }, 5)
 
     val quote = "\"\"\""
 
