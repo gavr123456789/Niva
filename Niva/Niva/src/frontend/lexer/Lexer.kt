@@ -184,14 +184,17 @@ fun String.set(index: Int, str: String): String {
     return substring(0, index) + str + substring(index)
 }
 
-fun Lexer.parseEscape(q: String) {
-    source = when (q[0]) {
-        'n' -> source.set(current, 'n')
-        '\'' -> source.set(current, '\'')
-        '\\' -> source.set(current, '\\')
-        else -> this.error("invalid escape sequence '\\${peek()}'")
-    }
-}
+//fun Lexer.parseEscape() {
+//    val q = peek()
+//
+//    source = when (q[0]) {
+//        'n' -> source.set(current, 'n')
+//        't' -> source.set(current, 't')
+//        '\'' -> source.set(current, '\'')
+//        '\\' -> source.set(current, '\\')
+//        else -> this.error("invalid escape sequence '\\${peek()}'")
+//    }
+//}
 
 
 fun Lexer.parseString(delimiter: String, mode: String = "single") {
@@ -208,12 +211,12 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
 
         if (mode in arrayOf("raw", "multy")) {
             this.step()
-        } else if (this.match("\\")) {
-            val q = peek()
-
-            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex) //..^1
-            parseEscape(q)
         }
+//        else if (this.match("\\")) {
+//
+//            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex-1)
+//            parseEscape()
+//        }
 
         if (mode == "format" && match("{")) {
             if (match("{")) {
@@ -239,7 +242,6 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         if (slen > 1 && delimiter == "'") {
             error("invalid character literal (length must be one!)")
         }
-
     }
 
 
