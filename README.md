@@ -21,7 +21,7 @@ On Windows double click on compile.bat, to run `.\Niva .\main.scala`
 2) run compiler from bin folder
 You will get 
 ### Native
-1) install graalvm `yay -S jdk21-graalvm-bin` on Arch, `nix shell nixpkgs#graalvm-ce` on nix   
+1) install graalvm `yay -S jdk21-graalvm-bin` and set it default: `sudo archlinux-java set java-21-graalvm` on Arch, `nix shell nixpkgs#graalvm-ce` on nix   
 2) `sh compile.sh bin`  
 ### Usage
 
