@@ -1,5 +1,7 @@
 # Niva
-It will be Smalltalk like language, but statically typed.
+It will be Smalltalk like language, but statically typed.  
+ 
+<img src="https://github.com/gavr123456789/Niva/assets/30507409/55f54aa9-760b-43ea-9518-33b06b07cc8a" width=30% height=30%>
 
 ## Backend
 Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
