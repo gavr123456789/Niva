@@ -89,29 +89,33 @@ fun Resolver.resolveMessageDeclaration(
         bodyScope["this"] = forType
 
         // add args to scope
-        when (st) {
-            is MessageDeclarationKeyword -> {
-                st.args.forEach {
-                    if (it.type == null) {
-                        st.token.compileError("Can't parse type for argument $WHITE${it.name}")
-                    }
-                    val astType = it.type
-                    val type = astType.toType(typeDB, typeTable)//fix
+        fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
+            st.args.forEach {
+                if (it.type == null) {
+                    st.token.compileError("Can't parse type for argument $WHITE${it.name}")
+                }
+                val astType = it.type
+                val typeFromAst = astType.toType(typeDB, typeTable)//fix
 
-                    bodyScope[it.localName ?: it.name] = type
+                bodyScope[it.localName ?: it.name] = typeFromAst
 
-                    if (type is Type.UnknownGenericType) {
-                        st.typeArgs.add(type.name)
-                    }
-                    // add generic params to scope
-                    if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                        st.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                        // T == T
-                        if (type.name == it.type.name) {
-                            bodyScope[it.name] = type
-                        }
+                if (typeFromAst is Type.UnknownGenericType) {
+                    st.typeArgs.add(typeFromAst.name)
+                }
+                // add generic params to scope
+                if (typeFromAst is Type.UserType && typeFromAst.typeArgumentList.isNotEmpty()) {
+                    st.typeArgs.addAll(typeFromAst.typeArgumentList.map { typeArg -> typeArg.name })
+                    // T == T
+                    if (typeFromAst.name == it.type.name) {
+                        bodyScope[it.name] = typeFromAst
                     }
                 }
+            }
+        }
+
+        when (st) {
+            is MessageDeclarationKeyword -> {
+                addArgsToBodyScope(st)
             }
 
             is MessageDeclarationUnary -> {
@@ -125,7 +129,10 @@ fun Resolver.resolveMessageDeclaration(
                 bodyScope[arg.name] = argType
             }
 
-            is ConstructorDeclaration -> {}
+            is ConstructorDeclaration -> {
+                if (st.msgDeclaration is MessageDeclarationKeyword)
+                    addArgsToBodyScope(st.msgDeclaration)
+            }
         }
         // add args to bodyScope
         if (forType is Type.UserLike) {

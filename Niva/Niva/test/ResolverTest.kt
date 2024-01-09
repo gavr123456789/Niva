@@ -770,8 +770,8 @@ class ResolverTest {
     fun nullableType() {
         val source = """
         mut x::Int? = null
-        x != null => [
-          x + 6
+        x unpack: [
+          it + 6
         ]
         """.trimIndent()
 
@@ -801,6 +801,21 @@ class ResolverTest {
         assert((statements[4] as VarDeclaration).value.type is Type.InternalType)
 
 
+    }
+
+    @Test
+    fun fgk() {
+        val source = """
+           union JsonObj =
+           | JsonArray arr: MutableList::JsonObj
+
+
+           arr = JsonArray arr: {}
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
     }
 
 

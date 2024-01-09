@@ -16,7 +16,7 @@ fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType
 )
 
 // use only after ::
-fun Parser.parseType(): TypeAST {
+fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
@@ -63,8 +63,9 @@ fun Parser.parseType(): TypeAST {
 
 
         return TypeAST.Lambda(
-            name = "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
+            name = ("$extensionTypeOfLambda.") + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
             inputTypesList = listOfInputTypes,
+            extensionOfType = extensionTypeOfLambda,
             token = tok,
             returnType = returnType,
             isNullable = isNullable,

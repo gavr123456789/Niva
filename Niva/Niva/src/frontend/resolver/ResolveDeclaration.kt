@@ -8,6 +8,7 @@ import main.RED
 import main.RESET
 import main.WHITE
 import main.YEL
+import main.frontend.resolver.resolveStaticBuilderDeclaration
 import main.frontend.typer.project.resolveProjectKeyMessage
 
 
@@ -26,6 +27,8 @@ fun Resolver.resolveDeclarations(
         is MessageDeclaration -> {
             if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
+        is StaticBuilderDeclaration -> resolveStaticBuilderDeclaration(statement, resolveBody, previousScope)
+
         is ExtendDeclaration -> {
             var atLeastOneUnresolved = false
             statement.messageDeclarations.forEach {

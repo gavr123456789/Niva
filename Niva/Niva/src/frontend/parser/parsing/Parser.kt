@@ -7,6 +7,7 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import main.frontend.parser.parsing.staticBuilder
 
 
 // Declaration without end of line
@@ -42,8 +43,13 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Union) {
         return unionDeclaration(pragmas)
     }
+
     if (kind == TokenType.Constructor) {
         return constructorDeclaration(pragmas)
+    }
+
+    if (kind == TokenType.Builder) {
+        return builderDeclaration(pragmas)
     }
 
     if (kind == TokenType.Identifier && tok.lexeme == "extend") {
@@ -250,7 +256,7 @@ fun Parser.isNextSimpleReceiver(): Boolean {
 }
 
 
-// message or control flow
+// message or control flow or static builder
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
 fun Parser.expression(
@@ -266,6 +272,12 @@ fun Parser.expression(
     if (check(TokenType.Underscore)) {
         return ifStatementOrExpression()
     }
+
+    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
+        return staticBuilder()
+    }
+
+
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
     // unwrap unnecessary MessageSend

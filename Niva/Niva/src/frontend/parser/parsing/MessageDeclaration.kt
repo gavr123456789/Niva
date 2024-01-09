@@ -21,14 +21,18 @@ import main.WHITE
 // also code blocks
 
 
-fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = null, insideKeywordArgument: Boolean = false): Receiver {
+fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
+    customReceiver: Receiver? = null,
+    insideKeywordArgument: Boolean = false
+): Receiver {
 
     val safePoint = current
     try {
         // we don't need to parse cascade if we are inside keyword argument parsing, since this cascade will be applied to
         // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
         // or Person name: "Alice" |> getName
-        when (val messageSend = unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
+        when (val messageSend =
+            unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
             is MessageSendUnary, is MessageSendBinary -> {
                 return if (messageSend.messages.isNotEmpty()) {
                     messageSend
@@ -170,7 +174,6 @@ fun Parser.returnType(): TypeAST? {
 fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
 
 
-
     // int^ inc = []
 
     val unarySelector = matchAssertAnyIdent("Its unary message declaration, unary selector expected")
@@ -241,15 +244,8 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 }
 
 
-/**
- * Parses a keyword message declaration, which follows the format:
- *  - Receiver type, followed by arguments.
- *  - Optional return type.
- *  - Body with messages or variable declarations.
- * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
- * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
- */
-fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
+
+fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     val args = mutableListOf<KeywordDeclarationArg>()
 
     do {
@@ -261,7 +257,18 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
         skipNewLinesAndComments()
 
     } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
-
+    return args
+}
+/**
+ * Parses a keyword message declaration, which follows the format:
+ *  - Receiver type, followed by arguments.
+ *  - Optional return type.
+ *  - Body with messages or variable declarations.
+ * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
+ * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
+ */
+fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
+    val args = keywordArgs()
 
     val returnType = returnType()
 
@@ -292,6 +299,7 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
 private fun Parser.keyArg(): KeywordDeclarationArg {
     val noLocalNameNoType = check(TokenType.Colon)
     val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
+    val lambdaWithExtension = check(TokenType.Identifier) && check(TokenType.Dot, 1)
     // :foo
     if (noLocalNameNoType) {
         step() //skip colon
@@ -310,6 +318,17 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         match(TokenType.DoubleColon)
         val type = parseType()
         return (KeywordDeclarationArg(name = argName.lexeme, type = type))
+    }
+    else if (lambdaWithExtension) {
+        val extension = matchAssert(TokenType.Identifier)
+        step() // skip dot
+        val name = matchAssert(TokenType.Identifier, "Identifier expected in extension codeblock")
+        matchAssert(TokenType.DoubleColon, ":: expected in extension codeblock")
+        val typeAST = parseType(extension.lexeme)
+
+
+        val result = KeywordDeclarationArg(name = name.lexeme, type = typeAST)
+        return  result
     }
     // key: localName(::int)?
     else {
@@ -368,7 +387,6 @@ fun Parser.methodBody(
 
     return Pair(messagesOrVarStatements, realIsSingleExpression)
 }
-
 
 
 // Int sas ^ (-> Type)? =?
@@ -456,8 +474,12 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
     return false
 }
 
-fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false, parseReceiver: Boolean = true): MessageDeclarationType? {
+fun Parser.checkTypeOfMessageDeclaration2(
+    isConstructor: Boolean = false,
+    parseReceiver: Boolean = true
+): MessageDeclarationType? {
     val savepoint = current
+
     @Suppress("UNUSED_VARIABLE")
     val receiver = if (parseReceiver) identifierMayBeTyped() else null
 
@@ -530,7 +552,7 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
     return ExtendDeclaration(
         forTypeAst = forTypeAst,
         messageDeclarations = list,
-        token =  forTypeAst.token
+        token = forTypeAst.token
     )
 
 }
@@ -540,10 +562,10 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
 fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
-    val isItKeywordDeclaration =
+    val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
-    val msgDecl = if (isItKeywordDeclaration != null) {
-        messageDeclaration(isItKeywordDeclaration, codeAttributes)
+    val msgDecl = if (messageDeclarationType != null) {
+        messageDeclaration(messageDeclarationType, codeAttributes)
     } else null
 
     if (msgDecl == null) {
@@ -554,5 +576,54 @@ fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): C
         msgDeclaration = msgDecl,
         constructorKeyword,
     )
+    return result
+}
+
+
+// builder name key-args lambdaArg -> Type = []
+fun Parser.builderDeclaration(pragmas: MutableList<CodeAttribute>): StaticBuilderDeclaration {
+    val builderKeyword = matchAssert(TokenType.Builder)
+    val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
+    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)
+
+    val args = keywordArgs()
+    val returnType = returnType()
+    matchAssert(TokenType.Assign)
+    matchAssert(TokenType.OpenBracket, "builder cant be single expression")
+    val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+
+
+
+
+//    val kw = keywordDeclaration(fakeAST)
+//
+//    val findIFThereDefaultAction = {
+//        var defaultAction: CodeBlock? = null
+//        kw.body.forEach {
+//            if (it is VarDeclaration && it.name == "default") {
+//                if (defaultAction != null) it.token.compileError("${WHITE}default$RESET action already declarated")
+//                val value  = it.value
+//                if (value !is CodeBlock) {
+//                    it.token.compileError("Value of ${WHITE}default$RESET action must be codeblock")
+//                }
+//                defaultAction = value
+//                return@forEach
+//            }
+//        }
+//        defaultAction
+//    }
+
+
+
+    val result = StaticBuilderDeclaration(
+        name = name.name,
+        defaultAction = defaultAction,
+        token = builderKeyword,
+        args = args,
+        body = body,
+        returnType = returnType,
+        pragmas = pragmas,
+    )
+
     return result
 }

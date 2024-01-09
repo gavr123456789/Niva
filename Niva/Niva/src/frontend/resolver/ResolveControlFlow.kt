@@ -259,6 +259,8 @@ fun Resolver.resolveControlFlow(
                             if (lastExpr.isNotExpression()) {
                                 lastExpr.token.compileError("In if expression body last statement must be an expression")
                             }
+                        } else {
+                            it.body.type = Resolver.defaultTypes[InternalTypes.Unit]
                         }
                     }
                 }

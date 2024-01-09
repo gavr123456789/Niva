@@ -82,6 +82,12 @@ private fun Resolver.resolveStatement(
                 topLevelStatements.add(statement)
         }
 
+        is StaticBuilder -> {
+            currentLevel++
+            resolve(statement.statements, (currentScope + previousScope).toMutableMap())
+            currentLevel--
+            TODO()
+        }
 
         is IdentifierExpr -> {
             val kw = if (rootStatement is KeywordMsg) {
@@ -93,22 +99,12 @@ private fun Resolver.resolveStatement(
             )
             val type = statement.type
 
+            // This Identifier is Type, like Person
             if (type != null && statement.str == type.name && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
-                if (type is Type.UserLike) {
-                    if (type.fields.isEmpty()) {
-                        statement.isConstructor = true
-                    } else if (kw == null) {
-                        val typeFields = type.fields.joinToString(": value") { it.name } + ": value"
-
-                        // Inline question
-                        if (statement.isInfoRepl) {
-                            addPrintingInfoAboutType(type)
-                        } else
-                            statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields$RESET`")
-                    }
-                } else if (statement.isInfoRepl) {
+                if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type)
                 }
+                statement.isType = true
             }
 
             if (currentLevel == 0) topLevelStatements.add(statement)
@@ -211,7 +207,6 @@ private fun Resolver.resolveStatement(
     }
 }
 
-// нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
     statements: List<Statement>,
     previousScope: MutableMap<String, Type>,
@@ -270,6 +265,8 @@ fun Resolver.resolveExpressionInBrackets(
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
+    if (type1 === type2) return true
+
     // one of the types is Any
     if (type1.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
         return true
@@ -305,13 +302,14 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         return true
     }
 
-
+    val pkg1 = type1.pkg
+    val pkg2 = type2.pkg
+    val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
 
     if (type1 is Type.UserLike && type2 is Type.UserLike) {
         // if types from different packages, and its not core
-        val pkg1 = type1.pkg
-        val pkg2 = type2.pkg
-        if (pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core") {
+
+        if (isDifferentPkgs) {
             token?.compileError("$YEL$type1$RESET is from $WHITE$pkg1$RESET pkg, and $YEL$type2$RESET from $WHITE$pkg2")
             return false
         }
@@ -324,14 +322,28 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                 token?.compileError("Types: $YEL$type1$RESET and $YEL$type2$RESET have a different number of generic parameters")
                 return false
             }
+
+            val isSameNames = type1.name == type2.name
             args1.forEachIndexed { index, arg1 ->
                 val arg2 = args2[index]
-                val sameArgs = compare2Types(arg1, arg2)
+                if (isSameNames) {
+                    if (arg1 is Type.UnknownGenericType){
+                        type1.typeArgumentList = type2.typeArgumentList
+                        return true
+                    }
+                    if (arg2 is Type.UnknownGenericType){
+                        type2.typeArgumentList = type1.typeArgumentList
+                        return true
+                    }
+                }
+
+                val sameArgs = compare2Types(arg1, arg2, token)
                 if (!sameArgs) {
                     token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
                 }
             }
         }
+
 
 
         // first is parent of the second
@@ -364,7 +376,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
     }
 
     // TODO temp, there could be types with same names in different packages, or with different generic params
-    if (type1.name == type2.name && type1.pkg == type2.pkg) {
+    if (type1.name == type2.name && !isDifferentPkgs) {
         return true
     }
 
@@ -830,8 +842,7 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?:
-        getType2(x.name, currentScope, previousScope, kw)
+        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
 //    else getType(
 //        x.name,
 //        currentScope,
@@ -1243,13 +1254,28 @@ class Resolver(
                 stringType
             )
         )
-//        kotlinPkg.types["Exception"] = exceptionType
-
-
-        typeTable[errorType.name] = errorType// fixed
+        typeTable[errorType.name] = errorType
         typeDB.addUserLike(errorType.name, errorType, createFakeToken())
-
         corePackage.types[errorType.name] = errorType
+
+        // StringBuilder
+        val stringBuilderType = Type.UserType(
+            name = "StringBuilder",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        stringBuilderType.isBinding = true
+        stringBuilderType.protocols.putAll(
+            createStringBuilderProtocols(
+                stringBuilderType,
+                anyType,
+                stringType
+            )
+        )
+        typeTable[stringBuilderType.name] = stringBuilderType
+        typeDB.addUserLike(stringBuilderType.name, stringBuilderType, createFakeToken())
+        corePackage.types[stringBuilderType.name] = stringBuilderType
 
         projects[projectName] = commonProject
 
