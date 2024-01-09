@@ -474,6 +474,28 @@ fun createExceptionProtocols(
     return mutableMapOf(protocol.name to protocol)
 }
 
+fun createStringBuilderProtocols(
+    stringBuilderType: Type.UserType,
+    anyType: Type.InternalType,
+    stringType: Type.InternalType
+): MutableMap<String, Protocol> {
+
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("toString", stringType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword(KeywordArg("append", anyType), stringBuilderType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword(KeywordArg("withText", stringType), stringBuilderType),
+        )
+    )
+    return mutableMapOf(protocol.name to protocol)
+}
+
 
 fun createListProtocols(
     intType: Type.InternalType,

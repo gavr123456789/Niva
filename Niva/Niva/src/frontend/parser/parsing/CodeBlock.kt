@@ -1,8 +1,11 @@
 package frontend.parser.parsing
 
 import frontend.meta.TokenType
+import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.Resolver
+import main.RESET
+import main.WHITE
 
 fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
     val result = mutableListOf<Statement>()
@@ -11,6 +14,29 @@ fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> 
     } while (!match(bracketType))
 
     return result
+}
+
+// returns defaultAction = []
+fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType): Pair<MutableList<Statement>, CodeBlock?> {
+    val result = mutableListOf<Statement>()
+    var defaultAction: CodeBlock? = null
+    do {
+        val q = statementWithEndLine()
+        result.add(q)
+        if (q is VarDeclaration && q.name == "defaultAction") {
+            if (defaultAction != null) {
+                q.token.compileError("${WHITE}defaultAction$RESET already defined")
+            }
+            val value = q.value
+            if (value is CodeBlock) {
+                defaultAction = value
+            } else {
+                q.token.compileError("Value of ${WHITE}defaultAction$RESET must be codeblock")
+            }
+        }
+    } while (!match(bracketType))
+
+    return Pair(result, defaultAction)
 }
 
 

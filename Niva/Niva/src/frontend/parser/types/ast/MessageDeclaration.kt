@@ -105,3 +105,16 @@ class ExtendDeclaration(
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
+
+class StaticBuilderDeclaration(
+    val name: String,
+    token: Token,
+    val args: List<KeywordDeclarationArg>,
+    body: List<Statement>,
+    returnType: TypeAST?,
+    val defaultAction: CodeBlock? = null,
+    val typeArgs: MutableList<String> = mutableListOf(),
+    isPrivate: Boolean = false,
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    isInline: Boolean = false
+) : Declaration(token, isPrivate, pragmas)

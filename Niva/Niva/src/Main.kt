@@ -241,6 +241,21 @@ fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
     return specialPkgToInfoPrint
 }
 
+var sas: ((String) -> Unit) = {}
+
+fun buildString2(builderAction: StringBuilder.() -> Unit): String {
+    val q = StringBuilder()
+
+    val default: (String) -> Unit = {it: String ->
+        q.append(it)
+    }
+    sas = default
+
+    q.builderAction()
+    return q.toString()
+}
+
+
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")

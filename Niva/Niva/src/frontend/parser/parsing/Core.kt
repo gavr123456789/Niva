@@ -9,11 +9,8 @@ class Parser(
     val tokens: MutableList<Token>,
     val source: String,
     val currentFunction: Statement? = null,
-    val scopeDepth: Int = 0,
-//    val operators: OperatorTable,
     val tree: MutableList<Statement> = mutableListOf(),
     var current: Int = 0,
-//    val modules: MutableList<Module> = mutableListOf(),
 )
 
 fun Parser.getCurrent() = current
@@ -23,7 +20,6 @@ fun Parser.getCurrentToken() =
     else
         tokens.elementAt(current - 1)
 
-fun Parser.getCurrentFunction() = currentFunction
 fun endOfFile(file: File) = Token(
     kind = TokenType.EndOfFile,
     lexeme = "",
@@ -70,7 +66,16 @@ fun Parser.check(kind: TokenType, distance: Int = 0) =
 fun Parser.check(kind: String, distance: Int = 0) =
     peek(distance).lexeme == kind
 
-fun Parser.check(kind: Iterable<TokenType>): Boolean {
+fun Parser.checkMany(vararg kind: TokenType): Boolean {
+    kind.forEachIndexed { i, it ->
+        if (!check(it, i)) {
+            return false
+        }
+    }
+    return true
+}
+
+fun Parser.check(vararg kind: TokenType): Boolean {
     kind.forEach {
         if (check(it)) {
             return true

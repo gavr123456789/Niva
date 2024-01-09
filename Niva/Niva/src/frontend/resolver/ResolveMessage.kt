@@ -40,6 +40,7 @@ fun Resolver.resolveKwArgs(
             currentLevel++
             currentArgumentNumber = argNum
             resolve(listOf(it.keywordArg), previousAndCurrentScope, statement)
+            if (it.keywordArg.type == null) it.keywordArg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
             currentLevel--
         }
     }
@@ -68,7 +69,8 @@ fun Resolver.resolveKwArgsGenerics(
                     if (argTypeWithSameLetter != null) {
                         // receiver has the same generic param resolved
                         if (!compare2Types(argType, argTypeWithSameLetter)) {
-                            it.keywordArg.token.compileError("${YEL}`${it.name}` has type `$YEL$argType${RESET}` but generic type of `${YEL}${statement.receiver.type}$RESET` was resolved to `${YEL}$argTypeWithSameLetter$RESET`")
+//                            it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but generic type of  ${YEL}${statement.receiver.type}$RESET was resolved to ${YEL}$argTypeWithSameLetter$RESET")
+                            it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                         }
                     }
                 }
@@ -177,7 +179,7 @@ fun Resolver.resolveMessage(
 
     when (statement) {
         is KeywordMsg -> {
-            // resolve just non generic types of args
+            // resolve just non-generic types of args
             resolveKwArgs(statement, currentScope, previousScope, true)
 
             // resolve receiverType
@@ -407,7 +409,7 @@ fun Resolver.resolveMessage(
                             if (argFromDB == null) {
                                 kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}${RESET}, not ${CYAN}${kwArg.name} ")
                             }
-                            if (!compare2Types( argFromDB.type, kwArg.keywordArg.type!!)) {
+                            if (!compare2Types( argFromDB.type, kwArg.keywordArg.type!!, kwArg.keywordArg.token)) {
                                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type?.name}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type.name}${RESET}, not ${YEL}${kwArg.keywordArg.type?.name} ")
                             }
                         }
@@ -515,7 +517,7 @@ fun Resolver.resolveMessage(
                                 compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                             if (!sameTypes) {
                                 argAndItsMessages.keywordArg.token.compileError(
-                                    "In keyword message `$CYAN${statement.selectorName}${RESET}` type `$YEL${typeOfArgFromDeclaration.name}${RESET}` for argument `$CYAN${argAndItsMessages.name}${RESET}` doesn't match `$YEL${typeOfArgFromDb.name}${RESET}`"
+                                    "In keyword message $CYAN${statement.selectorName}${RESET} type $YEL${typeOfArgFromDeclaration.name}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} doesn't match $YEL${typeOfArgFromDb.name}${RESET}"
                                 )
                             }
 
@@ -686,9 +688,9 @@ fun Resolver.resolveMessage(
                         statement.token,
                         MessageDeclarationType.Unary
                     )
-                    if (receiver is IdentifierExpr) {
-                        receiver.isConstructor = false
-                    }
+//                    if (receiver is IdentifierExpr) {
+//                        receiver.isConstructor = false
+//                    }
 
                     statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     statement.type = messageReturnType.returnType

@@ -155,17 +155,23 @@ sealed class Type(
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
     var beforeGenericResolvedName: String? = null,
-//    var bind: Boolean = false
 ) {
     override fun toString(): String =
-        when(this) {
+        when (this) {
             is InternalLike -> name
-            is NullableType ->  "$realType?"
+            is NullableType -> "$realType?"
+            is UserLike -> {
+                val genericParam =
+                    if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
+                        "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
+                    } else ""
+                val needPkg = if (pkg != "core") "$pkg." else ""
+                "$needPkg$name$genericParam"
+            }
+
             else -> "$pkg.$name"
+
         }
-
-
-
 
     class NullableType(
         val realType: Type
@@ -213,7 +219,9 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false
-    ) : Type(name, pkg, isPrivate, protocols)
+    ) : Type(name, pkg, isPrivate, protocols) {
+        fun printConstructor() = fields.joinToString(": value") { it.name } + ": value"
+    }
 
     fun UserLike.copy(): UserLike =
         when (this) {
@@ -247,9 +255,18 @@ sealed class Type(
             ).also { it.isBinding = this.isBinding }
 
             is UserEnumBranchType -> TODO()
-            is UserUnionBranchType -> TODO()
+            is UserUnionBranchType -> UserUnionBranchType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields.toMutableList(),
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                root = this.root,
+                protocols = this.protocols.toMutableMap(),
+            )
+
             is KnownGenericType -> TODO()
-            is UnknownGenericType -> this
+            is UnknownGenericType -> UnknownGenericType(this.name)
             RecursiveType -> TODO()
         }
 
@@ -538,20 +555,15 @@ fun SomeTypeDeclaration.toType(
             val type = it.type
 
             if (type is Type.UserLike) {
-                val qwe = List(type.typeArgumentList.size) { i2 ->
-                    val field = fields[i].type
-                    val typeName =
-                        if (field is TypeAST.UserType) {
-                            field.typeArgumentList[i2].name
-                        } else {
-                            throw Exception("field is not user type")
-                        }
-                    Type.UnknownGenericType(
-                        name = typeName
-                    )
+                val unknownGenericTypes = mutableListOf<Type.UserLike>()
+                type.typeArgumentList.forEach {
+                    if (it.name.isGeneric()) {
+                        unknownGenericTypes.add(Type.UnknownGenericType(name = it.name))
+                    }
                 }
 
-                result2.addAll(qwe)
+
+                result2.addAll(unknownGenericTypes)
 
                 if (type.fields.isNotEmpty()) {
                     result2.addAll(getAllGenericTypesFromFields(type.fields, fields))
@@ -571,9 +583,6 @@ fun SomeTypeDeclaration.toType(
     unresolvedSelfTypeFields.forEach {
         it.type = result
     }
-
-
-
 
     this.genericFields.addAll(typeFields.map { it.name })
 

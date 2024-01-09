@@ -113,7 +113,7 @@ fun emitFromPragma(msg: Message) {
             }
         }
 
-        else -> {}//msg.token.compileError("String literal for pragma ${Pragmas.RENAME.v} expected")
+        else -> {}
     }
 
 }

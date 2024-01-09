@@ -31,6 +31,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = 
 
 
             is UnionDeclaration -> statement.generateUnionDeclaration()
+            is StaticBuilderDeclaration -> TODO()
 
 
             is EnumDeclarationRoot -> statement.generateEnumDeclaration()
@@ -43,6 +44,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, ident: Int): String = 
             is UnionBranch -> {
                 statement.generateTypeDeclaration(false, statement.root)
             }
+
 
         }.addIndentationForEachString(ident)
     )

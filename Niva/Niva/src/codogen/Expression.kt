@@ -1,7 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.resolver.createEmptyKwConstructor
 
 fun replaceKeywords(str: String) =
     when (str) {
@@ -33,21 +32,12 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is ExpressionInBrackets -> generateExpressionInBrackets(withNullChecks)
 
             is MessageSend -> generateMessageCall(withNullChecks)
-            is IdentifierExpr -> if (isConstructor) {
-                // prevent stack overflow, since keywordGenerate contains generate expression for receiver
-                this@generateExpression.isConstructor = false
-                keywordGenerate(
-                    createEmptyKwConstructor(
-                        this@generateExpression, this@generateExpression.type!!,
-                        this@generateExpression.token
-                    )
-                )
-            } else {
+            is IdentifierExpr ->
                 if (names.count() == 1) {
                     replaceKeywords(replaceLiteral ?: name)
                 } else
                     names.dropLast(1).joinToString(".") + "." + replaceKeywords(replaceLiteral ?: name)
-            }
+
 
             is LiteralExpression.FalseExpr -> "false"
             is LiteralExpression.TrueExpr -> "true"
@@ -80,6 +70,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
 
 
             is CodeBlock -> generateCodeBlock()
+            is StaticBuilder -> TODO()
         }
     )
 

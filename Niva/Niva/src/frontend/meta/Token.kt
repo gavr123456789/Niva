@@ -55,6 +55,7 @@ enum class TokenType {
     InlineReplWithQuestion, // >?
     Underscore, // _
     Enum, // enum
+    Builder, // builder
 
 }
 

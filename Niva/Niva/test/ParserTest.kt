@@ -1362,6 +1362,42 @@ class ParserTest {
 
     }
 
+    @Test
+    fun staticBuild() {
+        val source = """
+            sas [ 
+                it echo 
+                defaultAction = [
+                  it echo
+                ]
+            ] 
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilder
+        assert(staticB.statements[0] is MessageSendUnary)
+    }
+
+    @Test
+    fun staticBuildDeclaration() {
+        val source = """
+            builder html init::[ -> Unit] -> HTML = [
+                html = HTML new
+                html init
+            ]
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilder
+        assert(staticB.statements[0] is MessageSendUnary)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {
