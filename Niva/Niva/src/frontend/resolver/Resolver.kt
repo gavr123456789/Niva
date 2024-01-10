@@ -232,17 +232,6 @@ fun Resolver.resolve(
     return statements
 }
 
-fun createEmptyKwConstructor(value: IdentifierExpr, valueType: Type, token: Token) = KeywordMsg(
-    receiver = value, //IdentifierExpr("", token = createFakeToken()),
-    selectorName = value.str,
-    type = valueType,
-    token = token,
-    args = listOf(),
-    path = listOf(),
-    kind = KeywordLikeType.Constructor
-)
-
-
 fun Resolver.resolveExpressionInBrackets(
     statement: ExpressionInBrackets,
     currentScope: MutableMap<String, Type>,
@@ -543,12 +532,13 @@ fun Resolver.getPackage(packageName: String, token: Token): Package {
 }
 
 
-fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
+fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null, ): Pair<Protocol, Package> {
     val pack = customPkg ?: getPackage(currentPackageName, token)
-    val type = pack.types[typeName]
-        ?: getPackage("common", token).types[typeName]
-        ?: getPackage("core", token).types[typeName]
-        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
+//    val type =
+//        pack.types[typeName]
+//        ?: getPackage("common", token).types[typeName]
+//        ?: getPackage("core", token).types[typeName]
+//        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
 
     val protocol = type.protocols[currentProtocolName]
 
@@ -569,8 +559,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
     val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
-//            staticUnaryForType[statement.name] = statement.msgDeclaration
-            val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+            val type = statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
 
             // if return type is not declared then use receiver
             val returnType = if (statement.returnTypeAST == null)
@@ -595,7 +585,10 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
         is MessageDeclarationKeyword -> {
 //            staticKeywordForType[statement.name] = statement.msgDeclaration
-            val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+            val type =
+                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+
+            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
 
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
@@ -625,7 +618,11 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
     val customPkg = if (statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.names.count() > 1) {
         getPackage(statement.forTypeAst.names.dropLast(1).joinToString("."), statement.token)
     } else null
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token, customPkg)
+
+    val type =
+        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+
+    val (protocol, pkg) = getCurrentProtocol(type, statement.token, customPkg)
 
     val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
     protocol.unaryMsgs[statement.name] = messageData
@@ -635,7 +632,10 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
 }
 
 fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary): MessageMetadata {
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+    val type =
+        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+
+    val (protocol, pkg) = getCurrentProtocol(type, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
     protocol.binaryMsgs[statement.name] = messageData
 
@@ -644,7 +644,10 @@ fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary): MessageMe
 }
 
 fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword): MessageMetadata {
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+    val type =
+        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+
+    val (protocol, pkg) = getCurrentProtocol(type, statement.token)
     val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
     protocol.keywordMsgs[statement.name] = messageData
 
@@ -653,9 +656,11 @@ fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword): Message
     return messageData
 }
 
-fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
+fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
     val pack = getPackage(currentPackageName, statement.token)
     pack.declarations.add(statement)
+
+    pack.addImport(statement.forType!!.pkg)
 }
 
 

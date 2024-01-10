@@ -358,9 +358,9 @@ class Package(
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
 //    val usingPackages: MutableList<Package> = mutableListOf(),
-    // import x.y.*
+    // import x.y.*, usually added via bindings
     val imports: MutableSet<String> = mutableSetOf(),
-    // import x.y
+    // import x.y, added automatically by compiler
     val concreteImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false,
     val comment: String = ""

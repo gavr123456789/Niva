@@ -1,32 +1,32 @@
 
 
 
-list = {"sas" "sus" "ses"}
-list2 = {1 2 3}
-map = #{1 list 2 list}
-map2 = #{"sas" list2}
-arr = {map map2}
-arr at: "sas" put: 5
+//list = {"sas" "sus" "ses"}
+//list2 = {1 2 3}
+//map = #{1 list 2 list}
+//map2 = #{"sas" list2}
+//arr = {map map2}
+//arr at: "sas" put: 5
 
 
-//union JsonObj =
-//| JsonArray arr: MutableList::JsonObj
-//| JsonNumber num: Float
-//| JsonString str: String
-//| JsonFields fld: MutableMap(String, JsonObj)
-//
-//JsonObj print = | this
-//| JsonArray => arr echo
-//| JsonNumber => num echo
-//| JsonString => str echo
-//| JsonFields => fld echo
-//
-//jsonNum = JsonNumber num: 5.0
-//jsonStr = JsonString str: "text"
-//jsonFields = JsonFields fld: #{"age" jsonNum}
-//arr = JsonArray arr: {jsonNum jsonStr jsonFields}
-//
-//arr print
+union JsonObj =
+| JsonArray arr: MutableList::JsonObj
+| JsonNumber num: Float
+| JsonString str: String
+| JsonFields fld: MutableMap(String, JsonObj)
+
+JsonObj print = | this
+| JsonArray => arr echo
+| JsonNumber => num echo
+| JsonString => str echo
+| JsonFields => fld echo
+
+jsonNum = JsonNumber num: 5.0
+jsonStr = JsonString str: "text"
+jsonFields = JsonFields fld: #{"age" jsonNum}
+arr = JsonArray arr: {jsonNum jsonStr jsonFields}
+
+arr print
 
 
 
