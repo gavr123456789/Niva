@@ -1,3 +1,5 @@
+@file:Suppress("UnusedReceiverParameter")
+
 package frontend.resolver
 
 import frontend.meta.Token
@@ -410,7 +412,7 @@ fun Resolver.resolveMessage(
                                 kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}${RESET}, not ${CYAN}${kwArg.name} ")
                             }
                             if (!compare2Types( argFromDB.type, kwArg.keywordArg.type!!, kwArg.keywordArg.token)) {
-                                kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type?.name}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type.name}${RESET}, not ${YEL}${kwArg.keywordArg.type?.name} ")
+                                kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
                             }
                         }
 
