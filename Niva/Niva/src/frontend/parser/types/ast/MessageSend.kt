@@ -75,10 +75,9 @@ class BinaryMsg(
     token: Token,
     val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
-    path: List<String>,
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-) : Message(receiver, selectorName, path, type, token) {
+) : Message(receiver, selectorName, listOf(), type, token) {
 //    override fun toString(): String {
 //        return "$receiver $selectorName $argument"
 //    }
