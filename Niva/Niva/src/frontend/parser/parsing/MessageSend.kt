@@ -70,18 +70,18 @@ fun Parser.binaryMessagesMatching(
     var previousBinaryParsed: BinaryMsg? = null
     while (check(TokenType.BinarySymbol)) {
 
-        val binarySymbol = identifierMayBeTyped()
+        val binarySymbol = matchAssert(TokenType.BinarySymbol) // +
+        skipNewLinesAndComments()
         val binaryArgument = simpleReceiver() // 2
         val unaryForArg = unaryMessagesMatching(binaryArgument)
         val binaryMsg = BinaryMsg(
             previousBinaryParsed ?: receiver,
             if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else listOf(),
-            binarySymbol.name,
+            binarySymbol.lexeme,
             null,
-            binarySymbol.token,
+            binarySymbol,
             binaryArgument,
             unaryForArg,
-            binarySymbol.names
         )
         binaryMessages.add(binaryMsg)
         needAddMessagesForReceiverForBinary = false

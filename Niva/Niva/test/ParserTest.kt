@@ -1325,6 +1325,7 @@ class ParserTest {
               unary -> Int = 1 echo
               + binary::Int = 1 echo
               key::Int word::String = 1 echo
+              key: x::Int = 1 echo
             ]
         """.trimIndent()
 
@@ -1361,6 +1362,19 @@ class ParserTest {
         assert(ast.count() == 1)
 
     }
+
+    @Test
+    fun manyLineBinary() {
+        val source = """
+            x = 1 +
+            2
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+
 
     @Test
     fun staticBuild() {
