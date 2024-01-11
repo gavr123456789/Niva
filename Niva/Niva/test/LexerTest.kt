@@ -238,6 +238,15 @@ x sas
         val result2 = lexer2.lex()
         val q2 = result2.dropLast(1).last()
         assertTrue(q2.lexeme == "echo")
+
+
+        ////
+
+        val manyExpr3 = """"\"" echo"""
+        val lexer3 = Lexer(manyExpr3, File("Niva.iml"))
+        val result3 = lexer3.lex()
+        val q3 = result3.dropLast(1).last()
+        assertTrue(q3.lexeme == "echo")
     }
 
 

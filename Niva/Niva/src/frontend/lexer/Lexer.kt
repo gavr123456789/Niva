@@ -212,11 +212,11 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         if (mode in arrayOf("raw", "multy")) {
             this.step()
         }
-//        else if (this.match("\\")) {
-//
+        else {
+            this.match("\\")
 //            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex-1)
 //            parseEscape()
-//        }
+        }
 
         if (mode == "format" && match("{")) {
             if (match("{")) {
