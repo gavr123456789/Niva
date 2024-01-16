@@ -5,13 +5,11 @@ package frontend.resolver
 import codogen.GeneratorKt
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.util.createFakeToken
 import frontend.util.div
 import main.*
 import main.frontend.typer.*
-import main.utils.isGeneric
 import java.io.File
 
 private fun Resolver.addPrintingInfoAboutType(type: Type) {
@@ -390,141 +388,7 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
 
 //fun Resolver.findAnyMessage(receiverType: Type)
 
-fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData {
 
-    fun findUnary(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData? {
-        receiverType.protocols.forEach { (_, v) ->
-            val q = v.unaryMsgs[selectorName]
-
-            if (q != null) {
-                val pkg = getCurrentPackage(token)
-                // method can be declared in different package than it's receiver type
-                pkg.addImport(q.pkg)
-                return q
-            }
-        }
-        return null
-    }
-
-    val result = findUnary(receiverType, selectorName, token)
-    if (result != null)
-        return result
-
-    var parent: Type? = receiverType.parent
-    while (parent != null) {
-        val parentResult = findUnary(parent, selectorName, token)
-        if (parentResult != null)
-            return parentResult
-        parent = parent.parent
-    }
-
-    // this is Any
-    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
-    val messageFromAny = findUnary(anyType, selectorName, token)
-    if (messageFromAny != null) {
-        return messageFromAny
-    }
-
-
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-    token.compileError(errorText)
-}
-
-
-// returns true if it is static call, but not constructor(so we generate Clock.System instead of Clock.System())
-fun Resolver.findStaticMessageType(
-    receiverType: Type,
-    selectorName: String,
-    token: Token,
-    msgType: MessageDeclarationType? = null
-): Pair<MessageMetadata, Boolean> {
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.staticMsgs[selectorName]
-        if (q != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
-            return Pair(q, false)
-        }
-    }
-
-    // if this is binding, then getters are static, calls without ()
-    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
-        return when (msgType) {
-            MessageDeclarationType.Unary ->
-                Pair(findUnaryMessageType(receiverType, selectorName, token), true)
-
-            MessageDeclarationType.Keyword ->
-                Pair(findKeywordMsgType(receiverType, selectorName, token), true)
-
-            MessageDeclarationType.Binary -> TODO()
-        }
-
-    }
-
-    if (selectorName == "new") {
-        if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
-            val result = UnaryMsgMetaData(
-                name = "new!",
-                returnType = receiverType,
-                pkg = currentPackageName,
-            )
-            return Pair(result, false)
-        } else {
-            token.compileError("${WHITE}new$RESET can't bew used with $YEL$receiverType$RESET, it has fields(use them as constructor), or its basic type ")
-        }
-    }
-
-    throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")
-//    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
-}
-
-fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): BinaryMsgMetaData {
-    if (receiverType.name.isGeneric()) {
-        throw Exception("Can't receive generic type to find binary method for it")
-    }
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.binaryMsgs[selectorName]
-        if (q != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(q.pkg)
-            return q
-        }
-    }
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find binary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-    token.compileError(errorText)
-}
-
-fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
-    if (receiverType.name.isGeneric()) {
-        throw Exception("Can't receive generic type to find keyword method for it")
-    }
-
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.keywordMsgs[selectorName]
-        if (q != null) {
-            // TODO! add using of keyword to msgs list of method, maybe
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(q.pkg)
-            return q
-        }
-    }
-
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-
-    token.compileError(errorText)
-}
 
 
 fun Resolver.getPackage(packageName: String, token: Token): Package {

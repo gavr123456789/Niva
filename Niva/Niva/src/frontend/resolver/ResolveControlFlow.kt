@@ -311,26 +311,45 @@ fun Resolver.resolveControlFlow(
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
                 // check that this is exhaustive checking
-                val root =
-                    if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent
-                        ?: throw Exception("Pattern matching on not union root?")
-                if (root is Type.UserUnionRootType) {
-                    val realBranchTypes = mutableSetOf<Type>()
-                    root.branches.forEach {
-                        realBranchTypes += it
-                    }
-                    if (realBranchTypes != typesAlreadyChecked) {
-                        val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
-                        statement.token.compileError("Not all types are checked: ($YEL$difference$RESET)")
+//                val root =
+//                    if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent
+//                        ?: throw Exception("Pattern matching on not union root?")
+
+                when (savedSwitchType) {
+                    is Type.UserUnionRootType -> {
+                        val realBranchTypes = mutableSetOf<Type>()
+                        val root = savedSwitchType.getRoot()
+                        if (root is Type.UserUnionRootType) {
+                            root.branches.forEach {
+                                realBranchTypes += it
+                            }
+                        }
+                        if (realBranchTypes != typesAlreadyChecked) {
+                            val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
+                            statement.token.compileError("Compiler bug: Not all types are checked: ($YEL$difference$RESET)")
+                        }
+
+                        if (statement.type == null) {
+                            statement.type = firstBranchReturnType!!
+                        }
                     }
 
-                    if (statement.type == null) {
-                        statement.type = firstBranchReturnType!!
+
+                    null -> {
+                        statement.token.compileError("Compile error type of Switch statement not resolved")
+                    }
+                    else -> {
+                        println("type $savedSwitchType matching")
                     }
                 }
+
             }
 
         }
 
     }
 }
+
+fun Type.getRoot(): Type =
+     parent?.getRoot() ?: this
+

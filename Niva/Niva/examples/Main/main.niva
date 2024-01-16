@@ -1,48 +1,94 @@
-
-
-
-//list = {"sas" "sus" "ses"}
-//list2 = {1 2 3}
-//map = #{1 list 2 list}
-//map2 = #{"sas" list2}
-//arr = {map map2}
-//arr at: "sas" put: 5
-
-
-union JsonObj =
-| JsonArray arr: MutableList::JsonObj
-| JsonNumber num: Float
-| JsonString str: String
-| JsonFields fld: MutableMap(String, JsonObj)
-
-JsonObj print = | this
-| JsonArray => arr echo
-| JsonNumber => num echo
-| JsonString => str echo
-| JsonFields => fld echo
-
-jsonNum = JsonNumber num: 5.0
-jsonStr = JsonString str: "text"
-jsonFields = JsonFields fld: #{"age" jsonNum}
-arr = JsonArray arr: {jsonNum jsonStr jsonFields}
-
-arr print
-
-
-
-
-//type HTML
+//type Assert
+//constructor Assert that::Any equals::Any -> Unit = [
+//  that != equals => [
 //
-//builder html HTML.init::[ -> Unit] -> HTML = [
-//    html = HTML new
-////    default::String = []
-//    html init
-//    ^ html
+//    Error throwWithMessage: "Assertion failed: $that != $equals"
+//  ]
+//]
+//
+//Assert that: "sas" equals: "sas"
+//Assert that: "sas" equals: "sus"
+
+
+//text = "abc\ndef"
+//x = (text split: "\n") dropLast: 1
+//
+//x echo
+
+
+
+
+
+//fillGroups = [ lines::List::String ->
+//    words1::MutableMap(Int, String) = #{}
+//    words2::MutableMap(Int, String) = #{}
+//    lines forEachIndexed: [i, line ->
+//        num = i + 1
+//
+//        words1 at: 1 put: "sas"
+//    ]
+////    words1 at: 1 put: "sas"
+//    words1 echo
+//]
+//
+//// просто у самого List дефолтного ктото изменил T на String
+//linesChunked = {1 2 3 4 5 6} chunked: 2
+//
+//linesChunked forEach: [
+//// add test that in that situation it has type List::Int, not List::String
+//    it echo
+//    fillGroups lines: it
+//]
+
+//x = #{1 2 3 4}
+//y = x at: 1 |> unpackOrError
+//z = y + 5
+//z echo
+
+
+
+//union SomeUnion =
+//| Yes x: Int
+//| No y: String
+//
+//union ServerAns =
+//| SomeUnion
+//| NoVal
+//| ErrorType1 str: String
+//| ErrorType2 b: Boolean
+//| Success value: Int
+//
+//x = ErrorType1 str: "sas"
+//
+//ServerAns print = | this
+//| NoVal => "no value!" echo
+//| ErrorType1 => str echo
+//| ErrorType2 => b echo
+//| Success => "Success $value!" echo
+//| SomeUnion => [
+//  | this
+//  | Yes => x echo
+//  | No => y echo
 //]
 
 
-//fun html(init: HTML.() -> Unit): HTML {
-//    val html = HTML()
-//    html.init()
-//    return html
-//}
+union Hat =
+| TopHat x: Int
+| Bowler y: String
+
+Hat print::Int = | this
+| TopHat => x echo
+| Bowler => y echo
+
+Hat + x::Int = | this
+| TopHat => x echo
+| Bowler => y echo
+
+Hat sas = | this
+| TopHat => x echo
+| Bowler => y echo
+
+bowler = Bowler y: "sas"
+bowler print: 5
+bowler + 5
+bowler sas

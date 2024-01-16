@@ -14,5 +14,5 @@ union User hat: Hat =
 
 
 
-user = Moder hat: TopHat
+user = Moder hat: TopHat new
 user hat echo

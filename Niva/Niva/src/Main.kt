@@ -225,7 +225,7 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
 
 fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
     val specialPkgToInfoPrint = if (minusIindex != -1)
-        // get word after -i
+    // get word after -i
         if (args.count() - 1 > minusIindex)
             args[minusIindex + 1]
         else null
@@ -246,7 +246,7 @@ var sas: ((String) -> Unit) = {}
 fun buildString2(builderAction: StringBuilder.() -> Unit): String {
     val q = StringBuilder()
 
-    val default: (String) -> Unit = {it: String ->
+    val default: (String) -> Unit = { it: String ->
         q.append(it)
     }
     sas = default
@@ -300,6 +300,7 @@ object StringUtils {
 
 fun main(args: Array<String>) {
 
+
 //    println(StringUtils.diff("this is a example", "this is a examp")) // prints (le,)
 //    println(StringUtils.diff("Пример первой строки", "Пример второй строки с некоторыми изменениями")) // prints (o,yui)
 //    println(StringUtils.diff("Toyota", "Coyote")) // prints (Ta,Ce)
@@ -308,6 +309,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+
 
     if (help(args)) return
 
