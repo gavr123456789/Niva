@@ -270,7 +270,7 @@ fun Resolver.resolveMessage(
             // fill letterToRealTypeFromReceiver if it generic
             if (receiverType is Type.UserLike) {
                 val listOfLetters = listOf("T", "G")
-                if (receiverType.typeArgumentList.count() > 2)
+                if (receiverType.typeArgumentList.count() > 2) throw Exception("Generics more then 2 not suppoerted yet, not enough letters xd")
                 receiverType.typeArgumentList.forEachIndexed { i, it ->
                     letterToRealType[listOfLetters[i]] = it
                 }
