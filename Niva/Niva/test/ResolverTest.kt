@@ -856,7 +856,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 1)
+        assert(statements.count() == 2)
         assert((((statements[0] as VarDeclaration).value.type as Type.UserType).typeArgumentList[0] as Type.UserType).typeArgumentList[0].name == "Int")
     }
 
