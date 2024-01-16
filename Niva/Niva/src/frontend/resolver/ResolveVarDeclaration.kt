@@ -61,6 +61,14 @@ fun Resolver.resolveVarDeclaration(
         copyType.typeArgumentList = newTypeArgList
         value.type = copyType
     }
+//    if (value is Receiver && (valueType is Type.UserLike && valueType.typeArgumentList.isNotEmpty() || valueType is Type.NullableType && valueType.realType is Type.UserLike && valueType.realType.typeArgumentList.isNotEmpty())) {
+//        val type = if (valueType is Type.NullableType) valueType.realType else valueType
+//        val letterTable = mutableMapOf<String, Type>()
+//
+//
+//        recursiveGenericResolving(type as Type.UserType, letterTable, mutableMapOf())
+//        // take args from value.receiver.type.typeArgList
+//    }
 
     // check that declared type == inferred type
     if (statementDeclaredType != null) {
@@ -76,3 +84,5 @@ fun Resolver.resolveVarDeclaration(
         topLevelStatements.add(statement)
     }
 }
+
+

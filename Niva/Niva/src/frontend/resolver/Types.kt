@@ -8,11 +8,8 @@ import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
+import main.*
 
-import main.CYAN
-import main.RED
-import main.WHITE
-import main.YEL
 import main.utils.isGeneric
 
 data class MsgSend(
@@ -358,12 +355,15 @@ class Package(
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
 //    val usingPackages: MutableList<Package> = mutableListOf(),
-    // import x.y.*, usually added via bindings
+    // generates as import x.y.*
     val imports: MutableSet<String> = mutableSetOf(),
-    // import x.y, added automatically by compiler
+    // generates as import x.y
     val concreteImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false,
-    val comment: String = ""
+    val comment: String = "",
+
+    // imports that need to be added if this pkg used(need for bindings)
+    val neededImports: MutableSet<String> = mutableSetOf(),
 ) {
     override fun toString(): String {
         return packageName
@@ -405,7 +405,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
             if (selfType != null && name == selfType.name) return selfType
 
             if (this.typeArgumentList.isNotEmpty()) {
-                // need to know, what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
+                // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
                 val type = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
@@ -414,7 +414,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
                     if (this.typeArgumentList.count() != type.typeArgumentList.count()) {
-                        throw Exception("Count ${this.name}'s type arguments not the same it's AST version ")
+                        this.token.compileError("Type $YEL${this.name}$RESET has $WHITE${type.typeArgumentList.count()}$RESET generic params, but you send only $WHITE${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
                         val rer = it.toType(typeDB, typeTable, selfType)
@@ -651,8 +651,6 @@ fun MessageDeclarationKeyword.toMessageData(
     ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     this.returnType = returnType
-
-
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,

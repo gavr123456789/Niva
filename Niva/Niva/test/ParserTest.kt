@@ -1374,7 +1374,18 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun switchWithVariants() {
+        val source = """
+            x = 1
+            | x
+            | 1, 2, 3 => "sas" echo
+            |=> "sus" echo
+        """.trimIndent()
 
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
 
     @Test
     fun staticBuild() {
@@ -1410,6 +1421,37 @@ class ParserTest {
         assert(ast.count() == 1)
         val staticB = ast[0] as StaticBuilder
         assert(staticB.statements[0] is MessageSendUnary)
+    }
+
+    @Test
+    fun inlineCanBeOnlyExpression() {
+        // when inline was parser as statement here, line 2-3 was parsed as KeywordMessageDeclaration
+        val source = """
+            y = 1 from: 5
+            >y
+            x::Int = 5
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+
+    }
+
+    @Test
+    fun codeBlockFalseArgs() {
+        val source = """
+           
+          fillGroups = [
+            words1::MutableMap(Int, String) = #{}
+            words2::MutableMap(Int, String) = #{}
+            
+            1 echo
+          ]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
     }
 
 

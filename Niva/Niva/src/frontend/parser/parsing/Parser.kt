@@ -66,20 +66,23 @@ fun Parser.statement(): Statement {
 
     if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
         val inlineTok = step()
-        val inlineExpr = statement()
-        if (inlineExpr is Expression) {
+        try {
+            val inlineExpr = expression(true)
+
             inlineExpr.isInlineRepl = true
             if (isInlineReplWithNum)
                 inlineExpr.inlineReplCounter = tok.lexeme.substring(1).toInt()
-            else if(isInlineReplWithQuestion) {
+            else if (isInlineReplWithQuestion) {
                 inlineExpr.isInfoRepl = true
             }
 
 
             return inlineExpr
-        } else {
+
+        } catch (e:Exception) {
             inlineTok.compileError("> can only be used with expressions")
         }
+
     }
 
     if (kind == TokenType.Return) {
@@ -255,7 +258,13 @@ fun Parser.isNextSimpleReceiver(): Boolean {
     return false
 }
 
-
+fun Parser.commaSeparatedExpressions(): List<Expression> {
+    val result = mutableListOf<Expression>()
+    do {
+        result.add(expression())
+    }while (match(TokenType.Comma))
+    return result
+}
 // message or control flow or static builder
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
@@ -312,7 +321,8 @@ fun Parser.expression(
 
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = singleExpr as Expression
+                        thenDoExpression = singleExpr as Expression,
+                        listOf()
                     )
                 }
                 else {
@@ -330,7 +340,8 @@ fun Parser.expression(
                     }
                     IfBranch.IfBranchWithBody(
                         ifExpression = unwrapped,
-                        body = body
+                        body = body,
+                        listOf()
                     )
                 }
             ),

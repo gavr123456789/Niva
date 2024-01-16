@@ -11,6 +11,11 @@
 1..<3 forEach: [
     it echo
 ]
+// with index
+3..4 forEachIndexed: [i, it ->
+    "index: $i" echo
+    "value $it" echo
+]
 
 // also ranges
 //> 1

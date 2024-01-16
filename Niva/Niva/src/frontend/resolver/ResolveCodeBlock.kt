@@ -2,6 +2,7 @@ package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import frontend.resolver.Type.RecursiveType.copy
 import main.RESET
 import main.WHITE
 import main.utils.isGeneric
@@ -16,6 +17,7 @@ fun Resolver.resolveCodeBlockAsBody(
     resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
     statement.type = (statement.type as Type.Lambda).returnType
 }
+
 fun Resolver.resolveCodeBlock(
     statement: CodeBlock,
     previousScope: MutableMap<String, Type>,
@@ -33,9 +35,6 @@ fun Resolver.resolveCodeBlock(
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeDB, typeTable)//fix
         }
-        if (it.type == null) {
-            it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name} parameter")
-        }
     }
 
 
@@ -47,6 +46,7 @@ fun Resolver.resolveCodeBlock(
     var itArgType: Type? = null
     // resolve generic args and just args, kinda
     val genericLetterToTypes = mutableMapOf<String, Type>()
+    val genericLetterToTypesOfReceiver = mutableMapOf<String, Type>()
     if (rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
 
         val rootReceiverType = rootStatement.receiver.type!!
@@ -60,9 +60,14 @@ fun Resolver.resolveCodeBlock(
 
         // List(T, G) map::[T -> G] -> G = []
 
-        val rootType = typeTable[rootReceiverType.name]//testing
+        // u cant just get it from typeTable, it can be complex type like List::List::Int, but simple List::T would be found instead
+//        val rootType = typeTable[rootReceiverType.name] //testing
 //        val testDB = typeDB.getType(rootReceiverType.name)
-        if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
+//        val rootType = rootReceiverType
+//        if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
+        if ( rootReceiverType is Type.UserType) {
+            val rootType = rootReceiverType.copy()
+
             fillGenericsWithLettersByOrder(rootType)
 
             rootType.typeArgumentList.forEachIndexed { i, it ->
@@ -75,10 +80,10 @@ fun Resolver.resolveCodeBlock(
                     if (sameButResolvedArg.name.length == 1) {
                         throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
                     }
-                    genericLetterToTypes[it.name] = sameButResolvedArg
+                    genericLetterToTypesOfReceiver[it.name] = sameButResolvedArg
                 } else if (beforeName != null && beforeName.isGeneric()) {
                     // was resolved somehow
-                    genericLetterToTypes[beforeName] = it
+                    genericLetterToTypesOfReceiver[beforeName] = it
 
                 }
             }
@@ -91,7 +96,7 @@ fun Resolver.resolveCodeBlock(
                 val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
                     typeOfFirstArgs
                 } else {
-                    val foundRealType = genericLetterToTypes[typeOfFirstArgs.name]
+                    val foundRealType = genericLetterToTypesOfReceiver[typeOfFirstArgs.name]
                         ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock")
                     foundRealType
                 }
@@ -106,7 +111,7 @@ fun Resolver.resolveCodeBlock(
                     val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
                         typeField.type
                     } else {
-                        val foundRealType = genericLetterToTypes[typeField.type.name]
+                        val foundRealType = genericLetterToTypesOfReceiver[typeField.type.name] ?: genericLetterToTypes[typeField.type.name]
                             ?: throw Exception("Can't find resolved type ${typeField.type.name} while resolving codeblock")
                         foundRealType
                     }
@@ -120,13 +125,15 @@ fun Resolver.resolveCodeBlock(
     }
 
     namedLambdaArgs.forEach {
-        previousAndCurrentScope.putIfAbsent(it.name, it.type!!)
+        val type =
+            it.type ?: it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name} codeblock parameter")
+        previousAndCurrentScope.putIfAbsent(it.name, type)
     }
 
     currentLevel++
     resolve(statement.statements, previousAndCurrentScope, statement)
     currentLevel--
-    if (statement.statements.isEmpty() ) {
+    if (statement.statements.isEmpty()) {
         statement.token.compileError("Codeblock doesn't contain code")
     }
 
@@ -140,6 +147,7 @@ fun Resolver.resolveCodeBlock(
                     lastExpression.type!!
                 } else unitType
             }
+
             is Expression -> lastExpression.type!!
             else -> unitType
         }
@@ -151,7 +159,7 @@ fun Resolver.resolveCodeBlock(
     if (itArgType != null && args.isEmpty()) {
         if (compare2Types(returnType, itArgType) && metaDataFound != null) {
             val e = metaDataFound.argTypes[0]
-            val type=e.type
+            val type = e.type
             if (type is Type.Lambda) {
                 returnType.beforeGenericResolvedName = type.returnType.name
             }

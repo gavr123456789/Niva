@@ -3,6 +3,7 @@ package frontend.resolver
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import main.*
+import main.utils.isGeneric
 
 
 // returns true if unresolved
@@ -15,7 +16,7 @@ fun Resolver.resolveMessageDeclaration(
     val forTypeAst = st.forTypeAst
 
 
-    val forType = st.forType ?: if (forTypeAst is TypeAST.UserType) {
+    val forType: Type? = st.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
@@ -27,7 +28,12 @@ fun Resolver.resolveMessageDeclaration(
             getCurrentImports(st.token),
             currentPackageName,
             names = forTypeAst.names
-        )
+        ) ?: if (forTypeAst.name.isGeneric()) {
+            st.typeArgs.add(forTypeAst.name)
+            Type.UnknownGenericType(forTypeAst.name)
+        } else null
+
+
         if (q == null) {
             unResolvedMessageDeclarations.add(currentPackageName, st)
             currentLevel--
@@ -79,7 +85,7 @@ fun Resolver.resolveMessageDeclaration(
     if (forType is Type.UserType) {
         val fieldWithTheSameName = forType.fields.find { it.name == st.name }
         if (fieldWithTheSameName != null) {
-            st.token.compileError("Type $WHITE${st.forTypeAst.name}$RED already has field with name $WHITE${st.name}")
+            st.token.compileError("Type $YEL${st.forTypeAst.name}$RESET already has field with name $WHITE${st.name}")
         }
     }
 
@@ -159,6 +165,7 @@ fun Resolver.resolveMessageDeclaration(
                     is MessageDeclarationUnary -> findUnaryMessageType(forType, st.name, st.token)
                 }
 
+
                 val declaredReturnType = st.returnType
                 mdgData.returnType = returnType
                 st.returnType = returnType
@@ -169,14 +176,20 @@ fun Resolver.resolveMessageDeclaration(
                 }
             }
         } else {
-            val declaredReturnType = wasThereReturn
+            val realReturn = wasThereReturn
             val returnType = st.returnType
-            if (declaredReturnType != null && returnType != null && !compare2Types(returnType, declaredReturnType)) {
-                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
+            if (realReturn != null && returnType != null && !compare2Types(returnType, realReturn)) {
+                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$returnType$RESET but real type returned: $YEL$realReturn")
             }
         }
 
 
+    }
+
+    if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
+        unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
+        currentLevel--
+        return true
     }
 
 

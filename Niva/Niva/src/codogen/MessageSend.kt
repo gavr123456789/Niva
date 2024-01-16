@@ -1,9 +1,12 @@
+@file:Suppress("unused")
+
 package codogen
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
 import main.RESET
+import main.WHITE
 import main.YEL
 
 fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
@@ -54,7 +57,7 @@ enum class Pragmas(val v: String) {
     NO_PKG_EMIT("noPkgEmit")
 }
 
-fun noPkgEmit(msg: Message) {
+fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
 //    TODO()
 }
 
@@ -98,13 +101,13 @@ fun emitFromPragma(msg: Message) {
                 val str = value.toString()
                 val map = mutableMapOf<String, String>()
                 msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
-                map["0"] = msg.receiver.toString()
+                map["0"] = msg.receiver.generateExpression()
                 val q = replacePatternsWithValues(str, map)
                 msg.selectorName = q
             } else {
                 val str = value.toString()
                 val qwe =
-                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.toString() else msg.receiver.token.lexeme
+                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
                 val map = mutableMapOf("0" to qwe)
                 val q = replacePatternsWithValues(str, map)
 
@@ -203,7 +206,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
     }
 
     append("(")
-    val receiverType = receiver.type!!
+    val receiverType = receiver.type
+        ?: receiver.token.compileError("Compiler error: Type of receiver: $WHITE$receiver$RESET is unresolved")
 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->

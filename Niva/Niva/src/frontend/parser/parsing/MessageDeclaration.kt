@@ -443,8 +443,8 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow))) {
         try {
             skipNewLinesAndComments()
-            if ((check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) ||
-                (check(TokenType.Identifier) && check(TokenType.Colon, 1) && check(TokenType.Identifier, 2))
+            if ((checkMany(TokenType.Identifier, TokenType.DoubleColon)) ||
+                (checkMany(TokenType.Identifier, TokenType.Colon, TokenType.Identifier))
             ) {
                 keyArg()
                 keyArgsCounter++

@@ -6,16 +6,19 @@ import frontend.resolver.Type
 
 sealed class IfBranch(
     val ifExpression: Expression,
+    val otherIfExpressions: List<Expression>
 ) {
     class IfBranchSingleExpr(
         ifExpression: Expression,
-        val thenDoExpression: Expression
-    ) : IfBranch(ifExpression)
+        val thenDoExpression: Expression,
+        otherIfExpressions: List<Expression>
+    ) : IfBranch(ifExpression, otherIfExpressions)
 
     class IfBranchWithBody(
         ifExpression: Expression,
-        val body: CodeBlock//List<Statement> // replace with code block
-    ) : IfBranch(ifExpression)
+        val body: CodeBlock,//List<Statement> // replace with code block
+        otherIfExpressions: List<Expression>
+    ) : IfBranch(ifExpression, otherIfExpressions)
 }
 
 

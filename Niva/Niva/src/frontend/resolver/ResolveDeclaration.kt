@@ -4,6 +4,7 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.*
 import frontend.util.createFakeToken
+import frontend.util.removeDoubleQuotes
 import main.RED
 import main.RESET
 import main.WHITE
@@ -64,6 +65,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
         if (it is Declaration) {
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
+        // special messages like Project package: ""
         if (it is MessageSendKeyword) {
             when (it.receiver.str) {
                 "Project" ->
@@ -85,15 +87,26 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         msg.token.compileError("${WHITE}content$RED param is missing")
 
 
+
                     if (pkgArg.keywordArg !is LiteralExpression)
                         pkgArg.keywordArg.token.compileError("Package argument must be a string")
                     if (contentArg.keywordArg !is CodeBlock)
                         contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
+                    val importsArg = msg.args.find { x -> x.name == "imports" }
+                    val neededImports =
+                    if (importsArg != null) {
+                        if (importsArg.keywordArg !is ListCollection) {
+                            importsArg.keywordArg.token.compileError("Imports argument must be ${YEL}List::String")
+                        }
+                         importsArg.keywordArg.initElements.map { it.token.lexeme.removeDoubleQuotes() }.toMutableSet()
+                    } else null
 
                     val pkgName = pkgArg.keywordArg.toString()
-
-                    changePackage(pkgName, it.token, true)
+                    if (savedPackageName == pkgName) {
+                        it.token.compileError("Package $savedPackageName already exists, it is proposed to rename it to ${savedPackageName}.bind.niva")
+                    }
+                    changePackage(pkgName, it.token, true, neededImports = neededImports)
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {

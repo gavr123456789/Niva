@@ -145,13 +145,15 @@ private fun bodyPart(
     }
 
     val firstBodyStatement = messageDeclaration.body[0]
-    val isNotSetter =
+    val isNotSetter by lazy {
         !(firstBodyStatement is MessageSendKeyword && firstBodyStatement.messages[0] is KeywordMsg && (firstBodyStatement.messages[0] as KeywordMsg).kind == KeywordLikeType.Setter)
-
+    }
+    val isControlFlowStatement by lazy {
+        (firstBodyStatement is ControlFlow && (firstBodyStatement.kind == ControlFlowKind.Statement || firstBodyStatement.kind == ControlFlowKind.StatementTypeMatch))
+    }
     if (messageDeclaration.body.count() == 1 &&
-        firstBodyStatement !is VarDeclaration &&
-        firstBodyStatement !is Assign &&
-        firstBodyStatement !is ReturnStatement &&
+        firstBodyStatement is Expression &&
+        !isControlFlowStatement &&
         isNotSetter
     ) {
         stringBuilder.append(" = ", codegenKt(messageDeclaration.body, 0))
