@@ -812,12 +812,66 @@ class ResolverTest {
 
            arr = JsonArray arr: {}
         """.trimIndent()
-
-
         val statements = resolve(source)
         assert(statements.count() == 2)
     }
 
+    @Test
+    fun mapIterate() {
+        val source = """
+            map = #{ 1 "2" 3 "4" }
+
+            map forEach: [k, v ->
+                k echo
+                v echo
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+        val (k, v) = (q.args[0].keywordArg as CodeBlock).inputList
+        assert(k.type?.name == "Int")
+        assert(v.type?.name == "String")
+    }
+
+
+    @Test
+    fun qwe() {
+        val source = """
+           linesChunked = {1 2 3 4 5 6} chunked: 2
+
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        assert((((statements[0] as VarDeclaration).value.type as Type.UserType).typeArgumentList[0] as Type.UserType).typeArgumentList[0].name == "Int")
+    }
+
+    @Test
+    fun foreachOnComplexType() {
+        val source = """
+            linesChunked = {1 2 3 4 5 6} chunked: 2
+            linesChunked forEach: [
+              it at: 0
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        assert((((statements[0] as VarDeclaration).value.type as Type.UserType).typeArgumentList[0] as Type.UserType).typeArgumentList[0].name == "Int")
+    }
+
+    @Test
+    fun resolveGenericKwReturn() {
+        val source = """
+            x = #{ 1 2 3 4 }
+            y = x at: 1
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val y = statements[1] as VarDeclaration
+        val nullableTypeUnpacked = (y.value.type as Type.NullableType).realType
+        assert(nullableTypeUnpacked.name == "Int")
+    }
 
 
 }

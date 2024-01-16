@@ -1,3 +1,5 @@
+@file:Suppress("UnusedReceiverParameter")
+
 package codogen
 
 import main.utils.addStd
@@ -9,6 +11,7 @@ import frontend.resolver.Package
 import frontend.resolver.Project
 import frontend.util.addIndentationForEachString
 import main.utils.appendnl
+import main.utils.targetToRunCommand
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
@@ -64,8 +67,8 @@ dependencies:
 """
     }
 
-    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String) =
-        "getTasksByName(\"run\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
+        "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
 }
 
 fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
@@ -73,8 +76,8 @@ fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
 }
 
 
-fun GeneratorKt.regenerateGradleForAmper(pathToGradle: String) {
-    val newGradle = GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath)
+fun GeneratorKt.regenerateGradleForAmper(pathToGradle: String, runCommandName: String) {
+    val newGradle = GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName)
     val gradleFile = File(pathToGradle)
     gradleFile.writeText(newGradle)
 }
@@ -165,14 +168,31 @@ fun GeneratorKt.generateKtProject(
     topLevelStatements: List<Statement>,
     compilationTarget: CompilationTarget
 ) {
-    // remove imports of empty packages from other packages
-    val notBindPackages = mainProject.packages.values.filter { !it.isBinding }
-    notBindPackages.forEach { pkg ->
-        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
+    val notBindPackages = mutableSetOf<Package>()
+    val bindPackagesWithNeededImport = mutableSetOf<String>()
+    val pkgNameToNeededImports = mutableMapOf<String, Set<String>>()
 
+    mainProject.packages.values.forEach {
+        if (it.isBinding ) {
+            if (it.neededImports.isNotEmpty()) {
+                bindPackagesWithNeededImport.add(it.packageName)
+                pkgNameToNeededImports[it.packageName] = it.neededImports
+            }
+        } else
+            notBindPackages.add(it)
+    }
+    notBindPackages.forEach { pkg ->
+        // remove imports of empty packages from other packages
+        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
             notBindPackages.forEach { pkg2 ->
                 pkg2.imports -= pkg.packageName
             }
+        }
+
+        // if pkg1 imports some other pkg2 with needed imports, then add this imports to pkg1
+        val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
+        pkgsWithNeededImportsInCurrentImports.forEach {
+            pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
         }
     }
 
@@ -188,14 +208,14 @@ fun GeneratorKt.generateKtProject(
     createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
-    generatePackages(path.toPath(), notBindPackages)
+    generatePackages(path.toPath(), notBindPackages.toList())
 
 
     // 4 regenerate amper
     regenerateAmper(pathToAmper, compilationTarget)
 
     // 4 regenerate gradle
-    regenerateGradleForAmper(pathToGradle)
+    regenerateGradleForAmper(pathToGradle, runCommandName = targetToRunCommand(compilationTarget))
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {

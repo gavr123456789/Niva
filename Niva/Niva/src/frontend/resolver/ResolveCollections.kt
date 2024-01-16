@@ -121,31 +121,11 @@ fun Resolver.resolveMap(
 
     val mapTypeFromDb =
         this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
-    val listTypeFromDb =
-        this.projects["common"]!!.packages["core"]!!.types["MutableList"] as Type.UserType
-
-    val listTypeOfValues = Type.UserType(
-        name = "MutableList",
-        typeArgumentList = listOf(valueType),
-        fields = mutableListOf(),
-        pkg = "core",
-        protocols = listTypeFromDb.protocols
-    )
-    val listTypeOfKeys = Type.UserType(
-        name = "MutableList",
-        typeArgumentList = listOf(keyType),
-        fields = mutableListOf(),
-        pkg = "core",
-        protocols = listTypeFromDb.protocols
-    )
 
     val mapType = Type.UserType(
         name = "MutableMap",
         typeArgumentList = listOf(keyType, valueType),
-        fields = mutableListOf(
-            TypeField("values", listTypeOfValues),
-            TypeField("keys", listTypeOfKeys)
-        ),
+        fields = mutableListOf(),
         pkg = "core",
         protocols = mapTypeFromDb.protocols
     )

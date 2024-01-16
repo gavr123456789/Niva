@@ -43,9 +43,9 @@ fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType):
 fun Parser.codeBlockArgs(): List<IdentifierExpr> {
 
     val isThereBeforeStatementPart =
-        check(TokenType.Identifier) && check(TokenType.DoubleColon, 1) ||
-                check(TokenType.Identifier) && check(TokenType.Comma, 1) ||
-                check(TokenType.Identifier) && check(TokenType.ReturnArrow, 1)
+        checkMany(TokenType.Identifier, TokenType.DoubleColon) ||
+        checkMany(TokenType.Identifier, TokenType.Comma) ||
+        checkMany(TokenType.Identifier, TokenType.ReturnArrow)
 
 
     //checkTokUntilEndOfLine(TokenType.ReturnArrow)
@@ -73,8 +73,8 @@ fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
 
 fun Parser.codeBlock(): CodeBlock {
     val openBracket = matchAssert(TokenType.OpenBracket, "")
-    skipNewLinesAndComments()
-    //checkTokUntilEndOfLine(TokenType.ReturnArrow)
+    // if we skip line here then typed args may be wrongly parsed as codeblock args
+
     // [{a, b -> } statements]
     val beforeStatementsPart: List<IdentifierExpr> =
         codeBlockArgs()

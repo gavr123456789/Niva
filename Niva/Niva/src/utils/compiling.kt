@@ -47,6 +47,12 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
 
 }
 
+fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
+    CompilationTarget.jvm -> "run"
+    CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
+    CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+}
+
 class Compiler(
     private val pathToProjectRoot: String,
     private val inlineReplPath: File,
@@ -56,11 +62,8 @@ class Compiler(
     private val resolver: Resolver
 ) {
     private fun cmd(compileOnlyNoRun: Boolean = false) = (if (!compileOnlyNoRun)
-        when (compilationTarget) { // native run is always debug
-            CompilationTarget.jvm -> "run"
-            CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
-            CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
-        } else
+        targetToRunCommand(compilationTarget)
+    else
         when (compilationTarget) {
             CompilationTarget.jvm -> "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
@@ -68,7 +71,7 @@ class Compiler(
         }) + " -Pkotlin.experimental.tryK2=true"
 
 
-    fun run(compileOnlyNoRun: Boolean = false, singleFile: Boolean = false) {
+    fun run(compileOnlyNoRun: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
         // remove repl log file since it will be recreated
         val removeReplFile = {
             if (inlineReplPath.exists()) {
@@ -88,9 +91,9 @@ class Compiler(
 
         val cmd = cmd(compileOnlyNoRun)
         when (getOSType()) {
-            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd".runCommand(file, true)
-            CurrentOS.LINUX -> "./gradlew -q $cmd".runCommand(file, true)
-            CurrentOS.MAC -> "./gradlew -q $cmd".runCommand(file, true)
+            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q --console=plain $cmd".runCommand(file, true)
+            CurrentOS.LINUX -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
+            CurrentOS.MAC -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
         }
 
         if (inlineReplPath.exists()) {
@@ -168,9 +171,6 @@ fun compileProjFromFile(
         else
             listOf()
 
-//    val allFiles = listOf( mainFile.absoluteFile.toString()) + otherFilesPaths.map { it.absoluteFile.toString() }
-
-//    println("Compiling: $allFiles")
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
@@ -180,6 +180,7 @@ fun compileProjFromFile(
     )
 
     resolver.resolve(mainFile)
+
     val defaultProject = resolver.projects["common"]!!
 
     resolver.generator.generateKtProject(
@@ -194,6 +195,7 @@ fun compileProjFromFile(
     resolver.printInfoFromCode()
     return resolver
 }
+
 inline fun <T, R> T?.unpackDo(block: (T) -> R, or: R): R {
     return if (this != null)
         block(this)
@@ -202,8 +204,6 @@ inline fun <T, R> T?.unpackDo(block: (T) -> R, or: R): R {
 
 fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
-    val q: Int? = null
-    val w = q.unpackDo ({ it + 5 }, 5)
 
     val quote = "\"\"\""
 
@@ -336,15 +336,6 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
 
 fun putInMainKotlinCode(code: String) = buildString {
-//    try {
-//        listOf(1).get(232)
-//    } catch (e: Exception) {
-//        println(e.message)
-//        println("-----------")
-//        val q = e.stackTrace
-//        println(e.stackTraceToString())
-//    }
-
     append("fun main() {\n")
     append("try {\n")
 
