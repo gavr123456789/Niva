@@ -27,17 +27,16 @@ union User =
     | LoggedIn name: String
     | Guest
 
-User getName -> String =
-    | this
+User getName -> String = | this
     | Guest => "Welcome guest"
-    | LoggedIn => ("Welcome " + this name)
+    | LoggedIn => name
 
 
 User welcome =
     ("Welcome " + this getName) echo
 
 user = LoggedIn name: "Oleг"
-guest = Guest
+guest = Guest new
 user welcome
 guest welcome
 

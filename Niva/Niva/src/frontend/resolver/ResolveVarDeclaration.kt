@@ -72,9 +72,9 @@ fun Resolver.resolveVarDeclaration(
 
     // check that declared type == inferred type
     if (statementDeclaredType != null) {
-        if (statementDeclaredType.name != valueType.name) {
+        val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
+        if (!compare2Types(statementDeclared, valueType)) {
             val text = "${statementDeclaredType.name} != ${valueType.name}"
-
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RED is not equal for it's value type ${YEL}`$text`")
         }
     }

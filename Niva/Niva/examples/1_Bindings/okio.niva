@@ -1,10 +1,10 @@
 Project target: "linux"
 
 Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
-Project import: "okio.Path.Companion.toPath"
+//Project import: "okio.Path.Companion.toPath"
 
 
-Bind package: "okio.Path" content: [
+Bind package: "okio.Path" imports: {"okio.Path.Companion.toPath"} content: [
     type Path name: String
     String toPath -> Path
 ]

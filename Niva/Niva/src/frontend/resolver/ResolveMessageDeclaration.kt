@@ -1,8 +1,11 @@
 package frontend.resolver
 
 import frontend.meta.compileError
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import main.*
+import main.frontend.resolver.findAnyMsgType
+import main.frontend.resolver.findStaticMessageType
 import main.utils.isGeneric
 
 
@@ -55,7 +58,7 @@ fun Resolver.resolveMessageDeclaration(
             val newListOfTypeArgs = mutableListOf<Type>()
             st.forTypeAst.typeArgumentList.forEach {
                 val type = typeTable[it.name]//testing
-                val testDB = typeDB.getType(it.name)
+//                val testDB = typeDB.getType(it.name)
 
                 if (type != null) {
                     newListOfTypeArgs.add(type)
@@ -160,9 +163,9 @@ fun Resolver.resolveMessageDeclaration(
                 val returnType = expr.type!!
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
-                    is MessageDeclarationBinary -> findBinaryMessageType(forType, st.name, st.token)
-                    is MessageDeclarationKeyword -> findKeywordMsgType(forType, st.name, st.token)
-                    is MessageDeclarationUnary -> findUnaryMessageType(forType, st.name, st.token)
+                    is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
+                    is MessageDeclarationBinary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Binary)
+                    is MessageDeclarationKeyword -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Keyword)
                 }
 
 

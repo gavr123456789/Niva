@@ -873,6 +873,15 @@ class ResolverTest {
         assert(nullableTypeUnpacked.name == "Int")
     }
 
+    @Test
+    fun anyAssign() {
+        val source = """
+            x::Any = 1 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
+
 
 }
 

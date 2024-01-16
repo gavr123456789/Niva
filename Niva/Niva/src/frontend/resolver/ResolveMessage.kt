@@ -9,6 +9,8 @@ import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.toCalmelCase
 import main.*
+import main.frontend.resolver.findAnyMsgType
+import main.frontend.resolver.findStaticMessageType
 import main.utils.isGeneric
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
@@ -257,11 +259,12 @@ fun Resolver.resolveMessage(
 
 
             val kwTypeFromDB = if (kind == KeywordLikeType.Keyword)
-                findKeywordMsgType(
+                findAnyMsgType(
                     receiverType,
                     statement.selectorName,
-                    statement.token
-                )
+                    statement.token,
+                    MessageDeclarationType.Keyword
+                ) as KeywordMsgMetaData
             else null
 
             if (kwTypeFromDB != null) {
@@ -483,7 +486,7 @@ fun Resolver.resolveMessage(
                     if (statement.type != null)
                         return
 
-                    val msgTypeFromDB = findKeywordMsgType(receiverType, statement.selectorName, statement.token)
+                    val msgTypeFromDB = findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Keyword)
                     val returnTypeFromDb = msgTypeFromDB.returnType
                     val nullUnwrap = if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
 
@@ -565,13 +568,14 @@ fun Resolver.resolveMessage(
             // find message for this type
             val messageReturnType =
                 if (isUnaryForReceiver)
-                    findBinaryMessageType(
+                    findAnyMsgType(
                         statement.unaryMsgsForReceiver.last().type!!,
                         statement.selectorName,
-                        statement.token
+                        statement.token,
+                        MessageDeclarationType.Binary
                     )
                 else
-                    findBinaryMessageType(receiverType, statement.selectorName, statement.token)
+                    findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
             statement.type = messageReturnType.returnType
             statement.pragmas = messageReturnType.pragmas
 
@@ -657,7 +661,7 @@ fun Resolver.resolveMessage(
 
                 // resolve message from db and its generic params
                 if (!isStaticCall) {
-                    val messageReturnType = findUnaryMessageType(receiverType, statement.selectorName, statement.token)
+                    val messageReturnType = findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Unary) as UnaryMsgMetaData
                     val receiverType2 = receiver.type
                     statement.kind = if (messageReturnType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
 

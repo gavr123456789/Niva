@@ -1,10 +1,12 @@
 package frontend.resolver
 
 import frontend.meta.compileError
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import main.RESET
 import main.WHITE
+import main.frontend.resolver.findAnyMsgType
 import main.utils.isGeneric
 
 
@@ -50,11 +52,12 @@ fun Resolver.resolveCodeBlock(
     if (rootStatement is KeywordMsg && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
 
         val rootReceiverType = rootStatement.receiver.type!!
-        val metaDataFromDb = findKeywordMsgType(
+        val metaDataFromDb = findAnyMsgType(
             rootReceiverType,
             rootStatement.selectorName,
-            rootStatement.token
-        )
+            rootStatement.token,
+            MessageDeclarationType.Keyword
+        ) as KeywordMsgMetaData
         metaDataFound = metaDataFromDb
         val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
 
