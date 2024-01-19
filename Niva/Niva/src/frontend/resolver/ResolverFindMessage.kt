@@ -81,11 +81,11 @@ fun Resolver.findStaticMessageType(
     msgType: MessageDeclarationType? = null
 ): Pair<MessageMetadata, Boolean> {
     receiverType.protocols.forEach { (_, v) ->
-        val q = v.staticMsgs[selectorName]
-        if (q != null) {
+        val metadata = v.staticMsgs[selectorName]
+        if (metadata != null) {
             val pkg = getCurrentPackage(token)
             pkg.addImport(receiverType.pkg)
-            return Pair(q, false)
+            return Pair(metadata, false)
         }
     }
 
