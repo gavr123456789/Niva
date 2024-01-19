@@ -908,7 +908,7 @@ class ResolverTest {
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
-        val yVal = (statements[1] as VarDeclaration).value as KeywordMsg
+        val yVal = (statements[1] as VarDeclaration).value as MessageSendKeyword
         assert(yVal.type?.name == "Int")
     }
 

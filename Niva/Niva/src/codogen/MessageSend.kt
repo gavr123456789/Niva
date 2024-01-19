@@ -100,7 +100,7 @@ fun emitFromPragma(msg: Message) {
 
                 val str = value.toString()
                 val map = mutableMapOf<String, String>()
-                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.toString() }
+                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.generateExpression() }
                 map["0"] = msg.receiver.generateExpression()
                 val q = replacePatternsWithValues(str, map)
                 msg.selectorName = q
