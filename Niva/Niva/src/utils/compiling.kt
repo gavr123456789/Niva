@@ -313,8 +313,10 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
                 x()
             } else y()
         }
-
         
+        inline fun <T> Iterable<T>.joinWithTransform(separator: String, noinline transform: ((T) -> CharSequence)): String {
+            return this.joinToString(separator, transform = transform)
+        }
 
         operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): MutableMap<K, V> =
             LinkedHashMap(this).apply { putAll(map) }

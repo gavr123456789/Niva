@@ -205,7 +205,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
         }
     }
 
-    append("(")
+
+    // if single lambda, no brackets needed
+    val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock)
+    if (isNotSingleLambdaArg) append("(")
     val receiverType = receiver.type
         ?: receiver.token.compileError("Compiler error: Type of receiver: $WHITE$receiver$RESET is unresolved")
 
@@ -222,7 +225,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
 
     }
 
-    append(")")
+    if (isNotSingleLambdaArg) append(")")
 
 
 }
