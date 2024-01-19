@@ -291,7 +291,8 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
 
     if (type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
-        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType) {
+        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType
+    ) {
         return true
     }
 
@@ -320,11 +321,11 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
             args1.forEachIndexed { index, arg1 ->
                 val arg2 = args2[index]
                 if (isSameNames) {
-                    if (arg1 is Type.UnknownGenericType){
+                    if (arg1 is Type.UnknownGenericType) {
                         type1.typeArgumentList = type2.typeArgumentList
                         return true
                     }
-                    if (arg2 is Type.UnknownGenericType){
+                    if (arg2 is Type.UnknownGenericType) {
                         type2.typeArgumentList = type1.typeArgumentList
                         return true
                     }
@@ -337,7 +338,6 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                 }
             }
         }
-
 
 
         // first is parent of the second
@@ -389,8 +389,6 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
 //fun Resolver.findAnyMessage(receiverType: Type)
 
 
-
-
 fun Resolver.getPackage(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: token.compileError("There are no such package: $packageName")
@@ -398,7 +396,7 @@ fun Resolver.getPackage(packageName: String, token: Token): Package {
 }
 
 
-fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null, ): Pair<Protocol, Package> {
+fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
     val pack = customPkg ?: getPackage(currentPackageName, token)
 //    val type =
 //        pack.types[typeName]
@@ -429,7 +427,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
     val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
-            val type = statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+            val type =
+                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
             val (protocol, pkg) = getCurrentProtocol(type, statement.token)
 
             val messageData = UnaryMsgMetaData(
@@ -1002,6 +1001,7 @@ class Resolver(
         listType.protocols.putAll(
             createListProtocols(
                 intType = intType,
+                stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
                 mutListType = listType,
@@ -1045,6 +1045,7 @@ class Resolver(
         mutableListType.protocols.putAll(
             createListProtocols(
                 intType = intType,
+                stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
                 mutListType = mutableListType,

@@ -926,6 +926,21 @@ class ResolverTest {
         assert(yVal.type?.name == "Int")
     }
 
+    @Test
+    fun joins() {
+        val source = """
+            type Person name: String age: Int
+            alice = Person name: "Alica" age: 30
+            bob = Person name: "Bob" age: 31
+        
+            { 1 2 3 } join: ", " |> echo
+            { alice bob } joinTransform: [ it name ] |> echo
+            { alice bob } joinWith: "\n" transform: [ it name + ": " + it age ] |> echo
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 6)
+    }
+
 
 
 }

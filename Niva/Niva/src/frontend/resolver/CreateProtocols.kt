@@ -53,9 +53,9 @@ fun createIntProtocols(
 
             ),
         keywordMsgs = mutableMapOf(
-            createKeyword( KeywordArg("plus", intType), intType),
-            createKeyword( KeywordArg("to", intType), intRangeType),
-            createKeyword( KeywordArg("downTo", intType), intRangeType),
+            createKeyword(KeywordArg("plus", intType), intType),
+            createKeyword(KeywordArg("to", intType), intRangeType),
+            createKeyword(KeywordArg("downTo", intType), intRangeType),
             createKeyword(
                 "toDo",
                 listOf(
@@ -169,6 +169,7 @@ fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaD
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
 }
+
 fun Pair<String, KeywordMsgMetaData>.emitKw(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
@@ -387,9 +388,12 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
             createKeyword(KeywordArg("unpackOr", realTypeOrNothing), realTypeOrNothing)
                 .emitKw("($0 ?: $1)"),
 
-            createKeyword(KeywordArg("unpack",
-                Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), generic)
-            ), generic),
+            createKeyword(
+                KeywordArg(
+                    "unpack",
+                    Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), generic)
+                ), generic
+            ),
 
             createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
                 .emitKw("$0 ?: $1"),
@@ -503,6 +507,7 @@ fun createStringBuilderProtocols(
 
 fun createListProtocols(
     intType: Type.InternalType,
+    stringType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     mutListType: Type.UserType,
@@ -554,6 +559,37 @@ fun createListProtocols(
             createKeyword(KeywordArg("drop", intType), mutListType),
             createKeyword(KeywordArg("dropLast", intType), mutListType),
             createKeyword(KeywordArg("chunked", intType), listOfLists),
+
+            createKeyword(KeywordArg("join", stringType), stringType).rename("joinToString"),
+            createKeyword(
+                KeywordArg(
+                    "joinTransform",
+                    Type.Lambda(
+                        mutableListOf(TypeField("transform", itType)),
+                        differentGenericType
+                    )
+                ),
+                stringType
+            ).rename("joinToString"),
+
+            createKeyword(
+                "joinWithTransform",
+                listOf(
+                    KeywordArg(
+                        "joinWith",
+                        stringType
+                    ),
+                    KeywordArg(
+                        "transform",
+                        Type.Lambda(
+                            mutableListOf(TypeField("transform", itType)),
+                            differentGenericType
+                        )
+                    )
+                ),
+                stringType
+            ),
+
 
             createKeyword(
                 "viewFromTo",
@@ -801,7 +837,7 @@ fun createMapProtocols(
             createKeyword(KeywordArg("containsValue", valueType), boolType)
         ),
 
-    )
+        )
 
     result[collectionProtocol.name] = collectionProtocol
     return result
