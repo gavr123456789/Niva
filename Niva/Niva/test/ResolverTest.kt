@@ -882,6 +882,51 @@ class ResolverTest {
         assert(statements.count() == 1)
     }
 
+    @Test
+    fun unpackGenericBox() {
+        val source = """
+            type Box t: T
+
+            x = Box t: 5
+            y = Box t: "sas"
+        
+            unpack_x = x t
+            unpack_x + 5
+        
+            unpack_y = y t
+            unpack_y + " sus"
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 7)
+    }
+
+    @Test
+    fun returnGeneric() {
+        val source = """
+            Int x::T -> T = x
+            y = 1 x: 5
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val yVal = (statements[1] as VarDeclaration).value as KeywordMsg
+        assert(yVal.type?.name == "Int")
+    }
+
+    @Test
+    fun returnGenericFromConstructor() {
+        val source = """
+            type Sas 
+            constructor Sas t::T -> T = t 
+            y = Sas t: 1
+//            y inc
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val yVal = (statements[2] as VarDeclaration).value as MessageSendKeyword
+        assert(yVal.type?.name == "Int")
+    }
+
+
 
 }
 

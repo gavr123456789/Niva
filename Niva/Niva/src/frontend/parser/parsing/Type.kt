@@ -1,9 +1,6 @@
 package frontend.parser.parsing
 
-import frontend.meta.Token
-import frontend.meta.TokenType
-import frontend.meta.isIdentifier
-import frontend.meta.isNullable
+import frontend.meta.*
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.TypeAST
 import frontend.util.createFakeToken
@@ -142,6 +139,5 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
         )
     }
 
-
-    error("type declaration expected")
+    tok.compileError("Syntax error: type declaration expected")
 }

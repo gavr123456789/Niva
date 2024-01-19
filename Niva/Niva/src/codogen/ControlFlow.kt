@@ -57,7 +57,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
             append(it.ifExpression.generateExpression())
-            append(it.otherIfExpressions.joinToString(",") {x -> x.generateExpression() })
+            append(", " + it.otherIfExpressions.joinToString(", ") {x -> x.generateExpression() })
         } else {
             append("is ", it.ifExpression.generateExpression())
         }

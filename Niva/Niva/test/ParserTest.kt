@@ -1454,6 +1454,19 @@ class ParserTest {
 
     }
 
+    @Test
+    fun manyCases() {
+        val source = """
+           
+          | 1
+          | 1,2,3 => 4
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {
