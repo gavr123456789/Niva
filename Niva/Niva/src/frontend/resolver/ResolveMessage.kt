@@ -363,6 +363,7 @@ fun Resolver.resolveMessage(
                         receiverGenericsTable[beforeResolveName] = it
                     }
                 }
+                val sameArgsInDbAndInStatement = argTypesFromDb.count() == statement.args.count()
                 statement.args.forEachIndexed { i, kwArg ->
                     val argType = kwArg.keywordArg.type
                     if (argType is Type.UserLike && argType.typeArgumentList.isNotEmpty()) {
@@ -378,14 +379,17 @@ fun Resolver.resolveMessage(
                     }
                     // check that kw from db is the same as real arg type
                     // like x = {1}, x add: "str" is error
-                    val kwArgFromDb = argTypesFromDb[i]
-                    val kwArgFromDbType = kwArgFromDb.type
-                    val currentArgType = kwArg.keywordArg.type
-                    if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDbType is Type.UnknownGenericType) {
-                        val realTypeForKwFromDb = letterToRealType[kwArgFromDbType.name]!!
-                        val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType)
-                        if (!isResolvedGenericParamEqualRealParam) {
-                            statement.token.compileError("Generic type error, type $YEL${kwArgFromDbType.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
+                    if (sameArgsInDbAndInStatement) {
+                        val kwArgFromDb = argTypesFromDb[i]
+                        val kwArgFromDbType = kwArgFromDb.type
+                        val currentArgType = kwArg.keywordArg.type
+                        if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDbType is Type.UnknownGenericType) {
+                            val realTypeForKwFromDb = letterToRealType[kwArgFromDbType.name]!!
+                            val isResolvedGenericParamEqualRealParam =
+                                compare2Types(realTypeForKwFromDb, currentArgType)
+                            if (!isResolvedGenericParamEqualRealParam) {
+                                statement.token.compileError("Generic type error, type $YEL${kwArgFromDbType.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
+                            }
                         }
                     }
                 }

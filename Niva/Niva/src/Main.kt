@@ -298,14 +298,13 @@ object StringUtils {
     }
 }
 
-fun main(args: Array<String>) {
-
-
 //    println(StringUtils.diff("this is a example", "this is a examp")) // prints (le,)
 //    println(StringUtils.diff("Пример первой строки", "Пример второй строки с некоторыми изменениями")) // prints (o,yui)
 //    println(StringUtils.diff("Toyota", "Coyote")) // prints (Ta,Ce)
 //    println(StringUtils.diff("Flomax", "Volmax")) // prints (Fo,Vo)
 
+
+fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
