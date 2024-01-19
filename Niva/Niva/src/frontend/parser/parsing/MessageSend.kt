@@ -130,6 +130,7 @@ fun Parser.unaryOrBinary(
         skipNewLinesAndComments()
         when {
 
+            // Unary
             check(TokenType.Identifier) -> {
                 val lastMsgOrFirstReceiver = takeLastMessage() ?: firstReceiver
                 val unary = unaryMessagesMatching(lastMsgOrFirstReceiver)
@@ -147,7 +148,7 @@ fun Parser.unaryOrBinary(
                     binaryMessages.addAll(binary)
                 }
             }
-
+            // Binary
             check(TokenType.BinarySymbol) -> {
                 val binary = binaryMessagesMatching(takeLastMessage() ?: firstReceiver, mutableListOf())
                 binaryMessages.forEach {
@@ -315,7 +316,10 @@ fun Parser.keyword(
         // any msg
         if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
             // keyword pipe
-            messages.add(keyColonCycle().also { it.isPiped = true })
+            messages.add(keyColonCycle().also {
+                it.isPiped = true
+                it.receiver = messages.last()
+            })
         } else if (check(TokenType.Identifier)) {
             // unary pipe
             messages.addAll (unaryMessagesMatching(receiver).onEach {

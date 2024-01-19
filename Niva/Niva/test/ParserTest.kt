@@ -1467,6 +1467,21 @@ class ParserTest {
 
     }
 
+    @Test
+    fun pipedStaticSend() {
+        val source = """
+          FileSystem read: "strings.txt" toPath |>
+            split: "\n"
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val kw = ast[0] as MessageSendKeyword
+        val secondMsg = kw.messages[1] as KeywordMsg
+        val receiver = secondMsg.receiver
+        assert(receiver is KeywordMsg)
+    }
+
 
 //    @Test
 //    fun unaryOnManyLines() {

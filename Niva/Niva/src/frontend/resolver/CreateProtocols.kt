@@ -548,6 +548,7 @@ fun createListProtocols(
 
             createKeyword(KeywordArg("add", itType), unitType),
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
+            createKeyword(KeywordArg("atOrNull", intType), Type.NullableType(itType)).rename("getOrNull"),
             createKeyword(KeywordArg("removeAt", intType), unitType),
             createKeyword(KeywordArg("addAll", mutListType), boolType),
             createKeyword(KeywordArg("drop", intType), mutListType),
