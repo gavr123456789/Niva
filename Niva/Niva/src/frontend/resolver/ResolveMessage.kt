@@ -53,14 +53,17 @@ fun Resolver.resolveKwArgs(
 
 fun Resolver.resolveKwArgsGenerics(
     statement: KeywordMsg,
-    argTypes: List<KeywordArg>,
+    argTypesFromDb: List<KeywordArg>,
     letterToRealType: MutableMap<String, Type>
 ) {
     val args = statement.args
     args.forEachIndexed { argNum, it ->
         // we need to check for generic args only if it is Keyword
         val argType = it.keywordArg.type!!
-        val typeFromDBForThisArg = argTypes[argNum].type
+//        val typeFromDBForThisArg = argTypesFromDb[argNum].type
+        val typeFromDBForThisArg = argTypesFromDb.getOrNull(argNum)?.type
+            ?: return
+
 
         // this is T
         if (typeFromDBForThisArg.name.isGeneric()) {
@@ -276,7 +279,7 @@ fun Resolver.resolveMessage(
                 else -> null
             }
 
-            val typeArgs = when (kwTypeFromDB) {
+            val argTypesFromDb = when (kwTypeFromDB) {
                 is UnaryMsgMetaData -> listOf()
                 is BinaryMsgMetaData -> listOf()
                 is KeywordMsgMetaData -> kwTypeFromDB.argTypes
@@ -302,7 +305,7 @@ fun Resolver.resolveMessage(
             // выход, резолвнуть аргументы, резолвнуть тип, резолвнуть дженерики
 
             // resolve generic args types
-            resolveKwArgsGenerics(statement, typeArgs, letterToRealType)
+            resolveKwArgsGenerics(statement, argTypesFromDb, letterToRealType)
 
 
             resolveReturnTypeIfGeneric(statement, kwTypeFromDB?.returnType, receiverType, letterToRealType)
@@ -375,7 +378,7 @@ fun Resolver.resolveMessage(
                     }
                     // check that kw from db is the same as real arg type
                     // like x = {1}, x add: "str" is error
-                    val kwArgFromDb = typeArgs[i]
+                    val kwArgFromDb = argTypesFromDb[i]
                     val kwArgFromDbType = kwArgFromDb.type
                     val currentArgType = kwArg.keywordArg.type
                     if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDbType is Type.UnknownGenericType) {
@@ -518,10 +521,10 @@ fun Resolver.resolveMessage(
 
 
                     // type check args
-                    assert(statement.args.count() == typeArgs.count())
+                    assert(statement.args.count() == argTypesFromDb.count())
 
                     statement.args.forEachIndexed { i, argAndItsMessages ->
-                        val typeOfArgFromDb = typeArgs[i].type
+                        val typeOfArgFromDb = argTypesFromDb[i].type
                         val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
                         val sameTypes =
                             compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)

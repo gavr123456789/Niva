@@ -40,7 +40,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
                     messageSend.receiver
             }
 
-            is MessageSendKeyword -> error("keyword cant be a receiver, for now")
+            is MessageSendKeyword -> error("keyword can be a receiver only when piped, 1 from: 2 |> to: 3")
         }
     } catch (e: Throwable) {
         if (e.message?.startsWith("Error") == true) {
@@ -584,7 +584,7 @@ fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): C
 fun Parser.builderDeclaration(pragmas: MutableList<CodeAttribute>): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
     val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
-    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)
+//    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)
 
     val args = keywordArgs()
     val returnType = returnType()
