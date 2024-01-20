@@ -7,11 +7,13 @@ import frontend.util.div
 import frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
 import main.PathManager
-import java.io.*
+import java.io.File
+
+
 
 
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
-    val p = ProcessBuilder(*this.split(" ").toTypedArray())
+    val p = java.lang.ProcessBuilder(this.split(" "))
         .directory(workingDir)
 
     if (withOutputCapture) {

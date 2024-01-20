@@ -1482,6 +1482,18 @@ class ParserTest {
         assert(receiver is KeywordMsg)
     }
 
+    @Test
+    fun constructorKeywordWithLocalName() {
+        val source = """
+            constructor Person from: q::Int = q echo
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
+
 
 //    @Test
 //    fun unaryOnManyLines() {
