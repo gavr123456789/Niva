@@ -354,7 +354,7 @@ fun Parser.keywordMessageParsing(
 ): KeywordMsg {
     val stringBuilder = StringBuilder()
 
-    val keyWordArguments = mutableListOf<KeywordArgAndItsMessages>()
+    val keyWordArguments = mutableListOf<KeywordArgAst>()
     var firstCycle = true
     var firstKeywordIdentifierExpr: IdentifierExpr? = null
     do {
@@ -380,7 +380,7 @@ fun Parser.keywordMessageParsing(
             else keywordPart.name.capitalizeFirstLetter()
         )
 
-        val x = KeywordArgAndItsMessages(
+        val x = KeywordArgAst(
             name = keywordPart.name,
             keywordArg = argument,
         )

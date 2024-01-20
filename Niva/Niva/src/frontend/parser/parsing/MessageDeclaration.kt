@@ -392,6 +392,8 @@ fun Parser.methodBody(
 // Int sas ^ (-> Type)? =?
 @Suppress("UNUSED_VARIABLE")
 fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
+    if (isConstructor) return true
+
     var isThereReturn = false
     var isThereEqual = false
 
@@ -406,16 +408,17 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
 
 //    return
 
-    return isThereReturn || isThereEqual || isConstructor
+    return isThereReturn || isThereEqual
 }
 
 fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     val savepoint = current
 
-    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1))) {
+    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1) && !check(TokenType.Colon, 1))) {
         match(TokenType.Identifier)
         val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
-        if (isThereEndOfMsgDecl) return true
+        if (isThereEndOfMsgDecl)
+            return true
     }
     current = savepoint
     return false

@@ -958,6 +958,22 @@ class ResolverTest {
         assertTrue { boxType is Type.NullableType }
     }
 
+    @Test
+    fun getGenericFromManyUnary() {
+        val source = """
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
+            group1 keys toList
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val list = statements[1] as MessageSendUnary
+        val listType = list.type as Type.UserType
+        assertTrue { listType.typeArgumentList.first().name == "Int" }
+
+    }
+
+
+
 
 }
 

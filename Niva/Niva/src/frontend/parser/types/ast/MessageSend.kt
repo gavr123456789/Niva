@@ -83,7 +83,7 @@ class BinaryMsg(
 //    }
 }
 
-data class KeywordArgAndItsMessages(
+data class KeywordArgAst(
     val name: String,
     val keywordArg: Expression
 )
@@ -102,7 +102,7 @@ class KeywordMsg(
     selectorName: String,
     type: Type?,
     token: Token,
-    val args: List<KeywordArgAndItsMessages>,
+    val args: List<KeywordArgAst>,
     path: List<String>,
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {

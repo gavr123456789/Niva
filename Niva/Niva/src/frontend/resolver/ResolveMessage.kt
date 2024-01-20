@@ -20,11 +20,24 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     val genericLetters = listOf("T", "G")
 
     type.typeArgumentList.forEachIndexed { i, it ->
-//        if (it.beforeGenericResolvedName == null) {
         val k = genericLetters[i]
-        it.beforeGenericResolvedName = k // тут у нас один и тот же инт
-//        }
+        it.beforeGenericResolvedName = k
     }
+}
+
+fun getTableOfLettersFromType(type: Type.UserLike): MutableMap<String, Type> {
+    if (type.typeArgumentList.count() > 2) {
+        throw Exception("Generics with more than 2 params are not supported yet")
+    }
+    val genericLetters = listOf("T", "G")
+
+    val result = mutableMapOf<String, Type>()
+    type.typeArgumentList.forEachIndexed { i, it ->
+        val k = genericLetters[i]
+        if (!it.name.isGeneric())
+            result[k] = it
+    }
+    return result
 }
 
 
@@ -129,44 +142,92 @@ fun Resolver.resolveKwArgsGenerics(
 }
 
 fun Resolver.resolveReturnTypeIfGeneric(
-    statement: KeywordMsg,
-    returnType: Type?,
-    receiverType: Type,
-    letterToRealType: MutableMap<String, Type>
-) {
-//    val returnType = kwTypeFromDB?.returnType
-    val returnName = returnType?.name ?: ""
-    val returnTypeIsSingleGeneric = returnName.isGeneric()
+    returnTypeFromDb: Type,
+    letterToRealType: MutableMap<String, Type>,
+    receiverGenericsTable: MutableMap<String, Type>
+): Type {
+    ///
+    val returnTypeOrNullUnwrap =
+        if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
 
-    // infer return generic type from args or receiver
-    if ((returnTypeIsSingleGeneric) &&
-        returnType is Type.UserLike && receiverType is Type.UserLike
-    ) {
+    return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
+        val realTypeFromTable = letterToRealType[returnTypeOrNullUnwrap.name]
+            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
+        realTypeFromTable
+    } else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
+        // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
+        // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
+        recursiveGenericResolving(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
+    } else returnTypeOrNullUnwrap
 
+    ///
 
-        fillGenericsWithLettersByOrder(receiverType)
+//    val returnTypeIsSingleGeneric = (returnType?.name ?: "").isGeneric()
+//    // infer return generic type from args or receiver
+//    if ((returnTypeIsSingleGeneric) &&
+//        returnType is Type.UserLike && receiverType is Type.UserLike
+//    ) {
+//
+//
+//        fillGenericsWithLettersByOrder(receiverType)
+//
+//        val inferredGenericTypeFromArgs = letterToRealType[returnType.name]
+//        // take type from receiver
+//        if (inferredGenericTypeFromArgs == null) {
+//            if (receiverType.typeArgumentList.isEmpty()) {
+//                statement.receiver.token.compileError("Nor receiver type, nor arguments are generic, but method is generic, so can't infer real type")
+//            }
+//            val receiverGenericType =
+//                receiverType.typeArgumentList.find { it.beforeGenericResolvedName == returnType.name }
+//            if (receiverGenericType != null) {
+//                statement.type = receiverGenericType
+//            } else {
+//                statement.receiver.token.compileError("Can't infer generic return type from receiver generic type")
+//            }
+//        } else {
+//            // take type from arguments
+//            statement.type = inferredGenericTypeFromArgs
+//        }
+//    }
 
-        val inferredGenericTypeFromArgs = letterToRealType[returnType.name]
-        // take type from receiver
-        if (inferredGenericTypeFromArgs == null) {
-            if (receiverType.typeArgumentList.isEmpty()) {
-                statement.receiver.token.compileError("Nor receiver type, nor arguments are generic, but method is generic, so can't infer real type")
+}
+
+fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
+    if (receiverType !is Type.UserLike) return receiverType
+    // replace every Generic type with real
+    if (receiverType.typeArgumentList.isNotEmpty()) {
+        val replacerTypeIfItGeneric = receiverType.copy()
+
+        // match every type argument with fields
+        val map = mutableMapOf<String, Type>()
+        replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
+            val fieldsOfThisType =
+                replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
+            fieldsOfThisType.forEach { genericField ->
+                // find real type from arguments
+                val real = args.find { it.name == genericField.name }
+                    ?: tok.compileError("Can't find real type for field: $YEL${genericField.name}${RESET} of generic type: $YEL${genericField.type.name}${RESET}")
+                val realType = real.keywordArg.type
+                    ?: real.keywordArg.token.compileError("Compiler bug: $YEL${real.name}${RESET} doesn't have type")
+                map[typeArg.name] = realType
             }
-            val receiverGenericType =
-                receiverType.typeArgumentList.find { it.beforeGenericResolvedName == returnType.name }
-            if (receiverGenericType != null) {
-                statement.type = receiverGenericType
-            } else {
-                statement.receiver.token.compileError("Can't infer generic return type from receiver generic type")
-            }
-        } else {
-            // take type from arguments
-            statement.type = inferredGenericTypeFromArgs
         }
+        // replace typeFields to real ones
+        val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
+        map.forEach { (fieldName, fieldRealType) ->
+            val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
+            realTypes[fieldIndex] = fieldRealType
+            // replace all fields of generic type
+            replacerTypeIfItGeneric.fields.forEach {
+                if (it.type.name == fieldName) {
+                    it.type = fieldRealType
+                }
+            }
+        }
+        replacerTypeIfItGeneric.typeArgumentList = realTypes
+        return replacerTypeIfItGeneric
     }
-
-    //infer return type as last expression
-
+    return receiverType
 }
 
 
@@ -292,12 +353,7 @@ fun Resolver.resolveMessage(
             }
             // fill letterToRealTypeFromReceiver if it generic
             if (receiverType is Type.UserLike) {
-                val listOfLetters = listOf("T", "G")
-                if (receiverType.typeArgumentList.count() > 2) throw Exception("Generics more then 2 not suppoerted yet, not enough letters xd")
-                receiverType.typeArgumentList.forEachIndexed { i, it ->
-                    if (!it.name.isGeneric())
-                        letterToRealType[listOfLetters[i]] = it
-                }
+                letterToRealType.putAll(getTableOfLettersFromType(receiverType))
             }
 
             // чтобы резолвнуть тип мне нужны резолвнутые типы у аргументов, потому что может быть такое что одинаковые имена но разные типы у них
@@ -307,8 +363,7 @@ fun Resolver.resolveMessage(
             // resolve generic args types
             resolveKwArgsGenerics(statement, argTypesFromDb, letterToRealType)
 
-
-            resolveReturnTypeIfGeneric(statement, kwTypeFromDB?.returnType, receiverType, letterToRealType)
+//            resolveReturnTypeIfGeneric(statement, kwTypeFromDB?.returnType, receiverType, letterToRealType)
 
             // if receiverType is lambda then we need to check does it have same argument names and types
             if (receiverType is Type.Lambda) {
@@ -414,57 +469,7 @@ fun Resolver.resolveMessage(
 
             }
 
-            fun replaceReceiverIfGeneric(receiverType: Type.UserLike): Type.UserLike {
-                // replace every Generic type with real
-                if (receiverType.typeArgumentList.isNotEmpty()) {
-                    val replacerTypeIfItGeneric = receiverType.copy()
-
-                    // match every type argument with fields
-                    // replace fields types to real one
-                    val map = mutableMapOf<String, Type>()
-                    replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
-                        val fieldsOfThisType =
-                            replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
-                        fieldsOfThisType.forEach { genericField ->
-                            // find real type from arguments
-                            val real = statement.args.find { it.name == genericField.name }
-                                ?: statement.token.compileError("Can't find real type for field: $YEL${genericField.name}${RESET} of generic type: $YEL${genericField.type.name}${RESET}")
-                            val realType = real.keywordArg.type
-                                ?: real.keywordArg.token.compileError("Compiler bug: $YEL${real.name}${RESET} doesn't have type")
-                            // genericField.type = realType
-                            map[typeArg.name] = realType
-                        }
-                    }
-                    // replace typeFields to real ones
-                    val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
-                    map.forEach { (fieldName, fieldRealType) ->
-                        val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
-                        realTypes[fieldIndex] = fieldRealType
-                        // replace all fields of generic type
-                        replacerTypeIfItGeneric.fields.forEach {
-                            if (it.type.name == fieldName) {
-                                it.type = fieldRealType
-                            }
-                        }
-                    }
-                    replacerTypeIfItGeneric.typeArgumentList = realTypes
-                    return replacerTypeIfItGeneric
-                }
-                return receiverType
-            }
-
-
             when (kind) {
-//                KeywordLikeType.CustomConstructor -> {
-//                    val capture = foundCustomConstructorDb
-//
-//                    if (capture != null) {
-//                        statement.type = capture.returnType
-//                        statement.pragmas = capture.pragmas
-//                    } else {
-//                        statement.type = receiverType
-//                    }
-//                }
 
                 KeywordLikeType.Constructor -> {
                     statement.type = if (receiverType is Type.UserLike) {
@@ -499,9 +504,10 @@ fun Resolver.resolveMessage(
                                     "For $errorText constructor call, not all fields are listed, you missed: $CYAN$whatIsMissingOrExtra"
                             statement.token.compileError(text)
                         }
-                        //
+
                         checkThatKwArgsAreTypeFields(receiverFields)
-                        replaceReceiverIfGeneric(receiverType)
+
+                        resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
                     } else receiverType
 
@@ -542,18 +548,8 @@ fun Resolver.resolveMessage(
 
 
                     val returnTypeFromDb = msgTypeFromDB.returnType
-                    val returnTypeOrNullUnwrap =
-                        if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
 
-                    val returnType2 = if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
-                        val realTypeFromTable = letterToRealType[returnTypeOrNullUnwrap.name]
-                            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
-                        realTypeFromTable
-                    } else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
-                        // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
-                        // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
-                        recursiveGenericResolving(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
-                    } else msgTypeFromDB.returnType
+                    val returnType2 = resolveReturnTypeIfGeneric(returnTypeFromDb, letterToRealType, receiverGenericsTable)
 
                     // if return type was unwrapped nullable, we need to wrap it again
                     val returnType =
@@ -652,6 +648,9 @@ fun Resolver.resolveMessage(
 
             val receiverType = receiver.type!!
 
+            val letterToTypeFromReceiver = if (receiverType is Type.UserLike)
+                getTableOfLettersFromType(receiverType)
+            else mutableMapOf()
 
 
             if (receiverType is Type.Lambda) {
@@ -680,10 +679,10 @@ fun Resolver.resolveMessage(
                 } else Pair(false, null)
             }
 
-            val (isGetter, w) = checkForGetter()
+            val (isGetter, field) = checkForGetter()
             if (isGetter) {
                 statement.kind = UnaryMsgKind.Getter
-                statement.type = w!!.type
+                statement.type = field!!.type
 
             } else {
                 // usual message or static message
@@ -697,7 +696,7 @@ fun Resolver.resolveMessage(
                     }
                 }
 
-                val messageReturnType2 = if (!isStaticCall) {
+                val msgFromDb = if (!isStaticCall) {
                     val msgType = findAnyMsgType(
                         receiverType,
                         statement.selectorName,
@@ -716,21 +715,25 @@ fun Resolver.resolveMessage(
                     statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     messageReturnType
                 }
+                val returnTypeFromDb = msgFromDb.returnType
                 // add pragmas
-                statement.pragmas = messageReturnType2.pragmas
+                statement.pragmas = msgFromDb.pragmas
 
                 // resolve return type generic
-                statement.type = if (messageReturnType2.returnType !is Type.UnknownGenericType) {
-                    messageReturnType2.returnType
-                } else {
-                    val receiverType2 = receiver.type
-                    if (receiverType2 is Type.UserLike) {
-                        receiverType2.typeArgumentList.find { it.beforeGenericResolvedName == messageReturnType2.returnType.name }
-                            ?: statement.token.compileError("Cant infer return generic type of unary $CYAN${statement.selectorName}")
-                    } else {
-                        throw Exception("Return type is generic, but receiver of $YEL${statement.selectorName}${RESET} is not user type")
-                    }
-                }
+                val q = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver )
+                statement.type = q
+
+//                    if (msgFromDb.returnType !is Type.UnknownGenericType) {
+//                    msgFromDb.returnType
+//                } else {
+//                    val receiverType2 = receiver.type
+//                    if (receiverType2 is Type.UserLike) {
+//                        receiverType2.typeArgumentList.find { it.beforeGenericResolvedName == msgFromDb.returnType.name }
+//                            ?: statement.token.compileError("Cant infer return generic type of unary $CYAN${statement.selectorName}")
+//                    } else {
+//                        throw Exception("Return type is generic, but receiver of $YEL${statement.selectorName}${RESET} is not user type")
+//                    }
+//                }
 
             }
         }

@@ -999,7 +999,50 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        listType.protocols.putAll(
+
+        fun addCustomType(type: Type.UserType, protocols: MutableMap<String, Protocol>) {
+            type.protocols.putAll(
+                protocols
+            )
+
+            typeTable[type.name] = type// fixed
+            typeDB.addUserLike(type.name, type, createFakeToken())
+            corePackage.types[type.name] = type
+        }
+        // Sequence
+        val sequenceType = Type.UserType(
+            name = "Sequence",
+            typeArgumentList = listOf(genericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val sequenceTypeOfDifferentGeneric = Type.UserType(
+            name = "Sequence",
+            typeArgumentList = listOf(differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+
+        addCustomType(
+            sequenceType, createListProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                mutListType = sequenceType,
+                listTypeOfDifferentGeneric = sequenceTypeOfDifferentGeneric,
+                itType = genericType,
+                differentGenericType = differentGenericType,
+                sequenceType = sequenceType
+            )
+        )
+
+        sequenceTypeOfDifferentGeneric.protocols.putAll(sequenceType.protocols)
+
+
+        // List
+        addCustomType(
+            listType,
             createListProtocols(
                 intType = intType,
                 stringType = stringType,
@@ -1009,14 +1052,12 @@ class Resolver(
                 listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
-//                immutableListType = listType
+                sequenceType = sequenceType
             )
         )
+
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
-        typeTable[listType.name] = listType// fixed
-        typeDB.addUserLike(listType.name, listType, createFakeToken())
-        corePackage.types[listType.name] = listType
 
         // now when we have list type with its protocols, we add split method for String, that returns List::String
         val listOfString = Type.UserType(
@@ -1026,6 +1067,7 @@ class Resolver(
             pkg = "core",
             protocols = listType.protocols
         )
+
         listType.protocols
         stringType.protocols["common"]!!.keywordMsgs
             .putAll(listOf(createKeyword(KeywordArg("split", stringType), listOfString)))
@@ -1043,8 +1085,9 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mutableListType.protocols.putAll(
-            createListProtocols(
+
+        addCustomType(
+            mutableListType, createListProtocols(
                 intType = intType,
                 stringType = stringType,
                 unitType = unitType,
@@ -1053,14 +1096,12 @@ class Resolver(
                 listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
-//                immutableListType = listType
+                sequenceType = sequenceType
             )
         )
-        mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
-        typeTable[mutableListType.name] = mutableListType// fixed
-        typeDB.addUserLike(mutableListType.name, mutableListType, createFakeToken())
 
-        corePackage.types[mutableListType.name] = mutableListType
+        mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
+
 
         // mutable set
         val mutableSetType = Type.UserType(
@@ -1075,8 +1116,8 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mutableSetType.protocols.putAll(
-            createSetProtocols(
+        addCustomType(
+            mutableSetType, createSetProtocols(
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
@@ -1087,11 +1128,8 @@ class Resolver(
                 listType = listType
             )
         )
-        mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
-        typeTable[mutableSetType.name] = mutableSetType// fixed
-        typeDB.addUserLike(mutableSetType.name, mutableSetType, createFakeToken())
 
-        corePackage.types[mutableSetType.name] = mutableSetType
+        mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
 
         // mutable map
         val mapType = Type.UserType(
@@ -1106,8 +1144,9 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mapType.protocols.putAll(
-            createMapProtocols(
+
+        addCustomType(
+            mapType, createMapProtocols(
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
@@ -1121,10 +1160,6 @@ class Resolver(
         )
 
         mapTypeOfDifferentGeneric.protocols.putAll(mapType.protocols)
-        typeTable[mapType.name] = mapType// fixed
-        typeDB.addUserLike(mapType.name, mapType, createFakeToken())
-
-        corePackage.types[mapType.name] = mapType
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
@@ -1138,17 +1173,13 @@ class Resolver(
             pkg = "core",
         )
         errorType.isBinding = true
-        errorType.protocols.putAll(
-            createExceptionProtocols(
-                errorType,
-                unitType,
-                nothingType,
-                stringType
-            )
-        )
-        typeTable[errorType.name] = errorType
-        typeDB.addUserLike(errorType.name, errorType, createFakeToken())
-        corePackage.types[errorType.name] = errorType
+
+        addCustomType(errorType, createExceptionProtocols(
+            errorType,
+            unitType,
+            nothingType,
+            stringType
+        ))
 
         // StringBuilder
         val stringBuilderType = Type.UserType(
@@ -1158,19 +1189,16 @@ class Resolver(
             pkg = "core",
         )
         stringBuilderType.isBinding = true
-        stringBuilderType.protocols.putAll(
-            createStringBuilderProtocols(
-                stringBuilderType,
-                anyType,
-                stringType
-            )
-        )
-        typeTable[stringBuilderType.name] = stringBuilderType
-        typeDB.addUserLike(stringBuilderType.name, stringBuilderType, createFakeToken())
-        corePackage.types[stringBuilderType.name] = stringBuilderType
+
+        addCustomType(stringBuilderType, createStringBuilderProtocols(
+            stringBuilderType,
+            anyType,
+            stringType
+        ))
+
+
 
         projects[projectName] = commonProject
-
     }
 }
 

@@ -514,7 +514,9 @@ fun createListProtocols(
     listTypeOfDifferentGeneric: Type.UserType,
     itType: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
+    sequenceType: Type.UserType
 ): MutableMap<String, Protocol> {
+
     val list = Type.UserType(
         name = "List",
         fields = mutListType.fields,
@@ -538,7 +540,14 @@ fun createListProtocols(
             createUnary("first", itType),
             createUnary("last", itType),
             createUnary("clear", unitType),
+
+            createUnary("toList", list),
+            createUnary("toMutableList", mutListType),
+
             createUnary("shuffled", mutListType),
+
+            createUnary("asSequence", sequenceType),
+
 
             ),
         binaryMsgs = mutableMapOf(),
