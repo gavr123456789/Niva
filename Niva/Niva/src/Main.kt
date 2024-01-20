@@ -310,7 +310,6 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 
-
     if (help(args)) return
 
     val startTime = System.currentTimeMillis()

@@ -933,7 +933,7 @@ class ResolverTest {
             alice = Person name: "Alica" age: 30
             bob = Person name: "Bob" age: 31
         
-            { 1 2 3 } join: ", " |> echo
+            { 1 2 3 } joinWith: ", " |> echo
             { alice bob } joinTransform: [ it name ] |> echo
             { alice bob } joinWith: "\n" transform: [ it name + ": " + it age ] |> echo
         """.trimIndent()
@@ -941,6 +941,22 @@ class ResolverTest {
         assert(statements.count() == 6)
     }
 
+    @Test
+    fun writeNullToNullableFiled() {
+        val source = """
+            type Box nullable: Box?
+            box = Box nullable: null
+            box nullable
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+        val boxTypeDecl = statements[0] as TypeDeclaration
+        val nullable = boxTypeDecl.fields[0].type as TypeAST.UserType
+        assertTrue { nullable.isNullable }
+        val boxType = (statements[2] as MessageSendUnary).type
+        assertTrue { boxType is Type.NullableType }
+    }
 
 
 }

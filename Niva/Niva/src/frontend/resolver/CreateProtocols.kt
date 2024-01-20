@@ -381,7 +381,7 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
             createUnary("echonnl", unitType),
-            createUnary("unpackOrError", realTypeOrNothing).emit("$0!!")
+            createUnary("unpackOrError", realTypeOrNothing)//.emit("$0!!")
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -560,7 +560,7 @@ fun createListProtocols(
             createKeyword(KeywordArg("dropLast", intType), mutListType),
             createKeyword(KeywordArg("chunked", intType), listOfLists),
 
-            createKeyword(KeywordArg("join", stringType), stringType).rename("joinToString"),
+            createKeyword(KeywordArg("joinWith", stringType), stringType).rename("joinToString"),
             createKeyword(
                 KeywordArg(
                     "joinTransform",

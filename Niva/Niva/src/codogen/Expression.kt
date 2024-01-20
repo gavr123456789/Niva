@@ -27,6 +27,23 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
         generateSingleKeyword(0, kw.receiver, kw)
     }
 
+    val unaryGenerate = { unaryMsg: UnaryMsg ->
+        if (unaryMsg.pragmas.isNotEmpty()) {
+            replaceNameFromPragma(unaryMsg)
+            emitFromPragma(unaryMsg)
+            noPkgEmit(unaryMsg)
+        }
+        generateSingleUnary(1, unaryMsg.receiver, unaryMsg)
+    }
+    val binaryGenerate = { binary: BinaryMsg ->
+        if (binary.pragmas.isNotEmpty()) {
+            replaceNameFromPragma(binary)
+            emitFromPragma(binary)
+            noPkgEmit(binary)
+        }
+        generateSingleBinary(1, binary.receiver, binary)
+    }
+
     append(
         when (this@generateExpression) {
             is ExpressionInBrackets -> generateExpressionInBrackets(withNullChecks)
@@ -63,10 +80,10 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is ControlFlow.Switch -> generateSwitch()
 
             // when message is receiver
-            is BinaryMsg -> TODO()
+            is BinaryMsg -> binaryGenerate(this@generateExpression)
             is KeywordMsg -> keywordGenerate(this@generateExpression)
 
-            is UnaryMsg -> TODO()
+            is UnaryMsg -> unaryGenerate(this@generateExpression)
 
 
             is CodeBlock -> generateCodeBlock()

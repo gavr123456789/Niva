@@ -325,6 +325,10 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
+        
+        inline fun <T> T?.unpackOrError(): T {
+            return this!!
+        } 
 
         // end of STD
 

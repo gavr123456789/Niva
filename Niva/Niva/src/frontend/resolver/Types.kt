@@ -478,7 +478,6 @@ fun SomeTypeDeclaration.toType(
     unionRootType: Type.UserUnionRootType? = null, // if not null, then this is branch
     enumRootType: Type.UserEnumRootType? = null,
 ): Type.UserLike {
-
     val result = if (isUnion)
         Type.UserUnionRootType(
             branches = listOf(),
@@ -519,6 +518,7 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
+
     else
         Type.UserType(
             name = typeName,
@@ -541,7 +541,7 @@ fun SomeTypeDeclaration.toType(
             // this is recursive type
             val fieldType = TypeField(
                 name = it.name,
-                type = Type.RecursiveType
+                type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
             )
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)
@@ -577,23 +577,23 @@ fun SomeTypeDeclaration.toType(
     val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
 
 
-    val typeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
+    val genericTypeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
 
 
     unresolvedSelfTypeFields.forEach {
-        it.type = result
+        it.type = if ((it.type !is Type.NullableType)) result else Type.NullableType(result)
     }
 
-    this.genericFields.addAll(typeFields.map { it.name })
+    this.genericFields.addAll(genericTypeFields.map { it.name })
 
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.isGeneric() && typeFields.find { x -> x.name == it } == null) {
-            typeFields.add(Type.UnknownGenericType(it))
+        if (it.isGeneric() && genericTypeFields.find { x -> x.name == it } == null) {
+            genericTypeFields.add(Type.UnknownGenericType(it))
         }
     }
 
-    result.typeArgumentList = typeFields
+    result.typeArgumentList = genericTypeFields
     result.fields = fieldsTyped
 
     return result

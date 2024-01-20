@@ -251,7 +251,7 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
+fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclaration: Boolean = false): Boolean {
     if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
@@ -360,12 +360,12 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
 
 
     // x::Int? = null
-    if (type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
+    if (isVarDeclaration && type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
         return true
     }
 
 
-    if (type1.name == type2.name && !isDifferentPkgs) {
+    if (type1.toString() == type2.toString() && !isDifferentPkgs) {
         return true
     }
 
@@ -484,7 +484,8 @@ fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Bo
     } else null
 
     val type =
-        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+        statement.forType
+            ?: statement.token.compileError("Compiler error, type for $statement not resolved")
 
     val (protocol, pkg) = getCurrentProtocol(type, statement.token, customPkg)
 
