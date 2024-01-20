@@ -2,7 +2,7 @@ type Person name: String age: Int
 alice = Person name: "Alica" age: 30
 bob = Person name: "Bob" age: 31
 
-{1 2 3} join: ", " |> echo
+{1 2 3} joinWith: ", " |> echo
 "---" echo
 {alice bob} joinTransform: [ it name ] |> echo
 "---" echo

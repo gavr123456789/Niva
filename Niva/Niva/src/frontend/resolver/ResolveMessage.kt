@@ -534,7 +534,7 @@ fun Resolver.resolveMessage(
                             compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                         if (!sameTypes) {
                             argAndItsMessages.keywordArg.token.compileError(
-                                "In keyword message $CYAN${statement.selectorName}${RESET} type $YEL${typeOfArgFromDeclaration.name}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} doesn't match $YEL${typeOfArgFromDb.name}${RESET}"
+                                "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDb}${RESET} but $YEL${typeOfArgFromDeclaration}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
                             )
                         }
 
@@ -716,6 +716,8 @@ fun Resolver.resolveMessage(
                     statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     messageReturnType
                 }
+                // add pragmas
+                statement.pragmas = messageReturnType2.pragmas
 
                 // resolve return type generic
                 statement.type = if (messageReturnType2.returnType !is Type.UnknownGenericType) {

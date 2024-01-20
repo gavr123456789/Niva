@@ -123,9 +123,10 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                             gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
                         val gettersDeclarations = gettersArg.keywordArg.statements
                         gettersDeclarations.forEach { getter ->
-
                             if (getter !is MessageDeclarationUnary) {
                                 getter.token.compileError("Unary declaration expected inside getters block")
+                            } else {
+                                resolveMessageDeclaration(getter, false, mutableMapOf())
                             }
                             addNewUnaryMessage(getter, isGetter = true)
 
