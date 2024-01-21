@@ -6,10 +6,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.InternalTypes
 import frontend.resolver.*
 import frontend.resolver.Package
-import main.CYAN
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.*
 import main.utils.isGeneric
 
 
@@ -64,11 +61,11 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
     return null
 }
 
-fun checkForNullableOrNotFound(receiverType: Type, selectorName: String, token: Token): Nothing {
+fun checkForNullableOrNotFound(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
     val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
     else
-        "Cant find message: $CYAN$selectorName$RESET for type $YEL${receiverType.pkg}$RESET.$YEL${receiverType.name}"
+        "Cant find $PURP$msgType$RESET message: $CYAN$selectorName$RESET for type $YEL${receiverType.pkg}$RESET.$YEL${receiverType.name}"
     token.compileError(errorText)
 }
 
@@ -122,6 +119,8 @@ fun Resolver.findAnyMsgType(
         throw Exception("Compiler bug, receiver is unresolved generic")
     }
 
+
+
     val pkg = getCurrentPackage(token)
     val result = findAnyMethod(receiverType, selectorName, pkg, msgType)
     if (result != null)
@@ -129,5 +128,5 @@ fun Resolver.findAnyMsgType(
 
     recursiveSearch(receiverType, selectorName, pkg, msgType)?.let { return it }
     checkForAny(selectorName, pkg, msgType)?.let { return it }
-    checkForNullableOrNotFound(receiverType, selectorName, token)
+    checkForNullableOrNotFound(receiverType, selectorName, token, msgType.name.lowercase())
 }

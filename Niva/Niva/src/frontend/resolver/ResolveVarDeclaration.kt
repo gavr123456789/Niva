@@ -7,6 +7,7 @@ import frontend.parser.types.ast.VarDeclaration
 import frontend.resolver.*
 import frontend.resolver.Type.RecursiveType.copy
 import main.RED
+import main.RESET
 import main.WHITE
 import main.YEL
 import main.utils.isGeneric
@@ -73,9 +74,10 @@ fun Resolver.resolveVarDeclaration(
     // check that declared type == inferred type
     if (statementDeclaredType != null) {
         val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
-        if (!compare2Types(statementDeclared, valueType)) {
-            val text = "${statementDeclaredType.name} != ${valueType.name}"
-            statement.token.compileError("Type declared for ${YEL}${statement.name}$RED is not equal for it's value type ${YEL}`$text`")
+        val realValueType = if (valueType is Type.Lambda) valueType.returnType else valueType
+        if (!compare2Types(statementDeclared, realValueType)) {
+            val text = "$statementDeclaredType != $realValueType"
+            statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }
     }
 

@@ -25,6 +25,22 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     }
 }
 
+fun Type.resetGenericParams() {
+
+
+    if (this !is Type.UserLike) return
+
+    val genericLetters = listOf("T", "G")
+
+    if (this.typeArgumentList.count() > 2) {
+        throw Exception("Generics with more than 2 params are not supported yet")
+    }
+    this.typeArgumentList = List(typeArgumentList.size) { i ->
+        Type.UnknownGenericType(genericLetters[i])
+    }
+
+}
+
 fun getTableOfLettersFromType(type: Type.UserLike): MutableMap<String, Type> {
     if (type.typeArgumentList.count() > 2) {
         throw Exception("Generics with more than 2 params are not supported yet")
@@ -158,9 +174,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
         recursiveGenericResolving(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
-    } else returnTypeOrNullUnwrap
+    } else returnTypeFromDb // return without changes
 
-    ///
 
 //    val returnTypeIsSingleGeneric = (returnType?.name ?: "").isGeneric()
 //    // infer return generic type from args or receiver
@@ -540,7 +555,7 @@ fun Resolver.resolveMessage(
                             compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
                         if (!sameTypes) {
                             argAndItsMessages.keywordArg.token.compileError(
-                                "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDb}${RESET} but $YEL${typeOfArgFromDeclaration}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
+                                "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
                             )
                         }
 
@@ -549,7 +564,8 @@ fun Resolver.resolveMessage(
 
                     val returnTypeFromDb = msgTypeFromDB.returnType
 
-                    val returnType2 = resolveReturnTypeIfGeneric(returnTypeFromDb, letterToRealType, receiverGenericsTable)
+                    val returnType2 =
+                        resolveReturnTypeIfGeneric(returnTypeFromDb, letterToRealType, receiverGenericsTable)
 
                     // if return type was unwrapped nullable, we need to wrap it again
                     val returnType =
@@ -600,7 +616,7 @@ fun Resolver.resolveMessage(
             // q = "sas" + 2 toString
             // find message for this type
             val messageReturnType =
-                if (isUnaryForReceiver)
+                (if (isUnaryForReceiver)
                     findAnyMsgType(
                         statement.unaryMsgsForReceiver.last().type!!,
                         statement.selectorName,
@@ -609,6 +625,8 @@ fun Resolver.resolveMessage(
                     )
                 else
                     findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
+                        )
+
             statement.type = messageReturnType.returnType
             statement.pragmas = messageReturnType.pragmas
 
@@ -618,6 +636,7 @@ fun Resolver.resolveMessage(
 
             // if a type already has a field with the same name, then this is getter, not unary send
             val receiver = statement.receiver
+
 
             if (receiver.type == null) {
                 currentLevel++
@@ -714,28 +733,17 @@ fun Resolver.resolveMessage(
                     )
                     statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
                     messageReturnType
-                }
+                }//.also { it.returnType.resetGenericParams() }
                 val returnTypeFromDb = msgFromDb.returnType
                 // add pragmas
                 statement.pragmas = msgFromDb.pragmas
 
                 // resolve return type generic
-                val q = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver )
+                val q = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
                 statement.type = q
-
-//                    if (msgFromDb.returnType !is Type.UnknownGenericType) {
-//                    msgFromDb.returnType
-//                } else {
-//                    val receiverType2 = receiver.type
-//                    if (receiverType2 is Type.UserLike) {
-//                        receiverType2.typeArgumentList.find { it.beforeGenericResolvedName == msgFromDb.returnType.name }
-//                            ?: statement.token.compileError("Cant infer return generic type of unary $CYAN${statement.selectorName}")
-//                    } else {
-//                        throw Exception("Return type is generic, but receiver of $YEL${statement.selectorName}${RESET} is not user type")
-//                    }
-//                }
-
             }
+
+
         }
     }
 }

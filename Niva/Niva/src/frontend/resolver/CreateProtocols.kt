@@ -667,7 +667,9 @@ fun createSetProtocols(
             createKeyword(KeywordArg("add", itType), unitType),
             createKeyword(KeywordArg("remove", itType), boolType),
             createKeyword(KeywordArg("addAll", setType), boolType),
-            createKeyword(KeywordArg("intersect", setType), setType)
+            createKeyword(KeywordArg("intersect", setType), setType),
+            createKeyword(KeywordArg("contains", itType), boolType),
+            createKeyword(KeywordArg("containsAll", setType), boolType),
         )
     )
 
@@ -787,9 +789,10 @@ fun createMapProtocols(
     keyType: Type.UnknownGenericType,
     valueType: Type.UnknownGenericType,
     setType: Type.UserType,
-    listType: Type.UserType,
-
+    setTypeOfDifferentGeneric: Type.UserType
     ): MutableMap<String, Protocol> {
+
+
     val result = mutableMapOf<String, Protocol>()
 
     val collectionProtocol = Protocol(
@@ -798,8 +801,8 @@ fun createMapProtocols(
             createUnary("count", intType),
             createUnary("echo", unitType),
             createUnary("clear", unitType),
-            createUnary("values", listType).emit("$0.values"),
             createUnary("keys", setType).emit("$0.keys"),
+            createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
 
             ),
         binaryMsgs = mutableMapOf(
@@ -840,7 +843,7 @@ fun createMapProtocols(
             createKeyword(KeywordArg("at", keyType), Type.NullableType(valueType))
                 .rename("get"),
 
-            createKeyword(KeywordArg("remove", keyType), intType),
+            createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
             createKeyword(KeywordArg("addAll", mapType), unitType),
             createKeyword(KeywordArg("containsKey", keyType), boolType),
             createKeyword(KeywordArg("containsValue", valueType), boolType)
