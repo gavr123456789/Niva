@@ -166,10 +166,7 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? =
 
 fun Parser.varDeclaration(): VarDeclaration {
     // skip mut
-    val isMutable = check(TokenType.Mut)
-    if (isMutable) {
-        step()
-    }
+    val isMutable = match(TokenType.Mut)
 
     val tok = this.step()
     val typeOrEqual = step()
@@ -187,10 +184,13 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Assign)
-            value = this.simpleReceiver(valueType)
+//            value = this.simpleReceiver(valueType)
+            val isNextReceiver = isNextSimpleReceiver()
+            value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
+
         }
 
-        else -> error("after ${peek(-1)} needed type or expression")
+        else -> peek().compileError("after ${peek(-1)} needed type or expression")
     }
 
     val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)

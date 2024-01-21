@@ -251,7 +251,7 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclaration: Boolean = false): Boolean {
+fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Boolean = false): Boolean {
     if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
@@ -275,7 +275,9 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclarati
         val isReturnTypesEqual =
             (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(
                 return1,
-                return2
+                return2,
+                token,
+                isReturn
             )
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
@@ -301,7 +303,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclarati
     val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
 
     if (type1 is Type.UserLike && type2 is Type.UserLike) {
-        // if types from different packages, and its not core
+        // if types from different packages, and it's not core
 
         if (isDifferentPkgs) {
             token?.compileError("$YEL$type1$RESET is from $WHITE$pkg1$RESET pkg, and $YEL$type2$RESET from $WHITE$pkg2")
@@ -335,7 +337,8 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclarati
                 if (!sameArgs) {
                     token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
                     throw Exception("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
-                }
+                } else
+                    return sameArgs // List::Int and List::T are the same
             }
         }
 
@@ -360,8 +363,20 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isVarDeclarati
 
 
     // x::Int? = null
-    if (isVarDeclaration && type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
+    if (type1 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
         return true
+    }
+
+    // Ins sas -> Int? = ^42
+    if (isReturn) {
+        if ( (type1 is Type.NullableType && type2 !is Type.NullableType)) {
+            val win = compare2Types(type1.realType, type2, token)
+            if (win) return true
+        }
+        if ((type2 is Type.NullableType && type1 !is Type.NullableType)) {
+            val win = compare2Types(type1, type2.realType, token)
+            if (win) return true
+        }
     }
 
 
@@ -1058,20 +1073,30 @@ class Resolver(
 
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
+        val createTypeListOfType = { name: String, internalType: Type.InternalType ->
+            Type.UserType(
+                name = name,
+                typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+                fields = mutableListOf(),
+                pkg = "core",
+                protocols = listType.protocols
+            )
+        }
 
         // now when we have list type with its protocols, we add split method for String, that returns List::String
-        val listOfString = Type.UserType(
-            name = "List",
-            typeArgumentList = listOf(stringType.copy().also { it.beforeGenericResolvedName = "T" }),
-            fields = mutableListOf(),
-            pkg = "core",
-            protocols = listType.protocols
-        )
+        val listOfString = createTypeListOfType("List", stringType)
 
         listType.protocols
         stringType.protocols["common"]!!.keywordMsgs
             .putAll(listOf(createKeyword(KeywordArg("split", stringType), listOfString)))
 
+        // add toList to IntRange
+        val listOfInts = createTypeListOfType("List", intType)
+        val mutListOfInts = createTypeListOfType("MutableList", intType)
+        val intRangeProto = intRangeType.protocols["common"]!!
+        val toListForIntProtocol = createUnary("toList", listOfInts)
+        val toMutListForIntProtocol = createUnary("toMutableList", mutListOfInts)
+        intRangeProto.unaryMsgs.putAll(arrayOf(toListForIntProtocol, toMutListForIntProtocol))
         // Mutable list
         val mutableListType = Type.UserType(
             name = "MutableList",
@@ -1155,7 +1180,7 @@ class Resolver(
                 keyType = genericType,
                 valueType = differentGenericType,
                 setType = mutableSetType,
-                listType = listType
+                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric
             )
         )
 

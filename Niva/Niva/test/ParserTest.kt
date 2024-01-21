@@ -6,6 +6,7 @@ import main.lex
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ParserTest {
     @Test
@@ -1491,6 +1492,19 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
 
+    }
+
+    @Test
+    fun doCallInVarDecl() {
+        val source = """
+            x = [1]
+            y::Int = x do
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val y = ast[1] as VarDeclaration
+        assertTrue { y.value is MessageSendUnary }
     }
 
 

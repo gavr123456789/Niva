@@ -10,85 +10,159 @@
 //Assert that: "sas" equals: "sus"
 
 
-//text = "abc\ndef"
-//x = (text split: "\n") dropLast: 1
+// 5 to 5 words
+//type WordGroup words1: MutableMap(Int, String) words2: MutableMap(Int, String)
+//type GameData wordsGroups: MutableList::WordGroup
 //
-//x echo
-
-
-
-
-
-//fillGroups = [ lines::List::String ->
+//type Game
+//constructor Game fromFile::String wordsPerTest::Int = [
+//  readCardToLines = [
+//    text = FileSystem read: fromFile toPath
+//
+//    text split: "\n"
+//  ]
+//
+//  lines = readCardToLines do
+//
+//  linesChunked = lines chunked: wordsPerTest
+//
+//  fillGroups = [ kek::List::String ->
 //    words1::MutableMap(Int, String) = #{}
 //    words2::MutableMap(Int, String) = #{}
-//    lines forEachIndexed: [i, line ->
+//
+//    kek forEachIndexed: [ i, line ->
+//      line trim != "" => [
 //        num = i + 1
 //
-//        words1 at: 1 put: "sas"
+//        r = line split: ":"
+//        first = r at: 0 |> trim
+//        second = r at: 1 |> trim
+//        words1 at: num put: first
+//        words2 at: num put: second
+//      ]
 //    ]
-////    words1 at: 1 put: "sas"
-//    words1 echo
+//
+//
+//    WordGroup words1: words1 words2: words2
+//  ]
+//
+//  linesChunked forEach: [
+//    wordGroup = fillGroups kek: it
+//    GamePrinter print: wordGroup
+//  ]
+//
+//  game = Game new
+////> WordGroup words1: {1=sus, 2=sos} words2: {1=сус, 2=сос}
+//  // wordGroup echo
 //]
 //
-//// просто у самого List дефолтного ктото изменил T на String
-//linesChunked = {1 2 3 4 5 6} chunked: 2
+//type Answer answer: Int foreignWord: String
+//type GamePrinter
+//constructor GamePrinter print: wordGroup::WordGroup = [
+//  foreignGroup = wordGroup words1
+//  nativeGroup = wordGroup words2
+//  shuffledTranslations = {3 1 2}//foreignGroup keys toList shuffled
+//  shuffledTranslations echo
 //
-//linesChunked forEach: [
-//// add test that in that situation it has type List::Int, not List::String
-//    it echo
-//    fillGroups lines: it
+//  rightAnswers::MutableMap(Int, Int) = #{}
+//
+//  fillNewTable = [
+//    result::MutableMap(String, Answer) = #{}
+//
+//    nativeGroup forEach: [num, nativeWord ->
+//      shuffledVal = shuffledTranslations at: num - 1
+//      foreignWord = foreignGroup at: num |> unpackOrError
+//      result at: nativeWord put: (Answer answer: shuffledVal foreignWord: foreignWord)
+//    ]
+//    result
+//  ]
+////  qwe = fillNewTable do
+//  newTable::MutableMap(String, Answer) = fillNewTable do
+////  "newTable = $newTable"
+//
+//// изза того что мы выводим по индексам после удаления пропадает и индекс
+//  printData = [
+//
+//    nativeGroup forEach: [num, v ->
+//      lineWithNative = "$num: $v"
+//
+//      shuffledVal = shuffledTranslations at: num - 1
+//      // "shuffledVal = $shuffledVal" echo
+//
+//      real = foreignGroup at: num
+//      fake = foreignGroup at: shuffledVal
+//
+//      rightAnswers at: shuffledVal put: num
+//      lineWithForeign = "$num: $fake"
+//
+//      lineWithNative + "\t" + lineWithForeign |> echo
+//    ]
+//  ]
+//
+//  checkAnswer = [ col::Int, answer::Int ->
+//    rightAnswer = rightAnswers at: col
+//    "rightAnswer is $rightAnswer, your answer is $answer" echo
+//    rightAnswer == answer
+//  ]
+//
+//
+//
+//
+//
+//  mut lives = 5
+//  [(lives > 0) && (nativeGroup count > 0)] whileTrue: [
+//    printData do
+//    rightAnswers echo
+//
+//    ans = Console readln
+//    splitted = ans split: " "
+//    num1 = splitted at: 0 |> toInt
+//    num2 = splitted at: 1 |> toInt
+//
+//    (nativeGroup keys contains: num1 |> not) ||
+//    (foreignGroup keys contains: num2 |> not) => [
+//        "wrong numbers!" echo
+//    ] |=> [
+//      isRight = checkAnswer col: num1 answer: num2
+//      isRight => [
+//        "Right answer!" echo
+//        // "---" echo
+//        // shuffledVal = (shuffledTranslations at: num1 - 1)
+//
+//        // // foreignGroup remove: num1
+//        // foreignGroup at: num1 put: (foreignGroup at: shuffledVal |> unpackOrError)
+//        // rightAnswers at: num2 put: shuffledVal
+//
+//        // "foreignGroup = $foreignGroup removing $num1" echo
+//        // nativeGroup remove: num1
+//        // "nativeGroup = $nativeGroup removing $num1" echo
+//        // "---" echo
+//      ] |=> [
+//        "Wrong answer!" echo
+//        "lives left: $lives" echo
+//        lives <- lives dec
+//      ]
+//
+//
+//    ]
+//
+//    "\n" echo
+//
+//  ]
+//
+//  lives == 0 => "You looze!" |=> "You are Greek now ^_^ !"
+//
 //]
-
-//x = #{1 2 3 4}
-//y = x at: 1 |> unpackOrError
-//z = y + 5
-//z echo
-
-
-
-//union SomeUnion =
-//| Yes x: Int
-//| No y: String
 //
-//union ServerAns =
-//| SomeUnion
-//| NoVal
-//| ErrorType1 str: String
-//| ErrorType2 b: Boolean
-//| Success value: Int
 //
-//x = ErrorType1 str: "sas"
 //
-//ServerAns print = | this
-//| NoVal => "no value!" echo
-//| ErrorType1 => str echo
-//| ErrorType2 => b echo
-//| Success => "Success $value!" echo
-//| SomeUnion => [
-//  | this
-//  | Yes => x echo
-//  | No => y echo
-//]
+//game = Game
+//  fromFile: "/home/gavr/Documents/Projects/Fun/Niva/niva_compiler/learnGreek/greekColors.txt"
+//  wordsPerTest: 3
+//
 
-
-union Hat =
-| TopHat x: Int
-| Bowler y: String
-
-Hat print::Int = | this
-| TopHat => x echo
-| Bowler => y echo
-
-Hat + x::Int = | this
-| TopHat => x echo
-| Bowler => y echo
-
-Hat sas = | this
-| TopHat => x echo
-| Bowler => y echo
-
-bowler = Bowler y: "sas"
-bowler print: 5
-bowler + 5
-bowler sas
+Int sas -> Int? = ^41
+x = 5 sas
+x unpackOrError inc
+x unpack: [it inc]
+y = x unpackOr: 5

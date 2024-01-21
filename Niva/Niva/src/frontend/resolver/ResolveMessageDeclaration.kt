@@ -174,14 +174,14 @@ fun Resolver.resolveMessageDeclaration(
                 st.returnType = returnType
 
                 // in single expr declared type not matching real type
-                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType) && st.returnTypeAST != null) {
+                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType, isReturn = true) && st.returnTypeAST != null) {
                     st.returnTypeAST.token.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
                 }
             }
         } else {
             val realReturn = wasThereReturn
             val returnType = st.returnType
-            if (realReturn != null && returnType != null && !compare2Types(returnType, realReturn)) {
+            if (realReturn != null && returnType != null && !compare2Types(returnType, realReturn, isReturn = true)) {
                 st.returnTypeAST?.token?.compileError("Return type defined: $YEL$returnType$RESET but real type returned: $YEL$realReturn")
             }
         }

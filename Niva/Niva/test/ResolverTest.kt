@@ -804,7 +804,7 @@ class ResolverTest {
     }
 
     @Test
-    fun fgk() {
+    fun inferTypeOfEmptyArray() {
         val source = """
            union JsonObj =
            | JsonArray arr: MutableList::JsonObj
@@ -962,7 +962,7 @@ class ResolverTest {
     fun getGenericFromManyUnary() {
         val source = """
             group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
-            group1 keys toList
+            group1 keys toList shuffled
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -972,7 +972,37 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun mapNotOverride() {
+        val source = """
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
+            sas::MutableMap(Int,Int) = #{}
+        """.trimIndent()
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
 
+        val q = resolver.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
+        assertTrue { q.typeArgumentList[0].name == "T" }
+    }
+
+    @Test
+    fun valuesOfMap() {
+        val source = """
+              
+            nativeGroup = #{1 "sas" 2 "sus"}
+            nativeGroup values 
+            
+          
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val values =  statements[1] as MessageSendUnary
+        val setType = values.type!! as Type.UserType
+        val setTypeArg = setType.typeArgumentList[0]
+        assertTrue { setTypeArg.name == "String"}
+    }
 
 
 }

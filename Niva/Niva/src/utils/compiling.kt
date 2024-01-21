@@ -13,7 +13,7 @@ import java.io.File
 
 
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
-    val p = java.lang.ProcessBuilder(this.split(" "))
+    val p = ProcessBuilder(this.split(" "))
         .directory(workingDir)
 
     if (withOutputCapture) {
@@ -331,6 +331,11 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun <T> T?.unpackOrError(): T {
             return this!!
         } 
+        
+        // because default iterator on map from kotlin needs unpacking Map.Entry with ()
+        inline fun <K, V> Map<out K, V>.forEach(action: (x: K, y: V) -> Unit): Unit {
+            for (element in this) action(element.key, element.value)
+        }
 
         // end of STD
 

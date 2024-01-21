@@ -408,30 +408,31 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val type = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
-                //TODO DB
-                if (type is Type.UserLike) {
+                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
+                // Type DB
+                if (typeFromDb is Type.UserLike) {
+                    val copy = typeFromDb.copy()
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
-                    if (this.typeArgumentList.count() != type.typeArgumentList.count()) {
-                        this.token.compileError("Type $YEL${this.name}$RESET has $WHITE${type.typeArgumentList.count()}$RESET generic params, but you send only $WHITE${this.typeArgumentList.count()}")
+                    if (this.typeArgumentList.count() != copy.typeArgumentList.count()) {
+                        this.token.compileError("Type $YEL${this.name}$RESET has $WHITE${copy.typeArgumentList.count()}$RESET generic params, but you send only $WHITE${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val rer = it.toType(typeDB, typeTable, selfType)
-                        letterToTypeMap[type.typeArgumentList[i].name] = rer
-                        rer
+                        val typeOfArg = it.toType(typeDB, typeTable, selfType)
+                        letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
+                        typeOfArg
                     }
 
 
-                    type.typeArgumentList = typeArgs
+                    copy.typeArgumentList = typeArgs
                     // replace fields types from T to real
-                    type.fields.forEachIndexed { i, field ->
+                    copy.fields.forEachIndexed { i, field ->
                         val fieldType = letterToTypeMap[field.type.name]
                         if (fieldType != null) {
                             field.type = fieldType
                         }
                     }
-                    return type
+                    return copy
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
