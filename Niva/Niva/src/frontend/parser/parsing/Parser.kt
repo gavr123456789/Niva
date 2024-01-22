@@ -7,7 +7,10 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.parsing.staticBuilder
+import main.frontend.parser.parsing.varDeclaration
 
 
 // Declaration without end of line
@@ -163,39 +166,6 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? =
         else -> null
     }
 
-
-fun Parser.varDeclaration(): VarDeclaration {
-    // skip mut
-    val isMutable = match(TokenType.Mut)
-
-    val tok = this.step()
-    val typeOrEqual = step()
-
-    val value: Expression
-    val valueType: TypeAST?
-    when (typeOrEqual.kind) {
-        TokenType.Assign -> {
-            val isNextReceiver = isNextSimpleReceiver()
-            value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
-            valueType = null
-        }
-        // ::^int
-        TokenType.DoubleColon -> {
-            valueType = parseType()
-            // x::int^ =
-            match(TokenType.Assign)
-//            value = this.simpleReceiver(valueType)
-            val isNextReceiver = isNextSimpleReceiver()
-            value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
-
-        }
-
-        else -> peek().compileError("after ${peek(-1)} needed type or expression")
-    }
-
-    val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
-    return result
-}
 
 fun Parser.assignVariableNewValue(): Assign {
     // x <- expression

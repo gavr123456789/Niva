@@ -1,16 +1,11 @@
-package frontend.parser.parsing
+package main.frontend.parser.parsing
 
 import frontend.meta.*
+import frontend.parser.parsing.*
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.TypeAST
 import frontend.util.createFakeToken
 import frontend.util.isSimpleTypes
-
-fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(
-    name = InternalTypes.Unit,
-    isNullable = false,
-    token = token,
-)
 
 // use only after ::
 fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
@@ -23,7 +18,7 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
 
     val tok = peek()
 
-    // set or map
+    // literal collections type set or map
     if (match(TokenType.OpenBraceHash)) {
         TODO()
     }
@@ -141,3 +136,9 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
 
     tok.compileError("Syntax error: type declaration expected")
 }
+
+fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(
+    name = InternalTypes.Unit,
+    isNullable = false,
+    token = token,
+)

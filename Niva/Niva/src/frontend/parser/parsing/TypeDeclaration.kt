@@ -3,6 +3,8 @@ package frontend.parser.parsing
 import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.simpleReceiver
 
 fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDeclaration {
     // type Person name: string generic age: int
