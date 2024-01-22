@@ -340,11 +340,11 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 
-    val builder = StringBuilder()
-    builder.builderWithReceiver { x ->
-        x("sas")
-        this.append(123)
-    }
+//    val builder = StringBuilder()
+//    builder.builderWithReceiver { x ->
+//        x("sas")
+//        this.append(123)
+//    }
 
     if (help(args)) return
 

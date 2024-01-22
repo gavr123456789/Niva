@@ -1004,6 +1004,22 @@ class ResolverTest {
         assertTrue { setTypeArg.name == "String"}
     }
 
+    @Test
+    fun unaryForGenericReceiver() {
+        val source = """
+            { 1 2 3 } first
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val msg = statements[0] as MessageSendUnary
+        val type = msg.type
+        assertTrue { type?.name == "Int" }
+
+    }
+
+
+
+
 
 }
 

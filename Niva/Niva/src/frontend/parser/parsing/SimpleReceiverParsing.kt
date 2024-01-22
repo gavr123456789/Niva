@@ -17,19 +17,27 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     }
 
     val readPrimaryCollection = {
-        val initElements = mutableListOf<Primary>()
+//        val initElements = mutableListOf<Primary>()
+        val initElements = mutableListOf<Receiver>()
 
-        var lastPrimary: Primary? = null
+//        var lastPrimary: Primary? = null
+        var lastCollectionElem: Receiver? = null
         do {
-            val primaryTok = primary(typeAst)
+            // can be expression in brackets in
+            val isExprInBrackets = check(TokenType.OpenParen)
+            val primaryTok = if (isExprInBrackets) {
+                bracketExpression()
+            } else primary(typeAst)
+
+//            val primaryTok = primary(typeAst)
             match(TokenType.Comma)
             if (primaryTok != null) {
-                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
+                if (lastCollectionElem != null && primaryTok.type?.name != lastCollectionElem.type?.name) {
                     error("Heterogeneous collections are not supported")
                 }
                 initElements.add(primaryTok)
             }
-            lastPrimary = primaryTok
+            lastCollectionElem = primaryTok
         } while (primaryTok != null)
 
         initElements
@@ -38,12 +46,21 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     val readPrimaryMap = {
         val initElementsPairs: MutableList<Pair<Receiver, Receiver>> = mutableListOf()
         do {
-            val primaryTok = primary(typeAst)
+//            val primaryTok = primary(typeAst)
+            val isExprInBrackets = check(TokenType.OpenParen)
+            val primaryTok = if (isExprInBrackets) {
+                bracketExpression()
+            } else primary(typeAst)
+
             if (match(TokenType.Comma)) {
                 peek().compileError("Only map pairs can be separated by commas")
             }
 
-            val primaryTok2 = primary(typeAst)
+            val isExprInBrackets2 = check(TokenType.OpenParen)
+            val primaryTok2 = if (isExprInBrackets2) {
+                bracketExpression()
+            } else primary(typeAst)
+
             match(TokenType.Comma)
             skipOneEndOfLineOrFile()
 

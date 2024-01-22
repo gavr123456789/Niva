@@ -31,7 +31,7 @@ fun Resolver.resolveCollection(
     if (statement.initElements.isNotEmpty()) {
         // resolve args
         statement.initElements.forEach {
-            if (it.typeAST != null) {
+            if (it is Primary && it.typeAST != null) {
                 it.type = it.typeAST.toType(typeDB, typeTable)
             } else {
                 currentLevel++
@@ -43,9 +43,8 @@ fun Resolver.resolveCollection(
 
         val firstElem = statement.initElements[0]
         val firstElemType = firstElem.type
-        if (firstElem.typeAST != null || firstElemType != null) {
-            val firstElemType2 = firstElemType ?: firstElem.typeAST?.toType(typeDB, typeTable) ?: throw Exception("Compiler Bug!")//fix
-            firstElemType2.beforeGenericResolvedName = "T" // Default List has T type
+        if (firstElemType != null) {
+            firstElemType.beforeGenericResolvedName = "T" // Default List has T type
 
             // set Any type of collection, if {1, "sas"}
             val anyType = if (statement.initElements.count() > 1) {
@@ -56,10 +55,9 @@ fun Resolver.resolveCollection(
             } else null
 
             // try to find list with the same generic type
-            fillCollectionType(listOf(anyType ?: firstElemType2), statement)
+            fillCollectionType(listOf(anyType ?: firstElemType), statement)
 
-        }
-        else {
+        } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }
     } else if (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null) {
@@ -82,7 +80,7 @@ fun Resolver.resolveSet(
     previousAndCurrentScope: MutableMap<String, Type>,
     rootStatement: Statement?,
 ) {
-    resolveCollection(statement, "MutableSet", previousAndCurrentScope,rootStatement)
+    resolveCollection(statement, "MutableSet", previousAndCurrentScope, rootStatement)
 
     for (i in 0 until statement.initElements.count() - 1) {
         for (j in i + 1 until statement.initElements.count()) {
