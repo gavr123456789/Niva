@@ -1,0 +1,15 @@
+JsonArray arrToJson -> String = [
+
+  createArr = [
+    b = StringBuilder new
+    arr forEachIndexed: [ i, it ->
+      b append: it toJson
+      i + 1 != arr count => b append: ", "
+    ]
+    b toString
+  ]
+
+  ^createArr do surroundWith: "[ " and: " ]"
+]
+
+
