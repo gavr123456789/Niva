@@ -8,7 +8,6 @@ class Parser(
     val file: File,
     val tokens: MutableList<Token>,
     val source: String,
-    val currentFunction: Statement? = null,
     val tree: MutableList<Statement> = mutableListOf(),
     var current: Int = 0,
 )
@@ -52,6 +51,7 @@ fun Parser.step(n: Int = 1): Token {
     return result
 }
 
+@Suppress("UnusedReceiverParameter")
 fun Parser.error(message: String): Nothing {
 //    var realToken = token ?: getCurrentToken()
 //    if (realToken.kind == TokenType.EndOfFile) {

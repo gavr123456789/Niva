@@ -241,19 +241,19 @@ fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
     return specialPkgToInfoPrint
 }
 
-var sas: ((String) -> Unit) = {}
-
-fun buildString2(builderAction: StringBuilder.() -> Unit): String {
-    val q = StringBuilder()
-
-    val default: (String) -> Unit = { it: String ->
-        q.append(it)
-    }
-    sas = default
-
-    q.builderAction()
-    return q.toString()
-}
+//var sas: ((String) -> Unit) = {}
+//
+//fun buildString2(builderAction: StringBuilder.() -> Unit): String {
+//    val q = StringBuilder()
+//
+//    val default: (String) -> Unit = { it: String ->
+//        q.append(it)
+//    }
+//    sas = default
+//
+//    q.builderAction()
+//    return q.toString()
+//}
 
 
 object StringUtils {
@@ -298,18 +298,53 @@ object StringUtils {
     }
 }
 
-//    println(StringUtils.diff("this is a example", "this is a examp")) // prints (le,)
-//    println(StringUtils.diff("Пример первой строки", "Пример второй строки с некоторыми изменениями")) // prints (o,yui)
-//    println(StringUtils.diff("Toyota", "Coyote")) // prints (Ta,Ce)
-//    println(StringUtils.diff("Flomax", "Volmax")) // prints (Fo,Vo)
 
+// builder with receiver
 
+//    builder StringBuilder build = [
+//        //default = String
+//        action = [default::String -> this append: default |> append: "\n" ]
+//    ]
+//
+//    b = StringBuilder new
+//    b build [
+//        "sas"
+//        "sus"
+//    ]
+
+//simplest
+fun buildString2(x: StringBuilder.((String) -> Unit) -> Unit): StringBuilder {
+    val b = StringBuilder()
+    val toCallSite: (String) -> Unit = { default: String ->
+        b.append(default)
+        b.append("\n")
+    }
+    b.x(toCallSite)
+    return b
+}
+
+fun test() {
+    buildString2 {
+        it("sas")
+    }
+}
+
+fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Unit) {
+//    val q = StringBuilder()
+    val toCallSite:(String) -> Unit = {default: String -> this.append(default)}
+    this.x(toCallSite)
+}
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 
+    val builder = StringBuilder()
+    builder.builderWithReceiver { x ->
+        x("sas")
+        this.append(123)
+    }
 
     if (help(args)) return
 
