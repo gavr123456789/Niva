@@ -55,15 +55,15 @@ class IdentifierExpr(
     }
 }
 
-sealed class Collection(val initElements: List<Primary>, type: Type?, token: Token) : Receiver(type, token)
+sealed class Collection(val initElements: List<Receiver>, type: Type?, token: Token) : Receiver(type, token)
 class ListCollection(
-    initElements: List<Primary>,
+    initElements: List<Receiver>,
     type: Type?,
     token: Token,
 ) : Collection(initElements, type, token)
 
 class SetCollection(
-    initElements: List<Primary>,
+    initElements: List<Receiver>,
     type: Type?,
     token: Token,
 ) : Collection(initElements, type, token)

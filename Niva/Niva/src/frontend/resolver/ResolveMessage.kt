@@ -26,8 +26,6 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 }
 
 fun Type.resetGenericParams() {
-
-
     if (this !is Type.UserLike) return
 
     val genericLetters = listOf("T", "G")
@@ -167,7 +165,7 @@ fun Resolver.resolveReturnTypeIfGeneric(
         if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
 
     return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
-        val realTypeFromTable = letterToRealType[returnTypeOrNullUnwrap.name]
+        val realTypeFromTable = letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
             ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
     } else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {

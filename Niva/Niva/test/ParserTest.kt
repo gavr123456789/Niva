@@ -65,6 +65,20 @@ class ParserTest {
         assert(map.initElements.count() == 4)
     }
 
+    @Test
+    fun collectionOfMessages() {
+        val source = """
+            {(1 inc) (2 inc) (3 inc)}
+            #{(1 dec) ("a b" split: " " |> first), 2 "b"}
+            #((1..3 |> random) (1..3 |> random))
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+
+        val list = ast[0] as ListCollection
+        assert(list.initElements.count() == 3)
+    }
+
 //    @Test
 //    fun collectionListOfObjectConstructors() {
 //        val source = "{Person age: 1, Person age: 2, Person age: 3}"
