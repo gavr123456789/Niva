@@ -23,7 +23,7 @@ fun Resolver.resolveVarDeclaration(
     resolve(listOf(statement.value), previousAndCurrentScope, statement)
     currentLevel--
     val value = statement.value
-    val valueType = value.type
+    var valueType = value.type
         ?: statement.token.compileError("In var declaration $WHITE${statement.name}$RED value doesn't got type")
     val statementDeclaredType = statement.valueTypeAst
 
@@ -75,9 +75,15 @@ fun Resolver.resolveVarDeclaration(
     if (statementDeclaredType != null) {
         val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
         val realValueType = if (valueType is Type.Lambda) valueType.returnType else valueType
-        if (!compare2Types(statementDeclared, realValueType)) {
+        if (!compare2Types(statementDeclared, realValueType, isReturn = true)) {
             val text = "$statementDeclaredType != $realValueType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
+        }
+        // if x::Int? = 42 then we need to wrap type to Nullable
+        if (statementDeclaredType.isNullable && realValueType !is Type.NullableType) {
+            val nullableType = Type.NullableType(valueType)
+            value.type = nullableType
+            valueType = nullableType
         }
     }
 

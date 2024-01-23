@@ -17,7 +17,14 @@ class ExpressionInBrackets(
     val statements: List<Statement>,
     type: Type?,
     token: Token,
-) : Receiver(type, token)
+) : Receiver(type, token) {
+    override fun toString(): String {
+        return if (statements.isNotEmpty())
+            "(${statements.first()})"
+        else
+            "()"
+    }
+}
 
 
 
