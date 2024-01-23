@@ -162,6 +162,7 @@ class ResolverTest {
         assert(e["Unit"] != null)
         assert(e["Project"] != null)
         assert(e["Bind"] != null)
+        assert(e["Compiler"] != null)
 
     }
 
@@ -778,6 +779,20 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 2)
+        val x = (statements[0] as VarDeclaration).value
+        assertTrue { x.type is Type.NullableType }
+    }
+
+    @Test
+    fun nullableTypeDeclaration() {
+        val source = """
+            q::Int? = 6
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val value = (statements[0] as VarDeclaration).value
+        assertTrue { value.type is Type.NullableType }
+
     }
 
 
@@ -837,7 +852,7 @@ class ResolverTest {
 
 
     @Test
-    fun qwe() {
+    fun chunked() {
         val source = """
            linesChunked = {1 2 3 4 5 6} chunked: 2
 
@@ -871,6 +886,21 @@ class ResolverTest {
         val y = statements[1] as VarDeclaration
         val nullableTypeUnpacked = (y.value.type as Type.NullableType).realType
         assert(nullableTypeUnpacked.name == "Int")
+    }
+
+    @Test
+    fun nullableVarDeclaration() {
+        val source = """
+            x::Int? = 6
+            x 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val x = statements[0] as VarDeclaration
+        assert(x.value.type is Type.NullableType)
+        val y = statements[1] as IdentifierExpr
+        assertTrue { y.type is Type.NullableType }
+
     }
 
     @Test
@@ -969,7 +999,6 @@ class ResolverTest {
         val list = statements[1] as MessageSendUnary
         val listType = list.type as Type.UserType
         assertTrue { listType.typeArgumentList.first().name == "Int" }
-
     }
 
     @Test
@@ -1014,8 +1043,9 @@ class ResolverTest {
         val msg = statements[0] as MessageSendUnary
         val type = msg.type
         assertTrue { type?.name == "Int" }
-
     }
+
+
 
 
 

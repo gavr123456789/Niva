@@ -223,7 +223,7 @@ fun Resolver.resolve(
     }
 
     topLevelStatements = topLevelStatements.filter {
-        !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind"))
+        !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind" || it.receiver.str == "Compiler"))
     }.toMutableList()
 
 
@@ -845,6 +845,7 @@ class Resolver(
 
             createDefaultType(InternalTypes.Project),
             createDefaultType(InternalTypes.Bind),
+            createDefaultType(InternalTypes.Compiler),
             createDefaultType(InternalTypes.IntRange),
 
             createDefaultType(InternalTypes.Any),

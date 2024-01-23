@@ -288,7 +288,7 @@ fun Resolver.resolveMessage(
                 val receiverText = receiver.toString()
                 val keywordReceiverType = receiverType
 
-                if (receiverText == "Project" || receiverText == "Bind") {
+                if (receiverText == "Project" || receiverText == "Bind" || receiverText == "Compiler") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
                 val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name

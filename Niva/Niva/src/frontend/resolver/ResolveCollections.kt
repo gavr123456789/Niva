@@ -4,6 +4,7 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.parser.types.ast.Collection
 import main.CYAN
+import main.RESET
 import main.WHITE
 import main.YEL
 
@@ -84,10 +85,12 @@ fun Resolver.resolveSet(
 
     for (i in 0 until statement.initElements.count() - 1) {
         for (j in i + 1 until statement.initElements.count()) {
-            val first = statement.initElements[i].token.lexeme
-            val second = statement.initElements[j].token.lexeme
-            if (first == second) {
-                println("${YEL}Warning: set contains the same element: $WHITE$first")
+            if (statement.initElements[i] is Primary) {
+                val first = statement.initElements[i].toString()
+                val second = statement.initElements[j].toString()
+                if (first == second) {
+                    println("${YEL}Warning: set contains the same element: $WHITE$first$RESET")
+                }
             }
         }
     }

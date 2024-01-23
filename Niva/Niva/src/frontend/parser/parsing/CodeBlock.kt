@@ -66,7 +66,7 @@ fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
     } while (match(TokenType.Comma))
 
     // a, b, c ^->
-    matchAssert(TokenType.ReturnArrow, "-> expected inside code block after input list")
+    matchAssert(TokenType.ReturnArrow, "expected statements after codeblock's arg list but found: ${peek().lexeme}")
 
     return result
 }
