@@ -3,6 +3,9 @@ It will be Smalltalk like language, but statically typed.
  
 <img src="https://github.com/gavr123456789/Niva/assets/30507409/55f54aa9-760b-43ea-9518-33b06b07cc8a" width=30% height=30%>
 
+<img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width=30% height=30%>
+
+
 ## Backend
 Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
 A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
