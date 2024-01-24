@@ -33,10 +33,16 @@ fun Resolver.resolveDeclarations(
         is ExtendDeclaration -> {
             var atLeastOneUnresolved = false
             statement.messageDeclarations.forEach {
+
                 val cantBeResolve = resolveMessageDeclaration(it, resolveBody, previousScope)
+
+                if (cantBeResolve) currentLevel++
                 if (!atLeastOneUnresolved && cantBeResolve) atLeastOneUnresolved = true
             }
-            if (atLeastOneUnresolved) return
+            if (atLeastOneUnresolved) {
+                currentLevel--
+                return
+            }
         }
 
         is UnionDeclaration -> {

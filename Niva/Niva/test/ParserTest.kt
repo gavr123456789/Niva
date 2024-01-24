@@ -1337,10 +1337,10 @@ class ParserTest {
     fun extendTypeWithManyMsgs() {
         val source = """
             extend Person [
-              unary -> Int = 1 echo
-              + binary::Int = 1 echo
-              key::Int word::String = 1 echo
-              key: x::Int = 1 echo
+              on unary -> Int = 1 echo
+              on + binary::Int = 1 echo
+              on key::Int word::String = 1 echo
+              on withLocalName: x::Int = 1 echo
             ]
         """.trimIndent()
 

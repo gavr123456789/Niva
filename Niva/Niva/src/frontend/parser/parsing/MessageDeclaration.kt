@@ -245,12 +245,12 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 // returns true if it's single expression
 fun Parser.methodBody(
-    isControlFlow: Boolean = false,
+    parseOnlyOneLineIfNoBody: Boolean = false
 ): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    val isThereAssignOrThen = match(TokenType.Assign) || isControlFlow
+    val isThereAssignOrThen = match(TokenType.Assign) || parseOnlyOneLineIfNoBody
     if (!isThereAssignOrThen) {
         return Pair(mutableListOf(), false)
     }
@@ -270,7 +270,7 @@ fun Parser.methodBody(
         // | switch
         // | cond => do
         // | cond => do // I wanna If here, but it will be another case
-        if (isControlFlow) {
+        if (parseOnlyOneLineIfNoBody) {
             messagesOrVarStatements.add(statementWithEndLine())
         } else {
             messagesOrVarStatements.add(statement())
@@ -294,7 +294,7 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     val returnArrow = match(TokenType.ReturnArrow)
     if (returnArrow) {
         isThereReturn = true
-        val type = identifierMayBeTyped()
+        identifierMayBeTyped()
     }
     match(TokenType.Return)
     val equal = match(TokenType.Assign)
@@ -351,7 +351,7 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
                 else
                     false
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return isThereEndOfMessageDeclaration(isConstructor)
         }
     }
@@ -410,7 +410,7 @@ enum class MessageDeclarationType {
 fun Parser.messageDeclaration(
     type: MessageDeclarationType,
     codeAttributes: MutableList<CodeAttribute>? = null,
-    customForTypeAst: TypeAST? = null
+    customForTypeAst: TypeAST? = null,
 ): MessageDeclaration {
 
     val forTypeAst = customForTypeAst ?: parseType()
@@ -437,6 +437,7 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
 
     val list = mutableListOf<MessageDeclaration>()
     do {
+        matchAssert(TokenType.On)
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
 
