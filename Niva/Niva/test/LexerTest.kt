@@ -225,6 +225,13 @@ x sas
     }
 
     @Test
+    fun on() {
+        val manyExpr = "on"
+        checkWithEnd(manyExpr, listOf(On))
+    }
+
+
+    @Test
     fun escape() {
         val manyExpr = """ "\n\n" echo """
         val lexer = Lexer(manyExpr, File("Niva.iml"))

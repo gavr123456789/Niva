@@ -94,8 +94,6 @@ fun createFloatProtocols(
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     floatType: Type.InternalType,
-    intRangeType: Type.InternalType,
-    anyType: Type.InternalType,
 
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -244,6 +242,11 @@ fun createStringProtocols(
             createFilterKeyword(charType, boolType, stringType),
 
             createKeyword(KeywordArg("substring", intType), stringType),
+            createKeyword(KeywordArg("substringAfter", stringType), stringType),
+            createKeyword(KeywordArg("substringAfterLast", stringType), stringType),
+            createKeyword(KeywordArg("substringBefore", stringType), stringType),
+            createKeyword(KeywordArg("substringBeforeLast", stringType), stringType),
+
             createKeyword(
                 "fromTo",
                 listOf(KeywordArg("from", intType), KeywordArg("to", intType)),
@@ -791,7 +794,7 @@ fun createMapProtocols(
     valueType: Type.UnknownGenericType,
     setType: Type.UserType,
     setTypeOfDifferentGeneric: Type.UserType
-    ): MutableMap<String, Protocol> {
+): MutableMap<String, Protocol> {
 
 
     val result = mutableMapOf<String, Protocol>()

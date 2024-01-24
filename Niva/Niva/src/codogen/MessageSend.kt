@@ -9,9 +9,21 @@ import main.RESET
 import main.WHITE
 import main.YEL
 
+
+object GlobalDebugNeeded {
+    var needStackTrace = true
+    var printTime = false
+}
+
 fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     val b = StringBuilder()
+
+    if (GlobalDebugNeeded.needStackTrace) {
+        val tok = this.token
+        b.append("\n//@ ",tok.file.name,":::",tok.line,"\n")
+    }
+
 
     if (this.messages.isEmpty()) {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")

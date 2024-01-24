@@ -328,7 +328,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
         
-        inline fun <T> T?.unpackOrError(): T {
+        fun <T> T?.unpackOrError(): T {
             return this!!
         } 
         
@@ -353,14 +353,66 @@ fun putInMainKotlinCode(code: String) = buildString {
     append("try {\n")
 
     append(code, "\n")
-
     append(
         """
         } catch (e: Exception) {
+
         println("----------")
-        println(e.message)
+        println("\u001B[31m" + e.message + "\u001B[0m")
         println("----------")
-        println(e.stackTraceToString())
+        val q = e.stackTrace
+        fun replaceLinesInStackTrace(x: List<StackTraceElement>) {
+
+            class FileAndLine(val file: String, val line: Int)
+            val getNearestNivaLine = { kotlinLine: Int, file: String ->
+                if (kotlinLine == -2) FileAndLine("EntryPoint!", 0)
+                else {
+                    if (kotlinLine < 0) throw Exception("Cant find line")
+
+                    val thisProjectPath = "/home/gavr/.niva/infroProject/src/"
+                    val thisFileContent = java.io.File(thisProjectPath + file).readText()
+                    val lines = thisFileContent.split("\n")
+
+
+                    var q = lines[kotlinLine - 1]
+                    val splitted = q.split("@")
+                    if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
+                    val fileAndLineNumber = splitted[1].trim()
+                    val (file, lineStr) = fileAndLineNumber.split(":::")
+                    val line = lineStr.toInt()
+
+                    FileAndLine(file, line)
+                }
+            }
+
+            x.forEach {
+                val pathToFile =
+                    if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName
+                val nivaLine = if (it.moduleName == null)
+                    getNearestNivaLine(it.lineNumber - 1, pathToFile)
+                else FileAndLine(
+                    it.fileName,
+                    it.lineNumber
+                )
+//            val newElement = StackTraceElement(it.className, it.methodName, nivaLine.file, nivaLine.line)
+                println(buildString {
+                    append("Method: ")
+                    append(it.methodName)
+                    append("\t\t")
+                    append("\u001B[37mFile: ")
+                    append(nivaLine.file)
+                    append("::")
+                    append(nivaLine.line)
+                    append("\u001B[0m")
+                })
+//            replacedStack.add(newElement)
+            }
+//        return replacedStack
+        }
+        val methodName = q[0].methodName
+        replaceLinesInStackTrace(if (methodName == "unpackOrError" || methodName == "throwWithMessage") q.drop(1) else q.toList())
+
+//    println(e.stackTraceToString())
     }
     """.trimIndent()
     )

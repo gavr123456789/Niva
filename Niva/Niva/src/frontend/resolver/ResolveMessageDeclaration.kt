@@ -189,6 +189,7 @@ fun Resolver.resolveMessageDeclaration(
 
     }
 
+    // no return type declared, not recursive, single expr
     if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
         unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
         currentLevel--

@@ -1047,7 +1047,28 @@ class ResolverTest {
 
 
 
-
+    @Test
+    fun extend() {
+        val source = """
+            
+        type Person
+        extend Person [
+          on unary = 1 echo
+          on + binary::Int = binary echo
+          on key::Int word::String = key echo
+          on withLocalName: x::Int = x echo
+        ]
+        
+        p = Person new
+        
+        p unary
+        p + 5
+        p key: 1 word: "2"
+        p withLocalName: 1
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 7)
+    }
 
 
 

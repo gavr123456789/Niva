@@ -1,5 +1,7 @@
-Project target: "linux" loadPackages: {"com.squareup.okio:okio:3.6.0"}
+Project target: "linux"
+Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
 
+// 5 to 5 words
 type WordGroup
   words1: MutableMap(Int, String)
   words2: MutableMap(Int, String)
@@ -44,6 +46,7 @@ constructor Game fromFile::String wordsPerTest::Int = [
 ]
 
 type PlayerAnswer num1: Int num2: Int
+
 type GameLoop
 constructor GameLoop print: wordGroup::WordGroup = [
   foreignGroup = wordGroup words1
@@ -71,7 +74,7 @@ constructor GameLoop print: wordGroup::WordGroup = [
   // "nativeColumn is $nativeColumn" echo
   // "foreignColumn is $foreignColumn" echo
 
-  print2Columns = [
+  print2Colums = [
     nativeColumn forEachIndexed: [ i, nativeWord ->
       foreignWord = foreignColumn at: (shuffledIndexes at: i)
       num = i inc
@@ -94,16 +97,13 @@ constructor GameLoop print: wordGroup::WordGroup = [
   "\n game loop" echo
   mut lives = 5
   [(lives > 0) && (nativeColumn count > 0)] whileTrue: [
-    print2Columns do
-
-    // ans = Console readln
-    // splitted = ans split: " "
-    // num1 = splitted at: 0 |> trim toInt
-    // num2 = splitted at: 1 |> trim toInt
+    print2Colums do
     answer = readPlayerAnswer do
+
     num1 = answer num1
     num2 = answer num2
     elementsCount = nativeColumn count
+
     (elementsCount < num1) => [
         "wrong numbers! There is only $elementsCount elements" echo
     ] |=> [
@@ -116,11 +116,15 @@ constructor GameLoop print: wordGroup::WordGroup = [
         indexes removeAt: num1 - 1
         shuffledIndexes removeAt: num2 - 1
 
-        decreaseAllItemsExcept0 = [x::MutableList::Int, deleted::Int -> x map: [ it >= deleted => it - 1 |=> it ] |> toMutableList]
-        shuffledIndexes <- decreaseAllItemsExcept0 x: shuffledIndexes deleted: num1 - 1
-        indexes <- decreaseAllItemsExcept0 x: indexes deleted: num1 - 1
+        decreaseAllItemsAfterDeleted = [x::MutableList::Int, deleted::Int ->
+          x map: [ it >= deleted => it - 1 |=> it ] |> toMutableList
+        ]
+        shuffledIndexes <- decreaseAllItemsAfterDeleted x: shuffledIndexes deleted: num1 - 1
+        indexes <- decreaseAllItemsAfterDeleted x: indexes deleted: num1 - 1
 
-        rightAnswers2 <- getRightAnswersTable indexes: (0..<shuffledIndexes count |> toList) shuffledIndexes: shuffledIndexes
+        rightAnswers2 <- getRightAnswersTable
+          indexes: (0..<shuffledIndexes count |> toList)
+          shuffledIndexes: shuffledIndexes
       ] |=> [
         "Wrong answer!" echo
         lives <- lives dec
@@ -134,5 +138,5 @@ constructor GameLoop print: wordGroup::WordGroup = [
 
 
 game = Game
-  fromFile: "greekColors.txt"
+  fromFile: "greekColors2.txt"
   wordsPerTest: 4
