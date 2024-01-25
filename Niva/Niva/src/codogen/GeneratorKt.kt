@@ -131,7 +131,7 @@ fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilation
     buildString {
         append("package ${mainPkg.packageName}\n")
         val code1 = ktCode.addIndentationForEachString(1)
-        val mainCode = putInMainKotlinCode(code1)
+        val mainCode = putInMainKotlinCode(code1, compilationTarget)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
         append(code3, "\n")

@@ -56,7 +56,7 @@ private fun Resolver.resolveStatement(
                 resolveMessageDeclaration(
                     statement,
                     true,
-                    (currentScope + previousScope).toMutableMap(),
+                    (previousScope).toMutableMap(), // don't send currentScope in body, because actually declarations cant see top level declarated variables
                     addToDb = false
                 )
                 currentLevel--
@@ -796,6 +796,16 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
+val createTypeListOfType = { name: String, internalType: Type.InternalType, listType: Type.UserType ->
+    Type.UserType(
+        name = name,
+        typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = listType.protocols
+    )
+}
+
 
 @Suppress("UNUSED_VARIABLE")
 class Resolver(
@@ -1078,26 +1088,18 @@ class Resolver(
 
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
-        val createTypeListOfType = { name: String, internalType: Type.InternalType ->
-            Type.UserType(
-                name = name,
-                typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
-                fields = mutableListOf(),
-                pkg = "core",
-                protocols = listType.protocols
-            )
-        }
+
 
         // now when we have list type with its protocols, we add split method for String, that returns List::String
-        val listOfString = createTypeListOfType("List", stringType)
+        val listOfString = createTypeListOfType("List", stringType, listType)
 
         listType.protocols
         stringType.protocols["common"]!!.keywordMsgs
             .putAll(listOf(createKeyword(KeywordArg("split", stringType), listOfString)))
 
         // add toList to IntRange
-        val listOfInts = createTypeListOfType("List", intType)
-        val mutListOfInts = createTypeListOfType("MutableList", intType)
+        val listOfInts = createTypeListOfType("List", intType, listType)
+        val mutListOfInts = createTypeListOfType("MutableList", intType, listType)
         val intRangeProto = intRangeType.protocols["common"]!!
         val toListForIntProtocol = createUnary("toList", listOfInts)
         val toMutListForIntProtocol = createUnary("toMutableList", mutListOfInts)
