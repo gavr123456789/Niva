@@ -1071,7 +1071,27 @@ class ResolverTest {
     }
 
 
+    @Test
+    fun resolveInsideExtend() {
+        val source = """
+        type Tape pos: Int
 
+        tape = Tape pos: 5
+        
+        extend Tape [
+            on sas = [
+                list = {1 2 3}
+                [pos >= list count] whileTrue: [
+                    pos <- pos dec
+                    pos echo
+                ]
+           ]
+        ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+    }
 }
 
 

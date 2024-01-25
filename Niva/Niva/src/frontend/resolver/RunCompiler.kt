@@ -49,7 +49,7 @@ fun Resolver.resolve(mainFile: File) {
         resolveDeclarationsOnly(it.second)
     }
 
-    // unresolved methods
+    // unresolved methods that contains unresolved types in args, receiver or return
     unResolvedMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
         resolveDeclarationsOnly(unresolvedDecl.toMutableList())

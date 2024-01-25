@@ -1,49 +1,53 @@
 //type Assert
 //constructor Assert that::Any equals::Any -> Unit = [
 //  that != equals => [
-//
 //    Error throwWithMessage: "Assertion failed: $that != $equals"
 //  ]
 //]
-//
 //Assert that: "sas" equals: "sas"
-//Assert that: "sas" equals: "sus"
-//Project target: "linux" mode: "release"
 
 
-// Brainfuck
-
-
-//"a.b" substringAfter: "." |> echo
-//"a.b" substringBefore: "." |> echo
-//"a.b.c" substringAfterLast: "." |> echo
-//"a.b.c" substringBeforeLast: "." |> echo
+//union Op =
+//| Inc v: Int
+//| Move v: Int
+//| Loop loop: MutableList::Op
+//| Print
 //
-//Int key::Int word::String = 1 echo
-//Int key: x::Int = 1 echo
-
-
-type Person
-extend Person [
-  on unary = 1 echo
-  on + binary::Int = 1 echo
-  on key::Int word::String = 1 echo
-  on withLocalName: x::Int = 1 echo
-]
-
-p = Person new
-
-p unary
-p + 5
-p key: 1 word: "2"
-p withLocalName: 1
-
-//Int foobar =[
-//    "uups" echo
-//    Error throwWithMessage: "hawwo"
+//type Tape tape: MutableList::Int pos: Int
+//constructor Tape default = Tape tape: {1} pos: 0
+//
+//
+//extend Tape [
+//  on get = tape at: pos
+//  on inc: x::Int = tape at: pos put: (tape at: pos) + x
+//  on move: x::Int = [
+//    pos <- pos + x
+//    [pos >= tape count] whileTrue: [
+//      tape <- tape copyOf: tape count * 2 // need to add IntArray for this
+//    ]
+//  ]
 //]
-//Int bar = this foobar
-//Int foo = this bar
-//
-//1 foo
+
+type Tape pos: Int
+
+tape = Tape pos: 5
+
+extend Tape [
+    on sas = [
+        list = {1 2 3}
+        [pos >= list count] whileTrue: [
+            pos <- pos dec
+            pos echo
+        ]
+   ]
+]
+//Tape sas = [
+//    list = {1 2 3}
+//    [pos >= list count] whileTrue: [
+//        pos <- pos dec
+//        pos echo
+//    ]
+//]
+tape sas
+
 

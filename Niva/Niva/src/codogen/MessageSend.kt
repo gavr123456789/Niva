@@ -222,7 +222,7 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
     val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock)
     if (isNotSingleLambdaArg) append("(")
     val receiverType = receiver.type
-        ?: receiver.token.compileError("Compiler error: Type of receiver: $WHITE$receiver$RESET is unresolved")
+        ?: receiver.token.compileError("Compiler error: type of receiver: $WHITE$receiver$RESET is unresolved")
 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->
