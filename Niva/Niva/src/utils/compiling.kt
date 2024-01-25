@@ -348,13 +348,20 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 }
 
 
-fun putInMainKotlinCode(code: String) = buildString {
-    append("fun main() {\n")
+fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget) = buildString {
+    append("fun main(args: Array<String>) {\n")
     append("try {\n")
 
     append(code, "\n")
-    append(
-        """
+
+    val catchExpressions = if (compilationTarget == CompilationTarget.linux) """
+        } catch (e: Exception) {
+        println("----------")
+        println(e.message)
+        println("----------")
+        println(e.stackTraceToString())
+    }
+    """ else """
         } catch (e: Exception) {
 
         println("----------")
@@ -415,6 +422,9 @@ fun putInMainKotlinCode(code: String) = buildString {
 //    println(e.stackTraceToString())
     }
     """.trimIndent()
+
+    append(
+        catchExpressions
     )
 
 

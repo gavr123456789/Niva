@@ -3,6 +3,7 @@ package frontend.resolver
 import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
+import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.Statement
 import frontend.util.createFakeToken
 import main.*
@@ -89,7 +90,13 @@ fun Resolver.resolve(mainFile: File) {
     // here we are resolving all statements(in bodies), not only declarations
 
     currentPackageName = mainFile.nameWithoutExtension
-    resolve(mainAST, mutableMapOf())
+
+    // main args
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+    val listType = this.typeDB.userTypes["List"]!!.first()
+    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
+    val mainArgs = "args" to listOfString
+    resolve(mainAST, mutableMapOf(mainArgs))
 
     otherASTs.forEach {
         currentPackageName = it.first
