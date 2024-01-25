@@ -425,7 +425,7 @@ fun Parser.messageDeclaration(
     return result
 }
 
-fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclaration {
+fun Parser.extendDeclaration(pragmasForExtend: MutableList<CodeAttribute>): ExtendDeclaration {
     // extend Person [
     match("extend")
 
@@ -437,6 +437,8 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
 
     val list = mutableListOf<MessageDeclaration>()
     do {
+        val pragmas = if (check("@")) codeAttributes() else mutableListOf()
+        pragmas.addAll(pragmasForExtend)
         matchAssert(TokenType.On)
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")

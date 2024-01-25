@@ -51,10 +51,7 @@ private fun Resolver.resolveStatement(
 
     when (statement) {
         is Declaration -> {
-            if (!allDeclarationResolvedAlready)
-                resolveDeclarations(statement, previousScope, true)
-            else if (statement is MessageDeclaration) {
-                // first time all declarations resolved without bodies, now we need to resolve them
+            val resolveMsgDeclarationOnlyBody = { statement: MessageDeclaration ->
                 currentLevel++
                 resolveMessageDeclaration(
                     statement,
@@ -63,6 +60,17 @@ private fun Resolver.resolveStatement(
                     addToDb = false
                 )
                 currentLevel--
+            }
+
+            if (!allDeclarationResolvedAlready)
+                resolveDeclarations(statement, previousScope, true)
+            else if (statement is MessageDeclaration) {
+                // first time all declarations resolved without bodies, now we need to resolve them
+                resolveMsgDeclarationOnlyBody(statement)
+            } else if (statement is ExtendDeclaration) {
+                statement.messageDeclarations.forEach {
+                    resolveMsgDeclarationOnlyBody(it)
+                }
             }
         }
 
@@ -369,7 +377,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Bool
 
     // Ins sas -> Int? = ^42
     if (isReturn) {
-        if ( (type1 is Type.NullableType && type2 !is Type.NullableType)) {
+        if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
             val win = compare2Types(type1.realType, type2, token)
             if (win) return true
         }
@@ -886,8 +894,6 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
-                    intRangeType = intRangeType,
-                    anyType = anyType
                 ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) }
             )
 
@@ -899,8 +905,6 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
-                    intRangeType = intRangeType,
-                    anyType = anyType
                 ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) }
             )
 
@@ -1200,12 +1204,14 @@ class Resolver(
         )
         errorType.isBinding = true
 
-        addCustomType(errorType, createExceptionProtocols(
-            errorType,
-            unitType,
-            nothingType,
-            stringType
-        ))
+        addCustomType(
+            errorType, createExceptionProtocols(
+                errorType,
+                unitType,
+                nothingType,
+                stringType
+            )
+        )
 
         // StringBuilder
         val stringBuilderType = Type.UserType(
@@ -1216,11 +1222,13 @@ class Resolver(
         )
         stringBuilderType.isBinding = true
 
-        addCustomType(stringBuilderType, createStringBuilderProtocols(
-            stringBuilderType,
-            anyType,
-            stringType
-        ))
+        addCustomType(
+            stringBuilderType, createStringBuilderProtocols(
+                stringBuilderType,
+                anyType,
+                stringType
+            )
+        )
 
 
 

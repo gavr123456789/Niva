@@ -171,7 +171,7 @@ fun Resolver.resolveCodeBlock(
     }
     val type = Type.Lambda(
         args = args,
-        returnType = returnType, // Тут у return Type before должен быть G
+        returnType = returnType,
         pkg = currentPackageName
     )
 

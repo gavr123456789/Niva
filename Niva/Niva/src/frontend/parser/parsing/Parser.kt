@@ -332,7 +332,7 @@ class CodeAttribute(
 )
 
 
-private fun Parser.codeAttributes(): MutableList<CodeAttribute> {
+fun Parser.codeAttributes(): MutableList<CodeAttribute> {
     val codeAttributes: MutableList<CodeAttribute> = mutableListOf()
     step()
     do {
