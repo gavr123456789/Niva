@@ -41,13 +41,8 @@ extend Tape [
         ]
    ]
 ]
-//Tape sas = [
-//    list = {1 2 3}
-//    [pos >= list count] whileTrue: [
-//        pos <- pos dec
-//        pos echo
-//    ]
-//]
 tape sas
+
+args echo
 
 

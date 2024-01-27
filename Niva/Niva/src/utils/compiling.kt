@@ -63,17 +63,17 @@ class Compiler(
     private val mainNivaFileName: String,
     private val resolver: Resolver
 ) {
-    private fun cmd(compileOnlyNoRun: Boolean = false) = (if (!compileOnlyNoRun)
+    private fun cmd(dist: Boolean = false, build: Boolean = false) = (if (!dist)
         targetToRunCommand(compilationTarget)
     else
         when (compilationTarget) {
-            CompilationTarget.jvm -> "distZip"
+            CompilationTarget.jvm -> if (build) "fatJar" else "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
         }) + " -Pkotlin.experimental.tryK2=true"
 
 
-    fun run(compileOnlyNoRun: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
+    fun run(dist: Boolean = false, buildFatJar: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
         // remove repl log file since it will be recreated
         val removeReplFile = {
             if (inlineReplPath.exists()) {
@@ -91,7 +91,7 @@ class Compiler(
             warning("Release mode is useless with jvm target")
         }
 
-        val cmd = cmd(compileOnlyNoRun)
+        val cmd = cmd(dist, buildFatJar)
         when (getOSType()) {
             CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q --console=plain $cmd".runCommand(file, true)
             CurrentOS.LINUX -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
@@ -106,13 +106,21 @@ class Compiler(
                 warning("inline repl currently supported only in jvm target")
             }
         }
-        if (compileOnlyNoRun) {
+        if (dist || buildFatJar) {
             when (compilationTarget) {
                 CompilationTarget.jvm -> {
-                    val zipName = File("./${mainNivaFileName}.zip")
-                    val pathToNativeExe =
-                        pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
-                    File(pathToNativeExe).copyTo(zipName, true)
+                    if (buildFatJar) {
+                        val jarFile = File("./${mainNivaFileName}.jar")
+                        val whereToCopy =
+                            pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
+                        File(whereToCopy).copyTo(jarFile, true)
+                    } else {
+                        val zipName = File("./${mainNivaFileName}.zip")
+                        val pathToNativeExe =
+                            pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                        File(pathToNativeExe).copyTo(zipName, true)
+                    }
+
                 }
 
                 CompilationTarget.linux -> {
@@ -191,7 +199,8 @@ fun compileProjFromFile(
         pathToAmper,
         defaultProject,
         resolver.topLevelStatements,
-        resolver.compilationTarget
+        resolver.compilationTarget,
+        mainFileName = mainFile.name
     )
     // printing all >?
     resolver.printInfoFromCode()
