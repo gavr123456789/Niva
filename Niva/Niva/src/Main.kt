@@ -122,6 +122,7 @@ Kotlin\Java interop:
 
 enum class MainArgument {
     BUIlD,
+    DISRT,
     RUN,
     SINGLE_FILE_PATH,
     INFO_ONLY, // only means no kotlin compilation
@@ -170,7 +171,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
         MainArgument.RUN,
         MainArgument.INFO_ONLY,
         MainArgument.USER_DEFINED_INFO_ONLY,
-        MainArgument.BUIlD -> getPathToMain()
+        MainArgument.BUIlD, MainArgument.DISRT -> getPathToMain()
     }
 
     init {
@@ -193,6 +194,7 @@ class ArgsManager(val args: Array<String>) {
             when (val arg = args[0]) {
                 "run" -> MainArgument.RUN
                 "build" -> MainArgument.BUIlD
+                "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 else -> {
@@ -331,7 +333,7 @@ fun test() {
 
 fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Unit) {
 //    val q = StringBuilder()
-    val toCallSite:(String) -> Unit = {default: String -> this.append(default)}
+    val toCallSite: (String) -> Unit = { default: String -> this.append(default) }
     this.x(toCallSite)
 }
 
@@ -374,12 +376,13 @@ fun main(args: Array<String>) {
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
 
     when (mainArg) {
-        MainArgument.BUIlD -> compiler.run(compileOnlyNoRun = true)
+        MainArgument.BUIlD -> compiler.run(dist = true, buildFatJar = true)
+        MainArgument.DISRT -> compiler.run(dist = true)
         MainArgument.RUN ->
             compiler.run()
 
         MainArgument.SINGLE_FILE_PATH -> {
-            compiler.run(compileOnlyNoRun = am.compileOnly, singleFile = true)
+            compiler.run(dist = am.compileOnly, singleFile = true)
         }
 
         MainArgument.INFO_ONLY ->
@@ -389,7 +392,7 @@ fun main(args: Array<String>) {
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
         MainArgument.RUN_FROM_IDE -> {
-            compiler.run(compileOnlyNoRun = false, singleFile = true)
+            compiler.run(dist = false, singleFile = true)
         }
     }
 

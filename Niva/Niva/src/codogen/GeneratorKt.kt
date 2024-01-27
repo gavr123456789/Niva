@@ -67,6 +67,35 @@ dependencies:
 """
     }
 
+    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """kotlin {
+    jvm {
+        compilations {
+            val main = getByName("main")
+            tasks {
+                register<Jar>("fatJar") {
+                    group = "application"
+                    manifest {
+                        attributes["Main-Class"] = "mainNiva.MainKt"
+                    }
+                    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+                    archiveBaseName.set("$jarName")
+                    archiveVersion.set("")
+
+                    from(main.output.classesDirs)
+                    dependsOn(configurations.runtimeClasspath)
+                    from({
+                        configurations.runtimeClasspath.get()
+                            .filter { it.name.endsWith("jar") }
+                            .map { zipTree(it) }
+                    })
+                    with(jar.get() as CopySpec)
+                }
+            }
+        }
+    }
+}
+"""
+
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
         "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
 }
@@ -76,14 +105,26 @@ fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
 }
 
 
-fun GeneratorKt.regenerateGradleForAmper(pathToGradle: String, runCommandName: String) {
-    val newGradle = GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName)
+fun GeneratorKt.regenerateGradleForAmper(
+    pathToGradle: String,
+    runCommandName: String,
+    compilationTarget: CompilationTarget,
+    jarName: String
+) {
+    val newGradle = buildString {
+        if (compilationTarget == CompilationTarget.jvm) {
+            append(GRADLE_FAT_JAR_TEMPLATE(jarName))
+        }
+        append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
+    }
+
+
     val gradleFile = File(pathToGradle)
     gradleFile.writeText(newGradle)
 }
 
 
-fun GeneratorKt.regenerateGradle(pathToGradle: String) {
+fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
     val implementations = dependencies.joinToString("\n") {
         "implementation($it)"
     }
@@ -166,7 +207,8 @@ fun GeneratorKt.generateKtProject(
     pathToAmper: String,
     mainProject: Project,
     topLevelStatements: List<Statement>,
-    compilationTarget: CompilationTarget
+    compilationTarget: CompilationTarget,
+    mainFileName: String // using for binaryName
 ) {
     val notBindPackages = mutableSetOf<Package>()
     val bindPackagesWithNeededImport = mutableSetOf<String>()
@@ -215,7 +257,8 @@ fun GeneratorKt.generateKtProject(
     regenerateAmper(pathToAmper, compilationTarget)
 
     // 4 regenerate gradle
-    regenerateGradleForAmper(pathToGradle, runCommandName = targetToRunCommand(compilationTarget))
+    regenerateGradleForAmper(pathToGradle, runCommandName = targetToRunCommand(compilationTarget), compilationTarget,
+        mainFileName)
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
