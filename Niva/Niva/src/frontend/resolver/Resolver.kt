@@ -5,12 +5,15 @@ package frontend.resolver
 import codogen.GeneratorKt
 import frontend.meta.Token
 import frontend.meta.compileError
+import frontend.parser.parsing.CodeAttribute
 import frontend.parser.types.ast.*
+import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.createFakeToken
 import frontend.util.div
 import main.*
 import main.frontend.typer.*
 import java.io.File
+import java.util.Stack
 
 private fun Resolver.addPrintingInfoAboutType(type: Type) {
     infoTypesToPrint.add(type)
@@ -24,7 +27,7 @@ private fun Resolver.resolveStatement(
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         when (statement2.receiver.token.lexeme) {
-            "Project", "Bind", "Compiler" -> {}
+            "Project", "Bind"-> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -83,9 +86,28 @@ private fun Resolver.resolveStatement(
         }
 
         is MessageSend -> {
+            stack.push(statement)
+
+            if (statement.receiver.token.lexeme == InternalTypes.Compiler.name) {
+//                statement.needCtArgs = true
+                val msg = statement.messages[0]
+                if (msg.selectorName == "getName"){
+                    val intArg = (msg as KeywordMsg).args[0].keywordArg
+                    val codeAtr = CodeAttribute("arg", intArg as Primary)
+
+                    resolvingMessageDeclaration?.apply {
+                        this.needCtArgs = true
+                        this.pragmas.add(codeAtr)
+                    }
+                    statement.pragmas.add(codeAtr)
+                }
+
+            }
+
             resolveTypeForMessageSend(statement)
             if (currentLevel == 0)
                 topLevelStatements.add(statement)
+            stack.pop()
         }
 
         is StaticBuilder -> {
@@ -805,6 +827,18 @@ val createTypeListOfType = { name: String, internalType: Type.InternalType, list
         protocols = listType.protocols
     )
 }
+val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
+    Type.UserType(
+        name = name,
+        typeArgumentList = listOf(
+            key.copy().also { it.beforeGenericResolvedName = "T" },
+            value.copy().also { it.beforeGenericResolvedName = "G" }
+        ),
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = mapType.protocols
+    )
+}
 
 
 @Suppress("UNUSED_VARIABLE")
@@ -848,6 +882,8 @@ class Resolver(
     var resolvingMessageDeclaration: MessageDeclaration? = null,
 
     val infoTypesToPrint: MutableSet<Type> = mutableSetOf(),
+
+    val stack: Stack<MessageSend> = Stack()
 ) {
     companion object {
 
@@ -882,6 +918,9 @@ class Resolver(
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
             val nullType = defaultTypes[InternalTypes.Null]!!
+            val compiler = defaultTypes[InternalTypes.Compiler]!!
+
+
 
             intType.protocols.putAll(
                 createIntProtocols(
@@ -959,7 +998,8 @@ class Resolver(
                 createAnyProtocols(
                     unitType = unitType,
                     any = anyType,
-                    boolType = boolType
+                    boolType = boolType,
+                    stringType = stringType
                 )
             )
 
@@ -991,6 +1031,10 @@ class Resolver(
         val nothingType = defaultTypes[InternalTypes.Nothing]!!
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
+        val compiler = defaultTypes[InternalTypes.Compiler]!!
+
+
+
 
         /// Default packages
         val commonProject = Project("common")
@@ -1030,7 +1074,7 @@ class Resolver(
             pkg = "core",
         )
 
-        fun addCustomType(type: Type.UserType, protocols: MutableMap<String, Protocol>) {
+        fun addCustomTypeToDb(type: Type.UserType, protocols: MutableMap<String, Protocol>) {
             type.protocols.putAll(
                 protocols
             )
@@ -1053,7 +1097,7 @@ class Resolver(
             pkg = "core",
         )
 
-        addCustomType(
+        addCustomTypeToDb(
             sequenceType, createListProtocols(
                 intType = intType,
                 stringType = stringType,
@@ -1071,7 +1115,7 @@ class Resolver(
 
 
         // List
-        addCustomType(
+        addCustomTypeToDb(
             listType,
             createListProtocols(
                 intType = intType,
@@ -1118,7 +1162,7 @@ class Resolver(
             pkg = "core",
         )
 
-        addCustomType(
+        addCustomTypeToDb(
             mutableListType, createListProtocols(
                 intType = intType,
                 stringType = stringType,
@@ -1148,7 +1192,7 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        addCustomType(
+        addCustomTypeToDb(
             mutableSetType, createSetProtocols(
                 intType = intType,
                 unitType = unitType,
@@ -1177,7 +1221,7 @@ class Resolver(
             pkg = "core",
         )
 
-        addCustomType(
+        addCustomTypeToDb(
             mapType, createMapProtocols(
                 intType = intType,
                 unitType = unitType,
@@ -1206,7 +1250,7 @@ class Resolver(
         )
         errorType.isBinding = true
 
-        addCustomType(
+        addCustomTypeToDb(
             errorType, createExceptionProtocols(
                 errorType,
                 unitType,
@@ -1224,13 +1268,43 @@ class Resolver(
         )
         stringBuilderType.isBinding = true
 
-        addCustomType(
+        addCustomTypeToDb(
             stringBuilderType, createStringBuilderProtocols(
                 stringBuilderType,
                 anyType,
                 stringType
             )
         )
+
+
+        // TypeType
+        val typeType = Type.UserType(
+            name = "TypeType",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapType)
+
+        // add fields
+        typeType.fields = mutableListOf(
+            TypeField("name", stringType),
+            TypeField("fields", fieldsMap),)
+
+        addCustomTypeToDb(
+            typeType,
+            mutableMapOf()
+        )
+
+        // Compiler
+        compiler.protocols.putAll(
+            createCompilerProtocols(
+                intType = intType,
+                stringType = stringType,
+                typeType = typeType
+            )
+        )
+
 
 
 
@@ -1246,3 +1320,8 @@ private fun Type.InternalType.copy(): Type.InternalType {
         protocols
     )
 }
+
+//class TypeType(
+//    val name: String,
+//    val fields: MutableMap<String, TypeType>
+//)

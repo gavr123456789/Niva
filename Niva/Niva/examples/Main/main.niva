@@ -6,43 +6,44 @@
 //]
 //Assert that: "sas" equals: "sas"
 
+Any echoD = [
+//    receiverName = Compiler getName: 0
+//    value = this toString
+//    "$receiverName is $value" echo
+    // Type
 
-//union Op =
-//| Inc v: Int
-//| Move v: Int
-//| Loop loop: MutableList::Op
-//| Print
-//
-//type Tape tape: MutableList::Int pos: Int
-//constructor Tape default = Tape tape: {1} pos: 0
-//
-//
-//extend Tape [
-//  on get = tape at: pos
-//  on inc: x::Int = tape at: pos put: (tape at: pos) + x
-//  on move: x::Int = [
-//    pos <- pos + x
-//    [pos >= tape count] whileTrue: [
-//      tape <- tape copyOf: tape count * 2 // need to add IntArray for this
+//    typeType = Compiler getType: 0
+//    fields = typeType fields
+//    a_field = fields get: "a"
+//    a_field unpack: [
+//        it echo
 //    ]
-//  ]
-//]
 
-type Tape pos: Int
-
-tape = Tape pos: 5
-
-extend Tape [
-    on sas = [
-        list = {1 2 3}
-        [pos >= list count] whileTrue: [
-            pos <- pos dec
-            pos echo
-        ]
-   ]
 ]
-tape sas
+// syntax for destructing
+//    a,b,c = {1 2 3}
 
-args echo
 
+Error throwWithMessage: "sas"
 
+//Bind package: "java.lang" content: [
+//  type ProcessBuilder command: MutableList::String
+//
+//  @emit: "ProcessBuilder($1).directory(java.io.File($2))"
+//  constructor ProcessBuilder command::MutableList::String dir::String -> ProcessBuilder
+//  // enum Redirect = INHERIT | PIPE | READ | WRITE
+//
+//  type Process
+//
+//  ProcessBuilder start -> Process
+//
+//  @emit: "$0.redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT)"
+//  ProcessBuilder redirectOutput -> ProcessBuilder
+//
+//  Process waitFor -> Int
+//
+//  @emit: """System.getProperty("user.dir")"""
+//  constructor Process currentDir -> String
+//]
+//
+//(ProcessBuilder command: {"pwd"} dir: "../.." )|> redirectOutput

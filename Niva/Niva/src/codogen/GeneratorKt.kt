@@ -124,6 +124,7 @@ fun GeneratorKt.regenerateGradleForAmper(
 }
 
 
+@Suppress("unused")
 fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
     val implementations = dependencies.joinToString("\n") {
         "implementation($it)"
@@ -168,11 +169,16 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
     return baseDir
 }
 
-fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilationTarget: CompilationTarget) =
+fun GeneratorKt.addStdAndPutInMain(
+    ktCode: String,
+    mainPkg: Package,
+    compilationTarget: CompilationTarget,
+    pathToInfroProject: String
+) =
     buildString {
         append("package ${mainPkg.packageName}\n")
         val code1 = ktCode.addIndentationForEachString(1)
-        val mainCode = putInMainKotlinCode(code1, compilationTarget)
+        val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
         append(code3, "\n")
@@ -208,7 +214,8 @@ fun GeneratorKt.generateKtProject(
     mainProject: Project,
     topLevelStatements: List<Statement>,
     compilationTarget: CompilationTarget,
-    mainFileName: String // using for binaryName
+    mainFileName: String, // using for binaryName
+    pathToInfroProject: String
 ) {
     val notBindPackages = mutableSetOf<Package>()
     val bindPackagesWithNeededImport = mutableSetOf<String>()
@@ -246,7 +253,7 @@ fun GeneratorKt.generateKtProject(
     val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
 
-    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget)
+    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject)
     createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code

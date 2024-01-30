@@ -15,7 +15,10 @@ sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(type
     class StringExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.String, literal), literal) {
         override fun toString(): String {
-            return this.token.lexeme.slice(1 until token.lexeme.count() - 1)
+            val lex = token.lexeme
+            val removeN = if (lex.startsWith("\"\"\"")) 3 else 1
+
+            return this.token.lexeme.slice(removeN until token.lexeme.count() - removeN)
         }
     }
 

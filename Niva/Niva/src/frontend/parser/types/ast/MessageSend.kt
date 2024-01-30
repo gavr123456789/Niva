@@ -19,7 +19,7 @@ sealed class MessageSend(
     val receiver: Receiver,
     open val messages: List<Message>,
     type: Type?,
-    token: Token
+    token: Token,
 ) : Receiver(type, token) {
     override fun toString(): String {
         val receiver = receiver.toString()

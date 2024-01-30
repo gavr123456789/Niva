@@ -74,9 +74,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
         // special messages like Project package: ""
         if (it is MessageSendKeyword) {
             when (it.receiver.str) {
-                "Project" ->
-                    resolveProjectKeyMessage(it)
-
+                "Project" -> resolveProjectKeyMessage(it)
                 "Bind" -> {
                     val savedPackageName = currentPackageName
 

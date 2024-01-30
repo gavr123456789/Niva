@@ -19,6 +19,7 @@ sealed class MessageDeclaration(
         var isRecursive: Boolean = false,
 
         val typeArgs: MutableList<String> = mutableListOf(),
+        var needCtArgs: Boolean = false // if true send names of args as invisible params
         ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"

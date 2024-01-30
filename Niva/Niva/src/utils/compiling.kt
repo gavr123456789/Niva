@@ -200,7 +200,8 @@ fun compileProjFromFile(
         defaultProject,
         resolver.topLevelStatements,
         resolver.compilationTarget,
-        mainFileName = mainFile.name
+        mainFileName = mainFile.name,
+        pm.pathToInfroProject
     )
     // printing all >?
     resolver.printInfoFromCode()
@@ -251,6 +252,13 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         fun Error.Companion.throwWithMessage(message: String): Nothing {
             throw kotlin.Exception(message)
         }
+        
+        // for ct reflection
+        class TypeType(
+            val name: String,
+            val fields: MutableMap<String, TypeType> = mutableMapOf(),
+            val genericParams: MutableList<TypeType> = mutableListOf()
+        )
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)
@@ -357,7 +365,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 }
 
 
-fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget) = buildString {
+fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, pathToInfroProject: String) = buildString {
     append("fun main(args: Array<String>) {\n")
     append("try {\n")
 
@@ -377,6 +385,9 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget) = bu
         println("\u001B[31m" + e.message + "\u001B[0m")
         println("----------")
         val q = e.stackTrace
+        
+        val thisProjectPath = "$pathToInfroProject/src/"
+        
         fun replaceLinesInStackTrace(x: List<StackTraceElement>) {
 
             class FileAndLine(val file: String, val line: Int)
@@ -385,7 +396,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget) = bu
                 else {
                     if (kotlinLine < 0) throw Exception("Cant find line")
 
-                    val thisProjectPath = "/home/gavr/.niva/infroProject/src/"
+                    
                     val thisFileContent = java.io.File(thisProjectPath + file).readText()
                     val lines = thisFileContent.split("\n")
 
@@ -400,11 +411,16 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget) = bu
                     FileAndLine(file, line)
                 }
             }
+            
+            val checkExistAsNivaFile = { file: String ->
+                java.io.File(thisProjectPath + file).exists()
+            }
 
-            x.forEach {
+            val stackTracesWithFiles = x.filter { it.fileName != null }
+            stackTracesWithFiles.forEach {
                 val pathToFile =
                     if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName
-                val nivaLine = if (it.moduleName == null)
+                val nivaLine = if (checkExistAsNivaFile(it.fileName))
                     getNearestNivaLine(it.lineNumber - 1, pathToFile)
                 else FileAndLine(
                     it.fileName,

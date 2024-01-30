@@ -25,19 +25,7 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     }
 }
 
-fun Type.resetGenericParams() {
-    if (this !is Type.UserLike) return
 
-    val genericLetters = listOf("T", "G")
-
-    if (this.typeArgumentList.count() > 2) {
-        throw Exception("Generics with more than 2 params are not supported yet")
-    }
-    this.typeArgumentList = List(typeArgumentList.size) { i ->
-        Type.UnknownGenericType(genericLetters[i])
-    }
-
-}
 
 fun getTableOfLettersFromType(type: Type.UserLike): MutableMap<String, Type> {
     if (type.typeArgumentList.count() > 2) {
@@ -258,6 +246,7 @@ fun Resolver.resolveMessage(
     currentScope: MutableMap<String, Type>
 ) {
 
+
     when (statement) {
         is KeywordMsg -> {
             // resolve just non-generic types of args
@@ -288,7 +277,7 @@ fun Resolver.resolveMessage(
                 val receiverText = receiver.toString()
                 val keywordReceiverType = receiverType
 
-                if (receiverText == "Project" || receiverText == "Bind" || receiverText == "Compiler") {
+                if (receiverText == "Project" || receiverText == "Bind" ) {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
                 val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
@@ -298,7 +287,7 @@ fun Resolver.resolveMessage(
                         statement.token.compileError("You can't instantiate Union root: $YEL${keywordReceiverType.name}")
                     }
                     // check if custom
-                    if (keywordReceiverType is Type.UserLike) {
+                    if (keywordReceiverType is Type.UserLike || keywordReceiverType is Type.InternalType) {
                         keywordReceiverType.protocols.values.forEach {
                             if (it.staticMsgs.containsKey(selectorName)) {
                                 foundCustomConstructorDb = it.staticMsgs[selectorName]
@@ -307,6 +296,7 @@ fun Resolver.resolveMessage(
                             }
                         }
                     }
+
                     statement.kind = KeywordLikeType.Constructor
                     return KeywordLikeType.Constructor
                 }
@@ -329,7 +319,7 @@ fun Resolver.resolveMessage(
                 return KeywordLikeType.Keyword
             }
 
-            val kind = resolveKindOfKeyword(statement, receiverType)
+            val kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
 
             val letterToRealType = mutableMapOf<String, Type>()
 
@@ -349,7 +339,14 @@ fun Resolver.resolveMessage(
                         statement.token,
                     ).first
                 }
+                KeywordLikeType.Constructor -> {
+                    // there is no fields in internal types
+                    if (receiverType is Type.InternalType) {
+                        val keys = statement.args.joinToString(", ") { it.name }
+                        statement.token.compileError("Type $CYAN$receiverType$RESET is internal and doesn't have fields or custom constructor: $WHITE$keys$RESET")
+                    } else null
 
+                }
                 else -> null
             }
 

@@ -5,6 +5,7 @@ package codogen
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
+import main.CYAN
 import main.RESET
 import main.WHITE
 import main.YEL
@@ -21,7 +22,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     if (GlobalDebugNeeded.needStackTrace) {
         val tok = this.token
-        b.append("\n//@ ",tok.file.name,":::",tok.line,"\n")
+        b.append("\n//@ ", tok.file.name, ":::", tok.line, "\n")
     }
 
 
@@ -29,23 +30,31 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")
     }
 
+
+
     b.append("(".repeat(messages.count { it.isPiped }))
+
+    var newInvisibleArgs: MutableList<String>? = null
     this.messages.forEachIndexed { i, it ->
+        var isThereEmitPragma = false
+        // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
             replaceNameFromPragma(it)
             emitFromPragma(it)
             noPkgEmit(it)
+            newInvisibleArgs = ctNames(it)
+            isThereEmitPragma = it.pragmas.find { it.name == Pragmas.EMIT.v } != null
         }
 
 
 
-        if (it.pragmas.isNotEmpty() && it.pragmas.find { it.name == Pragmas.EMIT.v } != null) {
+        if (isThereEmitPragma) {
             b.append(it.selectorName)
         } else {
             when (it) {
-                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it, withNullChecks))
-                is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it))
-                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it, withNullChecks))
+                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it, withNullChecks, newInvisibleArgs))
+                is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it, newInvisibleArgs))
+                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it, withNullChecks, newInvisibleArgs))
             }
         }
         if (it.isPiped)
@@ -66,11 +75,55 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 enum class Pragmas(val v: String) {
     RENAME("rename"),
     EMIT("emit"),
-    NO_PKG_EMIT("noPkgEmit")
+    NO_PKG_EMIT("noPkgEmit"),
+    CT_NAME("arg")
 }
 
 fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
 //    TODO()
+}
+
+
+fun ctNames(msg: Message): MutableList<String>? {
+
+    val ctPragmas = msg.pragmas.filter { it.name == Pragmas.CT_NAME.v }
+    if (ctPragmas.isEmpty()) return null
+
+    val listOfArgs: MutableList<String> = mutableListOf()
+    ctPragmas.forEach {
+        val value = it.value as? LiteralExpression.IntExpr
+        if (value != null) {
+            val num = value.token.lexeme.toInt()
+
+            val getStrFromArg = { expr: Expression ->
+                if (expr is IdentifierExpr) {
+                    expr.token.lexeme
+                } else {
+                    //expr.str.removeDoubleQuotes()
+                    ""
+                }
+            }
+            if (num > 0) {
+                // add all args, 1 for binary, all for kw
+                val kwMsg = msg as? KeywordMsg
+                    ?: msg.token.compileError("Compiler getName: with more than 0 arg can be used only with binary and keyword messages")
+                val argN = try {
+                    kwMsg.args[num - 1]
+                } catch (e: Exception) {
+                    msg.token.compileError("Compiler get: was used with $num, but $msg has only ${msg.args.count()} args")
+                }
+
+
+                listOfArgs.add(buildString { append('"', getStrFromArg(argN.keywordArg), '"') })
+            } else {
+                listOfArgs.add(buildString { append('"', getStrFromArg(msg.receiver), '"') })
+            }
+
+        }
+    }
+    return listOfArgs
+
+
 }
 
 fun replaceNameFromPragma(msg: Message) {
@@ -87,6 +140,7 @@ fun replaceNameFromPragma(msg: Message) {
     }
 }
 
+// replace $N to arguments and replace the selectorName of the message
 fun emitFromPragma(msg: Message) {
     val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value
 
@@ -108,33 +162,56 @@ fun emitFromPragma(msg: Message) {
 
     when (value) {
         is LiteralExpression.StringExpr -> {
+            val map = mutableMapOf<String, String>()
             if (msg is KeywordMsg) {
-
-                val str = value.toString()
-                val map = mutableMapOf<String, String>()
-                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.generateExpression() }
-                map["0"] = msg.receiver.generateExpression()
-                val q = replacePatternsWithValues(str, map)
-                msg.selectorName = q
-            } else {
-                val str = value.toString()
-                val qwe =
-                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
-                val map = mutableMapOf("0" to qwe)
-                val q = replacePatternsWithValues(str, map)
-
-                msg.selectorName = q
-
+                msg.args.forEachIndexed { i, it ->
+                    map[(i + 1).toString()] = it.keywordArg.generateExpression()
+                }
             }
+            val receiverCode =
+                if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
+
+            map["0"] = receiverCode
+            val replaced = replacePatternsWithValues(value.toString(), map)
+            msg.selectorName = replaced
+
+//            if (msg is KeywordMsg) {
+//
+//                val str = value.toString()
+//                val map = mutableMapOf<String, String>()
+//                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.generateExpression() }
+//                map["0"] =
+//                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
+//                val q = replacePatternsWithValues(str, map)
+//                msg.selectorName = q
+//            } else {
+//                val str = value.toString()
+//                val qwe =
+//                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
+//                val map = mutableMapOf("0" to qwe)
+//                val q = replacePatternsWithValues(str, map)
+//
+//                msg.selectorName = q
+//
+//            }
         }
 
-        else -> {}
+        null -> {}
+
+        else ->
+            msg.token.compileError("String literal expected for emit pragma")
     }
 
 }
 
 
-fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, withNullChecks: Boolean = false) = buildString {
+fun generateSingleKeyword(
+    i: Int,
+    receiver: Receiver,
+    keywordMsg: KeywordMsg,
+    withNullChecks: Boolean = false,
+    invisibleArgs: List<String>? = null
+) = buildString {
 
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
@@ -156,8 +233,8 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
 
         if (!receiverIsDot && kwReceiver.type?.pkg != "core" &&
             isConstructor
-            && hasNoDotNames)
-        {
+            && hasNoDotNames
+        ) {
             val type = kwReceiver.type
             if (type != null) {
                 append(type.pkg)
@@ -174,6 +251,27 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
     }
     // end of receiver
 
+    // if Compiler
+    if (receiver.token.lexeme == "Compiler") {
+        val firstArg = keywordMsg.args[0]
+        if (firstArg.name == "getName") {
+            val getArg = {
+                if (firstArg.keywordArg !is LiteralExpression.IntExpr) {
+                    firstArg.keywordArg.token.compileError("Int argument expected for `getName`")
+                }
+
+                firstArg.keywordArg.token.lexeme.toInt()
+            }
+            val arg = getArg()
+            append("(__arg$arg)")
+            return@buildString
+        } else if (firstArg.name == "getType") {
+            TODO()
+        } else throw Exception("unexpected Compiler arg: $CYAN${firstArg.name}")
+    }
+    // end of Compiler
+
+    // args
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if ((i == 0) && !receiverIsDot) {
@@ -236,6 +334,10 @@ fun generateSingleKeyword(i: Int, receiver: Receiver, keywordMsg: KeywordMsg, wi
             append(", ")
 
     }
+    if (invisibleArgs != null) {
+        append(", ")
+        append(invisibleArgs.joinToString(", "))
+    }
 
     if (isNotSingleLambdaArg) append(")")
 
@@ -246,7 +348,13 @@ val dotAppend = { b: StringBuilder, withNullChecks: Boolean ->
     if (!withNullChecks) b.append(".") else b.append("?.")
 }
 
-fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg, withNullChecks: Boolean = false) = buildString {
+fun generateSingleUnary(
+    i: Int,
+    receiver: Receiver,
+    it: UnaryMsg,
+    withNullChecks: Boolean = false,
+    invisibleArgs: List<String>? = null
+) = buildString {
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
         append(receiverCode)
@@ -258,7 +366,14 @@ fun generateSingleUnary(i: Int, receiver: Receiver, it: UnaryMsg, withNullChecks
         UnaryMsgKind.Unary -> {
             if (it.selectorName != "new") {
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
-                append("${it.selectorName}()")
+                if (invisibleArgs == null)
+                    append(it.selectorName, "()")
+                else {
+                    // add invisible args
+                    append(it.selectorName, "(")
+                    append(invisibleArgs.joinToString(", "))
+                    append(")")
+                }
             } else {
                 append("()")
             }
@@ -288,6 +403,7 @@ fun generateSingleBinary(
     i: Int,
     receiver: Receiver,
     it: BinaryMsg,
+    invisibleArgs: List<String>? = null
 ) = buildString {
 
     if (i == 0) {
