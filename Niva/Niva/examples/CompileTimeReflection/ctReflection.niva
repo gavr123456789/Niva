@@ -1,0 +1,27 @@
+type Tape pos: Int
+
+Tape sas = [
+    receiverName = Compiler getName: 0
+    "sas receiverName is $receiverName" echo
+]
+Tape key1::Int key2::String = [
+    receiverName = Compiler getName: 0
+    firstArg = Compiler getName: 1
+    secondArg = Compiler getName: 2
+    "key1:key2: receiverName is $receiverName" echo
+    "key1:key2: firstArg is $firstArg" echo
+    "key1:key2: secondArg is $secondArg" echo
+
+]
+
+tape = Tape pos: 5
+tape sas
+
+strangeTape = Tape pos: -1
+strangeTape sas
+
+foo = 1
+bar = "bar"
+
+tape key1: foo key2: "bar"
+

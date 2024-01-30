@@ -408,14 +408,18 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
 fun createAnyProtocols(
     unitType: Type.InternalType,
     any: Type.InternalType,
-    boolType: Type.InternalType
+    boolType: Type.InternalType,
+    stringType: Type.InternalType
+
 ): MutableMap<String, Protocol> {
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
             createUnary("echonnl", unitType),
-        ),
+            createUnary("toString", stringType),
+
+            ),
         binaryMsgs = mutableMapOf(
             createBinary("==", any, boolType),
             createBinary("!=", any, boolType),
@@ -550,6 +554,8 @@ fun createListProtocols(
             createUnary("shuffled", mutListType),
 
             createUnary("asSequence", sequenceType),
+            createUnary("isEmpty", boolType),
+            createUnary("isNotEmpty", boolType),
 
 
             ),
@@ -675,6 +681,33 @@ fun createSetProtocols(
             createKeyword(KeywordArg("contains", itType), boolType),
             createKeyword(KeywordArg("containsAll", setType), boolType),
         )
+    )
+
+    return mutableMapOf(collectionProtocol.name to collectionProtocol)
+}
+
+fun createCompilerProtocols(
+    intType: Type.InternalType,
+    stringType: Type.InternalType,
+    typeType: Type.UserType
+): MutableMap<String, Protocol> {
+    val collectionProtocol = Protocol(
+        name = "collectionProtocol",
+        unaryMsgs = mutableMapOf(
+
+        ),
+        binaryMsgs = mutableMapOf(
+        ),
+        keywordMsgs = mutableMapOf(
+//            createKeyword(KeywordArg("getName", intType), stringType),
+//            createKeyword(KeywordArg("getType", intType), typeType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword(KeywordArg("getName", intType), stringType),
+            createKeyword(KeywordArg("getType", intType), typeType),
+        )
+
+
     )
 
     return mutableMapOf(collectionProtocol.name to collectionProtocol)

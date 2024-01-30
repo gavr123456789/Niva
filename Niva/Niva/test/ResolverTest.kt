@@ -1092,6 +1092,33 @@ class ResolverTest {
         assert(statements.count() == 3)
 
     }
+
+    @Test
+    fun compilerReturnType() {
+        val source = """
+        Any sas = [
+          Compiler getName: 0
+        ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val sas = statements[0] as  MessageDeclarationUnary
+        val wew = sas.body[0] as MessageSendKeyword
+        assertTrue {wew.type?.name == "String"}
+    }
+
+//    @Test
+//    fun customConstructorForInternalTypeCheck() {
+//        val source = """
+//            Float from: 5
+//        """.trimIndent()
+//
+//        assertFails {
+//            val statements = resolve(source)
+//            assert(statements.count() == 1)
+//        }
+//
+//    }
 }
 
 

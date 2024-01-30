@@ -65,8 +65,12 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     }
 
 
+    val args = if (needCtArgs) {
+        // for unary only receiver needed
+        "(__arg0: String)"
+    } else "()"
 
-    append(".", name, "()")
+    append(".", name, args)
     bodyPart(this@generateUnaryDeclaration, this)
 }
 
@@ -90,6 +94,12 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     if (arg.type != null) {
         append(": ", arg.type.name)
     }
+
+    // if ctArgs, add receiver and arg
+    if (needCtArgs) {
+        append(", __arg0: String, __arg1: String")
+    }
+
     append(")")
     // operator fun int.sas(...)
     bodyPart(this@generateBinaryDeclaration, this)
@@ -123,6 +133,12 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
                 append(", ")
             }
         }
+    }
+
+    // if ctArgs, add receiver and arg
+    if (needCtArgs) {
+        val argsArgs = args.mapIndexed { i, it -> "__arg${i + 1}: String" }.joinToString(", ")
+        append(", __arg0: String, $argsArgs")
     }
 
     append(")")

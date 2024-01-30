@@ -209,10 +209,10 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
             }
         }
 
-        if (mode in arrayOf("raw", "multy")) {
+        if (arrayOf("raw", "multi").contains(mode)) {
             this.step()
-        }
-        else {
+            continue
+        } else {
             this.match("\\")
 //            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex-1)
 //            parseEscape()
@@ -247,7 +247,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
 
 
     if (mode == "multi") {
-        if (!match(delimiter.repeat(3))) {
+        if (!match(delimiter)) {
             error("unexpected EOL while parsing multi-line string literal, $delimiter must be repeated 3 times for multi strings")
         }
     } else if (done() && peek(-1) != delimiter) {
@@ -256,7 +256,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         step()
     }
 
-    if (delimiter == "\"") {
+    if (delimiter == "\"" || delimiter == "\"\"\"") {
         createToken(TokenType.String)
     } else {
         createToken(TokenType.Char)
@@ -396,7 +396,8 @@ fun Lexer.next() {
                 step(2)
                 mode = "multi"
             }
-            parseString(peek(-1), mode)
+            val delimiter = if (mode!= "multi") peek(-1) else "\"\"\""
+            parseString(delimiter, mode)
         }
 
         // before digit because of floats "3.14"

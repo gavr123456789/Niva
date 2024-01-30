@@ -22,7 +22,7 @@ sealed class TypeAST(
     class UserType(
         name: String,
 
-        val typeArgumentList: List<TypeAST>,
+        val typeArgumentList: Set<TypeAST>,
         isNullable: Boolean,
         token: Token,
         val names: List<String> = listOf(name),

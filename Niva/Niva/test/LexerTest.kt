@@ -17,6 +17,7 @@ val rawString = """
 x = r"string"
 """.trimIndent()
 
+
 class LexerTest {
 
     @Test
@@ -229,6 +230,14 @@ x sas
         val manyExpr = "on"
         checkWithEnd(manyExpr, listOf(On))
     }
+
+    @Test
+    fun multilineString() {
+        val multiline = "\"\"\" a\"b\"c \"\"\""
+        checkWithEnd(multiline, listOf(TokenType.String))
+    }
+
+
 
 
     @Test

@@ -82,7 +82,7 @@ fun Parser.statement(): Statement {
 
             return inlineExpr
 
-        } catch (e:Exception) {
+        } catch (_:Exception) {
             inlineTok.compileError("> can only be used with expressions")
         }
 
@@ -291,7 +291,7 @@ fun Parser.expression(
 
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = singleExpr as Expression,
+                        thenDoExpression = singleExpr,
                         listOf()
                     )
                 }
@@ -337,7 +337,8 @@ fun Parser.codeAttributes(): MutableList<CodeAttribute> {
     step()
     do {
         val name = step()
-        step() // skip colon
+        matchAssert(TokenType.Colon)
+//        step() // skip colon
         val value = primary() ?: name.compileError("Inside code attribute after : value expected")
 
         codeAttributes.add(

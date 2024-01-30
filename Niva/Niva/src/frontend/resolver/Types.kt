@@ -144,13 +144,14 @@ fun Type.unpackNull(): Type =
     } else
         this
 
+// when generic, we need to reassign it to AST's Type field, instead of type's typeField
 
 sealed class Type(
-    val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField
+    val name: String,
     val pkg: String,
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
-    var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
+    var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
 ) {
     override fun toString(): String =
@@ -169,6 +170,40 @@ sealed class Type(
             else -> "$pkg.$name"
 
         }
+
+    class TypeType(
+        val name: String,
+        val fields: MutableMap<String, TypeType> = mutableMapOf(),
+        val genericParams: MutableList<TypeType> = mutableListOf()
+    )
+
+    // type Person name: String age: Int
+    fun toTypeTypeStringRepresentation() = buildString {
+        TypeType(
+            "Person", mutableMapOf(
+                "name" to TypeType("String"),
+                "age" to TypeType("Int")
+            )
+        )
+        append("TypeType(")
+        when (this@Type) {
+            is UserLike -> {
+                append("\n")
+            }
+            is InternalType -> {
+                // internal has only name
+                append("")
+            }
+
+            is Lambda -> TODO()
+            is NullableType -> TODO()
+            RecursiveType -> TODO()
+        }
+
+        append(")")
+
+
+    }
 
     class NullableType(
         val realType: Type
@@ -519,7 +554,6 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
-
     else
         Type.UserType(
             name = typeName,
@@ -574,7 +608,10 @@ fun SomeTypeDeclaration.toType(
         return result2
     }
 
-    val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
+    val typeFields1 = fieldsTyped.asSequence()
+        .filter { it.type is Type.UnknownGenericType }
+        .map { it.type }
+        .distinctBy { it.name }
     val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
 
 
