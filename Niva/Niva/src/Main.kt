@@ -340,7 +340,8 @@ fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Uni
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("build", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/niva_compiler/benching/main.niva")
 
 //    val builder = StringBuilder()
 //    builder.builderWithReceiver { x ->

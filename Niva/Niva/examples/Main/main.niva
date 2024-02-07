@@ -12,7 +12,7 @@ Any echoD = [
 //    "$receiverName is $value" echo
     // Type
 
-//    typeType = Compiler getType: 0
+    typeType = Compiler getType: 0
 //    fields = typeType fields
 //    a_field = fields get: "a"
 //    a_field unpack: [
@@ -24,26 +24,3 @@ Any echoD = [
 //    a,b,c = {1 2 3}
 
 
-Error throwWithMessage: "sas"
-
-//Bind package: "java.lang" content: [
-//  type ProcessBuilder command: MutableList::String
-//
-//  @emit: "ProcessBuilder($1).directory(java.io.File($2))"
-//  constructor ProcessBuilder command::MutableList::String dir::String -> ProcessBuilder
-//  // enum Redirect = INHERIT | PIPE | READ | WRITE
-//
-//  type Process
-//
-//  ProcessBuilder start -> Process
-//
-//  @emit: "$0.redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT)"
-//  ProcessBuilder redirectOutput -> ProcessBuilder
-//
-//  Process waitFor -> Int
-//
-//  @emit: """System.getProperty("user.dir")"""
-//  constructor Process currentDir -> String
-//]
-//
-//(ProcessBuilder command: {"pwd"} dir: "../.." )|> redirectOutput

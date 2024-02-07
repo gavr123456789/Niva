@@ -100,7 +100,7 @@ fun ctNames(msg: Message): MutableList<String>? {
                     expr.token.lexeme
                 } else {
                     //expr.str.removeDoubleQuotes()
-                    ""
+                    "($expr)"
                 }
             }
             if (num > 0) {

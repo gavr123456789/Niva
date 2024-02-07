@@ -693,21 +693,13 @@ fun createCompilerProtocols(
 ): MutableMap<String, Protocol> {
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
-        unaryMsgs = mutableMapOf(
-
-        ),
-        binaryMsgs = mutableMapOf(
-        ),
-        keywordMsgs = mutableMapOf(
-//            createKeyword(KeywordArg("getName", intType), stringType),
-//            createKeyword(KeywordArg("getType", intType), typeType),
-        ),
+        unaryMsgs = mutableMapOf(),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
             createKeyword(KeywordArg("getName", intType), stringType),
             createKeyword(KeywordArg("getType", intType), typeType),
         )
-
-
     )
 
     return mutableMapOf(collectionProtocol.name to collectionProtocol)

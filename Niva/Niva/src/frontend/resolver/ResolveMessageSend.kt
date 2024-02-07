@@ -666,7 +666,6 @@ fun Resolver.resolveMessage(
                 getTableOfLettersFromType(receiverType)
             else mutableMapOf()
 
-
             if (receiverType is Type.Lambda) {
                 if (statement.selectorName != "do") {
                     if (receiverType.args.isNotEmpty())
@@ -733,9 +732,13 @@ fun Resolver.resolveMessage(
                 // add pragmas
                 statement.pragmas = msgFromDb.pragmas
 
+                // add receiver if T sas = [...]
+                if (returnTypeFromDb is Type.UnknownGenericType && msgFromDb.forGeneric) {
+                    letterToTypeFromReceiver["T"] = receiverType
+                }
                 // resolve return type generic
-                val q = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
-                statement.type = q
+                val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
+                statement.type = typeForStatement
             }
 
 

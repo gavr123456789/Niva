@@ -27,7 +27,7 @@ private fun Resolver.resolveStatement(
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         when (statement2.receiver.token.lexeme) {
-            "Project", "Bind"-> {}
+            "Project", "Bind" -> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -89,9 +89,8 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
 
             if (statement.receiver.token.lexeme == InternalTypes.Compiler.name) {
-//                statement.needCtArgs = true
                 val msg = statement.messages[0]
-                if (msg.selectorName == "getName"){
+                if (msg.selectorName == "getName") {
                     val intArg = (msg as KeywordMsg).args[0].keywordArg
                     val codeAtr = CodeAttribute("arg", intArg as Primary)
 
@@ -462,6 +461,7 @@ fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = 
 fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
 fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).imports
 
+// TODO! make universal as toAnyMessageData
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
     // if return type is not declared then use receiver
@@ -492,7 +492,6 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
         }
 
         is MessageDeclarationKeyword -> {
-//            staticKeywordForType[statement.name] = statement.msgDeclaration
             val type =
                 statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
 
@@ -519,50 +518,43 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
         is ConstructorDeclaration -> TODO()
     }
-    addMsgToPackageDeclarations(statement)
     return messageData
 }
 
-fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false): MessageMetadata {
-    val customPkg = if (statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.names.count() > 1) {
-        getPackage(statement.forTypeAst.names.dropLast(1).joinToString("."), statement.token)
+
+fun Resolver.addNewAnyMessage(
+    st: MessageDeclaration,
+    isGetter: Boolean = false,
+    forType: Type? = null
+): MessageMetadata {
+    val customPkg = if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.names.count() > 1) {
+        getPackage(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
     } else null
 
     val type =
-        statement.forType
-            ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+        if (forType is Type.UnknownGenericType)
+            Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+        else
+            st.forType ?: st.token.compileError("Compiler error, type for $st not resolved")
 
-    val (protocol, pkg) = getCurrentProtocol(type, statement.token, customPkg)
+    val realType =
+        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
+    val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
 
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
-    protocol.unaryMsgs[statement.name] = messageData
+    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, this)
 
-    addMsgToPackageDeclarations(statement)
-    return messageData
-}
 
-fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary): MessageMetadata {
-    val type =
-        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+    when (st) {
+        is MessageDeclarationUnary -> protocol.unaryMsgs[st.name] = messageData as UnaryMsgMetaData
+        is MessageDeclarationBinary -> protocol.binaryMsgs[st.name] = messageData as BinaryMsgMetaData
+        is MessageDeclarationKeyword -> protocol.keywordMsgs[st.name] = messageData as KeywordMsgMetaData
+        is ConstructorDeclaration -> {
+            // st.toAnyMessageData already adding static to db
+        }
+    }
 
-    val (protocol, pkg) = getCurrentProtocol(type, statement.token)
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
-    protocol.binaryMsgs[statement.name] = messageData
 
-    addMsgToPackageDeclarations(statement)
-    return messageData
-}
-
-fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword): MessageMetadata {
-    val type =
-        statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
-
-    val (protocol, pkg) = getCurrentProtocol(type, statement.token)
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
-    protocol.keywordMsgs[statement.name] = messageData
-
-    // add msg to package declarations
-    addMsgToPackageDeclarations(statement)
+    addMsgToPackageDeclarations(st)
     return messageData
 }
 
@@ -572,7 +564,6 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
 
     pack.addImport(statement.forType!!.pkg)
 }
-
 
 fun Resolver.typeAlreadyRegisteredInCurrentPkg(type: Type, pkg: Package? = null, token: Token? = null): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
@@ -905,6 +896,8 @@ class Resolver(
             createDefaultType(InternalTypes.Any),
             createDefaultType(InternalTypes.Nothing),
             createDefaultType(InternalTypes.Null),
+
+            createDefaultType(InternalTypes.UnknownGeneric),
         )
 
         init {
@@ -917,9 +910,9 @@ class Resolver(
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
-            val nullType = defaultTypes[InternalTypes.Null]!!
-            val compiler = defaultTypes[InternalTypes.Compiler]!!
-
+            val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
+//            val nullType = defaultTypes[InternalTypes.Null]!!
+//            val compiler = defaultTypes[InternalTypes.Compiler]!!
 
 
             intType.protocols.putAll(
@@ -1002,6 +995,15 @@ class Resolver(
                     stringType = stringType
                 )
             )
+            // we need to have different links to protocols any and T, because different msgs can be added for both
+            unknownGenericType.protocols.putAll(
+                createAnyProtocols(
+                    unitType = unitType,
+                    any = anyType,
+                    boolType = boolType,
+                    stringType = stringType
+                )
+            )
 
             intRangeType.protocols.putAll(
                 createIntRangeProtocols(
@@ -1032,8 +1034,6 @@ class Resolver(
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
         val compiler = defaultTypes[InternalTypes.Compiler]!!
-
-
 
 
         /// Default packages
@@ -1131,7 +1131,6 @@ class Resolver(
         )
 
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
-
 
 
         // now when we have list type with its protocols, we add split method for String, that returns List::String
@@ -1289,7 +1288,8 @@ class Resolver(
         // add fields
         typeType.fields = mutableListOf(
             TypeField("name", stringType),
-            TypeField("fields", fieldsMap),)
+            TypeField("fields", fieldsMap),
+        )
 
         addCustomTypeToDb(
             typeType,

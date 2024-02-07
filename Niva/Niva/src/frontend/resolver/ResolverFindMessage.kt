@@ -25,12 +25,12 @@ fun findAnyMethod(
     kind: MessageDeclarationType
 ): MessageMetadata? {
     receiverType.protocols.forEach { (_, v) ->
-        val q = lens(v, selectorName, kind) //v.unaryMsgs[selectorName]
+        val msgData = lens(v, selectorName, kind)
 
-        if (q != null) {
+        if (msgData != null) {
             // method can be declared in different package than it's receiver type
-            pkg.addImport(q.pkg)
-            return q
+            pkg.addImport(msgData.pkg)
+            return msgData
         }
     }
     return null
@@ -54,18 +54,19 @@ fun recursiveSearch(
 
 fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
     val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
-    val messageFromAny = findAnyMethod(anyType, selectorName, pkg, kind)
-    if (messageFromAny != null) {
-        return messageFromAny
-    }
-    return null
+    return findAnyMethod(anyType, selectorName, pkg, kind)
 }
 
-fun checkForNullableOrNotFound(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
+fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
+    val unknownGenericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+    return findAnyMethod(unknownGenericType, selectorName, pkg, kind)
+}
+
+fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
     val errorText = if (receiverType is Type.NullableType)
-        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
     else
-        "Cant find $PURP$msgType$RESET message: $CYAN$selectorName$RESET for type $YEL${receiverType.pkg}$RESET.$YEL${receiverType.name}"
+        "Cant find $PURP$msgType$RESET message: $CYAN$selectorName$RESET for type $YEL${receiverType}"
     token.compileError(errorText)
 }
 
@@ -115,11 +116,6 @@ fun Resolver.findAnyMsgType(
     token: Token,
     msgType: MessageDeclarationType
 ): MessageMetadata {
-    if (receiverType.name.isGeneric()) {
-        throw Exception("Compiler bug, receiver is unresolved generic")
-    }
-
-
 
     val pkg = getCurrentPackage(token)
     val result = findAnyMethod(receiverType, selectorName, pkg, msgType)
@@ -127,6 +123,13 @@ fun Resolver.findAnyMsgType(
         return result
 
     recursiveSearch(receiverType, selectorName, pkg, msgType)?.let { return it }
-    checkForAny(selectorName, pkg, msgType)?.let { return it }
-    checkForNullableOrNotFound(receiverType, selectorName, token, msgType.name.lowercase())
+    checkForAny(selectorName, pkg, msgType)?.let {
+        return it
+    }
+    checkForT(selectorName, pkg, msgType)?.let {
+        it.forGeneric = true
+        return it
+    }
+
+    throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
 }
