@@ -12,6 +12,12 @@ fun resolve(source: String): List<Statement> {
     val resolved = resolver.resolve(resolver.statements, mutableMapOf())
     return resolved
 }
+fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
+    val ast = getAstTest(source)
+    val resolver = createDefaultResolver(ast)
+    val resolved = resolver.resolve(resolver.statements, mutableMapOf())
+    return Pair(resolved, resolver)
+}
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
@@ -999,6 +1005,29 @@ class ResolverTest {
         val list = statements[1] as MessageSendUnary
         val listType = list.type as Type.UserType
         assertTrue { listType.typeArgumentList.first().name == "Int" }
+    }
+
+    @Test
+    fun genericReceiver() {
+        val source = """
+            T sas -> T = this
+            x = 1 sas
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val sas = statements[1] as VarDeclaration
+        assertTrue{ sas.value.type?.name == "Int" }
+    }
+
+    @Test
+    fun currentLevel() {
+        val source = """
+            type COLOR
+            constructor COLOR RED = "\u001B[31m"
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+
+        assert(statements.count() == 2)
     }
 
     @Test

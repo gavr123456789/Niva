@@ -28,6 +28,7 @@ if [ "$1" == "bin" ]; then
   fi
   cd niva_compiler/niva-SNAPSHOT-1.0/lib/
   native-image --static --no-fallback -O3 -march=compatibility --initialize-at-build-time --class-path annotations-13.0.jar:kotlin-stdlib-1.9.20.jar:niva-jvm-SNAPSHOT-1.0.jar main.MainKt -o niva
+  cp -r niva ~/.niva/bin/
   mv niva ../..
 
   cd ../..
@@ -35,6 +36,8 @@ if [ "$1" == "bin" ]; then
   cp -r ../Niva/infroProject ~/.niva/
   # remove dir with jars
   rm -rf niva-SNAPSHOT-1.0
+
+
 fi
 
 echo 'type Person name: String age: Int
@@ -50,7 +53,7 @@ printf "\n\n"
 
 if [ "$1" == "bin" ]; then
   ./niva main.scala
-  echo "niva compiler binary is located inside the niva_compiler folder"
+  echo "niva compiler binary is located inside the niva_compiler folder and ~/.niva/bin"
 fi
 if [ "$1" == "jvm" ]; then
   ./niva main.scala

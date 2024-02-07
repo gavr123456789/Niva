@@ -123,6 +123,7 @@ fun GeneratorKt.regenerateGradleForAmper(
     gradleFile.writeText(newGradle)
 }
 
+fun <T> T.p(): T = println(this).let { this }
 
 @Suppress("unused")
 fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
@@ -278,8 +279,9 @@ fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null
         append(pkg.generateImports())
 
     }
+    val generator = GeneratorKt()
     statements.forEach {
-        append(GeneratorKt().generateKtStatement(it, indent), "\n")
+        append(generator.generateKtStatement(it, indent), "\n")
     }
 
 }

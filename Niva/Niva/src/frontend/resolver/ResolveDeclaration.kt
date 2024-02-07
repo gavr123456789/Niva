@@ -132,7 +132,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                             } else {
                                 resolveMessageDeclaration(getter, false, mutableMapOf())
                             }
-                            addNewUnaryMessage(getter, isGetter = true)
+                            addNewAnyMessage(getter, isGetter = true)
 
                         }
                     }

@@ -158,5 +158,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Compiler, Nothing, Exception, Null
+    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric
 }

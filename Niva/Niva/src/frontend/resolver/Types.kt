@@ -25,7 +25,8 @@ sealed class MessageMetadata(
     val pkg: String,
     val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
-    val msgSends: List<MsgSend> = listOf()
+    val msgSends: List<MsgSend> = listOf(),
+    var forGeneric: Boolean = false // if message declarated for generic, we need to know it to resolve it
 ) {
     override fun toString(): String {
         return when (this) {
@@ -637,6 +638,27 @@ fun SomeTypeDeclaration.toType(
     return result
 }
 
+
+fun MessageDeclaration.toAnyMessageData(
+    typeDB: TypeDB,
+    typeTable: MutableMap<TypeName, Type>,
+    pkg: Package,
+    isGetter: Boolean = false,
+    resolver: Resolver
+): MessageMetadata {
+    return when (this) {
+        is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
+        is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg)
+        is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
+        is ConstructorDeclaration -> {
+            if (this.returnTypeAST == null) {
+                this.returnType = forType
+            }
+            resolver.addStaticDeclaration(this)
+        }
+    }
+
+}
 
 fun MessageDeclarationUnary.toMessageData(
     typeDB: TypeDB,

@@ -198,18 +198,22 @@ fun Resolver.resolveMessageDeclaration(
 
 
     // addToDb
-    if (addToDb) when (st) {
-        is MessageDeclarationUnary -> addNewUnaryMessage(st)
-        is MessageDeclarationBinary -> addNewBinaryMessage(st)
-        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
-
-        is ConstructorDeclaration -> {
-            if (st.returnTypeAST == null) {
-                st.returnType = forType
-            }
-            addStaticDeclaration(st)
-        }
+    if (addToDb) {
+        addNewAnyMessage(st, false, forType)
     }
+
+//    if (addToDb) when (st) {
+//        is MessageDeclarationUnary -> addNewUnaryMessage(st)
+//        is MessageDeclarationBinary -> addNewBinaryMessage(st)
+//        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
+//
+//        is ConstructorDeclaration -> {
+//            if (st.returnTypeAST == null) {
+//                st.returnType = forType
+//            }
+//            addStaticDeclaration(st)
+//        }
+//    }
 
     if (needResolveOnlyBody) {
         resolveBody()
