@@ -70,7 +70,7 @@ class Compiler(
             CompilationTarget.jvm -> if (build) "fatJar" else "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }) + " -Pkotlin.experimental.tryK2=true"
+        }) + " --parallel --build-cache --configuration-cache -Pkotlin.experimental.tryK2=true"
 
 
     fun run(dist: Boolean = false, buildFatJar: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
