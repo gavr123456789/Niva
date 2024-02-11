@@ -1,6 +1,7 @@
 package codogen
 
 import frontend.parser.types.ast.*
+import frontend.resolver.Type
 
 fun replaceKeywords(str: String) =
     when (str) {
@@ -86,7 +87,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is UnaryMsg -> unaryGenerate(this@generateExpression)
 
 
-            is CodeBlock -> generateCodeBlock()
+            is CodeBlock -> generateCodeBlock(putArgListInBrackets = (type as? Type.Lambda)?.specialFlagForLambdaWithDestruct ?: false)
             is StaticBuilder -> TODO()
         }
     )

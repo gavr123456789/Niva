@@ -17,10 +17,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     }
 
     val readPrimaryCollection = {
-//        val initElements = mutableListOf<Primary>()
         val initElements = mutableListOf<Receiver>()
 
-//        var lastPrimary: Primary? = null
         var lastCollectionElem: Receiver? = null
         do {
             // can be expression in brackets in
@@ -29,7 +27,6 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 bracketExpression()
             } else primary(typeAst)
 
-//            val primaryTok = primary(typeAst)
             match(TokenType.Comma)
             if (primaryTok != null) {
                 if (lastCollectionElem != null && primaryTok.type?.name != lastCollectionElem.type?.name) {
@@ -39,6 +36,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             }
             lastCollectionElem = primaryTok
         } while (primaryTok != null)
+
+        match(TokenType.Comma)
 
         initElements
     }

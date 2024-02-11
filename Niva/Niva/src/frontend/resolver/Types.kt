@@ -70,7 +70,8 @@ class KeywordMsgMetaData(
     returnType: Type,
     pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf()
+    msgSends: List<MsgSend> = listOf(),
+    specialTempFlagForLambdasWithDestruct: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
@@ -227,6 +228,7 @@ sealed class Type(
         val returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
+        var specialFlagForLambdaWithDestruct: Boolean = false
     ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
 
     sealed class InternalLike(

@@ -289,6 +289,15 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Bool
             return false
         }
 
+        // temp for adding "(k,v)" for map, filter for hash maps
+        if (type2.specialFlagForLambdaWithDestruct) {
+            type1.specialFlagForLambdaWithDestruct = true
+        }
+        if (type1.specialFlagForLambdaWithDestruct) {
+            type2.specialFlagForLambdaWithDestruct = true
+        }
+        //
+
         type1.args.forEachIndexed { i, it ->
             val it2 = type2.args[i]
             val isEqual = compare2Types(it.type, it2.type)
@@ -1220,6 +1229,26 @@ class Resolver(
             pkg = "core",
         )
 
+        /// MapEntry
+
+//        val mapEntryType = Type.UserType(
+//            name = "Entry",
+//            typeArgumentList = listOf(genericType, differentGenericType),
+//            fields = mutableListOf(
+//                TypeField("key", genericType),
+//                TypeField("value", differentGenericType)
+//            ),
+//            pkg = "Map",
+//        )
+//        mapEntryType.isBinding = true
+
+//        addCustomTypeToDb(
+//            mapEntryType, mutableMapOf()
+//        )
+        ///
+
+
+
         addCustomTypeToDb(
             mapType, createMapProtocols(
                 intType = intType,
@@ -1230,7 +1259,8 @@ class Resolver(
                 keyType = genericType,
                 valueType = differentGenericType,
                 setType = mutableSetType,
-                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric
+                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+//                mapEntryType
             )
         )
 

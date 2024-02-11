@@ -26,7 +26,6 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 }
 
 
-
 fun getTableOfLettersFromType(type: Type.UserLike): MutableMap<String, Type> {
     if (type.typeArgumentList.count() > 2) {
         throw Exception("Generics with more than 2 params are not supported yet")
@@ -153,7 +152,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
         if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
 
     return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
-        val realTypeFromTable = letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
+        val realTypeFromTable =
+            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
             ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
     } else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
@@ -277,7 +277,7 @@ fun Resolver.resolveMessage(
                 val receiverText = receiver.toString()
                 val keywordReceiverType = receiverType
 
-                if (receiverText == "Project" || receiverText == "Bind" ) {
+                if (receiverText == "Project" || receiverText == "Bind") {
                     statement.token.compileError("We cant get here, type Project are ignored")
                 }
                 val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
@@ -323,7 +323,6 @@ fun Resolver.resolveMessage(
 
             val letterToRealType = mutableMapOf<String, Type>()
 
-
             val kwTypeFromDB = when (kind) {
                 KeywordLikeType.Keyword -> findAnyMsgType(
                     receiverType,
@@ -339,6 +338,7 @@ fun Resolver.resolveMessage(
                         statement.token,
                     ).first
                 }
+
                 KeywordLikeType.Constructor -> {
                     // there is no fields in internal types
                     if (receiverType is Type.InternalType) {
@@ -347,8 +347,10 @@ fun Resolver.resolveMessage(
                     } else null
 
                 }
+
                 else -> null
             }
+
 
             val argTypesFromDb = when (kwTypeFromDB) {
                 is UnaryMsgMetaData -> listOf()
@@ -737,7 +739,8 @@ fun Resolver.resolveMessage(
                     letterToTypeFromReceiver["T"] = receiverType
                 }
                 // resolve return type generic
-                val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
+                val typeForStatement =
+                    resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
                 statement.type = typeForStatement
             }
 
