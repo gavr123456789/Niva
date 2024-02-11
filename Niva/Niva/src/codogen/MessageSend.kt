@@ -142,7 +142,7 @@ fun replaceNameFromPragma(msg: Message) {
 
 // replace $N to arguments and replace the selectorName of the message
 fun emitFromPragma(msg: Message) {
-    val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value
+    val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value ?: return
 
     fun replacePatternsWithValues(inputString: String, valueMap: Map<String, String>): String {
         var resultString = inputString
@@ -159,7 +159,6 @@ fun emitFromPragma(msg: Message) {
         return resultString
     }
 
-
     when (value) {
         is LiteralExpression.StringExpr -> {
             val map = mutableMapOf<String, String>()
@@ -169,7 +168,15 @@ fun emitFromPragma(msg: Message) {
                 }
             }
             val receiverCode =
-                if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
+
+                when (msg.receiver) {
+                    is Message -> {
+                        "" // if there are messages already, then do not generate duplicates
+                    }
+
+                    !is LiteralExpression.StringExpr -> msg.receiver.generateExpression()
+                    else -> msg.receiver.token.lexeme
+                }
 
             map["0"] = receiverCode
             val replaced = replacePatternsWithValues(value.toString(), map)
@@ -195,8 +202,6 @@ fun emitFromPragma(msg: Message) {
 //
 //            }
         }
-
-        null -> {}
 
         else ->
             msg.token.compileError("String literal expected for emit pragma")
