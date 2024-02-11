@@ -58,7 +58,7 @@ fun Resolver.resolveDeclarations(
 
 
         is UnionBranch -> {
-            println("Union branch???")
+            // strange
         }
 
 

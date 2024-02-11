@@ -8,6 +8,7 @@ import frontend.meta.TokenType
 import frontend.parser.parsing.CodeAttribute
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.LiteralExpression
+import frontend.resolver.Type.RecursiveType.name
 import java.io.File
 
 
@@ -818,7 +819,8 @@ fun createMapProtocols(
     keyType: Type.UnknownGenericType,
     valueType: Type.UnknownGenericType,
     setType: Type.UserType,
-    setTypeOfDifferentGeneric: Type.UserType
+    setTypeOfDifferentGeneric: Type.UserType,
+//    entryType: Type.UserType
 ): MutableMap<String, Protocol> {
 
 
@@ -855,9 +857,46 @@ fun createMapProtocols(
                 ),
                 unitType
             ),
-            createMapKeyword(keyType, valueType, mapTypeOfDifferentGeneric),
 
-            createFilterKeyword(keyType, boolType, mapType),
+            createKeyword(
+                "map",
+                listOf(
+                    KeywordArg(
+                        "map",
+                        Type.Lambda(
+                            mutableListOf(
+//                                TypeField("e", entryType),
+                                TypeField("key", keyType),
+                                TypeField("value", valueType),
+                            ),
+                            unitType,
+                            specialFlagForLambdaWithDestruct = true
+                        )
+                    )
+                ),
+                unitType,
+
+            ),
+            createKeyword(
+                "filter",
+                listOf(
+                    KeywordArg(
+                        "filter",
+                        Type.Lambda(
+                            mutableListOf(
+//                                TypeField("e", entryType),
+
+                                TypeField("key", keyType),
+                                TypeField("value", valueType),
+                            ),
+                            unitType,
+                            specialFlagForLambdaWithDestruct = true
+                        )
+                    )
+                ),
+                unitType,
+
+            ),
 
             createKeyword(
                 "atPut",

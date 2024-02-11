@@ -12,6 +12,7 @@ import frontend.util.fillSymbolTable
 import main.utils.Compiler
 import main.utils.compileProjFromFile
 import java.io.*
+import java.util.HashMap
 
 
 const val RESET = "\u001B[0m"
