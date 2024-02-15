@@ -87,23 +87,25 @@ fun Resolver.findStaticMessageType(
         }
     }
 
-    // if this is binding, then getters are static, calls without ()
-    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
-        if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
-        return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
-    }
-
     if (selectorName == "new") {
         if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
             val result = UnaryMsgMetaData(
-                name = "new!",
+                name = "__new",
                 returnType = receiverType,
                 pkg = currentPackageName,
             )
+            val pkg = getCurrentPackage(token)
+            pkg.addImport(receiverType.pkg)
             return Pair(result, false)
         } else {
             token.compileError("${WHITE}new$RESET can't bew used with $YEL$receiverType$RESET, it has fields(use them as constructor), or its basic type ")
         }
+    }
+
+    // if this is binding, then getters are static, calls without ()
+    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
+        if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
+        return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
     }
 
     throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")

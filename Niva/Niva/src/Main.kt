@@ -11,6 +11,7 @@ import frontend.util.div
 import frontend.util.fillSymbolTable
 import main.utils.Compiler
 import main.utils.compileProjFromFile
+import java.awt.Shape
 import java.io.*
 import java.util.HashMap
 
@@ -338,11 +339,17 @@ fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Uni
     this.x(toCallSite)
 }
 
+sealed class Shape2(val x: Int, val y: Int) {
+    class Rectangle(x: Int, y: Int, val w: Int, val h: Int) : Shape2(x, y)
+    class Circle(x: Int, y: Int, r: Int) : Shape2(x, y)
+}
+
+
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/niva_compiler/benching/main.niva")
+    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
 
 //    val builder = StringBuilder()
 //    builder.builderWithReceiver { x ->
