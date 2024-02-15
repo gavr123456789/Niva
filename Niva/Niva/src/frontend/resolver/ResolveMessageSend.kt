@@ -264,7 +264,6 @@ fun Resolver.resolveMessage(
                 statement.receiver.type
                     ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
 
-            resolveKwArgs(statement, currentScope, previousScope, false)
 
 
             // resolve kw kind
@@ -321,6 +320,10 @@ fun Resolver.resolveMessage(
 
             val kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
 
+            // resolve args types
+            resolveKwArgs(statement, currentScope, previousScope, false)
+
+            // find this keyword in db
             val letterToRealType = mutableMapOf<String, Type>()
 
             val kwTypeFromDB = when (kind) {

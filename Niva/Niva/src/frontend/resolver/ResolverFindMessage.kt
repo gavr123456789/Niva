@@ -7,8 +7,6 @@ import frontend.parser.types.ast.InternalTypes
 import frontend.resolver.*
 import frontend.resolver.Package
 import main.*
-import main.utils.isGeneric
-
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
     return when (kind) {
@@ -89,6 +87,11 @@ fun Resolver.findStaticMessageType(
 
     if (selectorName == "new") {
         if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
+            // u cant instantiate Root union
+            if (receiverType is Type.UserUnionRootType) {
+                token.compileError("You can't instantiate root of the union($YEL$receiverType$RESET)")
+            }
+
             val result = UnaryMsgMetaData(
                 name = "__new",
                 returnType = receiverType,

@@ -35,15 +35,31 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     b.append("(".repeat(messages.count { it.isPiped }))
 
     var newInvisibleArgs: MutableList<String>? = null
-    this.messages.forEachIndexed { i, it ->
-        var isThereEmitPragma = false
-        // TODO replace pragmas with unions and switch on them
+
+    val evalPragmas = {it: Message ->
         if (it.pragmas.isNotEmpty()) {
             replaceNameFromPragma(it)
             emitFromPragma(it)
             noPkgEmit(it)
             newInvisibleArgs = ctNames(it)
-            isThereEmitPragma = it.pragmas.find { it.name == Pragmas.EMIT.v } != null
+            it.pragmas.find { it.name == Pragmas.EMIT.v } != null
+        } else false
+    }
+    // refactor to function and call it recursive for binary arguments
+    this.messages.forEachIndexed { i, it ->
+        var isThereEmitPragma = false
+        // TODO replace pragmas with unions and switch on them
+        if (it.pragmas.isNotEmpty()) {
+            isThereEmitPragma = evalPragmas(it)
+        }
+        // do same for binary args
+        if (it is BinaryMsg) {
+            it.unaryMsgsForArg.forEach { binary ->
+                isThereEmitPragma = evalPragmas(binary)
+            }
+            it.unaryMsgsForReceiver.forEach { binary ->
+                isThereEmitPragma = evalPragmas(binary)
+            }
         }
 
 

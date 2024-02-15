@@ -122,7 +122,11 @@ class UnaryMsg(
     type: Type?,
     token: Token,
     var kind: UnaryMsgKind = UnaryMsgKind.Unary
-) : Message(receiver, selectorName, identifier, type, token)
+) : Message(receiver, selectorName, identifier, type, token) {
+    override fun toString(): String {
+        return selectorName
+    }
+}
 
 
 class DotReceiver(
