@@ -8,11 +8,8 @@ import frontend.parser.parsing.CodeAttribute
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
+import main.*
 
-import main.CYAN
-import main.RED
-import main.WHITE
-import main.YEL
 import main.utils.isGeneric
 
 data class MsgSend(
@@ -28,7 +25,8 @@ sealed class MessageMetadata(
     val pkg: String,
     val pragmas: MutableList<CodeAttribute> = mutableListOf(),
     @Suppress("unused")
-    val msgSends: List<MsgSend> = listOf()
+    val msgSends: List<MsgSend> = listOf(),
+    var forGeneric: Boolean = false // if message declarated for generic, we need to know it to resolve it
 ) {
     override fun toString(): String {
         return when (this) {
@@ -72,7 +70,8 @@ class KeywordMsgMetaData(
     returnType: Type,
     pkg: String,
     codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf()
+    msgSends: List<MsgSend> = listOf(),
+    specialTempFlagForLambdasWithDestruct: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
@@ -147,25 +146,66 @@ fun Type.unpackNull(): Type =
     } else
         this
 
+// when generic, we need to reassign it to AST's Type field, instead of type's typeField
 
 sealed class Type(
-    val name: String, // when generic, we need to reassign it to AST's Type field, instead of type's typeField
+    val name: String,
     val pkg: String,
     val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
-    var parent: Type? = null, // = Resolver.defaultBasicTypes[InternalTypes.Any] ?:
+    var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
-//    var bind: Boolean = false
 ) {
     override fun toString(): String =
-        when(this) {
+        when (this) {
             is InternalLike -> name
-            is NullableType ->  "$realType?"
+            is NullableType -> "$realType?"
+            is UserLike -> {
+                val genericParam =
+                    if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
+                        "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
+                    } else ""
+                val needPkg = if (pkg != "core") "$pkg." else ""
+                "$needPkg$name$genericParam"
+            }
+
             else -> "$pkg.$name"
+
         }
 
+    class TypeType(
+        val name: String,
+        val fields: MutableMap<String, TypeType> = mutableMapOf(),
+        val genericParams: MutableList<TypeType> = mutableListOf()
+    )
+
+    // type Person name: String age: Int
+    fun toTypeTypeStringRepresentation() = buildString {
+        TypeType(
+            "Person", mutableMapOf(
+                "name" to TypeType("String"),
+                "age" to TypeType("Int")
+            )
+        )
+        append("TypeType(")
+        when (this@Type) {
+            is UserLike -> {
+                append("\n")
+            }
+            is InternalType -> {
+                // internal has only name
+                append("")
+            }
+
+            is Lambda -> TODO()
+            is NullableType -> TODO()
+            RecursiveType -> TODO()
+        }
+
+        append(")")
 
 
+    }
 
     class NullableType(
         val realType: Type
@@ -188,6 +228,7 @@ sealed class Type(
         val returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
+        var specialFlagForLambdaWithDestruct: Boolean = false
     ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
 
     sealed class InternalLike(
@@ -213,7 +254,9 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false
-    ) : Type(name, pkg, isPrivate, protocols)
+    ) : Type(name, pkg, isPrivate, protocols) {
+        fun printConstructor() = fields.joinToString(": value") { it.name } + ": value"
+    }
 
     fun UserLike.copy(): UserLike =
         when (this) {
@@ -247,9 +290,18 @@ sealed class Type(
             ).also { it.isBinding = this.isBinding }
 
             is UserEnumBranchType -> TODO()
-            is UserUnionBranchType -> TODO()
+            is UserUnionBranchType -> UserUnionBranchType(
+                name = this.name,
+                typeArgumentList = this.typeArgumentList.toList(),
+                fields = this.fields.toMutableList(),
+                isPrivate = this.isPrivate,
+                pkg = this.pkg,
+                root = this.root,
+                protocols = this.protocols.toMutableMap(),
+            )
+
             is KnownGenericType -> TODO()
-            is UnknownGenericType -> this
+            is UnknownGenericType -> UnknownGenericType(this.name)
             RecursiveType -> TODO()
         }
 
@@ -341,12 +393,15 @@ class Package(
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
 //    val usingPackages: MutableList<Package> = mutableListOf(),
-    // import x.y.*
+    // generates as import x.y.*
     val imports: MutableSet<String> = mutableSetOf(),
-    // import x.y
+    // generates as import x.y
     val concreteImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false,
-    val comment: String = ""
+    val comment: String = "",
+
+    // imports that need to be added if this pkg used(need for bindings)
+    val neededImports: MutableSet<String> = mutableSetOf(),
 ) {
     override fun toString(): String {
         return packageName
@@ -388,33 +443,35 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
             if (selfType != null && name == selfType.name) return selfType
 
             if (this.typeArgumentList.isNotEmpty()) {
-                // need to know, what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
+                // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val type = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
-                //TODO DB
-                if (type is Type.UserLike) {
+                val typeFromDb = typeTable[name] ?:
+                    this.token.compileError("Can't find user type: ${YEL}$name")
+                // Type DB
+                if (typeFromDb is Type.UserLike) {
+                    val copy = typeFromDb.copy()
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
-                    if (this.typeArgumentList.count() != type.typeArgumentList.count()) {
-                        throw Exception("Count ${this.name}'s type arguments not the same it's AST version ")
+                    if (this.typeArgumentList.count() != copy.typeArgumentList.count()) {
+                        this.token.compileError("Type $YEL${this.name}$RESET has $WHITE${copy.typeArgumentList.count()}$RESET generic params, but you send only $WHITE${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val rer = it.toType(typeDB, typeTable, selfType)
-                        letterToTypeMap[type.typeArgumentList[i].name] = rer
-                        rer
+                        val typeOfArg = it.toType(typeDB, typeTable, selfType)
+                        letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
+                        typeOfArg
                     }
 
 
-                    type.typeArgumentList = typeArgs
+                    copy.typeArgumentList = typeArgs
                     // replace fields types from T to real
-                    type.fields.forEachIndexed { i, field ->
+                    copy.fields.forEachIndexed { i, field ->
                         val fieldType = letterToTypeMap[field.type.name]
                         if (fieldType != null) {
                             field.type = fieldType
                         }
                     }
-                    return type
+                    return copy
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
@@ -461,7 +518,6 @@ fun SomeTypeDeclaration.toType(
     unionRootType: Type.UserUnionRootType? = null, // if not null, then this is branch
     enumRootType: Type.UserEnumRootType? = null,
 ): Type.UserLike {
-
     val result = if (isUnion)
         Type.UserUnionRootType(
             branches = listOf(),
@@ -524,7 +580,7 @@ fun SomeTypeDeclaration.toType(
             // this is recursive type
             val fieldType = TypeField(
                 name = it.name,
-                type = Type.RecursiveType
+                type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
             )
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)
@@ -538,20 +594,15 @@ fun SomeTypeDeclaration.toType(
             val type = it.type
 
             if (type is Type.UserLike) {
-                val qwe = List(type.typeArgumentList.size) { i2 ->
-                    val field = fields[i].type
-                    val typeName =
-                        if (field is TypeAST.UserType) {
-                            field.typeArgumentList[i2].name
-                        } else {
-                            throw Exception("field is not user type")
-                        }
-                    Type.UnknownGenericType(
-                        name = typeName
-                    )
+                val unknownGenericTypes = mutableListOf<Type.UserLike>()
+                type.typeArgumentList.forEach {
+                    if (it.name.isGeneric()) {
+                        unknownGenericTypes.add(Type.UnknownGenericType(name = it.name))
+                    }
                 }
 
-                result2.addAll(qwe)
+
+                result2.addAll(unknownGenericTypes)
 
                 if (type.fields.isNotEmpty()) {
                     result2.addAll(getAllGenericTypesFromFields(type.fields, fields))
@@ -561,35 +612,60 @@ fun SomeTypeDeclaration.toType(
         return result2
     }
 
-    val typeFields1 = fieldsTyped.filter { it.type is Type.UnknownGenericType }.map { it.type }
+    val typeFields1 = fieldsTyped.asSequence()
+        .filter { it.type is Type.UnknownGenericType }
+        .map { it.type }
+        .distinctBy { it.name }
     val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
 
 
-    val typeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
+    val genericTypeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
 
 
     unresolvedSelfTypeFields.forEach {
-        it.type = result
+        it.type = if ((it.type !is Type.NullableType)) result else Type.NullableType(result)
     }
 
-
-
-
-    this.genericFields.addAll(typeFields.map { it.name })
+    this.genericFields.addAll(genericTypeFields.map { it.name })
 
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.isGeneric() && typeFields.find { x -> x.name == it } == null) {
-            typeFields.add(Type.UnknownGenericType(it))
+        if (it.isGeneric() && genericTypeFields.find { x -> x.name == it } == null) {
+            genericTypeFields.add(Type.UnknownGenericType(it))
         }
     }
 
-    result.typeArgumentList = typeFields
+    result.typeArgumentList = genericTypeFields
     result.fields = fieldsTyped
 
     return result
 }
 
+
+fun MessageDeclaration.toAnyMessageData(
+    typeDB: TypeDB,
+    typeTable: MutableMap<TypeName, Type>,
+    pkg: Package,
+    isGetter: Boolean = false,
+    resolver: Resolver
+): MessageMetadata {
+    return when (this) {
+        is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
+        is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg)
+        is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
+        is ConstructorDeclaration -> {
+            val constructorForType = forType
+            if (constructorForType is Type.UserLike && constructorForType.isBinding && body.isNotEmpty()) {
+                this.token.compileError("Can't create custom constructors for binding, that require companion object in Kotlin(wait for static extension feature)")
+            }
+            if (this.returnTypeAST == null) {
+                this.returnType = forType
+            }
+            resolver.addStaticDeclaration(this)
+        }
+    }
+
+}
 
 fun MessageDeclarationUnary.toMessageData(
     typeDB: TypeDB,
@@ -642,8 +718,6 @@ fun MessageDeclarationKeyword.toMessageData(
     ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     this.returnType = returnType
-
-
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,

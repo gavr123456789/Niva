@@ -19,7 +19,7 @@ sealed class MessageSend(
     val receiver: Receiver,
     open val messages: List<Message>,
     type: Type?,
-    token: Token
+    token: Token,
 ) : Receiver(type, token) {
     override fun toString(): String {
         val receiver = receiver.toString()
@@ -75,16 +75,15 @@ class BinaryMsg(
     token: Token,
     val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
-    path: List<String>,
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-) : Message(receiver, selectorName, path, type, token) {
+) : Message(receiver, selectorName, listOf(), type, token) {
 //    override fun toString(): String {
 //        return "$receiver $selectorName $argument"
 //    }
 }
 
-data class KeywordArgAndItsMessages(
+data class KeywordArgAst(
     val name: String,
     val keywordArg: Expression
 )
@@ -103,7 +102,7 @@ class KeywordMsg(
     selectorName: String,
     type: Type?,
     token: Token,
-    val args: List<KeywordArgAndItsMessages>,
+    val args: List<KeywordArgAst>,
     path: List<String>,
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
@@ -123,7 +122,11 @@ class UnaryMsg(
     type: Type?,
     token: Token,
     var kind: UnaryMsgKind = UnaryMsgKind.Unary
-) : Message(receiver, selectorName, identifier, type, token)
+) : Message(receiver, selectorName, identifier, type, token) {
+    override fun toString(): String {
+        return selectorName
+    }
+}
 
 
 class DotReceiver(

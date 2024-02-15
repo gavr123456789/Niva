@@ -1,0 +1,16 @@
+union JsonObj =
+| JsonArray arr: MutableList::JsonObj
+| JsonNumber num: Float
+| JsonString str: String
+| JsonFields fld: MutableMap(String, JsonObj)
+
+
+
+jsonNum = JsonNumber num: 5.0
+
+jsonStr = JsonString str: "t'e'x't"
+jsonFields = JsonFields fld: #{"a\ng'e" jsonNum}
+
+arr = JsonArray arr: {jsonNum jsonNum jsonStr jsonFields}
+arr toJson echo
+

@@ -1,8 +1,12 @@
 package frontend.resolver
 
 import frontend.meta.compileError
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import main.*
+import main.frontend.resolver.findAnyMsgType
+import main.frontend.resolver.findStaticMessageType
+import main.utils.isGeneric
 
 
 // returns true if unresolved
@@ -15,7 +19,7 @@ fun Resolver.resolveMessageDeclaration(
     val forTypeAst = st.forTypeAst
 
 
-    val forType = st.forType ?: if (forTypeAst is TypeAST.UserType) {
+    val forType: Type? = st.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
@@ -27,7 +31,12 @@ fun Resolver.resolveMessageDeclaration(
             getCurrentImports(st.token),
             currentPackageName,
             names = forTypeAst.names
-        )
+        ) ?: if (forTypeAst.name.isGeneric()) {
+            st.typeArgs.add(forTypeAst.name)
+            Type.UnknownGenericType(forTypeAst.name)
+        } else null
+
+
         if (q == null) {
             unResolvedMessageDeclarations.add(currentPackageName, st)
             currentLevel--
@@ -49,7 +58,7 @@ fun Resolver.resolveMessageDeclaration(
             val newListOfTypeArgs = mutableListOf<Type>()
             st.forTypeAst.typeArgumentList.forEach {
                 val type = typeTable[it.name]//testing
-                val testDB = typeDB.getType(it.name)
+//                val testDB = typeDB.getType(it.name)
 
                 if (type != null) {
                     newListOfTypeArgs.add(type)
@@ -70,16 +79,12 @@ fun Resolver.resolveMessageDeclaration(
         st.forType = forType
     }
 
-
-    // check that there is no field with the same name (because of getter has the same signature)
-    // TODO! check only unary and keywords with one arg
-    // no, check this when kind already resolved
-
-
+    // it can be a field, that will clash with setter
     if (forType is Type.UserType) {
         val fieldWithTheSameName = forType.fields.find { it.name == st.name }
+
         if (fieldWithTheSameName != null) {
-            st.token.compileError("Type $WHITE${st.forTypeAst.name}$RED already has field with name $WHITE${st.name}")
+            st.token.compileError("Type $YEL${st.forTypeAst.name}$RESET already has field with name $WHITE${st.name}$RESET, so it will clash with the setter of that field $WHITE${st.forTypeAst.name.lowercase()} $CYAN${st.name}: ${WHITE}newValue")
         }
     }
 
@@ -89,29 +94,33 @@ fun Resolver.resolveMessageDeclaration(
         bodyScope["this"] = forType
 
         // add args to scope
-        when (st) {
-            is MessageDeclarationKeyword -> {
-                st.args.forEach {
-                    if (it.type == null) {
-                        st.token.compileError("Can't parse type for argument $WHITE${it.name}")
-                    }
-                    val astType = it.type
-                    val type = astType.toType(typeDB, typeTable)//fix
+        fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
+            st.args.forEach {
+                if (it.type == null) {
+                    st.token.compileError("Can't parse type for argument $WHITE${it.name}")
+                }
+                val astType = it.type
+                val typeFromAst = astType.toType(typeDB, typeTable)//fix
 
-                    bodyScope[it.localName ?: it.name] = type
+                bodyScope[it.localName ?: it.name] = typeFromAst
 
-                    if (type is Type.UnknownGenericType) {
-                        st.typeArgs.add(type.name)
-                    }
-                    // add generic params to scope
-                    if (type is Type.UserType && type.typeArgumentList.isNotEmpty()) {
-                        st.typeArgs.addAll(type.typeArgumentList.map { typeArg -> typeArg.name })
-                        // T == T
-                        if (type.name == it.type.name) {
-                            bodyScope[it.name] = type
-                        }
+                if (typeFromAst is Type.UnknownGenericType) {
+                    st.typeArgs.add(typeFromAst.name)
+                }
+                // add generic params to scope
+                if (typeFromAst is Type.UserType && typeFromAst.typeArgumentList.isNotEmpty()) {
+                    st.typeArgs.addAll(typeFromAst.typeArgumentList.map { typeArg -> typeArg.name })
+                    // T == T
+                    if (typeFromAst.name == it.type.name) {
+                        bodyScope[it.name] = typeFromAst
                     }
                 }
+            }
+        }
+
+        when (st) {
+            is MessageDeclarationKeyword -> {
+                addArgsToBodyScope(st)
             }
 
             is MessageDeclarationUnary -> {
@@ -125,7 +134,10 @@ fun Resolver.resolveMessageDeclaration(
                 bodyScope[arg.name] = argType
             }
 
-            is ConstructorDeclaration -> {}
+            is ConstructorDeclaration -> {
+                if (st.msgDeclaration is MessageDeclarationKeyword)
+                    addArgsToBodyScope(st.msgDeclaration)
+            }
         }
         // add args to bodyScope
         if (forType is Type.UserLike) {
@@ -147,45 +159,57 @@ fun Resolver.resolveMessageDeclaration(
                 val returnType = expr.type!!
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
-                    is MessageDeclarationBinary -> findBinaryMessageType(forType, st.name, st.token)
-                    is MessageDeclarationKeyword -> findKeywordMsgType(forType, st.name, st.token)
-                    is MessageDeclarationUnary -> findUnaryMessageType(forType, st.name, st.token)
+                    is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
+                    is MessageDeclarationBinary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Binary)
+                    is MessageDeclarationKeyword -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Keyword)
                 }
+
 
                 val declaredReturnType = st.returnType
                 mdgData.returnType = returnType
                 st.returnType = returnType
 
                 // in single expr declared type not matching real type
-                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType) && st.returnTypeAST != null) {
+                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType, isReturn = true) && st.returnTypeAST != null) {
                     st.returnTypeAST.token.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
                 }
             }
         } else {
-            val declaredReturnType = wasThereReturn
+            val realReturn = wasThereReturn
             val returnType = st.returnType
-            if (declaredReturnType != null && returnType != null && !compare2Types(returnType, declaredReturnType)) {
-                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
+            if (realReturn != null && returnType != null && !compare2Types(returnType, realReturn, isReturn = true)) {
+                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$returnType$RESET but real type returned: $YEL$realReturn")
             }
         }
 
 
+    }
+
+    // no return type declared, not recursive, single expr
+    if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
+        unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
+        currentLevel--
+        return true
     }
 
 
     // addToDb
-    if (addToDb) when (st) {
-        is MessageDeclarationUnary -> addNewUnaryMessage(st)
-        is MessageDeclarationBinary -> addNewBinaryMessage(st)
-        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
-
-        is ConstructorDeclaration -> {
-            if (st.returnTypeAST == null) {
-                st.returnType = forType
-            }
-            addStaticDeclaration(st)
-        }
+    if (addToDb) {
+        addNewAnyMessage(st, false, forType)
     }
+
+//    if (addToDb) when (st) {
+//        is MessageDeclarationUnary -> addNewUnaryMessage(st)
+//        is MessageDeclarationBinary -> addNewBinaryMessage(st)
+//        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
+//
+//        is ConstructorDeclaration -> {
+//            if (st.returnTypeAST == null) {
+//                st.returnType = forType
+//            }
+//            addStaticDeclaration(st)
+//        }
+//    }
 
     if (needResolveOnlyBody) {
         resolveBody()

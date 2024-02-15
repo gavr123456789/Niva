@@ -3,9 +3,11 @@ package frontend.resolver
 import frontend.meta.compileError
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
+import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.Statement
 import frontend.util.createFakeToken
 import main.*
+import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.utils.infoPrint
 import java.io.File
@@ -19,7 +21,7 @@ fun Resolver.resolve(mainFile: File) {
         val ast = parser.statements()
         return ast
     }
-
+    val fakeTok = createFakeToken()
 
     // generate ast for main file with filling topLevelStatements
     // 1) read content of mainFilePath
@@ -37,21 +39,28 @@ fun Resolver.resolve(mainFile: File) {
 
 
     // create main package
-    changePackage(mainFile.nameWithoutExtension, createFakeToken(), isMainFile = true)
+    changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
 
 
     resolveDeclarationsOnly(mainAST)
     otherASTs.forEach {
         // create package
-        changePackage(it.first, createFakeToken())
+        changePackage(it.first, fakeTok)
         statements = it.second.toMutableList()
         resolveDeclarationsOnly(it.second)
     }
 
-    // unresolved methods
+    // unresolved methods that contains unresolved types in args, receiver or return
     unResolvedMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
-        changePackage(pkgName, createFakeToken())
+        changePackage(pkgName, fakeTok)
         resolveDeclarationsOnly(unresolvedDecl.toMutableList())
+    }
+    // second time resolve single expressions
+    unResolvedSingleExprMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
+        changePackage(pkgName, fakeTok)
+        unresolvedDecl.forEach {
+            resolveDeclarations(it, mutableMapOf(), resolveBody = true)
+        }
     }
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
@@ -63,7 +72,7 @@ fun Resolver.resolve(mainFile: File) {
 
     // unresolved types
     unResolvedTypeDeclarations.forEach { (t, u) ->
-        changePackage(t, createFakeToken())
+        changePackage(t, fakeTok)
         resolveDeclarationsOnly(u.toMutableList())
     }
     unResolvedTypeDeclarations.forEach { (_, u) ->
@@ -78,16 +87,22 @@ fun Resolver.resolve(mainFile: File) {
 
     allDeclarationResolvedAlready = true
 
+    // here we are resolving all statements(in bodies), not only declarations
 
     currentPackageName = mainFile.nameWithoutExtension
-    resolve(mainAST, mutableMapOf())
 
-    // here we are resolving all statements, not only declarations
-//    otherASTs.forEach {
-//        currentPackageName = it.first
-//        statements = it.second.toMutableList()
-//        resolve(it.second, mutableMapOf())
-//    }
+    // main args
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+    val listType = this.typeDB.userTypes["List"]!!.first()
+    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
+    val mainArgs = "args" to listOfString
+    resolve(mainAST, mutableMapOf(mainArgs))
+
+    otherASTs.forEach {
+        currentPackageName = it.first
+        statements = it.second.toMutableList()
+        resolve(it.second, mutableMapOf())
+    }
 
     // need to add all imports from mainFile pkg to mainNiva pkg
     val currentProject = projects[currentProjectName]!!

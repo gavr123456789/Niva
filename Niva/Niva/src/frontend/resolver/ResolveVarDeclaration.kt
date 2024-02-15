@@ -7,6 +7,7 @@ import frontend.parser.types.ast.VarDeclaration
 import frontend.resolver.*
 import frontend.resolver.Type.RecursiveType.copy
 import main.RED
+import main.RESET
 import main.WHITE
 import main.YEL
 import main.utils.isGeneric
@@ -22,7 +23,7 @@ fun Resolver.resolveVarDeclaration(
     resolve(listOf(statement.value), previousAndCurrentScope, statement)
     currentLevel--
     val value = statement.value
-    val valueType = value.type
+    var valueType = value.type
         ?: statement.token.compileError("In var declaration $WHITE${statement.name}$RED value doesn't got type")
     val statementDeclaredType = statement.valueTypeAst
 
@@ -61,13 +62,28 @@ fun Resolver.resolveVarDeclaration(
         copyType.typeArgumentList = newTypeArgList
         value.type = copyType
     }
+//    if (value is Receiver && (valueType is Type.UserLike && valueType.typeArgumentList.isNotEmpty() || valueType is Type.NullableType && valueType.realType is Type.UserLike && valueType.realType.typeArgumentList.isNotEmpty())) {
+//        val type = if (valueType is Type.NullableType) valueType.realType else valueType
+//        val letterTable = mutableMapOf<String, Type>()
+//
+//
+//        recursiveGenericResolving(type as Type.UserType, letterTable, mutableMapOf())
+//        // take args from value.receiver.type.typeArgList
+//    }
 
     // check that declared type == inferred type
     if (statementDeclaredType != null) {
-        if (statementDeclaredType.name != valueType.name) {
-            val text = "${statementDeclaredType.name} != ${valueType.name}"
-
-            statement.token.compileError("Type declared for ${YEL}${statement.name}$RED is not equal for it's value type ${YEL}`$text`")
+        val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
+        val realValueType = if (valueType is Type.Lambda) valueType.returnType else valueType
+        if (!compare2Types(statementDeclared, realValueType, isReturn = true)) {
+            val text = "$statementDeclaredType != $realValueType"
+            statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
+        }
+        // if x::Int? = 42 then we need to wrap type to Nullable
+        if (statementDeclaredType.isNullable && realValueType !is Type.NullableType) {
+            val nullableType = Type.NullableType(valueType)
+            value.type = nullableType
+            valueType = nullableType
         }
     }
 
@@ -76,3 +92,5 @@ fun Resolver.resolveVarDeclaration(
         topLevelStatements.add(statement)
     }
 }
+
+

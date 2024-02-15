@@ -1,0 +1,16 @@
+Bind package: "kotlin" content: [
+  type IntArray ofSize: Int
+  extend IntArray [
+    @rename: "set"
+    on at::Int put::Int -> Unit
+    @rename: "get"
+    on at::Int -> Int
+    on toString -> String
+    on copyOf::Int -> IntArray
+  ]
+
+  MutableList::Int toIntArray -> IntArray
+]
+
+
+

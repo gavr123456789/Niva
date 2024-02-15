@@ -17,7 +17,10 @@ sealed class MessageDeclaration(
         var forType: Type? = null,
         var returnType: Type? = null,
         var isRecursive: Boolean = false,
-) : Declaration(token, isPrivate, pragmas) {
+
+        val typeArgs: MutableList<String> = mutableListOf(),
+        var needCtArgs: Boolean = false // if true send names of args as invisible params
+        ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -32,9 +35,10 @@ class MessageDeclarationUnary(
     returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
-    isInline: Boolean = false
+    isInline: Boolean = false,
+    typeArgs: MutableList<String> = mutableListOf()
 
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, )
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs = typeArgs)
 
 class MessageDeclarationBinary(
     name: String,
@@ -46,8 +50,10 @@ class MessageDeclarationBinary(
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
-    isInline: Boolean = false
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, )
+    isInline: Boolean = false,
+    typeArgs: MutableList<String> = mutableListOf()
+
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs=typeArgs)
 
 
 // key: localName::type
@@ -72,11 +78,11 @@ class MessageDeclarationKeyword(
     body: List<Statement>,
     returnType: TypeAST?,
     isSingleExpression: Boolean,
-    val typeArgs: MutableList<String> = mutableListOf(),
+    typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isInline: Boolean = false
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, ) {
+) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs=typeArgs) {
     override fun toString(): String {
         return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -104,4 +110,17 @@ class ExtendDeclaration(
     token: Token,
     isPrivate: Boolean = false,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
+) : Declaration(token, isPrivate, pragmas)
+
+class StaticBuilderDeclaration(
+    val name: String,
+    token: Token,
+    val args: List<KeywordDeclarationArg>,
+    body: List<Statement>,
+    returnType: TypeAST?,
+    val defaultAction: CodeBlock? = null,
+    val typeArgs: MutableList<String> = mutableListOf(),
+    isPrivate: Boolean = false,
+    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    isInline: Boolean = false
 ) : Declaration(token, isPrivate, pragmas)

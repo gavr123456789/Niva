@@ -1,0 +1,11 @@
+
+Bind package: "okio.Path"  imports: {"okio.Path.Companion.toPath"}  content: [
+  type Path name: String
+  String toPath -> Path
+]
+
+Bind package: "okio"content: [
+  type FileSystem
+  @emit: "okio.FileSystem.SYSTEM.read($1) { readUtf8() }"
+  constructor FileSystem read::Path -> String
+]

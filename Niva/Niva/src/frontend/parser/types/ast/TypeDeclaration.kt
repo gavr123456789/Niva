@@ -22,7 +22,7 @@ sealed class TypeAST(
     class UserType(
         name: String,
 
-        val typeArgumentList: List<TypeAST>,
+        val typeArgumentList: Set<TypeAST>,
         isNullable: Boolean,
         token: Token,
         val names: List<String> = listOf(name),
@@ -51,8 +51,9 @@ sealed class TypeAST(
         name: String,
         val inputTypesList: List<TypeAST>,
         val returnType: TypeAST,
-        isNullable: Boolean,
         token: Token,
+        val extensionOfType: String? = null, // String.[x: Int -> Int]
+        isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pragmas: MutableList<CodeAttribute> = mutableListOf()
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
@@ -149,7 +150,7 @@ class UnionDeclaration(
 
 class AliasDeclaration(
     val typeName: String,
-    val matchedTypeName: String,
+    @Suppress("unused") val matchedTypeName: String,
     token: Token,
     pragmas: MutableList<CodeAttribute> = mutableListOf(),
     isPrivate: Boolean = false,
@@ -157,5 +158,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Nothing, Exception, Null
+    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric
 }

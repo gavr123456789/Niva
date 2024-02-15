@@ -6,6 +6,7 @@ import main.lex
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ParserTest {
     @Test
@@ -62,6 +63,20 @@ class ParserTest {
 
         val map = ast[0] as SetCollection
         assert(map.initElements.count() == 4)
+    }
+
+    @Test
+    fun collectionOfMessages() {
+        val source = """
+            {(1 inc) (2 inc) (3 inc)}
+            #{(1 dec) ("a b" split: " " |> first), 2 "b"}
+            #((1..3 |> random) (1..3 |> random))
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+
+        val list = ast[0] as ListCollection
+        assert(list.initElements.count() == 3)
     }
 
 //    @Test
@@ -1322,9 +1337,10 @@ class ParserTest {
     fun extendTypeWithManyMsgs() {
         val source = """
             extend Person [
-              unary -> Int = 1 echo
-              + binary::Int = 1 echo
-              key::Int word::String = 1 echo
+              on unary -> Int = 1 echo
+              on + binary::Int = 1 echo
+              on key::Int word::String = 1 echo
+              on withLocalName: x::Int = 1 echo
             ]
         """.trimIndent()
 
@@ -1356,11 +1372,156 @@ class ParserTest {
         """.trimIndent()
 
         // is the same as when() {}, so it is if else if
+        TODO()
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
 
     }
+
+    @Test
+    fun manyLineBinary() {
+        val source = """
+            x = 1 +
+            2
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun switchWithVariants() {
+        val source = """
+            x = 1
+            | x
+            | 1, 2, 3 => "sas" echo
+            |=> "sus" echo
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
+    @Test
+    fun staticBuild() {
+        val source = """
+            sas [ 
+                it echo 
+                defaultAction = [
+                  it echo
+                ]
+            ] 
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilder
+        assert(staticB.statements[0] is MessageSendUnary)
+    }
+
+    @Test
+    fun staticBuildDeclaration() {
+        val source = """
+            builder html init::[ -> Unit] -> HTML = [
+                html = HTML new
+                html init
+            ]
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilder
+        assert(staticB.statements[0] is MessageSendUnary)
+    }
+
+    @Test
+    fun inlineCanBeOnlyExpression() {
+        // when inline was parser as statement here, line 2-3 was parsed as KeywordMessageDeclaration
+        val source = """
+            y = 1 from: 5
+            >y
+            x::Int = 5
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+
+    }
+
+    @Test
+    fun codeBlockFalseArgs() {
+        val source = """
+           
+          fillGroups = [
+            words1::MutableMap(Int, String) = #{}
+            words2::MutableMap(Int, String) = #{}
+            
+            1 echo
+          ]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
+    @Test
+    fun manyCases() {
+        val source = """
+           
+          | 1
+          | 1,2,3 => 4
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
+    @Test
+    fun pipedStaticSend() {
+        val source = """
+          FileSystem read: "strings.txt" toPath |>
+            split: "\n"
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val kw = ast[0] as MessageSendKeyword
+        val secondMsg = kw.messages[1] as KeywordMsg
+        val receiver = secondMsg.receiver
+        assert(receiver is KeywordMsg)
+    }
+
+    @Test
+    fun constructorKeywordWithLocalName() {
+        val source = """
+            constructor Person from: q::Int = q echo
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
+    @Test
+    fun doCallInVarDecl() {
+        val source = """
+            x = [1]
+            y::Int = x do
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val y = ast[1] as VarDeclaration
+        assertTrue { y.value is MessageSendUnary }
+    }
+
 
 
 //    @Test

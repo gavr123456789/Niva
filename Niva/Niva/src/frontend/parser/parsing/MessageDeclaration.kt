@@ -5,7 +5,8 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.util.capitalizeFirstLetter
 import main.RED
-import main.WHITE
+import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.simpleReceiver
 
 // also recevier can be unary or binary message
 
@@ -21,14 +22,18 @@ import main.WHITE
 // also code blocks
 
 
-fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = null, insideKeywordArgument: Boolean = false): Receiver {
+fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
+    customReceiver: Receiver? = null,
+    insideKeywordArgument: Boolean = false
+): Receiver {
 
     val safePoint = current
     try {
         // we don't need to parse cascade if we are inside keyword argument parsing, since this cascade will be applied to
         // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
         // or Person name: "Alice" |> getName
-        when (val messageSend = unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
+        when (val messageSend =
+            unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
             is MessageSendUnary, is MessageSendBinary -> {
                 return if (messageSend.messages.isNotEmpty()) {
                     messageSend
@@ -36,7 +41,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = nul
                     messageSend.receiver
             }
 
-            is MessageSendKeyword -> error("keyword cant be a receiver, for now")
+            is MessageSendKeyword -> error("keyword can be a receiver only when piped, 1 from: 2 |> to: 3")
         }
     } catch (e: Throwable) {
         if (e.message?.startsWith("Error") == true) {
@@ -52,112 +57,6 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(customReceiver: Receiver? = nul
 
 // receiver like collection, code block, identifier,
 
-// simple means not message
-fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
-
-    if (check(TokenType.OpenBracket)) {
-        return codeBlock()
-    }
-    if (check(TokenType.OpenParen)) {
-        return bracketExpression()
-    }
-
-    val readPrimaryCollection = {
-        val initElements = mutableListOf<Primary>()
-
-        var lastPrimary: Primary? = null
-        do {
-            val primaryTok = primary(typeAst)
-            match(TokenType.Comma)
-            if (primaryTok != null) {
-                if (lastPrimary != null && primaryTok.type?.name != lastPrimary.type?.name) {
-                    error("Heterogeneous collections are not supported")
-                }
-                initElements.add(primaryTok)
-            }
-            lastPrimary = primaryTok
-        } while (primaryTok != null)
-
-        initElements
-    }
-
-    val readPrimaryMap = {
-        val initElementsPairs: MutableList<Pair<Receiver, Receiver>> = mutableListOf()
-        do {
-            val primaryTok = primary(typeAst)
-            if (match(TokenType.Comma)) {
-                peek().compileError("Only map pairs can be separated by commas")
-            }
-
-            val primaryTok2 = primary(typeAst)
-            match(TokenType.Comma)
-            skipOneEndOfLineOrFile()
-
-            if (primaryTok != null && primaryTok2 != null) {
-                initElementsPairs.add(Pair(primaryTok, primaryTok2))
-            }
-
-            if (primaryTok != null && primaryTok2 == null) {
-                peek().compileError("Map must contain even elements")
-            }
-
-        } while (primaryTok != null)
-
-        initElementsPairs
-    }
-
-    var tryPrimary: Receiver? = primary(typeAst)
-    // check for collections
-    if (tryPrimary == null) {
-        val token = step()
-        skipOneEndOfLineOrFile()
-
-        tryPrimary = when (token.kind) {
-            TokenType.OpenBrace -> {
-                // {1, 2 3}
-                // for now, messages inside collection literals are impossible
-
-                //if there are keyword call, then read collection of constructors
-                val initElements = readPrimaryCollection()
-                match(TokenType.CloseBrace)
-
-                val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                return ListCollection(initElements, type, token)
-            }
-
-            TokenType.OpenBraceHash -> {
-                // #{"a" 1 "b" 2}
-                val initElements = readPrimaryMap()
-                skipOneEndOfLineOrFile()
-
-                match(TokenType.CloseBrace)
-
-                return MapCollection(initElements, null, token)
-            }
-
-            TokenType.OpenParenHash -> {
-                // #(1, 2 3)
-                val initElements = readPrimaryCollection()
-                skipOneEndOfLineOrFile()
-
-                match(TokenType.CloseParen)
-
-                val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                return SetCollection(initElements, type, token)
-            }
-
-
-            else -> null
-        }
-
-    }
-
-    if (tryPrimary == null) {
-        peek().compileError("Can't parse primary token, got ${WHITE}${peek().lexeme}")
-    }
-    return tryPrimary
-}
-
 
 fun Parser.returnType(): TypeAST? {
     if (!match(TokenType.ReturnArrow)) {
@@ -168,8 +67,6 @@ fun Parser.returnType(): TypeAST? {
 }
 
 fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
-
-
 
     // int^ inc = []
 
@@ -241,15 +138,8 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 }
 
 
-/**
- * Parses a keyword message declaration, which follows the format:
- *  - Receiver type, followed by arguments.
- *  - Optional return type.
- *  - Body with messages or variable declarations.
- * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
- * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
- */
-fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
+
+fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     val args = mutableListOf<KeywordDeclarationArg>()
 
     do {
@@ -261,7 +151,18 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
         skipNewLinesAndComments()
 
     } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
-
+    return args
+}
+/**
+ * Parses a keyword message declaration, which follows the format:
+ *  - Receiver type, followed by arguments.
+ *  - Optional return type.
+ *  - Body with messages or variable declarations.
+ * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
+ * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
+ */
+fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
+    val args = keywordArgs()
 
     val returnType = returnType()
 
@@ -292,6 +193,7 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
 private fun Parser.keyArg(): KeywordDeclarationArg {
     val noLocalNameNoType = check(TokenType.Colon)
     val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
+    val lambdaWithExtension = check(TokenType.Identifier) && check(TokenType.Dot, 1)
     // :foo
     if (noLocalNameNoType) {
         step() //skip colon
@@ -310,6 +212,17 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         match(TokenType.DoubleColon)
         val type = parseType()
         return (KeywordDeclarationArg(name = argName.lexeme, type = type))
+    }
+    else if (lambdaWithExtension) {
+        val extension = matchAssert(TokenType.Identifier)
+        step() // skip dot
+        val name = matchAssert(TokenType.Identifier, "Identifier expected in extension codeblock")
+        matchAssert(TokenType.DoubleColon, ":: expected in extension codeblock")
+        val typeAST = parseType(extension.lexeme)
+
+
+        val result = KeywordDeclarationArg(name = name.lexeme, type = typeAST)
+        return  result
     }
     // key: localName(::int)?
     else {
@@ -332,12 +245,12 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 // returns true if it's single expression
 fun Parser.methodBody(
-    isControlFlow: Boolean = false,
+    parseOnlyOneLineIfNoBody: Boolean = false
 ): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    val isThereAssignOrThen = match(TokenType.Assign) || isControlFlow
+    val isThereAssignOrThen = match(TokenType.Assign) || parseOnlyOneLineIfNoBody
     if (!isThereAssignOrThen) {
         return Pair(mutableListOf(), false)
     }
@@ -357,7 +270,7 @@ fun Parser.methodBody(
         // | switch
         // | cond => do
         // | cond => do // I wanna If here, but it will be another case
-        if (isControlFlow) {
+        if (parseOnlyOneLineIfNoBody) {
             messagesOrVarStatements.add(statementWithEndLine())
         } else {
             messagesOrVarStatements.add(statement())
@@ -370,17 +283,18 @@ fun Parser.methodBody(
 }
 
 
-
 // Int sas ^ (-> Type)? =?
 @Suppress("UNUSED_VARIABLE")
 fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
+    if (isConstructor) return true
+
     var isThereReturn = false
     var isThereEqual = false
 
     val returnArrow = match(TokenType.ReturnArrow)
     if (returnArrow) {
         isThereReturn = true
-        val type = identifierMayBeTyped()
+        identifierMayBeTyped()
     }
     match(TokenType.Return)
     val equal = match(TokenType.Assign)
@@ -388,16 +302,17 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
 
 //    return
 
-    return isThereReturn || isThereEqual || isConstructor
+    return isThereReturn || isThereEqual
 }
 
 fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     val savepoint = current
 
-    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1))) {
+    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1) && !check(TokenType.Colon, 1))) {
         match(TokenType.Identifier)
         val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
-        if (isThereEndOfMsgDecl) return true
+        if (isThereEndOfMsgDecl)
+            return true
     }
     current = savepoint
     return false
@@ -425,8 +340,8 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow))) {
         try {
             skipNewLinesAndComments()
-            if ((check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)) ||
-                (check(TokenType.Identifier) && check(TokenType.Colon, 1) && check(TokenType.Identifier, 2))
+            if ((checkMany(TokenType.Identifier, TokenType.DoubleColon)) ||
+                (checkMany(TokenType.Identifier, TokenType.Colon, TokenType.Identifier))
             ) {
                 keyArg()
                 keyArgsCounter++
@@ -436,7 +351,7 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
                 else
                     false
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return isThereEndOfMessageDeclaration(isConstructor)
         }
     }
@@ -456,8 +371,12 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
     return false
 }
 
-fun Parser.checkTypeOfMessageDeclaration2(isConstructor: Boolean = false, parseReceiver: Boolean = true): MessageDeclarationType? {
+fun Parser.checkTypeOfMessageDeclaration2(
+    isConstructor: Boolean = false,
+    parseReceiver: Boolean = true
+): MessageDeclarationType? {
     val savepoint = current
+
     @Suppress("UNUSED_VARIABLE")
     val receiver = if (parseReceiver) identifierMayBeTyped() else null
 
@@ -491,7 +410,7 @@ enum class MessageDeclarationType {
 fun Parser.messageDeclaration(
     type: MessageDeclarationType,
     codeAttributes: MutableList<CodeAttribute>? = null,
-    customForTypeAst: TypeAST? = null
+    customForTypeAst: TypeAST? = null,
 ): MessageDeclaration {
 
     val forTypeAst = customForTypeAst ?: parseType()
@@ -506,7 +425,7 @@ fun Parser.messageDeclaration(
     return result
 }
 
-fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclaration {
+fun Parser.extendDeclaration(pragmasForExtend: MutableList<CodeAttribute>): ExtendDeclaration {
     // extend Person [
     match("extend")
 
@@ -518,6 +437,9 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
 
     val list = mutableListOf<MessageDeclaration>()
     do {
+        val pragmas = if (check("@")) codeAttributes() else mutableListOf()
+        pragmas.addAll(pragmasForExtend)
+        matchAssert(TokenType.On)
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
 
@@ -530,7 +452,7 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
     return ExtendDeclaration(
         forTypeAst = forTypeAst,
         messageDeclarations = list,
-        token =  forTypeAst.token
+        token = forTypeAst.token
     )
 
 }
@@ -540,10 +462,10 @@ fun Parser.extendDeclaration(pragmas: MutableList<CodeAttribute>): ExtendDeclara
 fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
-    val isItKeywordDeclaration =
+    val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
-    val msgDecl = if (isItKeywordDeclaration != null) {
-        messageDeclaration(isItKeywordDeclaration, codeAttributes)
+    val msgDecl = if (messageDeclarationType != null) {
+        messageDeclaration(messageDeclarationType, codeAttributes)
     } else null
 
     if (msgDecl == null) {
@@ -554,5 +476,54 @@ fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): C
         msgDeclaration = msgDecl,
         constructorKeyword,
     )
+    return result
+}
+
+
+// builder name key-args lambdaArg -> Type = []
+fun Parser.builderDeclaration(pragmas: MutableList<CodeAttribute>): StaticBuilderDeclaration {
+    val builderKeyword = matchAssert(TokenType.Builder)
+    val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
+//    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)
+
+    val args = keywordArgs()
+    val returnType = returnType()
+    matchAssert(TokenType.Assign)
+    matchAssert(TokenType.OpenBracket, "builder cant be single expression")
+    val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+
+
+
+
+//    val kw = keywordDeclaration(fakeAST)
+//
+//    val findIFThereDefaultAction = {
+//        var defaultAction: CodeBlock? = null
+//        kw.body.forEach {
+//            if (it is VarDeclaration && it.name == "default") {
+//                if (defaultAction != null) it.token.compileError("${WHITE}default$RESET action already declarated")
+//                val value  = it.value
+//                if (value !is CodeBlock) {
+//                    it.token.compileError("Value of ${WHITE}default$RESET action must be codeblock")
+//                }
+//                defaultAction = value
+//                return@forEach
+//            }
+//        }
+//        defaultAction
+//    }
+
+
+
+    val result = StaticBuilderDeclaration(
+        name = name.name,
+        defaultAction = defaultAction,
+        token = builderKeyword,
+        args = args,
+        body = body,
+        returnType = returnType,
+        pragmas = pragmas,
+    )
+
     return result
 }

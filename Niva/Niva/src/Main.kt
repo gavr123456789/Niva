@@ -10,8 +10,9 @@ import frontend.util.createFakeToken
 import frontend.util.div
 import frontend.util.fillSymbolTable
 import main.utils.Compiler
-import java.io.*
 import main.utils.compileProjFromFile
+import java.io.*
+import java.util.HashMap
 
 
 const val RESET = "\u001B[0m"
@@ -122,6 +123,7 @@ Kotlin\Java interop:
 
 enum class MainArgument {
     BUIlD,
+    DISRT,
     RUN,
     SINGLE_FILE_PATH,
     INFO_ONLY, // only means no kotlin compilation
@@ -170,7 +172,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
         MainArgument.RUN,
         MainArgument.INFO_ONLY,
         MainArgument.USER_DEFINED_INFO_ONLY,
-        MainArgument.BUIlD -> getPathToMain()
+        MainArgument.BUIlD, MainArgument.DISRT -> getPathToMain()
     }
 
     init {
@@ -193,6 +195,7 @@ class ArgsManager(val args: Array<String>) {
             when (val arg = args[0]) {
                 "run" -> MainArgument.RUN
                 "build" -> MainArgument.BUIlD
+                "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 else -> {
@@ -225,7 +228,7 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
 
 fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
     val specialPkgToInfoPrint = if (minusIindex != -1)
-        // get word after -i
+    // get word after -i
         if (args.count() - 1 > minusIindex)
             args[minusIindex + 1]
         else null
@@ -241,10 +244,117 @@ fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
     return specialPkgToInfoPrint
 }
 
+//var sas: ((String) -> Unit) = {}
+//
+//fun buildString2(builderAction: StringBuilder.() -> Unit): String {
+//    val q = StringBuilder()
+//
+//    val default: (String) -> Unit = { it: String ->
+//        q.append(it)
+//    }
+//    sas = default
+//
+//    q.builderAction()
+//    return q.toString()
+//}
+
+
+object StringUtils {
+    /**
+     * Returns a minimal set of characters that have to be removed from (or added to) the respective
+     * strings to make the strings equal.
+     */
+    fun diff(a: String, b: String): Pair<String> {
+        return diffHelper(a, b, HashMap())
+    }
+
+    /**
+     * Recursively compute a minimal set of characters while remembering already computed substrings.
+     * Runs in O(n^2).
+     */
+    private fun diffHelper(a: String, b: String, lookup: MutableMap<Long, Pair<String>>): Pair<String> {
+        val key = (a.length.toLong()) shl 32 or b.length.toLong()
+        if (!lookup.containsKey(key)) {
+            val value: Pair<String>
+            if (a.isEmpty() || b.isEmpty()) {
+                value = Pair(a, b)
+            } else if (a[0] == b[0]) {
+                value = diffHelper(a.substring(1), b.substring(1), lookup)
+            } else {
+                val aa = diffHelper(a.substring(1), b, lookup)
+                val bb = diffHelper(a, b.substring(1), lookup)
+                value = if (aa.first.length + aa.second.length < bb.first.length + bb.second.length) {
+                    Pair(a[0].toString() + aa.first, aa.second)
+                } else {
+                    Pair(bb.first, b[0].toString() + bb.second)
+                }
+            }
+            lookup[key] = value
+        }
+        return lookup[key]!!
+    }
+
+    class Pair<T>(val first: T, val second: T) {
+        override fun toString(): String {
+            return "($first,$second)"
+        }
+    }
+}
+
+
+// builder with receiver
+
+//    builder StringBuilder build = [
+//        //default = String
+//        action = [default::String -> this append: default |> append: "\n" ]
+//    ]
+//
+//    b = StringBuilder new
+//    b build [
+//        "sas"
+//        "sus"
+//    ]
+
+//simplest
+fun buildString2(x: StringBuilder.((String) -> Unit) -> Unit): StringBuilder {
+    val b = StringBuilder()
+    val toCallSite: (String) -> Unit = { default: String ->
+        b.append(default)
+        b.append("\n")
+    }
+    b.x(toCallSite)
+    return b
+}
+
+fun test() {
+    buildString2 {
+        it("sas")
+    }
+}
+
+fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Unit) {
+//    val q = StringBuilder()
+    val toCallSite: (String) -> Unit = { default: String -> this.append(default) }
+    this.x(toCallSite)
+}
+
+sealed class Shape2(val x: Int, val y: Int) {
+    class Rectangle(x: Int, y: Int, val w: Int, val h: Int) : Shape2(x, y)
+    class Circle(x: Int, y: Int, r: Int) : Shape2(x, y)
+}
+
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
+
+//    val builder = StringBuilder()
+//    builder.builderWithReceiver { x ->
+//        x("sas")
+//        this.append(123)
+//    }
 
     if (help(args)) return
 
@@ -274,12 +384,13 @@ fun main(args: Array<String>) {
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
 
     when (mainArg) {
-        MainArgument.BUIlD -> compiler.run(compileOnlyNoRun = true)
+        MainArgument.BUIlD -> compiler.run(dist = true, buildFatJar = true)
+        MainArgument.DISRT -> compiler.run(dist = true)
         MainArgument.RUN ->
             compiler.run()
 
         MainArgument.SINGLE_FILE_PATH -> {
-            compiler.run(compileOnlyNoRun = am.compileOnly, singleFile = true)
+            compiler.run(dist = am.compileOnly, singleFile = true)
         }
 
         MainArgument.INFO_ONLY ->
@@ -289,7 +400,7 @@ fun main(args: Array<String>) {
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
         MainArgument.RUN_FROM_IDE -> {
-            compiler.run(compileOnlyNoRun = false, singleFile = true)
+            compiler.run(dist = false, singleFile = true)
         }
     }
 

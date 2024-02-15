@@ -1,3 +1,5 @@
+@file:Suppress("UnusedReceiverParameter")
+
 package codogen
 
 import main.utils.addStd
@@ -9,6 +11,7 @@ import frontend.resolver.Package
 import frontend.resolver.Project
 import frontend.util.addIndentationForEachString
 import main.utils.appendnl
+import main.utils.targetToRunCommand
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
@@ -64,8 +67,37 @@ dependencies:
 """
     }
 
-    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String) =
-        "getTasksByName(\"run\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """kotlin {
+    jvm {
+        compilations {
+            val main = getByName("main")
+            tasks {
+                register<Jar>("fatJar") {
+                    group = "application"
+                    manifest {
+                        attributes["Main-Class"] = "mainNiva.MainKt"
+                    }
+                    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+                    archiveBaseName.set("$jarName")
+                    archiveVersion.set("")
+
+                    from(main.output.classesDirs)
+                    dependsOn(configurations.runtimeClasspath)
+                    from({
+                        configurations.runtimeClasspath.get()
+                            .filter { it.name.endsWith("jar") }
+                            .map { zipTree(it) }
+                    })
+                    with(jar.get() as CopySpec)
+                }
+            }
+        }
+    }
+}
+"""
+
+    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
+        "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
 }
 
 fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
@@ -73,14 +105,28 @@ fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
 }
 
 
-fun GeneratorKt.regenerateGradleForAmper(pathToGradle: String) {
-    val newGradle = GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath)
+fun GeneratorKt.regenerateGradleForAmper(
+    pathToGradle: String,
+    runCommandName: String,
+    compilationTarget: CompilationTarget,
+    jarName: String
+) {
+    val newGradle = buildString {
+        if (compilationTarget == CompilationTarget.jvm) {
+            append(GRADLE_FAT_JAR_TEMPLATE(jarName))
+        }
+        append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
+    }
+
+
     val gradleFile = File(pathToGradle)
     gradleFile.writeText(newGradle)
 }
 
+fun <T> T.p(): T = println(this).let { this }
 
-fun GeneratorKt.regenerateGradle(pathToGradle: String) {
+@Suppress("unused")
+fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
     val implementations = dependencies.joinToString("\n") {
         "implementation($it)"
     }
@@ -124,11 +170,16 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
     return baseDir
 }
 
-fun GeneratorKt.addStdAndPutInMain(ktCode: String, mainPkg: Package, compilationTarget: CompilationTarget) =
+fun GeneratorKt.addStdAndPutInMain(
+    ktCode: String,
+    mainPkg: Package,
+    compilationTarget: CompilationTarget,
+    pathToInfroProject: String
+) =
     buildString {
         append("package ${mainPkg.packageName}\n")
         val code1 = ktCode.addIndentationForEachString(1)
-        val mainCode = putInMainKotlinCode(code1)
+        val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
         append(code3, "\n")
@@ -163,16 +214,35 @@ fun GeneratorKt.generateKtProject(
     pathToAmper: String,
     mainProject: Project,
     topLevelStatements: List<Statement>,
-    compilationTarget: CompilationTarget
+    compilationTarget: CompilationTarget,
+    mainFileName: String, // using for binaryName
+    pathToInfroProject: String
 ) {
-    // remove imports of empty packages from other packages
-    val notBindPackages = mainProject.packages.values.filter { !it.isBinding }
-    notBindPackages.forEach { pkg ->
-        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
+    val notBindPackages = mutableSetOf<Package>()
+    val bindPackagesWithNeededImport = mutableSetOf<String>()
+    val pkgNameToNeededImports = mutableMapOf<String, Set<String>>()
 
+    mainProject.packages.values.forEach {
+        if (it.isBinding ) {
+            if (it.neededImports.isNotEmpty()) {
+                bindPackagesWithNeededImport.add(it.packageName)
+                pkgNameToNeededImports[it.packageName] = it.neededImports
+            }
+        } else
+            notBindPackages.add(it)
+    }
+    notBindPackages.forEach { pkg ->
+        // remove imports of empty packages from other packages
+        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
             notBindPackages.forEach { pkg2 ->
                 pkg2.imports -= pkg.packageName
             }
+        }
+
+        // if pkg1 imports some other pkg2 with needed imports, then add this imports to pkg1
+        val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
+        pkgsWithNeededImportsInCurrentImports.forEach {
+            pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
         }
     }
 
@@ -184,18 +254,19 @@ fun GeneratorKt.generateKtProject(
     val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
 
-    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget)
+    val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject)
     createCodeKtFile(path, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
-    generatePackages(path.toPath(), notBindPackages)
+    generatePackages(path.toPath(), notBindPackages.toList())
 
 
     // 4 regenerate amper
     regenerateAmper(pathToAmper, compilationTarget)
 
     // 4 regenerate gradle
-    regenerateGradleForAmper(pathToGradle)
+    regenerateGradleForAmper(pathToGradle, runCommandName = targetToRunCommand(compilationTarget), compilationTarget,
+        mainFileName)
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
@@ -208,8 +279,9 @@ fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null
         append(pkg.generateImports())
 
     }
+    val generator = GeneratorKt()
     statements.forEach {
-        append(GeneratorKt().generateKtStatement(it, indent), "\n")
+        append(generator.generateKtStatement(it, indent), "\n")
     }
 
 }

@@ -1,0 +1,18 @@
+
+// fun buildString(builderAction: StringBuilder.() -> Unit): String
+builder StringBuilder buildString::[ -> Unit] -> String = [
+    init = StringBuilder new
+    default::String = [
+        init append: it
+    ]
+    // это произойдет автоматически
+    init buildString
+    ^ init toString
+]
+
+x = buildString [
+    "a"
+    "b"
+    "c"
+]
+
