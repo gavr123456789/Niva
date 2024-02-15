@@ -4,36 +4,50 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.parser.types.ast.Collection
 import main.CYAN
+import main.RESET
 import main.WHITE
 import main.YEL
 
 
 fun Resolver.resolveCollection(
-    statement: Collection, typeName: String,
+    statement: Collection,
+    typeName: String,
     previousAndCurrentScope: MutableMap<String, Type>,
     rootStatement: Statement?
 ) {
+    val fillCollectionType = { typeArgumentList: List<Type>, statement2: Collection ->
+        val listType =
+            this.projects["common"]!!.packages["core"]!!.types[typeName] as Type.UserType
+
+        val collectionType = Type.UserType(
+            name = typeName,
+            typeArgumentList = typeArgumentList,
+            fields = mutableListOf(),
+            pkg = "core",
+            protocols = listType.protocols
+        )
+        statement2.type = collectionType
+    }
+
     if (statement.initElements.isNotEmpty()) {
         // resolve args
         statement.initElements.forEach {
-            if (it.typeAST != null) {
+            if (it is Primary && it.typeAST != null) {
                 it.type = it.typeAST.toType(typeDB, typeTable)
             } else {
                 currentLevel++
                 resolve(listOf(it), previousAndCurrentScope, statement)
+//                if (it.type == null) it.token.compileError("Compiler bug: Can't infer type of $it")
                 currentLevel--
             }
         }
 
         val firstElem = statement.initElements[0]
-        if (firstElem.typeAST != null) {
-            val firstElemType = firstElem.typeAST.toType(typeDB, typeTable)//fix
+        val firstElemType = firstElem.type
+        if (firstElemType != null) {
             firstElemType.beforeGenericResolvedName = "T" // Default List has T type
-            val listType =
-                this.projects["common"]!!.packages["core"]!!.types[typeName] as Type.UserType
 
-
-            // infer Any type of collection
+            // set Any type of collection, if {1, "sas"}
             val anyType = if (statement.initElements.count() > 1) {
                 val argTypesNames = statement.initElements.map { it.type?.name }.toSet()
                 if (argTypesNames.count() > 1)
@@ -42,25 +56,21 @@ fun Resolver.resolveCollection(
             } else null
 
             // try to find list with the same generic type
-            val listProtocols = listType.protocols
-            val collectionType = Type.UserType( // alreadyExistsListType ?:
-                name = typeName,
-                typeArgumentList = listOf(anyType ?: firstElemType),
-                fields = mutableListOf(),
-                pkg = currentPackageName,
-                protocols = listProtocols
-            )
-
-            statement.type = collectionType
-
-
+            fillCollectionType(listOf(anyType ?: firstElemType), statement)
 
         } else {
-            statement.token.compileError("Cant get type of elements of list literal")
+            statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }
     } else if (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null) {
         val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
+    }
+    // empty collection assigned to keyword argument
+    else if (rootStatement is KeywordMsg && currentArgumentNumber != -1) {
+        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
+
+    } else {
+        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
     }
 
 }
@@ -71,14 +81,16 @@ fun Resolver.resolveSet(
     previousAndCurrentScope: MutableMap<String, Type>,
     rootStatement: Statement?,
 ) {
-    resolveCollection(statement, "MutableSet", previousAndCurrentScope,rootStatement)
+    resolveCollection(statement, "MutableSet", previousAndCurrentScope, rootStatement)
 
     for (i in 0 until statement.initElements.count() - 1) {
         for (j in i + 1 until statement.initElements.count()) {
-            val first = statement.initElements[i].token.lexeme
-            val second = statement.initElements[j].token.lexeme
-            if (first == second) {
-                println("${YEL}Warning: set contains the same element: $WHITE$first")
+            if (statement.initElements[i] is Primary) {
+                val first = statement.initElements[i].toString()
+                val second = statement.initElements[j].toString()
+                if (first == second) {
+                    println("${YEL}Warning: set contains the same element: $WHITE$first$RESET")
+                }
             }
         }
     }
@@ -110,32 +122,12 @@ fun Resolver.resolveMap(
 
     val mapTypeFromDb =
         this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
-    val listTypeFromDb =
-        this.projects["common"]!!.packages["core"]!!.types["MutableList"] as Type.UserType
-
-    val listTypeOfValues = Type.UserType(
-        name = "MutableList",
-        typeArgumentList = listOf(valueType),
-        fields = mutableListOf(),
-        pkg = currentPackageName,
-        protocols = listTypeFromDb.protocols
-    )
-    val listTypeOfKeys = Type.UserType(
-        name = "MutableList",
-        typeArgumentList = listOf(keyType),
-        fields = mutableListOf(),
-        pkg = currentPackageName,
-        protocols = listTypeFromDb.protocols
-    )
 
     val mapType = Type.UserType(
         name = "MutableMap",
         typeArgumentList = listOf(keyType, valueType),
-        fields = mutableListOf(
-            TypeField("values", listTypeOfValues),
-            TypeField("keys", listTypeOfKeys)
-        ),
-        pkg = currentPackageName,
+        fields = mutableListOf(),
+        pkg = "core",
         protocols = mapTypeFromDb.protocols
     )
     statement.type = mapType

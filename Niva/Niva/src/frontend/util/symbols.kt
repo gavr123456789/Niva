@@ -40,13 +40,15 @@ fun Lexer.fillSymbolTable() {
         "mut" to TokenType.Mut,
         "alias" to TokenType.Alias,
         "union" to TokenType.Union,
+        "builder" to TokenType.Builder,
         "enum" to TokenType.Enum,
         "constructor" to TokenType.Constructor,
 //        "use" to TokenType.Use,
 
         "true" to TokenType.True,
         "false" to TokenType.False,
-        "null" to TokenType.Null
+        "null" to TokenType.Null,
+        "on" to TokenType.On
     )
 
     // add possible binary

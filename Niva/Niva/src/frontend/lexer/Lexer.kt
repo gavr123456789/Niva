@@ -184,14 +184,17 @@ fun String.set(index: Int, str: String): String {
     return substring(0, index) + str + substring(index)
 }
 
-fun Lexer.parseEscape(q: String) {
-    source = when (q[0]) {
-        'n' -> source.set(current, 'n')
-        '\'' -> source.set(current, '\'')
-        '\\' -> source.set(current, '\\')
-        else -> this.error("invalid escape sequence '\\${peek()}'")
-    }
-}
+//fun Lexer.parseEscape() {
+//    val q = peek()
+//
+//    source = when (q[0]) {
+//        'n' -> source.set(current, 'n')
+//        't' -> source.set(current, 't')
+//        '\'' -> source.set(current, '\'')
+//        '\\' -> source.set(current, '\\')
+//        else -> this.error("invalid escape sequence '\\${peek()}'")
+//    }
+//}
 
 
 fun Lexer.parseString(delimiter: String, mode: String = "single") {
@@ -206,13 +209,13 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
             }
         }
 
-        if (mode in arrayOf("raw", "multy")) {
+        if (arrayOf("raw", "multi").contains(mode)) {
             this.step()
-        } else if (this.match("\\")) {
-            val q = peek()
-
-            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex) //..^1
-            parseEscape(q)
+            continue
+        } else {
+            this.match("\\")
+//            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex-1)
+//            parseEscape()
         }
 
         if (mode == "format" && match("{")) {
@@ -239,13 +242,12 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         if (slen > 1 && delimiter == "'") {
             error("invalid character literal (length must be one!)")
         }
-
     }
 
 
 
     if (mode == "multi") {
-        if (!match(delimiter.repeat(3))) {
+        if (!match(delimiter)) {
             error("unexpected EOL while parsing multi-line string literal, $delimiter must be repeated 3 times for multi strings")
         }
     } else if (done() && peek(-1) != delimiter) {
@@ -254,7 +256,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         step()
     }
 
-    if (delimiter == "\"") {
+    if (delimiter == "\"" || delimiter == "\"\"\"") {
         createToken(TokenType.String)
     } else {
         createToken(TokenType.Char)
@@ -394,7 +396,8 @@ fun Lexer.next() {
                 step(2)
                 mode = "multi"
             }
-            parseString(peek(-1), mode)
+            val delimiter = if (mode!= "multi") peek(-1) else "\"\"\""
+            parseString(delimiter, mode)
         }
 
         // before digit because of floats "3.14"

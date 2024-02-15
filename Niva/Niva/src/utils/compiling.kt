@@ -7,11 +7,13 @@ import frontend.util.div
 import frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
 import main.PathManager
-import java.io.*
+import java.io.File
+
+
 
 
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
-    val p = ProcessBuilder(*this.split(" ").toTypedArray())
+    val p = ProcessBuilder(this.split(" "))
         .directory(workingDir)
 
     if (withOutputCapture) {
@@ -47,6 +49,12 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
 
 }
 
+fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
+    CompilationTarget.jvm -> "run"
+    CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
+    CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+}
+
 class Compiler(
     private val pathToProjectRoot: String,
     private val inlineReplPath: File,
@@ -55,20 +63,17 @@ class Compiler(
     private val mainNivaFileName: String,
     private val resolver: Resolver
 ) {
-    private fun cmd(compileOnlyNoRun: Boolean = false) = (if (!compileOnlyNoRun)
-        when (compilationTarget) { // native run is always debug
-            CompilationTarget.jvm -> "run"
-            CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
-            CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
-        } else
+    private fun cmd(dist: Boolean = false, build: Boolean = false) = (if (!dist)
+        targetToRunCommand(compilationTarget)
+    else
         when (compilationTarget) {
-            CompilationTarget.jvm -> "distZip"
+            CompilationTarget.jvm -> if (build) "fatJar" else "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }) + " -Pkotlin.experimental.tryK2=true"
+        }) + " --parallel --build-cache --configuration-cache -Pkotlin.experimental.tryK2=true"
 
 
-    fun run(compileOnlyNoRun: Boolean = false, singleFile: Boolean = false) {
+    fun run(dist: Boolean = false, buildFatJar: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
         // remove repl log file since it will be recreated
         val removeReplFile = {
             if (inlineReplPath.exists()) {
@@ -86,11 +91,11 @@ class Compiler(
             warning("Release mode is useless with jvm target")
         }
 
-        val cmd = cmd(compileOnlyNoRun)
+        val cmd = cmd(dist, buildFatJar)
         when (getOSType()) {
-            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q $cmd".runCommand(file, true)
-            CurrentOS.LINUX -> "./gradlew -q $cmd".runCommand(file, true)
-            CurrentOS.MAC -> "./gradlew -q $cmd".runCommand(file, true)
+            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q --console=plain $cmd".runCommand(file, true)
+            CurrentOS.LINUX -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
+            CurrentOS.MAC -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
         }
 
         if (inlineReplPath.exists()) {
@@ -101,13 +106,21 @@ class Compiler(
                 warning("inline repl currently supported only in jvm target")
             }
         }
-        if (compileOnlyNoRun) {
+        if (dist || buildFatJar) {
             when (compilationTarget) {
                 CompilationTarget.jvm -> {
-                    val zipName = File("./${mainNivaFileName}.zip")
-                    val pathToNativeExe =
-                        pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
-                    File(pathToNativeExe).copyTo(zipName, true)
+                    if (buildFatJar) {
+                        val jarFile = File("./${mainNivaFileName}.jar")
+                        val whereToCopy =
+                            pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
+                        File(whereToCopy).copyTo(jarFile, true)
+                    } else {
+                        val zipName = File("./${mainNivaFileName}.zip")
+                        val pathToNativeExe =
+                            pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                        File(pathToNativeExe).copyTo(zipName, true)
+                    }
+
                 }
 
                 CompilationTarget.linux -> {
@@ -168,9 +181,6 @@ fun compileProjFromFile(
         else
             listOf()
 
-//    val allFiles = listOf( mainFile.absoluteFile.toString()) + otherFilesPaths.map { it.absoluteFile.toString() }
-
-//    println("Compiling: $allFiles")
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
@@ -180,6 +190,7 @@ fun compileProjFromFile(
     )
 
     resolver.resolve(mainFile)
+
     val defaultProject = resolver.projects["common"]!!
 
     resolver.generator.generateKtProject(
@@ -188,12 +199,16 @@ fun compileProjFromFile(
         pathToAmper,
         defaultProject,
         resolver.topLevelStatements,
-        resolver.compilationTarget
+        resolver.compilationTarget,
+        mainFileName = mainFile.name,
+        pm.pathToInfroProject
     )
     // printing all >?
     resolver.printInfoFromCode()
     return resolver
 }
+
+@Suppress("unused")
 inline fun <T, R> T?.unpackDo(block: (T) -> R, or: R): R {
     return if (this != null)
         block(this)
@@ -202,8 +217,6 @@ inline fun <T, R> T?.unpackDo(block: (T) -> R, or: R): R {
 
 fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
-    val q: Int? = null
-    val w = q.unpackDo ({ it + 5 }, 5)
 
     val quote = "\"\"\""
 
@@ -240,6 +253,13 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         fun Error.Companion.throwWithMessage(message: String): Nothing {
             throw kotlin.Exception(message)
         }
+        
+        // for ct reflection
+        class TypeType(
+            val name: String,
+            val fields: MutableMap<String, TypeType> = mutableMapOf(),
+            val genericParams: MutableList<TypeType> = mutableListOf()
+        )
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)
@@ -313,8 +333,10 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
                 x()
             } else y()
         }
-
         
+        inline fun <T> Iterable<T>.joinWithTransform(separator: String, noinline transform: ((T) -> CharSequence)): String {
+            return this.joinToString(separator, transform = transform)
+        }
 
         operator fun <K, V> MutableMap<out K, V>.plus(map: MutableMap<out K, V>): MutableMap<K, V> =
             LinkedHashMap(this).apply { putAll(map) }
@@ -323,6 +345,15 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
+        
+        fun <T> T?.unpackOrError(): T {
+            return this!!
+        } 
+        
+        // because default iterator on map from kotlin needs unpacking Map.Entry with ()
+        inline fun <K, V> Map<out K, V>.forEach(action: (x: K, y: V) -> Unit): Unit {
+            for (element in this) action(element.key, element.value)
+        }
 
         // end of STD
 
@@ -335,30 +366,91 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 }
 
 
-fun putInMainKotlinCode(code: String) = buildString {
-//    try {
-//        listOf(1).get(232)
-//    } catch (e: Exception) {
-//        println(e.message)
-//        println("-----------")
-//        val q = e.stackTrace
-//        println(e.stackTraceToString())
-//    }
-
-    append("fun main() {\n")
+fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, pathToInfroProject: String) = buildString {
+    append("fun main(args: Array<String>) {\n")
     append("try {\n")
 
     append(code, "\n")
 
-    append(
-        """
+    val catchExpressions = if (compilationTarget == CompilationTarget.linux) """
         } catch (e: Exception) {
         println("----------")
         println(e.message)
         println("----------")
         println(e.stackTraceToString())
     }
+    """ else """
+        } catch (e: Exception) {
+
+        println("----------")
+        println("\u001B[31m" + e.message + "\u001B[0m")
+        println("----------")
+        val q = e.stackTrace
+        
+        val thisProjectPath = "$pathToInfroProject/src/"
+        
+        fun replaceLinesInStackTrace(x: List<StackTraceElement>) {
+
+            class FileAndLine(val file: String, val line: Int)
+            val getNearestNivaLine = { kotlinLine: Int, file: String ->
+                if (kotlinLine == -2) FileAndLine("EntryPoint!", 0)
+                else {
+                    if (kotlinLine < 0) throw Exception("Cant find line")
+
+                    
+                    val thisFileContent = java.io.File(thisProjectPath + file).readText()
+                    val lines = thisFileContent.split("\n")
+
+
+                    var q = lines[kotlinLine - 1]
+                    val splitted = q.split("@")
+                    if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
+                    val fileAndLineNumber = splitted[1].trim()
+                    val (file, lineStr) = fileAndLineNumber.split(":::")
+                    val line = lineStr.toInt()
+
+                    FileAndLine(file, line)
+                }
+            }
+            
+            val checkExistAsNivaFile = { file: String ->
+                java.io.File(thisProjectPath + file).exists()
+            }
+
+            val stackTracesWithFiles = x.filter { it.fileName != null }
+            stackTracesWithFiles.forEach {
+                val pathToFile =
+                    if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName
+                val nivaLine = if (checkExistAsNivaFile(it.fileName))
+                    getNearestNivaLine(it.lineNumber - 1, pathToFile)
+                else FileAndLine(
+                    it.fileName,
+                    it.lineNumber
+                )
+//            val newElement = StackTraceElement(it.className, it.methodName, nivaLine.file, nivaLine.line)
+                println(buildString {
+                    append("Method: ")
+                    append(it.methodName)
+                    append("\t\t")
+                    append("\u001B[37mFile: ")
+                    append(nivaLine.file)
+                    append("::")
+                    append(nivaLine.line)
+                    append("\u001B[0m")
+                })
+//            replacedStack.add(newElement)
+            }
+//        return replacedStack
+        }
+        val methodName = q[0].methodName
+        replaceLinesInStackTrace(if (methodName == "unpackOrError" || methodName == "throwWithMessage") q.drop(1) else q.toList())
+
+//    println(e.stackTraceToString())
+    }
     """.trimIndent()
+
+    append(
+        catchExpressions
     )
 
 

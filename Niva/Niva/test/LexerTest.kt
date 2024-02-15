@@ -5,6 +5,7 @@ import frontend.meta.TokenType.*
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 val helloWorldProgram = """
@@ -15,6 +16,7 @@ val helloWorldProgram = """
 val rawString = """
 x = r"string"
 """.trimIndent()
+
 
 class LexerTest {
 
@@ -223,10 +225,49 @@ x sas
         checkWithEnd(manyExpr, listOf(Null))
     }
 
+    @Test
+    fun on() {
+        val manyExpr = "on"
+        checkWithEnd(manyExpr, listOf(On))
+    }
+
+    @Test
+    fun multilineString() {
+        val multiline = "\"\"\" a\"b\"c \"\"\""
+        checkWithEnd(multiline, listOf(TokenType.String))
+    }
+
+
+
+
+    @Test
+    fun escape() {
+        val manyExpr = """ "\n\n" echo """
+        val lexer = Lexer(manyExpr, File("Niva.iml"))
+        val result = lexer.lex()
+        val q = result.dropLast(1).last()
+        assertTrue(q.lexeme == "echo")
+        ////
+
+        val manyExpr2 = """"\n\n\n" echo"""
+        val lexer2 = Lexer(manyExpr2, File("Niva.iml"))
+        val result2 = lexer2.lex()
+        val q2 = result2.dropLast(1).last()
+        assertTrue(q2.lexeme == "echo")
+
+
+        ////
+
+        val manyExpr3 = """"\"" echo"""
+        val lexer3 = Lexer(manyExpr3, File("Niva.iml"))
+        val result3 = lexer3.lex()
+        val q3 = result3.dropLast(1).last()
+        assertTrue(q3.lexeme == "echo")
+    }
+
 
     private fun checkWithEnd(source: String, tokens: List<TokenType>, showTokens: Boolean = true) {
         val lexer = Lexer(source, File("Niva.iml"))
-//        lexer.fillSymbolTable()
         val result = lexer.lex().map { it.kind }
             .dropLast(1) // drop end of file
         assertEquals(tokens, result)

@@ -1,17 +1,6 @@
 package codogen
 
 import frontend.parser.types.ast.*
-import frontend.resolver.Type
-
-
-fun codegenIfLet(x: IfBranch.IfBranchWithBody) = buildString {
-    // person name  => [name -> name echo ]
-    // letIfAllNotNull(person?.name, {(name) -> ...})
-    append("letIfAllNotNull(")
-    append(x.ifExpression.generateExpression(withNullChecks = true))
-    append(") ")
-    append(x.body.generateCodeBlock(withTypeDeclaration = false, putArgListInBrackets = true))
-}
 
 fun ControlFlow.If.generateIf(): String = buildString {
 
@@ -63,11 +52,12 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     append("when (")
     append(switch.generateExpression())
     append(") {\n")
-    ifBranches.forEach {
+    ifBranches.forEach { it ->
         append("    ")
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
             append(it.ifExpression.generateExpression())
+            append(", " + it.otherIfExpressions.joinToString(", ") {x -> x.generateExpression() })
         } else {
             append("is ", it.ifExpression.generateExpression())
         }

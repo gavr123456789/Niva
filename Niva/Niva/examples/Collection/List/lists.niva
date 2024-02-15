@@ -20,3 +20,7 @@ emptyList::MutableList::Int = {}
 emptyList add: 5
 //> [5]
 > emptyList
+
+// you can put messages inside collection with braces(because , is optional)
+collectionWithMessages = {(1 inc) (2 inc) (3 inc inc)}
+

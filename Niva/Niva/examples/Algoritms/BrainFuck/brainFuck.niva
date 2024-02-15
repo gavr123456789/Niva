@@ -8,7 +8,7 @@ mut ptr = 0
 
 [ip == program count] whileFalse: [
   char = program at: ip
-  buf count dec < ptr => buf add: 0 // bool then(=>) buf add: 0
+  buf count dec < ptr => buf add: 0
   bufAtPtr = buf at: ptr
 
   | char
@@ -16,7 +16,7 @@ mut ptr = 0
   | '<' => ptr <- ptr dec
   | '+' => buf at: ptr put: bufAtPtr inc
   | '-' => buf at: ptr put: bufAtPtr dec
-  | '.' => ((buf viewFrom: ptr to: ptr inc) at: 0) toChar echonnl
+  | '.' => buf viewFrom: ptr to: ptr inc |> at: 0 |> toChar echonnl
   | ',' => "readln needed" echo
   | '[' =>
     bufAtPtr == 0 => [

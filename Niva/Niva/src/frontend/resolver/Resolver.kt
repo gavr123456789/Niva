@@ -5,14 +5,15 @@ package frontend.resolver
 import codogen.GeneratorKt
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.parser.parsing.MessageDeclarationType
+import frontend.parser.parsing.CodeAttribute
 import frontend.parser.types.ast.*
+import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.createFakeToken
 import frontend.util.div
 import main.*
 import main.frontend.typer.*
-import main.utils.isGeneric
 import java.io.File
+import java.util.Stack
 
 private fun Resolver.addPrintingInfoAboutType(type: Type) {
     infoTypesToPrint.add(type)
@@ -26,7 +27,7 @@ private fun Resolver.resolveStatement(
 ) {
     val resolveTypeForMessageSend = { statement2: MessageSend ->
         when (statement2.receiver.token.lexeme) {
-            "Project", "Bind", "Compiler" -> {}
+            "Project", "Bind" -> {}
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -53,18 +54,26 @@ private fun Resolver.resolveStatement(
 
     when (statement) {
         is Declaration -> {
-            if (!allDeclarationResolvedAlready)
-                resolveDeclarations(statement, previousScope, true)
-            else if (statement is MessageDeclaration) {
-                // first time all declarations resolved without bodies, now we need to resolve them
+            val resolveMsgDeclarationOnlyBody = { statement: MessageDeclaration ->
                 currentLevel++
                 resolveMessageDeclaration(
                     statement,
                     true,
-                    (currentScope + previousScope).toMutableMap(),
+                    (previousScope).toMutableMap(), // don't send currentScope in body, because actually declarations cant see top level declarated variables
                     addToDb = false
                 )
                 currentLevel--
+            }
+
+            if (!allDeclarationResolvedAlready)
+                resolveDeclarations(statement, previousScope, true)
+            else if (statement is MessageDeclaration) {
+                // first time all declarations resolved without bodies, now we need to resolve them
+                resolveMsgDeclarationOnlyBody(statement)
+            } else if (statement is ExtendDeclaration) {
+                statement.messageDeclarations.forEach {
+                    resolveMsgDeclarationOnlyBody(it)
+                }
             }
         }
 
@@ -77,11 +86,35 @@ private fun Resolver.resolveStatement(
         }
 
         is MessageSend -> {
+            stack.push(statement)
+
+            if (statement.receiver.token.lexeme == InternalTypes.Compiler.name) {
+                val msg = statement.messages[0]
+                if (msg.selectorName == "getName") {
+                    val intArg = (msg as KeywordMsg).args[0].keywordArg
+                    val codeAtr = CodeAttribute("arg", intArg as Primary)
+
+                    resolvingMessageDeclaration?.apply {
+                        this.needCtArgs = true
+                        this.pragmas.add(codeAtr)
+                    }
+                    statement.pragmas.add(codeAtr)
+                }
+
+            }
+
             resolveTypeForMessageSend(statement)
             if (currentLevel == 0)
                 topLevelStatements.add(statement)
+            stack.pop()
         }
 
+        is StaticBuilder -> {
+            currentLevel++
+            resolve(statement.statements, (currentScope + previousScope).toMutableMap())
+            currentLevel--
+            TODO()
+        }
 
         is IdentifierExpr -> {
             val kw = if (rootStatement is KeywordMsg) {
@@ -93,22 +126,12 @@ private fun Resolver.resolveStatement(
             )
             val type = statement.type
 
+            // This Identifier is Type, like Person
             if (type != null && statement.str == type.name && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
-                if (type is Type.UserLike) {
-                    if (type.fields.isEmpty()) {
-                        statement.isConstructor = true
-                    } else if (kw == null) {
-                        val typeFields = type.fields.joinToString(": value") { it.name } + ": value"
-
-                        // Inline question
-                        if (statement.isInfoRepl) {
-                            addPrintingInfoAboutType(type)
-                        } else
-                            statement.token.compileError("To construct type use `${YEL}${statement.name} $CYAN$typeFields$RESET`")
-                    }
-                } else if (statement.isInfoRepl) {
+                if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type)
                 }
+                statement.isType = true
             }
 
             if (currentLevel == 0) topLevelStatements.add(statement)
@@ -211,7 +234,6 @@ private fun Resolver.resolveStatement(
     }
 }
 
-// нужен механизм поиска типа, чтобы если не нашли метод в текущем типе, то посмотреть в Any
 fun Resolver.resolve(
     statements: List<Statement>,
     previousScope: MutableMap<String, Type>,
@@ -230,23 +252,12 @@ fun Resolver.resolve(
     }
 
     topLevelStatements = topLevelStatements.filter {
-        !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind"))
+        !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind" || it.receiver.str == "Compiler"))
     }.toMutableList()
 
 
     return statements
 }
-
-fun createEmptyKwConstructor(value: IdentifierExpr, valueType: Type, token: Token) = KeywordMsg(
-    receiver = value, //IdentifierExpr("", token = createFakeToken()),
-    selectorName = value.str,
-    type = valueType,
-    token = token,
-    args = listOf(),
-    path = listOf(),
-    kind = KeywordLikeType.Constructor
-)
-
 
 fun Resolver.resolveExpressionInBrackets(
     statement: ExpressionInBrackets,
@@ -269,17 +280,23 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
-    // one of the types is Any
-    if (type1.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
-        return true
-    }
+fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Boolean = false): Boolean {
+    if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
         if (type1.args.count() != type2.args.count()) {
             token?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${type1.args.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${type2.args.count()}")
             return false
         }
+
+        // temp for adding "(k,v)" for map, filter for hash maps
+        if (type2.specialFlagForLambdaWithDestruct) {
+            type1.specialFlagForLambdaWithDestruct = true
+        }
+        if (type1.specialFlagForLambdaWithDestruct) {
+            type2.specialFlagForLambdaWithDestruct = true
+        }
+        //
 
         type1.args.forEachIndexed { i, it ->
             val it2 = type2.args[i]
@@ -296,7 +313,9 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         val isReturnTypesEqual =
             (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(
                 return1,
-                return2
+                return2,
+                token,
+                isReturn
             )
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
@@ -305,13 +324,26 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         return true
     }
 
+    // one of the types is top type Any
+    if (type1.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
+        return true
+    }
 
+
+    if (type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
+        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType
+    ) {
+        return true
+    }
+
+    val pkg1 = type1.pkg
+    val pkg2 = type2.pkg
+    val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
 
     if (type1 is Type.UserLike && type2 is Type.UserLike) {
-        // if types from different packages, and its not core
-        val pkg1 = type1.pkg
-        val pkg2 = type2.pkg
-        if (pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core") {
+        // if types from different packages, and it's not core
+
+        if (isDifferentPkgs) {
             token?.compileError("$YEL$type1$RESET is from $WHITE$pkg1$RESET pkg, and $YEL$type2$RESET from $WHITE$pkg2")
             return false
         }
@@ -324,12 +356,27 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
                 token?.compileError("Types: $YEL$type1$RESET and $YEL$type2$RESET have a different number of generic parameters")
                 return false
             }
+
+            val isSameNames = type1.toString() == type2.toString()
             args1.forEachIndexed { index, arg1 ->
                 val arg2 = args2[index]
-                val sameArgs = compare2Types(arg1, arg2)
+                if (isSameNames) {
+                    if (arg1 is Type.UnknownGenericType) {
+                        type1.typeArgumentList = type2.typeArgumentList
+                        return true
+                    }
+                    if (arg2 is Type.UnknownGenericType) {
+                        type2.typeArgumentList = type1.typeArgumentList
+                        return true
+                    }
+                }
+
+                val sameArgs = compare2Types(arg1, arg2, token)
                 if (!sameArgs) {
                     token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
-                }
+                    throw Exception("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
+                } else
+                    return sameArgs // List::Int and List::T are the same
             }
         }
 
@@ -358,13 +405,20 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null): Boolean {
         return true
     }
 
-
-    if (type1 is Type.UnknownGenericType || type2 is Type.UnknownGenericType) {
-        return true
+    // Ins sas -> Int? = ^42
+    if (isReturn) {
+        if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
+            val win = compare2Types(type1.realType, type2, token)
+            if (win) return true
+        }
+        if ((type2 is Type.NullableType && type1 !is Type.NullableType)) {
+            val win = compare2Types(type1, type2.realType, token)
+            if (win) return true
+        }
     }
 
-    // TODO temp, there could be types with same names in different packages, or with different generic params
-    if (type1.name == type2.name && type1.pkg == type2.pkg) {
+
+    if (type1.toString() == type2.toString() && !isDifferentPkgs) {
         return true
     }
 
@@ -382,146 +436,9 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
             concreteImports.add(pkg)
         }
     }
-
 }
 
 //fun Resolver.findAnyMessage(receiverType: Type)
-
-fun Resolver.findUnaryMessageType(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData {
-
-    fun findUnary(receiverType: Type, selectorName: String, token: Token): UnaryMsgMetaData? {
-        receiverType.protocols.forEach { (_, v) ->
-            val q = v.unaryMsgs[selectorName]
-
-            if (q != null) {
-                val pkg = getCurrentPackage(token)
-                // method can be declared in different package than it's receiver type
-                pkg.addImport(q.pkg)
-                return q
-            }
-        }
-        return null
-    }
-
-    val result = findUnary(receiverType, selectorName, token)
-    if (result != null)
-        return result
-
-    var parent: Type? = receiverType.parent
-    while (parent != null) {
-        val parentResult = findUnary(parent, selectorName, token)
-        if (parentResult != null)
-            return parentResult
-        parent = parent.parent
-    }
-
-    // this is Any
-    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
-    val messageFromAny = findUnary(anyType, selectorName, token)
-    if (messageFromAny != null) {
-        return messageFromAny
-    }
-
-
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find unary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-    token.compileError(errorText)
-}
-
-
-// returns true if it is static call, but not constructor(so we generate Clock.System instead of Clock.System())
-fun Resolver.findStaticMessageType(
-    receiverType: Type,
-    selectorName: String,
-    token: Token,
-    msgType: MessageDeclarationType? = null
-): Pair<MessageMetadata, Boolean> {
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.staticMsgs[selectorName]
-        if (q != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
-            return Pair(q, false)
-        }
-    }
-
-    // if this is binding, then getters are static, calls without ()
-    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
-        return when (msgType) {
-            MessageDeclarationType.Unary ->
-                Pair(findUnaryMessageType(receiverType, selectorName, token), true)
-
-            MessageDeclarationType.Keyword ->
-                Pair(findKeywordMsgType(receiverType, selectorName, token), true)
-
-            MessageDeclarationType.Binary -> TODO()
-        }
-
-    }
-
-    if (selectorName == "new") {
-        if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
-            val result = UnaryMsgMetaData(
-                name = "new!",
-                returnType = receiverType,
-                pkg = currentPackageName,
-            )
-            return Pair(result, false)
-        } else {
-            token.compileError("${WHITE}new$RESET can't bew used with $YEL$receiverType$RESET, it has fields(use them as constructor), or its basic type ")
-        }
-    }
-
-    throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")
-//    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
-}
-
-fun Resolver.findBinaryMessageType(receiverType: Type, selectorName: String, token: Token): BinaryMsgMetaData {
-    if (receiverType.name.isGeneric()) {
-        throw Exception("Can't receive generic type to find binary method for it")
-    }
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.binaryMsgs[selectorName]
-        if (q != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(q.pkg)
-            return q
-        }
-    }
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find binary message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-    token.compileError(errorText)
-}
-
-fun Resolver.findKeywordMsgType(receiverType: Type, selectorName: String, token: Token): KeywordMsgMetaData {
-    if (receiverType.name.isGeneric()) {
-        throw Exception("Can't receive generic type to find keyword method for it")
-    }
-
-    receiverType.protocols.forEach { (_, v) ->
-        val q = v.keywordMsgs[selectorName]
-        if (q != null) {
-            // TODO! add using of keyword to msgs list of method, maybe
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(q.pkg)
-            return q
-        }
-    }
-
-    val errorText = if (receiverType is Type.NullableType)
-        "Cant send message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType.name}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
-    else
-        "Cant find keyword message: $CYAN$selectorName${RESET} for type $YEL${receiverType.pkg}${RESET}.$YEL${receiverType.name}"
-
-
-    token.compileError(errorText)
-}
 
 
 fun Resolver.getPackage(packageName: String, token: Token): Package {
@@ -531,12 +448,13 @@ fun Resolver.getPackage(packageName: String, token: Token): Package {
 }
 
 
-fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
+fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
     val pack = customPkg ?: getPackage(currentPackageName, token)
-    val type = pack.types[typeName]
-        ?: getPackage("common", token).types[typeName]
-        ?: getPackage("core", token).types[typeName]
-        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
+//    val type =
+//        pack.types[typeName]
+//        ?: getPackage("common", token).types[typeName]
+//        ?: getPackage("core", token).types[typeName]
+//        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
 
     val protocol = type.protocols[currentProtocolName]
 
@@ -551,20 +469,20 @@ fun Resolver.getCurrentProtocol(typeName: String, token: Token, customPkg: Packa
 fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
 fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).imports
 
+// TODO! make universal as toAnyMessageData
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
-//    val testDB = typeDB.getType(statement.forTypeAst.name)
+    // if return type is not declared then use receiver
+    val returnType = if (statement.returnTypeAST == null)
+        typeOfReceiver
+    else
+        statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
 
     val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
-//            staticUnaryForType[statement.name] = statement.msgDeclaration
-            val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
-
-            // if return type is not declared then use receiver
-            val returnType = if (statement.returnTypeAST == null)
-                typeOfReceiver
-            else
-                statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
+            val type =
+                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
 
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
@@ -582,8 +500,10 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
         }
 
         is MessageDeclarationKeyword -> {
-//            staticKeywordForType[statement.name] = statement.msgDeclaration
-            val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
+            val type =
+                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+
+            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
 
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
@@ -592,10 +512,11 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                         ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}${RESET}'s arg $WHITE${it.name}${RESET} not registered")
                 )
             }
+
             val messageData = KeywordMsgMetaData(
                 name = statement.msgDeclaration.name,
                 argTypes = keywordArgs,
-                returnType = typeOfReceiver,
+                returnType = returnType,
                 codeAttributes = statement.pragmas,
                 pkg = pkg.packageName
             )
@@ -605,47 +526,52 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
         is ConstructorDeclaration -> TODO()
     }
-    addMsgToPackageDeclarations(statement)
     return messageData
 }
 
-fun Resolver.addNewUnaryMessage(statement: MessageDeclarationUnary, isGetter: Boolean = false): MessageMetadata {
-    val customPkg = if (statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.names.count() > 1) {
-        getPackage(statement.forTypeAst.names.dropLast(1).joinToString("."), statement.token)
+
+fun Resolver.addNewAnyMessage(
+    st: MessageDeclaration,
+    isGetter: Boolean = false,
+    forType: Type? = null
+): MessageMetadata {
+    val customPkg = if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.names.count() > 1) {
+        getPackage(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
     } else null
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token, customPkg)
 
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg, isGetter)//fix
-    protocol.unaryMsgs[statement.name] = messageData
+    val type =
+        if (forType is Type.UnknownGenericType)
+            Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+        else
+            st.forType ?: st.token.compileError("Compiler error, type for $st not resolved")
 
-    addMsgToPackageDeclarations(statement)
+    val realType =
+        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
+    val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
+
+    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, this)
+
+
+    when (st) {
+        is MessageDeclarationUnary -> protocol.unaryMsgs[st.name] = messageData as UnaryMsgMetaData
+        is MessageDeclarationBinary -> protocol.binaryMsgs[st.name] = messageData as BinaryMsgMetaData
+        is MessageDeclarationKeyword -> protocol.keywordMsgs[st.name] = messageData as KeywordMsgMetaData
+        is ConstructorDeclaration -> {
+            // st.toAnyMessageData already adding static to db
+        }
+    }
+
+
+    addMsgToPackageDeclarations(st)
     return messageData
 }
 
-fun Resolver.addNewBinaryMessage(statement: MessageDeclarationBinary): MessageMetadata {
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
-    protocol.binaryMsgs[statement.name] = messageData
-
-    addMsgToPackageDeclarations(statement)
-    return messageData
-}
-
-fun Resolver.addNewKeywordMessage(statement: MessageDeclarationKeyword): MessageMetadata {
-    val (protocol, pkg) = getCurrentProtocol(statement.forTypeAst.name, statement.token)
-    val messageData = statement.toMessageData(typeDB, typeTable, pkg)//fix
-    protocol.keywordMsgs[statement.name] = messageData
-
-    // add msg to package declarations
-    addMsgToPackageDeclarations(statement)
-    return messageData
-}
-
-fun Resolver.addMsgToPackageDeclarations(statement: Declaration) {
+fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
     val pack = getPackage(currentPackageName, statement.token)
     pack.declarations.add(statement)
-}
 
+    pack.addImport(statement.forType!!.pkg)
+}
 
 fun Resolver.typeAlreadyRegisteredInCurrentPkg(type: Type, pkg: Package? = null, token: Token? = null): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
@@ -704,7 +630,8 @@ fun Resolver.changePackage(
     newCurrentPackage: String,
     token: Token,
     isBinding: Boolean = false,
-    isMainFile: Boolean = false
+    isMainFile: Boolean = false,
+    neededImports: MutableSet<String>? = null,
 ) {
     currentPackageName = newCurrentPackage
     val currentProject =
@@ -728,7 +655,8 @@ fun Resolver.changePackage(
         // create this new package
         val pack = Package(
             packageName = newCurrentPackage,
-            isBinding = isBinding
+            isBinding = isBinding,
+            neededImports = neededImports ?: mutableSetOf()
         )
 
         currentProject.packages[newCurrentPackage] = pack
@@ -830,8 +758,7 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?:
-        getType2(x.name, currentScope, previousScope, kw)
+        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
 //    else getType(
 //        x.name,
 //        currentScope,
@@ -890,6 +817,28 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
+val createTypeListOfType = { name: String, internalType: Type.InternalType, listType: Type.UserType ->
+    Type.UserType(
+        name = name,
+        typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = listType.protocols
+    )
+}
+val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
+    Type.UserType(
+        name = name,
+        typeArgumentList = listOf(
+            key.copy().also { it.beforeGenericResolvedName = "T" },
+            value.copy().also { it.beforeGenericResolvedName = "G" }
+        ),
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = mapType.protocols
+    )
+}
+
 
 @Suppress("UNUSED_VARIABLE")
 class Resolver(
@@ -918,6 +867,7 @@ class Resolver(
 
     // for recursive types
     val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
+    val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
     val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
     var allDeclarationResolvedAlready: Boolean = false,
 
@@ -930,7 +880,9 @@ class Resolver(
     var wasThereReturn: Type? = null,
     var resolvingMessageDeclaration: MessageDeclaration? = null,
 
-    val infoTypesToPrint: MutableSet<Type> = mutableSetOf()
+    val infoTypesToPrint: MutableSet<Type> = mutableSetOf(),
+
+    val stack: Stack<MessageSend> = Stack()
 ) {
     companion object {
 
@@ -946,11 +898,14 @@ class Resolver(
 
             createDefaultType(InternalTypes.Project),
             createDefaultType(InternalTypes.Bind),
+            createDefaultType(InternalTypes.Compiler),
             createDefaultType(InternalTypes.IntRange),
 
             createDefaultType(InternalTypes.Any),
             createDefaultType(InternalTypes.Nothing),
             createDefaultType(InternalTypes.Null),
+
+            createDefaultType(InternalTypes.UnknownGeneric),
         )
 
         init {
@@ -963,7 +918,10 @@ class Resolver(
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
-            val nullType = defaultTypes[InternalTypes.Null]!!
+            val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
+//            val nullType = defaultTypes[InternalTypes.Null]!!
+//            val compiler = defaultTypes[InternalTypes.Compiler]!!
+
 
             intType.protocols.putAll(
                 createIntProtocols(
@@ -986,8 +944,6 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
-                    intRangeType = intRangeType,
-                    anyType = anyType
                 ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) }
             )
 
@@ -999,8 +955,6 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     floatType = floatType,
-                    intRangeType = intRangeType,
-                    anyType = anyType
                 ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) }
             )
 
@@ -1044,7 +998,18 @@ class Resolver(
             anyType.protocols.putAll(
                 createAnyProtocols(
                     unitType = unitType,
-                    any = anyType
+                    any = anyType,
+                    boolType = boolType,
+                    stringType = stringType
+                )
+            )
+            // we need to have different links to protocols any and T, because different msgs can be added for both
+            unknownGenericType.protocols.putAll(
+                createAnyProtocols(
+                    unitType = unitType,
+                    any = anyType,
+                    boolType = boolType,
+                    stringType = stringType
                 )
             )
 
@@ -1076,6 +1041,8 @@ class Resolver(
         val nothingType = defaultTypes[InternalTypes.Nothing]!!
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
+        val compiler = defaultTypes[InternalTypes.Compiler]!!
+
 
         /// Default packages
         val commonProject = Project("common")
@@ -1114,22 +1081,80 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        listType.protocols.putAll(
-            createListProtocols(
+
+        fun addCustomTypeToDb(type: Type.UserType, protocols: MutableMap<String, Protocol>) {
+            type.protocols.putAll(
+                protocols
+            )
+
+            typeTable[type.name] = type// fixed
+            typeDB.addUserLike(type.name, type, createFakeToken())
+            corePackage.types[type.name] = type
+        }
+        // Sequence
+        val sequenceType = Type.UserType(
+            name = "Sequence",
+            typeArgumentList = listOf(genericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val sequenceTypeOfDifferentGeneric = Type.UserType(
+            name = "Sequence",
+            typeArgumentList = listOf(differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+
+        addCustomTypeToDb(
+            sequenceType, createListProtocols(
                 intType = intType,
+                stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
-                listType = listType,
-                listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
+                mutListType = sequenceType,
+                listTypeOfDifferentGeneric = sequenceTypeOfDifferentGeneric,
                 itType = genericType,
-                differentGenericType = differentGenericType
+                differentGenericType = differentGenericType,
+                sequenceType = sequenceType
             )
         )
+
+        sequenceTypeOfDifferentGeneric.protocols.putAll(sequenceType.protocols)
+
+
+        // List
+        addCustomTypeToDb(
+            listType,
+            createListProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                mutListType = listType,
+                listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
+                itType = genericType,
+                differentGenericType = differentGenericType,
+                sequenceType = sequenceType
+            )
+        )
+
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
-        typeTable[listType.name] = listType// fixed
-        typeDB.addUserLike(listType.name, listType, createFakeToken())
-        corePackage.types[listType.name] = listType
+
+        // now when we have list type with its protocols, we add split method for String, that returns List::String
+        val listOfString = createTypeListOfType("List", stringType, listType)
+
+        listType.protocols
+        stringType.protocols["common"]!!.keywordMsgs
+            .putAll(listOf(createKeyword(KeywordArg("split", stringType), listOfString)))
+
+        // add toList to IntRange
+        val listOfInts = createTypeListOfType("List", intType, listType)
+        val mutListOfInts = createTypeListOfType("MutableList", intType, listType)
+        val intRangeProto = intRangeType.protocols["common"]!!
+        val toListForIntProtocol = createUnary("toList", listOfInts)
+        val toMutListForIntProtocol = createUnary("toMutableList", mutListOfInts)
+        intRangeProto.unaryMsgs.putAll(arrayOf(toListForIntProtocol, toMutListForIntProtocol))
         // Mutable list
         val mutableListType = Type.UserType(
             name = "MutableList",
@@ -1143,22 +1168,23 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mutableListType.protocols.putAll(
-            createListProtocols(
+
+        addCustomTypeToDb(
+            mutableListType, createListProtocols(
                 intType = intType,
+                stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
-                listType = mutableListType,
+                mutListType = mutableListType,
                 listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
                 itType = genericType,
-                differentGenericType = differentGenericType
+                differentGenericType = differentGenericType,
+                sequenceType = sequenceType
             )
         )
-        mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
-        typeTable[mutableListType.name] = mutableListType// fixed
-        typeDB.addUserLike(mutableListType.name, mutableListType, createFakeToken())
 
-        corePackage.types[mutableListType.name] = mutableListType
+        mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
+
 
         // mutable set
         val mutableSetType = Type.UserType(
@@ -1173,22 +1199,20 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mutableSetType.protocols.putAll(
-            createSetProtocols(
+        addCustomTypeToDb(
+            mutableSetType, createSetProtocols(
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
                 setType = mutableSetType,
                 setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-                genericTypeOfSetElements = genericType,
-                differentGenericType = differentGenericType
+                itType = genericType,
+                differentGenericType = differentGenericType,
+                listType = listType
             )
         )
-        mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
-        typeTable[mutableSetType.name] = mutableSetType// fixed
-        typeDB.addUserLike(mutableSetType.name, mutableSetType, createFakeToken())
 
-        corePackage.types[mutableSetType.name] = mutableSetType
+        mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
 
         // mutable map
         val mapType = Type.UserType(
@@ -1203,8 +1227,29 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
         )
-        mapType.protocols.putAll(
-            createMapProtocols(
+
+        /// MapEntry
+
+//        val mapEntryType = Type.UserType(
+//            name = "Entry",
+//            typeArgumentList = listOf(genericType, differentGenericType),
+//            fields = mutableListOf(
+//                TypeField("key", genericType),
+//                TypeField("value", differentGenericType)
+//            ),
+//            pkg = "Map",
+//        )
+//        mapEntryType.isBinding = true
+
+//        addCustomTypeToDb(
+//            mapEntryType, mutableMapOf()
+//        )
+        ///
+
+
+
+        addCustomTypeToDb(
+            mapType, createMapProtocols(
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
@@ -1213,15 +1258,12 @@ class Resolver(
                 keyType = genericType,
                 valueType = differentGenericType,
                 setType = mutableSetType,
-                listType = listType
+                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+//                mapEntryType
             )
         )
 
         mapTypeOfDifferentGeneric.protocols.putAll(mapType.protocols)
-        typeTable[mapType.name] = mapType// fixed
-        typeDB.addUserLike(mapType.name, mapType, createFakeToken())
-
-        corePackage.types[mapType.name] = mapType
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
@@ -1235,23 +1277,80 @@ class Resolver(
             pkg = "core",
         )
         errorType.isBinding = true
-        errorType.protocols.putAll(
-            createExceptionProtocols(
+
+        addCustomTypeToDb(
+            errorType, createExceptionProtocols(
                 errorType,
                 unitType,
                 nothingType,
                 stringType
             )
         )
-//        kotlinPkg.types["Exception"] = exceptionType
+
+        // StringBuilder
+        val stringBuilderType = Type.UserType(
+            name = "StringBuilder",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        stringBuilderType.isBinding = true
+
+        addCustomTypeToDb(
+            stringBuilderType, createStringBuilderProtocols(
+                stringBuilderType,
+                anyType,
+                stringType
+            )
+        )
 
 
-        typeTable[errorType.name] = errorType// fixed
-        typeDB.addUserLike(errorType.name, errorType, createFakeToken())
+        // TypeType
+        val typeType = Type.UserType(
+            name = "TypeType",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            pkg = "core",
+        )
+        val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapType)
 
-        corePackage.types[errorType.name] = errorType
+        // add fields
+        typeType.fields = mutableListOf(
+            TypeField("name", stringType),
+            TypeField("fields", fieldsMap),
+        )
+
+        addCustomTypeToDb(
+            typeType,
+            mutableMapOf()
+        )
+
+        // Compiler
+        compiler.protocols.putAll(
+            createCompilerProtocols(
+                intType = intType,
+                stringType = stringType,
+                typeType = typeType
+            )
+        )
+
+
+
 
         projects[projectName] = commonProject
-
     }
 }
+
+private fun Type.InternalType.copy(): Type.InternalType {
+    return Type.InternalType(
+        typeName = InternalTypes.valueOf(name),
+        pkg = this.pkg,
+        isPrivate,
+        protocols
+    )
+}
+
+//class TypeType(
+//    val name: String,
+//    val fields: MutableMap<String, TypeType>
+//)

@@ -3,6 +3,10 @@ package frontend.parser.parsing
 import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import main.RESET
+import main.WHITE
+import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.simpleReceiver
 
 fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDeclaration {
     // type Person name: string generic age: int
@@ -149,6 +153,9 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
             val isThereFields = match(TokenType.Colon)
             val isThereEndOfLine = skipOneEndOfLineOrFile()
             if (!isThereFields && !isThereEndOfLine) {
+                if (match(TokenType.DoubleColon)) {
+                    name.compileError("For fields of type you need to use $WHITE`:`$RESET not $WHITE`::`")
+                }
                 name.compileError("Syntax error, expected : fields or new line, but found \"$name\"")
             }
             if (isThereEndOfLine) {
@@ -224,10 +231,11 @@ fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDe
     return root
 }
 
+@Suppress("unused")
 fun Parser.typeAliasDeclaration(): AliasDeclaration {
     val tok = matchAssert(TokenType.Alias)
     val x = identifierMayBeTyped()
-    val equal = matchAssert(TokenType.Assign)
+    matchAssert(TokenType.Assign) // equal
     val y = identifierMayBeTyped()
     val result = AliasDeclaration(
         x.name,

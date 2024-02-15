@@ -7,6 +7,10 @@ import frontend.meta.TokenType
 import frontend.meta.compileError
 import frontend.meta.isIdentifier
 import frontend.parser.types.ast.*
+import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.simpleReceiver
+import main.frontend.parser.parsing.staticBuilder
+import main.frontend.parser.parsing.varDeclaration
 
 
 // Declaration without end of line
@@ -42,8 +46,13 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Union) {
         return unionDeclaration(pragmas)
     }
+
     if (kind == TokenType.Constructor) {
         return constructorDeclaration(pragmas)
+    }
+
+    if (kind == TokenType.Builder) {
+        return builderDeclaration(pragmas)
     }
 
     if (kind == TokenType.Identifier && tok.lexeme == "extend") {
@@ -60,20 +69,23 @@ fun Parser.statement(): Statement {
 
     if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
         val inlineTok = step()
-        val inlineExpr = statement()
-        if (inlineExpr is Expression) {
+        try {
+            val inlineExpr = expression(true)
+
             inlineExpr.isInlineRepl = true
             if (isInlineReplWithNum)
                 inlineExpr.inlineReplCounter = tok.lexeme.substring(1).toInt()
-            else if(isInlineReplWithQuestion) {
+            else if (isInlineReplWithQuestion) {
                 inlineExpr.isInfoRepl = true
             }
 
 
             return inlineExpr
-        } else {
+
+        } catch (_:Exception) {
             inlineTok.compileError("> can only be used with expressions")
         }
+
     }
 
     if (kind == TokenType.Return) {
@@ -155,39 +167,6 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? =
     }
 
 
-fun Parser.varDeclaration(): VarDeclaration {
-    // skip mut
-    val isMutable = check(TokenType.Mut)
-    if (isMutable) {
-        step()
-    }
-
-    val tok = this.step()
-    val typeOrEqual = step()
-
-    val value: Expression
-    val valueType: TypeAST?
-    when (typeOrEqual.kind) {
-        TokenType.Assign -> {
-            val isNextReceiver = isNextSimpleReceiver()
-            value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
-            valueType = null
-        }
-        // ::^int
-        TokenType.DoubleColon -> {
-            valueType = parseType()
-            // x::int^ =
-            match(TokenType.Assign)
-            value = this.simpleReceiver(valueType)
-        }
-
-        else -> error("after ${peek(-1)} needed type or expression")
-    }
-
-    val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
-    return result
-}
-
 fun Parser.assignVariableNewValue(): Assign {
     // x <- expression
     val identTok = this.step()
@@ -249,8 +228,14 @@ fun Parser.isNextSimpleReceiver(): Boolean {
     return false
 }
 
-
-// message or control flow
+fun Parser.commaSeparatedExpressions(): List<Expression> {
+    val result = mutableListOf<Expression>()
+    do {
+        result.add(expression())
+    }while (match(TokenType.Comma))
+    return result
+}
+// message or control flow or static builder
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
 fun Parser.expression(
@@ -266,6 +251,12 @@ fun Parser.expression(
     if (check(TokenType.Underscore)) {
         return ifStatementOrExpression()
     }
+
+    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
+        return staticBuilder()
+    }
+
+
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
     // unwrap unnecessary MessageSend
@@ -300,7 +291,8 @@ fun Parser.expression(
 
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = singleExpr as Expression
+                        thenDoExpression = singleExpr,
+                        listOf()
                     )
                 }
                 else {
@@ -318,7 +310,8 @@ fun Parser.expression(
                     }
                     IfBranch.IfBranchWithBody(
                         ifExpression = unwrapped,
-                        body = body
+                        body = body,
+                        listOf()
                     )
                 }
             ),
@@ -339,12 +332,13 @@ class CodeAttribute(
 )
 
 
-private fun Parser.codeAttributes(): MutableList<CodeAttribute> {
+fun Parser.codeAttributes(): MutableList<CodeAttribute> {
     val codeAttributes: MutableList<CodeAttribute> = mutableListOf()
     step()
     do {
         val name = step()
-        step() // skip colon
+        matchAssert(TokenType.Colon)
+//        step() // skip colon
         val value = primary() ?: name.compileError("Inside code attribute after : value expected")
 
         codeAttributes.add(

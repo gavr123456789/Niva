@@ -4,10 +4,12 @@ import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.*
 import frontend.util.createFakeToken
+import frontend.util.removeDoubleQuotes
 import main.RED
 import main.RESET
 import main.WHITE
 import main.YEL
+import main.frontend.resolver.resolveStaticBuilderDeclaration
 import main.frontend.typer.project.resolveProjectKeyMessage
 
 
@@ -26,13 +28,21 @@ fun Resolver.resolveDeclarations(
         is MessageDeclaration -> {
             if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
+        is StaticBuilderDeclaration -> resolveStaticBuilderDeclaration(statement, resolveBody, previousScope)
+
         is ExtendDeclaration -> {
             var atLeastOneUnresolved = false
             statement.messageDeclarations.forEach {
+
                 val cantBeResolve = resolveMessageDeclaration(it, resolveBody, previousScope)
+
+                if (cantBeResolve) currentLevel++
                 if (!atLeastOneUnresolved && cantBeResolve) atLeastOneUnresolved = true
             }
-            if (atLeastOneUnresolved) return
+            if (atLeastOneUnresolved) {
+                currentLevel--
+                return
+            }
         }
 
         is UnionDeclaration -> {
@@ -48,7 +58,7 @@ fun Resolver.resolveDeclarations(
 
 
         is UnionBranch -> {
-            println("Union branch???")
+            // strange
         }
 
 
@@ -61,11 +71,10 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
         if (it is Declaration) {
             resolveDeclarations(it, mutableMapOf(), resolveBody = false)
         }
+        // special messages like Project package: ""
         if (it is MessageSendKeyword) {
             when (it.receiver.str) {
-                "Project" ->
-                    resolveProjectKeyMessage(it)
-
+                "Project" -> resolveProjectKeyMessage(it)
                 "Bind" -> {
                     val savedPackageName = currentPackageName
 
@@ -82,15 +91,26 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         msg.token.compileError("${WHITE}content$RED param is missing")
 
 
+
                     if (pkgArg.keywordArg !is LiteralExpression)
                         pkgArg.keywordArg.token.compileError("Package argument must be a string")
                     if (contentArg.keywordArg !is CodeBlock)
                         contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
+                    val importsArg = msg.args.find { x -> x.name == "imports" }
+                    val neededImports =
+                    if (importsArg != null) {
+                        if (importsArg.keywordArg !is ListCollection) {
+                            importsArg.keywordArg.token.compileError("Imports argument must be ${YEL}List::String")
+                        }
+                         importsArg.keywordArg.initElements.map { it.token.lexeme.removeDoubleQuotes() }.toMutableSet()
+                    } else null
 
                     val pkgName = pkgArg.keywordArg.toString()
-
-                    changePackage(pkgName, it.token, true)
+                    if (savedPackageName == pkgName) {
+                        it.token.compileError("Package $savedPackageName already exists, it is proposed to rename it to ${savedPackageName}.bind.niva")
+                    }
+                    changePackage(pkgName, it.token, true, neededImports = neededImports)
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {
@@ -107,11 +127,12 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                             gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
                         val gettersDeclarations = gettersArg.keywordArg.statements
                         gettersDeclarations.forEach { getter ->
-
                             if (getter !is MessageDeclarationUnary) {
                                 getter.token.compileError("Unary declaration expected inside getters block")
+                            } else {
+                                resolveMessageDeclaration(getter, false, mutableMapOf())
                             }
-                            addNewUnaryMessage(getter, isGetter = true)
+                            addNewAnyMessage(getter, isGetter = true)
 
                         }
                     }

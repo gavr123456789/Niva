@@ -1,22 +1,14 @@
-package frontend.parser.parsing
+package main.frontend.parser.parsing
 
-import frontend.meta.Token
-import frontend.meta.TokenType
-import frontend.meta.isIdentifier
-import frontend.meta.isNullable
+import frontend.meta.*
+import frontend.parser.parsing.*
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.TypeAST
 import frontend.util.createFakeToken
 import frontend.util.isSimpleTypes
 
-fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(
-    name = InternalTypes.Unit,
-    isNullable = false,
-    token = token,
-)
-
 // use only after ::
-fun Parser.parseType(): TypeAST {
+fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
@@ -26,7 +18,7 @@ fun Parser.parseType(): TypeAST {
 
     val tok = peek()
 
-    // set or map
+    // literal collections type set or map
     if (match(TokenType.OpenBraceHash)) {
         TODO()
     }
@@ -63,8 +55,9 @@ fun Parser.parseType(): TypeAST {
 
 
         return TypeAST.Lambda(
-            name = "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
+            name = ("$extensionTypeOfLambda.") + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
             inputTypesList = listOfInputTypes,
+            extensionOfType = extensionTypeOfLambda,
             token = tok,
             returnType = returnType,
             isNullable = isNullable,
@@ -99,11 +92,11 @@ fun Parser.parseType(): TypeAST {
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
-                return TypeAST.UserType(identifier.lexeme, listOf(parseGenericType()), isIdentifierNullable, identifier)
+                return TypeAST.UserType(identifier.lexeme, setOf(parseGenericType()), isIdentifierNullable, identifier)
             }
             // Map(Int, String)
             if (match(TokenType.OpenParen)) {
-                val typeArgumentList: MutableList<TypeAST> = mutableListOf()
+                val typeArgumentList: MutableSet<TypeAST> = mutableSetOf()
                 do {
                     typeArgumentList.add(parseGenericType())
                 } while (match(TokenType.Comma))
@@ -112,7 +105,7 @@ fun Parser.parseType(): TypeAST {
                 return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
             }
             // ::Person
-            TypeAST.UserType(identifier.lexeme, listOf(), isIdentifierNullable, identifier)
+            TypeAST.UserType(identifier.lexeme, setOf(), isIdentifierNullable, identifier)
         }
 
     }
@@ -135,12 +128,17 @@ fun Parser.parseType(): TypeAST {
         return TypeAST.UserType(
             name = path.last(),
             names = path,
-            typeArgumentList = listOf(),
+            typeArgumentList = setOf(),
             isNullable = tok.isNullable(),
             token = tok
         )
     }
 
-
-    error("type declaration expected")
+    tok.compileError("Syntax error: type declaration expected")
 }
+
+fun createUnitAstType(token: Token): TypeAST.InternalType = TypeAST.InternalType(
+    name = InternalTypes.Unit,
+    isNullable = false,
+    token = token,
+)

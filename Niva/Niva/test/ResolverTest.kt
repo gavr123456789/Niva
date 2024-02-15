@@ -12,6 +12,12 @@ fun resolve(source: String): List<Statement> {
     val resolved = resolver.resolve(resolver.statements, mutableMapOf())
     return resolved
 }
+fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
+    val ast = getAstTest(source)
+    val resolver = createDefaultResolver(ast)
+    val resolved = resolver.resolve(resolver.statements, mutableMapOf())
+    return Pair(resolved, resolver)
+}
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
@@ -162,6 +168,7 @@ class ResolverTest {
         assert(e["Unit"] != null)
         assert(e["Project"] != null)
         assert(e["Bind"] != null)
+        assert(e["Compiler"] != null)
 
     }
 
@@ -770,14 +777,28 @@ class ResolverTest {
     fun nullableType() {
         val source = """
         mut x::Int? = null
-        x != null => [
-          x + 6
+        x unpack: [
+          it + 6
         ]
         """.trimIndent()
 
 
         val statements = resolve(source)
         assert(statements.count() == 2)
+        val x = (statements[0] as VarDeclaration).value
+        assertTrue { x.type is Type.NullableType }
+    }
+
+    @Test
+    fun nullableTypeDeclaration() {
+        val source = """
+            q::Int? = 6
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val value = (statements[0] as VarDeclaration).value
+        assertTrue { value.type is Type.NullableType }
+
     }
 
 
@@ -803,8 +824,330 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun inferTypeOfEmptyArray() {
+        val source = """
+           union JsonObj =
+           | JsonArray arr: MutableList::JsonObj
 
 
+           arr = JsonArray arr: {}
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+    }
+
+    @Test
+    fun mapIterate() {
+        val source = """
+            map = #{ 1 "2" 3 "4" }
+
+            map forEach: [k, v ->
+                k echo
+                v echo
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = ((statements[1]) as MessageSendKeyword).messages[0] as KeywordMsg
+        val (k, v) = (q.args[0].keywordArg as CodeBlock).inputList
+        assert(k.type?.name == "Int")
+        assert(v.type?.name == "String")
+    }
+
+
+    @Test
+    fun chunked() {
+        val source = """
+           linesChunked = {1 2 3 4 5 6} chunked: 2
+
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        assert((((statements[0] as VarDeclaration).value.type as Type.UserType).typeArgumentList[0] as Type.UserType).typeArgumentList[0].name == "Int")
+    }
+
+    @Test
+    fun foreachOnComplexType() {
+        val source = """
+            linesChunked = {1 2 3 4 5 6} chunked: 2
+            linesChunked forEach: [
+              it at: 0
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        assert((((statements[0] as VarDeclaration).value.type as Type.UserType).typeArgumentList[0] as Type.UserType).typeArgumentList[0].name == "Int")
+    }
+
+    @Test
+    fun resolveGenericKwReturn() {
+        val source = """
+            x = #{ 1 2 3 4 }
+            y = x at: 1
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val y = statements[1] as VarDeclaration
+        val nullableTypeUnpacked = (y.value.type as Type.NullableType).realType
+        assert(nullableTypeUnpacked.name == "Int")
+    }
+
+    @Test
+    fun nullableVarDeclaration() {
+        val source = """
+            x::Int? = 6
+            x 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val x = statements[0] as VarDeclaration
+        assert(x.value.type is Type.NullableType)
+        val y = statements[1] as IdentifierExpr
+        assertTrue { y.type is Type.NullableType }
+
+    }
+
+    @Test
+    fun anyAssign() {
+        val source = """
+            x::Any = 1 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
+
+    @Test
+    fun unpackGenericBox() {
+        val source = """
+            type Box t: T
+
+            x = Box t: 5
+            y = Box t: "sas"
+        
+            unpack_x = x t
+            unpack_x + 5
+        
+            unpack_y = y t
+            unpack_y + " sus"
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 7)
+    }
+
+    @Test
+    fun returnGeneric() {
+        val source = """
+            Int x::T -> T = x
+            y = 1 x: 5
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val yVal = (statements[1] as VarDeclaration).value as MessageSendKeyword
+        assert(yVal.type?.name == "Int")
+    }
+
+    @Test
+    fun returnGenericFromConstructor() {
+        val source = """
+            type Sas 
+            constructor Sas t::T -> T = t 
+            y = Sas t: 1
+//            y inc
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val yVal = (statements[2] as VarDeclaration).value as MessageSendKeyword
+        assert(yVal.type?.name == "Int")
+    }
+
+    @Test
+    fun joins() {
+        val source = """
+            type Person name: String age: Int
+            alice = Person name: "Alica" age: 30
+            bob = Person name: "Bob" age: 31
+        
+            { 1 2 3 } joinWith: ", " |> echo
+            { alice bob } joinTransform: [ it name ] |> echo
+            { alice bob } joinWith: "\n" transform: [ it name + ": " + it age ] |> echo
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 6)
+    }
+
+    @Test
+    fun writeNullToNullableFiled() {
+        val source = """
+            type Box nullable: Box?
+            box = Box nullable: null
+            box nullable
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+        val boxTypeDecl = statements[0] as TypeDeclaration
+        val nullable = boxTypeDecl.fields[0].type as TypeAST.UserType
+        assertTrue { nullable.isNullable }
+        val boxType = (statements[2] as MessageSendUnary).type
+        assertTrue { boxType is Type.NullableType }
+    }
+
+    @Test
+    fun getGenericFromManyUnary() {
+        val source = """
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
+            group1 keys toList shuffled
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val list = statements[1] as MessageSendUnary
+        val listType = list.type as Type.UserType
+        assertTrue { listType.typeArgumentList.first().name == "Int" }
+    }
+
+    @Test
+    fun genericReceiver() {
+        val source = """
+            T sas -> T = this
+            x = 1 sas
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val sas = statements[1] as VarDeclaration
+        assertTrue{ sas.value.type?.name == "Int" }
+    }
+
+    @Test
+    fun currentLevel() {
+        val source = """
+            type COLOR
+            constructor COLOR RED = "\u001B[31m"
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+
+        assert(statements.count() == 2)
+    }
+
+    @Test
+    fun mapNotOverride() {
+        val source = """
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
+            sas::MutableMap(Int,Int) = #{}
+        """.trimIndent()
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+        val statements = resolver.resolve(resolver.statements, mutableMapOf())
+        assert(statements.count() == 2)
+
+        val q = resolver.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
+        assertTrue { q.typeArgumentList[0].name == "T" }
+    }
+
+    @Test
+    fun valuesOfMap() {
+        val source = """
+              
+            nativeGroup = #{1 "sas" 2 "sus"}
+            nativeGroup values 
+            
+          
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val values =  statements[1] as MessageSendUnary
+        val setType = values.type!! as Type.UserType
+        val setTypeArg = setType.typeArgumentList[0]
+        assertTrue { setTypeArg.name == "String"}
+    }
+
+    @Test
+    fun unaryForGenericReceiver() {
+        val source = """
+            { 1 2 3 } first
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val msg = statements[0] as MessageSendUnary
+        val type = msg.type
+        assertTrue { type?.name == "Int" }
+    }
+
+
+
+    @Test
+    fun extend() {
+        val source = """
+            
+        type Person
+        extend Person [
+          on unary = 1 echo
+          on + binary::Int = binary echo
+          on key::Int word::String = key echo
+          on withLocalName: x::Int = x echo
+        ]
+        
+        p = Person new
+        
+        p unary
+        p + 5
+        p key: 1 word: "2"
+        p withLocalName: 1
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 7)
+    }
+
+
+    @Test
+    fun resolveInsideExtend() {
+        val source = """
+        type Tape pos: Int
+
+        tape = Tape pos: 5
+        
+        extend Tape [
+            on sas = [
+                list = {1 2 3}
+                [pos >= list count] whileTrue: [
+                    pos <- pos dec
+                    pos echo
+                ]
+           ]
+        ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+    }
+
+    @Test
+    fun compilerReturnType() {
+        val source = """
+        Any sas = [
+          Compiler getName: 0
+        ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val sas = statements[0] as  MessageDeclarationUnary
+        val wew = sas.body[0] as MessageSendKeyword
+        assertTrue {wew.type?.name == "String"}
+    }
+
+//    @Test
+//    fun customConstructorForInternalTypeCheck() {
+//        val source = """
+//            Float from: 5
+//        """.trimIndent()
+//
+//        assertFails {
+//            val statements = resolve(source)
+//            assert(statements.count() == 1)
+//        }
+//
+//    }
 }
 
 

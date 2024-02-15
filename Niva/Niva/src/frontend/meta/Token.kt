@@ -7,6 +7,7 @@ import kotlin.system.exitProcess
 
 enum class TokenType {
     True, False, Null,
+    On, // on for many messages declarations
 
     // Literal types
     Integer,
@@ -55,6 +56,7 @@ enum class TokenType {
     InlineReplWithQuestion, // >?
     Underscore, // _
     Enum, // enum
+    Builder, // builder
 
 }
 

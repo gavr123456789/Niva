@@ -15,7 +15,10 @@ sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(type
     class StringExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.String, literal), literal) {
         override fun toString(): String {
-            return this.token.lexeme.slice(1 until token.lexeme.count() - 1)
+            val lex = token.lexeme
+            val removeN = if (lex.startsWith("\"\"\"")) 3 else 1
+
+            return this.token.lexeme.slice(removeN until token.lexeme.count() - removeN)
         }
     }
 
@@ -48,23 +51,22 @@ class IdentifierExpr(
     val names: List<String> = listOf(name),
     type: TypeAST? = null,
     token: Token,
-    var isConstructor: Boolean = false
-//    val depth: Int,
+    var isType: Boolean = false
 ) : Primary(type, token) {
     override fun toString(): String {
         return names.joinToString(".")
     }
 }
 
-sealed class Collection(val initElements: List<Primary>, type: Type?, token: Token) : Receiver(type, token)
+sealed class Collection(val initElements: List<Receiver>, type: Type?, token: Token) : Receiver(type, token)
 class ListCollection(
-    initElements: List<Primary>,
+    initElements: List<Receiver>,
     type: Type?,
     token: Token,
 ) : Collection(initElements, type, token)
 
 class SetCollection(
-    initElements: List<Primary>,
+    initElements: List<Receiver>,
     type: Type?,
     token: Token,
 ) : Collection(initElements, type, token)

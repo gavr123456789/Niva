@@ -65,8 +65,12 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     }
 
 
+    val args = if (needCtArgs) {
+        // for unary only receiver needed
+        "(__arg0: String)"
+    } else "()"
 
-    append(".", name, "()")
+    append(".", name, args)
     bodyPart(this@generateUnaryDeclaration, this)
 }
 
@@ -90,6 +94,12 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     if (arg.type != null) {
         append(": ", arg.type.name)
     }
+
+    // if ctArgs, add receiver and arg
+    if (needCtArgs) {
+        append(", __arg0: String, __arg1: String")
+    }
+
     append(")")
     // operator fun int.sas(...)
     bodyPart(this@generateBinaryDeclaration, this)
@@ -125,6 +135,12 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
         }
     }
 
+    // if ctArgs, add receiver and arg
+    if (needCtArgs) {
+        val argsArgs = args.mapIndexed { i, it -> "__arg${i + 1}: String" }.joinToString(", ")
+        append(", __arg0: String, $argsArgs")
+    }
+
     append(")")
 
 
@@ -145,13 +161,15 @@ private fun bodyPart(
     }
 
     val firstBodyStatement = messageDeclaration.body[0]
-    val isNotSetter =
+    val isNotSetter by lazy {
         !(firstBodyStatement is MessageSendKeyword && firstBodyStatement.messages[0] is KeywordMsg && (firstBodyStatement.messages[0] as KeywordMsg).kind == KeywordLikeType.Setter)
-
+    }
+    val isControlFlowStatement by lazy {
+        (firstBodyStatement is ControlFlow && (firstBodyStatement.kind == ControlFlowKind.Statement || firstBodyStatement.kind == ControlFlowKind.StatementTypeMatch))
+    }
     if (messageDeclaration.body.count() == 1 &&
-        firstBodyStatement !is VarDeclaration &&
-        firstBodyStatement !is Assign &&
-        firstBodyStatement !is ReturnStatement &&
+        firstBodyStatement is Expression &&
+        !isControlFlowStatement &&
         isNotSetter
     ) {
         stringBuilder.append(" = ", codegenKt(messageDeclaration.body, 0))
