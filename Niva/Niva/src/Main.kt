@@ -11,7 +11,6 @@ import frontend.util.div
 import frontend.util.fillSymbolTable
 import main.utils.Compiler
 import main.utils.compileProjFromFile
-import java.awt.Shape
 import java.io.*
 import java.util.HashMap
 
@@ -349,7 +348,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
 
 //    val builder = StringBuilder()
 //    builder.builderWithReceiver { x ->

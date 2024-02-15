@@ -446,7 +446,8 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
+                val typeFromDb = typeTable[name] ?:
+                    this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy()
@@ -653,6 +654,10 @@ fun MessageDeclaration.toAnyMessageData(
         is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg)
         is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
         is ConstructorDeclaration -> {
+            val constructorForType = forType
+            if (constructorForType is Type.UserLike && constructorForType.isBinding && body.isNotEmpty()) {
+                this.token.compileError("Can't create custom constructors for binding, that require companion object in Kotlin(wait for static extension feature)")
+            }
             if (this.returnTypeAST == null) {
                 this.returnType = forType
             }

@@ -79,16 +79,12 @@ fun Resolver.resolveMessageDeclaration(
         st.forType = forType
     }
 
-
-    // check that there is no field with the same name (because of getter has the same signature)
-    // TODO! check only unary and keywords with one arg
-    // no, check this when kind already resolved
-
-
+    // it can be a field, that will clash with setter
     if (forType is Type.UserType) {
         val fieldWithTheSameName = forType.fields.find { it.name == st.name }
+
         if (fieldWithTheSameName != null) {
-            st.token.compileError("Type $YEL${st.forTypeAst.name}$RESET already has field with name $WHITE${st.name}")
+            st.token.compileError("Type $YEL${st.forTypeAst.name}$RESET already has field with name $WHITE${st.name}$RESET, so it will clash with the setter of that field $WHITE${st.forTypeAst.name.lowercase()} $CYAN${st.name}: ${WHITE}newValue")
         }
     }
 
