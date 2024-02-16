@@ -91,8 +91,8 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     val operatorName = operatorToString(name)
     append(".", operatorName, "(", arg.name)
 
-    if (arg.type != null) {
-        append(": ", arg.type.name)
+    if (arg.typeAST != null) {
+        append(": ", arg.typeAST.name)
     }
 
     // if ctArgs, add receiver and arg
@@ -127,8 +127,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
         append(arg.name())
-        if (arg.type != null) {
-            append(": ", arg.type.generateType())
+        if (arg.typeAST != null) {
+            append(": ", arg.typeAST.generateType())
             if (i != c) {
                 append(", ")
             }

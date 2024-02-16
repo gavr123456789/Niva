@@ -62,7 +62,7 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
 
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
     val errorText = if (receiverType is Type.NullableType)
-        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType}?$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
+        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType}$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOr: value$RESET/${CYAN}unpack: [it]"
     else
         "Cant find $PURP$msgType$RESET message: $CYAN$selectorName$RESET for type $YEL${receiverType}"
     token.compileError(errorText)

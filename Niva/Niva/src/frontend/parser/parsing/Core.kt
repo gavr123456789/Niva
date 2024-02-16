@@ -75,14 +75,7 @@ fun Parser.checkMany(vararg kind: TokenType): Boolean {
     return true
 }
 
-fun Parser.check(vararg kind: TokenType): Boolean {
-    kind.forEach {
-        if (check(it)) {
-            return true
-        }
-    }
-    return false
-}
+
 
 fun Parser.checkString(kind: Iterable<String>): Boolean {
     kind.forEach {

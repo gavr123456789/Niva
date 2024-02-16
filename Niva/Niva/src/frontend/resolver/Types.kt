@@ -4,7 +4,7 @@ package frontend.resolver
 
 import frontend.meta.TokenType
 import frontend.meta.compileError
-import frontend.parser.parsing.CodeAttribute
+import frontend.parser.parsing.Pragma
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
@@ -23,7 +23,7 @@ sealed class MessageMetadata(
     val name: String,
     var returnType: Type, // need to change in single expression case
     val pkg: String,
-    val pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    val pragmas: MutableList<Pragma> = mutableListOf(),
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf(),
     var forGeneric: Boolean = false // if message declarated for generic, we need to know it to resolve it
@@ -41,10 +41,10 @@ class UnaryMsgMetaData(
     name: String,
     returnType: Type,
     pkg: String,
-    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
     val isGetter: Boolean = false
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         return "$name -> $returnType"
     }
@@ -55,9 +55,9 @@ class BinaryMsgMetaData(
     val argType: Type,
     returnType: Type,
     pkg: String,
-    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = listOf()
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
     }
@@ -69,10 +69,10 @@ class KeywordMsgMetaData(
     val argTypes: List<KeywordArg>,
     returnType: Type,
     pkg: String,
-    codeAttributes: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
     specialTempFlagForLambdasWithDestruct: Boolean = false
-) : MessageMetadata(name, returnType, pkg, codeAttributes, msgSends) {
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
@@ -681,7 +681,7 @@ fun MessageDeclarationUnary.toMessageData(
         name = this.name,
         returnType = returnType,
         pkg = pkg.packageName,
-        codeAttributes = pragmas,
+        pragmas = pragmas,
         isGetter = isGetter
     )
     return result
@@ -704,7 +704,7 @@ fun MessageDeclarationBinary.toMessageData(
         argType = argType,
         returnType = returnType,
         pkg = pkg.packageName,
-        codeAttributes = pragmas
+        pragmas = pragmas
     )
     return result
 }
@@ -721,7 +721,7 @@ fun MessageDeclarationKeyword.toMessageData(
     val keywordArgs = this.args.map {
         KeywordArg(
             name = it.name,
-            type = it.type?.toType(typeDB, typeTable)
+            type = it.typeAST?.toType(typeDB, typeTable)
                 ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${it.name}${RED} not registered")
         )
     }
@@ -729,7 +729,7 @@ fun MessageDeclarationKeyword.toMessageData(
         name = this.name,
         argTypes = keywordArgs,
         returnType = returnType,
-        codeAttributes = pragmas,
+        pragmas = pragmas,
         pkg = pkg.packageName
     )
     return result

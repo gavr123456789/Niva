@@ -326,31 +326,46 @@ fun Parser.expression(
     return unwrapped
 }
 
-class CodeAttribute(
-    val name: String,
+
+sealed class Pragma(val name: String)
+class KeyPragma(
+    name: String,
     val value: Primary
-)
+): Pragma(name)
+class SingleWordPragma(
+    name: String,
+) : Pragma(name)
 
 
-fun Parser.codeAttributes(): MutableList<CodeAttribute> {
-    val codeAttributes: MutableList<CodeAttribute> = mutableListOf()
-    step()
+fun Parser.codeAttributes(): MutableList<Pragma> {
+    val pragmas: MutableList<Pragma> = mutableListOf()
+    step() // skip @
+
+    if (checkMany(TokenType.Identifier, TokenType.Colon))
+    // @sas: 1 sus: 2
     do {
         val name = step()
         matchAssert(TokenType.Colon)
 //        step() // skip colon
         val value = primary() ?: name.compileError("Inside code attribute after : value expected")
 
-        codeAttributes.add(
-            CodeAttribute(
+        pragmas.add(
+            KeyPragma(
                 name = name.lexeme,
                 value = value
             )
         )
 
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+    else {
+        // @Sas Sus
+        do {
+            val name = step().lexeme
+            pragmas.add(SingleWordPragma(name))
+        } while (check(TokenType.Identifier))
+    }
     skipOneEndOfLineOrFile()
-    return codeAttributes
+    return pragmas
 }
 
 

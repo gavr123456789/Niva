@@ -20,28 +20,16 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
     }
 
     val keywordGenerate = { kw: KeywordMsg ->
-        if (kw.pragmas.isNotEmpty()) {
-            replaceNameFromPragma(kw)
-            emitFromPragma(kw)
-            noPkgEmit(kw)
-        }
+        evalPragmas(kw)
         generateSingleKeyword(0, kw.receiver, kw)
     }
 
     val unaryGenerate = { unaryMsg: UnaryMsg ->
-        if (unaryMsg.pragmas.isNotEmpty()) {
-            replaceNameFromPragma(unaryMsg)
-            emitFromPragma(unaryMsg)
-            noPkgEmit(unaryMsg)
-        }
+        evalPragmas(unaryMsg)
         generateSingleUnary(1, unaryMsg.receiver, unaryMsg)
     }
     val binaryGenerate = { binary: BinaryMsg ->
-        if (binary.pragmas.isNotEmpty()) {
-            replaceNameFromPragma(binary)
-            emitFromPragma(binary)
-            noPkgEmit(binary)
-        }
+        evalPragmas(binary)
         generateSingleBinary(1, binary.receiver, binary)
     }
 

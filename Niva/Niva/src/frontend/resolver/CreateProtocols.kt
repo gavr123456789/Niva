@@ -5,10 +5,9 @@ package frontend.resolver
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
-import frontend.parser.parsing.CodeAttribute
+import frontend.parser.parsing.KeyPragma
 import frontend.parser.types.ast.InternalTypes
 import frontend.parser.types.ast.LiteralExpression
-import frontend.resolver.Type.RecursiveType.name
 import java.io.File
 
 
@@ -801,14 +800,14 @@ private fun createStringLiteral(lexeme: String) = LiteralExpression.StringExpr(
     )
 )
 
-fun createCodeAttribute(k: String, v: String) =
-    CodeAttribute(name = k, value = createStringLiteral(v))
+fun createStringPragma(k: String, v: String) =
+    KeyPragma(name = k, value = createStringLiteral(v))
 
 fun createRenameAtttribure(v: String) =
-    createCodeAttribute("rename", v)
+    createStringPragma("rename", v)
 
 fun createEmitAtttribure(v: String) =
-    createCodeAttribute("emit", v)
+    createStringPragma("emit", v)
 
 fun createMapProtocols(
     intType: Type.InternalType,

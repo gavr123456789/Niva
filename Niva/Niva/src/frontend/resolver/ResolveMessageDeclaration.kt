@@ -96,10 +96,10 @@ fun Resolver.resolveMessageDeclaration(
         // add args to scope
         fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
             st.args.forEach {
-                if (it.type == null) {
+                if (it.typeAST == null) {
                     st.token.compileError("Can't parse type for argument $WHITE${it.name}")
                 }
-                val astType = it.type
+                val astType = it.typeAST
                 val typeFromAst = astType.toType(typeDB, typeTable)//fix
 
                 bodyScope[it.localName ?: it.name] = typeFromAst
@@ -111,7 +111,7 @@ fun Resolver.resolveMessageDeclaration(
                 if (typeFromAst is Type.UserType && typeFromAst.typeArgumentList.isNotEmpty()) {
                     st.typeArgs.addAll(typeFromAst.typeArgumentList.map { typeArg -> typeArg.name })
                     // T == T
-                    if (typeFromAst.name == it.type.name) {
+                    if (typeFromAst.name == it.typeAST.name) {
                         bodyScope[it.name] = typeFromAst
                     }
                 }
@@ -129,7 +129,7 @@ fun Resolver.resolveMessageDeclaration(
 
             is MessageDeclarationBinary -> {
                 val arg = st.arg
-                val argType = arg.type?.toType(typeDB, typeTable)
+                val argType = arg.typeAST?.toType(typeDB, typeTable)
                     ?: st.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `$YEL${st.forTypeAst.name} $CYAN${st.name}`")
                 bodyScope[arg.name] = argType
             }
