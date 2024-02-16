@@ -1,3 +1,4 @@
+
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
@@ -1358,26 +1359,26 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         assert((ast[0] as VarDeclaration).valueTypeAst?.name == "Int")
-        val value = (ast[0] as VarDeclaration).value as LiteralExpression.NullExpr
-        assert(value.typeAST?.name == "Int")
-        assert(value.typeAST?.isNullable == true)
+        val value = (ast[0] as VarDeclaration).valueTypeAst as TypeAST.UserType
+        assert(value.name == "Int")
+        assert(value.isNullable == true)
     }
 
-    @Test
-    fun switchOnNothing() {
-        val source = """
-            |
-            | y > 6 => 1 echo
-            | x == 6 => 2 echo
-        """.trimIndent()
-
-        // is the same as when() {}, so it is if else if
-        TODO()
-
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-
-    }
+    // The next syntax for if elif else
+//    @Test
+//    fun switchOnNothing() {
+//        val source = """
+//            |
+//            | y > 6 => 1 echo
+//            | x == 6 => 2 echo
+//        """.trimIndent()
+//
+//        // is the same as when() {}, so it is if else if
+//
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//
+//    }
 
     @Test
     fun manyLineBinary() {
@@ -1435,8 +1436,8 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val staticB = ast[0] as StaticBuilder
-        assert(staticB.statements[0] is MessageSendUnary)
+        val staticB = ast[0] as StaticBuilderDeclaration
+        assert(staticB.args[0].typeAST is TypeAST.Lambda)
     }
 
     @Test
@@ -1520,6 +1521,21 @@ class ParserTest {
         assert(ast.count() == 2)
         val y = ast[1] as VarDeclaration
         assertTrue { y.value is MessageSendUnary }
+    }
+
+
+    @Test
+    fun singleWordPragma() {
+        val source = """
+            
+            @Sortable Compose
+            Int sas = 1 echo
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val msgUnaryDecl = ast[0] as MessageDeclarationUnary
+        assertTrue{msgUnaryDecl.pragmas.count() == 2}
     }
 
 

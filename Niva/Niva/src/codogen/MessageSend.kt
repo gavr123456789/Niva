@@ -3,6 +3,8 @@
 package codogen
 
 import frontend.meta.compileError
+import frontend.parser.parsing.KeyPragma
+import frontend.parser.parsing.SingleWordPragma
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
 import main.CYAN
@@ -14,6 +16,20 @@ import main.YEL
 object GlobalDebugNeeded {
     var needStackTrace = true
     var printTime = false
+}
+
+val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
+    if (it.pragmas.isNotEmpty()) {
+        val keyPragmas = mutableListOf<KeyPragma>()
+        val singleWordPragmas = mutableListOf<SingleWordPragma>()
+        it.pragmas.forEach { if (it is KeyPragma) keyPragmas.add(it) else singleWordPragmas.add(it as SingleWordPragma) }
+
+        replaceNameFromPragma(it, keyPragmas)
+        emitFromPragma(it, keyPragmas)
+        noPkgEmit(it)
+        val newInvisibleArgs = ctNames(it, keyPragmas)
+        Pair(it.pragmas.find { it.name == Pragmas.EMIT.v } != null, newInvisibleArgs)
+    } else Pair(false, null)
 }
 
 fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
@@ -30,39 +46,25 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")
     }
 
-
-
     b.append("(".repeat(messages.count { it.isPiped }))
-
     var newInvisibleArgs: MutableList<String>? = null
 
-    val evalPragmas = {it: Message ->
-        if (it.pragmas.isNotEmpty()) {
-            replaceNameFromPragma(it)
-            emitFromPragma(it)
-            noPkgEmit(it)
-            newInvisibleArgs = ctNames(it)
-            it.pragmas.find { it.name == Pragmas.EMIT.v } != null
-        } else false
-    }
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
         var isThereEmitPragma = false
         // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
-            isThereEmitPragma = evalPragmas(it)
+            (isThereEmitPragma) = evalPragmas(it).first
         }
         // do same for binary args
         if (it is BinaryMsg) {
             it.unaryMsgsForArg.forEach { binary ->
-                isThereEmitPragma = evalPragmas(binary)
+                isThereEmitPragma = evalPragmas(binary).first
             }
             it.unaryMsgsForReceiver.forEach { binary ->
-                isThereEmitPragma = evalPragmas(binary)
+                isThereEmitPragma = evalPragmas(binary).first
             }
         }
-
-
 
         if (isThereEmitPragma) {
             b.append(it.selectorName)
@@ -100,9 +102,11 @@ fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
 }
 
 
-fun ctNames(msg: Message): MutableList<String>? {
+fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
 
-    val ctPragmas = msg.pragmas.filter { it.name == Pragmas.CT_NAME.v }
+    val ctPragmas = keyPragmas
+        .filter { it.name == Pragmas.CT_NAME.v}
+
     if (ctPragmas.isEmpty()) return null
 
     val listOfArgs: MutableList<String> = mutableListOf()
@@ -137,13 +141,18 @@ fun ctNames(msg: Message): MutableList<String>? {
 
         }
     }
+
     return listOfArgs
-
-
 }
 
-fun replaceNameFromPragma(msg: Message) {
-    val value = (msg.pragmas.find { it.name == Pragmas.RENAME.v })?.value
+fun replaceNameFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
+    val renamePragmas = keyPragmas.filter { it.name == Pragmas.RENAME.v }
+    if (renamePragmas.isEmpty()) return
+    if (renamePragmas.count() > 1) {
+        msg.token.compileError("You can't have more than one rename pragma, its pointless")
+    }
+
+    val value = renamePragmas[0].value
     val replacedSelectorName =
         when (value) {
             is LiteralExpression.StringExpr ->
@@ -157,8 +166,15 @@ fun replaceNameFromPragma(msg: Message) {
 }
 
 // replace $N to arguments and replace the selectorName of the message
-fun emitFromPragma(msg: Message) {
-    val value = (msg.pragmas.find { it.name == Pragmas.EMIT.v })?.value ?: return
+fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
+
+    val emitPragmas = keyPragmas.filter { it.name == Pragmas.EMIT.v }
+    if (emitPragmas.isEmpty()) return
+    if (emitPragmas.count() > 1) {
+        msg.token.compileError("You can't have more than one emit pragma, its pointless")
+    }
+
+    val value = emitPragmas[0].value
 
     fun replacePatternsWithValues(inputString: String, valueMap: Map<String, String>): String {
         var resultString = inputString

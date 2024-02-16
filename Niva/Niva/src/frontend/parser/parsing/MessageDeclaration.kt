@@ -112,7 +112,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
         if (match(TokenType.DoubleColon))
             parseType()
         else null
-    val arg = (KeywordDeclarationArg(name = argName.lexeme, type = typeName))
+    val arg = (KeywordDeclarationArg(name = argName.lexeme, typeAST = typeName))
     val returnType = returnType()
 
     // BODY PARSING
@@ -211,7 +211,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         }
         match(TokenType.DoubleColon)
         val type = parseType()
-        return (KeywordDeclarationArg(name = argName.lexeme, type = type))
+        return (KeywordDeclarationArg(name = argName.lexeme, typeAST = type))
     }
     else if (lambdaWithExtension) {
         val extension = matchAssert(TokenType.Identifier)
@@ -221,7 +221,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val typeAST = parseType(extension.lexeme)
 
 
-        val result = KeywordDeclarationArg(name = name.lexeme, type = typeAST)
+        val result = KeywordDeclarationArg(name = name.lexeme, typeAST = typeAST)
         return  result
     }
     // key: localName(::int)?
@@ -236,7 +236,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
             null
         }
 
-        val result = KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, type = type)
+        val result = KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, typeAST = type)
         return result
 
     }
@@ -409,7 +409,7 @@ enum class MessageDeclarationType {
 
 fun Parser.messageDeclaration(
     type: MessageDeclarationType,
-    codeAttributes: MutableList<CodeAttribute>? = null,
+    pragmas: MutableList<Pragma>? = null,
     customForTypeAst: TypeAST? = null,
 ): MessageDeclaration {
 
@@ -419,13 +419,13 @@ fun Parser.messageDeclaration(
         MessageDeclarationType.Binary -> binaryDeclaration(forTypeAst)
         MessageDeclarationType.Keyword -> keywordDeclaration(forTypeAst)
     }
-    if (codeAttributes != null) {
-        result.pragmas = codeAttributes
+    if (pragmas != null) {
+        result.pragmas = pragmas
     }
     return result
 }
 
-fun Parser.extendDeclaration(pragmasForExtend: MutableList<CodeAttribute>): ExtendDeclaration {
+fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDeclaration {
     // extend Person [
     match("extend")
 
@@ -459,13 +459,13 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<CodeAttribute>): Exte
 
 
 // constructor TYPE messageDeclaration
-fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): ConstructorDeclaration {
+fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDeclaration {
     val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
 
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
     val msgDecl = if (messageDeclarationType != null) {
-        messageDeclaration(messageDeclarationType, codeAttributes)
+        messageDeclaration(messageDeclarationType, pragmas)
     } else null
 
     if (msgDecl == null) {
@@ -481,7 +481,7 @@ fun Parser.constructorDeclaration(codeAttributes: MutableList<CodeAttribute>): C
 
 
 // builder name key-args lambdaArg -> Type = []
-fun Parser.builderDeclaration(pragmas: MutableList<CodeAttribute>): StaticBuilderDeclaration {
+fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
     val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
 //    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)

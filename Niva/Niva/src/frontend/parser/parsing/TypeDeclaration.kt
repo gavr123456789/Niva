@@ -8,7 +8,7 @@ import main.WHITE
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 
-fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDeclaration {
+fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     // type Person name: string generic age: int
 
     // type Person
@@ -37,7 +37,7 @@ fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDecl
         typeName = typeName.lexeme,
         fields = typeFields,
         token = typeToken,
-        codeAttributes = codeAttributes
+        pragmas = pragmas
     )
     if (genericTypeParam != null) {
         result.genericFields.add(genericTypeParam.lexeme)
@@ -45,7 +45,7 @@ fun Parser.typeDeclaration(codeAttributes: MutableList<CodeAttribute>): TypeDecl
     return result
 }
 
-fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDeclarationRoot {
+fun Parser.enumDeclaration(pragmas: MutableList<Pragma>): EnumDeclarationRoot {
     val enumTok = matchAssert(TokenType.Enum, "")
     val enumName = matchAssertAnyIdent("name of the enum expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
@@ -87,7 +87,7 @@ fun Parser.enumDeclaration(codeAttributes: MutableList<CodeAttribute>): EnumDecl
         branches = mutableListOf(),
         token = enumTok,
         fields = localFields,
-        codeAttributes = codeAttributes
+        pragmas = pragmas
     )
 
     if (isThereBrunches) {
@@ -179,7 +179,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
     return fields
 }
 
-fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDeclaration {
+fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionDeclaration {
     val unionTok = matchAssert(TokenType.Union, "")
     val unionName = matchAssertAnyIdent("name of the union expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
@@ -221,7 +221,7 @@ fun Parser.unionDeclaration(codeAttributes: MutableList<CodeAttribute>): UnionDe
         branches = mutableListOf(),
         token = unionTok,
         fields = localFields,
-        codeAttributes = codeAttributes
+        pragmas = pragmas
     )
     if (isThereBrunches) {
         val unionBranches = unionFields(root)

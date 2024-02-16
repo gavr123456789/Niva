@@ -5,7 +5,7 @@ package frontend.resolver
 import codogen.GeneratorKt
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.parser.parsing.CodeAttribute
+import frontend.parser.parsing.KeyPragma
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.createFakeToken
@@ -92,7 +92,7 @@ private fun Resolver.resolveStatement(
                 val msg = statement.messages[0]
                 if (msg.selectorName == "getName") {
                     val intArg = (msg as KeywordMsg).args[0].keywordArg
-                    val codeAtr = CodeAttribute("arg", intArg as Primary)
+                    val codeAtr = KeyPragma("arg", intArg as Primary)
 
                     resolvingMessageDeclaration?.apply {
                         this.needCtArgs = true
@@ -487,7 +487,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
                 returnType = returnType,
-                codeAttributes = statement.pragmas,
+                pragmas = statement.pragmas,
                 pkg = pkg.packageName
             )
 
@@ -508,7 +508,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
                     name = it.name,
-                    type = it.type?.toType(typeDB, typeTable)//fix
+                    type = it.typeAST?.toType(typeDB, typeTable)//fix
                         ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}${RESET}'s arg $WHITE${it.name}${RESET} not registered")
                 )
             }
@@ -517,7 +517,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 name = statement.msgDeclaration.name,
                 argTypes = keywordArgs,
                 returnType = returnType,
-                codeAttributes = statement.pragmas,
+                pragmas = statement.pragmas,
                 pkg = pkg.packageName
             )
             protocol.staticMsgs[statement.name] = messageData

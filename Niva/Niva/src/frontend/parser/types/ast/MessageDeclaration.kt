@@ -1,25 +1,25 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.CodeAttribute
+import frontend.parser.parsing.Pragma
 import frontend.resolver.Type
 
 sealed class MessageDeclaration(
-        val name: String,
-        val forTypeAst: TypeAST,
-        token: Token,
-        val isSingleExpression: Boolean,
-        val body: List<Statement>,
-        val returnTypeAST: TypeAST?,
-        isPrivate: Boolean = false,
-        pragmas: MutableList<CodeAttribute> = mutableListOf(),
-        val isInline: Boolean = false,
-        var forType: Type? = null,
-        var returnType: Type? = null,
-        var isRecursive: Boolean = false,
+    val name: String,
+    val forTypeAst: TypeAST,
+    token: Token,
+    val isSingleExpression: Boolean,
+    val body: List<Statement>,
+    val returnTypeAST: TypeAST?,
+    isPrivate: Boolean = false,
+    pragmas: MutableList<Pragma> = mutableListOf(),
+    val isInline: Boolean = false,
+    var forType: Type? = null,
+    var returnType: Type? = null,
+    var isRecursive: Boolean = false,
 
-        val typeArgs: MutableList<String> = mutableListOf(),
-        var needCtArgs: Boolean = false // if true send names of args as invisible params
+    val typeArgs: MutableList<String> = mutableListOf(),
+    var needCtArgs: Boolean = false // if true send names of args as invisible params
         ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
@@ -34,7 +34,7 @@ class MessageDeclarationUnary(
     body: List<Statement>,
     returnType: TypeAST?,
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false,
     typeArgs: MutableList<String> = mutableListOf()
 
@@ -49,7 +49,7 @@ class MessageDeclarationBinary(
     returnType: TypeAST?,
     isSingleExpression: Boolean,
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false,
     typeArgs: MutableList<String> = mutableListOf()
 
@@ -60,10 +60,10 @@ class MessageDeclarationBinary(
 class KeywordDeclarationArg(
     val name: String,
     val localName: String? = null,
-    val type: TypeAST? = null,
+    val typeAST: TypeAST? = null,
 ) {
     override fun toString(): String {
-        return "$name: ${type?.name}"
+        return "$name: ${typeAST?.name}"
     }
 }
 
@@ -80,11 +80,11 @@ class MessageDeclarationKeyword(
     isSingleExpression: Boolean,
     typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false
 ) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs=typeArgs) {
     override fun toString(): String {
-        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.type?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
+        return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.typeAST?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
 }
 
@@ -109,7 +109,7 @@ class ExtendDeclaration(
     val messageDeclarations: List<MessageDeclaration>,
     token: Token,
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
 
 class StaticBuilderDeclaration(
@@ -121,6 +121,6 @@ class StaticBuilderDeclaration(
     val defaultAction: CodeBlock? = null,
     val typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false
 ) : Declaration(token, isPrivate, pragmas)

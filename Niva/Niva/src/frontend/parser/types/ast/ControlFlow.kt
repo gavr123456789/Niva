@@ -1,7 +1,7 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.CodeAttribute
+import frontend.parser.parsing.Pragma
 import frontend.resolver.Type
 
 sealed class IfBranch(
@@ -35,7 +35,7 @@ sealed class ControlFlow(
     var kind: ControlFlowKind,
     token: Token,
     type: Type?,
-    pragmas: MutableList<CodeAttribute> = mutableListOf(),
+    pragmas: MutableList<Pragma> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : Expression(type, token, isPrivate, pragmas) {
 
