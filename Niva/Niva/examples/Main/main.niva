@@ -6,37 +6,13 @@
 //]
 //Assert that: "sas" equals: "sas"
 
-//Any echoD = [
-//    receiverName = Compiler getName: 0
-//    value = this toString
-//    "$receiverName is $value" echo
-    // Type
-
-//    typeType = Compiler getType: 0
-//    fields = typeType fields
-//    a_field = fields get: "a"
-//    a_field unpack: [
-//        it echo
-//    ]
-
-//]
-
-// syntax for destructing
-//    a,b,c = {1 2 3}
-
-//map = #{
-//    1 "sas"
-//    2 "sus"
-//    3 "ses"
-//    4 "sos"
-//}
-//
-//map filter: [k, v -> k % 2 == 0] |> echo
-//map map: [k, v -> k % 2 == 0] |> echo
-//
-//"Hello deck!" echo
 
 
-
+@Serializable
 type Person name: String age: Int
+
+@Composable
+@rename: "kek"
+Person sas = 1 echo
+
 person = Person name: "sas" age: 453

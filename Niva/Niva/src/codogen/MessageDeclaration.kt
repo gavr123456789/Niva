@@ -3,6 +3,7 @@ package codogen
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
 import main.codogen.generateType
+import main.utils.appendnl
 import main.utils.isGeneric
 
 
@@ -180,7 +181,17 @@ private fun bodyPart(
     }
 }
 
+fun appendPragmas(pragmas: List<Pragma>, builder: StringBuilder) {
+    pragmas.forEach {
+        if (!setOfPragmaNames.contains(it.name)) {
+            builder.appendnl("@${it.name}")
+        }
+    }
+}
+
 fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
+    appendPragmas(pragmas, this)
+
     if (isInline) append("inline ")
     append(
         when (this@generateMessageDeclaration) {

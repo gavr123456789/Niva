@@ -4,7 +4,7 @@ package frontend.resolver
 
 import frontend.meta.TokenType
 import frontend.meta.compileError
-import frontend.parser.parsing.Pragma
+import frontend.parser.types.ast.Pragma
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy

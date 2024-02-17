@@ -20,6 +20,8 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     isEnumRoot: Boolean = false,
     enumRoot: EnumDeclarationRoot? = null
 ) = buildString {
+    appendPragmas(pragmas, this)
+
     if (isUnionRoot) append("sealed ")
     if (isEnumRoot) append("enum ")
     append("class ")

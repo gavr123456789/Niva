@@ -3,8 +3,8 @@
 package codogen
 
 import frontend.meta.compileError
-import frontend.parser.parsing.KeyPragma
-import frontend.parser.parsing.SingleWordPragma
+import frontend.parser.types.ast.KeyPragma
+import frontend.parser.types.ast.SingleWordPragma
 import frontend.parser.types.ast.*
 import frontend.resolver.Type
 import main.CYAN
@@ -96,6 +96,8 @@ enum class Pragmas(val v: String) {
     NO_PKG_EMIT("noPkgEmit"),
     CT_NAME("arg")
 }
+
+val setOfPragmaNames = setOf("rename", "emit", "noPkgEmit", "arg")
 
 fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
 //    TODO()

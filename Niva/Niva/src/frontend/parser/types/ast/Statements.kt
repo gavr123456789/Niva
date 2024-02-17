@@ -1,7 +1,6 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.Pragma
 import frontend.resolver.Type
 
 // https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4

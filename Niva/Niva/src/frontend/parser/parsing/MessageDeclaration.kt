@@ -377,8 +377,9 @@ fun Parser.checkTypeOfMessageDeclaration2(
 ): MessageDeclarationType? {
     val savepoint = current
 
-    @Suppress("UNUSED_VARIABLE")
-    val receiver = if (parseReceiver) identifierMayBeTyped() else null
+    // receiver
+    if (parseReceiver)
+        identifierMayBeTyped()
 
 
     if (tryUnary(isConstructor)) {
@@ -437,7 +438,7 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
 
     val list = mutableListOf<MessageDeclaration>()
     do {
-        val pragmas = if (check("@")) codeAttributes() else mutableListOf()
+        val pragmas = if (check("@")) pragmas() else mutableListOf()
         pragmas.addAll(pragmasForExtend)
         matchAssert(TokenType.On)
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)

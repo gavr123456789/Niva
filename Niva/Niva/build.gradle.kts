@@ -1,7 +1,4 @@
 plugins {
-    // ...
-
-    // Apply GraalVM Native Image plugin
     id("org.graalvm.buildtools.native") version "0.10.0"
 }
 
