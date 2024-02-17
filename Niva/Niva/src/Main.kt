@@ -338,12 +338,6 @@ fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Uni
     this.x(toCallSite)
 }
 
-sealed class Shape2(val x: Int, val y: Int) {
-    class Rectangle(x: Int, y: Int, val w: Int, val h: Int) : Shape2(x, y)
-    class Circle(x: Int, y: Int, r: Int) : Shape2(x, y)
-}
-
-
 fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")

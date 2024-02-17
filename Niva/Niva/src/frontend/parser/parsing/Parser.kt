@@ -15,7 +15,7 @@ import main.frontend.parser.parsing.varDeclaration
 
 // Declaration without end of line
 fun Parser.statement(): Statement {
-    val pragmas = if (check("@")) codeAttributes() else mutableListOf()
+    val pragmas = if (check("@")) pragmas() else mutableListOf()
     val tok = peek()
     val kind = tok.kind
 
@@ -82,7 +82,7 @@ fun Parser.statement(): Statement {
 
             return inlineExpr
 
-        } catch (_:Exception) {
+        } catch (_: Exception) {
             inlineTok.compileError("> can only be used with expressions")
         }
 
@@ -232,9 +232,10 @@ fun Parser.commaSeparatedExpressions(): List<Expression> {
     val result = mutableListOf<Expression>()
     do {
         result.add(expression())
-    }while (match(TokenType.Comma))
+    } while (match(TokenType.Comma))
     return result
 }
+
 // message or control flow or static builder
 // inside x from: y to: z
 // we don't have to parse y to: z as new keyword, only y expression
@@ -255,7 +256,6 @@ fun Parser.expression(
     if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
         return staticBuilder()
     }
-
 
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
@@ -294,10 +294,9 @@ fun Parser.expression(
                         thenDoExpression = singleExpr,
                         listOf()
                     )
-                }
-                else {
+                } else {
                     // this single expression is statement
-                    val body = if(singleExpr != null) {
+                    val body = if (singleExpr != null) {
                         // codeBlock With single expr
                         CodeBlock(
                             inputList = listOf(),
@@ -327,44 +326,36 @@ fun Parser.expression(
 }
 
 
-sealed class Pragma(val name: String)
-class KeyPragma(
-    name: String,
-    val value: Primary
-): Pragma(name)
-class SingleWordPragma(
-    name: String,
-) : Pragma(name)
-
-
-fun Parser.codeAttributes(): MutableList<Pragma> {
+fun Parser.pragmas(): MutableList<Pragma> {
     val pragmas: MutableList<Pragma> = mutableListOf()
-    step() // skip @
+    while (check("@")) {
+        step() // skip @
 
-    if (checkMany(TokenType.Identifier, TokenType.Colon))
-    // @sas: 1 sus: 2
-    do {
-        val name = step()
-        matchAssert(TokenType.Colon)
+        if (checkMany(TokenType.Identifier, TokenType.Colon))
+        // @sas: 1 sus: 2
+            do {
+                val name = step()
+                matchAssert(TokenType.Colon)
 //        step() // skip colon
-        val value = primary() ?: name.compileError("Inside code attribute after : value expected")
+                val value = primary() ?: name.compileError("Inside code attribute after : value expected")
 
-        pragmas.add(
-            KeyPragma(
-                name = name.lexeme,
-                value = value
-            )
-        )
+                pragmas.add(
+                    KeyPragma(
+                        name = name.lexeme,
+                        value = value
+                    )
+                )
 
-    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
-    else {
-        // @Sas Sus
-        do {
-            val name = step().lexeme
-            pragmas.add(SingleWordPragma(name))
-        } while (check(TokenType.Identifier))
+            } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+        else {
+            // @Sas Sus
+            do {
+                val name = step().lexeme
+                pragmas.add(SingleWordPragma(name))
+            } while (check(TokenType.Identifier))
+        }
+        skipOneEndOfLineOrFile()
     }
-    skipOneEndOfLineOrFile()
     return pragmas
 }
 

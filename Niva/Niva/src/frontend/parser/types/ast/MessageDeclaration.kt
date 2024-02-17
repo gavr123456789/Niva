@@ -1,7 +1,6 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.Pragma
 import frontend.resolver.Type
 
 sealed class MessageDeclaration(
@@ -112,6 +111,7 @@ class ExtendDeclaration(
     pragmas: MutableList<Pragma> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
 
+@Suppress("unused")
 class StaticBuilderDeclaration(
     val name: String,
     token: Token,

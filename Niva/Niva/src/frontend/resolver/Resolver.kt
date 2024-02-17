@@ -5,7 +5,6 @@ package frontend.resolver
 import codogen.GeneratorKt
 import frontend.meta.Token
 import frontend.meta.compileError
-import frontend.parser.parsing.KeyPragma
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.util.createFakeToken
@@ -545,8 +544,8 @@ fun Resolver.addNewAnyMessage(
         else
             st.forType ?: st.token.compileError("Compiler error, type for $st not resolved")
 
-    val realType =
-        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
+//    val realType =
+//        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
 
     val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, this)
@@ -1032,8 +1031,8 @@ class Resolver(
         // Default types
         val intType = defaultTypes[InternalTypes.Int]!!
         val stringType = defaultTypes[InternalTypes.String]!!
-        val charType = defaultTypes[InternalTypes.Char]!!
-        val floatType = defaultTypes[InternalTypes.Float]!!
+//        val charType = defaultTypes[InternalTypes.Char]!!
+//        val floatType = defaultTypes[InternalTypes.Float]!!
         val boolType = defaultTypes[InternalTypes.Boolean]!!
         val unitType = defaultTypes[InternalTypes.Unit]!!
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!

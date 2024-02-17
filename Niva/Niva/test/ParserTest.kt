@@ -1527,7 +1527,6 @@ class ParserTest {
     @Test
     fun singleWordPragma() {
         val source = """
-            
             @Sortable Compose
             Int sas = 1 echo
         """.trimIndent()
@@ -1536,6 +1535,21 @@ class ParserTest {
         assert(ast.count() == 1)
         val msgUnaryDecl = ast[0] as MessageDeclarationUnary
         assertTrue{msgUnaryDecl.pragmas.count() == 2}
+    }
+
+    @Test
+    fun extensionLambda() {
+        val source = """
+            Int sas::[Person -> Unit -> Unit] = person sas
+            Int sas::[on Person -> Unit] = person sas
+            Int sas::Person[Unit -> Unit] = person sas
+            Int sas::[this::Person -> Unit] = person sas
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val msgUnaryDecl = ast[0] as MessageDeclarationUnary
+        assertTrue { msgUnaryDecl.pragmas.count() == 2 }
     }
 
 

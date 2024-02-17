@@ -10,7 +10,7 @@ import main.frontend.parser.parsing.simpleReceiver
 
 fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     // type Person name: string generic age: int
-
+    // OR
     // type Person
     //   name: string
 

@@ -1,7 +1,6 @@
 package frontend.parser.types.ast
 
 import frontend.meta.Token
-import frontend.parser.parsing.Pragma
 import frontend.resolver.Type.RecursiveType.isPrivate
 import frontend.resolver.Type.RecursiveType.name
 
@@ -47,6 +46,7 @@ sealed class TypeAST(
 //    )
 
 
+    @Suppress("unused")
     class Lambda(
         name: String,
         val inputTypesList: List<TypeAST>,

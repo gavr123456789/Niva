@@ -1,12 +1,12 @@
-@file:Suppress("UNUSED_PARAMETER")
+@file:Suppress("UNUSED_PARAMETER", "unused")
 
 package frontend.resolver
 
 import frontend.meta.Position
 import frontend.meta.Token
 import frontend.meta.TokenType
-import frontend.parser.parsing.KeyPragma
 import frontend.parser.types.ast.InternalTypes
+import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.LiteralExpression
 import java.io.File
 
