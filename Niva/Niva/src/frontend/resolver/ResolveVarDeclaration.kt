@@ -75,7 +75,7 @@ fun Resolver.resolveVarDeclaration(
     if (statementDeclaredType != null) {
         val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
         val realValueType = if (valueType is Type.Lambda) valueType.returnType else valueType
-        if (!compare2Types(statementDeclared, realValueType, isReturn = true)) {
+        if (!compare2Types(statementDeclared, realValueType, unpackNull = true)) {
             val text = "$statementDeclaredType != $realValueType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }

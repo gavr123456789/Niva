@@ -18,11 +18,12 @@ sealed class TypeAST(
     // [anyType, anyType -> anyType]?
 
 
+    // generics are UserTypes now because they need names
     class UserType(
         name: String,
 
-        val typeArgumentList: Set<TypeAST>,
-        isNullable: Boolean,
+        val typeArgumentList: MutableSet<TypeAST> = mutableSetOf(), // in recursive types like node, new generics can be added
+        isNullable: Boolean = false,
         token: Token,
         val names: List<String> = listOf(name),
         isPrivate: Boolean = false,

@@ -10,8 +10,6 @@ import main.PathManager
 import java.io.File
 
 
-
-
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
     val p = ProcessBuilder(this.split(" "))
         .directory(workingDir)
@@ -70,10 +68,14 @@ class Compiler(
             CompilationTarget.jvm -> if (build) "fatJar" else "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }) + " --parallel --build-cache --configuration-cache -Pkotlin.experimental.tryK2=true"
+        }) + " --build-cache --parallel --configuration-cache -Pkotlin.experimental.tryK2=true" //
 
 
-    fun run(dist: Boolean = false, buildFatJar: Boolean = false, @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false) {
+    fun run(
+        dist: Boolean = false,
+        buildFatJar: Boolean = false,
+        @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false
+    ) {
         // remove repl log file since it will be recreated
         val removeReplFile = {
             if (inlineReplPath.exists()) {
@@ -92,11 +94,12 @@ class Compiler(
         }
 
         val cmd = cmd(dist, buildFatJar)
-        when (getOSType()) {
-            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat -q --console=plain $cmd".runCommand(file, true)
-            CurrentOS.LINUX -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
-            CurrentOS.MAC -> "./gradlew -q --console=plain $cmd".runCommand(file, true)
-        }
+        val defaultArgs = "-q"// if not verbose --console=plain
+        (when (getOSType()) {
+            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat $defaultArgs $cmd"
+            CurrentOS.LINUX -> "./gradlew $defaultArgs $cmd"
+            CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
+        }).runCommand(file, true)
 
         if (inlineReplPath.exists()) {
             if (compilationTarget == CompilationTarget.jvm) {
@@ -267,6 +270,12 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun <T, R> T?.unpack(block: (T) -> R) {
             if (this != null)
                 block(this)
+        }
+        
+        inline fun <T, R> T?.unpackOr(block: (T) -> R, or: R): R {
+            return if (this != null)
+                block(this)
+            else or 
         }
         
         inline fun <T : Any, R : Any> letIfAllNotNull(vararg arguments: T?, block: (List<T>) -> R): R? {

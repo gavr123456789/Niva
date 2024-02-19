@@ -68,7 +68,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
                 append(it.thenDoExpression.generateExpression())
             }
 
-            is IfBranch.IfBranchWithBody -> append(codegenKt(it.body.statements, 1))
+            is IfBranch.IfBranchWithBody -> append("{\n",codegenKt(it.body.statements, 1), "\n}\n")
         }
         append("\n")
     }

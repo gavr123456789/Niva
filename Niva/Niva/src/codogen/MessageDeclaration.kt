@@ -5,6 +5,7 @@ import frontend.resolver.Type
 import main.codogen.generateType
 import main.utils.appendnl
 import main.utils.isGeneric
+import sun.util.locale.provider.LocaleProviderAdapter.forType
 
 
 val operators = hashMapOf(
@@ -37,17 +38,45 @@ val operators = hashMapOf(
     "apply" to "invoke",
 )
 
-fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
-    append("fun ")
+fun MessageDeclaration.getGenericsFromMessageDeclaratin(): Set<String> {
+    // return type can be generic
+    // receiver can be generic
+
+    val genericsFromReceiverAndReturnType = mutableSetOf<String>()
     if (returnTypeAST != null) {
         val isThereUnresolvedTypeArgs = returnTypeAST.name.isGeneric()
         if (isThereUnresolvedTypeArgs) {
             // There can be resolved type args like box::Box::Int, then we don't need to add them
-            append("<")
-            append(returnTypeAST.name)
-            append(">")
+            genericsFromReceiverAndReturnType.add(returnTypeAST.name)
         }
     }
+    val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
+    if (isThereUnresolvedTypeArgs.isNotEmpty()) {
+        // There can be resolved type args like box::Box::Int, then we don't need to add them
+        genericsFromReceiverAndReturnType.addAll(isThereUnresolvedTypeArgs)
+    }
+    val forTypeVal = forType
+    if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
+        genericsFromReceiverAndReturnType.addAll(forTypeVal.typeArgumentList.asSequence().filter { it.name.isGeneric() }
+            .map { it.name })
+    }
+
+    return genericsFromReceiverAndReturnType
+}
+
+fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+    append("fun ")
+    // return type can be generic
+    // receiver can be generic
+
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+
+    if(genericsFromReceiverAndReturnType.isNotEmpty()) {
+        append("<")
+        append(genericsFromReceiverAndReturnType.joinToString(", "))
+        append(">")
+    }
+
     append(forTypeAst.generateType(false))
     if (isStatic) {
         append(".Companion")
@@ -85,13 +114,23 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     //            }
 
     append("operator fun ")
-    append(forTypeAst.generateType())
+    // generics
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+
+    if (genericsFromReceiverAndReturnType.isNotEmpty()) {
+        append("<")
+        append(genericsFromReceiverAndReturnType.joinToString(", "))
+        append(">")
+    }
+    //
+
     if (isStatic) {
         append(".Companion")
     }
     val operatorName = operatorToString(name)
     append(".", operatorName, "(", arg.name)
 
+    // args
     if (arg.typeAST != null) {
         append(": ", arg.typeAST.name)
     }
@@ -108,23 +147,24 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
 
-    // if this is the constructor, then method on Companion
     append("fun ")
 
-    val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
-    if (isThereUnresolvedTypeArgs.isNotEmpty()) {
-        // There can be resolved type args like box::Box::Int, then we don't need to add them
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+
+    if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")
-        append(isThereUnresolvedTypeArgs.toSet().joinToString(", "))
+        append(genericsFromReceiverAndReturnType.joinToString(", "))
         append(">")
     }
 
     append(forTypeAst.generateType())
     if (isStatic) {
+        // if this is the constructor, then method on Companion
         append(".Companion")
     }
     append(".", name, "(")
 
+    // Args
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
         append(arg.name())

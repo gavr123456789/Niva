@@ -471,7 +471,8 @@ fun Resolver.resolveMessage(
                     if (argFromDB == null) {
                         kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}${RESET}, not ${CYAN}${kwArg.name} ")
                     }
-                    if (!compare2Types(argFromDB.type, kwArg.keywordArg.type!!, kwArg.keywordArg.token)) {
+
+                    if (!compare2Types(argFromDB.type, kwArg.keywordArg.type!!, kwArg.keywordArg.token, unpackNull = true)) {
                         kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
                     }
                 }
