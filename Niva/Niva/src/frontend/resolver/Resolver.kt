@@ -279,7 +279,7 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Boolean = false): Boolean {
+fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Boolean = false): Boolean {
     if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
@@ -314,7 +314,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Bool
                 return1,
                 return2,
                 token,
-                isReturn
+                unpackNull
             )
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
@@ -405,7 +405,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, isReturn: Bool
     }
 
     // Ins sas -> Int? = ^42
-    if (isReturn) {
+    if (unpackNull) {
         if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
             val win = compare2Types(type1.realType, type2, token)
             if (win) return true

@@ -192,6 +192,7 @@ sealed class Type(
             is UserLike -> {
                 append("\n")
             }
+
             is InternalType -> {
                 // internal has only name
                 append("")
@@ -373,7 +374,11 @@ sealed class Type(
         isPrivate: Boolean = true,
         pkg: String = "common",
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
+        override fun toString(): String {
+            return name
+        }
+    }
 
     object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, "common", mutableMapOf())
 
@@ -446,8 +451,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val typeFromDb = typeTable[name] ?:
-                    this.token.compileError("Can't find user type: ${YEL}$name")
+                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy()
@@ -572,8 +576,6 @@ fun SomeTypeDeclaration.toType(
     val fieldsTyped = mutableListOf<TypeField>()
     val unresolvedSelfTypeFields = mutableListOf<TypeField>()
 
-//    val createTypeAlreadyWithNoFields // than fill it with them
-
     fields.forEach {
         val astType = it.type
         if (astType != null && astType.name == typeName) {
@@ -632,8 +634,23 @@ fun SomeTypeDeclaration.toType(
     this.genericFields.forEach {
         if (it.isGeneric() && genericTypeFields.find { x -> x.name == it } == null) {
             genericTypeFields.add(Type.UnknownGenericType(it))
+            // add to recursive ast types of fields generic params
+
         }
     }
+    // add generics params to astTypes of fields
+    fields.asSequence()
+        .filter { it.type is TypeAST.UserType && it.type.names.first() == this.typeName } // get recursive
+        .forEach { field ->
+
+            (field.type as TypeAST.UserType).typeArgumentList.addAll(
+                genericTypeFields.map {
+                    TypeAST.UserType(
+                        name = it.name,
+                        token = field.token,
+                    )
+                })
+        }
 
     result.typeArgumentList = genericTypeFields
     result.fields = fieldsTyped

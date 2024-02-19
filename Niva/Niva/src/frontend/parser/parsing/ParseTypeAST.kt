@@ -92,7 +92,7 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
-                return TypeAST.UserType(identifier.lexeme, setOf(parseGenericType()), isIdentifierNullable, identifier)
+                return TypeAST.UserType(identifier.lexeme, mutableSetOf(parseGenericType()), isIdentifierNullable, identifier)
             }
             // Map(Int, String)
             if (match(TokenType.OpenParen)) {
@@ -105,7 +105,7 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
                 return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
             }
             // ::Person
-            TypeAST.UserType(identifier.lexeme, setOf(), isIdentifierNullable, identifier)
+            TypeAST.UserType(identifier.lexeme, mutableSetOf(), isIdentifierNullable, identifier)
         }
 
     }
@@ -128,7 +128,7 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
         return TypeAST.UserType(
             name = path.last(),
             names = path,
-            typeArgumentList = setOf(),
+            typeArgumentList = mutableSetOf(),
             isNullable = tok.isNullable(),
             token = tok
         )

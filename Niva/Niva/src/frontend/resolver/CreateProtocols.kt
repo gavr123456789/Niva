@@ -373,9 +373,11 @@ fun createCharProtocols(
 }
 
 fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
+    // receiver is already T(on kotlin side)
+    // so we need only one generic here
     val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
     val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
-    val generic = Type.UnknownGenericType("T")
+    val genericR = Type.UnknownGenericType("T")
 
     val realTypeOrNothing = realType ?: nothingType
 
@@ -388,16 +390,32 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
-            createKeyword(KeywordArg("unpackOr", realTypeOrNothing), realTypeOrNothing)
+            createKeyword(KeywordArg("unpackOrValue", realTypeOrNothing), realTypeOrNothing)
                 .emitKw("($0 ?: $1)"),
 
             createKeyword(
                 KeywordArg(
                     "unpack",
-                    Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), generic)
-                ), generic
+                    Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), genericR)
+                ),
+                unitType
             ),
 
+            createKeyword(
+                "unpackOr",
+                listOf(
+                    KeywordArg(
+                        "unpack",
+                        Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), genericR)
+                    ),
+                    KeywordArg(
+                        "or",
+                        genericR
+                    ),
+                ),
+
+                genericR
+            ),
             createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
                 .emitKw("$0 ?: $1"),
         ),
@@ -875,7 +893,7 @@ fun createMapProtocols(
                 ),
                 unitType,
 
-            ),
+                ),
             createKeyword(
                 "filter",
                 listOf(
@@ -895,7 +913,7 @@ fun createMapProtocols(
                 ),
                 unitType,
 
-            ),
+                ),
 
             createKeyword(
                 "atPut",

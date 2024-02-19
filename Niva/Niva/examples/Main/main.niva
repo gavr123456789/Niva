@@ -6,13 +6,52 @@
 //]
 //Assert that: "sas" equals: "sas"
 
+//fun <T> Node<T>.addAll(): Int {
+//    val v = this.value
+//    val l = left
+//    val r = right
+//    when (v) {
+//        is Int -> {
+//            val leftSum = left.unpackOr({it.addAll()}, 0)
+//            val rightSum = if (r != null) r.addAll() else 0
+//            return v + leftSum + rightSum
+//        }
+//        else -> return 0
+//    }
+//
+//}
+
+type Node value: T left: Node? right: Node?
+// constructor with r, l null
+constructor Node v::T = Node value: v left: null right: null
+
+Node addAll -> Int = [
+    v = this value
+
+    v echo
+    ^| v
+    | Int, Float => [
+        leftSum = left unpack: [it addAll] or: 0
+        rightSum = right unpack: [it addAll] or: 0
+        v + leftSum + rightSum
+    ]
+    |=> 0
+]
+
+node = Node
+    value: 1
+    left: (Node v: 2)
+    right: (Node value: 3 right: null left: (Node v: 4))
+node echo
+node addAll echo
 
 
-@Serializable
-type Person name: String age: Int
-
-@Composable
-@rename: "kek"
-Person sas = 1 echo
-
-person = Person name: "sas" age: 453
+//
+//@Serializable
+//type Person name: String age: Int
+//
+//@Composable
+//@rename: "kek"
+//Person sas = 1 echo
+//
+//person = Person name: "sas" age: 453

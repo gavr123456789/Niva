@@ -36,7 +36,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     }
 
     append("(")
-    // class Person (
+    // class Person (^ arg: Type
 
     fun generateFieldArguments(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
 
