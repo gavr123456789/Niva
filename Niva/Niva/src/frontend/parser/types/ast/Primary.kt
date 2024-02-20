@@ -19,6 +19,7 @@ sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(type
             val removeN = if (lex.startsWith("\"\"\"")) 3 else 1
 
             return this.token.lexeme.slice(removeN until token.lexeme.count() - removeN)
+//            return this.token.lexeme//.slice(removeN until token.lexeme.count() - removeN)
         }
     }
 
@@ -26,6 +27,7 @@ sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(type
         LiteralExpression(TypeAST.InternalType(InternalTypes.Char, literal), literal) {
         override fun toString(): String {
             return this.token.lexeme.slice(1 until token.lexeme.count() - 1)
+//            return "\"" + this.token.lexeme + "\""//.slice(1 until token.lexeme.count() - 1)
         }
     }
 
@@ -63,16 +65,28 @@ class ListCollection(
     initElements: List<Receiver>,
     type: Type?,
     token: Token,
-) : Collection(initElements, type, token)
+) : Collection(initElements, type, token) {
+    override fun toString(): String {
+        return "[${initElements.joinToString(", ")}]"
+    }
+}
 
 class SetCollection(
     initElements: List<Receiver>,
     type: Type?,
     token: Token,
-) : Collection(initElements, type, token)
+) : Collection(initElements, type, token) {
+    override fun toString(): String {
+        return "#(${initElements.joinToString(", ")})"
+    }
+}
 
 class MapCollection(
     val initElements: List<Pair<Receiver, Receiver>>,
     type: Type?,
     token: Token,
-) : Receiver(type, token)
+) : Receiver(type, token) {
+    override fun toString(): String {
+        return "#{${initElements.joinToString(", ") {"${it.first}: ${it.second}"}}"
+    }
+}

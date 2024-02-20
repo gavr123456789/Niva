@@ -47,14 +47,24 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     }
 
     b.append("(".repeat(messages.count { it.isPiped }))
-    var newInvisibleArgs: MutableList<String>? = null
+//    var newInvisibleArgs: MutableList<String> = mutableListOf()
 
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
+        var newInvisibleArgs: MutableList<String>? = null//mutableListOf()
+
         var isThereEmitPragma = false
         // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
-            (isThereEmitPragma) = evalPragmas(it).first
+            val (isThereEmit, ctArgs) = evalPragmas(it)
+            (isThereEmitPragma) = isThereEmit
+            if (ctArgs != null) {
+                if (newInvisibleArgs == null) {
+                    newInvisibleArgs = ctArgs.toMutableList()
+                } else {
+                    newInvisibleArgs.addAll(ctArgs)
+                }
+            }
         }
         // do same for binary args
         if (it is BinaryMsg) {
@@ -67,6 +77,9 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         }
 
         if (isThereEmitPragma) {
+            if(newInvisibleArgs?.isNotEmpty() == true) {
+                it.token.compileError("You cant combine Compiler with emit pragma")
+            }
             b.append(it.selectorName)
         } else {
             when (it) {
@@ -122,7 +135,7 @@ fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
                     expr.token.lexeme
                 } else {
                     //expr.str.removeDoubleQuotes()
-                    "($expr)"
+                    "'$expr"
                 }
             }
             if (num > 0) {
@@ -134,7 +147,6 @@ fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
                 } catch (e: Exception) {
                     msg.token.compileError("Compiler get: was used with $num, but $msg has only ${msg.args.count()} args")
                 }
-
 
                 listOfArgs.add(buildString { append('"', getStrFromArg(argN.keywordArg), '"') })
             } else {

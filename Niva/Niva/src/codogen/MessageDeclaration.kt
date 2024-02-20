@@ -5,7 +5,6 @@ import frontend.resolver.Type
 import main.codogen.generateType
 import main.utils.appendnl
 import main.utils.isGeneric
-import sun.util.locale.provider.LocaleProviderAdapter.forType
 
 
 val operators = hashMapOf(
@@ -71,7 +70,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
 
     val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
 
-    if(genericsFromReceiverAndReturnType.isNotEmpty()) {
+    if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")
         append(genericsFromReceiverAndReturnType.joinToString(", "))
         append(">")
@@ -94,13 +93,13 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
         append(">")
     }
 
+    // x.sas^
+    append(".", name)
 
-    val args = if (needCtArgs) {
-        // for unary only receiver needed
-        "(__arg0: String)"
-    } else "()"
+    append("(")
+    pragmas.addInvisibleArgsToMethodDeclaration(listOf(), this)
+    append(")")
 
-    append(".", name, args)
     bodyPart(this@generateUnaryDeclaration, this)
 }
 
@@ -135,14 +134,19 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
         append(": ", arg.typeAST.name)
     }
 
-    // if ctArgs, add receiver and arg
-    if (needCtArgs) {
-        append(", __arg0: String, __arg1: String")
-    }
+    pragmas.addInvisibleArgsToMethodDeclaration(listOf(arg), this)
 
     append(")")
     // operator fun int.sas(...)
     bodyPart(this@generateBinaryDeclaration, this)
+}
+
+fun MutableList<Pragma>.addInvisibleArgsToMethodDeclaration(args: List<KeywordDeclarationArg>, builder: StringBuilder) {
+    this.asSequence().filterIsInstance<KeyPragma>().filter { it.name == "arg" }.forEachIndexed { i, it ->
+        if (args.isNotEmpty() || i > 0) builder.append(", ")
+        val num = it.value.token.lexeme
+        builder.append("__arg", num, ": String")
+    }
 }
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
@@ -177,10 +181,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     }
 
     // if ctArgs, add receiver and arg
-    if (needCtArgs) {
-        val argsArgs = args.mapIndexed { i, it -> "__arg${i + 1}: String" }.joinToString(", ")
-        append(", __arg0: String, $argsArgs")
-    }
+    pragmas.addInvisibleArgsToMethodDeclaration(args, this)
+
 
     append(")")
 

@@ -22,5 +22,19 @@
 //}
 
 
-//> [2, 3, 4]
-> {1 2 3} map: [it inc]
+T d -> T = [
+  receiver = Compiler getName: 0
+  "$receiver = $this" echo
+  ^ this
+]
+1 d 2 d
+
+{1 2 3 4 5 6}
+    map: [it inc] |>
+    d |>
+    filter: [it % 2 == 0] |>
+    d |>
+    map: [it toString + "!"] |>
+    d |>
+    echo
+
