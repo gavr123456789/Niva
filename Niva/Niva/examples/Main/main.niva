@@ -21,37 +21,6 @@
 //
 //}
 
-type Node value: T left: Node? right: Node?
-// constructor with r, l null
-constructor Node v::T = Node value: v left: null right: null
 
-Node addAll -> Int = [
-    v = this value
-
-    v echo
-    ^| v
-    | Int, Float => [
-        leftSum = left unpack: [it addAll] or: 0
-        rightSum = right unpack: [it addAll] or: 0
-        v + leftSum + rightSum
-    ]
-    |=> 0
-]
-
-node = Node
-    value: 1
-    left: (Node v: 2)
-    right: (Node value: 3 right: null left: (Node v: 4))
-node echo
-node addAll echo
-
-
-//
-//@Serializable
-//type Person name: String age: Int
-//
-//@Composable
-//@rename: "kek"
-//Person sas = 1 echo
-//
-//person = Person name: "sas" age: 453
+//> [2, 3, 4]
+> {1 2 3} map: [it inc]

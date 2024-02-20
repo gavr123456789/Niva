@@ -563,7 +563,10 @@ fun createListProtocols(
             createUnary("count", intType),
             createUnary("echo", unitType),
             createUnary("first", itType),
+            createUnary("firstOrNull", itType),
+
             createUnary("last", itType),
+            createUnary("lastOrNull", itType),
             createUnary("clear", unitType),
 
             createUnary("toList", list),
@@ -574,6 +577,7 @@ fun createListProtocols(
             createUnary("asSequence", sequenceType),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
+            createUnary("reversed", boolType),
 
 
             ),
@@ -588,6 +592,7 @@ fun createListProtocols(
             createFilterKeyword(itType, boolType, mutListType),
 
             createKeyword(KeywordArg("add", itType), unitType),
+            createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("atOrNull", intType), Type.NullableType(itType)).rename("getOrNull"),
             createKeyword(KeywordArg("removeAt", intType), unitType),

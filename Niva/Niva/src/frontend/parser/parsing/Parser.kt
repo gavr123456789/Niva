@@ -17,12 +17,12 @@ import main.frontend.parser.parsing.varDeclaration
 fun Parser.statement(): Statement {
     val pragmas = if (check("@")) pragmas() else mutableListOf()
     val tok = peek()
+
     val kind = tok.kind
 
 
     // List::Int sas = [] - unary
     // x::[Int->Int] = [] - value
-    // x::Int = 5
 
     if (kind == TokenType.Dot) {
         return expression(dot = true)
@@ -70,7 +70,7 @@ fun Parser.statement(): Statement {
     if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
         val inlineTok = step()
         try {
-            val inlineExpr = expression(true)
+            val inlineExpr = expression()
 
             inlineExpr.isInlineRepl = true
             if (isInlineReplWithNum)
@@ -237,10 +237,10 @@ fun Parser.commaSeparatedExpressions(): List<Expression> {
 }
 
 // message or control flow or static builder
-// inside x from: y to: z
-// we don't have to parse y to: z as new keyword, only y expression
+// inside `x from: y to: z`
+// we don't have to parse `y to: z` as new keyword, only y expression
 fun Parser.expression(
-    dontParseKeywordsAndUnaryNewLines: Boolean = false, // true if it's a keyword argument
+    dontParseKeywordsAndUnaryNewLines: Boolean = false, // true if it's a keyword argument to prevent stack overflow of parsing keywords inside keywords
     dot: Boolean = false,
     parseSingleIf: Boolean = false // TODO replace on checking root, make root always required
 ): Expression {
