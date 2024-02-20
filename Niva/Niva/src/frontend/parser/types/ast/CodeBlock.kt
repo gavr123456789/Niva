@@ -11,7 +11,14 @@ class CodeBlock(
     var isSingle: Boolean = false,
     type: Type? = null,
     token: Token,
-) : Receiver(type, token)
+) : Receiver(type, token) {
+    override fun toString(): String {
+        return if (statements.isNotEmpty())
+            "${statements}"
+        else
+            "[]"
+    }
+}
 
 class ExpressionInBrackets(
     val statements: List<Statement>,

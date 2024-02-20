@@ -16,10 +16,8 @@ sealed class MessageDeclaration(
     var forType: Type? = null,
     var returnType: Type? = null,
     var isRecursive: Boolean = false,
-
     val typeArgs: MutableList<String> = mutableListOf(),
-    var needCtArgs: Boolean = false // if true send names of args as invisible params
-        ) : Declaration(token, isPrivate, pragmas) {
+) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -37,7 +35,18 @@ class MessageDeclarationUnary(
     isInline: Boolean = false,
     typeArgs: MutableList<String> = mutableListOf()
 
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs = typeArgs)
+) : MessageDeclaration(
+    name,
+    forType,
+    token,
+    isSingleExpression,
+    body,
+    returnType,
+    isPrivate,
+    pragmas,
+    isInline,
+    typeArgs = typeArgs
+)
 
 class MessageDeclarationBinary(
     name: String,
@@ -52,7 +61,18 @@ class MessageDeclarationBinary(
     isInline: Boolean = false,
     typeArgs: MutableList<String> = mutableListOf()
 
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs=typeArgs)
+) : MessageDeclaration(
+    name,
+    forType,
+    token,
+    isSingleExpression,
+    body,
+    returnType,
+    isPrivate,
+    pragmas,
+    isInline,
+    typeArgs = typeArgs
+)
 
 
 // key: localName::type
@@ -81,7 +101,18 @@ class MessageDeclarationKeyword(
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false
-) : MessageDeclaration(name, forType, token, isSingleExpression, body, returnType, isPrivate, pragmas, isInline, typeArgs=typeArgs) {
+) : MessageDeclaration(
+    name,
+    forType,
+    token,
+    isSingleExpression,
+    body,
+    returnType,
+    isPrivate,
+    pragmas,
+    isInline,
+    typeArgs = typeArgs
+) {
     override fun toString(): String {
         return "${forTypeAst.name} ${args.joinToString(" ") { it.name + ": " + it.typeAST?.name }} -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -91,14 +122,14 @@ class ConstructorDeclaration(
     val msgDeclaration: MessageDeclaration,
     token: Token,
 ) : MessageDeclaration(
-        msgDeclaration.name,
-        msgDeclaration.forTypeAst,
-        token,
-        msgDeclaration.isSingleExpression,
-        msgDeclaration.body,
-        msgDeclaration.returnTypeAST,
-        msgDeclaration.isPrivate,
-        msgDeclaration.pragmas,
+    msgDeclaration.name,
+    msgDeclaration.forTypeAst,
+    token,
+    msgDeclaration.isSingleExpression,
+    msgDeclaration.body,
+    msgDeclaration.returnTypeAST,
+    msgDeclaration.isPrivate,
+    msgDeclaration.pragmas,
 )
 
 

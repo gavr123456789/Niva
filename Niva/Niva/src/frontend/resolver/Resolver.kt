@@ -94,7 +94,6 @@ private fun Resolver.resolveStatement(
                     val codeAtr = KeyPragma("arg", intArg as Primary)
 
                     resolvingMessageDeclaration?.apply {
-                        this.needCtArgs = true
                         this.pragmas.add(codeAtr)
                     }
                     statement.pragmas.add(codeAtr)

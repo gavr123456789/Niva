@@ -350,6 +350,12 @@ fun main(args: Array<String>) {
 //        this.append(123)
 //    }
 
+//    listOf(1,2, 3).fold(3) { x, y ->
+//        x + y
+//    }.also { println(it) }
+
+
+
     if (help(args)) return
 
     val startTime = System.currentTimeMillis()

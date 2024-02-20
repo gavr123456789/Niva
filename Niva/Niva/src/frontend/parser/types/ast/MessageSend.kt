@@ -42,7 +42,11 @@ class MessageSendBinary(
     override val messages: List<Message>, // can be unary after keyword
     type: Type? = null,
     token: Token
-) : MessageSend(receiver, messages, type, token)
+) : MessageSend(receiver, messages, type, token) {
+    override fun toString(): String {
+        return "$receiver " + messages.joinToString(" ")
+    }
+}
 
 class MessageSendKeyword(
     receiver: Receiver,
@@ -78,9 +82,11 @@ class BinaryMsg(
 
 //    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
 ) : Message(receiver, selectorName, listOf(), type, token) {
-//    override fun toString(): String {
-//        return "$receiver $selectorName $argument"
-//    }
+    override fun toString(): String {
+        val y = if (unaryMsgsForReceiver.isNotEmpty()) unaryMsgsForReceiver.joinToString(" ") + " " else ""
+        val x = if (unaryMsgsForArg.isNotEmpty()) unaryMsgsForArg.joinToString(" ") + " " else ""
+        return "$y$selectorName $argument$x"
+    }
 }
 
 data class KeywordArgAst(
@@ -107,7 +113,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        return "KeywordMsg(${receiver} ${args.joinToString(" ") { it.name + ": " + it.keywordArg.str }})"
+        return "${receiver} ${args.joinToString(" "){ it.name + ": " + it.keywordArg }}"
     }
 }
 
