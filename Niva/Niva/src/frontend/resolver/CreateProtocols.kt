@@ -577,7 +577,7 @@ fun createListProtocols(
             createUnary("asSequence", sequenceType),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
-            createUnary("reversed", boolType),
+            createUnary("reversed", mutListType),
 
 
             ),
@@ -623,6 +623,24 @@ fun createListProtocols(
                     ),
                     KeywordArg(
                         "transform",
+                        Type.Lambda(
+                            mutableListOf(TypeField("transform", itType)),
+                            differentGenericType
+                        )
+                    )
+                ),
+                stringType
+            ),
+
+            createKeyword(
+                "withFold",
+                listOf(
+                    KeywordArg(
+                        "with",
+                        itType
+                    ),
+                    KeywordArg(
+                        "fold",
                         Type.Lambda(
                             mutableListOf(TypeField("transform", itType)),
                             differentGenericType

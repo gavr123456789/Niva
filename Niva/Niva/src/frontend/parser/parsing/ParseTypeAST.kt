@@ -8,7 +8,7 @@ import frontend.util.createFakeToken
 import frontend.util.isSimpleTypes
 
 // use only after ::
-fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
+fun Parser.parseType(): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
@@ -28,8 +28,7 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
     }
 
     // lambda
-    if (match(TokenType.OpenBracket)) {
-
+    fun parseLambda(receiverType: List<String>? = null): TypeAST.Lambda {
         fun listOfInputTypes(): List<TypeAST> {
             val result = mutableListOf<TypeAST>()
             // anyType, anyType, ...
@@ -46,22 +45,25 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
         // [ -> anyType]
         val thereIsReturnArrowAndCloseBracket = check(TokenType.ReturnArrow) || check(TokenType.CloseBracket)
         val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else listOf()
-//        matchAssert(TokenType.ReturnArrow, "-> expected after list of input types in lambda type declaration")
         match(TokenType.ReturnArrow)
 
         val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
         matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
         val isNullable = match("?")
 
-
+        val q = receiverType?.last()?.let { "$it." } ?: ""
         return TypeAST.Lambda(
-            name = ("$extensionTypeOfLambda.") + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
+            name = q + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
             inputTypesList = listOfInputTypes,
-            extensionOfType = extensionTypeOfLambda,
+            extensionOfType = receiverType,
             token = tok,
             returnType = returnType,
             isNullable = isNullable,
         )
+    }
+
+    if (match(TokenType.OpenBracket)) {
+        return parseLambda()
     }
 
 
@@ -120,8 +122,14 @@ fun Parser.parseType(extensionTypeOfLambda: String? = null): TypeAST {
         // can be dot separated
 
         val path = mutableListOf(tok.lexeme)
+
+
         while (match(TokenType.Dot)) {
+            if (match(TokenType.OpenBracket)) {
+                return parseLambda(path)
+            }
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
+
         }
 
         // one identifier

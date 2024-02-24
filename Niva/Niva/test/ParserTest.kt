@@ -1544,6 +1544,7 @@ class ParserTest {
             Int sas::[on Person -> Unit] = person sas
             Int sas::Person[Unit -> Unit] = person sas
             Int sas::[this::Person -> Unit] = person sas
+            Int sas::[this::Person, x::Int -> Unit] = person sas x: 6
         """.trimIndent()
 
         val ast = getAstTest(source)
