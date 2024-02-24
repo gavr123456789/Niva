@@ -49,7 +49,7 @@ fun Resolver.resolveCodeBlock(
     // resolve generic args and just args, kinda
     val genericLetterToTypes = mutableMapOf<String, Type>()
     val genericLetterToTypesOfReceiver = mutableMapOf<String, Type>()
-    if (rootStatement is KeywordMsg && rootStatement.kind!= KeywordLikeType.CustomConstructor && rootStatement.kind != KeywordLikeType.Constructor && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
+    if (rootStatement is KeywordMsg && rootStatement.kind != KeywordLikeType.CustomConstructor && rootStatement.kind != KeywordLikeType.Constructor && currentArgumentNumber != -1 && rootStatement.receiver !is CodeBlock && rootStatement.receiver.type !is Type.Lambda) {
 
         val rootReceiverType = rootStatement.receiver.type!!
         val metaDataFromDb = findAnyMsgType(

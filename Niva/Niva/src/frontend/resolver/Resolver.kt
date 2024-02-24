@@ -138,7 +138,7 @@ private fun Resolver.resolveStatement(
         }
 
         is ExpressionInBrackets -> {
-            resolveExpressionInBrackets(statement, previousScope, currentScope)
+            resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
@@ -261,8 +261,7 @@ fun Resolver.resolve(
 
 fun Resolver.resolveExpressionInBrackets(
     statement: ExpressionInBrackets,
-    currentScope: MutableMap<String, Type>,
-    previousScope: MutableMap<String, Type>
+    previousAndCurrentScope: MutableMap<String, Type>,
 ): Type {
     if (statement.statements.isEmpty()) {
         statement.token.compileError("Parens must contain expression")
@@ -272,7 +271,6 @@ fun Resolver.resolveExpressionInBrackets(
         statement.token.compileError("Last statement inside parens must be expression")
     }
 
-    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
     resolve(statement.statements, previousAndCurrentScope, statement)
     statement.type = lastExpr.type
     return lastExpr.type!!
