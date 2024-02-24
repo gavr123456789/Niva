@@ -47,13 +47,13 @@ sealed class TypeAST(
 //    )
 
 
-    @Suppress("unused")
+
     class Lambda(
         name: String,
         val inputTypesList: List<TypeAST>,
         val returnType: TypeAST,
         token: Token,
-        val extensionOfType: String? = null, // String.[x: Int -> Int]
+        val extensionOfType: List<String>? = null, // String.[x: Int -> Int]
         isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pragmas: MutableList<Pragma> = mutableListOf()

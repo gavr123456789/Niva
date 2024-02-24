@@ -177,7 +177,8 @@ fun Resolver.resolveMessageDeclaration(
         } else {
             val realReturn = wasThereReturn
             val returnType = st.returnType
-            if (realReturn != null && returnType != null && !compare2Types(returnType, realReturn, unpackNull = true)) {
+            if (realReturn != null && returnType != null &&
+                !compare2Types(returnType, realReturn, unpackNull = true, isOut = true)) {
                 st.returnTypeAST?.token?.compileError("Return type defined: $YEL$returnType$RESET but real type returned: $YEL$realReturn")
             }
         }

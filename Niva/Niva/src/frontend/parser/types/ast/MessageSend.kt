@@ -55,7 +55,7 @@ class MessageSendKeyword(
     token: Token
 ) : MessageSend(receiver, messages, type, token) {
     override fun toString(): String {
-        return messages.joinToString(" ") { it.toString() }
+        return "$receiver" + messages.joinToString(" ")
     }
 }
 
@@ -113,7 +113,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        return "${receiver} ${args.joinToString(" "){ it.name + ": " + it.keywordArg }}"
+        return "${args.joinToString(" "){ it.name + ": " + it.keywordArg }}"
     }
 }
 

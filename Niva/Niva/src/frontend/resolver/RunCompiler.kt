@@ -114,8 +114,12 @@ fun Resolver.resolve(mainFile: File) {
 }
 
 fun Resolver.printInfoFromCode() {
-    infoTypesToPrint.forEach {
-        val content = it.infoPrint()
-        println(content)
+    infoTypesToPrint.forEach { x, y ->
+        if (y) {
+            println(x)
+        } else {
+            val content = x.infoPrint()
+            println(content)
+        }
     }
 }

@@ -14,8 +14,9 @@ import main.frontend.typer.*
 import java.io.File
 import java.util.Stack
 
-private fun Resolver.addPrintingInfoAboutType(type: Type) {
-    infoTypesToPrint.add(type)
+private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
+//    infoTypesToPrint.add(type)
+    infoTypesToPrint[type] = printOnlyTypeName
 }
 
 private fun Resolver.resolveStatement(
@@ -125,10 +126,11 @@ private fun Resolver.resolveStatement(
             val type = statement.type
 
             // This Identifier is Type, like Person
-            if (type != null && statement.str == type.name && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
+            if (type != null && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
                 if (statement.isInfoRepl) {
-                    addPrintingInfoAboutType(type)
+                    addPrintingInfoAboutType(type, statement.str != type.name)
                 }
+
                 statement.isType = true
             }
 
@@ -278,7 +280,7 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Boolean = false): Boolean {
+fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Boolean = false, isOut: Boolean = false): Boolean {
     if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
@@ -328,11 +330,27 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
     }
 
 
-    if (type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
-        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType
+    // if one of them is generic
+    if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
+        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType)
     ) {
-        return true
+        if (!isOut)
+            return true // getting T but got Int, is OK
+        if (isOut)
+            return false // -> T, but Int returned
     }
+
+    // if both are generics of the different letters
+    if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name != type2.name) {
+        // if we return than its wrong
+        // -> G, but T is returned
+        // if we get than it's ok
+        if (isOut)
+            return false // returning T, but -> G declarated
+        if (!isOut)
+            return true // getting T, but got G is OK
+    }
+
 
     val pkg1 = type1.pkg
     val pkg2 = type2.pkg
@@ -423,6 +441,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
     // comparing with nothing is always true, its bottom type, subtype of all types,
     // so we can return nothing from switch expr branches, beside u cant do it with different types
     val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
+
     return type1 == nothing || type2 == nothing
 }
 
@@ -878,7 +897,7 @@ class Resolver(
     var wasThereReturn: Type? = null,
     var resolvingMessageDeclaration: MessageDeclaration? = null,
 
-    val infoTypesToPrint: MutableSet<Type> = mutableSetOf(),
+    val infoTypesToPrint: MutableMap<Type, Boolean> = mutableMapOf(),
 
     val stack: Stack<MessageSend> = Stack()
 ) {

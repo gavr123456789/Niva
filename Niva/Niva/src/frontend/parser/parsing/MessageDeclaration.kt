@@ -193,7 +193,6 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
 private fun Parser.keyArg(): KeywordDeclarationArg {
     val noLocalNameNoType = check(TokenType.Colon)
     val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
-    val lambdaWithExtension = check(TokenType.Identifier) && check(TokenType.Dot, 1)
     // :foo
     if (noLocalNameNoType) {
         step() //skip colon
@@ -213,17 +212,17 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val type = parseType()
         return (KeywordDeclarationArg(name = argName.lexeme, typeAST = type))
     }
-    else if (lambdaWithExtension) {
-        val extension = matchAssert(TokenType.Identifier)
-        step() // skip dot
-        val name = matchAssert(TokenType.Identifier, "Identifier expected in extension codeblock")
-        matchAssert(TokenType.DoubleColon, ":: expected in extension codeblock")
-        val typeAST = parseType(extension.lexeme)
-
-
-        val result = KeywordDeclarationArg(name = name.lexeme, typeAST = typeAST)
-        return  result
-    }
+//    else if (lambdaWithExtension) {
+//        val extension = matchAssert(TokenType.Identifier)
+//        step() // skip dot
+//        val name = matchAssert(TokenType.Identifier, "Identifier expected in extension codeblock")
+//        matchAssert(TokenType.DoubleColon, ":: expected in extension codeblock")
+//        val typeAST = parseType(extension.lexeme)
+//
+//
+//        val result = KeywordDeclarationArg(name = name.lexeme, typeAST = typeAST)
+//        return  result
+//    }
     // key: localName(::int)?
     else {
         val key = matchAssert(TokenType.Identifier)
