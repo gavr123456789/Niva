@@ -632,15 +632,32 @@ fun createListProtocols(
                 stringType
             ),
 
+            // fold
             createKeyword(
-                "withFold",
+                "injectInto",
                 listOf(
                     KeywordArg(
-                        "with",
-                        itType
+                        "inject",
+                        differentGenericType
                     ),
                     KeywordArg(
-                        "fold",
+                        "info",
+                        Type.Lambda(
+                            mutableListOf(TypeField("acc", differentGenericType), TypeField("each", itType)),
+                            differentGenericType
+                        )
+                    )
+                ),
+                stringType
+            ).rename("fold"),
+
+
+            // reduce
+            createKeyword(
+                "reduce",
+                listOf(
+                    KeywordArg(
+                        "reduce",
                         Type.Lambda(
                             mutableListOf(TypeField("transform", itType)),
                             differentGenericType
@@ -648,7 +665,7 @@ fun createListProtocols(
                     )
                 ),
                 stringType
-            ),
+            ).rename("fold"),
 
 
             createKeyword(

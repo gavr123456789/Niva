@@ -22,23 +22,33 @@
 //}
 
 
-// forEach
-
-
 
 
 type Person name: String
-Person func::Person.[Int, String -> Int] = 1 //func this: this x: 1 y: "Sas"
-//Person func::Person.[Int, String -> Int] =  this func x: 1 y: "Sas"
-//Person func::Person.[Int, String -> Int] =  this Int: 1 String: "Sas"
-//Person func::Person.[x::Int, y::String -> Int] = this x: 1 y: "Sas"
+Person a::Int b::String c::Boolean = [
+    a echo
+    b echo
+    c echo
+    name echo
+]
 
-func = [this::Person, x::Int, y::String -> x inc inc inc]
-func = Person[x::Int, y::String -> x inc inc inc]
+p = Person name: "Alice"
+p a: 23 b: "sas" c: true
 
-x = Person name: "Alice"
-x func: func
+//Person func::Person.[Int, String -> Int] = 1 //func this: this x: 1 y: "Sas"
+////Person func::Person.[Int, String -> Int] =  this func x: 1 y: "Sas"
+////Person func::Person.[Int, String -> Int] =  this Int: 1 String: "Sas"
+////Person func::Person.[x::Int, y::String -> Int] = this x: 1 y: "Sas"
+//
+//func = [this::Person, x::Int, y::String -> x inc inc inc]
+//func = Person[x::Int, y::String -> x inc inc inc]
+//
+//x = Person name: "Alice"
+//x func: func
 
+
+// fold
+//>{1 2 3} inject: 0 into: [a, b -> a + b]
 
 
 
