@@ -1025,7 +1025,7 @@ class ResolverTest {
             type COLOR
             constructor COLOR RED = "\u001B[31m"
         """.trimIndent()
-        val (statements, resolver) = resolveWithResolver(source)
+        val (statements, _) = resolveWithResolver(source)
 
         assert(statements.count() == 2)
     }
@@ -1135,6 +1135,28 @@ class ResolverTest {
         val wew = sas.body[0] as MessageSendKeyword
         assertTrue {wew.type?.name == "String"}
     }
+
+    @Test
+    fun foldFunc() {
+        // List<T> inject: G into: [G, T -> G]
+        val source = """
+            { 1 2 3 } inject: 0 into: [a, b -> a + b]
+        
+            set::MutableSet::Int = #()
+            { 3 3 3 } inject: set into: [set, cur ->
+                set add: cur
+                set
+            ]
+            { 3 3 3 } inject: #(1 2 3) into: [set, cur ->
+                set add: cur
+                set
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+
+    }
+
 
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {

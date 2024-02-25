@@ -24,3 +24,19 @@ emptyList add: 5
 // you can put messages inside collection with braces(because , is optional)
 collectionWithMessages = {(1 inc) (2 inc) (3 inc inc)}
 
+
+// fold
+//> 6
+>{1 2 3} inject: 0 into: [a, b -> a + b]
+
+//> [1, 2, 3]
+>{3 3 3} inject: #(1 2 3) into: [set, cur ->
+    set add: cur
+    set
+]
+//> {1=false, 2=true, 3=false, 4=true, 5=false}
+>{3 4 5} inject: #{1 false 2 true} into: [map, cur ->
+    map at: cur put: cur % 2 == 0
+    map
+]
+

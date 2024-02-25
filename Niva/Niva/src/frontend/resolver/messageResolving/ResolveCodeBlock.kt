@@ -1,13 +1,32 @@
-package frontend.resolver
+package frontend.resolver.messageResolving
 
 import frontend.meta.compileError
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.*
+import frontend.resolver.KeywordMsgMetaData
+import frontend.resolver.Resolver
+import frontend.resolver.Type
 import frontend.resolver.Type.RecursiveType.copy
+import frontend.resolver.TypeField
+import frontend.resolver.compare2Types
+import frontend.resolver.fillGenericsWithLettersByOrder
+import frontend.resolver.resolve
+import frontend.resolver.toType
 import main.RESET
 import main.WHITE
 import main.frontend.resolver.findAnyMsgType
 import main.utils.isGeneric
+import java.lang.Exception
+import kotlin.collections.count
+import kotlin.collections.forEach
+import kotlin.collections.forEachIndexed
+import kotlin.collections.isNotEmpty
+import kotlin.collections.last
+import kotlin.collections.map
+import kotlin.collections.plus
+import kotlin.collections.set
+import kotlin.collections.toMutableList
+import kotlin.collections.toMutableMap
 
 
 fun Resolver.resolveCodeBlockAsBody(
@@ -63,12 +82,7 @@ fun Resolver.resolveCodeBlock(
 
         // List(T, G) map::[T -> G] -> G = []
 
-        // u cant just get it from typeTable, it can be complex type like List::List::Int, but simple List::T would be found instead
-//        val rootType = typeTable[rootReceiverType.name] //testing
-//        val testDB = typeDB.getType(rootReceiverType.name)
-//        val rootType = rootReceiverType
-//        if (rootType is Type.UserType && rootReceiverType is Type.UserType) {
-        if ( rootReceiverType is Type.UserType && rootReceiverType.typeArgumentList.isNotEmpty()) {
+        if (rootReceiverType is Type.UserType && rootReceiverType.typeArgumentList.isNotEmpty()) {
             val rootType = rootReceiverType.copy()
 
             fillGenericsWithLettersByOrder(rootType)
@@ -110,18 +124,22 @@ fun Resolver.resolveCodeBlock(
                     statement.token.compileError("Number of arguments for code block: ${WHITE}${currentArgType.args.count()}$RESET, you passed ${WHITE}${namedLambdaArgs.count()}")
                 }
 
-                currentArgType.args.forEachIndexed { i, typeField ->
-                    val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
-                        typeField.type
-                    } else {
-                        val foundRealType = genericLetterToTypesOfReceiver[typeField.type.name] ?: genericLetterToTypes[typeField.type.name]
-                            ?: statement.token.compileError("Compiler error: Can't find resolved type ${typeField.type.name} while resolving codeblock")
-                        foundRealType
-                    }
+                namedLambdaArgs.asSequence()
+                    .filter { it.type == null }
+                    .forEachIndexed { i, it ->
+                        val typeField = currentArgType.args[i]
 
-                    if (namedLambdaArgs[i].type == null)
-                        namedLambdaArgs[i].type = typeForArg
-                }
+                        val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
+                            typeField.type
+                        } else {
+                            val foundRealType = genericLetterToTypesOfReceiver[typeField.type.name]
+                                ?: genericLetterToTypes[typeField.type.name]
+                                ?: statement.token.compileError("Compiler error: Can't find resolved type ${typeField.type.name} while resolving codeblock")
+                            foundRealType
+                        }
+
+                        it.type = typeForArg
+                    }
             }
         }
         isThisWhileCycle = false

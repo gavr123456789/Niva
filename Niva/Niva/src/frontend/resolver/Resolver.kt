@@ -7,6 +7,7 @@ import frontend.meta.Token
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
 import frontend.resolver.Type.RecursiveType.copy
+import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.util.createFakeToken
 import frontend.util.div
 import main.*
