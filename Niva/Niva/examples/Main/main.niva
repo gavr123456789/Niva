@@ -24,17 +24,7 @@
 
 
 
-type Person name: String
-Person a::Int b::String c::Boolean = [
-    a echo
-    b echo
-    c echo
-    name echo
-]
-
-p = Person name: "Alice"
-p a: 23 b: "sas" c: true
-
+//type Person name: String
 //Person func::Person.[Int, String -> Int] = 1 //func this: this x: 1 y: "Sas"
 ////Person func::Person.[Int, String -> Int] =  this func x: 1 y: "Sas"
 ////Person func::Person.[Int, String -> Int] =  this Int: 1 String: "Sas"
@@ -47,8 +37,8 @@ p a: 23 b: "sas" c: true
 //x func: func
 
 
-// fold
-//>{1 2 3} inject: 0 into: [a, b -> a + b]
+//> 6
+>{1 2 3} reduce: [a, b -> a + b]
 
 
 

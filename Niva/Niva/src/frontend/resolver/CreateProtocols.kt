@@ -659,13 +659,13 @@ fun createListProtocols(
                     KeywordArg(
                         "reduce",
                         Type.Lambda(
-                            mutableListOf(TypeField("transform", itType)),
+                            mutableListOf(TypeField("acc", itType), TypeField("each", itType)),
                             differentGenericType
                         )
                     )
                 ),
                 stringType
-            ).rename("fold"),
+            ),
 
 
             createKeyword(

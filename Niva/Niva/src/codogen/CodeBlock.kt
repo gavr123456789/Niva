@@ -13,13 +13,13 @@ fun CodeBlock.generateCodeBlock(withTypeDeclaration: Boolean = true, putArgListI
     append("{")
 
     if (putArgListInBrackets) append("(")
-    // x: Int, ->
+    // ^x: Int, ->
     inputList.forEach({ append(", ") }) {
         append(it.name, ": ")
         if (it.typeAST != null && withTypeDeclaration) {
             append(it.typeAST.generateType())
         } else {
-            append(it.type!!.name)
+            append(it.type!!.toKotlinString())
         }
     }
     if (putArgListInBrackets) append(")")

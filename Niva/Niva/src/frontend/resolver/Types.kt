@@ -156,22 +156,37 @@ sealed class Type(
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
 ) {
-    override fun toString(): String =
-        when (this) {
-            is InternalLike -> name
-            is NullableType -> "$realType?"
-            is UserLike -> {
-                val genericParam =
-                    if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
-                        "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
-                    } else ""
-                val needPkg = if (pkg != "core") "$pkg." else ""
-                "$needPkg$name$genericParam"
-            }
-
-            else -> "$pkg.$name"
-
+    override fun toString(): String = when (this) {
+        is InternalLike -> name
+        is NullableType -> "$realType?"
+        is UserLike -> {
+            val genericParam =
+                if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
+                    "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
+                } else ""
+            val needPkg = if (pkg != "core") "$pkg." else ""
+            "$needPkg$name$genericParam"
         }
+
+        else -> "$pkg.$name"
+
+    }
+
+    fun toKotlinString(): String = when (this) {
+        is InternalLike -> name
+        is NullableType -> "$realType?"
+        is UserLike -> {
+            val genericParam =
+                if (typeArgumentList.isNotEmpty()) {
+                    "<" + typeArgumentList.joinToString(", ") { it.toString() } + ">"
+                } else ""
+            val needPkg = if (pkg != "core") "$pkg." else ""
+            "$needPkg$name$genericParam"
+        }
+
+        else -> "$pkg.$name"
+
+    }
 
     class TypeType(
         val name: String,

@@ -2,6 +2,8 @@ package frontend.resolver
 
 import frontend.meta.compileError
 import frontend.parser.types.ast.*
+import frontend.resolver.messageResolving.resolveCodeBlock
+import frontend.resolver.messageResolving.resolveCodeBlockAsBody
 import main.RESET
 import main.WHITE
 import main.YEL
@@ -304,7 +306,7 @@ fun Resolver.resolveControlFlow(
                 }
 //                val elseReturnType = lastExpr.type!!
                 val elseReturnTypeName = elseReturnType.name
-                val firstReturnTypeName = firstBranchReturnType!!.name
+                val firstReturnTypeName = firstBranchReturnType.name
                 if (elseReturnTypeName != firstReturnTypeName) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstReturnTypeName$RESET != $YEL$elseReturnTypeName$RESET)")
                 }
@@ -330,7 +332,7 @@ fun Resolver.resolveControlFlow(
                         }
 
                         if (statement.type == null) {
-                            statement.type = firstBranchReturnType!!
+                            statement.type = firstBranchReturnType
                         }
                     }
 
