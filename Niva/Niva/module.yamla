@@ -1,0 +1,12 @@
+product: jvm/app
+
+settings:
+  kotlin:
+    languageVersion: 2.0
+
+dependencies:
+  - io.github.irgaly.kfswatch:kfswatch:1.0.0
+  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0
+
+test-dependencies:
+  - org.jetbrains.kotlin:kotlin-test:1.9.20

@@ -9,10 +9,10 @@ pluginManagement {
     }
 }
 
-plugins {
-    id("org.jetbrains.amper.settings.plugin").version("0.2.0")
-}
+//plugins {
+//    id("org.jetbrains.amper.settings.plugin").version("0.2.0")
+//}
 
 rootProject.name = "niva"
 
-plugins.apply("org.jetbrains.amper.settings.plugin")
+//plugins.apply("org.jetbrains.amper.settings.plugin")

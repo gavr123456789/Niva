@@ -1,0 +1,185 @@
+package frontend.parser.parsing
+
+import main.frontend.meta.*
+import main.frontend.parser.types.ast.Statement
+import java.io.File
+
+class Parser(
+    val file: File,
+    val tokens: MutableList<Token>,
+    val source: String,
+    val tree: MutableList<Statement> = mutableListOf(),
+    var current: Int = 0,
+)
+
+fun Parser.getCurrent() = current
+fun Parser.getCurrentToken() =
+    if (getCurrent() >= tokens.size - 1 || getCurrent() - 1 < 0)
+        tokens.elementAt(tokens.size - 1)
+    else
+        tokens.elementAt(current - 1)
+
+fun endOfFile(file: File) = Token(
+    kind = TokenType.EndOfFile,
+    lexeme = "",
+    line = -1,
+    pos = Position(-1, -1),
+    relPos = Position(-1, -1),
+    file = file
+)
+
+fun Parser.peek(distance: Int = 0): Token =
+    // check
+    if (tokens.size == 0 || current + distance > tokens.size - 1 || current + distance < 0)
+        endOfFile(file)
+    else
+        tokens[current + distance]
+
+fun Parser.done(): Boolean =
+    check(TokenType.EndOfFile)
+
+fun Parser.step(n: Int = 1): Token {
+    val result =
+        if (done())
+            peek()
+        else
+            tokens[current]
+    current += n
+    if (current > this.tokens.count()) {
+        throw Exception("Reached out of tokens somehow")
+    }
+    return result
+}
+
+@Suppress("UnusedReceiverParameter")
+fun Parser.error(message: String): Nothing {
+//    var realToken = token ?: getCurrentToken()
+//    if (realToken.kind == TokenType.EndOfFile) {
+//        realToken = peek(-1)
+//    }
+    throw Exception(message)
+}
+
+fun Parser.check(kind: TokenType, distance: Int = 0) =
+    peek(distance).kind == kind
+
+fun Parser.check(kind: String, distance: Int = 0) =
+    peek(distance).lexeme == kind
+
+fun Parser.checkMany(vararg kind: TokenType): Boolean {
+    kind.forEachIndexed { i, it ->
+        if (!check(it, i)) {
+            return false
+        }
+    }
+    return true
+}
+
+
+
+fun Parser.checkString(kind: Iterable<String>): Boolean {
+    kind.forEach {
+        if (check(it)) {
+            step()
+            return true
+        }
+    }
+    return false
+}
+
+fun Parser.match(kind: TokenType) =
+    if (check(kind)) {
+        step()
+        true
+    } else {
+        false
+    }
+
+// skip lines and comments, and then match token
+fun Parser.matchAfterSkip(kind: TokenType): Boolean {
+    val savePoint = current
+    skipNewLinesAndComments()
+
+    return if (match(kind)) {
+         true
+    } else {
+        current = savePoint
+        false
+    }
+}
+
+fun Parser.checkIdentifier(): Boolean {
+    val tok = peek()
+    return tok.isIdentifier()
+}
+
+fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
+    val tok = peek()
+
+    return if (tok.isIdentifier()) {
+        step()
+        tok
+    } else {
+        peek().compileError(errorMessage)
+    }
+}
+
+fun Parser.matchAssert(kind: TokenType, errorMessage: String? = null): Token {
+    val tok = peek()
+
+    val realErrorMessage = errorMessage ?: "Parsing error, ${kind.name} expected, but found \"${tok.lexeme}\""
+
+    return if (tok.kind == kind) {
+        step()
+        tok
+    } else {
+        tok.compileError(realErrorMessage)
+//        error(realErrorMessage)
+    }
+}
+
+fun Parser.match(kind: String) =
+    if (check(kind)) {
+        step() // TODO тут наверн надо делать степ на kind.length
+        true
+    } else {
+        false
+    }
+
+fun Parser.match(kind: Iterable<TokenType>): Boolean {
+    kind.forEach {
+        if (match(it)) {
+            return true
+        }
+    }
+    return false
+}
+
+fun Parser.matchString(kind: Iterable<String>): Boolean {
+    kind.forEach {
+        if (match(it)) {
+            return true
+        }
+    }
+    return false
+}
+
+fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
+    if (!match(kind)) {
+        if (message.isEmpty()) {
+            error("expecting token of kind $kind, found ${peek().kind}")
+        } else {
+            error(message)
+        }
+    }
+}
+
+fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
+    if (!match(kind)) {
+        if (message.isEmpty()) {
+            error("expecting token of kind $kind, found ${peek().kind}")
+        } else {
+            error(message)
+        }
+    }
+}
