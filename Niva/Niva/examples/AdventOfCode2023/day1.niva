@@ -1,0 +1,16 @@
+input = """1abc2
+pqr3stu8vwx
+a1b2c3d4e5f
+treb7uchet""" split: "\n"
+
+input echo
+
+sum = input sumOf: [s ->
+    d = s filter: ['0'..'9' contains: it]
+//> 38, 12345, 7
+    >3 d
+    first = d first
+    last = d last
+    "$first$last" toInt
+]
+sum echo

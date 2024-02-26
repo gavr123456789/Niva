@@ -42,12 +42,6 @@ sealed class TypeAST(
         pragmas: MutableList<Pragma> = mutableListOf()
     ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
 
-//    object ResursiveType : TypeAST(
-//        "ResursiveType", false, createFakeToken(), false, mutableListOf()
-//    )
-
-
-
     class Lambda(
         name: String,
         val inputTypesList: List<TypeAST>,
@@ -59,7 +53,6 @@ sealed class TypeAST(
         pragmas: MutableList<Pragma> = mutableListOf()
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
 }
-
 
 
 class EnumFieldAST(
@@ -159,5 +152,5 @@ class AliasDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric
+    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, CharRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric
 }

@@ -32,7 +32,6 @@ class ParserTest {
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
-//        assert(declaration.value.type?.name == "int")
         assert(declaration.value.str == "1")
     }
 
@@ -1551,6 +1550,17 @@ class ParserTest {
         assert(ast.count() == 1)
         val msgUnaryDecl = ast[0] as MessageDeclarationUnary
         assertTrue { msgUnaryDecl.pragmas.count() == 2 }
+    }
+
+    @Test
+    fun assignWithNewLine() {
+        val source = """
+            x = 
+            1
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
     }
 
 

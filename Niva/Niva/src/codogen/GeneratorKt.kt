@@ -9,7 +9,6 @@ import frontend.resolver.CompilationTarget
 import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
-import frontend.util.addIndentationForEachString
 import main.utils.appendnl
 import main.utils.targetToRunCommand
 import java.io.File
@@ -123,8 +122,6 @@ fun GeneratorKt.regenerateGradleForAmper(
     gradleFile.writeText(newGradle)
 }
 
-fun <T> T.p(): T = println(this).let { this }
-
 @Suppress("unused")
 fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
     val implementations = dependencies.joinToString("\n") {
@@ -178,7 +175,7 @@ fun GeneratorKt.addStdAndPutInMain(
 ) =
     buildString {
         append("package ${mainPkg.packageName}\n")
-        val code1 = ktCode.addIndentationForEachString(1)
+        val code1 = ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
         val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
