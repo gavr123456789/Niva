@@ -37,10 +37,60 @@
 //x func: func
 
 
-//> 6
->{1 2 3} reduce: [a, b -> a + b]
+//>{1 2 3} reduce: [a, b -> a + b]
 
+//Int isEven = this % 2 == 0
+//> ([2, 4], [1, 3, 5])
+//
+//>{1 2 3} sumOf: [
+//    "$it.$it" toDouble
+//> 6.6
+//]
 
+input =
+"""1abc2
+pqr3stu8vwx
+a1b2c3d4e5f
+treb7uchet""" split: "\n"
+
+input echo
+
+sum2 = input sumOf: [s ->
+    d = s filter: ['0'..'9' contains: it]
+//> 12, 38, 12345, 7
+    >4 d
+    first = d first
+    last = d last
+    "$first$last" toInt
+]
+//> 142
+>sum2
+
+digits = {"", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
+sum = input sumOf: [ s ->
+    sb = StringBuilder new
+    s indices forEachIndexed: [i, it ->
+        q = s at: i
+//> h, e, t
+        >3 q
+        '0'..'9' contains: q => [
+            sb append: q
+        ] |=> [
+            ss = s substring: i
+//> het, et, t
+            >3 ss
+            1..9 forEach: [j ->
+                ss startsWith: (digits at: j) =>
+                    sb append: ('0' addInt: j)
+            ]
+        ]
+    ]
+    first = sb first
+    last = sb last
+    "$first$last" toInt
+]
+//> 142
+>sum
 
 
 

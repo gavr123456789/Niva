@@ -339,7 +339,7 @@ fun StringBuilder.builderWithReceiver(x: StringBuilder.((String) -> Unit) -> Uni
 }
 
 fun main(args: Array<String>) {
-//    val q = listOf(1, 2).fold(5) { acc, next -> acc + next }
+//    val q = listOf(1, 2)//.sumOf {  }//.partition {  }//.fold(5) { acc, next -> acc + next }
 //    val w = listOf(1, 2).fold(mutableSetOf<Int>()) {acc, each -> if (each % 2 == 0) acc.add(each); acc }
 
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
@@ -352,10 +352,6 @@ fun main(args: Array<String>) {
 //        x("sas")
 //        this.append(123)
 //    }
-
-//    listOf(1,2, 3).fold(3) { x, y ->
-//        x + y
-//    }.also { println(it) }
 
 
 

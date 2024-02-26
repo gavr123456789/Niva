@@ -7,7 +7,7 @@ import frontend.resolver.Resolver
 import main.RESET
 import main.WHITE
 
-fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
+private fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
     val result = mutableListOf<Statement>()
     do {
         result.add(statementWithEndLine())
@@ -40,8 +40,7 @@ fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType):
 }
 
 
-fun Parser.codeBlockArgs(): List<IdentifierExpr> {
-
+private fun Parser.codeBlockArgs(): List<IdentifierExpr> {
     val isThereBeforeStatementPart =
         checkMany(TokenType.Identifier, TokenType.DoubleColon) ||
         checkMany(TokenType.Identifier, TokenType.Comma) ||
@@ -56,7 +55,7 @@ fun Parser.codeBlockArgs(): List<IdentifierExpr> {
             listOf()
 }
 
-fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
+private fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
     val result = mutableListOf<IdentifierExpr>()
 
     // ^a, b, c ->

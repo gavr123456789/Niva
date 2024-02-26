@@ -389,15 +389,18 @@ fun Resolver.resolveKwArgs(
     argsTypesFromDb: List<Type>? = null,
     letterToRealType: Map<String, Type>? = null,
 ) {
-
-
+    // first time we are resoling all args except the codeblocks
     val usualArgs = mutableListOf<KeywordArgAst>()
     val codeBlockArgs = mutableListOf<CodeBlock>()
+    val codeBlocks = mutableListOf<KeywordArgAst>()
     val mapOfArgToDbArg = mutableMapOf<Expression, Type>()
 
-    if (argsTypesFromDb != null)
+    if (argsTypesFromDb != null && argsTypesFromDb.isNotEmpty())
         statement.args.forEachIndexed { i, it ->
-            if (it.keywordArg is CodeBlock) codeBlockArgs.add(it.keywordArg) else {
+            if (it.keywordArg is CodeBlock) {
+                codeBlocks.add(it)
+                codeBlockArgs.add(it.keywordArg)
+            } else {
                 usualArgs.add(it)
                 // because non codeblock args already resolved
             }
@@ -405,7 +408,10 @@ fun Resolver.resolveKwArgs(
         }
     else
         statement.args.forEachIndexed { i, it ->
-            if (it.keywordArg is CodeBlock) codeBlockArgs.add(it.keywordArg) else usualArgs.add(it)
+            if (it.keywordArg is CodeBlock) {
+                codeBlocks.add(it)
+                codeBlockArgs.add(it.keywordArg)
+            } else usualArgs.add(it)
         }
 
     // resolve code blocks
@@ -419,15 +425,16 @@ fun Resolver.resolveKwArgs(
                 val lambdaArgFromDBType = lambdaArgFromDb.type
                 if (lambdaArgFromDBType is Type.UnknownGenericType) {
                     val qwe = letterToRealType[lambdaArgFromDBType.name]
-                    if (qwe != null)
+                    if (qwe != null && it.inputList.isNotEmpty()) {
                         it.inputList[i].type = qwe
+                    }
                 }
             }
         }
     }
 
 
-    val args = if(filterCodeBlock) usualArgs else statement.args
+    val args = if(filterCodeBlock) usualArgs else codeBlocks
     args.forEachIndexed { argNum, it ->
         val arg = it.keywordArg
         if (arg.type == null) {

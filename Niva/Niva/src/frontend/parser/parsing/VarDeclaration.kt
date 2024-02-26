@@ -16,7 +16,9 @@ fun Parser.varDeclaration(): VarDeclaration {
 
     val value: Expression
     val valueType: TypeAST?
+    skipNewLinesAndComments()
     when (typeOrEqual.kind) {
+        // x =^
         TokenType.Assign -> {
             val isNextReceiver = isNextSimpleReceiver()
             value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
@@ -27,7 +29,7 @@ fun Parser.varDeclaration(): VarDeclaration {
             valueType = parseType()
             // x::int^ =
             match(TokenType.Assign)
-//            value = this.simpleReceiver(valueType)
+            skipNewLinesAndComments()
             val isNextReceiver = isNextSimpleReceiver()
             value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
 

@@ -916,6 +916,7 @@ class Resolver(
             createDefaultType(InternalTypes.Bind),
             createDefaultType(InternalTypes.Compiler),
             createDefaultType(InternalTypes.IntRange),
+            createDefaultType(InternalTypes.CharRange),
 
             createDefaultType(InternalTypes.Any),
             createDefaultType(InternalTypes.Nothing),
@@ -933,6 +934,7 @@ class Resolver(
             val boolType = defaultTypes[InternalTypes.Boolean]!!
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
+            val charRangeType = defaultTypes[InternalTypes.CharRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
 //            val nullType = defaultTypes[InternalTypes.Null]!!
@@ -984,7 +986,8 @@ class Resolver(
                     charType = charType,
                     any = anyType,
                     floatType = floatType,
-                    doubleType = doubleType
+                    doubleType = doubleType,
+                    intRangeType = intRangeType
                 )
             )
 
@@ -1006,7 +1009,8 @@ class Resolver(
                     unitType = unitType,
                     boolType = boolType,
                     charType = charType,
-                    any = anyType
+                    any = anyType,
+                    charRange = charRangeType
                 )
             )
 
@@ -1030,13 +1034,22 @@ class Resolver(
             )
 
             intRangeType.protocols.putAll(
-                createIntRangeProtocols(
+                createRangeProtocols(
                     rangeType = intRangeType,
                     boolType = boolType,
-                    intType = intType,
+                    itType = intType,
                     unitType = unitType,
                     any = anyType,
-                    intRangeType
+                )
+            )
+
+            charRangeType.protocols.putAll(
+                createRangeProtocols(
+                    rangeType = charRangeType,
+                    boolType = boolType,
+                    itType = charType,
+                    unitType = unitType,
+                    any = anyType,
                 )
             )
 
@@ -1082,6 +1095,14 @@ class Resolver(
         defaultTypes.forEach { (k, v) ->
             corePackage.types[k.name] = v
         }
+
+        // Pair
+        val pairType = Type.UserType(
+            name = "Pair",
+            typeArgumentList = listOf(genericType, differentGenericType),
+            fields = mutableListOf(TypeField("first", genericType), TypeField("second", differentGenericType)),
+            pkg = "core",
+        )
 
         ///add collections///
         // List
@@ -1131,7 +1152,8 @@ class Resolver(
                 listTypeOfDifferentGeneric = sequenceTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
-                sequenceType = sequenceType
+                sequenceType = sequenceType,
+                pairType = pairType
             )
         )
 
@@ -1150,7 +1172,8 @@ class Resolver(
                 listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
-                sequenceType = sequenceType
+                sequenceType = sequenceType,
+                pairType = pairType
             )
         )
 
@@ -1195,7 +1218,8 @@ class Resolver(
                 listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
-                sequenceType = sequenceType
+                sequenceType = sequenceType,
+                pairType = pairType
             )
         )
 
