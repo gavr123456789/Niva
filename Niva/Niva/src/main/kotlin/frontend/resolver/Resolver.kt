@@ -19,6 +19,7 @@ import java.io.File
 import java.util.Stack
 import main.utils.div
 import main.utils.endOfSearch
+import main.utils.findSimilar
 
 private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
 //    infoTypesToPrint.add(type)
@@ -259,47 +260,6 @@ private fun Resolver.resolveStatement(
             }
         }
 
-    }
-}
-
-fun findSimilar(to: String, forType: Type) {
-    var foundCounter = 1
-    // search for methods
-    forType.protocols.values.forEach { protocol ->
-        protocol.unaryMsgs.values.forEach {
-            if (it.name.lowercase().startsWith(to)) {
-                println("$foundCounter\t$it")
-                foundCounter++
-            }
-        }
-        protocol.keywordMsgs.values.forEach {
-            if (it.name.lowercase().startsWith(to)) {
-                println("$foundCounter\t$it")
-                foundCounter++
-            }
-        }
-    }
-    // search for fields
-    if (forType is Type.UserLike) {
-        forType.fields.forEach {
-            if (it.name.lowercase().startsWith(to)) {
-                println("$foundCounter\tfield $it")
-                foundCounter++
-            }
-        }
-    }
-    if (foundCounter == 1) {
-        println("No results for type $forType starting with $to")
-        println("Known methods:")
-        forType.protocols.values.forEach {
-            println(it.name)
-            println("\tunary:")
-            println("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
-            println("\tbinary:")
-            println("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
-            println("\tkeyword:")
-            println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
-        }
     }
 }
 
@@ -963,6 +923,7 @@ class Resolver(
     // set to null before body resolve, set to real inside body, check after to know was there return or not
     var wasThereReturn: Type? = null,
     var resolvingMessageDeclaration: MessageDeclaration? = null,
+
 
     val infoTypesToPrint: MutableMap<Type, Boolean> = mutableMapOf(),
 

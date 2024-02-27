@@ -235,8 +235,6 @@ fun compileProjFromFile(
     }
     // printing all >?
     resolver.printInfoFromCode()
-    // printing possible functions !
-    resolver.printInfoFromCode()
 
     return resolver
 }
