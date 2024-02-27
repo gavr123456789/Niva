@@ -164,9 +164,10 @@ sealed class Type(
                 if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
                     "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
                 } else ""
-            val needPkg = if (pkg != "core") "$pkg." else ""
+            val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
+        is Lambda -> name
 
         else -> "$pkg.$name"
 

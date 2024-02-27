@@ -83,7 +83,7 @@ fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
     matchAssert(TokenType.Pipe, "| expected")
 
     val switchExpression = expression()
-    skipOneEndOfLineOrFile()
+    skipOneEndOfLineOrComment()
 
     val otherPart = ifStatementOrExpression(fromSwitch = true)
     val result = ControlFlow.Switch(

@@ -3,7 +3,6 @@ package main.frontend.meta
 import main.RED
 import main.RESET
 import java.io.File
-import kotlin.system.exitProcess
 
 enum class TokenType {
     True, False, Null,
@@ -95,11 +94,15 @@ class Token(
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
+class CompilerError(text: String): Exception(text)
+
 fun Token.compileError(text: String): Nothing {
     ":" + this.relPos.start
     val fileLine = "(" + file.name + ":" + line + ")"
 
 //    error("\n$red\t$text.$fileLine$reset")
-    println("$RED Error:$RESET $text$RESET.$fileLine")
-    exitProcess(0)
+    val text = "$RED Error:$RESET $text$RESET.$fileLine"
+//    println("$RED Error:$RESET $text$RESET.$fileLine")
+    throw CompilerError(text)
+//    exitProcess(0)
 }

@@ -15,11 +15,13 @@ import java.io.*
 import java.util.HashMap
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.util.createFakeToken
 import main.frontend.util.div
 import main.frontend.util.fillSymbolTable
+import kotlin.system.exitProcess
 
 const val RESET = "\u001B[0m"
 const val BLACK = "\u001B[30m"
@@ -151,7 +153,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
     private val pathToTheMainExample = mainNivaFileWhileDev.absolutePath
 
     private fun getPathToMain() =
-        // just `run` means default file is main.niva, run file runs with this file as root
+        // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
         if (args.count() >= 2) {
             // first arg is run already
             val fileNameArg = args[1]
@@ -185,7 +187,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
         MainArgument.DAEMON -> getPathToMain()
     }
 
-    val nivaRootFolder = File(pathToNivaMainFile).parent!!
+    val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()
 
 
     init {
@@ -212,7 +214,7 @@ class ArgsManager(private val argsSet: Set<String>, private val args: Array<Stri
                 "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
-                "daemon" -> MainArgument.DAEMON
+                "dev" -> MainArgument.DAEMON
                 else -> {
                     if (!File(firstArg).exists()) {
                         createFakeToken().compileError("File $firstArg is not exist, to run full project use ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
@@ -362,7 +364,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
 
-//    val args = arrayOf("daemon", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+    val args = arrayOf("dev", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 
 //    val builder = StringBuilder()
 //    builder.builderWithReceiver { x ->
@@ -385,8 +387,12 @@ fun main(args: Array<String>) {
     }
 
     // resolve all files!
-    val resolver = compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
-
+    val resolver = try {
+        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+    } catch (e: CompilerError) {
+        println(e.message)
+        exitProcess(0)
+    }
     val secondTime = System.currentTimeMillis()
     am.time(secondTime - startTime, false)
 
@@ -444,7 +450,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     val watcher: KfsDirectoryWatcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
     watcher.add(pm.nivaRootFolder)
     println(pm.nivaRootFolder)
-    var x = true
+    var everySecond = true
     launch {
         watcher.onEventFlow.collect { event ->
             // For example: JVM File implementation
@@ -452,7 +458,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
 
                 if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify) {
 
-                    if (x) {
+                    if (everySecond) {
 //                        println(event)
                         ProcessBuilder().command("clear")
                             .redirectOutput(ProcessBuilder.Redirect.INHERIT)
@@ -460,14 +466,17 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                             .start().waitFor()
                         try {
                             compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
-                        } catch (e: Exception) {
+                        } catch (e: CompilerError) {
+                            println(e.message)
+                        }
+                        catch (e: Exception) {
                             if (e.message?.startsWith("end") == false) {
                                 throw e
                             }
                         }
                     }
                     // each second
-                    x = !x
+                    everySecond = !everySecond
                 }
             }
         }

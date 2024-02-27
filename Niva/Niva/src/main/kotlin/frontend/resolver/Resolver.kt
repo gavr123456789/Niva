@@ -236,7 +236,7 @@ private fun Resolver.resolveStatement(
         is NeedInfo -> {
             val t = statement.expression
             when (t) {
-                is MessageSendUnary -> {
+                is MessageSend -> {
                     // resolve receiver
                     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                     currentLevel++
@@ -248,24 +248,47 @@ private fun Resolver.resolveStatement(
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
                     var foundCounter = 1
+                    // search for methods
                     receiverType.protocols.values.forEach { protocol ->
-                        protocol.unaryMsgs.keys.forEach {
-                            if (it.lowercase().startsWith(searchRequest)) {
+                        protocol.unaryMsgs.values.forEach {
+                            if (it.name.lowercase().startsWith(searchRequest)) {
                                 println("$foundCounter\t$it")
                                 foundCounter++
                             }
                         }
-                        protocol.keywordMsgs.keys.forEach {
-                            if (it.lowercase().startsWith(searchRequest)) {
+                        protocol.keywordMsgs.values.forEach {
+                            if (it.name.lowercase().startsWith(searchRequest)) {
                                 println("$foundCounter\t$it")
                                 foundCounter++
                             }
                         }
                     }
+                    // search for fields
+                    if (receiverType is Type.UserLike) {
+                        receiverType.fields.forEach {
+                            if (it.name.lowercase().startsWith(searchRequest)) {
+                                println("$foundCounter\tfield $it")
+                                foundCounter++
+                            }
+                        }
+                    }
+                    if (foundCounter == 1) {
+                        println("No results for type $receiverType starting with $searchRequest")
+                        println("Known methods:")
+                        receiverType.protocols.values.forEach {
+                            println(it.name)
+                            println("\tunary:")
+                            println("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
+                            println("\tbinary:")
+                            println("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
+                            println("\tkeyword:")
+                            println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
+                        }
+                    }
                     throw Exception("end of search")
-
                 }
-                else -> TODO()
+
+                else -> throw Exception("end of search")
             }
         }
 

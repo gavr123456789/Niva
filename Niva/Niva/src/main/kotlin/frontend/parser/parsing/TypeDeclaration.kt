@@ -152,7 +152,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
         val name = matchAssertAnyIdent("Identifier expected, but found ${peek().lexeme}")
         val type: TypeAST? = if (!isGeneric) {
             val isThereFields = match(TokenType.Colon)
-            val isThereEndOfLine = skipOneEndOfLineOrFile()
+            val isThereEndOfLine = skipOneEndOfLineOrComment()
             if (!isThereFields && !isThereEndOfLine) {
                 if (match(TokenType.DoubleColon)) {
                     name.compileError("For fields of type you need to use $WHITE`:`$RESET not $WHITE`::`")
@@ -167,7 +167,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
             null
         }
         // type declaration can be separated on many lines
-        skipOneEndOfLineOrFile()
+        skipOneEndOfLineOrComment()
 
         fields.add(
             TypeFieldAST(
