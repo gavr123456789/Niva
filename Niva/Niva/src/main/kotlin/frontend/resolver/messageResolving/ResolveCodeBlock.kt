@@ -10,8 +10,8 @@ import frontend.resolver.compare2Types
 import frontend.resolver.fillGenericsWithLettersByOrder
 import frontend.resolver.resolve
 import frontend.resolver.toType
-import main.RESET
-import main.WHITE
+import main.utils.RESET
+import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType

@@ -2,10 +2,14 @@ package main.frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
-import main.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
+import main.utils.CYAN
+import main.utils.PURP
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
     return when (kind) {
@@ -61,9 +65,9 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
 
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
     val errorText = if (receiverType is Type.NullableType)
-        "Cant send $PURP$msgType$RESET message $CYAN$selectorName$RESET to nullable type: $YEL${receiverType}$RESET, please use $CYAN unpackOrError$RESET/${CYAN}unpackOrValue: value$RESET/${CYAN}unpack: [it]$RESET/${CYAN}unpack: $WHITE[...] ${CYAN}or: ${WHITE}T"
+        "Cant send ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET} to nullable type: ${YEL}${receiverType}${RESET}, please use ${CYAN} unpackOrError${RESET}/${CYAN}unpackOrValue: value${RESET}/${CYAN}unpack: [it]${RESET}/${CYAN}unpack: ${WHITE}[...] ${CYAN}or: ${WHITE}T"
     else
-        "Cant find $PURP$msgType$RESET message: $CYAN$selectorName$RESET for type $YEL${receiverType}"
+        "Cant find ${PURP}$msgType${RESET} message: ${CYAN}$selectorName${RESET} for type ${YEL}${receiverType}"
     token.compileError(errorText)
 }
 
@@ -88,7 +92,7 @@ fun Resolver.findStaticMessageType(
         if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
             // u cant instantiate Root union
             if (receiverType is Type.UserUnionRootType) {
-                token.compileError("You can't instantiate root of the union($YEL$receiverType$RESET)")
+                token.compileError("You can't instantiate root of the union(${YEL}$receiverType${RESET})")
             }
 
             val result = UnaryMsgMetaData(
@@ -100,7 +104,7 @@ fun Resolver.findStaticMessageType(
             pkg.addImport(receiverType.pkg)
             return Pair(result, false)
         } else {
-            token.compileError("${WHITE}new$RESET can't bew used with $YEL$receiverType$RESET, it has fields(use them as constructor), or its basic type ")
+            token.compileError("${WHITE}new${RESET} can't bew used with ${YEL}$receiverType${RESET}, it has fields(use them as constructor), or its basic type ")
         }
     }
 

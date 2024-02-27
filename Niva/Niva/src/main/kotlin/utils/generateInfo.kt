@@ -6,8 +6,6 @@ import frontend.resolver.Protocol
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.util.createFakeToken
-import main.RESET
-import main.WHITE
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 

@@ -10,7 +10,7 @@ import frontend.resolver.TypeField
 import frontend.resolver.compare2Types
 import java.io.File
 
-fun List<String>.toCalmelCase(): String =
+fun List<String>.toCamelCase(): String =
     this[0] + this.drop(1).map { it.capitalizeFirstLetter() }.joinToString("") { it }
 
 
@@ -54,16 +54,16 @@ fun String.addIndentationForEachString(ident: Int): String {
 }
 
 
-fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
-    var c = 0
-    do {
-        if (check(tok, c)) {
-            return true
-        }
-        c++
-    } while (!(check(TokenType.EndOfLine, c) || check(TokenType.EndOfFile, c)))
-    return false
-}
+//fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
+//    var c = 0
+//    do {
+//        if (check(tok, c)) {
+//            return true
+//        }
+//        c++
+//    } while (!(check(TokenType.EndOfLine, c) || check(TokenType.EndOfFile, c)))
+//    return false
+//}
 
 enum class CurrentOS {
     WINDOWS,
@@ -86,7 +86,6 @@ fun getOSType(): CurrentOS {
 //    CurrentOS.LINUX, CurrentOS.MAC -> "/"
 //}
 
-operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
 
 
 fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {

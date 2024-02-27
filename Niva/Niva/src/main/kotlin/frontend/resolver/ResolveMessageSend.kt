@@ -3,13 +3,14 @@
 package frontend.resolver
 
 import frontend.resolver.Type.RecursiveType.copy
-import main.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveBinaryMsg
 import main.frontend.resolver.messageResolving.resolveKeywordMsg
 import main.frontend.resolver.messageResolving.resolveUnaryMsg
+import main.utils.RESET
+import main.utils.YEL
 import main.utils.isGeneric
 
 fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
@@ -55,9 +56,9 @@ fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst
             fieldsOfThisType.forEach { genericField ->
                 // find real type from arguments
                 val real = args.find { it.name == genericField.name }
-                    ?: tok.compileError("Can't find real type for field: $YEL${genericField.name}${RESET} of generic type: $YEL${genericField.type.name}${RESET}")
+                    ?: tok.compileError("Can't find real type for field: ${YEL}${genericField.name}${RESET} of generic type: ${YEL}${genericField.type.name}${RESET}")
                 val realType = real.keywordArg.type
-                    ?: real.keywordArg.token.compileError("Compiler bug: $YEL${real.name}${RESET} doesn't have type")
+                    ?: real.keywordArg.token.compileError("Compiler bug: ${YEL}${real.name}${RESET} doesn't have type")
                 map[typeArg.name] = realType
             }
         }
@@ -119,7 +120,7 @@ fun replaceAllGenericsToRealTypeRecursive(
         if (isSingleGeneric) {
             val resolvedLetterType =
                 letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
-                ?: throw Exception("Can't find generic type: $YEL${typeArg.name}${RESET} in letter table")
+                ?: throw Exception("Can't find generic type: ${YEL}${typeArg.name}${RESET} in letter table")
             newResolvedTypeArgs2.add(resolvedLetterType)
             resolvedLetterType.beforeGenericResolvedName = typeArg.name
         } else if (typeArg is Type.UserLike && type.typeArgumentList.isNotEmpty()) {

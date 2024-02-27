@@ -2,9 +2,9 @@ package frontend.resolver
 
 import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 

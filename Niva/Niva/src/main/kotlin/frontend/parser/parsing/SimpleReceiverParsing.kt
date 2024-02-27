@@ -2,7 +2,7 @@ package main.frontend.parser.parsing
 
 
 import frontend.parser.parsing.*
-import main.WHITE
+import main.utils.WHITE
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*

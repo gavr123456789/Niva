@@ -1,9 +1,9 @@
 package frontend.resolver
 
 
-import main.RED
-import main.WHITE
-import main.YEL
+import main.utils.RED
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.IdentifierExpr

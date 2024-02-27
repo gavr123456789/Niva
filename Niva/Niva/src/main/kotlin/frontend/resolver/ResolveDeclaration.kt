@@ -1,10 +1,10 @@
 package main.frontend.typer
 
 import frontend.resolver.*
-import main.RED
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.resolveStaticBuilderDeclaration
@@ -46,7 +46,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionDeclaration -> {
-            resolveUnionDeclaration(statement, previousScope)
+            resolveUnionDeclaration(statement)
         }
 
         is EnumDeclarationRoot -> {

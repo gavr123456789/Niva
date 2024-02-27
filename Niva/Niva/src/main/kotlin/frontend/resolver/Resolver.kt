@@ -5,16 +5,19 @@ package frontend.resolver
 import frontend.parser.types.ast.KeyPragma
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.resolver.messageResolving.resolveCodeBlock
-import main.*
 import main.codogen.GeneratorKt
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.*
 import main.frontend.util.createFakeToken
-import main.frontend.util.div
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import java.io.File
 import java.util.Stack
+import main.utils.div
 
 private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
 //    infoTypesToPrint.add(type)
@@ -38,7 +41,7 @@ private fun Resolver.resolveStatement(
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
                         statement2.messages.last().type
-                            ?: statement2.token.compileError("Not all messages of $YEL${statement2.str} ${WHITE}has types")
+                            ?: statement2.token.compileError("Not all messages of ${YEL}${statement2.str} ${WHITE}has types")
                 } else {
                     // every single expressions is unary message without messages
                     if (statement2.type == null) {
@@ -361,7 +364,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
             val it2 = type2.args[i]
             val isEqual = compare2Types(it.type, it2.type)
             if (!isEqual) {
-                token?.compileError("argument $WHITE${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
+                token?.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
             }
         }
@@ -419,7 +422,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
         // if types from different packages, and it's not core
 
         if (isDifferentPkgs) {
-            token?.compileError("$YEL$type1$RESET is from $WHITE$pkg1$RESET pkg, and $YEL$type2$RESET from $WHITE$pkg2")
+            token?.compileError("${YEL}$type1${RESET} is from ${WHITE}$pkg1${RESET} pkg, and ${YEL}$type2${RESET} from ${WHITE}$pkg2")
             return false
         }
 
@@ -428,7 +431,7 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
             val args1 = type1.typeArgumentList
             val args2 = type2.typeArgumentList
             if (args1.count() != args2.count()) {
-                token?.compileError("Types: $YEL$type1$RESET and $YEL$type2$RESET have a different number of generic parameters")
+                token?.compileError("Types: ${YEL}$type1${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
                 return false
             }
 
@@ -448,8 +451,8 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
 
                 val sameArgs = compare2Types(arg1, arg2, token)
                 if (!sameArgs) {
-                    token?.compileError("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
-                    throw Exception("Generic argument of type: $YEL${type1.name} $WHITE$arg1$RESET != $WHITE$arg2$RESET from type $YEL${type2.name}")
+                    token?.compileError("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
+                    throw Exception("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
                 } else
                     return sameArgs // List::Int and List::T are the same
             }
@@ -585,7 +588,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 KeywordArg(
                     name = it.name,
                     type = it.typeAST?.toType(typeDB, typeTable)//fix
-                        ?: statement.token.compileError("Type of keyword message $YEL${statement.msgDeclaration.name}${RESET}'s arg $WHITE${it.name}${RESET} not registered")
+                        ?: statement.token.compileError("Type of keyword message ${YEL}${statement.msgDeclaration.name}${RESET}'s arg ${WHITE}${it.name}${RESET} not registered")
                 )
             }
 
@@ -666,7 +669,7 @@ fun Resolver.addNewType(
     ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
 
     if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type, pkg, statement?.token) != null) {
-        val err = "Type ${YEL}${type.name}${RESET} already registered in package: $WHITE$currentPackageName"
+        val err = "Type ${YEL}${type.name}${RESET} already registered in package: ${WHITE}$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }
 
@@ -711,7 +714,7 @@ fun Resolver.changePackage(
 ) {
     currentPackageName = newCurrentPackage
     val currentProject =
-        projects[currentProjectName] ?: token.compileError("Can't find project: $WHITE$currentProjectName")
+        projects[currentProjectName] ?: token.compileError("Can't find project: ${WHITE}$currentProjectName")
     val alreadyExistsPack = currentProject.packages[newCurrentPackage]
 
     // check that this package not exits already
@@ -776,7 +779,7 @@ fun Resolver.changeTarget(target: String, token: Token) {
         "macos" -> CompilationTarget.macos
         "windows" -> token.compileError("Windows native target not supported yet")
         "js" -> token.compileError("js target not supported yet")
-        else -> token.compileError("There is no such target as $WHITE$target${RESET}, supported targets are $WHITE${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
+        else -> token.compileError("There is no such target as ${WHITE}$target${RESET}, supported targets are ${WHITE}${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
     }
 
     val target = targetFromString(target, token)
@@ -818,7 +821,7 @@ fun Resolver.changeCompilationMode(mode: String, token: Token) {
     fun modeFromString(mode: String, token: Token): CompilationMode = when (mode) {
         "release" -> CompilationMode.release
         "debug" -> CompilationMode.debug
-        else -> token.compileError("There is no such compilation mode as $WHITE$mode, supported targets are $WHITE${CompilationMode.entries.map { it.name }}${RESET}, default: ${WHITE}debug")
+        else -> token.compileError("There is no such compilation mode as ${WHITE}$mode, supported targets are ${WHITE}${CompilationMode.entries.map { it.name }}${RESET}, default: ${WHITE}debug")
     }
 
     val modeEnum = modeFromString(mode, token)
@@ -840,7 +843,7 @@ fun Resolver.getTypeForIdentifier(
 //        currentScope,
 //        previousScope
 //    )
-        ?: x.token.compileError("Unresolved reference: $WHITE${x.str}")
+        ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
 
     x.type = type
     return type

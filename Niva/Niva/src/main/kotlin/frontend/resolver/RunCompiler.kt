@@ -8,6 +8,9 @@ import main.frontend.parser.types.ast.*
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.frontend.util.createFakeToken
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.YEL
 import main.utils.infoPrint
 import java.io.File
 
@@ -64,7 +67,7 @@ fun Resolver.resolve(mainFile: File) {
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Method `$CYAN${decl}$RESET` for unresolved type: `$YEL${decl.forTypeAst.name}$RESET`")
+            decl.token.compileError("Method `${CYAN}${decl}${RESET}` for unresolved type: `${YEL}${decl.forTypeAst.name}${RESET}`")
         }
     }
     unResolvedMessageDeclarations.clear()
@@ -77,7 +80,7 @@ fun Resolver.resolve(mainFile: File) {
     unResolvedTypeDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Type `${YEL}${decl}$RESET` for unresolved type: `${YEL}${decl.typeName}$RESET`")
+            decl.token.compileError("Type `${YEL}${decl}${RESET}` for unresolved type: `${YEL}${decl.typeName}${RESET}`")
         }
     }
     unResolvedTypeDeclarations.clear()

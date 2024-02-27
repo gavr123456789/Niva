@@ -1,8 +1,8 @@
 package frontend.parser.parsing
 
 import frontend.resolver.Resolver
-import main.RESET
-import main.WHITE
+import main.utils.RESET
+import main.utils.WHITE
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*

@@ -5,8 +5,8 @@ import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
 import frontend.resolver.resolveExpressionInBrackets
-import main.CYAN
-import main.RESET
+import main.utils.CYAN
+import main.utils.RESET
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.BinaryMsg
 import main.frontend.parser.types.ast.ExpressionInBrackets

@@ -1,7 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.parser.types.ast.*
-import main.RED
+import main.utils.RED
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
