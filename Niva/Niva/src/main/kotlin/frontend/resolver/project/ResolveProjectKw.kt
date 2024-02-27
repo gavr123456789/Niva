@@ -2,9 +2,9 @@ package main.frontend.typer.project
 
 
 import frontend.resolver.*
-import main.RED
-import main.WHITE
-import main.YEL
+import main.utils.RED
+import main.utils.WHITE
+import main.utils.YEL
 import main.codogen.addToGradleDependencies
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.KeywordMsg

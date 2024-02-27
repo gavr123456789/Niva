@@ -90,12 +90,12 @@
 
 
 
-type Person 
-  name: String 
+type Person
+  name: String
   age: Int
-p = 
-  Person 
+p =
+  Person
     name: "Alice"
     age: 32
 
-1 aasdasd!
+p n!

@@ -2,10 +2,10 @@ package main.frontend.typer
 
 import frontend.resolver.*
 import frontend.resolver.Type.RecursiveType.copy
-import main.RED
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Receiver
 import main.frontend.parser.types.ast.TypeAST

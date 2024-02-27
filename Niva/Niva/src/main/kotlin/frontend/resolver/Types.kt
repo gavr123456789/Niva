@@ -5,10 +5,14 @@ package frontend.resolver
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type.RecursiveType.copy
-import main.*
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.utils.CYAN
+import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 
 import main.utils.isGeneric
 
@@ -474,7 +478,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
                     if (this.typeArgumentList.count() != copy.typeArgumentList.count()) {
-                        this.token.compileError("Type $YEL${this.name}$RESET has $WHITE${copy.typeArgumentList.count()}$RESET generic params, but you send only $WHITE${this.typeArgumentList.count()}")
+                        this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
                         val typeOfArg = it.toType(typeDB, typeTable, selfType)

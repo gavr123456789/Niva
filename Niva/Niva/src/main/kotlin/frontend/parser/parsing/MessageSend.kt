@@ -3,9 +3,9 @@ package frontend.parser.parsing
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.util.capitalizeFirstLetter
-import main.CYAN
-import main.RED
-import main.WHITE
+import main.utils.CYAN
+import main.utils.RED
+import main.utils.WHITE
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
 

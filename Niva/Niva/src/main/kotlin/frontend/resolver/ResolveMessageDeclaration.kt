@@ -1,11 +1,15 @@
 package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
-import main.*
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
+import main.utils.CYAN
+import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.utils.isGeneric
 
 
@@ -84,7 +88,7 @@ fun Resolver.resolveMessageDeclaration(
         val fieldWithTheSameName = forType.fields.find { it.name == st.name }
 
         if (fieldWithTheSameName != null) {
-            st.token.compileError("Type $YEL${st.forTypeAst.name}$RESET already has field with name $WHITE${st.name}$RESET, so it will clash with the setter of that field $WHITE${st.forTypeAst.name.lowercase()} $CYAN${st.name}: ${WHITE}newValue")
+            st.token.compileError("Type ${YEL}${st.forTypeAst.name}${RESET} already has field with name ${WHITE}${st.name}${RESET}, so it will clash with the setter of that field ${WHITE}${st.forTypeAst.name.lowercase()} ${CYAN}${st.name}: ${WHITE}newValue")
         }
     }
 
@@ -97,7 +101,7 @@ fun Resolver.resolveMessageDeclaration(
         fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
             st.args.forEach {
                 if (it.typeAST == null) {
-                    st.token.compileError("Can't parse type for argument $WHITE${it.name}")
+                    st.token.compileError("Can't parse type for argument ${WHITE}${it.name}")
                 }
                 val astType = it.typeAST
                 val typeFromAst = astType.toType(typeDB, typeTable)//fix
@@ -130,7 +134,7 @@ fun Resolver.resolveMessageDeclaration(
             is MessageDeclarationBinary -> {
                 val arg = st.arg
                 val argType = arg.typeAST?.toType(typeDB, typeTable)
-                    ?: st.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `$YEL${st.forTypeAst.name} $CYAN${st.name}`")
+                    ?: st.token.compileError("Cant infer type of argument: `${YEL}${arg.name}${RED}` for binary message declaration `${YEL}${st.forTypeAst.name} ${CYAN}${st.name}`")
                 bodyScope[arg.name] = argType
             }
 
@@ -171,7 +175,7 @@ fun Resolver.resolveMessageDeclaration(
 
                 // in single expr declared type not matching real type
                 if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType, unpackNull = true) && st.returnTypeAST != null) {
-                    st.returnTypeAST.token.compileError("Return type defined: $YEL$declaredReturnType$RESET but real type returned: $YEL$returnType")
+                    st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$returnType")
                 }
             }
         } else {
@@ -179,7 +183,7 @@ fun Resolver.resolveMessageDeclaration(
             val returnType = st.returnType
             if (realReturn != null && returnType != null &&
                 !compare2Types(returnType, realReturn, unpackNull = true, isOut = true)) {
-                st.returnTypeAST?.token?.compileError("Return type defined: $YEL$returnType$RESET but real type returned: $YEL$realReturn")
+                st.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
             }
         }
 

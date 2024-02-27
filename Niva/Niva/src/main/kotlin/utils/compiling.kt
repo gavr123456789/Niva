@@ -3,10 +3,8 @@ package main.utils
 import main.codogen.generateKtProject
 import frontend.resolver.*
 import main.frontend.util.CurrentOS
-import main.frontend.util.div
 import main.frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
-import main.PathManager
 import java.io.File
 
 
@@ -23,7 +21,6 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
 
     val closeChildThread: Thread = object : Thread() {
         override fun run() {
-//            println("DESTROY")
             process.destroy()
         }
     }

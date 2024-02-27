@@ -7,10 +7,10 @@ import frontend.resolver.Type
 import frontend.resolver.UnaryMsgMetaData
 import frontend.resolver.getTableOfLettersFrom_TypeArgumentListOfType
 import frontend.resolver.resolve
-import main.CYAN
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.Receiver

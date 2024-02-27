@@ -14,16 +14,16 @@ import frontend.resolver.getTableOfLettersFrom_TypeArgumentListOfType
 import frontend.resolver.replaceAllGenericsToRealTypeRecursive
 import frontend.resolver.resolve
 import frontend.resolver.resolveReceiverGenericsFromArgs
-import main.CYAN
-import main.GREEN
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.CYAN
+import main.utils.GREEN
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
-import main.frontend.util.toCalmelCase
+import main.frontend.util.toCamelCase
 import main.utils.isGeneric
 import kotlin.collections.mutableMapOf
 
@@ -40,7 +40,7 @@ fun Resolver.resolveKeywordMsg(
     resolveKwArgs(statement, previousAndCurrentScope, filterCodeBlock = true)
 
     // resolve receiverType
-    val selectorName = statement.args.map { it.name }.toCalmelCase()
+    val selectorName = statement.args.map { it.name }.toCamelCase()
     if (statement.receiver.type == null) {
         currentLevel++
         resolve(listOf(statement.receiver), previousAndCurrentScope, statement)

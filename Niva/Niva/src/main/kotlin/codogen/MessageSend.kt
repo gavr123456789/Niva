@@ -5,10 +5,10 @@ package main.codogen
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.Type
-import main.CYAN
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 

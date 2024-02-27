@@ -1,9 +1,9 @@
 package frontend.resolver
 
-import main.CYAN
-import main.RESET
-import main.WHITE
-import main.YEL
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 

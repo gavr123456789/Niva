@@ -1,7 +1,7 @@
 package main.frontend.meta
 
-import main.RED
-import main.RESET
+import main.utils.RED
+import main.utils.RESET
 import java.io.File
 
 enum class TokenType {

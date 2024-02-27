@@ -1,7 +1,7 @@
 package main.codogen
 
-import main.RED
-import main.WHITE
+import main.utils.RED
+import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration

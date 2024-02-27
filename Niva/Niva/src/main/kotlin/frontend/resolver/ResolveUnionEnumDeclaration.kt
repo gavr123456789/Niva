@@ -1,9 +1,9 @@
 package main.frontend.typer
 
 import frontend.resolver.*
-import main.RED
-import main.WHITE
-import main.YEL
+import main.utils.RED
+import main.utils.WHITE
+import main.utils.YEL
 import main.codogen.collectAllGenericsFromBranches
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
@@ -11,7 +11,7 @@ import main.frontend.parser.types.ast.UnionDeclaration
 import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
 
-fun Resolver.resolveUnionDeclaration(statement: UnionDeclaration, previousScope: MutableMap<String, Type>) {
+fun Resolver.resolveUnionDeclaration(statement: UnionDeclaration) {
     val rootType =
         statement.toType(currentPackageName, typeTable, typeDB, isUnion = true) as Type.UserUnionRootType//fix
     addNewType(rootType, statement)
