@@ -326,7 +326,9 @@ fun Resolver.resolveControlFlow(
                                 realBranchTypes += it
                             }
                         }
-                        if (realBranchTypes != typesAlreadyChecked) {
+                        val realBranchTypeNames = realBranchTypes.map { it.pkg + it.name }
+                        val typesAlreadyCheckedNames = typesAlreadyChecked.map { it.pkg + it.name }
+                        if (realBranchTypeNames != typesAlreadyCheckedNames) {
                             val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
                             statement.token.compileError("Compiler bug: Not all types are checked: ($YEL$difference$RESET)")
                         }

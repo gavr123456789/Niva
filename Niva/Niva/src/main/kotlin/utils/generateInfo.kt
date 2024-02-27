@@ -9,8 +9,8 @@ import main.frontend.meta.createFakeToken
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 
-private fun Protocol.generateInfo() = buildString {
-    val it = this@generateInfo
+private fun Protocol.generateInfoProtocol() = buildString {
+    val it = this@generateInfoProtocol
 //    appendnl("#### ${it.name} protocol\n")
     if (it.unaryMsgs.isNotEmpty()) {
         appendnl("### unary")
@@ -45,7 +45,7 @@ private fun Type.UserEnumRootType.generateInfo() = buildString {
         appendnl("- ${it.name}: ${it.type}  ")
     }
     protocols.values.forEach {
-        append(it.generateInfo())
+        append(it.generateInfoProtocol())
     }
     if (this@generateInfo.branches.isNotEmpty()) {
         append("### branches")
@@ -60,11 +60,11 @@ private fun Type.UserEnumRootType.generateInfo() = buildString {
 
 fun Type.infoPrint() = buildString {
     append(when (this@infoPrint) {
-        is Type.UserType -> this@infoPrint.generateInfo()
-        is Type.UserUnionRootType -> this@infoPrint.generateInfo()
+        is Type.UserType -> this@infoPrint.generateInfoType()
+        is Type.UserUnionRootType -> this@infoPrint.generateInfoUnionRoot()
         is Type.UserEnumRootType -> this@infoPrint.generateInfo()
-        is Type.InternalType -> this@infoPrint.generateInfo()
-        is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfo()
+        is Type.InternalType -> this@infoPrint.generateInfoType()
+        is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfoType()
 
         is Type.Lambda -> TODO("Can't print lambda info yet")
 
@@ -80,33 +80,37 @@ fun Type.infoPrint() = buildString {
 }
 
 // only UserType and Internal
-private fun Type.generateInfo() = buildString {
-    this@generateInfo.name
+private fun Type.generateInfoType() = buildString {
+//    this@generateInfo.name
 
-    appendnl("\n## type $name")
+    if (this@generateInfoType is Type.UserUnionBranchType){
+        append("\n#### branch $name")
+    } else {
+        appendnl("\n## type $name")
+    }
 
-    if (this@generateInfo is Type.UserType) {
+    if (this@generateInfoType is Type.UserLike) {
         fields.forEach {
             appendnl("- ${it.name}: ${it.type}  ")
         }
     }
     protocols.values.forEach {
-        append(it.generateInfo())
+        append(it.generateInfoProtocol())
     }
 }
 
-private fun Type.UserUnionRootType.generateInfo() = buildString {
+private fun Type.UserUnionRootType.generateInfoUnionRoot() = buildString {
     appendnl("\n## union root $name")
     fields.forEach {
         appendnl("- ${it.name}: ${it.type}  ")
     }
     protocols.values.forEach {
-        append(it.generateInfo())
+        append(it.generateInfoProtocol())
     }
-    if (this@generateInfo.branches.isNotEmpty()) {
+    if (branches.isNotEmpty()) {
         append("### branches")
-        this@generateInfo.branches.forEach {
-            it.generateInfo()
+        branches.forEach {
+            append(it.generateInfoType())
         }
     }
 }
@@ -119,7 +123,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (!userOnly) {
         val internalTypes = types.values.filterIsInstance<Type.InternalLike>()
         internalTypes.forEach {
-            append(it.generateInfo())
+            append(it.generateInfoType())
         }
     }
 
@@ -145,14 +149,14 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (notImportedUserLike.isNotEmpty()) {
         append("  \n")
         notImportedUserLike.forEach {
-            append(it.generateInfo())
+            append(it.generateInfoType())
         }
     }
 
     if (importedUserLike.isNotEmpty()) {
         append("Bindings  \n")
         importedUserLike.forEach {
-            append(it.generateInfo())
+            append(it.generateInfoType())
         }
     }
 
@@ -160,7 +164,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (unionTypes.isNotEmpty()) {
         append("  \n")
         unionTypes.forEach {
-            append(it.generateInfo())
+            append(it.generateInfoUnionRoot())
         }
     }
 

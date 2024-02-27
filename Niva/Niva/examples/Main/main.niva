@@ -21,9 +21,6 @@
 //
 //}
 
-
-
-
 //type Person name: String
 //Person func::Person.[Int, String -> Int] = 1 //func this: this x: 1 y: "Sas"
 ////Person func::Person.[Int, String -> Int] =  this func x: 1 y: "Sas"
@@ -38,67 +35,30 @@
 
 
 
-///////
-//input =
-//"""1abc2
-//pqr3stu8vwx
-//a1b2c3d4e5f
-//treb7uchet""" split: "\n"
+
+// bool
+union JsonBoolean =
+| JsonTrue
+| JsonFalse
+
+JsonBoolean boolean = | this
+| JsonTrue => true
+| JsonFalse => false
+
 //
-//input echo
-//
-//sum2 = input sumOf: [s ->
-//    d = s filter: ['0'..'9' contains: it]
-////> 12, 38, 12345, 7
-//    >4 d
-//    first = d first
-//    last = d last
-//    "$first$last" toInt
-//]
-////> 142
-//>sum2
-//
-//digits = {"", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
-//sum = input sumOf: [ s ->
-//    sb = StringBuilder new
-//    s indices forEachIndexed: [i, it ->
-//        q = s at: i
-////> h, e, t
-//        >3 q
-//        '0'..'9' contains: q => [
-//            sb append: q
-//        ] |=> [
-//            ss = s substring: i
-////> het, et, t
-//            >3 ss
-//            1..9 forEach: [j ->
-//                ss startsWith: (digits at: j) =>
-//                    sb append: ('0' addInt: j)
-//
-//            ]
-//        ]
-//    ]
-//    first = sb first
-//    last = sb last
-//    "$first$last" toInt
-//]
-////> 142
-//>sum
-///////////
+
+union JsonPrimitive =
+| JsonBoolean
+| JsonNull
+
+union JsonNode =
+| JsonPrimitive
 
 
 
+JsonNode serialize = | this
+| JsonPrimitive => "sas"
+// | JsonNull => "JsonNull"
 
 
-type Person
-  name: String
-  age: Int
-p =
-  Person
-    name: "Alice"
-    age: 32
-Person sas = 1
-Person sus = 1
-Person sus::Int = 1
 
-{1} reffg

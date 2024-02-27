@@ -12,6 +12,7 @@ import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import main.utils.endOfSearch
+import main.utils.findSimilar
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
     return when (kind) {
