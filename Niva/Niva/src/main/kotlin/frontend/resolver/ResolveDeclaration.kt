@@ -6,11 +6,11 @@ import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.resolveStaticBuilderDeclaration
 import main.frontend.typer.project.resolveProjectKeyMessage
-import main.frontend.util.createFakeToken
-import main.frontend.util.removeDoubleQuotes
+import main.utils.removeDoubleQuotes
 
 
 fun Resolver.resolveDeclarations(

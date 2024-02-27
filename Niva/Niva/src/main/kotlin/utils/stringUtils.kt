@@ -1,5 +1,20 @@
 package main.utils
 
+import main.frontend.parser.types.ast.InternalTypes
+import kotlin.collections.count
+import kotlin.collections.drop
+import kotlin.collections.filter
+import kotlin.collections.forEachIndexed
+import kotlin.collections.joinToString
+import kotlin.collections.map
+import kotlin.text.append
+import kotlin.text.count
+import kotlin.text.isEmpty
+import kotlin.text.repeat
+import kotlin.text.split
+import kotlin.text.substring
+import kotlin.text.uppercase
+
 
 fun String.isGeneric() = count() == 1 && this[0].isUpperCase()
 
@@ -49,4 +64,45 @@ object StringUtils {
             return "($first,$second)"
         }
     }
+}
+
+fun List<String>.toCamelCase(): String =
+    this[0] + this.drop(1).map { it.capitalizeFirstLetter() }.joinToString("") { it }
+
+fun String.capitalizeFirstLetter(): String {
+    if (isEmpty()) {
+        return this
+    }
+    val result = substring(0, 1).uppercase() + substring(1)
+    return result
+}
+
+fun String.removeDoubleQuotes(): String = this.substring(1, this.count() - 1)
+fun String.isSimpleTypes(): InternalTypes? {
+    return when (this) {
+        InternalTypes.Int.name -> InternalTypes.Int
+        InternalTypes.Boolean.name -> InternalTypes.Boolean
+        InternalTypes.Float.name -> InternalTypes.Float
+        InternalTypes.String.name -> InternalTypes.String
+        InternalTypes.Unit.name -> InternalTypes.Unit
+        InternalTypes.Char.name -> InternalTypes.Char
+        InternalTypes.Any.name -> InternalTypes.Any
+        else -> null
+    }
+}
+
+fun String.addIndentationForEachString(ident: Int): String {
+    if (ident == 0) return this
+
+    val realIdent = ident * 4
+    val realIdentString = " ".repeat(realIdent)
+    val splitted = this.split("\n")
+    val lastElem = splitted.count() - 1
+    return buildString {
+        splitted.filter { it != "\n" }.forEachIndexed { i, it ->
+            append(realIdentString, it)
+            if (i != lastElem) append("\n")
+        }
+    }
+
 }

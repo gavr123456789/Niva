@@ -4,8 +4,7 @@ import frontend.parser.parsing.*
 import main.frontend.meta.*
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.TypeAST
-import main.frontend.util.createFakeToken
-import main.frontend.util.isSimpleTypes
+import main.utils.isSimpleTypes
 
 
 // use only after ::

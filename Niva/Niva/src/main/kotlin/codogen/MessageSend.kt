@@ -11,12 +11,8 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.utils.GlobalVariables
 
-
-object GlobalDebugNeeded {
-    var needStackTrace = true
-    var printTime = false
-}
 
 val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
     if (it.pragmas.isNotEmpty()) {
@@ -36,7 +32,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     val b = StringBuilder()
 
-    if (GlobalDebugNeeded.needStackTrace) {
+    if (GlobalVariables.needStackTrace) {
         val tok = this.token
         b.append("\n//@ ", tok.file.name, ":::", tok.line, "\n")
     }

@@ -91,6 +91,18 @@ class Token(
     }
 }
 
+private class FakeToken {
+    companion object {
+        val fakeToken = Token(
+            TokenType.Identifier, "Fake Token", 0, Position(0, 1),
+            Position(0, 1), File("Compiler Error")
+        )
+    }
+}
+
+fun createFakeToken(): Token = FakeToken.fakeToken
+
+
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 

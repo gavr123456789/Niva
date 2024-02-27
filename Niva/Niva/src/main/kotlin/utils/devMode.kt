@@ -8,10 +8,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import main.frontend.meta.CompilerError
 
+fun endOfSearch(): Nothing = throw (Exception("end of search"))
 
 fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
-    // compile one time for errors
-//    compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+    GlobalVariables.enableDemonMode()
 
     val scope = this
     val watcher: KfsDirectoryWatcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
@@ -20,28 +20,23 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     var everySecond = true
     launch {
         watcher.onEventFlow.collect { event ->
-            // For example: JVM File implementation
             withContext(Dispatchers.IO) {
+                if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify && everySecond) {
 
-                if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify) {
+                    runProcess("clear")
 
-                    if (everySecond) {
-//                        println(event)
-                        ProcessBuilder().command("clear")
-                            .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                            .redirectError(ProcessBuilder.Redirect.INHERIT)
-                            .start().waitFor()
-                        try {
-                            compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
-                        } catch (e: CompilerError) {
-                            println(e.message)
-                        } catch (e: Exception) {
-                            if (e.message?.startsWith("end") == false) {
-                                throw e
-                            }
+                    try {
+                        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+                    } catch (e: CompilerError) {
+                        println(e.message)
+                    } catch (e: Exception) {
+                        if (e.message?.startsWith("end") == false) {
+                            throw e
                         }
                     }
-                    // each second
+
+                } else {
+                    // each even event, because change generates 2 events in a row
                     everySecond = !everySecond
                 }
             }
