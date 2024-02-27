@@ -6,10 +6,12 @@ import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
 import main.utils.CYAN
+import main.utils.GlobalVariables
 import main.utils.PURP
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
+import main.utils.endOfSearch
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
     return when (kind) {
@@ -64,10 +66,11 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
 }
 
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
+    val cantFind = "Cant send ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET}"
     val errorText = if (receiverType is Type.NullableType)
-        "Cant send ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET} to nullable type: ${YEL}${receiverType}${RESET}, please use ${CYAN} unpackOrError${RESET}/${CYAN}unpackOrValue: value${RESET}/${CYAN}unpack: [it]${RESET}/${CYAN}unpack: ${WHITE}[...] ${CYAN}or: ${WHITE}T"
+        "$cantFind to nullable type: ${YEL}${receiverType}${RESET}, please use ${CYAN} unpackOrError${RESET}/${CYAN}unpackOrValue: value${RESET}/${CYAN}unpack: [it]${RESET}/${CYAN}unpack: ${WHITE}[...] ${CYAN}or: ${WHITE}T"
     else
-        "Cant find ${PURP}$msgType${RESET} message: ${CYAN}$selectorName${RESET} for type ${YEL}${receiverType}"
+        "$cantFind for type ${YEL}${receiverType}"
     token.compileError(errorText)
 }
 
@@ -139,5 +142,9 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
+    if (GlobalVariables.isDemonMode) {
+        findSimilar(to = selectorName, forType = receiverType)
+        endOfSearch()
+    } else
     throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
 }

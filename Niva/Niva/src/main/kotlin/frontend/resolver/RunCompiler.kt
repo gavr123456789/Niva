@@ -4,10 +4,10 @@ import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import main.*
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
-import main.frontend.util.createFakeToken
 import main.utils.CYAN
 import main.utils.RESET
 import main.utils.YEL

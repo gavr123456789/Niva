@@ -8,9 +8,9 @@ import frontend.resolver.messageResolving.resolveCodeBlock
 import main.codogen.GeneratorKt
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.*
-import main.frontend.util.createFakeToken
 import main.utils.CYAN
 import main.utils.RESET
 import main.utils.WHITE
@@ -18,6 +18,7 @@ import main.utils.YEL
 import java.io.File
 import java.util.Stack
 import main.utils.div
+import main.utils.endOfSearch
 
 private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
 //    infoTypesToPrint.add(type)
@@ -250,51 +251,55 @@ private fun Resolver.resolveStatement(
 
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
-                    var foundCounter = 1
-                    // search for methods
-                    receiverType.protocols.values.forEach { protocol ->
-                        protocol.unaryMsgs.values.forEach {
-                            if (it.name.lowercase().startsWith(searchRequest)) {
-                                println("$foundCounter\t$it")
-                                foundCounter++
-                            }
-                        }
-                        protocol.keywordMsgs.values.forEach {
-                            if (it.name.lowercase().startsWith(searchRequest)) {
-                                println("$foundCounter\t$it")
-                                foundCounter++
-                            }
-                        }
-                    }
-                    // search for fields
-                    if (receiverType is Type.UserLike) {
-                        receiverType.fields.forEach {
-                            if (it.name.lowercase().startsWith(searchRequest)) {
-                                println("$foundCounter\tfield $it")
-                                foundCounter++
-                            }
-                        }
-                    }
-                    if (foundCounter == 1) {
-                        println("No results for type $receiverType starting with $searchRequest")
-                        println("Known methods:")
-                        receiverType.protocols.values.forEach {
-                            println(it.name)
-                            println("\tunary:")
-                            println("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
-                            println("\tbinary:")
-                            println("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
-                            println("\tkeyword:")
-                            println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
-                        }
-                    }
-                    throw Exception("end of search")
+                    findSimilar(searchRequest, receiverType)
+                    endOfSearch()
                 }
 
-                else -> throw Exception("end of search")
+                else -> endOfSearch()
             }
         }
 
+    }
+}
+
+fun findSimilar(to: String, forType: Type) {
+    var foundCounter = 1
+    // search for methods
+    forType.protocols.values.forEach { protocol ->
+        protocol.unaryMsgs.values.forEach {
+            if (it.name.lowercase().startsWith(to)) {
+                println("$foundCounter\t$it")
+                foundCounter++
+            }
+        }
+        protocol.keywordMsgs.values.forEach {
+            if (it.name.lowercase().startsWith(to)) {
+                println("$foundCounter\t$it")
+                foundCounter++
+            }
+        }
+    }
+    // search for fields
+    if (forType is Type.UserLike) {
+        forType.fields.forEach {
+            if (it.name.lowercase().startsWith(to)) {
+                println("$foundCounter\tfield $it")
+                foundCounter++
+            }
+        }
+    }
+    if (foundCounter == 1) {
+        println("No results for type $forType starting with $to")
+        println("Known methods:")
+        forType.protocols.values.forEach {
+            println(it.name)
+            println("\tunary:")
+            println("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
+            println("\tbinary:")
+            println("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
+            println("\tkeyword:")
+            println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
+        }
     }
 }
 

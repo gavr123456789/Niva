@@ -6,10 +6,10 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Receiver
-import main.frontend.util.createFakeToken
 
 @Suppress("unused")
 sealed class TypeDBResult {

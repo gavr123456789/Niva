@@ -1,7 +1,7 @@
 package main.utils
 
 import main.frontend.meta.compileError
-import main.frontend.util.createFakeToken
+import main.frontend.meta.createFakeToken
 import java.io.File
 
 enum class MainArgument {

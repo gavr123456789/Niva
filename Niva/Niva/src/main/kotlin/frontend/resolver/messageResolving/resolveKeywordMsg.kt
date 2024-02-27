@@ -23,7 +23,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
-import main.frontend.util.toCamelCase
+import main.utils.toCamelCase
 import main.utils.isGeneric
 import kotlin.collections.mutableMapOf
 

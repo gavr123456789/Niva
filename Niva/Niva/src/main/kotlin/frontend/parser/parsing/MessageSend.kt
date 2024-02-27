@@ -2,7 +2,7 @@ package frontend.parser.parsing
 
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
-import main.frontend.util.capitalizeFirstLetter
+import main.utils.capitalizeFirstLetter
 import main.utils.CYAN
 import main.utils.RED
 import main.utils.WHITE

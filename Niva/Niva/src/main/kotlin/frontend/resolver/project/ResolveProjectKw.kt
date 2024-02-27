@@ -11,7 +11,7 @@ import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.ListCollection
 import main.frontend.parser.types.ast.LiteralExpression
 import main.frontend.parser.types.ast.MessageSend
-import main.frontend.util.removeDoubleQuotes
+import main.utils.removeDoubleQuotes
 
 fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
     // add to the current project

@@ -2,11 +2,38 @@ package main.utils
 
 import main.codogen.generateKtProject
 import frontend.resolver.*
-import main.frontend.util.CurrentOS
-import main.frontend.util.getOSType
 import inlineReplSystem.inlineReplSystem
 import java.io.File
+import java.lang.Error
+import kotlin.text.contains
+import kotlin.text.lowercase
 
+object GlobalVariables {
+
+    var needStackTrace = true
+        private set
+
+    fun enableStackTrace() {
+        needStackTrace = true
+    }
+
+
+    var printTime = false
+        private set
+
+    fun enableTimePrinting() {
+        printTime = true
+    }
+
+
+    var isDemonMode = false
+        private set
+
+    fun enableDemonMode() {
+        isDemonMode = true
+    }
+
+}
 
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
     val p = ProcessBuilder(this.split(" "))
@@ -467,4 +494,20 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
 
 
     append("}\n")
+}
+
+enum class CurrentOS {
+    WINDOWS,
+    LINUX,
+    MAC
+}
+
+fun getOSType(): CurrentOS {
+    val osName = System.getProperty("os.name").lowercase()
+    return when {
+        osName.contains("dows") -> CurrentOS.WINDOWS
+        osName.contains("nux") -> CurrentOS.LINUX
+        osName.contains("mac") -> CurrentOS.MAC
+        else -> throw Error("Unknown OS: $osName")
+    }
 }

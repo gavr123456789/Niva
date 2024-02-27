@@ -7,7 +7,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
-import main.frontend.util.capitalizeFirstLetter
+import main.utils.capitalizeFirstLetter
 
 // also recevier can be unary or binary message
 

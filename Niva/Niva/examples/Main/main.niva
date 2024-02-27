@@ -97,5 +97,8 @@ p =
   Person
     name: "Alice"
     age: 32
+Person sas = 1
+Person sus = 1
+Person sus::Int = 1
 
-p n!
+{1} reffg

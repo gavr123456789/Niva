@@ -1,9 +1,9 @@
 package main.codogen
 
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
-import main.frontend.util.addIndentationForEachString
-import main.frontend.util.createFakeToken
+import main.utils.addIndentationForEachString
 
 
 @Suppress("UnusedReceiverParameter")
