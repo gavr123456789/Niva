@@ -370,7 +370,7 @@ fun Parser.pragmas(): MutableList<Pragma> {
                 pragmas.add(SingleWordPragma(name))
             } while (check(TokenType.Identifier))
         }
-        skipOneEndOfLineOrFile()
+        skipOneEndOfLineOrComment()
     }
     return pragmas
 }
@@ -398,11 +398,12 @@ fun Parser.checkEndOfLineOrFile(i: Int = 0) =
     check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i) || check(TokenType.Comment)
 
 
-fun Parser.skipOneEndOfLineOrFile() =
-    match(TokenType.EndOfLine) || match(TokenType.EndOfFile) || match(TokenType.Comment)
+fun Parser.skipOneEndOfLineOrComment() =
+    match(TokenType.EndOfLine) || match(TokenType.Comment)
 
 
 fun Parser.skipNewLinesAndComments() {
     while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
+        if (check(TokenType.EndOfFile)) break
     }
 }

@@ -62,7 +62,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             } else primary(typeAst)
 
             match(TokenType.Comma)
-            skipOneEndOfLineOrFile()
+            skipOneEndOfLineOrComment()
 
             if (primaryTok != null && primaryTok2 != null) {
                 initElementsPairs.add(Pair(primaryTok, primaryTok2))
@@ -81,7 +81,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     // check for collections
     if (tryPrimary == null) {
         val token = step()
-        skipOneEndOfLineOrFile()
+        skipOneEndOfLineOrComment()
 
         tryPrimary = when (token.kind) {
             TokenType.OpenBrace -> {
@@ -99,7 +99,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             TokenType.OpenBraceHash -> {
                 // #{"a" 1 "b" 2}
                 val initElements = readPrimaryMap()
-                skipOneEndOfLineOrFile()
+                skipOneEndOfLineOrComment()
 
                 match(TokenType.CloseBrace)
 
@@ -109,7 +109,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             TokenType.OpenParenHash -> {
                 // #(1, 2 3)
                 val initElements = readPrimaryCollection()
-                skipOneEndOfLineOrFile()
+                skipOneEndOfLineOrComment()
 
                 match(TokenType.CloseParen)
 

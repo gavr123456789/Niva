@@ -86,28 +86,16 @@
 //>sum
 ///////////
 
-Int sas = 1
-Int sus = 1
-
-2 echo
-
-
-
-//T d -> T = [
-//  receiver = Compiler getName: 0
-//  "$receiver = $this" echo
-//  ^ this
-//]
-
-
-//>{1 2 3 4 5 6}
-//    map: [it + 1] |>
-//    filter: [it % 2 == 0] |>
-//    map: [it toString + "!!!"] |>
-//    echo
 
 
 
 
+type Person 
+  name: String 
+  age: Int
+p = 
+  Person 
+    name: "Alice"
+    age: 32
 
-
+1 aasdasd!
