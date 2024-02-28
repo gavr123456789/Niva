@@ -14,6 +14,7 @@ import main.frontend.meta.CompilerError
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.forEach
 import kotlin.collections.joinToString
 import kotlin.text.lowercase
@@ -46,28 +47,39 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     val scope = this
     val watcher: KfsDirectoryWatcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
     watcher.add(pm.nivaRootFolder)
-    println(pm.nivaRootFolder)
-    var everySecond = true
+    println("watching " + pm.nivaRootFolder)
+    var everySecond = false
     launch {
+        var lock = true
         watcher.onEventFlow.collect { event ->
             withContext(Dispatchers.IO) {
-                if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify && everySecond) {
+                if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify ) {
+                    println(System.currentTimeMillis())
+                    println(event)
+                    if (lock && everySecond) {
+                        println(System.currentTimeMillis())
+                        lock = false
+                        println(System.currentTimeMillis())
+                        runProcess("clear")
 
-                    runProcess("clear")
-
-                    try {
-                        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
-                    } catch (e: CompilerError) {
-                        println(e.message)
-                    } catch (e: Exception) {
-                        if (e.message?.startsWith("end") == false) {
-                            throw e
+                        try {
+                            compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+//                            everySecond = false
+                        } catch (e: CompilerError) {
+                            println(e.message)
+                        } catch (e: Exception) {
+                            if (e.message?.startsWith("end") == false) {
+                                throw e
+                            }
                         }
+                        lock = true
+                        println("unlocked")
                     }
 
-                } else {
-                    // each even event, because change generates 2 events in a row
-                    everySecond = !everySecond
+                        everySecond = !everySecond //!localEverySecond
+
+
+
                 }
             }
         }
