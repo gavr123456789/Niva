@@ -23,7 +23,7 @@ enum class TokenType {
     AssignArrow, // <-
 
 
-    Pipe, // |
+    If, // |
     PipeOperator, // |>
 
 
@@ -56,7 +56,7 @@ enum class TokenType {
     Underscore, // _
     Enum, // enum
     Builder, // builder
-    Bang, // !
+    Bang, // !!
 
 }
 

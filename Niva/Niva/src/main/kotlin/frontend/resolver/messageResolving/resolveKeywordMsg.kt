@@ -364,7 +364,7 @@ fun Resolver.resolveKeywordMsg(
 
             // if return type was unwrapped nullable, we need to wrap it again
             val returnType =
-                if (returnTypeFromDb is Type.NullableType) Type.NullableType(realType = returnType2) else returnType2
+                if (returnTypeFromDb is Type.NullableType && returnType2 !is Type.NullableType) Type.NullableType(realType = returnType2) else returnType2
 
             statement.type = returnType
         }
@@ -413,15 +413,17 @@ fun Resolver.resolveKwArgs(
     if (!filterCodeBlock && letterToRealType != null ) {
 
         codeBlockArgs.forEach {
-            val typeFromDb = mapOfArgToDbArg[it]!! as Type.Lambda
 
-            // add types to known args
-            typeFromDb.args.forEachIndexed { i, lambdaArgFromDb ->
-                val lambdaArgFromDBType = lambdaArgFromDb.type
-                if (lambdaArgFromDBType is Type.UnknownGenericType) {
-                    val qwe = letterToRealType[lambdaArgFromDBType.name]
-                    if (qwe != null && it.inputList.isNotEmpty()) {
-                        it.inputList[i].type = qwe
+            val typeFromDb = mapOfArgToDbArg[it]
+            if (typeFromDb != null && typeFromDb is Type.Lambda) {
+                // add types to known args
+                typeFromDb.args.forEachIndexed { i, lambdaArgFromDb ->
+                    val lambdaArgFromDBType = lambdaArgFromDb.type
+                    if (lambdaArgFromDBType is Type.UnknownGenericType) {
+                        val qwe = letterToRealType[lambdaArgFromDBType.name]
+                        if (qwe != null && it.inputList.isNotEmpty()) {
+                            it.inputList[i].type = qwe
+                        }
                     }
                 }
             }

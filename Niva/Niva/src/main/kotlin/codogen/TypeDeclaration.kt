@@ -5,6 +5,7 @@ import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionDeclaration
 
@@ -31,7 +32,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
     if (genericFields.isNotEmpty()) {
         append("<")
-        genericFields.forEach({ append(", ") }) {
+        genericFields.toSet().forEach({ append(", ") }) {
             append(it)
         }
         append(">")
@@ -41,11 +42,22 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     // class Person (^ arg: Type
 
     fun generateFieldArguments(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
-
+        val map = mutableMapOf<String, MutableSet<String>>()
         if (it.type == null) {
             it.token.compileError("Arg $WHITE${it.name}$RED must have type")
         }
-        val typeName = it.type.generateType()
+        if (it.type is TypeAST.UserType && it.type.typeArgumentList.isNotEmpty()) {
+            val q = map[it.name]
+            if (q != null) {
+                q.addAll(it.type.typeArgumentList.map { it.name })
+            } else {
+                map[it.name] = it.type.typeArgumentList.map { it.name }.toMutableSet()
+            }
+        }
+
+        val typeName = it.type.generateType(customGenerics = map[it.name])
+
+
         if (!rootFields) {
             append("var ")
         }

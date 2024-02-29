@@ -236,6 +236,11 @@ sealed class Type(
         realType.isPrivate,
         createNullableAnyProtocols(realType)
     ) {
+        init {
+            if (realType is NullableType) {
+                throw Exception("Compiler but $realType boxing into Nullable, but its nullable already")
+            }
+        }
         fun getTypeOrNullType(): Type {
             return realType
 
@@ -610,8 +615,13 @@ fun SomeTypeDeclaration.toType(
         } else fieldsTyped.add(it.toTypeField(typeDB, typeTable, selfType = result))
     }
 
-    fun getAllGenericTypesFromFields(fields2: List<TypeField>, fields: List<TypeFieldAST>): MutableList<Type.UserLike> {
+    fun getAllGenericTypesFromFields(
+        fields2: List<TypeField>,
+        fields: List<TypeFieldAST>,
+        setOfCheckedFields: MutableSet<Type>): MutableList<Type.UserLike>
+    {
         val result2 = mutableListOf<Type.UserLike>()
+
         fields2.forEachIndexed { i, it ->
             val type = it.type
 
@@ -623,13 +633,14 @@ fun SomeTypeDeclaration.toType(
                     }
                 }
 
-
                 result2.addAll(unknownGenericTypes)
 
-                if (type.fields.isNotEmpty()) {
-                    result2.addAll(getAllGenericTypesFromFields(type.fields, fields))
+                if (type !in setOfCheckedFields && type.fields.isNotEmpty()) {
+                    setOfCheckedFields.add(type)
+                    result2.addAll(getAllGenericTypesFromFields(type.fields, fields, setOfCheckedFields))
                 }
             }
+
         }
         return result2
     }
@@ -638,7 +649,7 @@ fun SomeTypeDeclaration.toType(
         .filter { it.type is Type.UnknownGenericType }
         .map { it.type }
         .distinctBy { it.name }
-    val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields)
+    val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
 
 
     val genericTypeFields = (typeFields1 + typeFieldsGeneric).toMutableList()

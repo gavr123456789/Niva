@@ -2,7 +2,37 @@
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
-import frontend.parser.types.ast.*
+import main.frontend.parser.types.ast.Assign
+import main.frontend.parser.types.ast.BinaryMsg
+import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.ControlFlow
+import main.frontend.parser.types.ast.ControlFlowKind
+import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.ExpressionInBrackets
+import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.IfBranch
+import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.ListCollection
+import main.frontend.parser.types.ast.LiteralExpression
+import main.frontend.parser.types.ast.MapCollection
+import main.frontend.parser.types.ast.MessageDeclarationBinary
+import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.MessageSend
+import main.frontend.parser.types.ast.MessageSendBinary
+import main.frontend.parser.types.ast.MessageSendKeyword
+import main.frontend.parser.types.ast.MessageSendUnary
+import main.frontend.parser.types.ast.ReturnStatement
+import main.frontend.parser.types.ast.SetCollection
+import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.StaticBuilder
+import main.frontend.parser.types.ast.StaticBuilderDeclaration
+import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnaryMsg
+import main.frontend.parser.types.ast.UnionDeclaration
+import main.frontend.parser.types.ast.VarDeclaration
 import main.lex
 import java.io.File
 import kotlin.test.Test
@@ -1563,7 +1593,41 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun msgsForPipedMustHaveMsgAsReceiver() {
+        // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
+        val source = """
+            x |> unpackOrError inc
+            list at: 5 |> unpackOrError inc
+        """.trimIndent()
 
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val unary = {
+            val q = ast[0] as MessageSendUnary
+            val first = q.messages.first() as UnaryMsg
+            val last = q.messages.last() as UnaryMsg
+            assertTrue { last.receiver == first }
+        }()
+        val kw = {
+            val q = ast[1] as MessageSendKeyword
+            val second = q.messages[1] as UnaryMsg
+            val last = q.messages.last() as UnaryMsg
+            assertTrue { last.receiver == second }
+        }()
+    }
+
+    @Test
+    fun returnTypeASTIsNullable() {
+        // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
+        val source = """
+            Int sas -> Int? = 1 > 2 => null |=> 5
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert((ast[0] as MessageDeclarationUnary).returnTypeAST?.isNullable == true)
+    }
 
 //    @Test
 //    fun unaryOnManyLines() {

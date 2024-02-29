@@ -84,13 +84,13 @@ fun Resolver.resolveMessageDeclaration(
     }
 
     // it can be a field, that will clash with setter
-    if (forType is Type.UserType) {
-        val fieldWithTheSameName = forType.fields.find { it.name == st.name }
-
-        if (fieldWithTheSameName != null) {
-            st.token.compileError("Type ${YEL}${st.forTypeAst.name}${RESET} already has field with name ${WHITE}${st.name}${RESET}, so it will clash with the setter of that field ${WHITE}${st.forTypeAst.name.lowercase()} ${CYAN}${st.name}: ${WHITE}newValue")
-        }
-    }
+//    if (forType is Type.UserType) {
+//        val fieldWithTheSameName = forType.fields.find { it.name == st.name }
+//
+//        if (fieldWithTheSameName != null) {
+//            st.token.compileError("Type ${YEL}${st.forTypeAst.name}${RESET} already has field with name ${WHITE}${st.name}${RESET}, so it will clash with the setter of that field ${WHITE}${st.forTypeAst.name.lowercase()} ${CYAN}${st.name}: ${WHITE}newValue")
+//        }
+//    }
 
     val bodyScope = mutableMapOf<String, Type>()
 
@@ -160,7 +160,7 @@ fun Resolver.resolveMessageDeclaration(
         if (st.isSingleExpression) {
             val expr = st.body[0]
             if (expr is Expression) {
-                val returnType = expr.type!!
+                val typeOfSingleExpr = expr.type!!
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
                     is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
@@ -170,12 +170,21 @@ fun Resolver.resolveMessageDeclaration(
 
 
                 val declaredReturnType = st.returnType
-                mdgData.returnType = returnType
-                st.returnType = returnType
+                mdgData.returnType = typeOfSingleExpr
 
-                // in single expr declared type not matching real type
-                if (!st.isRecursive && declaredReturnType != null && !compare2Types(returnType, declaredReturnType, unpackNull = true) && st.returnTypeAST != null) {
-                    st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$returnType")
+
+                st.returnType = typeOfSingleExpr
+                //!st.isRecursive && cant understand why recursive check was here
+                if ( declaredReturnType != null && st.returnTypeAST != null) {
+                    // unpack null because return Int from -> Int? method is valid
+                    if (!compare2Types(typeOfSingleExpr, declaredReturnType, unpackNull = true, isOut = true))
+                        st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
+                    else if (mdgData.returnType != declaredReturnType) {
+                        // change return type to the declarated one, since they are compatible
+                        // because it can be type Null returned from -> Int? msg, but it must be Int? in such case
+                        st.returnType = declaredReturnType
+                        mdgData.returnType = declaredReturnType
+                    }
                 }
             }
         } else {

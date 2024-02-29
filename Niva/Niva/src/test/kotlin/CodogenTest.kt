@@ -1,6 +1,6 @@
-import codogen.codegenKt
 import frontend.resolver.Resolver
 import frontend.resolver.resolve
+import main.codogen.codegenKt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

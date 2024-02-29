@@ -261,10 +261,11 @@ fun Parser.expression(
     parseSingleIf: Boolean = false // TODO replace on checking root, make root always required
 ): Expression {
 
-    if (check(TokenType.Pipe)) {
+    if (check(TokenType.If)) {
         return switchStatementOrExpression()
     }
 
+    // replace underscore with second If token, so matching on emptyness
     if (check(TokenType.Underscore)) {
         return ifStatementOrExpression()
     }
@@ -275,7 +276,7 @@ fun Parser.expression(
 
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
-    // unwrap unnecessary MessageSend
+    // unwrap unnecessary MessageSend when it's a single receiver like `person`
     val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
         messageSend.receiver
     } else {

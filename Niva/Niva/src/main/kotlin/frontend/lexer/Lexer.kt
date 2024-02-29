@@ -465,7 +465,7 @@ fun Lexer.next() {
         match("|=>") -> createToken(TokenType.Else)
 
         match("|>") -> createToken(TokenType.PipeOperator)
-        match("|") -> createToken(TokenType.Pipe)
+        match("|") -> createToken(TokenType.If)
 
         match("#{") -> createToken(TokenType.OpenBraceHash)
         match("#(") -> createToken(TokenType.OpenParenHash)
@@ -473,7 +473,7 @@ fun Lexer.next() {
         match("->") -> createToken(TokenType.ReturnArrow)
         match("<-") -> createToken(TokenType.AssignArrow)
         match("^") -> createToken(TokenType.Return)
-        match("!") -> createToken(TokenType.Bang)
+        match("!!") -> createToken(TokenType.Bang)
 
         match("==") -> createToken(TokenType.BinarySymbol)
         match("!=") -> createToken(TokenType.BinarySymbol)

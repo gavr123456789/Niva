@@ -40,7 +40,7 @@ fun Parser.ifBranches(): List<IfBranch> {
 
         skipNewLinesAndComments()
 
-    } while (check(TokenType.Pipe))
+    } while (check(TokenType.If))
 
     return result
 }
@@ -58,7 +58,7 @@ fun Parser.ifStatementOrExpression(fromSwitch: Boolean = false): ControlFlow.If 
     }
 
 
-    if (fromSwitch && pipeTok.kind != TokenType.Pipe) {
+    if (fromSwitch && pipeTok.kind != TokenType.If) {
         pipeTok.compileError("| expected but found: ${WHITE}${pipeTok.lexeme}")
     }
     val ifBranches = ifBranches()
@@ -80,7 +80,7 @@ fun Parser.ifStatementOrExpression(fromSwitch: Boolean = false): ControlFlow.If 
 }
 
 fun Parser.switchStatementOrExpression(): ControlFlow.Switch {
-    matchAssert(TokenType.Pipe, "| expected")
+    matchAssert(TokenType.If, "| expected")
 
     val switchExpression = expression()
     skipOneEndOfLineOrComment()

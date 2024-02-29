@@ -1,7 +1,5 @@
 package main.utils
 
-import com.sun.tools.javac.parser.Scanner
-import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Type
 import io.github.irgaly.kfswatch.KfsDirectoryWatcher
@@ -13,8 +11,6 @@ import kotlinx.coroutines.withContext
 import main.frontend.meta.CompilerError
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.OutputStream
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.forEach
 import kotlin.collections.joinToString
 import kotlin.text.lowercase
@@ -54,17 +50,11 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
         watcher.onEventFlow.collect { event ->
             withContext(Dispatchers.IO) {
                 if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify ) {
-                    println(System.currentTimeMillis())
-                    println(event)
                     if (lock && everySecond) {
-                        println(System.currentTimeMillis())
                         lock = false
-                        println(System.currentTimeMillis())
                         runProcess("clear")
-
                         try {
                             compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
-//                            everySecond = false
                         } catch (e: CompilerError) {
                             println(e.message)
                         } catch (e: Exception) {
@@ -73,7 +63,6 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                             }
                         }
                         lock = true
-                        println("unlocked")
                     }
 
                         everySecond = !everySecond //!localEverySecond
@@ -85,6 +74,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
         }
     }
 }
+
 
 fun findSimilar(to: String, forType: Type) {
     var foundCounter = 1

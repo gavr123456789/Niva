@@ -1,7 +1,26 @@
-import frontend.parser.types.ast.*
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.parser.types.ast.CodeBlock
+import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.ControlFlow
+import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.KeywordLikeType
+import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.ListCollection
+import main.frontend.parser.types.ast.MessageDeclaration
+import main.frontend.parser.types.ast.MessageDeclarationBinary
+import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.MessageSendKeyword
+import main.frontend.parser.types.ast.MessageSendUnary
+import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnaryMsg
+import main.frontend.parser.types.ast.UnaryMsgKind
+import main.frontend.parser.types.ast.VarDeclaration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1156,6 +1175,59 @@ class ResolverTest {
         assert(statements.count() == 4)
 
     }
+
+    @Test
+    fun mustFail() {
+        // List<T> inject: G into: [G, T -> G]
+        val source = """
+            mut x::Int = 0
+            y::Int? = 4
+        
+            x <- y
+            x echo
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+
+    }
+
+    @Test
+    fun receiverOfpipedIsMsg() {
+        val source = """
+            x::Int? = null
+            y = x |> unpackOrError inc
+        """.trimIndent()
+        val (statements) = resolveWithResolver(source)
+
+        assert(statements.count() == 2)
+
+    }
+@Test
+    fun returnNullFromNullable() {
+        val source = """
+            Int sas -> Int? = null
+            Int sus -> Int? = 1 > 2 => null |=> 5
+        """.trimIndent()
+        val (statements) = resolveWithResolver(source)
+        assert(statements.count() == 2)
+
+    val decl1 = statements[0] as MessageDeclarationUnary
+    val decl2 = statements[1] as MessageDeclarationUnary
+    assertTrue { decl1.returnTypeAST?.isNullable == true && decl1.returnType?.toString() == "Int?" }
+    assertTrue { decl2.returnTypeAST?.isNullable == true && decl2.returnType?.toString() == "Int?" }
+}
+    @Test
+    fun noDoubleNull() {
+        val source = """
+            Int sas::Int -> Int? = 45
+            1 sas: 5 |> unpackOrError inc
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+
+    }
+
+
 
 
 //    @Test

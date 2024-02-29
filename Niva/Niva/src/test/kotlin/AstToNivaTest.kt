@@ -1,6 +1,7 @@
-import frontend.parser.types.ast.MessageSendBinary
-import frontend.parser.types.ast.MessageSendUnary
-import frontend.parser.types.ast.toStr.toNivaStr
+
+import main.frontend.parser.types.ast.MessageSendBinary
+import main.frontend.parser.types.ast.MessageSendUnary
+import main.frontend.parser.types.ast.toStr.toNivaStr
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
