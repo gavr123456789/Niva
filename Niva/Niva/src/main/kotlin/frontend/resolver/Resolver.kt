@@ -216,7 +216,15 @@ private fun Resolver.resolveStatement(
             currentLevel++
             resolve(listOf(statement.value), previousAndCurrentScope, statement)
             currentLevel--
+            val q = previousAndCurrentScope[statement.name]
+            if (q != null) {
+                // this is <-, not =
+                val w = statement.value.type!!
+                if (!compare2Types(q, w, unpackNullForFirst = true)) {
 
+                    statement.token.compileError("In $WHITE$statement $YEL$q$RESET != $YEL$w")
+                }
+            }
             if (currentLevel == 0) topLevelStatements.add(statement)
         }
 
@@ -307,7 +315,14 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Boolean = false, isOut: Boolean = false): Boolean {
+fun compare2Types(
+    type1: Type,
+    type2: Type,
+    token: Token? = null,
+    unpackNull: Boolean = false,
+    isOut: Boolean = false, // checking for return type
+    unpackNullForFirst: Boolean = false // x::Int? <- y::Int
+): Boolean {
     if (type1 === type2) return true
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
@@ -356,6 +371,15 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
         return true
     }
 
+    val typeIsNull = {type: Type ->
+        type is Type.InternalType && type.name == "Null"
+    }
+    // if one of them null and second is nullable
+    if ((typeIsNull(type1)  && type2 is Type.NullableType ||
+                typeIsNull(type2) && type1 is Type.NullableType)
+    ) {
+        return true
+    }
 
     // if one of them is generic
     if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
@@ -456,6 +480,11 @@ fun compare2Types(type1: Type, type2: Type, token: Token? = null, unpackNull: Bo
         }
         if ((type2 is Type.NullableType && type1 !is Type.NullableType)) {
             val win = compare2Types(type1, type2.realType, token)
+            if (win) return true
+        }
+    } else if(unpackNullForFirst) {
+        if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
+            val win = compare2Types(type1.realType, type2, token)
             if (win) return true
         }
     }
@@ -831,7 +860,19 @@ fun Resolver.getType2(
 
 fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
     is IfBranch.IfBranchSingleExpr -> this.thenDoExpression.type!!
-    is IfBranch.IfBranchWithBody -> body.type!!
+    is IfBranch.IfBranchWithBody -> {
+        val t = body.type
+        if (t is Type.Lambda) {
+            t.returnType
+        } else {
+            val last = body.statements.last()
+            if (last is Expression){
+                last.type!!
+            } else {
+                Resolver.defaultTypes[InternalTypes.Unit]!!
+            }
+        }
+    }
 }
 
 

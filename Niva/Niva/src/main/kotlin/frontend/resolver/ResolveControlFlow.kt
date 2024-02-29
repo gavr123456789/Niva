@@ -2,11 +2,11 @@ package frontend.resolver
 
 import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
+import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.*
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
-import main.frontend.meta.compileError
-import main.frontend.parser.types.ast.*
 
 
 fun Statement.isNotExpression(): Boolean =
@@ -20,6 +20,10 @@ fun Resolver.resolveControlFlow(
 ) {
     if (statement.ifBranches.isEmpty()) {
         statement.token.compileError("If must contain at least one branch")
+    }
+    // if from different branches we return different types, but its Null from -> Int?
+    val rootStatementIsMessageDeclAndItReturnsNullable = {
+        rootStatement != null && rootStatement is MessageDeclaration && rootStatement.returnTypeAST?.isNullable == true
     }
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -71,40 +75,17 @@ fun Resolver.resolveControlFlow(
                     }
                 }
 
-//                var kekType: Type? = null
                 /// resolving then
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
                         resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
                         currentLevel--
-//                        kekType = it.thenDoExpression.type
                     }
 
                     is IfBranch.IfBranchWithBody -> {
                         if (it.body.statements.isNotEmpty()) {
                             currentLevel++
-
-//                            if (it.body.inputList.isNotEmpty()) {
-//                                val inputList = it.body.inputList
-//                                if (ifExpr.type !is Type.NullableType) {
-//                                    ifExpr.token.compileError("You can smart cast only on nullable types, but the type of right part is: ${ifExpr.type}")
-//                                }
-//                                // if receiver is expressions separated with comma inside branches, then add them
-//                                // (a, b) => [a, b -> a and b is not null]
-//
-//                                val type = ifExpr.type!!
-//                                // if receiver is message and input list has only one arg, then add it
-//                                if (inputList.count() == 1) {
-//                                    val param = inputList[0]
-//                                    val realType = type.unpackNull()
-//                                    currentScope[param.name] = realType
-//                                    param.type = realType
-//                                } else {
-//                                    val args = inputList.joinToString(", ") { it.name }
-//                                    it.body.token.compileError("There is only one expr: $WHITE${it.ifExpression}$RESET, but more than one arg: $WHITE${args} ")
-//                                }
-//                            }
 
                             resolveCodeBlock(it.body, previousScope, currentScope, statement)
                             currentLevel--
@@ -113,18 +94,11 @@ fun Resolver.resolveControlFlow(
 
                                 if (lastExpr.isNotExpression()) {
                                     lastExpr.token.compileError("In if expression body last statement must be an expression")
-                                } else {
-//                                    kekType = (lastExpr as Expression).type
                                 }
                             }
                         }
                     }
                 }
-
-//                val q =this.resolvingMessageDeclaration
-//                if ( q != null && q.returnType == null ) {
-//                    q.returnType = kekType
-//                }
 
                 // compare the current branch type with the last one
                 if (i > 0) {
@@ -145,7 +119,7 @@ fun Resolver.resolveControlFlow(
 
 
             if (statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
-                statement.token.compileError("If expression must contain else branch")
+                statement.token.compileError("If expression must contain else branch `|=>`")
             }
 
             statement.type = if (statement.elseBranch != null) {
@@ -166,8 +140,9 @@ fun Resolver.resolveControlFlow(
 //                    val elseReturnType =  lastExpr.type!!
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
-                    if (elseReturnTypeName != firstReturnTypeName) {
-                        lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName)")
+
+                    if (elseReturnTypeName != firstReturnTypeName && !rootStatementIsMessageDeclAndItReturnsNullable()) {
+                        lastExpr.token.compileError("In if Expression return type of else branch and main branches are not the same(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName)")
                     }
                     elseReturnType
                 } else {
@@ -253,7 +228,7 @@ fun Resolver.resolveControlFlow(
                         if (it.body.statements.isNotEmpty()) {
                             currentLevel++
 //                            resolve(it.body, scopeWithFields, statement)
-                            resolveCodeBlockAsBody(it.body, previousScope,currentScope, statement)
+                            resolveCodeBlockAsBody(it.body, previousScope, currentScope, statement)
 
                             currentLevel--
 
@@ -342,6 +317,7 @@ fun Resolver.resolveControlFlow(
                     null -> {
                         statement.token.compileError("Compile error type of Switch statement not resolved")
                     }
+
                     else -> {
                         println("type $savedSwitchType matching")
                     }
@@ -355,5 +331,5 @@ fun Resolver.resolveControlFlow(
 }
 
 fun Type.getRoot(): Type =
-     parent?.getRoot() ?: this
+    parent?.getRoot() ?: this
 

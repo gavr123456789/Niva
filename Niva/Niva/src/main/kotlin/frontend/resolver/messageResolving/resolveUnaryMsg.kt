@@ -94,7 +94,10 @@ fun Resolver.resolveUnaryMsg(
 
         // check for recursion
         val resolvingMsgDecl = this.resolvingMessageDeclaration
-        if (resolvingMsgDecl?.name == statement.selectorName && !resolvingMsgDecl.isRecursive) {
+        val msgForType = resolvingMsgDecl?.forType
+        val statementType = statement.receiver.type
+
+        if (resolvingMsgDecl?.name == statement.selectorName && msgForType == statementType && !resolvingMsgDecl.isRecursive) {
             resolvingMsgDecl.isRecursive = true
             if (resolvingMsgDecl.isSingleExpression && resolvingMsgDecl.returnTypeAST == null) {
                 resolvingMsgDecl.token.compileError("Recursive single expression methods must describe its return type explicitly")

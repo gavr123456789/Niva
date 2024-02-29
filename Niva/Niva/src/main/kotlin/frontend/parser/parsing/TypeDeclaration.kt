@@ -77,7 +77,7 @@ fun Parser.enumDeclaration(pragmas: MutableList<Pragma>): EnumDeclarationRoot {
 
             firstBranch = false
             skipNewLinesAndComments()
-        } while (check(TokenType.Pipe))
+        } while (check(TokenType.If))
 
         return enumBranches
     }
@@ -101,9 +101,9 @@ fun Parser.enumDeclaration(pragmas: MutableList<Pragma>): EnumDeclarationRoot {
 
 private fun Parser.getPipeTok(firstBranch: Boolean) =
     if (firstBranch) {
-        if (match(TokenType.EndOfLine) || check(TokenType.Pipe)) {
+        if (match(TokenType.EndOfLine) || check(TokenType.If)) {
             skipNewLinesAndComments()
-            matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
+            matchAssert(TokenType.If, "pipe expected on each enum branch declaration")
         } else {
             val tok = peek()
             skipNewLinesAndComments()
@@ -111,13 +111,13 @@ private fun Parser.getPipeTok(firstBranch: Boolean) =
         }
     } else {
         skipNewLinesAndComments()
-        matchAssert(TokenType.Pipe, "pipe expected on each enum branch declaration")
+        matchAssert(TokenType.If, "pipe expected on each enum branch declaration")
     }
 
 
 fun Parser.enumFields(): MutableList<EnumFieldAST> {
     val fields = mutableListOf<EnumFieldAST>()
-    if (checkEndOfLineOrFile() || check(TokenType.Pipe)) {
+    if (checkEndOfLineOrFile() || check(TokenType.If)) {
         skipNewLinesAndComments()
         return mutableListOf()
     }
@@ -212,7 +212,7 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionDeclaration {
 
             firstBranch = false
             skipNewLinesAndComments()
-        } while (check(TokenType.Pipe))
+        } while (check(TokenType.If))
 
         return unionBranches
     }

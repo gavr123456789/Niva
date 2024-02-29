@@ -147,5 +147,5 @@ fun Resolver.findAnyMsgType(
         findSimilar(to = selectorName, forType = receiverType)
         endOfSearch()
     } else
-    throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
+        throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
 }

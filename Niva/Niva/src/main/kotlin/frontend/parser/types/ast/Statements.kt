@@ -83,7 +83,7 @@ class Assign(
     pragmas: MutableList<Pragma> = mutableListOf()
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "$name = ${value.str})"
+        return "$name <- $value"
     }
 }
 

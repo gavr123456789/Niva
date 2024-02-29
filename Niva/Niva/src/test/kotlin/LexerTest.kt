@@ -1,7 +1,8 @@
+
 import frontend.Lexer
 import frontend.lex
-import frontend.meta.TokenType
-import frontend.meta.TokenType.*
+import main.frontend.meta.TokenType
+import main.frontend.meta.TokenType.*
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -134,14 +135,14 @@ x sas
 
     @Test
     fun keywords() {
-        checkWithEnd("true false type use union constructor", listOf(True, False, Type, Use, Union, Constructor))
+        checkWithEnd("true false type union constructor", listOf(True, False, Type, Union, Constructor))
     }
 
     @Test
     fun hardcodedBinarySymbols() {
         checkWithEnd(
             "^ |> | |=> = :: !", listOf(
-                Return, PipeOperator, Pipe, Else, Assign, DoubleColon, Bang
+                Return, PipeOperator, If, Else, Assign, DoubleColon, Bang
             )
         )
     }
@@ -163,7 +164,7 @@ x sas
     @Test
     fun pipeOperator() {
         checkWithEnd("|>", listOf(PipeOperator))
-        checkWithEnd("|||", listOf(BinarySymbol, Pipe)) // || is OR
+        checkWithEnd("|||", listOf(BinarySymbol, If)) // || is OR
     }
 
     @Test
