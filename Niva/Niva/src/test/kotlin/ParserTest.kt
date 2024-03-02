@@ -1569,10 +1569,21 @@ class ParserTest {
     @Test
     fun extensionLambda() {
         val source = """
+            // sas is method for Person
+            Int sas::Person[Unit -> Unit] = person sas
+            // with args
+            Int sas::Person[Int, String -> Unit] = person sas Int: 1 String: "sas"
+            Int sas::Person[Int, String -> Unit] = sas this: p Int: 1 String: "sas"
+            Int sas::Person[Int, String -> Unit] = person sasInt: 1 String: "sas"
+            
+                        Int sas::Person[x::Int, y::String -> Unit] = person sas Int: 1 String: "sas"
+                        Int sas::Person[x::Int, y::String -> Unit] = sas this: p Int: 1 String: "sas"
+                        Int sas::Person[x::Int, y::String -> Unit] = person [x: 1 String: "sas" -> ]
+                        builder 
+            
+            Int sas::[this::Person -> Unit] = person sas
             Int sas::[Person -> Unit -> Unit] = person sas
             Int sas::[on Person -> Unit] = person sas
-            Int sas::Person[Unit -> Unit] = person sas
-            Int sas::[this::Person -> Unit] = person sas
             Int sas::[this::Person, x::Int -> Unit] = person sas x: 6
         """.trimIndent()
 

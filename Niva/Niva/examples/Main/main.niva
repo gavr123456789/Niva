@@ -53,6 +53,7 @@
 //    size <- size inc
 //    ^this
 //]
+//
 //LinkedList add: v::Int -> LinkedList =
 //  this isEmpty => [
 //    this push: v
@@ -64,6 +65,7 @@
 //    ]
 //    this
 //  ]
+//
 //LinkedList at: i::Int -> Node? = [
 //  mut curr = head
 //  mut currI = 0
@@ -77,19 +79,13 @@
 //  ^curr
 //]
 //
-//
-//
 //list = LinkedList empty
 //list push: 1 |> push: 2 |> push: 3
 //list add: -1 |> add: -2 |> add: -3
-//"!!!" echo
-//list at: 4 |> unpackOrError str echo
+//"element 4" echo
+//list at: 4 |> unpackOrError v echo
+//"full list" echo
 //list str echo
 
-Int sas::Int -> Int? = 45
-1 sas: 5 |> unpackOrError inc
 
 
-//Int sas -> Int? = 1 > 2 => null |=> 5
-//
-//{(6 sas)} at: 0 |> unpackOrError inc echo

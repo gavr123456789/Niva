@@ -23,6 +23,7 @@ import main.frontend.parser.types.ast.UnaryMsgKind
 import main.frontend.parser.types.ast.VarDeclaration
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 fun resolve(source: String): List<Statement> {
@@ -828,7 +829,7 @@ class ResolverTest {
         x = 5 sas
         x unpackOrError inc 
         x unpack: [it inc]
-        y = x unpackOr: 5
+        y = x unpackOrValue: 5
         """.trimIndent()
 
 
@@ -1186,8 +1187,10 @@ class ResolverTest {
             x <- y
             x echo
         """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 4)
+
+        assertFailsWith<main.frontend.meta.CompilerError>(message = "sas") {
+            resolve(source)
+        }
 
     }
 
