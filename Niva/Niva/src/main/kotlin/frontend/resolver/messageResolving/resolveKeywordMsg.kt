@@ -145,7 +145,12 @@ fun Resolver.resolveKeywordMsg(
     val argsTypesFromDb = when (kwTypeFromDB) {
         is UnaryMsgMetaData -> listOf()
         is BinaryMsgMetaData -> listOf()
-        is KeywordMsgMetaData -> kwTypeFromDB.argTypes.map { it.type }
+        is KeywordMsgMetaData -> {
+            if (statement.args.count() != kwTypeFromDB.argTypes.count()) {
+                statement.token.compileError("Wrong number of arguments, $WHITE$kwTypeFromDB$RESET is needed, but you send $WHITE$statement")
+            }
+            kwTypeFromDB.argTypes.map { it.type }
+        }
         null -> listOf()
     }
 
@@ -153,6 +158,7 @@ fun Resolver.resolveKeywordMsg(
     if (kwTypeFromDB != null) {
         statement.pragmas = kwTypeFromDB.pragmas
     }
+
 
 
     // чтобы резолвнуть тип мне нужны резолвнутые типы у аргументов, потому что может быть такое что одинаковые имена но разные типы у них
@@ -409,7 +415,7 @@ fun Resolver.resolveKwArgs(
             } else usualArgs.add(it)
         }
 
-    // resolve code blocks
+    // add to letterList code blocks types from db
     if (!filterCodeBlock && letterToRealType != null ) {
 
         codeBlockArgs.forEach {
@@ -431,12 +437,13 @@ fun Resolver.resolveKwArgs(
     }
 
 
+    // cant do this, because then argNum is wrong
     val args = if(filterCodeBlock) usualArgs else codeBlocks
     args.forEachIndexed { argNum, it ->
         val arg = it.keywordArg
         if (arg.type == null) {
             currentLevel++
-            currentArgumentNumber = argNum
+            currentArgumentNumber = statement.args.indexOf(it)
             resolve(listOf(arg), previousAndCurrentScope, statement)
             if (arg.type == null) arg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
             currentLevel--

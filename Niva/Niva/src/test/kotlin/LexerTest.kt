@@ -57,14 +57,13 @@ x sas
                 EndOfLine,
                 Identifier,
                 Identifier,
-                EndOfFile
             )
         )
     }
 
     @Test
     fun emptySource() {
-        checkWithEnd("", listOf(EndOfFile))
+        checkWithEnd("", listOf())
     }
 
     @Test
@@ -122,8 +121,7 @@ x sas
                 Identifier,
                 Identifier,
                 EndOfLine,
-                CloseBracket,
-                EndOfFile
+                CloseBracket
             )
         )
     }
@@ -142,7 +140,7 @@ x sas
     fun hardcodedBinarySymbols() {
         checkWithEnd(
             "^ |> | |=> = :: !", listOf(
-                Return, PipeOperator, If, Else, Assign, DoubleColon, Bang
+                Return, PipeOperator, If, Else, Assign, DoubleColon, BinarySymbol
             )
         )
     }
