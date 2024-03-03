@@ -43,6 +43,7 @@ fun MessageDeclaration.getGenericsFromMessageDeclaratin(): Set<String> {
     // receiver can be generic
 
     val genericsFromReceiverAndReturnType = mutableSetOf<String>()
+    // from return type
     if (returnTypeAST != null) {
         val isThereUnresolvedTypeArgs = returnTypeAST.name.isGeneric()
         if (isThereUnresolvedTypeArgs) {
@@ -50,11 +51,13 @@ fun MessageDeclaration.getGenericsFromMessageDeclaratin(): Set<String> {
             genericsFromReceiverAndReturnType.add(returnTypeAST.name)
         }
     }
+
     val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
     if (isThereUnresolvedTypeArgs.isNotEmpty()) {
         // There can be resolved type args like box::Box::Int, then we don't need to add them
         genericsFromReceiverAndReturnType.addAll(isThereUnresolvedTypeArgs)
     }
+
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
         genericsFromReceiverAndReturnType.addAll(forTypeVal.typeArgumentList.asSequence().filter { it.name.isGeneric() }

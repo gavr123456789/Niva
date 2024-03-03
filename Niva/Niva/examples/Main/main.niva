@@ -34,58 +34,8 @@
 //x func: func
 
 
+Int map::[Int -> T] = [
+    1 echo
+]
 
-//type Node v: Int next: Node?
-//constructor Node v::Int = Node v: v next: null
-//Node str -> String =
-//  next unpack: [ "$v, " + it str] or: "$v"
-//
-//
-//type LinkedList head: Node? tail: Node? size: Int
-//constructor LinkedList empty =
-//    LinkedList head: null tail: null size: 0
-//
-//LinkedList isEmpty = size == 0
-//LinkedList str = this isEmpty => "Empty!" |=> head unpackOrError str
-//LinkedList push: v::Int -> LinkedList = [
-//    head <- Node v: v next: head
-//    tail == null => tail <- head
-//    size <- size inc
-//    ^this
-//]
-//
-//LinkedList add: v::Int -> LinkedList =
-//  this isEmpty => [
-//    this push: v
-//    this
-//  ] |=> [
-//    tail unpack: [
-//      it next: (Node v: v)
-//      tail <- it next
-//    ]
-//    this
-//  ]
-//
-//LinkedList at: i::Int -> Node? = [
-//  mut curr = head
-//  mut currI = 0
-//
-//  [currI < i] whileTrue: [
-//    curr unpack: [
-//        curr <- it next
-//        currI <- currI inc
-//    ]
-//  ]
-//  ^curr
-//]
-//
-//list = LinkedList empty
-//list push: 1 |> push: 2 |> push: 3
-//list add: -1 |> add: -2 |> add: -3
-//"element 4" echo
-//list at: 4 |> unpackOrError v echo
-//"full list" echo
-//list str echo
-
-
-
+1 echo

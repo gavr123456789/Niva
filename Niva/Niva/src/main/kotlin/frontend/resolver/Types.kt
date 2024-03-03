@@ -698,8 +698,8 @@ fun MessageDeclaration.toAnyMessageData(
     resolver: Resolver
 ): MessageMetadata {
     return when (this) {
-        is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
         is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg)
+        is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
         is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
         is ConstructorDeclaration -> {
             val constructorForType = forType
@@ -767,10 +767,18 @@ fun MessageDeclarationKeyword.toMessageData(
 
     this.returnType = returnType
     val keywordArgs = this.args.map {
+        val type = it.typeAST?.toType(typeDB, typeTable)
+            ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${it.name}${RED} not registered")
+
+        // lambda can contain generic params, and we need add them to typeArgs
+        if (type is Type.Lambda) {
+            this.typeArgs.addAll( type.args.asSequence().map { it.type }.filterIsInstance<Type.UnknownGenericType>().map { it.name } )
+            if (type.returnType is Type.UnknownGenericType) this.typeArgs.add(type.returnType.name)
+        }
+
         KeywordArg(
             name = it.name,
-            type = it.typeAST?.toType(typeDB, typeTable)
-                ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${it.name}${RED} not registered")
+            type = type
         )
     }
     val result = KeywordMsgMetaData(

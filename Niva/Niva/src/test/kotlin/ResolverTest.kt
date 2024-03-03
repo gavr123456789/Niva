@@ -1227,10 +1227,39 @@ class ResolverTest {
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
-
     }
 
+    @Test
+    fun fullBuilderExample() {
+        val source = """
+            type Person
+            Person foo::Int = []
+            Int sas::Person.[Int -> Unit] = [
+              sas this: Person new Int: 4
+            ]
+            // call sas
+            2 sas: [
+              this // is Person
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+    }
 
+    @Test
+    fun getGenericParamsFromLambdaArg() {
+        val source = """
+            Int map::[Int -> T] = [
+                1 echo
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as MessageDeclarationKeyword
+        assertTrue {
+            q.typeArgs[0] == "T"
+        }
+    }
 
 
 //    @Test

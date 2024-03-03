@@ -55,33 +55,33 @@ fun Resolver.resolveMessageDeclaration(
         unResolvedMessageDeclarations.add(currentPackageName, st)
         currentLevel--
         return true
-    } else {
-        // but wait maybe some generic param's type is unresolved
-        if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty() && forType is Type.UserLike) {
-            var alTypeArgsAreFound = true
-            val newListOfTypeArgs = mutableListOf<Type>()
-            st.forTypeAst.typeArgumentList.forEach {
-                val type = typeTable[it.name]//testing
+    }
+    // but wait maybe some generic param's type is unresolved (List::T unary = [])
+    if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty() && forType is Type.UserLike) {
+        var alTypeArgsAreFound = true
+        val newListOfTypeArgs = mutableListOf<Type>()
+        st.forTypeAst.typeArgumentList.forEach {
+            val type = typeTable[it.name]//testing
 //                val testDB = typeDB.getType(it.name)
 
-                if (type != null) {
-                    newListOfTypeArgs.add(type)
-                } else {
-                    alTypeArgsAreFound = false
-                }
-            }
-
-            if (alTypeArgsAreFound) {
-                forType.typeArgumentList = newListOfTypeArgs
+            if (type != null) {
+                newListOfTypeArgs.add(type)
             } else {
-                unResolvedMessageDeclarations.add(currentPackageName, st)
-                currentLevel--
-                return true
+                alTypeArgsAreFound = false
             }
         }
-        unResolvedMessageDeclarations.remove(currentPackageName, st)
-        st.forType = forType
+
+        if (alTypeArgsAreFound) {
+            forType.typeArgumentList = newListOfTypeArgs
+        } else {
+            unResolvedMessageDeclarations.add(currentPackageName, st)
+            currentLevel--
+            return true
+        }
     }
+    unResolvedMessageDeclarations.remove(currentPackageName, st)
+    st.forType = forType
+
 
     // it can be a field, that will clash with setter
 //    if (forType is Type.UserType) {
@@ -163,9 +163,26 @@ fun Resolver.resolveMessageDeclaration(
                 val typeOfSingleExpr = expr.type!!
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
-                    is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
-                    is MessageDeclarationBinary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Binary)
-                    is MessageDeclarationKeyword -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Keyword)
+                    is MessageDeclarationUnary -> findAnyMsgType(
+                        forType,
+                        st.name,
+                        st.token,
+                        MessageDeclarationType.Unary
+                    )
+
+                    is MessageDeclarationBinary -> findAnyMsgType(
+                        forType,
+                        st.name,
+                        st.token,
+                        MessageDeclarationType.Binary
+                    )
+
+                    is MessageDeclarationKeyword -> findAnyMsgType(
+                        forType,
+                        st.name,
+                        st.token,
+                        MessageDeclarationType.Keyword
+                    )
                 }
 
 
@@ -175,7 +192,7 @@ fun Resolver.resolveMessageDeclaration(
 
                 st.returnType = typeOfSingleExpr
                 //!st.isRecursive && cant understand why recursive check was here
-                if ( declaredReturnType != null && st.returnTypeAST != null) {
+                if (declaredReturnType != null && st.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
                     if (!compare2Types(typeOfSingleExpr, declaredReturnType, unpackNull = true, isOut = true))
                         st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
@@ -191,7 +208,8 @@ fun Resolver.resolveMessageDeclaration(
             val realReturn = wasThereReturn
             val returnType = st.returnType
             if (realReturn != null && returnType != null &&
-                !compare2Types(returnType, realReturn, unpackNull = true, isOut = true)) {
+                !compare2Types(returnType, realReturn, unpackNull = true, isOut = true)
+            ) {
                 st.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
             }
         }
@@ -211,19 +229,6 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         addNewAnyMessage(st, false, forType)
     }
-
-//    if (addToDb) when (st) {
-//        is MessageDeclarationUnary -> addNewUnaryMessage(st)
-//        is MessageDeclarationBinary -> addNewBinaryMessage(st)
-//        is MessageDeclarationKeyword -> addNewKeywordMessage(st)
-//
-//        is ConstructorDeclaration -> {
-//            if (st.returnTypeAST == null) {
-//                st.returnType = forType
-//            }
-//            addStaticDeclaration(st)
-//        }
-//    }
 
     if (needResolveOnlyBody) {
         resolveBody()
