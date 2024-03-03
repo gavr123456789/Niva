@@ -458,7 +458,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
             stackTracesWithFiles.forEach {
                 val pathToFile =
                     if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName
-                val nivaLine = if (checkExistAsNivaFile(it.fileName))
+                val nivaLine = if (checkExistAsNivaFile(pathToFile))
                     getNearestNivaLine(it.lineNumber - 1, pathToFile)
                 else FileAndLine(
                     it.fileName,
