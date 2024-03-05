@@ -41,43 +41,47 @@ fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike): MutableMa
     return result
 }
 
-
+// 2!
+// 1) выделить отсюда код который рекурсивно собирает все дженерики из аргументов
+// 2) запускать этот код отдельно до резолва боди функции
+// 3) добавлять результат в type args
+// 4) проверять если type args функции содержат такуюже букву которую мы не можем найти в таблице, то искать нам ее не надо
 fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
     if (receiverType !is Type.UserLike) return receiverType
     // replace every Generic type with real
-    if (receiverType.typeArgumentList.isNotEmpty()) {
-        val replacerTypeIfItGeneric = receiverType.copy()
-
-        // match every type argument with fields
-        val map = mutableMapOf<String, Type>()
-        replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
-            val fieldsOfThisType =
-                replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
-            fieldsOfThisType.forEach { genericField ->
-                // find real type from arguments
-                val real = args.find { it.name == genericField.name }
-                    ?: tok.compileError("Can't find real type for field: ${YEL}${genericField.name}${RESET} of generic type: ${YEL}${genericField.type.name}${RESET}")
-                val realType = real.keywordArg.type
-                    ?: real.keywordArg.token.compileError("Compiler bug: ${YEL}${real.name}${RESET} doesn't have type")
-                map[typeArg.name] = realType
-            }
-        }
-        // replace typeFields to real ones
-        val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
-        map.forEach { (fieldName, fieldRealType) ->
-            val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
-            realTypes[fieldIndex] = fieldRealType
-            // replace all fields of generic type
-            replacerTypeIfItGeneric.fields.forEach {
-                if (it.type.name == fieldName) {
-                    it.type = fieldRealType
-                }
-            }
-        }
-        replacerTypeIfItGeneric.typeArgumentList = realTypes
-        return replacerTypeIfItGeneric
+    if (receiverType.typeArgumentList.isEmpty()) {
+        return receiverType
     }
-    return receiverType
+    val replacerTypeIfItGeneric = receiverType.copy()
+
+    // match every type argument with fields
+    val map = mutableMapOf<String, Type>()
+    replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
+        val fieldsOfThisType =
+            replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
+        fieldsOfThisType.forEach { genericField ->
+            // find real type from arguments
+            val real = args.find { it.name == genericField.name }
+                ?: tok.compileError("Can't find real type for field: ${YEL}${genericField.name}${RESET} of generic type: ${YEL}${genericField.type.name}${RESET}")
+            val realType = real.keywordArg.type
+                ?: real.keywordArg.token.compileError("Compiler bug: ${YEL}${real.name}${RESET} doesn't have type")
+            map[typeArg.name] = realType
+        }
+    }
+    // replace typeFields to real ones
+    val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
+    map.forEach { (fieldName, fieldRealType) ->
+        val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
+        realTypes[fieldIndex] = fieldRealType
+        // replace all fields of generic type
+        replacerTypeIfItGeneric.fields.forEach {
+            if (it.type.name == fieldName) {
+                it.type = fieldRealType
+            }
+        }
+    }
+    replacerTypeIfItGeneric.typeArgumentList = realTypes
+    return replacerTypeIfItGeneric
 }
 
 
@@ -120,7 +124,7 @@ fun replaceAllGenericsToRealTypeRecursive(
         if (isSingleGeneric) {
             val resolvedLetterType =
                 letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
-                ?: throw Exception("Can't find generic type: ${YEL}${typeArg.name}${RESET} in letter table")
+                ?: throw Exception("Compiler bug: can't find generic type: ${YEL}${typeArg.name}${RESET} in letter table for $type")
             newResolvedTypeArgs2.add(resolvedLetterType)
             resolvedLetterType.beforeGenericResolvedName = typeArg.name
         } else if (typeArg is Type.UserLike && type.typeArgumentList.isNotEmpty()) {

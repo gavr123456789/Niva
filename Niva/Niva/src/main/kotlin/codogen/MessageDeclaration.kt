@@ -38,7 +38,7 @@ val operators = hashMapOf(
     "apply" to "invoke",
 )
 
-fun MessageDeclaration.getGenericsFromMessageDeclaratin(): Set<String> {
+fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     // return type can be generic
     // receiver can be generic
 
@@ -72,7 +72,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     // return type can be generic
     // receiver can be generic
 
-    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaration()
 
     if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")
@@ -118,7 +118,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 
     append("operator fun ")
     // generics
-    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaration()
 
     if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")
@@ -157,7 +157,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
 
     append("fun ")
 
-    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaratin()
+    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaration()
 
     if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")

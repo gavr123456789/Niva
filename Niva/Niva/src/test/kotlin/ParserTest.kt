@@ -583,9 +583,9 @@ class ParserTest {
         val fields = typeDeclaration.fields
 
         assert(fields[0].name == "name")
-        assert(fields[0].type?.name == "string")
+        assert(fields[0].typeAST?.name == "string")
         assert(fields[1].name == "age")
-        assert(fields[1].type?.name == "int")
+        assert(fields[1].typeAST?.name == "int")
     }
 
     @Test

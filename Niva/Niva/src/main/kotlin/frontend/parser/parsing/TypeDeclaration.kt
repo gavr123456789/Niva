@@ -172,8 +172,9 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
         fields.add(
             TypeFieldAST(
                 name = name.lexeme,
-                type = type,
+                typeAST = type,
                 token = name,
+                type = null
             )
         )
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))

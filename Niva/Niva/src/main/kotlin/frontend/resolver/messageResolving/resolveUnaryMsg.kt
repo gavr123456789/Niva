@@ -88,7 +88,6 @@ fun Resolver.resolveUnaryMsg(
     if (isGetter) {
         statement.kind = UnaryMsgKind.Getter
         statement.type = field!!.type
-
     } else {
         // usual message or static message
 
@@ -122,7 +121,7 @@ fun Resolver.resolveUnaryMsg(
             )
             statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
             messageReturnType
-        }//.also { it.returnType.resetGenericParams() }
+        }
         val returnTypeFromDb = msgFromDb.returnType
         // add pragmas
         statement.pragmas = msgFromDb.pragmas
@@ -131,6 +130,8 @@ fun Resolver.resolveUnaryMsg(
         if (returnTypeFromDb is Type.UnknownGenericType && msgFromDb.forGeneric) {
             letterToTypeFromReceiver["T"] = receiverType
         }
+        // 1! если мы внутри функции в которой имеется тайп параметр Т, то ресолвить его не нужно
+        // "resolvingMsgDecl". type args
         // resolve return type generic
         val typeForStatement =
             resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)

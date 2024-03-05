@@ -18,7 +18,7 @@ fun CodeBlock.generateCodeBlock(withTypeDeclaration: Boolean = true, putArgListI
         if (it.typeAST != null && withTypeDeclaration) {
             append(it.typeAST.generateType())
         } else {
-            append(it.type!!.toKotlinString())
+            append(it.type!!.toKotlinString(true))
         }
     }
     if (putArgListInBrackets) append(")")

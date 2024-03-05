@@ -10,7 +10,7 @@ fun TypeAST.generateType(generateGeneric: Boolean = true, customGenerics: Set<St
         is TypeAST.UserType -> {
             append(names.joinToString("."))
             if (generateGeneric && typeArgumentList.isNotEmpty()) {
-                val genericsNames = typeArgumentList.map { it.name }
+                val genericsNames = typeArgumentList.map { it.name }.toSet()
                 append("<")
                 append((genericsNames + (customGenerics ?: setOf())).joinToString(", ") { it })
                 append(">")

@@ -1,5 +1,6 @@
 package main.frontend.parser.types.ast
 
+import frontend.resolver.KeywordArgAst
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
@@ -88,11 +89,6 @@ class BinaryMsg(
         return "$y$selectorName $argument$x"
     }
 }
-
-data class KeywordArgAst(
-    val name: String,
-    val keywordArg: Expression
-)
 
 
 enum class KeywordLikeType {

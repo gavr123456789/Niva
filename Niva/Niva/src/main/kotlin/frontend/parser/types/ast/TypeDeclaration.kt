@@ -1,6 +1,7 @@
 package main.frontend.parser.types.ast
 
 import frontend.parser.types.ast.Pragma
+import frontend.resolver.Type
 import frontend.resolver.Type.RecursiveType.isPrivate
 import frontend.resolver.Type.RecursiveType.name
 import main.frontend.meta.Token
@@ -68,11 +69,12 @@ class EnumFieldAST(
 
 class TypeFieldAST(
     val name: String,
-    val type: TypeAST?,
+    val typeAST: TypeAST?,
+    var type: Type?,
     val token: Token,
 ) {
     override fun toString(): String {
-        return name + ":" + (type?.toString() ?: "")
+        return name + ":" + (typeAST?.toString() ?: "")
     }
 }
 
@@ -80,16 +82,17 @@ sealed class SomeTypeDeclaration(
     val typeName: String,
     val fields: List<TypeFieldAST>,
     token: Token,
-    val genericFields: MutableList<String> = mutableListOf(),
+    val genericFields: MutableSet<String> = mutableSetOf(),
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
+    var receiver: Type? = null, // for codegen
 ) : Declaration(token, isPrivate, pragmas)
 
 class TypeDeclaration(
     typeName: String,
     fields: List<TypeFieldAST>,
     token: Token,
-    genericFields: MutableList<String> = mutableListOf(),
+    genericFields: MutableSet<String> = mutableSetOf(),
     pragmas: MutableList<Pragma> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas) {
@@ -104,7 +107,7 @@ class EnumBranch(
     token: Token,
     val root: EnumDeclarationRoot,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : SomeTypeDeclaration(name, listOf(), token, mutableListOf(), isPrivate, pragmas) {
+) : SomeTypeDeclaration(name, listOf(), token, mutableSetOf(), isPrivate, pragmas) {
     override fun toString(): String {
         return name + " " + fields.joinToString(", ") { it.name + ": " + it.toString() }
     }
@@ -117,19 +120,19 @@ class EnumDeclarationRoot(
     token: Token,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isPrivate: Boolean = false,
-) : SomeTypeDeclaration(typeName, fields, token, mutableListOf(), isPrivate, pragmas)
+) : SomeTypeDeclaration(typeName, fields, token, mutableSetOf(), isPrivate, pragmas)
 
 class UnionBranch(
     typeName: String,
     fields: List<TypeFieldAST>,
     token: Token,
-    genericFields: MutableList<String> = mutableListOf(),
+    genericFields: MutableSet<String> = mutableSetOf(),
     val root: UnionDeclaration,
     var isRoot: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = pragmas) {
     override fun toString(): String {
-        return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.type }
+        return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.typeAST }
     }
 }
 
@@ -138,7 +141,7 @@ class UnionDeclaration(
     var branches: List<UnionBranch>,
     fields: List<TypeFieldAST>,
     token: Token,
-    genericFields: MutableList<String> = mutableListOf(),
+    genericFields: MutableSet<String> = mutableSetOf(),
     pragmas: MutableList<Pragma> = mutableListOf(),
     isPrivate: Boolean = false,
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas)
