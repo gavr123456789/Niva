@@ -588,7 +588,7 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 1)
-        assert((statements[0] as TypeDeclaration).genericFields[0] == "T")
+        assert((statements[0] as TypeDeclaration).genericFields.first() == "T")
     }
 
     @Test
@@ -606,7 +606,7 @@ class ResolverTest {
 
         val statements = resolve(source)
         assert(statements.count() == 5)
-        assert((statements[0] as TypeDeclaration).genericFields[0] == "T")
+        assert((statements[0] as TypeDeclaration).genericFields.first() == "T")
     }
 
 
@@ -850,7 +850,6 @@ class ResolverTest {
            union JsonObj =
            | JsonArray arr: MutableList::JsonObj
 
-
            arr = JsonArray arr: {}
         """.trimIndent()
         val statements = resolve(source)
@@ -1008,7 +1007,7 @@ class ResolverTest {
         assert(statements.count() == 3)
 
         val boxTypeDecl = statements[0] as TypeDeclaration
-        val nullable = boxTypeDecl.fields[0].type as TypeAST.UserType
+        val nullable = boxTypeDecl.fields[0].typeAST as TypeAST.UserType
         assertTrue { nullable.isNullable }
         val boxType = (statements[2] as MessageSendUnary).type
         assertTrue { boxType is Type.NullableType }
@@ -1261,6 +1260,20 @@ class ResolverTest {
         }
     }
 
+    @Test
+    fun genericArgHasType() {
+        val source = """
+            type Node v: T next: Node?
+            type LinkedList head: Node? tail: Node? size: Int
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[1] as TypeDeclaration
+        assertTrue {
+            ((q.fields.first().type as Type.NullableType).realType as Type.UserType).typeArgumentList.first().name == "T"
+//            q.typeArgs[0] == "T"
+        }
+    }
 
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {

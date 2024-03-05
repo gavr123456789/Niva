@@ -37,7 +37,6 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         b.append("\n//@ ", tok.file.name, ":::", tok.line, "\n")
     }
 
-
     if (this.messages.isEmpty()) {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")
     }

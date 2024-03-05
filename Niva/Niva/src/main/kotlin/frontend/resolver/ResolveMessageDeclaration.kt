@@ -22,7 +22,6 @@ fun Resolver.resolveMessageDeclaration(
 ): Boolean {
     val forTypeAst = st.forTypeAst
 
-
     val forType: Type? = st.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
@@ -97,7 +96,7 @@ fun Resolver.resolveMessageDeclaration(
     val resolveBody = {
         bodyScope["this"] = forType
 
-        // add args to scope
+        // args from kw or constructor
         fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
             st.args.forEach {
                 if (it.typeAST == null) {

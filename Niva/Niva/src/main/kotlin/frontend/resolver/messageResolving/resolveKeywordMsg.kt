@@ -1,19 +1,7 @@
 package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
-import frontend.resolver.BinaryMsgMetaData
-import frontend.resolver.KeywordMsgMetaData
-import frontend.resolver.MessageMetadata
-import frontend.resolver.Resolver
-import frontend.resolver.Type
-import frontend.resolver.TypeField
-import frontend.resolver.UnaryMsgMetaData
-import frontend.resolver.compare2Types
-import frontend.resolver.fillGenericsWithLettersByOrder
-import frontend.resolver.getTableOfLettersFrom_TypeArgumentListOfType
-import frontend.resolver.replaceAllGenericsToRealTypeRecursive
-import frontend.resolver.resolve
-import frontend.resolver.resolveReceiverGenericsFromArgs
+import frontend.resolver.*
 import main.utils.CYAN
 import main.utils.GREEN
 import main.utils.RESET
@@ -323,6 +311,8 @@ fun Resolver.resolveKeywordMsg(
 
                 checkThatKwArgsAreTypeFields(receiverFields)
 
+                // array add: 5
+                // array is Array::T
                 resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
             } else receiverType
@@ -534,8 +524,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
     receiverGenericsTable: MutableMap<String, Type>
 ): Type {
     ///
-    val returnTypeOrNullUnwrap =
-        if (returnTypeFromDb is Type.NullableType) returnTypeFromDb.realType else returnTypeFromDb
+    val returnTypeOrNullUnwrap = returnTypeFromDb.unpackNull()
+
 
     return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
         val realTypeFromTable =
@@ -546,6 +536,29 @@ fun Resolver.resolveReturnTypeIfGeneric(
         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
         replaceAllGenericsToRealTypeRecursive(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
-    } else returnTypeFromDb // return without changes
+    } else
+        returnTypeFromDb // return without changes
 
 }
+
+fun <T> T?.unpack(): T {
+    return this!!
+}
+
+fun <T> List<T?>.sas() {
+    val q = this.last()
+    val w = q.unpack()
+}
+
+// если женерик пришел в функцию из одного из параметров, тогда его резолвить не надо
+// но это нельзя определить чисто по букве
+// List здесь типа KnownGeneric потому что это параметр извне
+fun <T> List<T?>.sus() {
+    val q = this.last()
+    val w = q.unpack()
+    // using different T, but here we need to resolve it, unlike the top one
+    listOf(1).forEach {
+
+    }
+}
+

@@ -108,15 +108,10 @@ class TypeField(
     type: Type //when generic, we need to reassign it to real type
 ) : FieldWithType(name, type)
 
-
-class FieldWithValue(
+class KeywordArgAst(
     val name: String,
-    var value: Expression
-) {
-    override fun toString(): String {
-        return "$name: $value"
-    }
-}
+    val keywordArg: Expression
+)
 
 
 fun Type.isDescendantOf(type: Type): Boolean {
@@ -164,28 +159,39 @@ sealed class Type(
         is InternalLike -> name
         is NullableType -> "$realType?"
         is UserLike -> {
+            val toStringWithRecursiveCheck = {x: Type, currentTypeName: String, currentTypePkg: String  ->
+                if (x.name == currentTypeName && x.pkg == currentTypePkg) {
+                    x.name
+                } else {
+                    x.toString()
+                }
+            }
             val genericParam =
-                if (typeArgumentList.count() == 1) "::" + typeArgumentList[0].toString() else if (typeArgumentList.count() > 1) {
-                    "(" + typeArgumentList.joinToString(", ") { it.toString() } + ")"
+                if (typeArgumentList.count() == 1) {
+                    "::" + toStringWithRecursiveCheck(typeArgumentList[0], this.name, this.pkg)
+                } else if (typeArgumentList.count() > 1) {
+                    "(" + typeArgumentList.joinToString(", ") {
+                        toStringWithRecursiveCheck(
+                            it,
+                            this.name,
+                            this.pkg
+                        ) } + ")"
                 } else ""
             val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
         is Lambda -> name
-
-        else -> "$pkg.$name"
-
     }
 
-    fun toKotlinString(): String = when (this) {
-        is InternalLike -> name
-        is NullableType -> "$realType?"
+    fun toKotlinString(needPkgName: Boolean): String = when (this) {
+        is InternalLike, is UnknownGenericType -> name
+        is NullableType -> "${realType.toKotlinString(needPkgName)}?"
         is UserLike -> {
             val genericParam =
                 if (typeArgumentList.isNotEmpty()) {
                     "<" + typeArgumentList.joinToString(", ") { it.toString() } + ">"
                 } else ""
-            val needPkg = if (pkg != "core") "$pkg." else ""
+            val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
 
@@ -533,7 +539,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
 fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike): TypeField {
     val result = TypeField(
         name = name,
-        type = type!!.toType(typeDB, typeTable, selfType)
+        type = typeAST!!.toType(typeDB, typeTable, selfType)
     )
     return result
 }
@@ -602,7 +608,7 @@ fun SomeTypeDeclaration.toType(
     val unresolvedSelfTypeFields = mutableListOf<TypeField>()
 
     fields.forEach {
-        val astType = it.type
+        val astType = it.typeAST
         if (astType != null && astType.name == typeName) {
             // this is recursive type
             val fieldType = TypeField(
@@ -645,14 +651,14 @@ fun SomeTypeDeclaration.toType(
         return result2
     }
 
-    val typeFields1 = fieldsTyped.asSequence()
+    val genericsDeclarated = fieldsTyped.asSequence()
         .filter { it.type is Type.UnknownGenericType }
         .map { it.type }
         .distinctBy { it.name }
-    val typeFieldsGeneric = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
+    val genericsFromFieldsTypes = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
 
 
-    val genericTypeFields = (typeFields1 + typeFieldsGeneric).toMutableList()
+    val genericTypeFields = (genericsDeclarated + genericsFromFieldsTypes).toMutableList()
 
 
     unresolvedSelfTypeFields.forEach {
@@ -671,10 +677,10 @@ fun SomeTypeDeclaration.toType(
     }
     // add generics params to astTypes of fields
     fields.asSequence()
-        .filter { it.type is TypeAST.UserType && it.type.names.first() == this.typeName } // get recursive
+        .filterIsInstance<TypeAST.UserType>() // get recursive
+        .filter { it.names.first() == this.typeName }
         .forEach { field ->
-
-            (field.type as TypeAST.UserType).typeArgumentList.addAll(
+            field.typeArgumentList.addAll(
                 genericTypeFields.map {
                     TypeAST.UserType(
                         name = it.name,
@@ -683,9 +689,22 @@ fun SomeTypeDeclaration.toType(
                 })
         }
 
-    result.typeArgumentList = genericTypeFields
+
+    // fill fields with real types
+    fields.forEachIndexed {i, it ->
+        val type = fieldsTyped[i].type
+        it.type = type
+
+        val unpackedNull = type.unpackNull()
+        if (unpackedNull is Type.UserLike && unpackedNull.typeArgumentList.isNotEmpty()) {
+            genericTypeFields.addAll(unpackedNull.typeArgumentList)
+        }
+    }
+
+    result.typeArgumentList = genericTypeFields.distinctBy { it.name }
     result.fields = fieldsTyped
 
+    this.receiver = result
     return result
 }
 
@@ -766,9 +785,9 @@ fun MessageDeclarationKeyword.toMessageData(
     ?: Resolver.defaultTypes[InternalTypes.Unit]!!
 
     this.returnType = returnType
-    val keywordArgs = this.args.map {
-        val type = it.typeAST?.toType(typeDB, typeTable)
-            ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${it.name}${RED} not registered")
+    val keywordArgs = this.args.map { kwDeclArg ->
+        val type = kwDeclArg.typeAST?.toType(typeDB, typeTable)
+            ?: token.compileError("Type of keyword message ${CYAN}${this.name}${RED}'s arg ${WHITE}${kwDeclArg.name}${RED} not registered")
 
         // lambda can contain generic params, and we need add them to typeArgs
         if (type is Type.Lambda) {
@@ -777,7 +796,7 @@ fun MessageDeclarationKeyword.toMessageData(
         }
 
         KeywordArg(
-            name = it.name,
+            name = kwDeclArg.name,
             type = type
         )
     }
