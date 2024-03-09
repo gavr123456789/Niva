@@ -1364,6 +1364,38 @@ class ParserTest {
 
 
     @Test
+    fun allMsgDeclaration() {
+        val source1 = """
+            Person unary -> Int = 1
+        """.trimIndent()
+
+        val ast = getAstTest(source1)
+        assert(ast.count() == 1)
+
+        val source2 = """
+            Person + binary::Int = 1 echo
+        """.trimIndent()
+
+        val ast2 = getAstTest(source2)
+        assert(ast2.count() == 1)
+
+        val source3 = """
+            Person key::Int word::String = 1 echo
+        """.trimIndent()
+
+        val ast3 = getAstTest(source3)
+        assert(ast3.count() == 1)
+
+        val source4 = """
+            Person withLocalName: x::Int = 1 echo
+        """.trimIndent()
+
+        val ast4 = getAstTest(source4)
+        assert(ast4.count() == 1)
+
+    }
+
+    @Test
     fun extendTypeWithManyMsgs() {
         val source = """
             extend Person [
@@ -1569,28 +1601,16 @@ class ParserTest {
     @Test
     fun extensionLambda() {
         val source = """
-            // sas is method for Person
-            Int sas::Person[Unit -> Unit] = person sas
-            // with args
-            Int sas::Person[Int, String -> Unit] = person sas Int: 1 String: "sas"
-            Int sas::Person[Int, String -> Unit] = sas this: p Int: 1 String: "sas"
-            Int sas::Person[Int, String -> Unit] = person sasInt: 1 String: "sas"
-            
-                        Int sas::Person[x::Int, y::String -> Unit] = person sas Int: 1 String: "sas"
-                        Int sas::Person[x::Int, y::String -> Unit] = sas this: p Int: 1 String: "sas"
-                        Int sas::Person[x::Int, y::String -> Unit] = person [x: 1 String: "sas" -> ]
-                        builder 
-            
-            Int sas::[this::Person -> Unit] = person sas
-            Int sas::[Person -> Unit -> Unit] = person sas
-            Int sas::[on Person -> Unit] = person sas
-            Int sas::[this::Person, x::Int -> Unit] = person sas x: 6
+            Something msg::Person[x::Int, y::Int -> Unit] = [
+                p = Person new
+                // first variant
+                msg this: p x: 1 y: 2
+            ]
         """.trimIndent()
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val msgUnaryDecl = ast[0] as MessageDeclarationUnary
-        assertTrue { msgUnaryDecl.pragmas.count() == 2 }
+        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
     }
 
     @Test

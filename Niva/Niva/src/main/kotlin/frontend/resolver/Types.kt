@@ -260,7 +260,8 @@ sealed class Type(
         val returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
-        var specialFlagForLambdaWithDestruct: Boolean = false
+        var specialFlagForLambdaWithDestruct: Boolean = false,
+        val extensionOfType: Type? = null,
     ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
 
     sealed class InternalLike(
@@ -521,6 +522,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
         }
 
         is TypeAST.Lambda -> {
+
+            val extensionOfType = if (this.extensionOfType != null) {
+                extensionOfType.toType(typeDB, typeTable, selfType)
+            } else null
+
             val lambdaType = Type.Lambda(
                 args = inputTypesList.map {
                     TypeField(
@@ -528,6 +534,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                         name = it.name
                     )
                 }.toMutableList(),
+                extensionOfType = extensionOfType,
                 returnType = this.returnType.toType(typeDB, typeTable, selfType),
             )
 
@@ -803,6 +810,9 @@ fun MessageDeclarationKeyword.toMessageData(
             type = type
         )
     }
+
+
+
     val result = KeywordMsgMetaData(
         name = this.name,
         argTypes = keywordArgs,

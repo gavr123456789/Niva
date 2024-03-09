@@ -430,7 +430,7 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
     // extend Person [
     match("extend")
 
-    val forTypeAst = parseType()
+    val forTypeAst = parseType(true)
     skipNewLinesAndComments()
     matchAssert(TokenType.OpenBracket)
     skipNewLinesAndComments()

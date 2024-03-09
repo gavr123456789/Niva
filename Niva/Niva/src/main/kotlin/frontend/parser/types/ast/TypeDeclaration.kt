@@ -49,7 +49,7 @@ sealed class TypeAST(
         val inputTypesList: List<TypeAST>,
         val returnType: TypeAST,
         token: Token,
-        val extensionOfType: List<String>? = null, // String.[x: Int -> Int]
+        val extensionOfType: TypeAST? = null, // String.[x: Int -> Int]
         isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pragmas: MutableList<Pragma> = mutableListOf()
