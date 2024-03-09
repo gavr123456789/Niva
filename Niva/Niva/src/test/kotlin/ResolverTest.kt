@@ -1,6 +1,7 @@
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.CodeBlock
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ControlFlow
@@ -21,6 +22,7 @@ import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnaryMsgKind
 import main.frontend.parser.types.ast.VarDeclaration
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -990,7 +992,7 @@ class ResolverTest {
         
             { 1 2 3 } joinWith: ", " |> echo
             { alice bob } joinTransform: [ it name ] |> echo
-            { alice bob } joinWith: "\n" transform: [ it name + ": " + it age ] |> echo
+            { alice bob } joinWith: "\n" transform: [ it name + ": " + it age toString ] |> echo
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 6)
@@ -1187,7 +1189,7 @@ class ResolverTest {
             x echo
         """.trimIndent()
 
-        assertFailsWith<main.frontend.meta.CompilerError>(message = "sas") {
+        assertFailsWith<CompilerError>(message = "sas") {
             resolve(source)
         }
 
@@ -1271,9 +1273,77 @@ class ResolverTest {
         val q = statements[1] as TypeDeclaration
         assertTrue {
             ((q.fields.first().type as Type.NullableType).realType as Type.UserType).typeArgumentList.first().name == "T"
-//            q.typeArgs[0] == "T"
         }
     }
+
+    @Test
+    fun genericArgFromInputParamsNotNeedToBeResolved() {
+        val source = """
+            type Node v: T next: Node?
+        
+            Node str2 -> String = next unpackOrError str2
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val str2 = statements[1] as MessageDeclarationUnary
+        val unpackOrErrorType = (str2.body.first() as MessageSendUnary).messages.first().type as Type.UserType
+        assertTrue {
+            unpackOrErrorType.typeArgumentList.isNotEmpty() && unpackOrErrorType.name == "Node"
+        }
+    }
+
+    @Test
+    fun genericParamForMsgSending() {
+        val source = """
+            type Node v: T
+            type LinkedList head: Node? 
+            constructor LinkedList::T empty = 
+                LinkedList::T head: null
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val q = statements[2] as ConstructorDeclaration
+        val w = q.body.first() as MessageSendKeyword
+        val e = w.messages[0] as KeywordMsg
+        val type = e.type as Type.UserType
+        assertTrue(type.typeArgumentList[0] is Type.UnknownGenericType && type.typeArgumentList[0].name == "T")
+    }
+
+    @Test
+    fun genericReceiverWithLambda() {
+        val source = """
+            T sas::[T -> Unit] = 1
+            5 sas: [it + 1]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+    }
+
+    @Test
+    fun genericsWithExplicitDefinedType() {
+        val source = """
+            type Box::T v: Int
+            box = Box::Int v: 5
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[1] as VarDeclaration
+        val w = q.value.type as Type.UserType
+        val e = w.typeArgumentList.first()
+        assertEquals (e.name, "Int")
+    }
+
+    @Test
+    fun twoDifferentTypePlus() {
+        val source = """
+              "sas" + 5
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolve(source)
+        }
+    }
+
+
 
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {

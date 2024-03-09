@@ -124,9 +124,16 @@ fun replaceAllGenericsToRealTypeRecursive(
         if (isSingleGeneric) {
             val resolvedLetterType =
                 letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
-                ?: throw Exception("Compiler bug: can't find generic type: ${YEL}${typeArg.name}${RESET} in letter table for $type")
-            newResolvedTypeArgs2.add(resolvedLetterType)
-            resolvedLetterType.beforeGenericResolvedName = typeArg.name
+                    //?: throw Exception("Compiler bug: can't find generic type: ${YEL}${typeArg.name}${RESET} in letter table for $type")
+            if (resolvedLetterType != null) {
+                newResolvedTypeArgs2.add(resolvedLetterType)
+                resolvedLetterType.beforeGenericResolvedName = typeArg.name
+            } else {
+                // we need to know from here, is this generic need to be resolved or not
+                newResolvedTypeArgs2.add(typeArg)
+//                println("olala, looks like the $typeArg is Known generic")
+//                TODO()
+            }
         } else if (typeArg is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
             newResolvedTypeArgs2.add(
                 replaceAllGenericsToRealTypeRecursive(

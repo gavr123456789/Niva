@@ -20,7 +20,7 @@ sealed class MessageDeclaration(
     val typeArgs: MutableList<String> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
-        return "${forTypeAst.name} $name -> ${returnType?.name ?: returnTypeAST?.name ?: "Unit"}"
+        return "${forTypeAst.name} $name -> ${returnType?.toString() ?: returnTypeAST?.name ?: "Unit"}"
     }
 }
 

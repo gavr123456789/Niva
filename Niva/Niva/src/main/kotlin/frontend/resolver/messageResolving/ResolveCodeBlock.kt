@@ -100,8 +100,10 @@ fun Resolver.resolveCodeBlock(
 
                     val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
-                    if (sameButResolvedArg.name.length == 1) {
-                        throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
+                    if (sameButResolvedArg.name.isGeneric()) {
+                        // check that current resolving message declaration has some generics
+//                        println("olala, looks like the $sameButResolvedArg is Known generic")
+//                        throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
                     }
                     genericLetterToTypesOfReceiver[it.name] = sameButResolvedArg
                 } else if (beforeName != null && beforeName.isGeneric()) {
@@ -120,7 +122,7 @@ fun Resolver.resolveCodeBlock(
                     typeOfFirstArgs
                 } else {
                     val foundRealType = genericLetterToTypesOfReceiver[typeOfFirstArgs.name]
-                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock")
+                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock, use receiver that has generic param")
                     foundRealType
                 }
                 previousAndCurrentScope["it"] = typeForIt
@@ -140,7 +142,7 @@ fun Resolver.resolveCodeBlock(
                         } else {
                             val foundRealType = genericLetterToTypesOfReceiver[typeField.type.name]
                                 ?: genericLetterToTypes[typeField.type.name]
-                                ?: statement.token.compileError("Compiler error: Can't find resolved type ${typeField.type.name} while resolving codeblock")
+                                ?: statement.token.compileError("Compiler error: Can't find resolved type ${typeField.type.name} while resolving codeblock, use receiver with some generic field")
                             foundRealType
                         }
 

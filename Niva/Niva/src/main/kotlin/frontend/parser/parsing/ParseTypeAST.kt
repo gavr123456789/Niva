@@ -129,7 +129,6 @@ fun Parser.parseType(): TypeAST {
                 return parseLambda(path)
             }
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
-
         }
 
         // one identifier

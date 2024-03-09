@@ -56,11 +56,11 @@ fun Resolver.resolveMessageDeclaration(
         return true
     }
     // but wait maybe some generic param's type is unresolved (List::T unary = [])
-    if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty() && forType is Type.UserLike) {
+    if (forType is Type.UserLike && st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty()) {
         var alTypeArgsAreFound = true
         val newListOfTypeArgs = mutableListOf<Type>()
         st.forTypeAst.typeArgumentList.forEach {
-            val type = typeTable[it.name]//testing
+            val type = if (it.name.isGeneric()) Type.UnknownGenericType(it.name) else typeTable[it.name] //testing
 //                val testDB = typeDB.getType(it.name)
 
             if (type != null) {
@@ -81,15 +81,6 @@ fun Resolver.resolveMessageDeclaration(
     unResolvedMessageDeclarations.remove(currentPackageName, st)
     st.forType = forType
 
-
-    // it can be a field, that will clash with setter
-//    if (forType is Type.UserType) {
-//        val fieldWithTheSameName = forType.fields.find { it.name == st.name }
-//
-//        if (fieldWithTheSameName != null) {
-//            st.token.compileError("Type ${YEL}${st.forTypeAst.name}${RESET} already has field with name ${WHITE}${st.name}${RESET}, so it will clash with the setter of that field ${WHITE}${st.forTypeAst.name.lowercase()} ${CYAN}${st.name}: ${WHITE}newValue")
-//        }
-//    }
 
     val bodyScope = mutableMapOf<String, Type>()
 
@@ -217,6 +208,7 @@ fun Resolver.resolveMessageDeclaration(
     }
 
     // no return type declared, not recursive, single expr
+    // body is not resolved and no returnTypeAst, so we cant infer return type
     if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
         unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
         currentLevel--
@@ -231,6 +223,11 @@ fun Resolver.resolveMessageDeclaration(
 
     if (needResolveOnlyBody) {
         resolveBody()
+    }
+
+    if (st is ConstructorDeclaration) {
+        st.msgDeclaration.forType = st.forType
+        st.msgDeclaration.returnType = st.returnType
     }
 
     return false

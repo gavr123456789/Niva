@@ -532,7 +532,9 @@ fun Resolver.resolveReturnTypeIfGeneric(
             letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
             ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
-    } else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
+    }
+    // если ретурн тип ту стринг есть среди параметров функции имеющих дженерики, или
+    else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
         replaceAllGenericsToRealTypeRecursive(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
@@ -540,25 +542,3 @@ fun Resolver.resolveReturnTypeIfGeneric(
         returnTypeFromDb // return without changes
 
 }
-
-fun <T> T?.unpack(): T {
-    return this!!
-}
-
-fun <T> List<T?>.sas() {
-    val q = this.last()
-    val w = q.unpack()
-}
-
-// если женерик пришел в функцию из одного из параметров, тогда его резолвить не надо
-// но это нельзя определить чисто по букве
-// List здесь типа KnownGeneric потому что это параметр извне
-fun <T> List<T?>.sus() {
-    val q = this.last()
-    val w = q.unpack()
-    // using different T, but here we need to resolve it, unlike the top one
-    listOf(1).forEach {
-
-    }
-}
-

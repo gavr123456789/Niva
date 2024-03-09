@@ -56,7 +56,7 @@ class MessageSendKeyword(
     token: Token
 ) : MessageSend(receiver, messages, type, token) {
     override fun toString(): String {
-        return "$receiver" + messages.joinToString(" ")
+        return "$receiver " + messages.joinToString(" ")
     }
 }
 
