@@ -1343,6 +1343,22 @@ class ResolverTest {
         }
     }
 
+    @Test
+    fun lambdaWithReceiver() {
+        val source = """
+            String msg::String[Int, Int -> Unit] = [
+                str = "sas"
+                msg this: str Int: 1 Int: 2
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as MessageDeclarationKeyword
+        val w = q.args[0].typeAST!! as TypeAST.Lambda
+        assertTrue { w.extensionOfType!!.name == "String" }
+    }
+
+
 
 
 //    @Test

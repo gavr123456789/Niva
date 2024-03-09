@@ -1,6 +1,7 @@
 package main.frontend.parser.parsing
 
 import frontend.parser.parsing.*
+import frontend.resolver.Type.RecursiveType.name
 import main.frontend.meta.*
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.TypeAST
@@ -8,7 +9,7 @@ import main.utils.isSimpleTypes
 
 
 // use only after ::
-fun Parser.parseType(): TypeAST {
+fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
@@ -51,11 +52,18 @@ fun Parser.parseType(): TypeAST {
         matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
         val isNullable = match("?")
 
-        val q = receiverType?.last()?.let { "$it." } ?: ""
+        val q = receiverType?.last() ?: ""
+
+        val extensionType = if (receiverType != null) TypeAST.UserType(
+            name = q,
+            names = receiverType,
+            token = tok
+        ) else null
+
         return TypeAST.Lambda(
             name = q + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
             inputTypesList = listOfInputTypes,
-            extensionOfType = receiverType,
+            extensionOfType = extensionType,
             token = tok,
             returnType = returnType,
             isNullable = isNullable,
@@ -111,23 +119,22 @@ fun Parser.parseType(): TypeAST {
         }
 
     }
-
+    val isIdentifier = tok.isIdentifier()
     // tok already eaten so check on distance 0
-    if (tok.isIdentifier() && (check(TokenType.DoubleColon, 1)) || check(TokenType.OpenParen, 1)) {
+    if (isIdentifier && (check(TokenType.DoubleColon, 1)) || check(TokenType.OpenParen, 1)) {
         // generic
         // x::List::Map::(int, string)
         return parseGenericType()
-    } else if (tok.isIdentifier()) {
+    } else if (isIdentifier) {
         step() // skip tok ident
         // can be dot separated
 
         val path = mutableListOf(tok.lexeme)
 
-
+        if (!isExtendDeclaration && match(TokenType.OpenBracket)) {
+            return parseLambda(path)
+        }
         while (match(TokenType.Dot)) {
-            if (match(TokenType.OpenBracket)) {
-                return parseLambda(path)
-            }
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
         }
 

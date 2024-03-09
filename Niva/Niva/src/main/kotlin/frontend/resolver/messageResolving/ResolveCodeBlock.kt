@@ -85,9 +85,13 @@ fun Resolver.resolveCodeBlock(
         ) as KeywordMsgMetaData
         metaDataFound = metaDataFromDb
         val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
-
+        // T sas -> T = []
+        // 4 sas
+        // adding Int as T
+        if (metaDataFromDb.forGeneric) {
+            genericLetterToTypesOfReceiver["T"] = rootReceiverType
+        }
         // List(T, G) map::[T -> G] -> G = []
-
         if (rootReceiverType is Type.UserType && rootReceiverType.typeArgumentList.isNotEmpty()) {
             val rootType = rootReceiverType.copy()
 
@@ -109,7 +113,6 @@ fun Resolver.resolveCodeBlock(
                 } else if (beforeName != null && beforeName.isGeneric()) {
                     // was resolved somehow
                     genericLetterToTypesOfReceiver[beforeName] = it
-
                 }
             }
         }

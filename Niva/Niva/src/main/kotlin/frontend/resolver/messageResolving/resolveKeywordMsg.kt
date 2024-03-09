@@ -171,11 +171,17 @@ fun Resolver.resolveKeywordMsg(
 
     // if receiverType is lambda then we need to check does it have same argument names and types
     if (receiverType is Type.Lambda) {
+        val argsWithPossibleReceiver = if (receiverType.extensionOfType != null) {
+            receiverType.args.addFirst(TypeField(name = "this", type = receiverType.extensionOfType))
+            receiverType.args
+        }
+        else receiverType.args
 
-        if (receiverType.args.count() != statement.args.count()) {
+        if (argsWithPossibleReceiver.count() != statement.args.count()) {
             val setOfHaveFields = statement.args.map { it.name }.toSet()
-            val setOfNeededFields = receiverType.args.map { it.name }.toSet()
-            val extraOrMissed = statement.args.count() > receiverType.args.count()
+
+            val setOfNeededFields = argsWithPossibleReceiver.map { it.name }.toSet()
+            val extraOrMissed = statement.args.count() > argsWithPossibleReceiver.count()
             val whatIsMissingOrExtra =
                 if (extraOrMissed)
                     (setOfHaveFields - setOfNeededFields).joinToString(", ") { it }
@@ -195,12 +201,12 @@ fun Resolver.resolveKeywordMsg(
         statement.args.forEachIndexed { ii, it ->
             // name check
             // if it lambda, then any arg name is valid
-            if (it.keywordArg.type !is Type.Lambda && it.name != receiverType.args[ii].name) {
+            if (it.keywordArg.type !is Type.Lambda && it.name != argsWithPossibleReceiver[ii].name) {
                 statement.token.compileError("$YEL${it.name}${RESET} is not valid arguments for codeblock $WHITE${statement.receiver.str}$RESET, the valid arguments are: $YEL${receiverType.args.map { it.name }}")
             }
             // type check
             val isTypesEqual =
-                compare2Types(it.keywordArg.type!!, receiverType.args[ii].type, it.keywordArg.token)
+                compare2Types(it.keywordArg.type!!, argsWithPossibleReceiver[ii].type, it.keywordArg.token)
             if (!isTypesEqual) {
                 statement.token.compileError(
                     "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid type for codeblock $WHITE${statement.receiver.str}${RESET}, the valid arguments are: $YEL${receiverType.args.map { it.type }}"
