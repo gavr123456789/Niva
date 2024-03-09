@@ -389,7 +389,7 @@ sealed class Type(
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
 
-    class KnownGenericType(
+    sealed class GenericType(
         name: String,
         typeArgumentList: List<Type>,
         pkg: String,
@@ -398,14 +398,17 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
+    class KnownGenericType(
+        name: String,
+        typeArgumentList: List<Type>,
+        pkg: String = "common",
+    ) : GenericType(name, typeArgumentList, pkg)
+
     class UnknownGenericType(
         name: String,
         typeArgumentList: List<Type> = listOf(),
-        fields: MutableList<TypeField> = mutableListOf(),
-        isPrivate: Boolean = true,
         pkg: String = "common",
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
+    ) : GenericType(name, typeArgumentList, pkg) {
         override fun toString(): String {
             return name
         }
@@ -764,7 +767,7 @@ fun MessageDeclarationBinary.toMessageData(
     this.returnType = returnType
 
 
-    val argType = this.forTypeAst.toType(typeDB, typeTable)
+    val argType = this.arg.typeAST?.toType(typeDB, typeTable) ?: this.token.compileError("Type for binary msg not specified")
 
     val result = BinaryMsgMetaData(
         name = this.name,

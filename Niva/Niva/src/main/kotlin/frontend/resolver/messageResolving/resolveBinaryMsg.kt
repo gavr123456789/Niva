@@ -1,22 +1,19 @@
 package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
-import frontend.resolver.Resolver
-import frontend.resolver.Type
-import frontend.resolver.resolve
-import frontend.resolver.resolveExpressionInBrackets
+import frontend.resolver.*
 import main.utils.CYAN
 import main.utils.RESET
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.BinaryMsg
-import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.resolver.findAnyMsgType
+import main.utils.WHITE
+import main.utils.YEL
 
 fun Resolver.resolveBinaryMsg(
     statement: BinaryMsg,
     previousAndCurrentScope: MutableMap<String, Type>,
-    )
-{
+) {
     val receiver = statement.receiver
 
     if (receiver.type == null) {
@@ -28,7 +25,8 @@ fun Resolver.resolveBinaryMsg(
 
 
     // resolve messages
-    if (statement.unaryMsgsForArg.isNotEmpty()) {
+    val isUnaryForArg = statement.unaryMsgsForArg.isNotEmpty()
+    if (isUnaryForArg) {
         currentLevel++
         resolve(statement.unaryMsgsForArg, previousAndCurrentScope, statement)
         currentLevel--
@@ -42,14 +40,17 @@ fun Resolver.resolveBinaryMsg(
     }
 
     // 1 < (this at: 0)
-    if (statement.argument is ExpressionInBrackets) {
-        resolveExpressionInBrackets(statement.argument, previousAndCurrentScope)
+    val argument = statement.argument
+    resolve(listOf(argument), previousAndCurrentScope)
+    val argumentType = if (isUnaryForArg) statement.unaryMsgsForArg.last().type else argument.type
+    if (argumentType == null) {
+        argument.token.compileError("Compiler bug: binary arg: $argument has no type resolved")
     }
 
     // q = "sas" + 2 toString
     // find message for this type
-    val messageReturnType =
-        (if (isUnaryForReceiver)
+    val messageTypeFromDb =
+        if (isUnaryForReceiver)
             findAnyMsgType(
                 statement.unaryMsgsForReceiver.last().type!!,
                 statement.selectorName,
@@ -58,9 +59,14 @@ fun Resolver.resolveBinaryMsg(
             )
         else
             findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
-                )
 
-    statement.type = messageReturnType.returnType
-    statement.pragmas = messageReturnType.pragmas
+
+    if (messageTypeFromDb is BinaryMsgMetaData && !compare2Types(argumentType, messageTypeFromDb.argType)) {
+//        println("aloxa")
+        argument.token.compileError("Binary msg $WHITE$statement$RESET has type: $YEL$messageTypeFromDb$RESET, but argument $WHITE$argument$RESET is of type $YEL$argumentType")
+    }
+
+    statement.type = messageTypeFromDb.returnType
+    statement.pragmas = messageTypeFromDb.pragmas
 
 }

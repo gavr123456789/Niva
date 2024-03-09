@@ -130,9 +130,7 @@ fun Resolver.resolveUnaryMsg(
         if (returnTypeFromDb is Type.UnknownGenericType && msgFromDb.forGeneric) {
             letterToTypeFromReceiver["T"] = receiverType
         }
-        // 1! если мы внутри функции в которой имеется тайп параметр Т, то ресолвить его не нужно
-        // "resolvingMsgDecl". type args
-        // resolve return type generic
+
         val typeForStatement =
             resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
         statement.type = typeForStatement

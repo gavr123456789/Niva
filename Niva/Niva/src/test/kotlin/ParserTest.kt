@@ -1640,6 +1640,19 @@ class ParserTest {
         assert((ast[0] as MessageDeclarationUnary).returnTypeAST?.isNullable == true)
     }
 
+    @Test
+    fun typedCall() {
+        // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
+        val source = """
+            list::Int sas
+            list::Int + 1
+            list::Int sas: "text"
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+    }
+
 //    @Test
 //    fun unaryOnManyLines() {
 //

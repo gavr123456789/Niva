@@ -11,15 +11,9 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.*
-import main.utils.CYAN
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
+import main.utils.*
 import java.io.File
 import java.util.Stack
-import main.utils.div
-import main.utils.endOfSearch
-import main.utils.findSimilar
 
 private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
 //    infoTypesToPrint.add(type)
@@ -127,7 +121,7 @@ private fun Resolver.resolveStatement(
                 rootStatement
             } else null
 
-            getTypeForIdentifier(
+            statement.type = getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
             val type = statement.type
@@ -221,7 +215,6 @@ private fun Resolver.resolveStatement(
                 // this is <-, not =
                 val w = statement.value.type!!
                 if (!compare2Types(q, w, unpackNullForFirst = true)) {
-
                     statement.token.compileError("In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             }
@@ -278,6 +271,7 @@ fun Resolver.resolve(
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
 
+
     statements.forEach { statement ->
 
         resolveStatement(
@@ -286,8 +280,12 @@ fun Resolver.resolve(
             previousScope,
             rootStatement
         )
+
+//        println("$currentLevel on line ${statement.token.line} resolving1 ${statement::class.simpleName} $statement")
+
     }
 
+    // we need to filter this things, only ifcurrent level is 0
     topLevelStatements = topLevelStatements.filter {
         !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind" || it.receiver.str == "Compiler"))
     }.toMutableList()
@@ -385,10 +383,10 @@ fun compare2Types(
     if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
         type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType)
     ) {
-        if (!isOut)
-            return true // getting T but got Int, is OK
-        if (isOut)
-            return false // -> T, but Int returned
+        return if (!isOut)
+            true // getting T but got Int, is OK
+        else
+            false // -> T, but Int returned
     }
 
     // if both are generics of the different letters
@@ -396,10 +394,10 @@ fun compare2Types(
         // if we return than its wrong
         // -> G, but T is returned
         // if we get than it's ok
-        if (isOut)
-            return false // returning T, but -> G declarated
-        if (!isOut)
-            return true // getting T, but got G is OK
+        return if (isOut)
+            false // returning T, but -> G declarated
+        else
+            true // getting T, but got G is OK
     }
 
 
@@ -831,16 +829,21 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?: getType2(x.name, currentScope, previousScope, kw)
-//    else getType(
-//        x.name,
-//        currentScope,
-//        previousScope
-//    )
+        getType2(x.names.first(), currentScope, previousScope, kw) ?:
+        getType2(x.name, currentScope, previousScope, kw)
+
         ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
 
-    x.type = type
-    return type
+
+    val typeWithGenericResolved =  if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
+        // replace Generic from typeAst with sas
+        val e = getType2(x.typeAST.name, currentScope, previousScope, kw)!!
+        val copy = type.copy()
+        copy.typeArgumentList = listOf(e)
+        copy
+    } else type
+//    x.type = type
+    return typeWithGenericResolved
 }
 
 

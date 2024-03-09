@@ -67,7 +67,8 @@ fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     return genericsFromReceiverAndReturnType
 }
 
-fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+// fun ReceiverType^
+fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildString {
     append("fun ")
     // return type can be generic
     // receiver can be generic
@@ -81,12 +82,14 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     }
 
     append(forTypeAst.generateType(false))
+
     if (isStatic) {
         append(".Companion")
     }
+
     // if forType is generic
     val forType2 = forType
-    if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty()) {
+    if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty() && !isStatic) {
         append("<")
         val typeArgs = mutableListOf<String>()
         typeArgs.addAll(forType2.typeArgumentList.map { it.name }.toSet())
@@ -96,15 +99,19 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
         }
         append(">")
     }
+}
 
-    // x.sas^
+fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+    append(funGenerateReceiver(isStatic))
+
+    // fun Int.sas^() {...}
     append(".", name)
 
     append("(")
     pragmas.addInvisibleArgsToMethodDeclaration(listOf(), this)
     append(")")
 
-    bodyPart(this@generateUnaryDeclaration, this)
+    returnTypeAndBodyPart(this@generateUnaryDeclaration, this)
 }
 
 fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false) = buildString {
@@ -112,26 +119,13 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
         return operators[x]!!
     }
 
-    //            operator fun Int.plus(increment: Int): Counter {
-    //              this.echo()
-    //            }
+    append("operator ")
+    append(funGenerateReceiver(isStatic))
 
-    append("operator fun ")
-    // generics
-    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaration()
-
-    if (genericsFromReceiverAndReturnType.isNotEmpty()) {
-        append("<")
-        append(genericsFromReceiverAndReturnType.joinToString(", "))
-        append(">")
-    }
-    //
-
-    if (isStatic) {
-        append(".Companion")
-    }
+    // receiver type end
     val operatorName = operatorToString(name)
     append(".", operatorName, "(", arg.name)
+    // operator fun Int.plus^(x: Int) {}
 
     // args
     if (arg.typeAST != null) {
@@ -142,7 +136,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 
     append(")")
     // operator fun int.sas(...)
-    bodyPart(this@generateBinaryDeclaration, this)
+    returnTypeAndBodyPart(this@generateBinaryDeclaration, this)
 }
 
 fun MutableList<Pragma>.addInvisibleArgsToMethodDeclaration(args: List<KeywordDeclarationArg>, builder: StringBuilder) {
@@ -154,22 +148,9 @@ fun MutableList<Pragma>.addInvisibleArgsToMethodDeclaration(args: List<KeywordDe
 }
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
+    append(funGenerateReceiver(isStatic))
 
-    append("fun ")
-
-    val genericsFromReceiverAndReturnType = getGenericsFromMessageDeclaration()
-
-    if (genericsFromReceiverAndReturnType.isNotEmpty()) {
-        append("<")
-        append(genericsFromReceiverAndReturnType.joinToString(", "))
-        append(">")
-    }
-
-    append(forTypeAst.generateType())
-    if (isStatic) {
-        // if this is the constructor, then method on Companion
-        append(".Companion")
-    }
+    // fun Person^.sas() {}
     append(".", name, "(")
 
     // Args
@@ -187,20 +168,17 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     // if ctArgs, add receiver and arg
     pragmas.addInvisibleArgsToMethodDeclaration(args, this)
 
-
     append(")")
-
-
-    bodyPart(this@generateKeywordDeclaration, this)
+    returnTypeAndBodyPart(this@generateKeywordDeclaration, this)
 }
 
 
-private fun bodyPart(
+private fun returnTypeAndBodyPart(
     messageDeclaration: MessageDeclaration,
     stringBuilder: StringBuilder
 ) {
     if (messageDeclaration.returnTypeAST != null) {
-        stringBuilder.append(": ", messageDeclaration.returnTypeAST.generateType())
+        stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
     }
     if (messageDeclaration.body.isEmpty()) {
         stringBuilder.append(" { }\n")

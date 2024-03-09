@@ -24,8 +24,7 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
 
 
-    // List::Int sas = [] - unary
-    // x::[Int->Int] = [] - value
+
 
     if (kind == TokenType.Dot) {
         return expression(dot = true)
@@ -36,16 +35,25 @@ fun Parser.statement(): Statement {
         if (lastStatement is Expression) {
             tree.removeLast()
             return NeedInfo(lastStatement, step())
-        }
-        else peek().compileError("Dot not after expression")
+        } else peek().compileError("Dot not after expression")
     }
 
-    if (tok.isIdentifier() && tok.lexeme[0].isLowerCase() &&
-        (check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1))
+    if (tok.isIdentifier() &&
+        check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1)
         || kind == TokenType.Mut
     ) {
-        return varDeclaration()
+        val q = varDeclaration()
+        if (q != null) return q
     }
+//
+//    if (tok.isIdentifier() && tok.lexeme[0].isLowerCase() &&
+//        (check(TokenType.Assign, 1) || (check(TokenType.DoubleColon, 1) && check(TokenType.Assign, 2)))
+//        || kind == TokenType.Mut
+//    ) {
+//        // List::Int sas = [] - unary
+//        // x::[Int->Int] = [] - value
+//        return varDeclaration()
+//    }
     if (kind == TokenType.Type) {
         return typeDeclaration(pragmas)
     }
@@ -111,10 +119,6 @@ fun Parser.statement(): Statement {
 
     if (kind == TokenType.EndOfFile) {
         tok.compileError("Nothing to compile :(")
-    }
-
-    if (kind == TokenType.Bang) {
-        println("bang-bang")
     }
 
     val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
@@ -308,7 +312,7 @@ fun Parser.expression(
 
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = singleExpr,
+                        thenDoExpression = singleExpr as Expression,
                         listOf()
                     )
                 } else {

@@ -259,9 +259,8 @@ fun Resolver.resolveControlFlow(
                     firstBranchReturnType = it.getReturnTypeOrThrow()
                 }
             }
-            if (firstBranchReturnType == null) {
-                statement.token.compileError("Can't infer return type of the first branch, probably bug")
-            }
+            val firstBranchReturnType2 = firstBranchReturnType
+                ?: statement.token.compileError("Can't infer return type of the first branch, probably bug")
 
             statement.switch.type = savedSwitchType
 
@@ -281,9 +280,9 @@ fun Resolver.resolveControlFlow(
                 }
 //                val elseReturnType = lastExpr.type!!
                 val elseReturnTypeName = elseReturnType.name
-                val firstReturnTypeName = firstBranchReturnType.name
+                val firstReturnTypeName = firstBranchReturnType2.name
                 if (elseReturnTypeName != firstReturnTypeName) {
-                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstReturnTypeName$RESET != $YEL$elseReturnTypeName$RESET)")
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnTypeName$RESET)")
                 }
                 statement.type = elseReturnType
             } else if (thisIsTypeMatching) {
@@ -309,7 +308,7 @@ fun Resolver.resolveControlFlow(
                         }
 
                         if (statement.type == null) {
-                            statement.type = firstBranchReturnType
+                            statement.type = firstBranchReturnType2
                         }
                     }
 

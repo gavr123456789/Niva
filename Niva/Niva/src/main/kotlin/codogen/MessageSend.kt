@@ -5,13 +5,9 @@ package main.codogen
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.Type
-import main.utils.CYAN
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
-import main.utils.GlobalVariables
+import main.utils.*
 
 
 val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
@@ -258,7 +254,6 @@ fun generateSingleKeyword(
     withNullChecks: Boolean = false,
     invisibleArgs: List<String>? = null
 ) = buildString {
-
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
     val receiverCode = buildString {
@@ -292,6 +287,11 @@ fun generateSingleKeyword(
         append(
             receiver.generateExpression()
         )
+
+        if (receiver is IdentifierExpr && receiver.typeAST != null && receiver.typeAST.name.isGeneric()) {
+            append("<", receiver.typeAST.name, ">")
+        }
+
         if (needBrackets) append(")")
 
     }
@@ -412,11 +412,18 @@ fun generateSingleUnary(
         UnaryMsgKind.Unary -> {
             if (it.selectorName != "new") {
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
-                if (invisibleArgs == null)
-                    append(it.selectorName, "()")
+                append(it.selectorName)
+
+                if (receiver is IdentifierExpr && receiver.typeAST != null) {
+                    append("<", receiver.typeAST.name, ">")
+                }
+
+                if (invisibleArgs == null) {
+                    append("()")
+                }
                 else {
                     // add invisible args
-                    append(it.selectorName, "(")
+                    append("(")
                     append(invisibleArgs.joinToString(", "))
                     append(")")
                 }
