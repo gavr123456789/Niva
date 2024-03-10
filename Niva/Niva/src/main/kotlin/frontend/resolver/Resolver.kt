@@ -6,6 +6,7 @@ import frontend.parser.types.ast.KeyPragma
 import frontend.resolver.Type.RecursiveType.copy
 import frontend.resolver.messageResolving.resolveCodeBlock
 import main.codogen.GeneratorKt
+import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -323,9 +324,27 @@ fun compare2Types(
 ): Boolean {
     if (type1 === type2) return true
 
+
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
-        if (type1.args.count() != type2.args.count()) {
-            token?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${type1.args.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${type2.args.count()}")
+
+        val argsOf1 = if (type1.extensionOfType != null)
+            type1.args.drop(1)
+        else type1.args
+
+        val argsOf2 = if (type2.extensionOfType != null)
+            type2.args.drop(1)
+        else type2.args
+
+        if (type1.extensionOfType != null && type2.extensionOfType != null) {
+            if (!compare2Types(type1.extensionOfType, type2.extensionOfType)) {
+                val text = "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
+                token?.compileError(text)
+                throw CompilerError(text)
+            }
+        }
+
+        if (argsOf1.count() != argsOf2.count()) {
+            token?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
             return false
         }
 
@@ -338,8 +357,8 @@ fun compare2Types(
         }
         //
 
-        type1.args.forEachIndexed { i, it ->
-            val it2 = type2.args[i]
+        argsOf1.forEachIndexed { i, it ->
+            val it2 = argsOf2[i]
             val isEqual = compare2Types(it.type, it2.type)
             if (!isEqual) {
                 token?.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
@@ -928,7 +947,6 @@ val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.Us
 }
 
 
-@Suppress("UNUSED_VARIABLE")
 class Resolver(
     val projectName: String,
 

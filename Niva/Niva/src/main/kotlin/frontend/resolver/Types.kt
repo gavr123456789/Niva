@@ -75,7 +75,6 @@ class KeywordMsgMetaData(
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
-    specialTempFlagForLambdasWithDestruct: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
@@ -527,13 +526,23 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                 extensionOfType.toType(typeDB, typeTable, selfType)
             } else null
 
-            val lambdaType = Type.Lambda(
-                args = inputTypesList.map {
+
+            val args = if (extensionOfType!=null) {
+                inputTypesList.drop(1).map {
                     TypeField(
-                        type = it.toType(typeDB, typeTable, selfType),
-                        name = it.name
+                        type = it.toType(typeDB, typeTable, selfType), name = it.name
                     )
-                }.toMutableList(),
+                }.toMutableList().also { it.addFirst(
+                    TypeField(type = extensionOfType, name = "this")
+                ) }
+            } else inputTypesList.map {
+                TypeField(
+                    type = it.toType(typeDB, typeTable, selfType), name = it.name
+                )
+            }.toMutableList()
+
+            val lambdaType = Type.Lambda(
+                args = args,
                 extensionOfType = extensionOfType,
                 returnType = this.returnType.toType(typeDB, typeTable, selfType),
             )
