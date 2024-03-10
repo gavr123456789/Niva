@@ -2,26 +2,7 @@ import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
 import main.frontend.meta.CompilerError
-import main.frontend.parser.types.ast.CodeBlock
-import main.frontend.parser.types.ast.ConstructorDeclaration
-import main.frontend.parser.types.ast.ControlFlow
-import main.frontend.parser.types.ast.Expression
-import main.frontend.parser.types.ast.IdentifierExpr
-import main.frontend.parser.types.ast.KeywordLikeType
-import main.frontend.parser.types.ast.KeywordMsg
-import main.frontend.parser.types.ast.ListCollection
-import main.frontend.parser.types.ast.MessageDeclaration
-import main.frontend.parser.types.ast.MessageDeclarationBinary
-import main.frontend.parser.types.ast.MessageDeclarationKeyword
-import main.frontend.parser.types.ast.MessageDeclarationUnary
-import main.frontend.parser.types.ast.MessageSendKeyword
-import main.frontend.parser.types.ast.MessageSendUnary
-import main.frontend.parser.types.ast.Statement
-import main.frontend.parser.types.ast.TypeAST
-import main.frontend.parser.types.ast.TypeDeclaration
-import main.frontend.parser.types.ast.UnaryMsg
-import main.frontend.parser.types.ast.UnaryMsgKind
-import main.frontend.parser.types.ast.VarDeclaration
+import main.frontend.parser.types.ast.*
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1358,7 +1339,26 @@ class ResolverTest {
         assertTrue { w.extensionOfType!!.name == "String" }
     }
 
-
+    @Test
+    fun lambdaWithReceiverCall() {
+        val source = """
+            String msg::String[Int, Int -> Unit] = [
+                str = "sas"
+                msg this: str Int: 1 Int: 2
+            ]
+            
+            "sas" msg: [ x, y -> 
+                 this + "sas"
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[1] as MessageSendKeyword
+        val w = (q.messages.first() as KeywordMsg).args.first().keywordArg as CodeBlock
+        val e = w.statements.first() as MessageSendBinary
+        val r = e.receiver as IdentifierExpr
+        assertTrue { r.name == "this" && r.type?.name == "String" }
+    }
 
 
 //    @Test

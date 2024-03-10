@@ -1,0 +1,8 @@
+String msg::String[Int, Int -> Unit] = [
+    str = "sas"
+    msg this: this Int: 1 Int: 2
+]
+
+"sus" msg: [ x, y ->
+     this + "sas" + (x + y |> toString) |> echo
+]

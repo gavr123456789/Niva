@@ -18,13 +18,20 @@ fun TypeAST.generateType(generateGeneric: Boolean = true, customGenerics: Set<St
         }
 
         is TypeAST.Lambda -> {
-                append("(")
-                inputTypesList.forEach {
-                    append(it.generateType(), ",")
-                }
-                append(") -> ")
+            val realArgs = if (extensionOfType != null) {
+                // fun sas(x: ^Int.(Int) -> String) =
+                val kotlinExtType = extensionOfType.generateType()
+                append(kotlinExtType, ".")
+                inputTypesList.drop(1)
+            } else inputTypesList
 
-                append(returnType.generateType())
+            append("(")
+            realArgs.forEach {
+                append(it.generateType(), ",")
+            }
+            append(") -> ")
+
+            append(returnType.generateType())
         }
     }
 

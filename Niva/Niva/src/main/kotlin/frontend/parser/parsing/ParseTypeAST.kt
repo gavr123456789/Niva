@@ -1,7 +1,6 @@
 package main.frontend.parser.parsing
 
 import frontend.parser.parsing.*
-import frontend.resolver.Type.RecursiveType.name
 import main.frontend.meta.*
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.TypeAST
@@ -29,8 +28,8 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     }
 
     // lambda
-    fun parseLambda(receiverType: List<String>? = null): TypeAST.Lambda {
-        fun listOfInputTypes(): List<TypeAST> {
+    fun parseLambda(extensionTypeName: List<String>? = null): TypeAST.Lambda {
+        fun listOfInputTypes(): MutableList<TypeAST> {
             val result = mutableListOf<TypeAST>()
             // anyType, anyType, ...
             do {
@@ -45,20 +44,25 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
         // [anyType, anyType -> anyType]?
         // [ -> anyType]
         val thereIsReturnArrowAndCloseBracket = check(TokenType.ReturnArrow) || check(TokenType.CloseBracket)
-        val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else listOf()
+        val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else mutableListOf()
         match(TokenType.ReturnArrow)
 
         val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
         matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
         val isNullable = match("?")
 
-        val q = receiverType?.last() ?: ""
+        val q = extensionTypeName?.last() ?: ""
 
-        val extensionType = if (receiverType != null) TypeAST.UserType(
-            name = q,
-            names = receiverType,
-            token = tok
-        ) else null
+        val extensionType = if (extensionTypeName != null) {
+            val x = TypeAST.UserType(
+                name = q,
+                names = extensionTypeName,
+                token = tok
+            )
+            listOfInputTypes.addFirst(x)
+            x
+        }
+        else null
 
         return TypeAST.Lambda(
             name = q + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",

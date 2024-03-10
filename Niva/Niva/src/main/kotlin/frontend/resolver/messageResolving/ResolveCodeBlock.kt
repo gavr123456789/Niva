@@ -51,7 +51,7 @@ fun Resolver.resolveCodeBlock(
         statement.isSingle = true
     }
 
-    val namedLambdaArgs = statement.inputList
+    val namedLambdaArgs =  statement.inputList
     namedLambdaArgs.forEach {
         if (it.typeAST != null) {
             it.type = it.typeAST.toType(typeDB, typeTable)//fix
@@ -118,9 +118,20 @@ fun Resolver.resolveCodeBlock(
         }
         val currentArgType = currentArg.type
         if (currentArgType is Type.Lambda) {
+            // if this is lambda with receiver, then remove this arg
+            val lambdaArgsFromDb = if (currentArgType.extensionOfType != null) {
+                if (currentArgType.args.first().name != "this") {
+                    statement.token.compileError("Compiler bug, no this arg in extension lambda")
+                }
+//                thisArgType = currentArgType.extensionOfType
+                previousAndCurrentScope["this"] = currentArgType.extensionOfType
+                currentArgType.args.drop(1)
+            } else currentArgType.args
+
+
             // if this is lambda with one arg, and no namedArgs, then add 'it' to scope
-            if (currentArgType.args.count() == 1 && namedLambdaArgs.isEmpty()) {
-                val typeOfFirstArgs = currentArgType.args[0].type
+            if (lambdaArgsFromDb.count() == 1 && namedLambdaArgs.isEmpty()) {
+                val typeOfFirstArgs = lambdaArgsFromDb[0].type
                 val typeForIt = if (typeOfFirstArgs !is Type.UnknownGenericType) {
                     typeOfFirstArgs
                 } else {
@@ -130,15 +141,16 @@ fun Resolver.resolveCodeBlock(
                 }
                 previousAndCurrentScope["it"] = typeForIt
                 itArgType = typeForIt
-            } else if (currentArgType.args.isNotEmpty()) {
-                if (currentArgType.args.count() != namedLambdaArgs.count()) {
-                    statement.token.compileError("Number of arguments for code block: ${WHITE}${currentArgType.args.count()}$RESET, you passed ${WHITE}${namedLambdaArgs.count()}")
+            } else if (lambdaArgsFromDb.isNotEmpty()) {
+
+                if (lambdaArgsFromDb.count() != namedLambdaArgs.count()) {
+                    statement.token.compileError("Number of arguments for code block: ${WHITE}${lambdaArgsFromDb.count()}$RESET, you passed ${WHITE}${namedLambdaArgs.count()}")
                 }
 
                 namedLambdaArgs.asSequence()
                     .filter { it.type == null }
                     .forEachIndexed { i, it ->
-                        val typeField = currentArgType.args[i]
+                        val typeField = lambdaArgsFromDb[i]
 
                         val typeForArg = if (typeField.type !is Type.UnknownGenericType) {
                             typeField.type
@@ -161,6 +173,7 @@ fun Resolver.resolveCodeBlock(
             it.type ?: it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name} codeblock parameter")
         previousAndCurrentScope.putIfAbsent(it.name, type)
     }
+
 
     currentLevel++
     resolve(statement.statements, previousAndCurrentScope, statement)
