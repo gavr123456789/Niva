@@ -19,6 +19,7 @@ fun Receiver.toNivaStr(): String {
         is UnaryMsg -> TODO()
         is IdentifierExpr -> TODO()
         is StaticBuilder -> TODO()
+        is MethodReference -> TODO()
 
         is LiteralExpression.FalseExpr -> "false"
         is LiteralExpression.TrueExpr -> "true"

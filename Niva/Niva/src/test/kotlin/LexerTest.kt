@@ -139,8 +139,8 @@ x sas
     @Test
     fun hardcodedBinarySymbols() {
         checkWithEnd(
-            "^ |> | |=> = :: !", listOf(
-                Return, PipeOperator, If, Else, Assign, DoubleColon, BinarySymbol
+            "^ |> | |=> = :: ! . .[", listOf(
+                Return, PipeOperator, If, Else, Assign, DoubleColon, BinarySymbol, Dot, DotOpenBracket
             )
         )
     }

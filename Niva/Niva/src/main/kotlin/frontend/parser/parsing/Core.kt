@@ -127,7 +127,8 @@ fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
 fun Parser.matchAssert(kind: TokenType, errorMessage: String? = null): Token {
     val tok = peek()
 
-    val realErrorMessage = errorMessage ?: "Parsing error, ${kind.name} expected, but found \"${tok.lexeme}\""
+    val realErrorMessage = errorMessage
+        ?: "Parsing error, ${kind.name} expected, but found \"${tok.lexeme}\""
 
     return if (tok.kind == kind) {
         step()

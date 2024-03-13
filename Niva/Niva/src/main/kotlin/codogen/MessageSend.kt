@@ -256,44 +256,46 @@ fun generateSingleKeyword(
 ) = buildString {
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
-    val receiverCode = buildString {
-        val needBrackets =
-            keywordMsg.kind != KeywordLikeType.Constructor &&
-                    keywordMsg.kind != KeywordLikeType.CustomConstructor && !receiverIsDot ||
-                    keywordMsg.kind == KeywordLikeType.ForCodeBlock ||
-                    receiver is ExpressionInBrackets
+    val receiverCode = {
+        buildString {
+            val needBrackets =
+                keywordMsg.kind != KeywordLikeType.Constructor &&
+                        keywordMsg.kind != KeywordLikeType.CustomConstructor && !receiverIsDot ||
+                        keywordMsg.kind == KeywordLikeType.ForCodeBlock ||
+                        receiver is ExpressionInBrackets
 
-        if (needBrackets) append("(")
+            if (needBrackets) append("(")
 
-        val kwReceiver = keywordMsg.receiver
+            val kwReceiver = keywordMsg.receiver
 
-        val isConstructor =
-            keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor
-        // if it is a.b.Person already, then generateExpression will add this names
-        val hasNoDotNames = kwReceiver is IdentifierExpr && kwReceiver.names.count() == 1
+            val isConstructor =
+                keywordMsg.kind == KeywordLikeType.Constructor || keywordMsg.kind == KeywordLikeType.CustomConstructor
+            // if it is a.b.Person already, then generateExpression will add this names
+            val hasNoDotNames = kwReceiver is IdentifierExpr && kwReceiver.names.count() == 1
 
-        if (!receiverIsDot && kwReceiver.type?.pkg != "core" &&
-            isConstructor
-            && hasNoDotNames
-        ) {
-            val type = kwReceiver.type
-            if (type != null) {
-                append(type.pkg)
-                dotAppend(this, withNullChecks)
-            } else {
-                dotAppend(this, withNullChecks)
+            if (!receiverIsDot && kwReceiver.type?.pkg != "core" &&
+                isConstructor
+                && hasNoDotNames
+            ) {
+                val type = kwReceiver.type
+                if (type != null) {
+                    append(type.pkg)
+                    dotAppend(this, withNullChecks)
+                } else {
+                    dotAppend(this, withNullChecks)
+                }
             }
+            append(
+                receiver.generateExpression()
+            )
+
+            if (receiver is IdentifierExpr && receiver.typeAST != null && receiver.typeAST.name.isGeneric()) {
+                append("<", receiver.typeAST.name, ">")
+            }
+
+            if (needBrackets) append(")")
+
         }
-        append(
-            receiver.generateExpression()
-        )
-
-        if (receiver is IdentifierExpr && receiver.typeAST != null && receiver.typeAST.name.isGeneric()) {
-            append("<", receiver.typeAST.name, ">")
-        }
-
-        if (needBrackets) append(")")
-
     }
     // end of receiver
 
@@ -321,7 +323,7 @@ fun generateSingleKeyword(
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if ((i == 0) && !receiverIsDot) {
-                append(receiverCode)
+                append(receiverCode())
                 dotAppend(this, withNullChecks)
             } else if (keywordMsg.isPiped) {
                 dotAppend(this, withNullChecks)
@@ -331,7 +333,7 @@ fun generateSingleKeyword(
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                append(receiverCode)
+                append(receiverCode())
             }
         }
 
@@ -354,9 +356,11 @@ fun generateSingleKeyword(
         KeywordLikeType.ForCodeBlock -> {
             // if whileTrue we still need to add .name
             if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse") {
-                append(receiverCode, ".", keywordMsg.selectorName)
+                append(receiverCode(), ".", keywordMsg.selectorName)
             } else {
-                append(receiverCode)
+                if (i == 0) {
+                    append(receiverCode())
+                }
             }
         }
     }

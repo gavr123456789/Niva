@@ -1,3 +1,4 @@
+@file:Suppress("RedundantLambdaOrAnonymousFunction")
 
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
@@ -1601,7 +1602,7 @@ class ParserTest {
     @Test
     fun extensionLambda() {
         val source = """
-            Something msg::Person[x::Int, y::Int -> Unit] = [
+            Something msg::Person.[x::Int, y::Int -> Unit] = [
                 p = Person new
                 // first variant
                 msg this: p x: 1 y: 2
@@ -1610,7 +1611,8 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+        assert(ast[0] is MessageDeclarationKeyword)
+
     }
 
     @Test
@@ -1624,6 +1626,7 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Suppress("UNUSED_VARIABLE")
     @Test
     fun msgsForPipedMustHaveMsgAsReceiver() {
         // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
@@ -1673,41 +1676,17 @@ class ParserTest {
         assert(ast.count() == 3)
     }
 
-//    @Test
-//    fun unaryOnManyLines() {
-//
-//        val source = """
-//            obj call1
-//              call2
-//              call3
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//        val q = ast[0] as MessageSendUnary
-//        assert(q.messages.count() == 3)
-//        assert(q.messages[0].selectorName == "call1")
-//        assert(q.messages[1].selectorName == "call2")
-//        assert(q.messages[2].selectorName == "call3")
-//    }
+    @Test
+    fun methodReference() {
+        val source = """
+            Pkg.Person.[x, y]
+        """.trimIndent()
 
-//    @Test
-//    fun unaryOnManyLines2() {
-//
-//        val source = """
-//            obj
-//              call1
-//              call2
-//              call3
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//        val q = ast[0] as MessageSendUnary
-//        assert(q.messages.count() == 3)
-//        assert(q.messages[0].selectorName == "call1")
-//        assert(q.messages[1].selectorName == "call2")
-//        assert(q.messages[2].selectorName == "call3")
-//
-//    }
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+    }
+
 
 }
 

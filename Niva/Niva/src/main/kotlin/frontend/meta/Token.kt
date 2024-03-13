@@ -41,7 +41,7 @@ enum class TokenType {
 
     // punctuation
     Dot, Cascade, Comma, Colon, Apostrophe,// . ; , `
-
+    DotOpenBracket, // .[
 
     EndOfFile,
     NoMatch,   // Used internally by the symbol table
@@ -113,8 +113,8 @@ fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
 
 //    error("\n$red\t$text.$fileLine$reset")
-    val text = "$RED Error:$RESET $text$RESET.$fileLine"
+    val errorText = "$RED Error:$RESET $text$RESET.$fileLine"
 //    println("$RED Error:$RESET $text$RESET.$fileLine")
-    throw CompilerError(text)
+    throw CompilerError(errorText)
 //    exitProcess(0)
 }
