@@ -9,10 +9,7 @@ import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.meta.isIdentifier
-import main.frontend.parser.parsing.parseType
-import main.frontend.parser.parsing.simpleReceiver
-import main.frontend.parser.parsing.staticBuilder
-import main.frontend.parser.parsing.varDeclaration
+import main.frontend.parser.parsing.*
 import main.frontend.parser.types.ast.*
 
 
@@ -24,12 +21,11 @@ fun Parser.statement(): Statement {
     val kind = tok.kind
 
 
-
-
     if (kind == TokenType.Dot) {
         return expression(dot = true)
     }
 
+    // x sas!! generates InfoToken x sas
     if (kind == TokenType.Bang) {
         val lastStatement = this.tree.last()
         if (lastStatement is Expression) {
@@ -45,15 +41,7 @@ fun Parser.statement(): Statement {
         val q = varDeclaration()
         if (q != null) return q
     }
-//
-//    if (tok.isIdentifier() && tok.lexeme[0].isLowerCase() &&
-//        (check(TokenType.Assign, 1) || (check(TokenType.DoubleColon, 1) && check(TokenType.Assign, 2)))
-//        || kind == TokenType.Mut
-//    ) {
-//        // List::Int sas = [] - unary
-//        // x::[Int->Int] = [] - value
-//        return varDeclaration()
-//    }
+
     if (kind == TokenType.Type) {
         return typeDeclaration(pragmas)
     }
@@ -79,6 +67,7 @@ fun Parser.statement(): Statement {
         return extendDeclaration(pragmas)
     }
 
+    // extend type with many methods
     if (tok.isIdentifier() && check(TokenType.AssignArrow, 1)) {
         return assignVariableNewValue()
     }
@@ -279,6 +268,28 @@ fun Parser.expression(
     }
 
 
+    fun tryMessageReference(): MethodReference? {
+        val savepoint = this.current
+        try {
+            val receiver = parseType()
+            return if (match(TokenType.DotOpenBracket)) {
+                val lambda = parseLambda(receiver.token)
+                val methodReference = lambda.toMethodReference(receiver)
+                methodReference
+            } else {
+                current = savepoint
+                null
+            }
+        } catch (e: Exception) {
+            current = savepoint
+            return null
+        }
+    }
+    val methodReference = tryMessageReference()
+
+    if (methodReference != null) {
+        return methodReference
+    }
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
     // unwrap unnecessary MessageSend when it's a single receiver like `person`
     val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {

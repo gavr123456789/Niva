@@ -1,8 +1,23 @@
-String msg::String[Int, Int -> Unit] = [
-    str = "sas"
-    msg this: this Int: 1 Int: 2
+makeAdder = [base::Int ->
+    add1 = [x::Int ->
+        add2 = [y::Int ->
+            x + y + base
+        ]
+        add2
+    ]
+    add1
 ]
 
-"sus" msg: [ x, y ->
-     this + "sas" + (x + y |> toString) |> echo
+makeAdder = [base::Int ->
+    add1 = [x::Int ->
+        add2 = [y::Int ->
+            x + y + base
+        ]
+        add2
+    ]
+    add1
 ]
+>? makeAdder
+
+makeAdder base: 10 |> x: 10 |> y: 20 |> echo
+

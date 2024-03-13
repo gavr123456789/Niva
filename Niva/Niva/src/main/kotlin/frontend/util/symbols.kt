@@ -19,6 +19,7 @@ fun Lexer.fillSymbolTable() {
         "[" to TokenType.OpenBracket,
         "]" to TokenType.CloseBracket,
 
+        ".[" to TokenType.DotOpenBracket,
         "." to TokenType.Dot,
         "," to TokenType.Comma,
         ":" to TokenType.Colon,

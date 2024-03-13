@@ -58,6 +58,8 @@ class IdentifierExpr(
     override fun toString(): String {
         return names.joinToString(".")
     }
+//    fun toTypeAST(): TypeAST.UserType =
+//        TypeAST.UserType(name = this.name, names = this.names, token = this.token)
 }
 
 sealed class CollectionAst(val initElements: List<Receiver>, type: Type?, token: Token) : Receiver(type, token)

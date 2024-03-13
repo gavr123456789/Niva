@@ -14,11 +14,12 @@ sealed class TypeAST(
     isPrivate: Boolean,
     pragmas: MutableList<Pragma>
 ) : Statement(token, isPrivate, pragmas) {
-//    val name: String
-//        get() = this.type.name
 
-    // [anyType, anyType -> anyType]?
-
+    fun names(): List<String> = when (this) {
+        is InternalType -> listOf(name)
+        is Lambda -> listOf(name)
+        is UserType -> names
+    }
 
     // generics are UserTypes now because they need names
     class UserType(
@@ -53,7 +54,41 @@ sealed class TypeAST(
         isNullable: Boolean = false,
         isPrivate: Boolean = false,
         pragmas: MutableList<Pragma> = mutableListOf()
-    ) : TypeAST(name, isNullable, token, isPrivate, pragmas)
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas) {
+        fun toMethodReference(forType: TypeAST): MethodReference {
+            val names2 = inputTypesList.map { it.name }
+            val count = inputTypesList.count()
+
+            return when {
+                count == 0  -> {
+                    MethodReference.Unary(
+                        forType = forType,
+                        name = forType.name,
+                        token = token,
+                    )
+                }
+                count == 1 -> {
+                    MethodReference.Binary(
+                        forType = forType,
+                        name = forType.name,
+                        token = token,
+                    )
+                }
+                count > 1 -> {
+                    MethodReference.Keyword(
+                        keys = names2,
+                        forType = forType,
+                        name = forType.name,
+                        token = token,
+                    )
+                }
+                else -> {
+                    throw Exception()
+                }
+            }
+
+        }
+    }
 }
 
 

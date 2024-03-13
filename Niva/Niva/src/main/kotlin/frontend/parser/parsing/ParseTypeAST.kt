@@ -7,6 +7,51 @@ import main.frontend.parser.types.ast.TypeAST
 import main.utils.isSimpleTypes
 
 
+// lambda
+fun Parser.parseLambda(tok: Token, extensionTypeName: List<String>? = null): TypeAST.Lambda {
+    fun listOfInputTypes(): MutableList<TypeAST> {
+        val result = mutableListOf<TypeAST>()
+        // anyType, anyType, ...
+        do {
+            result.add(parseType())
+        } while (match(TokenType.Comma))
+
+        return result
+    }
+
+
+    // [int -> string]?
+    // [anyType, anyType -> anyType]?
+    // [ -> anyType]
+    val thereIsReturnArrowAndCloseBracket = check(TokenType.ReturnArrow) || check(TokenType.CloseBracket)
+    val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else mutableListOf()
+    match(TokenType.ReturnArrow)
+
+    val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
+    matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
+    val isNullable = match("?")
+
+    val extensionNameOrNothing = extensionTypeName?.last() ?: ""
+
+    val extensionType = if (extensionTypeName != null) {
+        val x = TypeAST.UserType(
+            name = extensionNameOrNothing,
+            names = extensionTypeName,
+            token = tok
+        )
+        listOfInputTypes.addFirst(x)
+        x
+    } else null
+
+    return TypeAST.Lambda(
+        name = extensionNameOrNothing + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
+        inputTypesList = listOfInputTypes,
+        extensionOfType = extensionType,
+        token = tok,
+        returnType = returnType,
+        isNullable = isNullable,
+    )
+}
 // use only after ::
 fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     // {int} - list of int
@@ -27,55 +72,9 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
         TODO()
     }
 
-    // lambda
-    fun parseLambda(extensionTypeName: List<String>? = null): TypeAST.Lambda {
-        fun listOfInputTypes(): MutableList<TypeAST> {
-            val result = mutableListOf<TypeAST>()
-            // anyType, anyType, ...
-            do {
-                result.add(parseType())
-            } while (match(TokenType.Comma))
-
-            return result
-        }
-
-
-        // [int -> string]?
-        // [anyType, anyType -> anyType]?
-        // [ -> anyType]
-        val thereIsReturnArrowAndCloseBracket = check(TokenType.ReturnArrow) || check(TokenType.CloseBracket)
-        val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else mutableListOf()
-        match(TokenType.ReturnArrow)
-
-        val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
-        matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
-        val isNullable = match("?")
-
-        val q = extensionTypeName?.last() ?: ""
-
-        val extensionType = if (extensionTypeName != null) {
-            val x = TypeAST.UserType(
-                name = q,
-                names = extensionTypeName,
-                token = tok
-            )
-            listOfInputTypes.addFirst(x)
-            x
-        }
-        else null
-
-        return TypeAST.Lambda(
-            name = q + "[" + listOfInputTypes.joinToString(", ") { it.name } + " -> " + returnType.name + "]",
-            inputTypesList = listOfInputTypes,
-            extensionOfType = extensionType,
-            token = tok,
-            returnType = returnType,
-            isNullable = isNullable,
-        )
-    }
 
     if (match(TokenType.OpenBracket)) {
-        return parseLambda()
+        return parseLambda(tok)
     }
 
 
@@ -135,8 +134,8 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
 
         val path = mutableListOf(tok.lexeme)
 
-        if (!isExtendDeclaration && match(TokenType.OpenBracket)) {
-            return parseLambda(path)
+        if (!isExtendDeclaration && match(TokenType.DotOpenBracket)) {
+            return parseLambda(tok, path)
         }
         while (match(TokenType.Dot)) {
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)

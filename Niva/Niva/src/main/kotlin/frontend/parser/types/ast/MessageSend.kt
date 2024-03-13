@@ -4,12 +4,39 @@ import frontend.resolver.KeywordArgAst
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
-//  | Primary
-//  | BlockConstructor
-//  | BracketExpression
-//  | CollectionLiteral
 sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false) : Expression(type, token)
 
+
+// Pkg.Person.[x, y]
+// Pkg.Person.[+]
+// Pkg.Person.[sas]
+sealed class MethodReference(
+    val forType: TypeAST,
+    val name: String,
+    token: Token,
+    type: Type? = null,
+) : Receiver(type, token) {
+    class Unary(
+        forType: TypeAST,
+        name: String, // inc
+        token: Token,
+        type: Type? = null,
+    ) : MethodReference(forType, name, token, type)
+    class Binary(
+        forType: TypeAST,
+        name: String, // +
+        token: Token,
+        type: Type? = null,
+    ) : MethodReference(forType, name, token, type)
+
+    class Keyword(
+        val keys: List<String>, // P.[from, to]
+        forType: TypeAST,
+        name: String, // fromTo
+        token: Token,
+        type: Type? = null,
+    ) : MethodReference(forType, name, token, type)
+}
 
 // Message send is for pipe operations
 // a to: 2 |> sas: 6 == (a to: 2) sas: 6
@@ -109,7 +136,7 @@ class KeywordMsg(
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
 ) : Message(receiver, selectorName, path, type, token) {
     override fun toString(): String {
-        return args.joinToString(" "){ it.name + ": " + it.keywordArg }
+        return args.joinToString(" ") { it.name + ": " + it.keywordArg }
     }
 }
 

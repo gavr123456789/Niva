@@ -262,6 +262,10 @@ private fun Resolver.resolveStatement(
             }
         }
 
+        is MethodReference -> {
+            TODO()
+        }
+
     }
 }
 
