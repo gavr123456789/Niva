@@ -16,3 +16,21 @@ union User hat: Hat =
 
 user = Moder hat: TopHat new
 user hat echo
+
+// Another example
+
+union Toyota =
+| Camry y: Int
+| Corola x: Int
+
+union Car =
+| Toyota
+| SomeBadCar q: String
+
+Int car::Car = | car
+//| Corola => 1
+//| Camry => 2
+| Toyota => 1
+| SomeBadCar => 3
+
+3 car: (Corola x: 5) |> echo

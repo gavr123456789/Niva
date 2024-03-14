@@ -354,7 +354,7 @@ class ParserTest {
     }
 
     @Test
-    fun keywordFirstArgStartOnNewLine() {
+    fun keywordFirstKeyStartOnNewLine() {
         val source = """
             x 
             from: 1 
@@ -366,7 +366,31 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)
+    }
 
+    @Test
+    fun keywordFirstKeysArgStartOnNewLine() {
+        val source = """
+            x from: 
+                1 
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSendKeyword
+        assertTrue { q.messages[0].selectorName == "from" }
+    }
+
+    @Test
+    fun keywordFirstkeysStartOnNewLineAndAssign() {
+        val source = """
+            q = x from: 
+                1 
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as VarDeclaration
+        val w = q.value as MessageSendKeyword
+        assertTrue { w.messages[0].selectorName == "from" }
     }
 
     @Test
