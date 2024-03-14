@@ -2,6 +2,7 @@ package frontend.resolver
 
 import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
+import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.utils.RESET
@@ -300,12 +301,7 @@ fun Resolver.resolveControlFlow(
                                 realBranchTypes += it
                             }
                         }
-                        val realBranchTypeNames = realBranchTypes.map { it.pkg + it.name }
-                        val typesAlreadyCheckedNames = typesAlreadyChecked.map { it.pkg + it.name }
-                        if (realBranchTypeNames != typesAlreadyCheckedNames) {
-                            val difference = (realBranchTypes - typesAlreadyChecked).joinToString(", ") { it.name }
-                            statement.token.compileError("Compiler bug: Not all types are checked: ($YEL$difference$RESET)")
-                        }
+                        recursiveCheckThatEveryBranchChecked(realBranchTypes, typesAlreadyChecked, statement.token)
 
                         if (statement.type == null) {
                             statement.type = firstBranchReturnType2
@@ -327,6 +323,44 @@ fun Resolver.resolveControlFlow(
         }
 
     }
+}
+
+fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>): Set<Type.Union> {
+    when (this) {
+        is Type.UserUnionRootType -> {
+            this.branches.forEach {
+                x.addAll(it.unpackUnionToAllBranches(x))
+            }
+        }
+        is Type.UserUnionBranchType -> {
+            x.add(this)
+        }
+    }
+    return x
+}
+
+fun recursiveCheckThatEveryBranchChecked(branchesFromDb: MutableSet<Type>, branchesInSwitch: MutableSet<Type>, tok: Token) {
+
+    val fromDb = branchesFromDb
+        .filterIsInstance<Type.Union>()
+        .flatMap { it.unpackUnionToAllBranches(mutableSetOf())}.toSet()
+
+    val real = branchesInSwitch
+        .filterIsInstance<Type.Union>()
+        .flatMap { it.unpackUnionToAllBranches(mutableSetOf()) }.toSet()
+
+
+    if (fromDb != real) {
+        if (fromDb.count() > real.count()) {
+            val difference = (fromDb - real).joinToString("$RESET, $YEL") { it.name }
+            tok.compileError("Not all possible unions are checked ($YEL$difference$RESET)")
+        } else {
+            val difference = (real - fromDb).joinToString("$RESET, $YEL") { it.name }
+            tok.compileError("Extra unions are checked: ($YEL$difference)$RESET")
+        }
+    }
+
+
 }
 
 fun Type.getRoot(): Type =

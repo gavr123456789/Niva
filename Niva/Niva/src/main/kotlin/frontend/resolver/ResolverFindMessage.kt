@@ -92,8 +92,8 @@ fun Resolver.findStaticMessageType(
         }
     }
 
-    if (selectorName == "new") {
-        if (receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
+    if (selectorName == "new" && receiverType is Type.UserLike) {
+        if (receiverType.fields.isEmpty()) {
             // u cant instantiate Root union
             if (receiverType is Type.UserUnionRootType) {
                 token.compileError("You can't instantiate root of the union(${YEL}$receiverType${RESET})")
@@ -108,7 +108,8 @@ fun Resolver.findStaticMessageType(
             pkg.addImport(receiverType.pkg)
             return Pair(result, false)
         } else {
-            token.compileError("${WHITE}new${RESET} can't bew used with ${YEL}$receiverType${RESET}, it has fields(use them as constructor), or its basic type ")
+            val fields = receiverType.fields.joinToString(" e") { it.name + ": " + it.type.name + "_value"}
+            token.compileError("${WHITE}new${RESET} can't be used with ${YEL}$receiverType${RESET}, since it has fields(use $YEL$receiverType$RESET $CYAN$fields)")
         }
     }
 

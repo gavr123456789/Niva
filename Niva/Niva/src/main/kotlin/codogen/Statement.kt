@@ -32,7 +32,12 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is AliasDeclaration -> TODO()
 
 
-            is UnionDeclaration -> statement.generateUnionDeclaration()
+            is UnionRootDeclaration -> {
+                statement.generateTypeDeclaration(true)
+            }
+            is UnionBranchDeclaration -> {
+                statement.generateTypeDeclaration(false)
+            }
             is StaticBuilderDeclaration -> TODO()
 
 
@@ -43,9 +48,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is TypeAST.Lambda -> TODO()
             is TypeAST.UserType -> TODO()
 
-            is UnionBranch -> {
-                statement.generateTypeDeclaration(false, statement.root)
-            }
+
 
             is NeedInfo -> createFakeToken().compileError("Compiler bug: u cant have ! expression inside code generation")
 

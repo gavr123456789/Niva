@@ -1,14 +1,15 @@
 package main.codogen
 
+import frontend.resolver.Type
 import main.utils.RED
 import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
-import main.frontend.parser.types.ast.UnionDeclaration
+import main.frontend.parser.types.ast.UnionRootDeclaration
 
-fun UnionDeclaration.collectAllGenericsFromBranches(): Set<String> {
+fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
     val genericsOfBranches = mutableSetOf<String>()
     branches.forEach {
         genericsOfBranches.addAll(it.genericFields)
@@ -19,16 +20,15 @@ fun UnionDeclaration.collectAllGenericsFromBranches(): Set<String> {
 
 fun SomeTypeDeclaration.generateTypeDeclaration(
     isUnionRoot: Boolean = false,
-    root: UnionDeclaration? = null,
     isEnumRoot: Boolean = false,
     enumRoot: EnumDeclarationRoot? = null
 ) = buildString {
     appendPragmas(pragmas, this)
-
+    val receiverType = receiver!!
     if (isUnionRoot) append("sealed ")
     if (isEnumRoot) append("enum ")
     append("class ")
-    append(receiver!!.toKotlinString(false))
+    append(receiverType.toKotlinString(false))
 
 //    if (genericFields.isNotEmpty()) {
 //        append("<")
@@ -52,6 +52,19 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
         val typeName = it.type!!.toKotlinString(true)
         append(it.name, ": ", typeName)
+        if (fieldsCountMinus1 != i) {
+            append(", ")
+        }
+    }
+    fun generateFieldArguments2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+
+
+        if (!rootFields) {
+            append("var ")
+        }
+
+        val typeName = type.toKotlinString(true)
+        append(fieldName, ": ", typeName)
         if (fieldsCountMinus1 != i) {
             append(", ")
         }
@@ -81,40 +94,42 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         generateFieldArguments(it, i, false, fields.count() - 1)
     }
     // class Person (var age: Int,
+
     // root fields
-    if (root != null) {
-        // comma after branch fields, before root fields
-        if (fields.isNotEmpty()) {
+    if (receiverType is Type.UserUnionRootType) {
+        if (receiverType.fields.isNotEmpty()) {
+            // comma after branch fields, before root fields
             append(", ")
         }
-
-        root.fields.forEachIndexed { i, it ->
-            generateFieldArguments(it, i, true, root.fields.count() - 1)
+        receiverType.fields.forEachIndexed { i, it ->
+            generateFieldArguments2(it.name, it.type, i, true, receiverType.fields.count() - 1)
         }
     }
 
     append(")")
-    // class Person (var age: Int, kek: String)
+    // class Person (var age: Int, kek: String)^
 
-    if (root != null) {
-        val w = root.fields.count() - 1
+    // add inheritance
+    if (receiverType.parent != null) {
+        val currentType = receiverType as Type.UserLike
+        val root2 = receiverType.parent as Type.UserLike
+        val rootGenericFields = root2.typeArgumentList.map { it.name }
+        val genericsOfTheBranch = currentType.typeArgumentList.map { it.name }.toSet()
 
-        append(" : ${root.typeName}")
+        append(" : ${root2.name}")
 
-        val genericsOfTheBranch = genericFields.toSet()
         // for each generic that is not in genericsOfTheRoot we must use Nothing
-        // if current branch does not has a generic param, but root has, then add Never
-
-        val isThereGenericsSomewhere = genericFields.isNotEmpty() || root.genericFields.isNotEmpty()
+        // if current branch does not have a generic param, but root has, then add Never
+        val isThereGenericsSomewhere = genericsOfTheBranch.isNotEmpty() || rootGenericFields.isNotEmpty()
         if (isThereGenericsSomewhere)
             append("<")
 
         val realGenerics = mutableListOf<String>()
-        realGenerics.addAll(genericFields)
+        realGenerics.addAll(genericsOfTheBranch)
 
-        root.genericFields.forEach {
+        // replacing all missing generics of current branch, that root have, to Nothing
+        rootGenericFields.forEach {
             if (!genericsOfTheBranch.contains(it)) {
-                //append("Nothing")
                 realGenerics.add("Nothing")
             } else
                 realGenerics.add(it)
@@ -127,13 +142,16 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append(">")
 
         append("(")
-        root.fields.forEachIndexed { i, it ->
+        // this is Duplicate of generating fields from UserType
+        val w = root2.fields.count() - 1
+        root2.fields.forEachIndexed { i, it ->
             append(it.name)
             if (w != i) {
                 append(", ")
             }
         }
         append(")")
+
     }
 
     // class Person (var age: Int, kek: String): Kek(kek)
@@ -175,8 +193,4 @@ fun EnumDeclarationRoot.generateEnumDeclaration() = buildString {
     append(statement.generateTypeDeclaration(isEnumRoot = true, enumRoot = this@generateEnumDeclaration))
 }
 
-fun UnionDeclaration.generateUnionDeclaration() = buildString {
-    val statement = this@generateUnionDeclaration
 
-    append(statement.generateTypeDeclaration(true))
-}

@@ -1361,6 +1361,44 @@ class ResolverTest {
     }
 
 
+    @Test
+    fun sendMethodToMethod() {
+        val source = """
+            String msg::String[Int, Int -> Unit] = [
+                str = "sas"
+                msg this: str Int: 1 Int: 2
+            ]
+            
+            String x::Int y::Int = 1 echo
+            
+            "sas" msg: String.x:y: 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as MessageDeclarationKeyword
+        val w = q.args[0].typeAST!! as TypeAST.Lambda
+        assertTrue { w.extensionOfType!!.name == "String" }
+    }
+
+    @Test
+    fun unionInsideUnion() {
+        val source = """
+            union Toyota =
+            | Camry y: Int
+            | Corola x: Int
+            union Car  =
+            | Toyota
+            | SomeBadCar q: String
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val w = statements[1] as UnionRootDeclaration
+        val q = w.branches.find { it.typeName == "Toyota" }!!
+        TODO()
+//        assertTrue { q is  }
+    }
+
+
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {
 //        val source = """

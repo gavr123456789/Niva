@@ -45,7 +45,7 @@ fun Resolver.resolveDeclarations(
             }
         }
 
-        is UnionDeclaration -> {
+        is UnionRootDeclaration -> {
             resolveUnionDeclaration(statement)
         }
 
@@ -57,7 +57,7 @@ fun Resolver.resolveDeclarations(
         is AliasDeclaration -> TODO()
 
 
-        is UnionBranch -> {
+        is UnionBranchDeclaration -> {
             // strange
         }
 

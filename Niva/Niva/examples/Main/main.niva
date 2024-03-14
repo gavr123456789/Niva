@@ -1,12 +1,3 @@
-makeAdder = [base::Int ->
-    add1 = [x::Int ->
-        add2 = [y::Int ->
-            x + y + base
-        ]
-        add2
-    ]
-    add1
-]
 
 makeAdder = [base::Int ->
     add1 = [x::Int ->
@@ -17,7 +8,24 @@ makeAdder = [base::Int ->
     ]
     add1
 ]
->? makeAdder
+//>? makeAdder
 
-makeAdder base: 10 |> x: 10 |> y: 20 |> echo
+//makeAdder base: 10 |> x: 10 |> y: 20 |> echo
+
+
+union Toyota =
+| Camry y: Int
+| Corola x: Int
+union Car =
+| Toyota
+| SomeBadCar q: String
+
+Int car::Car = | car
+//| Corola => 1
+//| Camry => 2
+| Toyota => 1
+| SomeBadCar => 3
+
+3 car: (Corola x: 5) |> echo
+
 
