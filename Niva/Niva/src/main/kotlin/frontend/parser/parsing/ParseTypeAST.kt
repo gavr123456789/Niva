@@ -64,13 +64,13 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     val tok = peek()
 
     // literal collections type set or map
-    if (match(TokenType.OpenBraceHash)) {
-        TODO()
-    }
+//    if (match(TokenType.OpenBraceHash)) {
+//        TODO()
+//    }
     // list
-    if (match(TokenType.OpenBrace)) {
-        TODO()
-    }
+//    if (match(TokenType.OpenBrace)) {
+//        TODO()
+//    }
 
 
     if (match(TokenType.OpenBracket)) {

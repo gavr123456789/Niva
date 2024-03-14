@@ -1,31 +1,41 @@
+union ExpressionVisitor =
+| PrintingVisitor sb: StringBuilder
 
-makeAdder = [base::Int ->
-    add1 = [x::Int ->
-        add2 = [y::Int ->
-            x + y + base
-        ]
-        add2
-    ]
-    add1
+constructor PrintingVisitor default =
+    PrintingVisitor sb: StringBuilder new
+
+ExpressionVisitor visit: e::Expression = | this
+| PrintingVisitor => this visit: e
+
+PrintingVisitor visit: e::Expression = | e
+| IntExpression => sb append: e value toString
+| AdditionExpression => [
+    sb append: "("
+    e left accept: this
+    sb append: "+"
+    e right accept: this
+    sb append: ")"
 ]
-//>? makeAdder
 
-//makeAdder base: 10 |> x: 10 |> y: 20 |> echo
+PrintingVisitor print = sb toString
 
+union Expression =
+| IntExpression value: Int
+| AdditionExpression left: Expression right: Expression
 
-union Toyota =
-| Camry y: Int
-| Corola x: Int
-union Car =
-| Toyota
-| SomeBadCar q: String
+Expression accept: visitor::ExpressionVisitor = [
+    | this
+    | IntExpression => visitor visit: this
+    | AdditionExpression => visitor visit: this
+]
 
-Int car::Car = | car
-//| Corola => 1
-//| Camry => 2
-| Toyota => 1
-| SomeBadCar => 3
+// main
+expression = AdditionExpression
+    left: (IntExpression value: 1)
+    right: (AdditionExpression
+            left: (IntExpression value: 2)
+            right: (IntExpression value: 3))
 
-3 car: (Corola x: 5) |> echo
-
-
+printingVisitor = PrintingVisitor default
+printingVisitor visit: expression
+printingVisitor print echo

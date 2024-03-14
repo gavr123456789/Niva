@@ -248,6 +248,7 @@ fun Parser.messageSend(
     dotReceiver: Boolean = false
 ): MessageSend {
 
+    // 1 from: 2 // 1 is receiver without unary\binary messages
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
         val savepoint = current
         dotSeparatedIdentifiers()
@@ -275,8 +276,8 @@ fun Parser.messageSend(
         !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
         else -> simpleReceiver()
     }
-
-    val isNextKeyword = if (dontParseKeywords) false else checkForKeyword()
+    // it can be keyword on simple receiver or keyword on receiver with messages
+    val isNextKeyword = if (dontParseKeywords) false else keywordOnReceiverWithoutMessages || checkForKeyword()
     val isReceiverUnaryOrBinaryOrCodeBlock =
         receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
@@ -369,6 +370,7 @@ fun Parser.keywordMessageParsing(
     val stringBuilder = StringBuilder()
 
     val keyWordArguments = mutableListOf<KeywordArgAst>()
+    // next 2 we need for save path like x `Sas.from`: 1 to: 2
     var firstCycle = true
     var firstKeywordIdentifierExpr: IdentifierExpr? = null
     do {
@@ -377,11 +379,10 @@ fun Parser.keywordMessageParsing(
 
         matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
         // x from: ^3 inc to: 2 inc
-        // x from: 3 ^inc to: 2 inc
         if (firstCycle) {
             firstKeywordIdentifierExpr = keywordPart
         }
-
+        skipNewLinesAndComments()
         val argument = expression(true)
 
         if (argument is KeywordMsg) {
