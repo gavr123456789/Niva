@@ -32,7 +32,7 @@ import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
-import main.frontend.parser.types.ast.UnionDeclaration
+import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
 import main.lex
 import java.io.File
@@ -651,7 +651,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val unionDeclaration = ast[0] as UnionDeclaration
+        val unionDeclaration = ast[0] as UnionRootDeclaration
         val branches = unionDeclaration.branches
 
         assert(unionDeclaration.typeName == "Shape")
@@ -1031,7 +1031,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
-        assert(ast[0] is UnionDeclaration)
+        assert(ast[0] is UnionRootDeclaration)
         assert(ast[1] is VarDeclaration)
         assert(ast[2] is ControlFlow.Switch)
     }
@@ -1062,9 +1062,9 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
-        assert(ast[0] is UnionDeclaration)
-        assert(ast[1] is UnionDeclaration)
-        assert(ast[1] is UnionDeclaration)
+        assert(ast[0] is UnionRootDeclaration)
+        assert(ast[1] is UnionRootDeclaration)
+        assert(ast[1] is UnionRootDeclaration)
     }
 
     @Test

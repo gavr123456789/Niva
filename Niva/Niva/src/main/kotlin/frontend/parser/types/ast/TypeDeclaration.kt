@@ -157,23 +157,24 @@ class EnumDeclarationRoot(
     isPrivate: Boolean = false,
 ) : SomeTypeDeclaration(typeName, fields, token, mutableSetOf(), isPrivate, pragmas)
 
-class UnionBranch(
+class UnionBranchDeclaration(
     typeName: String,
     fields: List<TypeFieldAST>,
     token: Token,
     genericFields: MutableSet<String> = mutableSetOf(),
-    val root: UnionDeclaration,
+    val root: UnionRootDeclaration,
     var isRoot: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
+    var branches: List<Type.Union>? = null,
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = pragmas) {
     override fun toString(): String {
         return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.typeAST }
     }
 }
 
-class UnionDeclaration(
+class UnionRootDeclaration(
     typeName: String,
-    var branches: List<UnionBranch>,
+    var branches: List<UnionBranchDeclaration>,
     fields: List<TypeFieldAST>,
     token: Token,
     genericFields: MutableSet<String> = mutableSetOf(),

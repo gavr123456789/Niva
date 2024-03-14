@@ -667,9 +667,9 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
     pack.addImport(statement.forType!!.pkg)
 }
 
-fun Resolver.typeAlreadyRegisteredInCurrentPkg(type: Type, pkg: Package? = null, token: Token? = null): Type.UserLike? {
+fun Resolver.typeAlreadyRegisteredInCurrentPkg(typeName: String, pkg: Package? = null, token: Token? = null): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
-    val result = pack.types[type.name]
+    val result = pack.types[typeName]
     return result as? Type.UserLike
 }
 
@@ -683,7 +683,7 @@ fun Resolver.addNewType(
         statement?.token ?: createFakeToken()
     ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
 
-    if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type, pkg, statement?.token) != null) {
+    if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type.name, pkg, statement?.token) != null) {
         val err = "Type ${YEL}${type.name}${RESET} already registered in package: ${WHITE}$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }

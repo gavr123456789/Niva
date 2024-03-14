@@ -206,12 +206,12 @@ sealed class Type(
 
     // type Person name: String age: Int
     fun toTypeTypeStringRepresentation() = buildString {
-        TypeType(
-            "Person", mutableMapOf(
-                "name" to TypeType("String"),
-                "age" to TypeType("Int")
-            )
-        )
+//        TypeType(
+//            "Person", mutableMapOf(
+//                "name" to TypeType("String"),
+//                "age" to TypeType("Int")
+//            )
+//        )
         append("TypeType(")
         when (this@Type) {
             is UserLike -> {
@@ -347,8 +347,8 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
-    class UserUnionRootType(
-        var branches: List<UserUnionBranchType>,
+
+    sealed class Union (
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<TypeField>,
@@ -356,6 +356,18 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+
+    class UserUnionRootType(
+        var branches: List<Union>, // can be union or branch
+        name: String,
+        typeArgumentList: List<Type>, // for <T, G>
+        fields: MutableList<TypeField>,
+        isPrivate: Boolean = false,
+        pkg: String,
+        protocols: MutableMap<String, Protocol> = mutableMapOf()
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
+//        fun getBranches1(): List<Type.UserUnionBranchType> =
+    }
 
     class UserUnionBranchType(
         val root: UserUnionRootType,
@@ -365,7 +377,7 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
 
     class UserEnumRootType(
@@ -602,7 +614,7 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
-    } else if (unionRootType != null)
+    } else if (unionRootType != null) {
         Type.UserUnionBranchType(
             root = unionRootType,
             name = typeName,
@@ -612,6 +624,7 @@ fun SomeTypeDeclaration.toType(
             pkg = pkg,
             protocols = mutableMapOf()
         )
+    }
     else
         Type.UserType(
             name = typeName,
