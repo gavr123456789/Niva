@@ -24,7 +24,7 @@ class GeneratorKt(
         const val TARGET = "%TARGET%"
         const val GRADLE_TEMPLATE = """
 plugins {
-    kotlin("jvm") version "1.9.20-Beta"
+    kotlin("jvm") version "2.0.0-Beta4"
     application
 }
 
@@ -63,6 +63,15 @@ product: %TARGET%/app
 
 dependencies:
 //%IMPL%
+
+settings:
+  kotlin:
+    languageVersion: 2.0
+  jvm:
+    target: 21
+  java:
+    source: 21
+
 """
     }
 
@@ -97,7 +106,27 @@ dependencies:
 
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
         "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+
+    fun GRADLE_PANAMA() = """
+repositories {
+    maven(url = "https://jitpack.io")
 }
+
+
+tasks.withType(JavaCompile::class.java) {
+    options.compilerArgs = listOf("--enable-preview")
+}
+
+tasks.withType(JavaExec::class.java) {
+    jvmArgs(
+        "--enable-preview",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Djava.library.path=/usr/lib64:/lib64:/lib:/usr/lib:/lib/x86_64-linux-gnu"
+    )
+}
+"""
+}
+
 
 fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
     this.dependencies.addAll(dependenciesList)
@@ -115,6 +144,7 @@ fun GeneratorKt.regenerateGradleForAmper(
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
         append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
+        append(GRADLE_PANAMA())
     }
 
 
