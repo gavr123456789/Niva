@@ -85,14 +85,14 @@ class Compiler(
     private val mainNivaFileName: String,
     private val resolver: Resolver
 ) {
-    private fun cmd(dist: Boolean = false, build: Boolean = false) = (if (!dist)
+    private fun cmd(dist: Boolean = false, buildFatJar: Boolean = false) = (if (!dist)
         targetToRunCommand(compilationTarget)
     else
         when (compilationTarget) {
-            CompilationTarget.jvm -> if (build) "fatJar" else "distZip"
+            CompilationTarget.jvm -> if (buildFatJar) "fatJar" else "distZip"
             CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
             CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }) + " --build-cache --parallel --configuration-cache -Pkotlin.experimental.tryK2=true" //
+        }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
 
 
     fun run(
@@ -121,8 +121,8 @@ class Compiler(
         val defaultArgs = "-q"// if not verbose --console=plain
         (when (getOSType()) {
             CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat $defaultArgs $cmd"
-            CurrentOS.LINUX -> "./gradlew $defaultArgs $cmd"
-            CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
+            CurrentOS.LINUX, CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
+//            CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
         }).runCommand(file, true)
 
         if (inlineReplPath.exists()) {
