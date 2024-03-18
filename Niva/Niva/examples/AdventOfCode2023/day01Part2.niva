@@ -1,0 +1,27 @@
+input =
+"""1abc2
+pqr3stu8vwx
+a1b2c3d4e5f
+treb7uchet""" split: "\n"
+
+digits = {"", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
+sum = input sumOf: [ s ->
+  sb = StringBuilder new
+  s indices forEachIndexed: [i, it ->
+    q = s at: i
+    '0'..'9' contains: q => [
+      sb append: q
+    ] |=> [
+      ss = s substring: i
+      1..9 forEach: [j ->
+        ss startsWith: (digits at: j) =>
+          sb append: ('0' addInt: j)
+      ]
+    ]
+  ]
+  first = sb first
+  last = sb last
+  "$first$last" toInt
+]
+//> 142
+>sum

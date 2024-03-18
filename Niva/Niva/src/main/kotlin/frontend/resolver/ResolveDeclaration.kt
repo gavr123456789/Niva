@@ -120,7 +120,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         }
                     }
 
-
+                    // getters
                     val gettersArg = msg.args.find { it.name == "getters" }
                     if (gettersArg != null) {
                         if (gettersArg.keywordArg !is CodeBlock)
@@ -134,6 +134,72 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                             }
                             addNewAnyMessage(getter, isGetter = true)
 
+                        }
+                    }
+
+                    // fields
+                    val fieldsArg = msg.args.find { it.name == "fields" }
+                    if (fieldsArg != null) {
+                        if (fieldsArg.keywordArg !is CodeBlock)
+                            fieldsArg.keywordArg.token.compileError("Fields argument must be a code block with kw sends(they will become setters and getters on java side)")
+                        val fieldsDeclarations = fieldsArg.keywordArg.statements
+                        fieldsDeclarations.forEach { field ->
+                            when (field) {
+                                is MessageSendKeyword -> {
+                                    val kw = field.messages.first() as KeywordMsg
+                                    val receiver = field.receiver
+                                    if (receiver !is IdentifierExpr) {
+                                        field.token.compileError("receiver must be type")
+                                    }
+                                    kw.args.forEach {
+
+
+                                        val forTypeAST = TypeAST.UserType(receiver.name, token = receiver.token)
+                                        val forTypeReal = forTypeAST.toType(typeDB, typeTable)
+
+                                        val typeAstFromArg =
+                                            TypeAST.UserType(it.keywordArg.token.lexeme, token = it.keywordArg.token)
+                                        val realTypeArg = typeAstFromArg.toType(typeDB, typeTable)
+
+                                        // add getter and setter for each
+                                        val msgDeclGetter = MessageDeclarationUnary(
+                                            name = it.name,
+                                            forType = forTypeAST,
+                                            token = field.token,
+                                            isSingleExpression = false,
+                                            body=listOf(),
+                                            returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
+                                        )
+
+                                        msgDeclGetter.forType = forTypeReal
+                                        msgDeclGetter.returnType = realTypeArg
+
+                                        val msgDeclSetter = MessageDeclarationKeyword(
+                                            name = it.name,
+                                            forType = forTypeAST,
+                                            token = field.token,
+                                            isSingleExpression = false,
+                                            body = listOf(),
+                                            returnType = null,
+                                            args = listOf(
+                                                KeywordDeclarationArg(
+                                                    name = it.name,
+                                                    typeAST = typeAstFromArg
+                                                )
+                                            )
+                                        )
+
+                                        msgDeclSetter.forType = forTypeReal
+                                        msgDeclSetter.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
+
+
+                                        addNewAnyMessage(msgDeclGetter, isGetter = true)
+                                        addNewAnyMessage(msgDeclSetter, isSetter = true) // setter
+                                    }
+
+                                }
+                                else -> field.token.compileError("Use keyword msg send with fields, that fields will become getters and setters (${WHITE}Person name: String -> setName::String + getName -> String$RESET)")
+                            }
                         }
                     }
 
