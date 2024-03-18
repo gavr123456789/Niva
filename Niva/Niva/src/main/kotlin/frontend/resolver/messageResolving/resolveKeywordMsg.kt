@@ -41,6 +41,7 @@ fun Resolver.resolveKeywordMsg(
 
     // resolve kw kind
     var foundCustomConstructorDb: MessageMetadata? = null
+
     fun resolveKindOfKeyword(statement: KeywordMsg, receiverType: Type): KeywordLikeType {
         if (receiverType is Type.Lambda) {
             return KeywordLikeType.ForCodeBlock
@@ -91,7 +92,7 @@ fun Resolver.resolveKeywordMsg(
         return KeywordLikeType.Keyword
     }
 
-    val kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
+    var kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
 
     // collect generic from args
     val letterToTypeFromReceiver =
@@ -134,6 +135,10 @@ fun Resolver.resolveKeywordMsg(
         is UnaryMsgMetaData -> listOf()
         is BinaryMsgMetaData -> listOf()
         is KeywordMsgMetaData -> {
+            if (kwTypeFromDB.isSetter){
+                kind = KeywordLikeType.Setter
+                statement.kind = kind
+            }
             if (statement.args.count() != kwTypeFromDB.argTypes.count()) {
                 statement.token.compileError("Wrong number of arguments, $WHITE$kwTypeFromDB$RESET is needed, but you send $WHITE$statement")
             }
@@ -322,6 +327,9 @@ fun Resolver.resolveKeywordMsg(
         }
 
         KeywordLikeType.Setter -> {
+            if (statement.type == null) {
+                statement.type = Resolver.defaultTypes[InternalTypes.Unit]
+            }
             // Nothing to do, because check for setter already sets the type of statement
         }
 

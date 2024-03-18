@@ -218,7 +218,7 @@ fun Resolver.resolveMessageDeclaration(
 
     // addToDb
     if (addToDb) {
-        addNewAnyMessage(st, false, forType)
+        addNewAnyMessage(st, false, false, forType)
     }
 
     if (needResolveOnlyBody) {

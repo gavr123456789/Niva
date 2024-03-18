@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Programs/SWT/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Fun/bazar/Examples/GTK/main.niva")
 
 //    val args = arrayOf("dev", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("dev", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
@@ -44,8 +44,58 @@ fun main(args: Array<String>) {
     run(args)
 }
 
+//fun readJar(pathToJar: String) {
+//    val jarUrl = URL("file:///$pathToJar")
+//    val loader = URLClassLoader(arrayOf(jarUrl))
+////    loader
+//    val jar = JarFile(pathToJar)
+//
+//    val entryes = jar.entries()
+//
+//    var counter = 0
+//    var errorConter = 0
+//    val nivaTypes = mutableListOf<Type.UserType>()
+//    while (entryes.hasMoreElements()) {
+//        val e = entryes.nextElement()
+//        if (!e.isDirectory && e.name.endsWith(".class")) {
+//            counter++
+//            val className = e.name.replace("/", ".").replace(".class", "")
+//            try {
+//                val c = loader.loadClass(className)
+//                val methods = c.methods
+////                val params = w.parameters
+//                val fields = c.fields.filter { it.name != "INSTANCE" }
+//                if (fields.count() > 1 || fields.count() == 0) {
+//                    nivaTypes.add(
+//                        Type.UserType(
+//                            name = c.name,
+//                            typeArgumentList = listOf(),
+////                            fields = fields.map {
+////                                TypeField(
+////                                    name = it.name,
+////                                    type = Type.UnknownGenericType(name = it.name, pkg = it.type?.`package`?.name ?: "???")
+////                                )
+////                            }.toMutableList(),
+//                            fields = mutableListOf(),
+//                            pkg =  c?.`package`?.name ?: "???"
+//                        )
+//                    )
+//                }
+//            } catch (e: Throwable) {
+//                errorConter++
+//                println("ОЙ!")
+//            }
+//        }
+//
+//    }
+//
+//    jar.close()
+//}
+
 fun run(args: Array<String>) {
     val argsSet = args.toSet()
+
+//    readJar("/home/gavr/.gradle/caches/modules-2/files-2.1/io.github.jwharm.javagi/gtk/0.9.0/2caa1960a0bec1c8ed7127a6804693418441f166/gtk-0.9.0.jar")
 
     val startTime = System.currentTimeMillis()
 

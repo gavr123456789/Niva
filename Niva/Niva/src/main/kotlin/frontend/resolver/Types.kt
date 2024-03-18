@@ -75,6 +75,7 @@ class KeywordMsgMetaData(
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = listOf(),
+    val isSetter: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
@@ -340,7 +341,7 @@ sealed class Type(
 
     class UserType(
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: List<Type> = listOf(), // for <T, G>
         fields: MutableList<TypeField>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -746,10 +747,11 @@ fun MessageDeclaration.toAnyMessageData(
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package,
     isGetter: Boolean = false,
+    isSetter: Boolean = false,// only for bindings of fields, we cant add new field, it will break the constructor, so we add msgs
     resolver: Resolver
 ): MessageMetadata {
     return when (this) {
-        is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg)
+        is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg, isSetter)
         is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
         is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
         is ConstructorDeclaration -> {
@@ -811,7 +813,8 @@ fun MessageDeclarationBinary.toMessageData(
 fun MessageDeclarationKeyword.toMessageData(
     typeDB: TypeDB,
     typeTable: MutableMap<TypeName, Type>,
-    pkg: Package
+    pkg: Package,
+    isSetter: Boolean = false
 ): KeywordMsgMetaData {
     val returnType = this.returnType ?: this.returnTypeAST?.toType(typeDB, typeTable)
     ?: Resolver.defaultTypes[InternalTypes.Unit]!!
@@ -840,7 +843,8 @@ fun MessageDeclarationKeyword.toMessageData(
         argTypes = keywordArgs,
         returnType = returnType,
         pragmas = pragmas,
-        pkg = pkg.packageName
+        pkg = pkg.packageName,
+        isSetter = isSetter
     )
     return result
 }

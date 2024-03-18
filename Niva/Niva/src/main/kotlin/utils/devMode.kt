@@ -87,14 +87,23 @@ fun findSimilar(to: String, forType: Type) {
     }
 
     // search for methods
-    forType.protocols.values.forEach { protocol ->
-        protocol.unaryMsgs.values.forEach {
-            find(it)
+    fun findRecursive(forType: Type) {
+        val p = forType.parent
+        forType.protocols.values.forEach { protocol ->
+            protocol.unaryMsgs.values.forEach {
+                find(it)
+            }
+            protocol.keywordMsgs.values.forEach {
+                find(it)
+            }
         }
-        protocol.keywordMsgs.values.forEach {
-            find(it)
+        if (p != null) {
+            findRecursive(p)
         }
     }
+
+    findRecursive(forType)
+
     // search for fields
     if (forType is Type.UserLike) {
         forType.fields.forEach {
@@ -117,10 +126,4 @@ fun findSimilar(to: String, forType: Type) {
             println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
         }
     }
-}
-
-fun keyboard() {
-    val kw = readlnOrNull()
-
-
 }

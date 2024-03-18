@@ -627,6 +627,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 fun Resolver.addNewAnyMessage(
     st: MessageDeclaration,
     isGetter: Boolean = false,
+    isSetter: Boolean = false,
     forType: Type? = null
 ): MessageMetadata {
     val customPkg = if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.names.count() > 1) {
@@ -637,13 +638,13 @@ fun Resolver.addNewAnyMessage(
         if (forType is Type.UnknownGenericType)
             Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
         else
-            st.forType ?: st.token.compileError("Compiler error, type for $st not resolved")
+            st.forType ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
 //    val realType =
 //        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
 
-    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, this)
+    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this)
 
 
     when (st) {
