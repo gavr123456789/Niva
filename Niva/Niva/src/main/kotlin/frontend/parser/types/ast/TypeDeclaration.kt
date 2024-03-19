@@ -166,6 +166,7 @@ class UnionBranchDeclaration(
     var isRoot: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var branches: List<Type.Union>? = null,
+    val names: List<String> = listOf()
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = pragmas) {
     override fun toString(): String {
         return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.typeAST }

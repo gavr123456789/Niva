@@ -199,15 +199,17 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration 
                 getPipeTok(firstBranch)//matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
 
 
-            val branchName = matchAssertAnyIdent("Name of the union branch expected")
+            val branchName = identifierMayBeTyped()//matchAssertAnyIdent("Name of the union branch expected")
             val fields = typeFields()
 
+            // save many names
             unionBranches.add(
                 UnionBranchDeclaration(
-                    typeName = branchName.lexeme,
+                    typeName = branchName.name,
                     fields = fields,
                     token = pipeTok,
                     root = root,
+                    names = branchName.names
                 )
             )
 

@@ -32,7 +32,6 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
         evalPragmas(binary)
         generateSingleBinary(1, binary.receiver, binary)
     }
-
     append(
         when (this@generateExpression) {
             is ExpressionInBrackets -> generateExpressionInBrackets(withNullChecks)

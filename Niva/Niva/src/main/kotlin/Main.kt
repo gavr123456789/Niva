@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Fun/bazar/Examples/GTK/main.niva")
+    val args = arrayOf("run", "/home/gavr/Documents/Fun/bazar/Examples/GTK/main.niva")
 
 //    val args = arrayOf("dev", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("dev", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")

@@ -37,7 +37,7 @@ fun Resolver.resolveUnaryMsg(
 
     fun checkForStatic(receiver: Receiver): Boolean =
         if (receiver.type is Type.UserEnumRootType) false
-        else receiver is IdentifierExpr && typeTable[receiver.str] != null
+        else receiver is IdentifierExpr && typeTable[receiver.name] != null
 
 
     // if this is message for type
