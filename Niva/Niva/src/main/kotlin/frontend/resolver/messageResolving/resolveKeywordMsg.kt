@@ -135,6 +135,7 @@ fun Resolver.resolveKeywordMsg(
         is UnaryMsgMetaData -> listOf()
         is BinaryMsgMetaData -> listOf()
         is KeywordMsgMetaData -> {
+            // only for bind Fields feature
             if (kwTypeFromDB.isSetter){
                 kind = KeywordLikeType.Setter
                 statement.kind = kind
@@ -328,6 +329,14 @@ fun Resolver.resolveKeywordMsg(
 
         KeywordLikeType.Setter -> {
             if (statement.type == null) {
+
+                val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
+                val arg = statement.args.first()
+
+                val r = compare2Types(argFromDb,arg.keywordArg.type!!, statement.token)
+                if (!r) {
+                    statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
+                }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
             }
             // Nothing to do, because check for setter already sets the type of statement

@@ -853,8 +853,8 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw) ?:
-        getType2(x.name, currentScope, previousScope, kw)
+        getType2(x.names.first(), currentScope, previousScope, kw, x.names) ?:
+        getType2(x.name, currentScope, previousScope, kw, x.names)
 
         ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
 
@@ -875,7 +875,8 @@ fun Resolver.getType2(
     typeName: String,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
-    statement: KeywordMsg?
+    statement: KeywordMsg?,
+    names: List<String> = listOf()
 ): Type? {
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
