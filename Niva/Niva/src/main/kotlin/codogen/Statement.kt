@@ -21,7 +21,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is ReturnStatement -> {
                 val expr = statement.expression
                 if (expr != null) {
-                    "return ${expr.generateExpression()}"
+                    "return (${expr.generateExpression()})"
                 } else {
                     "return"
                 }
