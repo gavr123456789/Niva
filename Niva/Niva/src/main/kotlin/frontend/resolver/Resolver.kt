@@ -21,6 +21,10 @@ private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boo
     infoTypesToPrint[type] = printOnlyTypeName
 }
 
+fun Resolver.addToTopLevelStatements(statement: Statement) {
+    if (currentLevel == 0) topLevelStatements.add(statement)
+}
+
 private fun Resolver.resolveStatement(
     statement: Statement,
     currentScope: MutableMap<String, Type>,
@@ -105,8 +109,7 @@ private fun Resolver.resolveStatement(
             }
 
             resolveTypeForMessageSend(statement)
-            if (currentLevel == 0)
-                topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
             stack.pop()
         }
 
@@ -135,33 +138,32 @@ private fun Resolver.resolveStatement(
 
                 statement.isType = true
             }
-
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is CodeBlock -> {
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is ListCollection -> {
             resolveCollection(statement, "MutableList", (previousScope + currentScope).toMutableMap(), rootStatement)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap(), rootStatement)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is LiteralExpression.FloatExpr ->
@@ -203,7 +205,7 @@ private fun Resolver.resolveStatement(
 
         is ControlFlow -> {
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is Assign -> {
@@ -219,7 +221,7 @@ private fun Resolver.resolveStatement(
                     statement.token.compileError("In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             }
-            if (currentLevel == 0) topLevelStatements.add(statement)
+            addToTopLevelStatements(statement)
         }
 
         is ReturnStatement -> {

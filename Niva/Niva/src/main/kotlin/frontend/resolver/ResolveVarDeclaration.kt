@@ -88,9 +88,7 @@ fun Resolver.resolveVarDeclaration(
     }
 
     currentScope[statement.name] = copyType ?: valueType
-    if (currentLevel == 0) {
-        topLevelStatements.add(statement)
-    }
+    addToTopLevelStatements(statement)
 }
 
 
