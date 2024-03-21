@@ -47,7 +47,7 @@ fun Resolver.resolveCodeBlock(
 ) {
 
     // [] vs x = []
-    if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message && rootStatement !is ControlFlow)) || rootStatement == null) {
+    if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message && rootStatement !is ControlFlow && rootStatement !is ReturnStatement)) || rootStatement == null) {
         statement.isSingle = true
     }
 
@@ -104,11 +104,11 @@ fun Resolver.resolveCodeBlock(
 
                     val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
-                    if (sameButResolvedArg.name.isGeneric()) {
+//                    if (sameButResolvedArg.name.isGeneric()) {
                         // check that current resolving message declaration has some generics
 //                        println("olala, looks like the $sameButResolvedArg is Known generic")
 //                        throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
-                    }
+//                    }
                     genericLetterToTypesOfReceiver[it.name] = sameButResolvedArg
                 } else if (beforeName != null && beforeName.isGeneric()) {
                     // was resolved somehow

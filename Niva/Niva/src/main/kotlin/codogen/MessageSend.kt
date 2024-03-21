@@ -40,9 +40,20 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     b.append("(".repeat(messages.count { it.isPiped }))
 //    var newInvisibleArgs: MutableList<String> = mutableListOf()
 
+    val isThisACascade = messages.count() > 1 && messages[0].receiver == messages[1].receiver
+
+
+    val fakeReceiver = if (isThisACascade) {
+        b.append(receiver.generateExpression())
+        b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
+//        val t = Token(token.kind, "cascade_receiver", token.line, token.pos, token.relPos, token.file, token.spaces)
+//        LiteralExpression.StringExpr(t)
+        IdentifierExpr(name = "cascade_receiver", token = token).also { it.type = receiver.type }
+    } else null
+
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
-        var newInvisibleArgs: MutableList<String>? = null//mutableListOf()
+        var newInvisibleArgs: List<String>? = null//mutableListOf()
 
         var isThereEmitPragma = false
         // TODO replace pragmas with unions and switch on them
@@ -50,11 +61,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
             val (isThereEmit, ctArgs) = evalPragmas(it)
             (isThereEmitPragma) = isThereEmit
             if (ctArgs != null) {
-                if (newInvisibleArgs == null) {
-                    newInvisibleArgs = ctArgs.toMutableList()
-                } else {
-                    newInvisibleArgs.addAll(ctArgs)
-                }
+                newInvisibleArgs = ctArgs
             }
         }
         // do same for binary args
@@ -67,21 +74,33 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
             }
         }
 
+        // when we emit, selector name is replaced
         if (isThereEmitPragma) {
-            if(newInvisibleArgs?.isNotEmpty() == true) {
+            if (newInvisibleArgs?.isNotEmpty() == true) {
                 it.token.compileError("You cant combine Compiler with emit pragma")
             }
             b.append(it.selectorName)
         } else {
-            when (it) {
-                is UnaryMsg -> b.append(generateSingleUnary(i, receiver, it, withNullChecks, newInvisibleArgs))
-                is BinaryMsg -> b.append(generateSingleBinary(i, receiver, it, newInvisibleArgs))
-                is KeywordMsg -> b.append(generateSingleKeyword(i, receiver, it, withNullChecks, newInvisibleArgs))
-            }
+
+
+            if (isThisACascade) {
+                "sas".also { `cascade receiver` -> `cascade receiver` + "sas"; `cascade receiver` + 45; }
+
+                // send with i + 1, to not trigger the receiver generation
+
+
+                generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
+                b.append("; ")
+
+            } else
+                generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
         }
         if (it.isPiped)
             b.append(")")
     }
+
+    if (isThisACascade)
+        b.append("\n}") // close apply
     return b.toString()
 
 
@@ -92,6 +111,44 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     // Binary
     // 4 + 4 = 4 + 4
     // 4 inc + 4 dec = 4.inc() + 4.dec()
+}
+
+fun generateMessages(
+    msg: Message,
+    b: StringBuilder,
+    i: Int,
+    receiver: Receiver,
+    withNullChecks: Boolean,
+    newInvisibleArgs: List<String>?,
+): StringBuilder = when (msg) {
+    is UnaryMsg -> b.append(
+        generateSingleUnary(
+            i,
+            receiver,
+            msg,
+            withNullChecks,
+            newInvisibleArgs,
+        )
+    )
+
+    is BinaryMsg -> b.append(
+        generateSingleBinary(
+            i,
+            receiver,
+            msg,
+            newInvisibleArgs,
+        )
+    )
+
+    is KeywordMsg -> b.append(
+        generateSingleKeyword(
+            i,
+            receiver,
+            msg,
+            withNullChecks,
+            newInvisibleArgs,
+        )
+    )
 }
 
 enum class Pragmas(val v: String) {
@@ -111,7 +168,7 @@ fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
 
     val ctPragmas = keyPragmas
-        .filter { it.name == Pragmas.CT_NAME.v}
+        .filter { it.name == Pragmas.CT_NAME.v }
 
     if (ctPragmas.isEmpty()) return null
 
@@ -252,7 +309,7 @@ fun generateSingleKeyword(
     receiver: Receiver,
     keywordMsg: KeywordMsg,
     withNullChecks: Boolean = false,
-    invisibleArgs: List<String>? = null
+    invisibleArgs: List<String>? = null,
 ) = buildString {
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
@@ -403,7 +460,7 @@ fun generateSingleUnary(
     receiver: Receiver,
     it: UnaryMsg,
     withNullChecks: Boolean = false,
-    invisibleArgs: List<String>? = null
+    invisibleArgs: List<String>? = null,
 ) = buildString {
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
@@ -424,8 +481,7 @@ fun generateSingleUnary(
 
                 if (invisibleArgs == null) {
                     append("()")
-                }
-                else {
+                } else {
                     // add invisible args
                     append("(")
                     append(invisibleArgs.joinToString(", "))
@@ -460,7 +516,7 @@ fun generateSingleBinary(
     i: Int,
     receiver: Receiver,
     it: BinaryMsg,
-    invisibleArgs: List<String>? = null
+    invisibleArgs: List<String>? = null,
 ) = buildString {
 
     if (i == 0) {

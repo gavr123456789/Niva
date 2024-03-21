@@ -194,9 +194,23 @@ sealed class Type(
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
+        is Lambda -> buildString {
+            val realArgs = if (extensionOfType != null) {
+                // fun sas(x: ^Int.(Int) -> String) =
+                val kotlinExtType = extensionOfType.toKotlinString(needPkgName)
+                append(kotlinExtType, ".")
 
-        else -> "$pkg.$name"
+                args.drop(1).map { it.type }
+            } else args.map { it.type }
 
+            append("(")
+            realArgs.forEach {
+                append(it.toKotlinString(needPkgName), ",")
+            }
+            append(") -> ")
+
+            append(returnType.toKotlinString(needPkgName))
+        }
     }
 
     class TypeType(

@@ -6,6 +6,8 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.VarDeclaration
+import main.utils.RED
+import main.utils.RESET
 
 
 fun Parser.varDeclaration(): VarDeclaration? {
@@ -44,6 +46,9 @@ fun Parser.varDeclaration(): VarDeclaration? {
         val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
         return result
     } catch (e: Exception) {
+        if (e.message?.startsWith("${RED}Error:$RESET Don't use pipe") == true) {
+            throw e
+        }
         current = savePoint
         return null
     }

@@ -550,8 +550,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
 
     return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
         val realTypeFromTable =
-            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
-            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
+            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name] ?: returnTypeFromDb
+//            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
     }
     // если ретурн тип ту стринг есть среди параметров функции имеющих дженерики, или

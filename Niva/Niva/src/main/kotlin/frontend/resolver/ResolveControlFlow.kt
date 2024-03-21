@@ -353,7 +353,7 @@ fun recursiveCheckThatEveryBranchChecked(branchesFromDb: MutableSet<Type>, branc
     if (fromDb != real) {
         if (fromDb.count() > real.count()) {
             val difference = (fromDb - real).joinToString("$RESET, $YEL") { it.name }
-            tok.compileError("Not all possible unions are checked ($YEL$difference$RESET)")
+            tok.compileError("Not all possible variants have been checked ($YEL$difference$RESET)")
         } else {
             val difference = (real - fromDb).joinToString("$RESET, $YEL") { it.name }
             tok.compileError("Extra unions are checked: ($YEL$difference)$RESET")

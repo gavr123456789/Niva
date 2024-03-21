@@ -77,15 +77,15 @@ fun Parser.checkMany(vararg kind: TokenType): Boolean {
 
 
 
-fun Parser.checkString(kind: Iterable<String>): Boolean {
-    kind.forEach {
-        if (check(it)) {
-            step()
-            return true
-        }
-    }
-    return false
-}
+//fun Parser.checkString(kind: Iterable<String>): Boolean {
+//    kind.forEach {
+//        if (check(it)) {
+//            step()
+//            return true
+//        }
+//    }
+//    return false
+//}
 
 fun Parser.match(kind: TokenType) =
     if (check(kind)) {
@@ -108,10 +108,22 @@ fun Parser.matchAfterSkip(kind: TokenType): Boolean {
     }
 }
 
-fun Parser.checkIdentifier(): Boolean {
-    val tok = peek()
-    return tok.isIdentifier()
+fun Parser.checkAfterSkip(kind: TokenType): Boolean {
+    val savePoint = current
+    skipNewLinesAndComments()
+
+    return if (check(kind)) {
+        true
+    } else {
+        current = savePoint
+        false
+    }
 }
+
+//fun Parser.checkIdentifier(): Boolean {
+//    val tok = peek()
+//    return tok.isIdentifier()
+//}
 
 fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
     val tok = peek()
@@ -156,31 +168,31 @@ fun Parser.match(kind: Iterable<TokenType>): Boolean {
     return false
 }
 
-fun Parser.matchString(kind: Iterable<String>): Boolean {
-    kind.forEach {
-        if (match(it)) {
-            return true
-        }
-    }
-    return false
-}
-
-fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
-    if (!match(kind)) {
-        if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}")
-        } else {
-            error(message)
-        }
-    }
-}
-
-fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
-    if (!match(kind)) {
-        if (message.isEmpty()) {
-            error("expecting token of kind $kind, found ${peek().kind}")
-        } else {
-            error(message)
-        }
-    }
-}
+//fun Parser.matchString(kind: Iterable<String>): Boolean {
+//    kind.forEach {
+//        if (match(it)) {
+//            return true
+//        }
+//    }
+//    return false
+//}
+//
+//fun Parser.expect(kind: TokenType, message: String = "", token: Token? = null) {
+//    if (!match(kind)) {
+//        if (message.isEmpty()) {
+//            error("expecting token of kind $kind, found ${peek().kind}")
+//        } else {
+//            error(message)
+//        }
+//    }
+//}
+//
+//fun Parser.expect(kind: String, message: String = "", token: Token? = null) {
+//    if (!match(kind)) {
+//        if (message.isEmpty()) {
+//            error("expecting token of kind $kind, found ${peek().kind}")
+//        } else {
+//            error(message)
+//        }
+//    }
+//}
