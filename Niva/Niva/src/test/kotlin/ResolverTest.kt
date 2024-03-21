@@ -1327,7 +1327,7 @@ class ResolverTest {
     @Test
     fun lambdaWithReceiver() {
         val source = """
-            String msg::String[Int, Int -> Unit] = [
+            String msg::String.[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
@@ -1342,7 +1342,7 @@ class ResolverTest {
     @Test
     fun lambdaWithReceiverCall() {
         val source = """
-            String msg::String[Int, Int -> Unit] = [
+            String msg::String.[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
