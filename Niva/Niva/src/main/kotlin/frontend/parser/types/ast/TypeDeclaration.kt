@@ -181,7 +181,11 @@ class UnionRootDeclaration(
     genericFields: MutableSet<String> = mutableSetOf(),
     pragmas: MutableList<Pragma> = mutableListOf(),
     isPrivate: Boolean = false,
-) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas)
+) : SomeTypeDeclaration(typeName, fields, token, genericFields, isPrivate, pragmas) {
+    override fun toString(): String {
+        return "union $typeName"
+    }
+}
 
 class AliasDeclaration(
     val typeName: String,

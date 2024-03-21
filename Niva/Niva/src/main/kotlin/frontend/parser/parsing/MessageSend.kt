@@ -176,10 +176,10 @@ fun Parser.unaryOrBinary(
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
     while (parsePipeAndCascade && match(TokenType.Cascade)) {
-//        wasCascade = true
         if (wasPipe) {
-            error("Dont use pipe with cascade operator, better create different variables")
+            error("Don't use pipe with cascade operator, better create different variables")
         }
+        skipNewLinesAndComments()
 
         when {
             check(TokenType.BinarySymbol) -> {
@@ -196,6 +196,9 @@ fun Parser.unaryOrBinary(
                 val unary = unaryMessagesMatching(firstReceiver)
                 cascadedMsgs.addAll(unary)
             }
+        }
+        if (check(TokenType.PipeOperator)) {
+            peek().compileError("Don't use pipe with cascade operator, better create different variables")
         }
     }
 

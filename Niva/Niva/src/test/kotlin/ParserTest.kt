@@ -1711,6 +1711,17 @@ class ParserTest {
 //        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
     }
 
+    @Test
+    fun oneLineUnion() {
+        val source = """
+            union A = B | C
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+    }
+
 
 }
 

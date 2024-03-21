@@ -8,6 +8,8 @@ import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
+import main.utils.RED
+import main.utils.YEL
 
 fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     // type Person name: string generic age: int
@@ -134,7 +136,7 @@ fun Parser.enumFields(): MutableList<EnumFieldAST> {
                 token = name,
             )
         )
-    } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))
+    } while (checkMany(TokenType.Identifier, TokenType.Colon) || check(TokenType.Apostrophe))
     return fields
 }
 
@@ -142,7 +144,7 @@ fun Parser.enumFields(): MutableList<EnumFieldAST> {
 fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
 
-    if (checkEndOfLineOrFile()) {
+    if (checkEndOfLineOrFile() || check(TokenType.If)) {
         skipNewLinesAndComments()
         return mutableListOf()
     }
@@ -185,8 +187,11 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration 
     val unionTok = matchAssert(TokenType.Union, "")
     val unionName = matchAssertAnyIdent("name of the union expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
-    val isThereBrunches = match(TokenType.Assign)
+    val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
 
+    if (!isThereBrunches && checkAfterSkip(TokenType.If)) {
+        unionTok.compileError("Union $YEL$unionName$RESET with branches detected, but you forget $WHITE'='$RESET (${WHITE}union $YEL$unionName$RED = $WHITE...)")
+    }
     fun unionFields(root: UnionRootDeclaration): List<UnionBranchDeclaration> {
         val unionBranches = mutableListOf<UnionBranchDeclaration>()
         var firstBranch = true
@@ -194,11 +199,11 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration 
         do {
             skipNewLinesAndComments()
 
-            // | Rectangle => width: int height: int
             val pipeTok =
                 getPipeTok(firstBranch)//matchAssert(TokenType.Pipe, "pipe expected on each union branch declaration")
 
 
+            // | Rectangle => width: int height: int
             val branchName = identifierMayBeTyped()//matchAssertAnyIdent("Name of the union branch expected")
             val fields = typeFields()
 

@@ -7,6 +7,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
+import main.utils.RESET
 import main.utils.capitalizeFirstLetter
 
 // also recevier can be unary or binary message
@@ -45,7 +46,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
             is MessageSendKeyword -> error("keyword can be a receiver only when piped, 1 from: 2 |> to: 3")
         }
     } catch (e: Throwable) {
-        if (e.message?.startsWith("Error") == true) {
+        if (e.message?.startsWith("${RED}Error:$RESET") == true) {
             throw e
         }
         current = safePoint
@@ -284,7 +285,6 @@ fun Parser.methodBody(
 
 
 // Int sas ^ (-> Type)? =?
-@Suppress("UNUSED_VARIABLE")
 fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     if (isConstructor) return true
 

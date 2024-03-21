@@ -1,53 +1,30 @@
-
-union
-
-
-Int x::Int = 3
-
-y = [
-    1
-]
-1 x: y
-1 echo
-
-//union ExpressionVisitor =
-//| PrintingVisitor sb: StringBuilder
-//
-//constructor PrintingVisitor default =
-//    PrintingVisitor sb: StringBuilder new
-//
-//ExpressionVisitor visit: e::Expression = | this
-//| PrintingVisitor => this visit: e
-//
-//PrintingVisitor visit: e::Expression = | e
-//| IntExpression => sb append: e value toString
-//| AdditionExpression => [
-//    sb append: "("
-//    e left accept: this
-//    sb append: "+"
-//    e right accept: this
-//    sb append: ")"
+//MutableList::T makeIter -> [ -> T] = [
+//  mut b = 0
+//  ^[
+//    x = this at: b
+//    b <- b inc
+//    x
+//  ]
 //]
-//
-//PrintingVisitor print = sb toString
-//
-//union Expression =
-//| IntExpression value: Int
-//| AdditionExpression left: Expression right: Expression
-//
-//Expression accept: visitor::ExpressionVisitor = [
-//    | this
-//    | IntExpression => visitor visit: this
-//    | AdditionExpression => visitor visit: this
+////
+//MutableList::T zipLeft::[ -> T] right::[ -> T] -> [ -> MutableList::T] = [
+//    ^ [ {(zipLeft do) (right do)} ]
 //]
-//
-//// main
-//expression = AdditionExpression
-//    left: (IntExpression value: 1)
-//    right: (AdditionExpression
-//            left: (IntExpression value: 2)
-//            right: (IntExpression value: 3))
-//
-//printingVisitor = PrintingVisitor default
-//printingVisitor visit: expression
-//printingVisitor print echo
+
+
+type Cat
+    name: String
+    age: Int
+Cat birthday = age <- age inc
+Cat changeName::String = name <- changeName
+
+cat = Cat name: "Timosha" age: 8
+
+cat echo
+cat birthday;
+    changeName: "Dog"
+cat echo
+
+arr = {1 2 3};
+    add: 4;
+    add: 5

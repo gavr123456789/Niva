@@ -439,8 +439,8 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
                     val lines = thisFileContent.split("\n")
 
 
-                    var q = lines[kotlinLine - 1]
-                    val splitted = q.split("@")
+                    val y = lines[kotlinLine - 1]
+                    val splitted = y.split("@")
                     if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
                     val fileAndLineNumber = splitted[1].trim()
                     val (file, lineStr) = fileAndLineNumber.split(":::")
