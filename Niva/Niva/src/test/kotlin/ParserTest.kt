@@ -878,6 +878,30 @@ class ParserTest {
         assert(q.messages.count() == 5)
     }
 
+    @Test
+    fun cascadeOperatorManyKeywords() {
+        val source = """
+        a from: 1; to: 2
+
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSendKeyword
+        val w = q.messages[0]
+        val e = q.messages[1]
+        assertTrue { w.receiver == e.receiver }
+    }
+    @Test
+    fun cascadeOperatorOnLambdaCall() {
+        val source = """
+        codeblock = [label::Int -> y + y]
+        btnResult = codeblock label: 1; addCssClass: "suggested-action"
+
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
 //    @Test
 //    fun cascadeOperator2() {
 //        val source = """

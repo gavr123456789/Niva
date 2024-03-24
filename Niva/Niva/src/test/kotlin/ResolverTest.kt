@@ -764,15 +764,44 @@ class ResolverTest {
     }
 
     @Test
+    fun cascade() {
+        val source = """
+            type Person name: String
+            Person name: "Alice"; name: "Bob"; name: "Centurion"
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[1] as MessageSendKeyword
+        val w = q.messages[1].type
+        val e = q.messages[2].type
+        assertTrue { w?.name == "Person" }
+        assertTrue { e?.name == "Person" }
+    }
+
+    @Test
+    fun cascade2() {
+        val source = """
+            x = {1 2 3} add: 4; add: 5
+            x add: 6
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+
+    }
+
+    @Test
     fun recursiveFunc() {
         val source = """
         Int fib -> Int = _
         | this < 2 => 1
         |=> (this - 2) fib + (this - 1) fib
         """.trimIndent()
-
-
         val statements = resolve(source)
+        "sas".apply {
+
+        }
         assert(statements.count() == 1)
     }
 
@@ -1360,6 +1389,46 @@ class ResolverTest {
         assertTrue { r.name == "this" && r.type?.name == "String" }
     }
 
+    @Test
+    fun implicitLambdaReturnWithControlFlow() {
+        val source = """
+            x = [ y::Int ->
+              y >= 0 => "pos" |=> "neg"
+            ]
+            q = x y: 4
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+
+        val codeBlock = (statements[0] as VarDeclaration).value as CodeBlock
+        val iff = codeBlock.statements[0] as ControlFlow.If
+        assertTrue {
+            iff.kind == ControlFlowKind.Expression &&
+            codeBlock.type?.name == "[Int -> String]"
+        }
+    }
+
+    @Test
+    fun implicitLambdaOnlyLastControlFlowIsExpression() {
+        val source = """
+            x = [ y::Int ->
+              y >= 0 => "pos" echo
+              
+              y >= 0 => "pos" |=> "neg"
+            ]
+            q = x y: 4
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+
+        val codeBlock = (statements[0] as VarDeclaration).value as CodeBlock
+        val iff = codeBlock.statements[1] as ControlFlow.If
+        assertTrue {
+            iff.kind == ControlFlowKind.Expression &&
+            codeBlock.type?.name == "[Int -> String]"
+        }
+    }
+
 
     @Test
     fun sendMethodToMethod() {
@@ -1380,23 +1449,7 @@ class ResolverTest {
         assertTrue { w.extensionOfType!!.name == "String" }
     }
 
-    @Test
-    fun unionInsideUnion() {
-        val source = """
-            union Toyota =
-            | Camry y: Int
-            | Corola x: Int
-            union Car  =
-            | Toyota
-            | SomeBadCar q: String
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-        val w = statements[1] as UnionRootDeclaration
-        val q = w.branches.find { it.typeName == "Toyota" }!!
-        TODO()
-//        assertTrue { q is  }
-    }
+
 
 
 //    @Test

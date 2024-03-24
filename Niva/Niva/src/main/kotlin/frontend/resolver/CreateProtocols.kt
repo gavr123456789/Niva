@@ -205,7 +205,6 @@ fun createStringProtocols(
             createUnary("count", intType),
             createUnary("trim", stringType),
             createUnary("trimIndent", stringType),
-            createUnary("isDigit", boolType),
             createUnary("isBlank", boolType),
             createUnary("isEmpty", boolType),
             createUnary("isAlphaNumeric", boolType),
@@ -238,6 +237,7 @@ fun createStringProtocols(
             createFilterKeyword(charType, boolType, stringType),
 
             createKeyword(KeywordArg("startsWith", stringType), boolType),
+            createKeyword(KeywordArg("contains", stringType), boolType),
             createKeyword(KeywordArg("endsWith", stringType), boolType),
 
 

@@ -38,16 +38,11 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     }
 
     b.append("(".repeat(messages.count { it.isPiped }))
-//    var newInvisibleArgs: MutableList<String> = mutableListOf()
 
     val isThisACascade = messages.count() > 1 && messages[0].receiver == messages[1].receiver
-
-
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
-//        val t = Token(token.kind, "cascade_receiver", token.line, token.pos, token.relPos, token.file, token.spaces)
-//        LiteralExpression.StringExpr(t)
         IdentifierExpr(name = "cascade_receiver", token = token).also { it.type = receiver.type }
     } else null
 
@@ -81,14 +76,8 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
             }
             b.append(it.selectorName)
         } else {
-
-
             if (isThisACascade) {
-                "sas".also { `cascade receiver` -> `cascade receiver` + "sas"; `cascade receiver` + 45; }
-
                 // send with i + 1, to not trigger the receiver generation
-
-
                 generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
                 b.append("; ")
 

@@ -19,7 +19,11 @@ sealed class IfBranch(
         ifExpression: Expression,
         val body: CodeBlock,//List<Statement> // replace with code block
         otherIfExpressions: List<Expression>
-    ) : IfBranch(ifExpression, otherIfExpressions)
+    ) : IfBranch(ifExpression, otherIfExpressions) {
+        init {
+            body.isStatement = true
+        }
+    }
 }
 
 
@@ -46,7 +50,11 @@ sealed class ControlFlow(
         kind: ControlFlowKind,
         token: Token,
         type: Type?
-    ) : ControlFlow(ifBranches, elseBranch, kind, token, type)
+    ) : ControlFlow(ifBranches, elseBranch, kind, token, type) {
+        override fun toString(): String {
+            return ifBranches.joinToString { it.ifExpression.toString() + " => ...\n" }
+        }
+    }
 
     class Switch(
         val switch: Expression,

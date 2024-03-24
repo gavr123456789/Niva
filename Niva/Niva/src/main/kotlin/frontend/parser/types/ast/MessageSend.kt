@@ -4,7 +4,7 @@ import frontend.resolver.KeywordArgAst
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
-sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false) : Expression(type, token)
+sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false, var isCascade: Boolean = false) : Expression(type, token)
 
 
 // Pkg.Person.[x, y]
