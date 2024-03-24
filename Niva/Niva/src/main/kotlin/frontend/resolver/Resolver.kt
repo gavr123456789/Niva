@@ -39,6 +39,16 @@ private fun Resolver.resolveStatement(
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
+                // fix return types of cascade messages
+                statement2.messages.forEachIndexed { i, it ->
+                    if (it.isCascade) {
+                        if (i == 0) {
+                            it.token.compileError("Compiler ERROR, its impossible to have cascaded msg as first msg")
+                        }
+                        it.type = statement2.messages[i - 1].receiver.type
+                    }
+                }
+
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
                         statement2.messages.last().type
@@ -1071,7 +1081,7 @@ class Resolver(
                     stringType = stringType,
                     unitType = unitType,
                     boolType = boolType,
-                    floatType = floatType,
+                    floatType = doubleType,
                 ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) }
             )
 

@@ -41,6 +41,14 @@ fun Resolver.resolveControlFlow(
                 rootStatement.kind
             }
 
+            is CodeBlock -> {
+                if (!rootStatement.isStatement && rootStatement.statements.last() == statement)
+                    ControlFlowKind.Expression
+                else
+                    ControlFlowKind.Statement
+            }
+
+
             is MessageDeclaration -> {
                 if (rootStatement.isSingleExpression)
                     ControlFlowKind.Expression

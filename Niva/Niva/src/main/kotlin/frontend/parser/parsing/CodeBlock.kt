@@ -62,7 +62,7 @@ private fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
     do {
         val identifier = identifierMayBeTyped()
         result.add(identifier)
-    } while (match(TokenType.Comma))
+    } while (match(TokenType.Comma) || check(TokenType.Identifier))
 
     // a, b, c ^->
     matchAssert(TokenType.ReturnArrow, "expected statements after codeblock's arg list but found: ${peek().lexeme}")

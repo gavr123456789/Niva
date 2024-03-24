@@ -12,19 +12,46 @@
 //]
 
 
-type Cat
-    name: String
-    age: Int
-Cat birthday = age <- age inc
-Cat changeName::String = name <- changeName
+//type Cat
+//    name: String
+//    age: Int
+//Cat birthday = age <- age inc
+//Cat changeName::String = name <- changeName
+//
+//cat = Cat name: "Timosha" age: 8
+//
+//cat echo
+//cat birthday;
+//    changeName: "Dog"
+//cat echo
+//
+//arr = {1 2 3};
+//    add: 4;
+//    add: 5
 
-cat = Cat name: "Timosha" age: 8
+//y = [a::Int b::Int -> a + b]
+//y a: 2 b: 7 |> echo
 
-cat echo
-cat birthday;
-    changeName: "Dog"
-cat echo
+//mut clean = false
+//
+//input = [ label::String, btnResult::Int ->
+//    clean => [
+//        clean <- false
+//    ]
+//    label == "." => [
+//      "display text." contains: "." |> not => [
+//        1 echo
+//      ]
+//    ] |=> "input" first isDigit [
+//        2 echo
+//    ]
+//
+//    "TODO" echo
+//]
 
-arr = {1 2 3};
-    add: 4;
-    add: 5
+type Person name: String
+Person sas = 2 echo
+Person sus = 2 echo
+p = Person name: "Alice"
+y = p sas; sas; sas
+

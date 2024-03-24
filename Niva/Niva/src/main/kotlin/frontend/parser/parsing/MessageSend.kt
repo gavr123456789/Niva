@@ -94,10 +94,10 @@ fun Parser.binaryMessagesMatching(
 
 fun Parser.unaryOrBinary(
     customReceiver: Receiver? = null,
-    parsePipeAndCascade: Boolean = true,
+    parsePipe: Boolean = true,
+    parseCascade: Boolean = true,
 ): MessageSend {
     var wasPipe = false
-//    var wasCascade = false
 
     val firstReceiver: Receiver = customReceiver ?: simpleReceiver()
 
@@ -124,7 +124,7 @@ fun Parser.unaryOrBinary(
     val pipedMsgs = mutableListOf<Message>()
     // x |> y
     // x must become a receiver for y
-    while (parsePipeAndCascade && matchAfterSkip(TokenType.PipeOperator)) {
+    while (parsePipe && matchAfterSkip(TokenType.PipeOperator)) {
         wasPipe = true
         // 1 inc
         // |>       // matchAfterSkip skipped to this
@@ -175,7 +175,7 @@ fun Parser.unaryOrBinary(
 
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
-    while (parsePipeAndCascade && match(TokenType.Cascade)) {
+    while (parseCascade && matchAfterSkip(TokenType.Cascade)) {
         if (wasPipe) {
             error("Don't use pipe with cascade operator, better create different variables")
         }
@@ -276,6 +276,7 @@ fun Parser.messageSend(
             null,
             matchAssert(TokenType.Dot)
         )
+
         !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
         else -> simpleReceiver()
     }
@@ -322,40 +323,50 @@ fun Parser.keyword(
 
     val messages = mutableListOf<Message>(keyColonCycle())
 
-
-    while (match(TokenType.PipeOperator)) {
+    while (check(TokenType.PipeOperator) || check(TokenType.Cascade)) {
+        val tok = step()
+        val isPipe = tok.kind == TokenType.PipeOperator // else its
         skipNewLinesAndComments()
         // any msg
         if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
             var last = messages.last()
             // keyword pipe
             messages.add(keyColonCycle().also {
-                it.isPiped = true
-                it.receiver = last
-                last = it
+                if (isPipe) {
+                    it.isPiped = true
+                    it.receiver = last
+                    last = it
+                } else {
+                    it.isCascade = true
+                }
             })
         } else if (check(TokenType.Identifier)) {
             var last = messages.last()
             // unary pipe
-            messages.addAll (unaryMessagesMatching(receiver).onEach {
-                it.isPiped = true
-                it.receiver = last
-                last = it
+            messages.addAll(unaryMessagesMatching(receiver).onEach {
+                if (isPipe) {
+                    it.isPiped = true
+                    it.receiver = last
+                    last = it
+                } else {
+                    it.isCascade = true
+                }
             })
         } else if (check(TokenType.BinarySymbol)) {
             var last = messages.last()
             // binary pipe
             messages.addAll(binaryMessagesMatching(receiver, mutableListOf()).onEach {
-                it.isPiped = true
-                it.receiver = last
-                last = it
+                if (isPipe) {
+                    it.isPiped = true
+                    it.receiver = last
+                    last = it
+                } else {
+                    it.isCascade = true
+                }
             })
-
         } else {
             peek().compileError("Can't parse message after pipe operator |>")
         }
-
-
     }
 
 

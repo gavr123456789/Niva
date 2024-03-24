@@ -16,7 +16,7 @@ fun Parser.varDeclaration(): VarDeclaration? {
         // skip mut
         val isMutable = match(TokenType.Mut)
 
-        val tok = this.step()
+        val tok = step()
         val typeOrEqual = step()
 
         val value: Expression
@@ -40,13 +40,14 @@ fun Parser.varDeclaration(): VarDeclaration? {
 
             }
 
-            else -> peek().compileError("after ${peek(-1)} needed type or expression")
+            else -> peek().compileError("After ${peek(-1)} needed type or expression")
         }
 
         val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
         return result
     } catch (e: Exception) {
-        if (e.message?.startsWith("${RED}Error:$RESET Don't use pipe") == true) {
+        if (e.message?.startsWith("${RED}Error:$RESET Don't use pipe") == true ||
+            e.message?.startsWith("${RED}Error:$RESET After") == true) {
             throw e
         }
         current = savePoint

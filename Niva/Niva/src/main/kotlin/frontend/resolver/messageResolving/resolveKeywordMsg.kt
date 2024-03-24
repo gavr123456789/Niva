@@ -211,7 +211,7 @@ fun Resolver.resolveKeywordMsg(
                 compare2Types(it.keywordArg.type!!, receiverArgs[ii].type, it.keywordArg.token)
             if (!isTypesEqual) {
                 statement.token.compileError(
-                    "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid type for codeblock $WHITE${statement.receiver.str}${RESET}, the valid arguments are: $YEL${receiverType.args.map { it.type }}"
+                    "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid, $YEL${receiverArgs[ii].type}$RESET expected, $WHITE${statement.receiver.str}${RESET} has signature: $YEL${receiverType.args.map { it.type }}"
                 )
             }
         }

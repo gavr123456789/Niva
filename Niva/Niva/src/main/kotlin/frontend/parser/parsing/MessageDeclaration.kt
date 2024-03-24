@@ -35,7 +35,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
         // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
         // or Person name: "Alice" |> getName
         when (val messageSend =
-            unaryOrBinary(customReceiver = customReceiver, parsePipeAndCascade = !insideKeywordArgument)) {
+            unaryOrBinary(customReceiver = customReceiver, parsePipe = !insideKeywordArgument, parseCascade = !insideKeywordArgument)) {
             is MessageSendUnary, is MessageSendBinary -> {
                 return if (messageSend.messages.isNotEmpty()) {
                     messageSend

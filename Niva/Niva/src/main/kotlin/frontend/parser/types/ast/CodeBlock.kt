@@ -12,10 +12,11 @@ class CodeBlock(
     var isSingle: Boolean = false,
     type: Type? = null,
     token: Token,
+    var isStatement: Boolean = false // means it's not lambda, just block like for if
 ) : Receiver(type, token) {
     override fun toString(): String {
         return if (statements.isNotEmpty())
-            "${statements}"
+            "[\n\t${statements.joinToString("\n\t")}\n]"
         else
             "[]"
     }
