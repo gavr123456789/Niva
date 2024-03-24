@@ -799,9 +799,6 @@ class ResolverTest {
         |=> (this - 2) fib + (this - 1) fib
         """.trimIndent()
         val statements = resolve(source)
-        "sas".apply {
-
-        }
         assert(statements.count() == 1)
     }
 

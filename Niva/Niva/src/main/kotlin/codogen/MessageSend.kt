@@ -39,7 +39,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     b.append("(".repeat(messages.count { it.isPiped }))
 
-    val isThisACascade = messages.count() > 1 && messages[0].receiver == messages[1].receiver
+    val isThisACascade = messages.find { it.isCascade } != null //.count() > 1 && messages[0].receiver == messages[1].receiver
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
@@ -89,7 +89,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     }
 
     if (isThisACascade)
-        b.append("\n}") // close apply
+        b.append("\n}") // close also
     return b.toString()
 
 

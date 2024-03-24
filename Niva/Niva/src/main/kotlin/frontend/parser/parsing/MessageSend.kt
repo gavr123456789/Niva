@@ -183,17 +183,17 @@ fun Parser.unaryOrBinary(
 
         when {
             check(TokenType.BinarySymbol) -> {
-                val binary = binaryMessagesMatching(firstReceiver, mutableListOf())
+                val binary = binaryMessagesMatching(firstReceiver, mutableListOf()).onEach { it.isCascade = true }
                 cascadedMsgs.addAll(binary)
             }
 
             checkForKeyword() -> {
-                val keyword = keywordMessageParsing(firstReceiver)
+                val keyword = keywordMessageParsing(firstReceiver).also { it.isCascade = true }
                 cascadedMsgs.add(keyword)
             }
 
             check(TokenType.Identifier) -> {
-                val unary = unaryMessagesMatching(firstReceiver)
+                val unary = unaryMessagesMatching(firstReceiver).onEach { it.isCascade = true }
                 cascadedMsgs.addAll(unary)
             }
         }

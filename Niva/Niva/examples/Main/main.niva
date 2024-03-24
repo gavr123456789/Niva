@@ -49,9 +49,11 @@
 //    "TODO" echo
 //]
 
-type Person name: String
-Person sas = 2 echo
-Person sus = 2 echo
-p = Person name: "Alice"
-y = p sas; sas; sas
+type Person
+Person sas::String = sas echo
+
+x = (Person new); sas: "sas"
+x sas: "sas"
+
+
 
