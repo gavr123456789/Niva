@@ -40,14 +40,20 @@ private fun Resolver.resolveStatement(
                 this.resolve(statement2.messages, previousAndCurrentScope, statement2)
 
                 // fix return types of cascade messages
-                statement2.messages.forEachIndexed { i, it ->
-                    if (it.isCascade) {
-                        if (i == 0) {
-                            it.token.compileError("Compiler ERROR, its impossible to have cascaded msg as first msg")
-                        }
+                if (statement2.messages.count() == 1) {
+                    val first = statement2.messages[0]
+                    if (first.isCascade) {
+                        first.type = first.receiver.type
+                    }
+                } else if (statement2.messages.count() > 1) {
+
+                    for (i in 1 until statement2.messages.count()) {
+                        val it = statement2.messages[i]
                         it.type = statement2.messages[i - 1].receiver.type
                     }
                 }
+
+
 
                 if (statement2.messages.isNotEmpty()) {
                     statement2.type =
@@ -353,7 +359,8 @@ fun compare2Types(
 
         if (type1.extensionOfType != null && type2.extensionOfType != null) {
             if (!compare2Types(type1.extensionOfType, type2.extensionOfType)) {
-                val text = "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
+                val text =
+                    "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
                 token?.compileError(text)
                 throw CompilerError(text)
             }
@@ -404,11 +411,11 @@ fun compare2Types(
         return true
     }
 
-    val typeIsNull = {type: Type ->
+    val typeIsNull = { type: Type ->
         type is Type.InternalType && type.name == "Null"
     }
     // if one of them null and second is nullable
-    if ((typeIsNull(type1)  && type2 is Type.NullableType ||
+    if ((typeIsNull(type1) && type2 is Type.NullableType ||
                 typeIsNull(type2) && type1 is Type.NullableType)
     ) {
         return true
@@ -416,7 +423,7 @@ fun compare2Types(
 
     // if one of them is generic
     if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
-        type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType)
+                type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType)
     ) {
         return if (!isOut)
             true // getting T but got Int, is OK
@@ -515,7 +522,7 @@ fun compare2Types(
             val win = compare2Types(type1, type2.realType, token)
             if (win) return true
         }
-    } else if(unpackNullForFirst) {
+    } else if (unpackNullForFirst) {
         if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
             val win = compare2Types(type1.realType, type2, token)
             if (win) return true
@@ -650,7 +657,8 @@ fun Resolver.addNewAnyMessage(
         if (forType is Type.UnknownGenericType)
             Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
         else
-            st.forType ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
+            st.forType
+                ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
 //    val realType =
 //        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
@@ -680,7 +688,11 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
     pack.addImport(statement.forType!!.pkg)
 }
 
-fun Resolver.typeAlreadyRegisteredInCurrentPkg(typeName: String, pkg: Package? = null, token: Token? = null): Type.UserLike? {
+fun Resolver.typeAlreadyRegisteredInCurrentPkg(
+    typeName: String,
+    pkg: Package? = null,
+    token: Token? = null
+): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
     val result = pack.types[typeName]
     return result as? Type.UserLike
@@ -865,19 +877,25 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw, x.names) ?:
-        getType2(x.name, currentScope, previousScope, kw, x.names)
+        getType2(x.names.first(), currentScope, previousScope, kw, x.names) ?: getType2(
+            x.name,
+            currentScope,
+            previousScope,
+            kw,
+            x.names
+        )
 
         ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
 
 
-    val typeWithGenericResolved =  if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
-        // replace Generic from typeAst with sas
-        val e = getType2(x.typeAST.name, currentScope, previousScope, kw)!!
-        val copy = type.copy()
-        copy.typeArgumentList = listOf(e)
-        copy
-    } else type
+    val typeWithGenericResolved =
+        if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
+            // replace Generic from typeAst with sas
+            val e = getType2(x.typeAST.name, currentScope, previousScope, kw)!!
+            val copy = type.copy()
+            copy.typeArgumentList = listOf(e)
+            copy
+        } else type
 //    x.type = type
     return typeWithGenericResolved
 }
@@ -906,7 +924,7 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
             t.returnType
         } else {
             val last = body.statements.last()
-            if (last is Expression){
+            if (last is Expression) {
                 last.type!!
             } else {
                 Resolver.defaultTypes[InternalTypes.Unit]!!
@@ -1394,7 +1412,6 @@ class Resolver(
 //            mapEntryType, mutableMapOf()
 //        )
         ///
-
 
 
         addCustomTypeToDb(
