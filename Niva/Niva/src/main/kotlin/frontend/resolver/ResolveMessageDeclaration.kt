@@ -209,6 +209,7 @@ fun Resolver.resolveMessageDeclaration(
 
     // no return type declared, not recursive, single expr
     // body is not resolved and no returnTypeAst, so we cant infer return type
+    // because not all declarations resolved yet
     if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
         unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
         currentLevel--
@@ -221,7 +222,11 @@ fun Resolver.resolveMessageDeclaration(
         addNewAnyMessage(st, false, false, forType)
     }
 
-    if (needResolveOnlyBody) {
+    val isResolvedSingleExpr = if(st.isSingleExpression) {
+        val first = st.body.first()
+        first is Expression && first.type != null
+    } else false
+    if (needResolveOnlyBody && !isResolvedSingleExpr) {
         resolveBody()
     }
 

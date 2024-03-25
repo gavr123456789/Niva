@@ -8,6 +8,7 @@ import main.frontend.parser.types.ast.*
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
+import kotlin.collections.ArrayDeque
 
 
 fun Statement.isNotExpression(): Boolean =
@@ -309,7 +310,13 @@ fun Resolver.resolveControlFlow(
                                 realBranchTypes += it
                             }
                         }
-                        recursiveCheckThatEveryBranchChecked(realBranchTypes, typesAlreadyChecked, statement.token)
+                        recursiveCheckThatEveryBranchChecked(
+                            realBranchTypes,
+                            typesAlreadyChecked,
+                            statement.token,
+                            statement.ifBranches.associateBy ({ it.ifExpression.type },
+                            { it.ifExpression.token })
+                        )
 
                         if (statement.type == null) {
                             statement.type = firstBranchReturnType2
@@ -333,29 +340,55 @@ fun Resolver.resolveControlFlow(
     }
 }
 
-fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>): Set<Type.Union> {
+fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, map: Map<Type?, Token>): Set<Type.Union> {
     when (this) {
         is Type.UserUnionRootType -> {
             this.branches.forEach {
-                x.addAll(it.unpackUnionToAllBranches(x))
+                val y = it.unpackUnionToAllBranches(x, map)
+                x.addAll(y)
             }
         }
         is Type.UserUnionBranchType -> {
+            if (x.contains(this)) {
+                fun findSas(type: Type ,path: ArrayDeque<Type>): ArrayDeque<Type> {
+                    val p = type.parent
+                    if (p != null) {
+                        path.addFirst(type)
+                        return findSas(p, path)
+                    }
+
+                    return path
+                }
+                val path = findSas(this, ArrayDeque())
+                val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
+                val tokFromMap = map[path.first()]
+                val onLine = if (tokFromMap!=null) "on line ${tokFromMap.line}" else ""
+                println("${YEL}Warning:$RESET $this was already checked $strPath$RESET $onLine")
+            }
             x.add(this)
         }
     }
     return x
 }
 
-fun recursiveCheckThatEveryBranchChecked(branchesFromDb: MutableSet<Type>, branchesInSwitch: MutableSet<Type>, tok: Token) {
+fun recursiveCheckThatEveryBranchChecked(
+    branchesFromDb: MutableSet<Type>,
+    branchesInSwitch: MutableSet<Type>,
+    tok: Token,
+    map: Map<Type?, Token>
+) {
 
+    // создать тут коллекцию того что уже было проверено,
+    // внутри unpackUnionToAllBranches проверять, если уже было то вывести warning
+    // но нужно с сохранением пути
     val fromDb = branchesFromDb
         .filterIsInstance<Type.Union>()
-        .flatMap { it.unpackUnionToAllBranches(mutableSetOf())}.toSet()
+        .flatMap { it.unpackUnionToAllBranches(mutableSetOf(), map)}.toSet()
 
+    val realSet = mutableSetOf<Type.Union>()
     val real = branchesInSwitch
         .filterIsInstance<Type.Union>()
-        .flatMap { it.unpackUnionToAllBranches(mutableSetOf()) }.toSet()
+        .flatMap { it.unpackUnionToAllBranches(realSet, map)}.toSet()
 
 
     if (fromDb != real) {
@@ -367,6 +400,8 @@ fun recursiveCheckThatEveryBranchChecked(branchesFromDb: MutableSet<Type>, branc
             tok.compileError("Extra unions are checked: ($YEL$difference)$RESET")
         }
     }
+
+
 
 
 }

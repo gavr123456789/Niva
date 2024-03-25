@@ -16,6 +16,14 @@ import java.io.File
 
 const val MAIN_PKG_NAME = "mainNiva"
 
+fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+    val listType = this.typeDB.userTypes["List"]!!.first()
+    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
+    return mutableMapOf("args" to listOfString)
+
+}
+
 fun Resolver.resolve(mainFile: File) {
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
@@ -57,10 +65,11 @@ fun Resolver.resolve(mainFile: File) {
         changePackage(pkgName, fakeTok)
         resolveDeclarationsOnly(unresolvedDecl.toMutableList())
     }
-    // second time resolve single expressions
+    // second time resolve single expressions, to add them to DB
     unResolvedSingleExprMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
         unresolvedDecl.forEach {
+
             resolveDeclarations(it, mutableMapOf(), resolveBody = true)
         }
     }
@@ -94,11 +103,7 @@ fun Resolver.resolve(mainFile: File) {
     currentPackageName = mainFile.nameWithoutExtension
 
     // main args
-    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
-    val listType = this.typeDB.userTypes["List"]!!.first()
-    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
-    val mainArgs = "args" to listOfString
-    resolve(mainAST, mutableMapOf(mainArgs))
+    resolve(mainAST, createArgsFromMain())
 
     otherASTs.forEach {
         currentPackageName = it.first
