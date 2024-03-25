@@ -460,7 +460,14 @@ fun generateSingleUnary(
 
     when (it.kind) {
         UnaryMsgKind.Unary -> {
-            if (it.selectorName != "new") {
+            val isThatDefaultConstructorFor0Fields = if (it.selectorName == "new") {
+                val w = it.receiver.type!!
+                if (w is Type.UserLike) {
+                    w.fields.isEmpty()
+                } else
+                    false
+            } else false
+            if (!isThatDefaultConstructorFor0Fields) {
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
                 append(it.selectorName)
 
@@ -505,7 +512,7 @@ fun generateSingleBinary(
     i: Int,
     receiver: Receiver,
     it: BinaryMsg,
-    invisibleArgs: List<String>? = null,
+    @Suppress("UNUSED_PARAMETER") invisibleArgs: List<String>? = null,
 ) = buildString {
 
     if (i == 0) {
