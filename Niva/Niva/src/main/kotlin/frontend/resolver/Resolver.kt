@@ -294,7 +294,6 @@ fun Resolver.resolve(
 ): List<Statement> {
     val currentScope = mutableMapOf<String, Type>()
 
-
     statements.forEach { statement ->
 
         resolveStatement(
