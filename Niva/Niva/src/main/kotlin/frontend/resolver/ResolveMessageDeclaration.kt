@@ -129,7 +129,7 @@ fun Resolver.resolveMessageDeclaration(
             }
 
             is ConstructorDeclaration -> {
-                if (st.msgDeclaration is MessageDeclarationKeyword)
+                if (st.msgDeclaration is MessageDeclarationKeyword) // there is no binary constructors
                     addArgsToBodyScope(st.msgDeclaration)
             }
         }
@@ -182,7 +182,8 @@ fun Resolver.resolveMessageDeclaration(
 
                 st.returnType = typeOfSingleExpr
                 //!st.isRecursive && cant understand why recursive check was here
-                if (declaredReturnType != null && st.returnTypeAST != null) {
+                // ... because we cant infer type of recursive functions
+                if (!st.isRecursive && declaredReturnType != null && st.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
                     if (!compare2Types(typeOfSingleExpr, declaredReturnType, unpackNull = true, isOut = true))
                         st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
@@ -193,6 +194,8 @@ fun Resolver.resolveMessageDeclaration(
                         mdgData.returnType = declaredReturnType
                     }
                 }
+            } else {
+                TODO("Single expression with not expression")
             }
         } else {
             val realReturn = wasThereReturn

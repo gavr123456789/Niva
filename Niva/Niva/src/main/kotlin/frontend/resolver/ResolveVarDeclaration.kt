@@ -20,7 +20,7 @@ fun Resolver.resolveVarDeclaration(
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
     // currentNode, depth + 1
     currentLevel++
-    resolve(listOf(statement.value), previousAndCurrentScope, statement)
+    resolveSingle((statement.value), previousAndCurrentScope, statement)
     currentLevel--
     val value = statement.value
     var valueType = value.type

@@ -14,6 +14,43 @@ import kotlin.collections.ArrayDeque
 fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
+fun getAssignTypeForControlFlow(branchReturnTypes: List<Type>, tok: Token): Type  {
+    if (branchReturnTypes.isEmpty()) throw Exception("Compiler bug: 0 branches in ControlFlow")
+    if (branchReturnTypes.count() == 1) return branchReturnTypes.first()
+
+    // find general root
+    // simplest variant, all the same
+    var currentGeneralRoot:Type? = null
+    var resultIsNullabel = false
+
+    (1..<branchReturnTypes.count()).forEach {
+        val cur = branchReturnTypes[it]
+        val prev = branchReturnTypes[it - 1]
+
+        val realType1 = cur.unpackNull()
+        val realType2 = prev.unpackNull()
+        if (!resultIsNullabel && realType1 != cur) resultIsNullabel = true
+
+        val generalRoot = findGeneralRoot(realType1, realType2)
+        if (generalRoot == null) {
+            return@forEach
+        } else
+            currentGeneralRoot = generalRoot
+    }
+
+    // all types same reference
+    val cgr = currentGeneralRoot
+    if (cgr != null) {
+        if (resultIsNullabel && cgr !is Type.NullableType) {
+            return Type.NullableType(cgr)
+        }
+        return cgr
+    }
+
+    tok.compileError("Cant find general root between $YEL$branchReturnTypes$RESET")
+
+}
+
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -62,6 +99,9 @@ fun Resolver.resolveControlFlow(
 
     }
 
+
+
+
     when (statement) {
         is ControlFlow.If -> {
             var firstBranchReturnType: Type? = null
@@ -74,7 +114,7 @@ fun Resolver.resolveControlFlow(
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if
                 currentLevel++
-                resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
+                resolveSingle((it.ifExpression), previousAndCurrentScope, statement)
                 currentLevel--
 
                 val ifExpr = it.ifExpression
@@ -89,7 +129,7 @@ fun Resolver.resolveControlFlow(
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
-                        resolve(listOf(it.thenDoExpression), previousAndCurrentScope, statement)
+                        resolveSingle((it.thenDoExpression), previousAndCurrentScope, statement)
                         currentLevel--
                     }
 
@@ -163,8 +203,6 @@ fun Resolver.resolveControlFlow(
                 // if no else branch, its not an expression already
                 Resolver.defaultTypes[InternalTypes.Unit]!!
             }
-
-
         }
 
 
@@ -173,20 +211,20 @@ fun Resolver.resolveControlFlow(
 
             if (statement.switch.type == null) {
                 currentLevel++
-                resolve(listOf(statement.switch), previousAndCurrentScope, statement)
+                resolveSingle(statement.switch, previousAndCurrentScope, statement)
                 currentLevel--
             }
 
 
             var firstBranchReturnType: Type? = null
-            val savedSwitchType = statement.switch.type
+            val savedSwitchType = statement.switch.type!!
 
             val typesAlreadyChecked = mutableSetOf<Type>()
             var thisIsTypeMatching = false
             statement.ifBranches.forEachIndexed { i, it ->
                 /// resolving if (^)
                 currentLevel++
-                resolve(listOf(it.ifExpression), previousAndCurrentScope, statement)
+                resolveSingle(it.ifExpression, previousAndCurrentScope, statement)
                 currentLevel--
                 val currentTypeName = it.ifExpression.type?.name
                 val currentType = it.ifExpression.type!!
@@ -230,7 +268,7 @@ fun Resolver.resolveControlFlow(
                 when (it) {
                     is IfBranch.IfBranchSingleExpr -> {
                         currentLevel++
-                        resolve(listOf(it.thenDoExpression), scopeWithFields, statement)
+                        resolveSingle((it.thenDoExpression), scopeWithFields, statement)
                         currentLevel--
                     }
 
@@ -258,7 +296,7 @@ fun Resolver.resolveControlFlow(
 
                     val prevType: Type = prev.getReturnTypeOrThrow()
                     val currType = it.getReturnTypeOrThrow()
-                    val isTypeEqual = compare2Types(prevType, currType)
+                    val isTypeEqual = compare2Types(prevType, currType, unpackNull = true)
                     if (!isTypeEqual) {
                         it.ifExpression.token.compileError(
                             "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RESET is $YEL${prevType.name}$RESET "
@@ -279,28 +317,20 @@ fun Resolver.resolveControlFlow(
                 resolve(statement.elseBranch, previousAndCurrentScope, statement)
                 currentLevel--
                 val lastExpr = statement.elseBranch.last()
-//                if (lastExpr !is Expression) {
-//                    lastExpr.token.compileError("In switch expression body last statement must be an expression")
-//                }
+
                 val elseReturnType = when (lastExpr) {
                     is Expression -> lastExpr.type!!
                     is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
                     is Assign -> lastExpr.value.type!!
                     else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                 }
-//                val elseReturnType = lastExpr.type!!
-                val elseReturnTypeName = elseReturnType.name
-                val firstReturnTypeName = firstBranchReturnType2.name
-                if (elseReturnTypeName != firstReturnTypeName) {
-                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnTypeName$RESET)")
+                if (!compare2Types(firstBranchReturnType2, elseReturnType)) {
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
                 }
-                statement.type = elseReturnType
-            } else if (thisIsTypeMatching) {
-                // check that this is exhaustive checking
-//                val root =
-//                    if (savedSwitchType is Type.UserUnionRootType && savedSwitchType.parent == null) savedSwitchType else savedSwitchType!!.parent
-//                        ?: throw Exception("Pattern matching on not union root?")
+//                statement.type = elseReturnType
+                statement.type = getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
 
+            } else if (thisIsTypeMatching) {
                 when (savedSwitchType) {
                     is Type.UserUnionRootType -> {
                         val realBranchTypes = mutableSetOf<Type>()
@@ -319,13 +349,9 @@ fun Resolver.resolveControlFlow(
                         )
 
                         if (statement.type == null) {
-                            statement.type = firstBranchReturnType2
+//                            statement.type = firstBranchReturnType2
+                            statement.type = getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
                         }
-                    }
-
-
-                    null -> {
-                        statement.token.compileError("Compile error type of Switch statement not resolved")
                     }
 
                     else -> {
@@ -333,18 +359,25 @@ fun Resolver.resolveControlFlow(
                     }
                 }
 
+            } else {
+                if (statement.type == null) {
+//                    statement.type = firstBranchReturnType2
+                    statement.type = getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
+
+                }
             }
 
         }
 
     }
+
 }
 
-fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, map: Map<Type?, Token>): Set<Type.Union> {
+fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>): Set<Type.Union> {
     when (this) {
         is Type.UserUnionRootType -> {
             this.branches.forEach {
-                val y = it.unpackUnionToAllBranches(x, map)
+                val y = it.unpackUnionToAllBranches(x, typeToToken)
                 x.addAll(y)
             }
         }
@@ -361,7 +394,7 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, map: Map<Type
                 }
                 val path = findSas(this, ArrayDeque())
                 val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
-                val tokFromMap = map[path.first()]
+                val tokFromMap = typeToToken[path.first()]
                 val onLine = if (tokFromMap!=null) "on line ${tokFromMap.line}" else ""
                 println("${YEL}Warning:$RESET $this was already checked $strPath$RESET $onLine")
             }
@@ -375,20 +408,16 @@ fun recursiveCheckThatEveryBranchChecked(
     branchesFromDb: MutableSet<Type>,
     branchesInSwitch: MutableSet<Type>,
     tok: Token,
-    map: Map<Type?, Token>
+    typeToTok: Map<Type?, Token>
 ) {
-
-    // создать тут коллекцию того что уже было проверено,
-    // внутри unpackUnionToAllBranches проверять, если уже было то вывести warning
-    // но нужно с сохранением пути
     val fromDb = branchesFromDb
         .filterIsInstance<Type.Union>()
-        .flatMap { it.unpackUnionToAllBranches(mutableSetOf(), map)}.toSet()
+        .flatMap { it.unpackUnionToAllBranches(mutableSetOf(), typeToTok)}.toSet()
 
     val realSet = mutableSetOf<Type.Union>()
     val real = branchesInSwitch
         .filterIsInstance<Type.Union>()
-        .flatMap { it.unpackUnionToAllBranches(realSet, map)}.toSet()
+        .flatMap { it.unpackUnionToAllBranches(realSet, typeToTok)}.toSet()
 
 
     if (fromDb != real) {
@@ -400,9 +429,6 @@ fun recursiveCheckThatEveryBranchChecked(
             tok.compileError("Extra unions are checked: ($YEL$difference)$RESET")
         }
     }
-
-
-
 
 }
 

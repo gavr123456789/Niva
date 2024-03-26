@@ -36,13 +36,29 @@ sealed class Declaration(
 
 sealed class Expression(
     var type: Type? = null,
+//    type: Type? = null,
+
     token: Token,
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
     var isInfoRepl: Boolean = false
-) : Statement(token, isPrivate, pragmas)
+) : Statement(token, isPrivate, pragmas) {
+
+//    private var _type: Type? = null
+//
+//    var type: Type?
+//        set(value) {
+//            if (_type != null) throw Exception("Compiler bug, type for $this already set")
+//            _type = value
+//        }
+//        get() = _type
+
+//    init {
+//        this.type = type
+//    }
+}
 
 
 class NeedInfo(

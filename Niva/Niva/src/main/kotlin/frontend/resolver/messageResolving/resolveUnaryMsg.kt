@@ -1,12 +1,8 @@
 package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
+import frontend.resolver.*
 
-import frontend.resolver.Resolver
-import frontend.resolver.Type
-import frontend.resolver.UnaryMsgMetaData
-import frontend.resolver.getTableOfLettersFrom_TypeArgumentListOfType
-import frontend.resolver.resolve
 import main.utils.CYAN
 import main.utils.RESET
 import main.utils.WHITE
@@ -29,7 +25,7 @@ fun Resolver.resolveUnaryMsg(
 
     if (receiver.type == null) {
         currentLevel++
-        resolve(listOf(receiver), previousAndCurrentScope, statement)
+        resolveSingle((receiver), previousAndCurrentScope, statement)
         currentLevel--
         receiver.type
             ?: statement.token.compileError("Can't resolve type of $CYAN${statement.selectorName}${RESET} unary msg: $YEL${receiver.str}")
@@ -95,8 +91,12 @@ fun Resolver.resolveUnaryMsg(
         val resolvingMsgDecl = this.resolvingMessageDeclaration
         val msgForType = resolvingMsgDecl?.forType
         val statementType = statement.receiver.type
+        val sameTypes = if (msgForType != null && statementType !=null) {
+            compare2Types(statementType, msgForType, unpackNull = true)
+        } else false
 
-        if (resolvingMsgDecl?.name == statement.selectorName && msgForType == statementType && !resolvingMsgDecl.isRecursive) {
+
+        if (resolvingMsgDecl?.name == statement.selectorName && sameTypes && !resolvingMsgDecl.isRecursive) {
             resolvingMsgDecl.isRecursive = true
             if (resolvingMsgDecl.isSingleExpression && resolvingMsgDecl.returnTypeAST == null) {
                 resolvingMsgDecl.token.compileError("Recursive single expression methods must describe its return type explicitly")
