@@ -1,0 +1,28 @@
+//union Sas = Sus | Sos
+//
+//
+//Int kek::Boolean = | kek
+//| true => Sus new
+//| false => Sos new
+//
+//
+//q = 1 kek: false |> echo
+
+
+
+union Container = HBox | VBox | Grid
+union Widget = Container | Atom
+union Object = Widget
+Int sas -> Int? = null
+
+x = 3
+y = [
+    | x
+    | 1 => 1
+    | 2 => 2 sas
+    | 3 => 3
+    |=> 4
+] do
+
+>? y // print type
+y echo

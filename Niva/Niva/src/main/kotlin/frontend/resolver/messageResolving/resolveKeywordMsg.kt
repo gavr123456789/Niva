@@ -31,7 +31,7 @@ fun Resolver.resolveKeywordMsg(
     val selectorName = statement.args.map { it.name }.toCamelCase()
     if (statement.receiver.type == null) {
         currentLevel++
-        resolve(listOf(statement.receiver), previousAndCurrentScope, statement)
+        resolveSingle((statement.receiver), previousAndCurrentScope, statement)
         currentLevel--
     }
     val receiverType =
@@ -454,7 +454,7 @@ fun Resolver.resolveKwArgs(
         if (arg.type == null) {
             currentLevel++
             currentArgumentNumber = statement.args.indexOf(it)
-            resolve(listOf(arg), previousAndCurrentScope, statement)
+            resolveSingle((arg), previousAndCurrentScope, statement)
             if (arg.type == null) arg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
             currentLevel--
         }

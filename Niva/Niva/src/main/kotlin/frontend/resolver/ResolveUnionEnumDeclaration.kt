@@ -92,7 +92,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
         // Check fields
         it.fieldsValues.forEach { fieldAST ->
             currentLevel++
-            resolve(listOf(fieldAST.value), previousScope)
+            resolveSingle((fieldAST.value), previousScope)
             currentLevel--
             val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
                 ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")

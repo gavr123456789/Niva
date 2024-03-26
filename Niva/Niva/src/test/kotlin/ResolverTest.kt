@@ -854,6 +854,24 @@ class ResolverTest {
     }
 
     @Test
+    fun unpackOrError() {
+        val source = """
+        Int sas -> Int? = ^41
+        x = 5 sas
+        x unpackOrError inc 
+        """.trimIndent()
+
+
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+        assert((statements[1] as VarDeclaration).value.type is Type.NullableType)
+        assert((statements[2] as MessageSendUnary).type is Type.InternalType)
+
+
+    }
+
+    @Test
     fun inferTypeOfEmptyArray() {
         val source = """
            union JsonObj =
@@ -1444,6 +1462,55 @@ class ResolverTest {
         val q = statements[0] as MessageDeclarationKeyword
         val w = q.args[0].typeAST!! as TypeAST.Lambda
         assertTrue { w.extensionOfType!!.name == "String" }
+    }
+
+
+    @Test
+    fun matchingOnBool() {
+        val source = """
+            q = | true
+            | true => 234
+            | false => 45
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as VarDeclaration
+        assertTrue { q.value.type?.name == "Int"}
+    }
+
+    @Test
+    fun generalizeReturnTypesOfSwitch() {
+        val source = """
+            union Sas = Sus | Sos
+
+            Int kek::Boolean = | kek
+            | true => Sus new
+            | false => Sos new
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[1] as MessageDeclaration
+        assertTrue { q.returnType?.name == "Sas" }
+    }
+
+    @Test
+    fun generalizeNullability() {
+        val source = """
+            Int sas -> Int? = null
+        
+            x = 3
+            y = [
+            | x
+            | 1 => 1
+            | 2 => 2 sas
+            | 3 => 3
+            |=> 4
+            ] do
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val y = statements[2] as VarDeclaration
+        assertTrue(y.value.type is Type.NullableType)
     }
 
 

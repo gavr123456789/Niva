@@ -35,7 +35,7 @@ fun Resolver.resolveCollection(
                 it.type = it.typeAST.toType(typeDB, typeTable)
             } else {
                 currentLevel++
-                resolve(listOf(it), previousAndCurrentScope, statement)
+                resolveSingle(it, previousAndCurrentScope, statement)
 //                if (it.type == null) it.token.compileError("Compiler bug: Can't infer type of $it")
                 currentLevel--
             }
@@ -112,8 +112,8 @@ fun Resolver.resolveMap(
     }
     val (key, value) = statement.initElements[0]
     currentLevel++
-    resolve(listOf(key), (currentScope + previousScope).toMutableMap(), statement)
-    resolve(listOf(value), (currentScope + previousScope).toMutableMap(), statement)
+    resolveSingle((key), (currentScope + previousScope).toMutableMap(), statement)
+    resolveSingle((value), (currentScope + previousScope).toMutableMap(), statement)
     currentLevel--
 
     val keyType = key.type ?: key.token.compileError("Can't resolve type of key: ${CYAN}${key.str}")

@@ -37,22 +37,25 @@ private fun Resolver.resolveStatement(
 
             else -> {
                 val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-                this.resolve(statement2.messages, previousAndCurrentScope, statement2)
+                resolve(statement2.messages, previousAndCurrentScope, statement2)
 
                 // fix return types of cascade messages
-                if (statement2.messages.count() == 1) {
-                    val first = statement2.messages[0]
-                    if (first.isCascade) {
-                        first.type = first.receiver.type
-                    }
-                } else if (statement2.messages.count() > 1) {
-
-                    for (i in 1 until statement2.messages.count()) {
-                        val it = statement2.messages[i]
-                        it.type = statement2.messages[i - 1].receiver.type
+                val isThereCascade = statement2.messages.find { it.isCascade } != null
+                if (isThereCascade) {
+                    if (statement2.messages.count() == 1) {
+                        val first = statement2.messages[0]
+                        if (first.isCascade) {
+                            first.type = first.receiver.type
+                        }
+                    } else if (statement2.messages.count() > 1) {
+                        for (i in 1 until statement2.messages.count()) {
+                            val it = statement2.messages[i]
+                            if (it.isCascade) {
+                                it.type = statement2.messages[i - 1].receiver.type
+                            }
+                        }
                     }
                 }
-
 
 
                 if (statement2.messages.isNotEmpty()) {
@@ -63,7 +66,7 @@ private fun Resolver.resolveStatement(
                     // every single expressions is unary message without messages
                     if (statement2.type == null) {
                         currentLevel++
-                        resolve(listOf(statement2.receiver), previousAndCurrentScope, statement2)
+                        resolveSingle((statement2.receiver), previousAndCurrentScope, statement2)
                         currentLevel--
                     }
                     statement2.type = statement2.receiver.type
@@ -227,7 +230,7 @@ private fun Resolver.resolveStatement(
         is Assign -> {
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             currentLevel++
-            resolve(listOf(statement.value), previousAndCurrentScope, statement)
+            resolveSingle((statement.value), previousAndCurrentScope, statement)
             currentLevel--
             val q = previousAndCurrentScope[statement.name]
             if (q != null) {
@@ -244,7 +247,7 @@ private fun Resolver.resolveStatement(
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             val expr = statement.expression
             if (expr != null) {
-                resolve(listOf(expr), previousAndCurrentScope, statement)
+                resolveSingle((expr), previousAndCurrentScope, statement)
                 if (expr.type == null) {
                     throw Exception("Cant infer type of return statement on line: ${expr.token.line}")
                 }
@@ -265,7 +268,7 @@ private fun Resolver.resolveStatement(
                     // resolve receiver
                     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
                     currentLevel++
-                    resolve(listOf(t.receiver), previousAndCurrentScope, statement)
+                    resolveSingle((t.receiver), previousAndCurrentScope, statement)
                     currentLevel--
                     val receiverType = t.receiver.type!!
                     //
@@ -285,6 +288,21 @@ private fun Resolver.resolveStatement(
         }
 
     }
+}
+
+fun Resolver.resolveSingle(
+    statement: Statement,
+    previousScope: MutableMap<String, Type>,
+    rootStatement: Statement? = null, // since we in recursion, and can't define on what level of it, it's the only way to know previous statement
+): Statement {
+    val currentScope = mutableMapOf<String, Type>()
+    resolveStatement(
+        statement,
+        currentScope,
+        previousScope,
+        rootStatement
+    )
+    return statement
 }
 
 fun Resolver.resolve(
@@ -538,6 +556,30 @@ fun compare2Types(
     val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
 
     return type1 == nothing || type2 == nothing
+}
+
+fun findGeneralRoot(type1: Type, type2: Type): Type? {
+
+
+    if (type1 == type2) return type1
+    // first is parent of the second
+    var parent1: Type? = type1.parent
+    while (parent1 != null) {
+        if (findGeneralRoot(type2, parent1) != null) {
+            return parent1
+        }
+        parent1 = parent1.parent
+    }
+    // second is parent of the first
+    var parent2: Type? = type2.parent
+    while (parent2 != null) {
+        if (findGeneralRoot(type1, parent2) != null) {
+            return parent2
+        }
+        parent2 = parent2.parent
+    }
+
+    return null
 }
 
 fun Package.addImport(pkg: String, concrete: Boolean = false) {

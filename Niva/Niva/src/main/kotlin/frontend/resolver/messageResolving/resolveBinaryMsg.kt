@@ -17,7 +17,7 @@ fun Resolver.resolveBinaryMsg(
     val receiver = statement.receiver
 
     if (receiver.type == null) {
-        resolve(listOf(receiver), previousAndCurrentScope, statement)
+        resolveSingle((receiver), previousAndCurrentScope, statement)
     }
 
     val receiverType = receiver.type
@@ -41,7 +41,7 @@ fun Resolver.resolveBinaryMsg(
 
     // 1 < (this at: 0)
     val argument = statement.argument
-    resolve(listOf(argument), previousAndCurrentScope)
+    resolveSingle((argument), previousAndCurrentScope)
     val argumentType = if (isUnaryForArg) statement.unaryMsgsForArg.last().type else argument.type
     if (argumentType == null) {
         argument.token.compileError("Compiler bug: binary arg: $argument has no type resolved")
