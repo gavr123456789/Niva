@@ -1514,8 +1514,6 @@ class ResolverTest {
     }
 
 
-
-
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {
 //        val source = """

@@ -227,6 +227,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 //    }
     // key: localName(::int)?
     else {
+//        val key = (dotSeparatedIdentifiers() ?: peek().compileError("Identifier expected")).token
         val key = matchAssert(TokenType.Identifier)
         match(TokenType.Colon)
         val local = step()

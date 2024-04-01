@@ -382,7 +382,7 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
             }
         }
         is Type.UserUnionBranchType -> {
-            if (x.contains(this)) {
+            if (x.contains(this) && typeToToken.contains(this)) {
                 fun findSas(type: Type ,path: ArrayDeque<Type>): ArrayDeque<Type> {
                     val p = type.parent
                     if (p != null) {
@@ -394,9 +394,15 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
                 }
                 val path = findSas(this, ArrayDeque())
                 val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
-                val tokFromMap = typeToToken[path.first()]
+                val tokFromMap = {
+                    val x = path.find { typeToToken[it] != null }
+                    typeToToken[x]
+                }()
+//                 val w =   typeToToken[path.first()]
+                val curLine = (typeToToken[this]?.line)
+                val curLineText = if (curLine != null) "(line $curLine)" else ""
                 val onLine = if (tokFromMap!=null) "on line ${tokFromMap.line}" else ""
-                println("${YEL}Warning:$RESET $this was already checked $strPath$RESET $onLine")
+                println("${YEL}Warning:$RESET$curLineText $this was already checked $onLine ($strPath$RESET)")
             }
             x.add(this)
         }

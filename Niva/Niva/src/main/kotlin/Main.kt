@@ -24,7 +24,7 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-
+class Sas(val x:Int)
 fun main(args: Array<String>) {
 
 //    val q = listOf(1, 2)//.sumOf {  }//.partition {  }//.fold(5) { acc, next -> acc + next }
@@ -33,7 +33,9 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Fun/bazar/Examples/GTK/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/unions/unions.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/weather/main.niva")
 
 //    val args = arrayOf("dev", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("dev", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")

@@ -44,6 +44,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
 
                         generator.addToGradleDependencies(it.keywordArg.initElements.map {x -> x.token.lexeme })
                     }
+                    // TODO list of use "Project use: {"sas" "sus"}"
                 }
             }
 

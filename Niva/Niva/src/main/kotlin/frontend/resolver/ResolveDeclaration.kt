@@ -110,7 +110,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     if (savedPackageName == pkgName) {
                         it.token.compileError("Package $savedPackageName already exists, it is proposed to rename it to ${savedPackageName}.bind.niva")
                     }
-                    changePackage(pkgName, it.token, true, neededImports = neededImports)
+                    changePackage(pkgName, it.token, isBinding = true, neededImports = neededImports)
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {

@@ -253,11 +253,16 @@ fun Parser.messageSend(
 
     // 1 from: 2 // 1 is receiver without unary\binary messages
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
-        val savepoint = current
-        dotSeparatedIdentifiers()
-        val result = checkForKeyword()
-        current = savepoint
-        result
+        if (check(TokenType.OpenParen))
+            false
+        else {
+            val savepoint = current
+            dotSeparatedIdentifiers()
+            val result = checkForKeyword()
+            current = savepoint
+            result
+        }
+
     }
 
     val receiver = when {

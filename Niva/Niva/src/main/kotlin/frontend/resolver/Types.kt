@@ -744,7 +744,7 @@ fun SomeTypeDeclaration.toType(
 
         val unpackedNull = type.unpackNull()
         if (unpackedNull is Type.UserLike && unpackedNull.typeArgumentList.isNotEmpty()) {
-            genericTypeFields.addAll(unpackedNull.typeArgumentList)
+            genericTypeFields.addAll(unpackedNull.typeArgumentList.filter { it.name.isGeneric() })
         }
     }
 

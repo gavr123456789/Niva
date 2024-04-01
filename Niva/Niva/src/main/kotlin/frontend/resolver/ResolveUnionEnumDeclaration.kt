@@ -12,8 +12,18 @@ import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
 
 fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
-    val rootType =
+    val rootType2 =
         statement.toType(currentPackageName, typeTable, typeDB, isUnion = true) as Type.UserUnionRootType//fix
+
+    val realType = if (statement.pkg != null) {
+        val realPkgOfUnionRoot = this.findPackageOrError(statement.pkg, statement.token)
+        // find type with the same name inside this pkg
+        val w = realPkgOfUnionRoot.types[rootType2.name] as Type.UserUnionRootType
+        w
+    } else null
+
+    val rootType = realType ?: rootType2
+
     addNewType(rootType, statement)
 
     val branches = mutableListOf<Type.Union>()

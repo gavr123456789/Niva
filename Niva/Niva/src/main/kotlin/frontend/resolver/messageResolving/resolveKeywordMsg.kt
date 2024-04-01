@@ -308,7 +308,7 @@ fun Resolver.resolveKeywordMsg(
 
 
                     val errorText =
-                        "$YEL${statement.receiver.str} $CYAN${statement.args.joinToString(": ") { it.name }}:${RESET}"
+                        "$YEL${statement.receiver} $CYAN${statement.args.joinToString(": ") { it.name }}:${RESET}"
                     val text =
                         if (extraOrMissed)
                             "For $errorText constructor call, extra fields are listed: $CYAN$whatIsMissingOrExtra"
@@ -333,8 +333,8 @@ fun Resolver.resolveKeywordMsg(
                 val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
                 val arg = statement.args.first()
 
-                val r = compare2Types(argFromDb,arg.keywordArg.type!!, statement.token)
-                if (!r) {
+                val equalSetterTypes = compare2Types(argFromDb,arg.keywordArg.type!!, statement.token)
+                if (!equalSetterTypes) {
                     statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]

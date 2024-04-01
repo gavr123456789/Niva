@@ -114,7 +114,7 @@ fun Resolver.findStaticMessageType(
     }
 
     // if this is binding, then getters are static, calls without ()
-    if (msgType != null && getPackage(receiverType.pkg, token).isBinding) {
+    if (msgType != null && findPackageOrError(receiverType.pkg, token).isBinding) {
         if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
         return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
     }
