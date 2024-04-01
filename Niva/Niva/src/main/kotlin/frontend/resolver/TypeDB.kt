@@ -34,7 +34,7 @@ fun TypeDB.getType(
 
     // found in scope
     val fromScope = currentScope?.get(name) ?: previousScope?.get(name)
-    if (fromScope != null){
+    if (fromScope != null) {
         return TypeDBResult.FoundOne(fromScope)
     }
 
@@ -162,13 +162,13 @@ fun resolveTypeIfSameNamesFromConstructor(
     // if there type in this pkg, but there is more than one type with same name
     // than just Person is this type, and b.Person is type from some pkg
     val typeDeclaredInTheCurrentPkg = result.packagesToTypes[currentPkgName]
-    if (typeDeclaredInTheCurrentPkg  != null) {
+    if (typeDeclaredInTheCurrentPkg != null) {
         return typeDeclaredInTheCurrentPkg
     }
 
     if (statement == null) {
-        val typesList = result.packagesToTypes.values.map { it.name to it.pkg}
-        createFakeToken().compileError("Found more the one types with same name in different packages: $WHITE$typesList" )
+        val typesList = result.packagesToTypes.values.map { it.name to it.pkg }
+        createFakeToken().compileError("Found more the one types with same name in different packages: $WHITE$typesList")
     }
 
 
@@ -182,7 +182,7 @@ fun resolveTypeIfSameNamesFromConstructor(
         return resultType
     }
 
-    val setOfArgsNames = statement.args.map { it.name }.toSet()
+    val setOfArgsSendedNames = statement.args.map { it.name }.toSet()
     val setOfArgsTypeNames = statement.args.map {
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()
@@ -191,16 +191,14 @@ fun resolveTypeIfSameNamesFromConstructor(
 
 
     // case 1 same names different arg names
-    result.packagesToTypes.values.forEach { type ->
-        if (type is Type.UserLike) {
-            val resultSetNames = type.fields.map { it.name }.toSet()
-            val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
-            val sameNames = resultSetNames == setOfArgsNames
-            val sameTypes = resultSetTypes == setOfArgsTypeNames
+    result.packagesToTypes.values.filterIsInstance<Type.UserLike>().forEach { type ->
+        val resultSetNames = type.fields.map { it.name }.toSet()
+        val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
+        val sameNames = resultSetNames == setOfArgsSendedNames
+        val sameTypes = resultSetTypes == setOfArgsTypeNames
 
-            if (sameNames && sameTypes) {
-                set.add(type)
-            }
+        if (sameNames && sameTypes) {
+            set.add(type)
         }
     }
 
@@ -211,12 +209,13 @@ fun resolveTypeIfSameNamesFromConstructor(
     // we have 2 or more absolutely same types defined in different packages
     // need to check if current package has some import
 
-    val type = set.find { imports.contains(it.pkg) }
+    val type = if (set.isEmpty()) result.packagesToTypes.values.find { imports.contains(it.pkg) } else set.find { imports.contains(it.pkg) }
     if (type != null) {
         return type
     } else {
+
         statement.token.compileError(
-            "Type `${statement.receiver}` is defined in many packages: ${set.map { it.pkg }},\n\t" +
+            "Type `${statement.receiver}` is defined in many packages: ${result.packagesToTypes.values.map { it.pkg }},\n\t" +
                     "please specify what package you wanna use with for example `${currentPkgName}.${statement.receiver}`\n\t" +
                     "or `Project use: \"${currentPkgName}\"` "
         )
@@ -224,7 +223,11 @@ fun resolveTypeIfSameNamesFromConstructor(
 }
 
 
-fun TypeDBResult.getTypeFromTypeDBResultConstructor(statement: KeywordMsg?, imports: Set<String>, curPkg: String): Type? {
+fun TypeDBResult.getTypeFromTypeDBResultConstructor(
+    statement: KeywordMsg?,
+    imports: Set<String>,
+    curPkg: String
+): Type? {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
             resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg)

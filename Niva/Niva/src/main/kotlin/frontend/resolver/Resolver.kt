@@ -463,11 +463,11 @@ fun compare2Types(
     val pkg1 = type1.pkg
     val pkg2 = type2.pkg
     val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
-
     if (type1 is Type.UserLike && type2 is Type.UserLike) {
+        val bothTypesAreBindings = type1.isBinding && type2.isBinding
         // if types from different packages, and it's not core
-
-        if (isDifferentPkgs) {
+        // bindings can be still compatible, because there is inheritance in Java
+        if (!bothTypesAreBindings && isDifferentPkgs) {
             token?.compileError("${YEL}$type1${RESET} is from ${WHITE}$pkg1${RESET} pkg, and ${YEL}$type2${RESET} from ${WHITE}$pkg2")
             return false
         }
@@ -595,7 +595,7 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
 //fun Resolver.findAnyMessage(receiverType: Type)
 
 
-fun Resolver.getPackage(packageName: String, token: Token): Package {
+fun Resolver.findPackageOrError(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: token.compileError("There are no such package: $packageName")
     return pack
@@ -603,7 +603,7 @@ fun Resolver.getPackage(packageName: String, token: Token): Package {
 
 
 fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
-    val pack = customPkg ?: getPackage(currentPackageName, token)
+    val pack = customPkg ?: findPackageOrError(currentPackageName, token)
 //    val type =
 //        pack.types[typeName]
 //        ?: getPackage("common", token).types[typeName]
@@ -620,7 +620,7 @@ fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = 
     return Pair(protocol, pack)
 }
 
-fun Resolver.getCurrentPackage(token: Token) = getPackage(currentPackageName, token)
+fun Resolver.getCurrentPackage(token: Token) = findPackageOrError(currentPackageName, token)
 fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).imports
 
 // TODO! make universal as toAnyMessageData
@@ -691,7 +691,7 @@ fun Resolver.addNewAnyMessage(
     forType: Type? = null
 ): MessageMetadata {
     val customPkg = if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.names.count() > 1) {
-        getPackage(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
+        findPackageOrError(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
     } else null
 
     val type =
@@ -723,7 +723,7 @@ fun Resolver.addNewAnyMessage(
 }
 
 fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
-    val pack = getPackage(currentPackageName, statement.token)
+    val pack = findPackageOrError(currentPackageName, statement.token)
     pack.declarations.add(statement)
 
     pack.addImport(statement.forType!!.pkg)

@@ -632,6 +632,17 @@ fun createListProtocols(
             ).rename("joinToString"),
 
             createKeyword(
+                KeywordArg(
+                    "sortedBy",
+                    Type.Lambda(
+                        mutableListOf(TypeField("transform", itType)),
+                        differentGenericType
+                    )
+                ),
+                mutListType
+            ),
+
+            createKeyword(
                 "joinWithTransform",
                 listOf(
                     KeywordArg(
@@ -665,7 +676,7 @@ fun createListProtocols(
                         )
                     )
                 ),
-                itType
+                differentGenericType
             ).rename("fold"),
 
 

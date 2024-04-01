@@ -185,7 +185,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
 
 fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration {
     val unionTok = matchAssert(TokenType.Union, "")
-    val unionName = matchAssertAnyIdent("name of the union expected")
+    val unionName = dotSeparatedIdentifiers() ?: peek().compileError("name of the union expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
 
@@ -226,11 +226,12 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration 
     }
 
     val root = UnionRootDeclaration(
-        typeName = unionName.lexeme,
+        typeName = unionName.name,
         branches = mutableListOf(),
         token = unionTok,
         fields = localFields,
-        pragmas = pragmas
+        pragmas = pragmas,
+        pkg = if (unionName.names.count() > 1) unionName.names.dropLast(1).joinToString(".") else null
     )
     if (isThereBrunches) {
         val unionBranches = unionFields(root)

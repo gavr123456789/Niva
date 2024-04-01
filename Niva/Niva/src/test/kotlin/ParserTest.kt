@@ -1674,7 +1674,7 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
-    @Suppress("UNUSED_VARIABLE")
+    @Suppress("UNUSED_VARIABLE", "unused")
     @Test
     fun msgsForPipedMustHaveMsgAsReceiver() {
         // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
@@ -1745,6 +1745,18 @@ class ParserTest {
         assert(ast.count() == 1)
 //        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
     }
+
+    @Test
+    fun qualifier() {
+        val source = """
+            window = (org.gnome.adw.ApplicationWindow app: app)
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+    }
+
 
 
 }

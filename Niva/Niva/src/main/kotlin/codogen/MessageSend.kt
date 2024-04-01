@@ -39,12 +39,15 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     b.append("(".repeat(messages.count { it.isPiped }))
 
-    val isThisACascade = messages.find { it.isCascade } != null //.count() > 1 && messages[0].receiver == messages[1].receiver
+    val isThisACascade =
+        messages.find { it.isCascade } != null //.count() > 1 && messages[0].receiver == messages[1].receiver
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
-        IdentifierExpr(name = "cascade_receiver", token = token).also { it.type = receiver.type }
-    } else null
+        IdentifierExpr(name = "cascade_receiver", token = token)
+            .also { it.type = receiver.type } // because next we will read type of receiver
+    } else
+        null
 
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
@@ -54,7 +57,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
             val (isThereEmit, ctArgs) = evalPragmas(it)
-            (isThereEmitPragma) = isThereEmit
+            isThereEmitPragma = isThereEmit
             if (ctArgs != null) {
                 newInvisibleArgs = ctArgs
             }
@@ -69,21 +72,21 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
             }
         }
 
-        // when we emit, selector name is replaced
         if (isThereEmitPragma) {
             if (newInvisibleArgs?.isNotEmpty() == true) {
                 it.token.compileError("You cant combine Compiler with emit pragma")
             }
+
             b.append(it.selectorName)
         } else {
             if (isThisACascade) {
                 // send with i + 1, to not trigger the receiver generation
                 generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
-                b.append("; ")
-
+                b.append("; \n")
             } else
                 generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
         }
+
         if (it.isPiped)
             b.append(")")
     }
@@ -251,8 +254,9 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                 }
             }
             val receiverCode =
-
-                when (msg.receiver) {
+                if (msg.isCascade)
+                    "cascade_receiver"
+                else when (msg.receiver) {
                     is Message -> {
                         "" // if there are messages already, then do not generate duplicates
                     }
@@ -262,30 +266,9 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                 }
 
             map["0"] = receiverCode
-            val replaced = replacePatternsWithValues(value.toString(), map)
-            msg.selectorName = replaced
 
-//            if (msg is KeywordMsg) {
-//
-//                val str = value.toString()
-//                val map = mutableMapOf<String, String>()
-//                msg.args.forEachIndexed { i, it -> map[(i + 1).toString()] = it.keywordArg.generateExpression() }
-//                map["0"] =
-//                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
-//                val q = replacePatternsWithValues(str, map)
-//                msg.selectorName = q
-//            } else {
-//                val str = value.toString()
-//                val qwe =
-//                    if (msg.receiver !is LiteralExpression.StringExpr) msg.receiver.generateExpression() else msg.receiver.token.lexeme
-//                val map = mutableMapOf("0" to qwe)
-//                val q = replacePatternsWithValues(str, map)
-//
-//                msg.selectorName = q
-//
-//            }
+            msg.selectorName = replacePatternsWithValues(value.toString(), map)
         }
-
         else ->
             msg.token.compileError("String literal expected for emit pragma")
     }

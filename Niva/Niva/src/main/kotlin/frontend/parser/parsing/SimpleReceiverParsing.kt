@@ -14,7 +14,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
         return codeBlock()
     }
     if (check(TokenType.OpenParen)) {
-        return bracketExpression()
+        val bracketsExpr = bracketExpression()
+        return bracketsExpr
     }
 
     val readPrimaryCollection = {
