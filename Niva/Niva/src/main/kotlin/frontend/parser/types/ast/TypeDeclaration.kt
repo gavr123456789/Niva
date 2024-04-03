@@ -60,6 +60,11 @@ sealed class TypeAST(
             val count = inputTypesList.count()
 
             return when {
+
+//                 вот тут вот надо вообщещето попытаться понять что это, но пока не ясно каким способом
+//                         1 может быть как унари байнари так и кв, 2 может быть только кв, но как отличать когда 1
+//                         String.[from] // это унари или кв???
+
                 count == 0  -> {
                     MethodReference.Unary(
                         forType = forType,
