@@ -284,6 +284,12 @@ private fun Resolver.resolveStatement(
         }
 
         is MethodReference -> {
+            val forType = statement.forType.toType(typeDB, typeTable)
+            when (statement) {
+                is MethodReference.Binary -> TODO()
+                is MethodReference.Keyword -> TODO()
+                is MethodReference.Unary -> TODO()
+            }
             TODO()
         }
 

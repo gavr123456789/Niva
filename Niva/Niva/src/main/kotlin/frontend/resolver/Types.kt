@@ -480,7 +480,7 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike? = null): Type {
+fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike? = null): Type {
 
     val replaceToNullableIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
@@ -506,7 +506,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
             if (name.isGeneric()) {
                 return Type.UnknownGenericType(name)
             }
-            if (selfType != null && name == selfType.name) return selfType
+//            if (selfType != null && name == selfType.name) return selfType
 
             if (this.typeArgumentList.isNotEmpty()) {
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
@@ -522,7 +522,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
                         this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val typeOfArg = it.toType(typeDB, typeTable, selfType)
+                        val typeOfArg = it.toType(typeDB, typeTable, recursiveType)
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
                         typeOfArg
                     }
@@ -550,28 +550,28 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
         is TypeAST.Lambda -> {
 
             val extensionOfType = if (this.extensionOfType != null) {
-                extensionOfType.toType(typeDB, typeTable, selfType)
+                extensionOfType.toType(typeDB, typeTable, recursiveType)
             } else null
 
 
             val args = if (extensionOfType!=null) {
                 inputTypesList.drop(1).map {
                     TypeField(
-                        type = it.toType(typeDB, typeTable, selfType), name = it.name
+                        type = it.toType(typeDB, typeTable, recursiveType), name = it.name
                     )
                 }.toMutableList().also { it.addFirst(
                     TypeField(type = extensionOfType, name = "this")
                 ) }
             } else inputTypesList.map {
                 TypeField(
-                    type = it.toType(typeDB, typeTable, selfType), name = it.name
+                    type = it.toType(typeDB, typeTable, recursiveType), name = it.name
                 )
             }.toMutableList()
 
             val lambdaType = Type.Lambda(
                 args = args,
                 extensionOfType = extensionOfType,
-                returnType = this.returnType.toType(typeDB, typeTable, selfType),
+                returnType = this.returnType.toType(typeDB, typeTable, recursiveType),
             )
 
             return replaceToNullableIfNeeded(lambdaType)
@@ -582,10 +582,10 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Typ
 
 }
 
-fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, selfType: Type.UserLike): TypeField {
+fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): TypeField {
     val result = TypeField(
         name = name,
-        type = typeAST!!.toType(typeDB, typeTable, selfType)
+        type = typeAST!!.toType(typeDB, typeTable, recursiveType)
     )
     return result
 }
@@ -665,7 +665,7 @@ fun SomeTypeDeclaration.toType(
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)
 
-        } else fieldsTyped.add(it.toTypeField(typeDB, typeTable, selfType = result))
+        } else fieldsTyped.add(it.toTypeField(typeDB, typeTable, recursiveType = result))
     }
 
     fun getAllGenericTypesFromFields(

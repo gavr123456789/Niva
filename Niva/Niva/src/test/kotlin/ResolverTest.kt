@@ -1448,14 +1448,14 @@ class ResolverTest {
     @Test
     fun sendMethodToMethod() {
         val source = """
-            String msg::String[Int, Int -> Unit] = [
+            String msg::String.[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
             
             String x::Int y::Int = 1 echo
             
-            "sas" msg: String.x:y: 
+            "sas" msg: String.[x, y] 
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 1)

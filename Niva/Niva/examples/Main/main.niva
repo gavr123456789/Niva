@@ -1,29 +1,8 @@
+String msg::String.[Int, Int -> Unit] = [
+    str = "sas"
+    msg this: str Int: 1 Int: 2
+]
 
-//1 echo
-//Bind package: "pkg1" content: [
-//  union Widget = A | B | C
-//  A addWidget::Widget -> Unit
-//]
-//
-//Bind package: "pkg2" content: [
-//  union pkg1.Widget = D | E // This means that D and E is from pk1.Widget
-//]
-//
-//a = A new
-//a addWidget: D new
-
-//String readLines -> List::String =
-//  FileSystem read: this toPath |> split: "\n"
-//String isNotEmpty = this count != 0
-//
-//type Day name: String temp: Float
-//type Pair a: T b: G
-//
-//content = "weather.txt" readLines
-//  filter: [it isNotEmpty] |>
-//  map: [it split: ":"] |>
-//  filter: [it isNotEmpty] |>
-//  map: [Pair a: it first b: it second]
-//
-//
-//content echo
+"sas" msg: [ x, y ->
+     this + x toString + y toString |> echo
+]

@@ -272,9 +272,8 @@ fun Parser.expression(
         val savepoint = this.current
         try {
             val receiver = parseType()
-            return if (match(TokenType.DotOpenBracket)) {
-                val lambda = parseLambda(receiver.token)
-                val methodReference = lambda.toMethodReference(receiver)
+            return if (receiver is TypeAST.Lambda && receiver.extensionOfType != null) {
+                val methodReference = receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
                 methodReference
             } else {
                 current = savepoint
