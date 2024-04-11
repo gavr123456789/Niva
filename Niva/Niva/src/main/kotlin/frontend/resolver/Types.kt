@@ -39,6 +39,36 @@ sealed class MessageMetadata(
             is UnaryMsgMetaData -> this.toString()
         }
     }
+
+    fun toLambda(receiverType: Type): Type.Lambda {
+        val extensionArg = KeywordArg("this", receiverType)
+        val createLambda = { args: MutableList<KeywordArg> ->
+            Type.Lambda(
+                args = args,
+                returnType = returnType,
+                pkg = pkg,
+                extensionOfType = receiverType
+            )
+        }
+        return when (this) {
+            is BinaryMsgMetaData -> {
+                val arg = KeywordArg(name, argType)
+                createLambda(mutableListOf(extensionArg, arg))
+            }
+
+            is KeywordMsgMetaData -> {
+                val extensionArg2 = KeywordArg("this", receiverType)
+                val args: MutableList<KeywordArg> = argTypes.toMutableList()
+                args.addFirst(extensionArg2)
+                createLambda(args)
+            }
+
+            is UnaryMsgMetaData -> {
+                createLambda(mutableListOf(extensionArg))
+            }
+        }
+
+    }
 }
 
 class UnaryMsgMetaData(
@@ -103,10 +133,7 @@ class KeywordArg(
     type: Type,
 ) : FieldWithType(name, type)
 
-class TypeField(
-    name: String,
-    type: Type //when generic, we need to reassign it to real type
-) : FieldWithType(name, type)
+
 
 class KeywordArgAst(
     val name: String,
@@ -129,10 +156,10 @@ fun Type.isDescendantOf(type: Type): Boolean {
 }
 
 
-fun MutableList<TypeField>.copy(): MutableList<TypeField> =
+fun MutableList<KeywordArg>.copy(): MutableList<KeywordArg> =
     this.map {
         val type = it.type
-        TypeField(
+        KeywordArg(
             name = it.name,
             type = if (type is Type.UserLike) type.copy() else type
         )
@@ -270,7 +297,7 @@ sealed class Type(
 
 
     class Lambda(
-        val args: MutableList<TypeField>,
+        val args: MutableList<KeywordArg>,
         val returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
@@ -296,7 +323,7 @@ sealed class Type(
     sealed class UserLike(
         name: String,
         var typeArgumentList: List<Type>,
-        var fields: MutableList<TypeField>,
+        var fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>,
@@ -356,7 +383,7 @@ sealed class Type(
     class UserType(
         name: String,
         typeArgumentList: List<Type> = listOf(), // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -366,7 +393,7 @@ sealed class Type(
     sealed class Union (
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -376,7 +403,7 @@ sealed class Type(
         var branches: List<Union>, // can be union or branch
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -388,7 +415,7 @@ sealed class Type(
         val root: UserUnionRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -399,7 +426,7 @@ sealed class Type(
         var branches: List<UserEnumBranchType>,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -409,7 +436,7 @@ sealed class Type(
         val root: UserEnumRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
-        fields: MutableList<TypeField>,
+        fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
@@ -420,7 +447,7 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type>,
         pkg: String,
-        fields: MutableList<TypeField> = mutableListOf(),
+        fields: MutableList<KeywordArg> = mutableListOf(),
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
@@ -556,14 +583,14 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
 
             val args = if (extensionOfType!=null) {
                 inputTypesList.drop(1).map {
-                    TypeField(
+                    KeywordArg(
                         type = it.toType(typeDB, typeTable, recursiveType), name = it.name
                     )
                 }.toMutableList().also { it.addFirst(
-                    TypeField(type = extensionOfType, name = "this")
+                    KeywordArg(type = extensionOfType, name = "this")
                 ) }
             } else inputTypesList.map {
-                TypeField(
+                KeywordArg(
                     type = it.toType(typeDB, typeTable, recursiveType), name = it.name
                 )
             }.toMutableList()
@@ -582,8 +609,8 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
 
 }
 
-fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): TypeField {
-    val result = TypeField(
+fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): KeywordArg {
+    val result = KeywordArg(
         name = name,
         type = typeAST!!.toType(typeDB, typeTable, recursiveType)
     )
@@ -651,14 +678,14 @@ fun SomeTypeDeclaration.toType(
         )
 
 
-    val fieldsTyped = mutableListOf<TypeField>()
-    val unresolvedSelfTypeFields = mutableListOf<TypeField>()
+    val fieldsTyped = mutableListOf<KeywordArg>()
+    val unresolvedSelfTypeFields = mutableListOf<KeywordArg>()
 
     fields.forEach {
         val astType = it.typeAST
         if (astType != null && astType.name == typeName) {
             // this is recursive type
-            val fieldType = TypeField(
+            val fieldType = KeywordArg(
                 name = it.name,
                 type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
             )
@@ -669,7 +696,7 @@ fun SomeTypeDeclaration.toType(
     }
 
     fun getAllGenericTypesFromFields(
-        fields2: List<TypeField>,
+        fields2: List<KeywordArg>,
         fields: List<TypeFieldAST>,
         setOfCheckedFields: MutableSet<Type>): MutableList<Type.UserLike>
     {

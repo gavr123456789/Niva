@@ -10,6 +10,7 @@ val POSSIBLE_BINARY_MESSAGES = setOf(
     ">>", "<<"
 )
 
+
 fun Lexer.fillSymbolTable() {
     this.symbolTable.symbols = hashMapOf(
         "(" to TokenType.OpenParen,

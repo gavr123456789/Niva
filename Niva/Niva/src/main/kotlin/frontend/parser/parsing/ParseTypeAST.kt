@@ -134,7 +134,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
 
         val path = mutableListOf(tok.lexeme)
 
-        if (!isExtendDeclaration && match(TokenType.DotOpenBracket)) {
+        if (!isExtendDeclaration && match(TokenType.OpenBracket)) {
             return parseLambda(tok, path)
         }
         while (match(TokenType.Dot)) {

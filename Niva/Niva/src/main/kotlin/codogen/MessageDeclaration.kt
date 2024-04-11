@@ -114,10 +114,11 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     returnTypeAndBodyPart(this@generateUnaryDeclaration, this)
 }
 
+fun operatorToString(x: String): String {
+    return operators[x]!!
+}
+
 fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false) = buildString {
-    fun operatorToString(x: String): String {
-        return operators[x]!!
-    }
 
     append("operator ")
     append(funGenerateReceiver(isStatic))

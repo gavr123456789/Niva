@@ -45,10 +45,7 @@ class ParserTest {
     fun varDeclaration() {
         val source = "x::Int = 1"
         val ast = getAstTest(source)
-        println("ast.count = ${ast.count()}")
         assert(ast.count() == 1)
-        println("ast = $ast")
-        println("ast[0] = ${ast[0]}")
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
@@ -1724,26 +1721,20 @@ class ParserTest {
         assert(ast.count() == 3)
     }
 
-    @Test
-    fun methodReference() {
-        val source = """
-            Pkg.Person.[x, y]
-        """.trimIndent()
 
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
-    }
     @Test
     fun methodReference2() {
         val source = """
-            x = String.[x::Int]
+            x = &String x
+            x = &String +
+            x = &String x:y:
         """.trimIndent()
 
         val ast = getAstTest(source)
-        assert(ast.count() == 1)
-//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+        assert(ast.count() == 3)
     }
+
+
     @Test
     fun oneLineUnion() {
         val source = """

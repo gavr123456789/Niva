@@ -261,7 +261,7 @@ fun Resolver.resolveKeywordMsg(
         }
     }
 
-    fun checkThatKwArgsAreTypeFields(receiverFields: MutableList<TypeField>) {
+    fun checkThatKwArgsAreTypeFields(receiverFields: MutableList<KeywordArg>) {
         statement.args.forEach { kwArg ->
             val argFromDB = receiverFields.find { it.name == kwArg.name }
             if (argFromDB == null) {
@@ -286,7 +286,7 @@ fun Resolver.resolveKeywordMsg(
         KeywordLikeType.Constructor -> {
             statement.type = if (receiverType is Type.UserLike) {
                 // collect all fields from parents
-                val listOfAllParentsFields = mutableListOf<TypeField>()
+                val listOfAllParentsFields = mutableListOf<KeywordArg>()
                 var parent = receiverType.parent
                 while (parent != null && parent is Type.UserType) {
                     listOfAllParentsFields.addAll(parent.fields)

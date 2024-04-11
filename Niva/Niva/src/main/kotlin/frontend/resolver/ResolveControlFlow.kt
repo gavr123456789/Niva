@@ -80,8 +80,12 @@ fun Resolver.resolveControlFlow(
             }
 
             is CodeBlock -> {
-                if (!rootStatement.isStatement && rootStatement.statements.last() == statement)
-                    ControlFlowKind.Expression
+                if (!rootStatement.isStatement && rootStatement.statements.last() == statement) {
+                    if (statement is ControlFlow.If && statement.elseBranch == null)
+                        ControlFlowKind.Statement
+                    else
+                        ControlFlowKind.Expression
+                }
                 else
                     ControlFlowKind.Statement
             }
@@ -178,7 +182,7 @@ fun Resolver.resolveControlFlow(
                 currentLevel--
                 if (statement.kind == ControlFlowKind.Expression) {
                     val lastExpr = statement.elseBranch.last()
-//                    if (lastExpr.notExpression()) {
+//                    if (lastExpr.isNotExpression()) {
 //                        lastExpr.token.compileError("In switch expression body last statement must be an expression")
 //                    }
                     val elseReturnType = when (lastExpr) {
@@ -231,8 +235,10 @@ fun Resolver.resolveControlFlow(
 
                 if (i == 0 && it.ifExpression is IdentifierExpr && currentTypeName == it.ifExpression.name) {
                     statement.kind =
-                        if (statement.kind == ControlFlowKind.Expression) ControlFlowKind.ExpressionTypeMatch
-                        else ControlFlowKind.StatementTypeMatch
+                        if (statement.kind == ControlFlowKind.Expression)
+                            ControlFlowKind.ExpressionTypeMatch
+                        else
+                            ControlFlowKind.StatementTypeMatch
                 }
                 // this is cheaper than every string comparison
                 thisIsTypeMatching =
@@ -260,7 +266,7 @@ fun Resolver.resolveControlFlow(
 
                 if (!compare2Types(currentType, statement.switch.type!!)) {
                     val curTok = it.ifExpression.token
-                    curTok.compileError("If branch ${WHITE}${it.ifExpression}${RESET} of type: ${YEL}$currentType${RESET} is not of switch's type: ${YEL}${statement.switch.type!!.name}")
+                    curTok.compileError("${WHITE}${it.ifExpression}${RESET} has type: ${YEL}$currentType${RESET} but you matching on\n       $WHITE${statement.switch}$RESET of type ${YEL}${statement.switch.type!!.name}")
                 }
                 /// resolving then, if() ^
                 val scopeWithFields =
@@ -355,7 +361,7 @@ fun Resolver.resolveControlFlow(
                     }
 
                     else -> {
-                        println("type $savedSwitchType matching")
+//                        println("type $savedSwitchType matching")
                     }
                 }
 
@@ -395,8 +401,8 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
                 val path = findSas(this, ArrayDeque())
                 val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
                 val tokFromMap = {
-                    val x = path.find { typeToToken[it] != null }
-                    typeToToken[x]
+                    val e = path.find { typeToToken[it] != null }
+                    typeToToken[e]
                 }()
 //                 val w =   typeToToken[path.first()]
                 val curLine = (typeToToken[this]?.line)

@@ -460,6 +460,7 @@ fun Lexer.next() {
 
         match("||") -> createToken(TokenType.BinarySymbol)
         match("&&") -> createToken(TokenType.BinarySymbol)
+        match("&") -> createToken(TokenType.Ampersand)
 
         match("=>") -> createToken(TokenType.Then)
         match("|=>") -> createToken(TokenType.Else)

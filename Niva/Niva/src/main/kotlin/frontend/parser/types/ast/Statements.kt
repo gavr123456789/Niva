@@ -32,11 +32,8 @@ sealed class Declaration(
     }
 }
 
-//sealed class Metadata()
-
 sealed class Expression(
     var type: Type? = null,
-//    type: Type? = null,
 
     token: Token,
     isPrivate: Boolean = false,

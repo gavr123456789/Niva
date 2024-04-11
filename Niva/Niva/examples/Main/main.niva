@@ -1,8 +1,32 @@
-String msg::String.[Int, Int -> Unit] = [
+//String msg::String.[Int, Int -> Unit] = [
+//    str = "sas"
+//    msg this: str Int: 1 Int: 2
+//]
+//
+//"sas" msg: [ x, y ->
+//     this + x toString + y toString |> echo
+//]
+
+Int msgKeyword::String[Int, Int -> Unit] = [
     str = "sas"
-    msg this: str Int: 1 Int: 2
+    msgKeyword this: str Int: 1 Int: 2
 ]
 
-"sas" msg: [ x, y ->
-     this + x toString + y toString |> echo
+Int msgBinary::String[Int] = [
+    msgBinary this: "sas" Int: 2
 ]
+
+Int msgUnary::String[] = [
+    msgUnary this: "sas"
+]
+
+String x::Int y::Int = "keyword" echo
+String + x::Int = "binary" echo
+String foo = "unary" echo
+
+//1 msgKeyword: &String x:y:
+//1 msgBinary: &String +
+//1 msgUnary: &String foo
+
+q = {1 2 3} map: &Int inc
+q echo

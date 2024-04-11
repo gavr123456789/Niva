@@ -42,6 +42,7 @@ enum class TokenType {
     // punctuation
     Dot, Cascade, Comma, Colon, Apostrophe,// . ; , `
     DotOpenBracket, // .[
+    Ampersand, // &
 
     EndOfFile,
     NoMatch,   // Used internally by the symbol table

@@ -285,12 +285,32 @@ private fun Resolver.resolveStatement(
 
         is MethodReference -> {
             val forType = statement.forType.toType(typeDB, typeTable)
+
             when (statement) {
-                is MethodReference.Binary -> TODO()
-                is MethodReference.Keyword -> TODO()
-                is MethodReference.Unary -> TODO()
+                is MethodReference.Binary -> {
+                    forType.protocols.values.forEach {
+                        it.binaryMsgs[statement.name]?.let { method -> statement.method = method }
+                    }
+                }
+                is MethodReference.Keyword -> {
+                    val name = statement.keys.first() + statement.keys.drop(1).joinToString("") { it.uppercase() }
+                    forType.protocols.values.forEach {
+                        val w = it.keywordMsgs[name]
+                        if (w != null) {
+                            statement.method = w
+                        }
+                    }
+                }
+                is MethodReference.Unary -> {
+                    forType.protocols.values.forEach {
+                        it.unaryMsgs[statement.name]?.let { method -> statement.method = method }
+                    }
+                }
             }
-            TODO()
+
+
+            val method = statement.method ?: statement.token.compileError("Can't find method $CYAN${statement.name}")
+            statement.type = method.toLambda(forType)
         }
 
     }
@@ -372,11 +392,15 @@ fun compare2Types(
 
     if (type1 is Type.Lambda && type2 is Type.Lambda) {
 
-        val argsOf1 = if (type1.extensionOfType != null)
+        // and type 2
+        val type1IsExt = type1.extensionOfType != null
+        val type2IsExt = type2.extensionOfType != null
+
+        val argsOf1 = if (type1IsExt && (!type2IsExt && type1.args.count() - 1 == type2.args.count()))
             type1.args.drop(1)
         else type1.args
 
-        val argsOf2 = if (type2.extensionOfType != null)
+        val argsOf2 = if (type2IsExt && (!type1IsExt && type1.args.count() == type2.args.count() - 1))
             type2.args.drop(1)
         else type2.args
 
@@ -566,8 +590,11 @@ fun compare2Types(
 
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
 
+    if (type1 == type2)
+        return type1
+    if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name)
+        return type1
 
-    if (type1 == type2) return type1
     // first is parent of the second
     var parent1: Type? = type1.parent
     while (parent1 != null) {
@@ -1274,7 +1301,7 @@ class Resolver(
         val pairType = Type.UserType(
             name = "Pair",
             typeArgumentList = listOf(genericType, differentGenericType),
-            fields = mutableListOf(TypeField("first", genericType), TypeField("second", differentGenericType)),
+            fields = mutableListOf(KeywordArg("first", genericType), KeywordArg("second", differentGenericType)),
             pkg = "core",
         )
 
@@ -1448,8 +1475,8 @@ class Resolver(
 //            name = "Entry",
 //            typeArgumentList = listOf(genericType, differentGenericType),
 //            fields = mutableListOf(
-//                TypeField("key", genericType),
-//                TypeField("value", differentGenericType)
+//                KeywordArg("key", genericType),
+//                KeywordArg("value", differentGenericType)
 //            ),
 //            pkg = "Map",
 //        )
@@ -1486,7 +1513,7 @@ class Resolver(
         val errorType = Type.UserType(
             name = "Error",
             typeArgumentList = listOf(),
-            fields = mutableListOf(TypeField("message", stringType)),
+            fields = mutableListOf(KeywordArg("message", stringType)),
             pkg = "core",
         )
         errorType.isBinding = true
@@ -1529,8 +1556,8 @@ class Resolver(
 
         // add fields
         typeType.fields = mutableListOf(
-            TypeField("name", stringType),
-            TypeField("fields", fieldsMap),
+            KeywordArg("name", stringType),
+            KeywordArg("fields", fieldsMap),
         )
 
         addCustomTypeToDb(
