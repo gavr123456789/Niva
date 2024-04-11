@@ -642,19 +642,6 @@ class ResolverTest {
     }
 
     @Test
-    fun sasas() {
-        val source = """
-            type Sas
-            Int sas -> Sas = [ ^ Sas ] 
-            x = Sas
-            x echo
-        """.trimIndent()
-
-        val statements = resolve(source)
-        assert(statements.count() == 4)
-    }
-
-    @Test
     fun switchIf() {
         val source = """
             x = "sas"
@@ -1444,24 +1431,29 @@ class ResolverTest {
         }
     }
 
-
     @Test
-    fun sendMethodToMethod() {
+    fun sendMethodToMethod2() {
+
         val source = """
-            String msg::String.[Int, Int -> Unit] = [
+            String msg::String[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
             
             String x::Int y::Int = 1 echo
             
-            "sas" msg: String.[x, y] 
+            "sas" msg: &String x:y: 
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 1)
+        assert(statements.count() == 3)
         val q = statements[0] as MessageDeclarationKeyword
         val w = q.args[0].typeAST!! as TypeAST.Lambda
         assertTrue { w.extensionOfType!!.name == "String" }
+
+        val x = (statements[2] as MessageSendKeyword).messages.first() as KeywordMsg
+        val t = x.args.first().keywordArg.type!! as Type.Lambda
+        assertTrue { t.args.count() == 3 }
+        assertTrue { t.args.first().type.name == "String" }
     }
 
 
@@ -1511,6 +1503,24 @@ class ResolverTest {
         assert(statements.count() == 3)
         val y = statements[2] as VarDeclaration
         assertTrue(y.value.type is Type.NullableType)
+    }
+
+    @Test
+    fun lastControlFlowIsStatementIfNoElseBranch() {
+        val source = """
+            Int sas -> Int? = null
+        
+            x = 3
+            y = [
+                x > 3 => "sas"
+            ] 
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+        val y = (statements[2] as VarDeclaration).value as CodeBlock
+        val codeBlockType = y.type as Type.Lambda
+        val returnType = codeBlockType.returnType
+        assertTrue { returnType.name == "Unit" }
     }
 
 

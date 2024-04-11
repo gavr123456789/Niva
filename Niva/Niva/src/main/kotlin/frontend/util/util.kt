@@ -1,6 +1,6 @@
 package main.frontend.util
 
-import frontend.resolver.TypeField
+import frontend.resolver.KeywordArg
 import frontend.resolver.compare2Types
 
 //fun Parser.checkTokUntilEndOfLine(tok: TokenType): Boolean {
@@ -24,7 +24,7 @@ fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
 }
 
 
-fun containSameFields(fields1: MutableList<TypeField>, fields2: MutableList<TypeField>): Boolean {
+fun containSameFields(fields1: MutableList<KeywordArg>, fields2: MutableList<KeywordArg>): Boolean {
     if (fields1.count() != fields2.count()) return false
 
     fields1.forEachIndexed { i, t1 ->

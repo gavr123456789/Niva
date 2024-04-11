@@ -5,7 +5,7 @@ import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.Type.RecursiveType.copy
-import frontend.resolver.TypeField
+import frontend.resolver.KeywordArg
 import frontend.resolver.compare2Types
 import frontend.resolver.fillGenericsWithLettersByOrder
 import frontend.resolver.resolve
@@ -197,7 +197,7 @@ fun Resolver.resolveCodeBlock(
             else -> unitType
         }
     val args = statement.inputList.map {
-        TypeField(name = it.name, type = it.type!!)
+        KeywordArg(name = it.name, type = it.type!!)
     }.toMutableList()
 
 
@@ -209,7 +209,7 @@ fun Resolver.resolveCodeBlock(
                 returnType.beforeGenericResolvedName = type.returnType.name
             }
         }
-        args.add(TypeField("it", itArgType))
+        args.add(KeywordArg("it", itArgType))
     }
     val type = Type.Lambda(
         args = args,
@@ -230,7 +230,7 @@ fun Resolver.resolveCodeBlock(
 
         ) {
             receiverType.args.add(
-                TypeField(
+                KeywordArg(
                     name = rootStatement.selectorName,
                     type = Type.Lambda(
                         args = mutableListOf(),

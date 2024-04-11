@@ -60,7 +60,7 @@ fun createIntProtocols(
                 "toDo",
                 listOf(
                     KeywordArg("to", intType),
-                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
+                    KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
                 intType
             ),
@@ -69,7 +69,7 @@ fun createIntProtocols(
                 "untilDo",
                 listOf(
                     KeywordArg("until", intType),
-                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
+                    KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
                 intType
             ),
@@ -78,7 +78,7 @@ fun createIntProtocols(
                 "downToDo",
                 listOf(
                     KeywordArg("downTo", intType),
-                    KeywordArg("do", Type.Lambda(mutableListOf(TypeField("do", intType)), anyType))
+                    KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
                 intType
             ),
@@ -402,7 +402,7 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
             createKeyword(
                 KeywordArg(
                     "unpack",
-                    Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), genericR)
+                    Type.Lambda(mutableListOf(KeywordArg("it", realTypeOrNothing)), genericR)
                 ),
                 unitType
             ),
@@ -412,7 +412,7 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
                 listOf(
                     KeywordArg(
                         "unpack",
-                        Type.Lambda(mutableListOf(TypeField("it", realTypeOrNothing)), genericR)
+                        Type.Lambda(mutableListOf(KeywordArg("it", realTypeOrNothing)), genericR)
                     ),
                     KeywordArg(
                         "or",
@@ -624,7 +624,7 @@ fun createListProtocols(
                 KeywordArg(
                     "joinTransform",
                     Type.Lambda(
-                        mutableListOf(TypeField("transform", itType)),
+                        mutableListOf(KeywordArg("transform", itType)),
                         differentGenericType
                     )
                 ),
@@ -635,7 +635,7 @@ fun createListProtocols(
                 KeywordArg(
                     "sortedBy",
                     Type.Lambda(
-                        mutableListOf(TypeField("transform", itType)),
+                        mutableListOf(KeywordArg("transform", itType)),
                         differentGenericType
                     )
                 ),
@@ -652,7 +652,7 @@ fun createListProtocols(
                     KeywordArg(
                         "transform",
                         Type.Lambda(
-                            mutableListOf(TypeField("transform", itType)),
+                            mutableListOf(KeywordArg("transform", itType)),
                             differentGenericType
                         )
                     )
@@ -671,7 +671,7 @@ fun createListProtocols(
                     KeywordArg(
                         "info",
                         Type.Lambda(
-                            mutableListOf(TypeField("acc", differentGenericType), TypeField("each", itType)),
+                            mutableListOf(KeywordArg("acc", differentGenericType), KeywordArg("each", itType)),
                             differentGenericType
                         )
                     )
@@ -687,7 +687,7 @@ fun createListProtocols(
                     KeywordArg(
                         "reduce",
                         Type.Lambda(
-                            mutableListOf(TypeField("acc", itType), TypeField("each", itType)),
+                            mutableListOf(KeywordArg("acc", itType), KeywordArg("each", itType)),
                             differentGenericType
                         )
                     )
@@ -701,7 +701,7 @@ fun createListProtocols(
                     KeywordArg(
                         "predicate",
                         Type.Lambda(
-                            mutableListOf(TypeField("predicate", itType)),
+                            mutableListOf(KeywordArg("predicate", itType)),
                             boolType
                         )
                     )
@@ -740,7 +740,7 @@ fun createSumOf(itType: Type) =
             KeywordArg(
                 "sumOf",
                 Type.Lambda(
-                    mutableListOf(TypeField("predicate", itType)),
+                    mutableListOf(KeywordArg("predicate", itType)),
                     itType
                 )
             )
@@ -833,7 +833,7 @@ private fun createOnEach(
             "onEach",
             Type.Lambda(
                 mutableListOf(
-                    TypeField("onEach", genericTypeOfSetElements)
+                    KeywordArg("onEach", genericTypeOfSetElements)
                 ),
                 unitType
             )
@@ -852,7 +852,7 @@ private fun createForEachKeyword(
             "forEach",
             Type.Lambda(
                 mutableListOf(
-                    TypeField("forEach", genericTypeOfSetElements)
+                    KeywordArg("forEach", genericTypeOfSetElements)
                 ),
                 unitType
             )
@@ -872,8 +872,8 @@ private fun createForEachKeywordIndexed(
             "forEachIndexed",
             Type.Lambda(
                 mutableListOf(
-                    TypeField("i", intType),
-                    TypeField("it", itType),
+                    KeywordArg("i", intType),
+                    KeywordArg("it", itType),
                 ),
                 unitType
             )
@@ -895,8 +895,8 @@ private fun createMapKeywordIndexed(
             "mapIndexed",
             Type.Lambda(
                 mutableListOf(
-                    TypeField("i", intType),
-                    TypeField("it", itType),
+                    KeywordArg("i", intType),
+                    KeywordArg("it", itType),
                 ),
                 differentGenericType
             )
@@ -964,8 +964,8 @@ fun createMapProtocols(
                         "forEach",
                         Type.Lambda(
                             mutableListOf(
-                                TypeField("key", keyType),
-                                TypeField("value", valueType),
+                                KeywordArg("key", keyType),
+                                KeywordArg("value", valueType),
                             ),
                             unitType
                         )
@@ -981,9 +981,9 @@ fun createMapProtocols(
                         "map",
                         Type.Lambda(
                             mutableListOf(
-//                                TypeField("e", entryType),
-                                TypeField("key", keyType),
-                                TypeField("value", valueType),
+//                                KeywordArg("e", entryType),
+                                KeywordArg("key", keyType),
+                                KeywordArg("value", valueType),
                             ),
                             unitType,
                             specialFlagForLambdaWithDestruct = true
@@ -1000,10 +1000,10 @@ fun createMapProtocols(
                         "filter",
                         Type.Lambda(
                             mutableListOf(
-//                                TypeField("e", entryType),
+//                                KeywordArg("e", entryType),
 
-                                TypeField("key", keyType),
-                                TypeField("value", valueType),
+                                KeywordArg("key", keyType),
+                                KeywordArg("value", valueType),
                             ),
                             unitType,
                             specialFlagForLambdaWithDestruct = true
@@ -1047,7 +1047,7 @@ private fun createMapKeyword(
     KeywordArg(
         "map",
         Type.Lambda(
-            mutableListOf(TypeField("transform", genericTypeOfListElements)),
+            mutableListOf(KeywordArg("transform", genericTypeOfListElements)),
             differentGenericType
         ) // return list map of type of last expression
     ),
@@ -1061,7 +1061,7 @@ private fun createFilterKeyword(
 ) = createKeyword(
     KeywordArg(
         "filter",
-        Type.Lambda(mutableListOf(TypeField("filter", genericTypeOfSetElements)), boolType)
+        Type.Lambda(mutableListOf(KeywordArg("filter", genericTypeOfSetElements)), boolType)
     ),
     returnType
 )

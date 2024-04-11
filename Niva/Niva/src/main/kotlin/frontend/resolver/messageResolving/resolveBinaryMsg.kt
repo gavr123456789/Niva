@@ -63,7 +63,7 @@ fun Resolver.resolveBinaryMsg(
 
     if (messageTypeFromDb is BinaryMsgMetaData && !compare2Types(argumentType, messageTypeFromDb.argType)) {
 //        println("aloxa")
-        argument.token.compileError("Binary msg $WHITE$statement$RESET has type: $YEL$messageTypeFromDb$RESET, but argument $WHITE$argument$RESET is of type $YEL$argumentType")
+        argument.token.compileError("($YEL$argumentType$RESET != $YEL${messageTypeFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$messageTypeFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
     }
 
     statement.type = messageTypeFromDb.returnType

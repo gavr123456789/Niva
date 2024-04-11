@@ -24,7 +24,8 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-class Sas(val x:Int)
+
+
 fun main(args: Array<String>) {
 
 //    val q = listOf(1, 2)//.sumOf {  }//.partition {  }//.fold(5) { acc, next -> acc + next }
@@ -35,63 +36,17 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/unions/unions.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/weather/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 
 //    val args = arrayOf("dev", "/home/gavr/Documents/Fun/Niva/Niva/Niva/examples/Main/main.niva")
 //    val args = arrayOf("dev", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
+
 
     if (help(args)) return
 
     run(args)
 }
 
-//fun readJar(pathToJar: String) {
-//    val jarUrl = URL("file:///$pathToJar")
-//    val loader = URLClassLoader(arrayOf(jarUrl))
-////    loader
-//    val jar = JarFile(pathToJar)
-//
-//    val entryes = jar.entries()
-//
-//    var counter = 0
-//    var errorConter = 0
-//    val nivaTypes = mutableListOf<Type.UserType>()
-//    while (entryes.hasMoreElements()) {
-//        val e = entryes.nextElement()
-//        if (!e.isDirectory && e.name.endsWith(".class")) {
-//            counter++
-//            val className = e.name.replace("/", ".").replace(".class", "")
-//            try {
-//                val c = loader.loadClass(className)
-//                val methods = c.methods
-////                val params = w.parameters
-//                val fields = c.fields.filter { it.name != "INSTANCE" }
-//                if (fields.count() > 1 || fields.count() == 0) {
-//                    nivaTypes.add(
-//                        Type.UserType(
-//                            name = c.name,
-//                            typeArgumentList = listOf(),
-////                            fields = fields.map {
-////                                TypeField(
-////                                    name = it.name,
-////                                    type = Type.UnknownGenericType(name = it.name, pkg = it.type?.`package`?.name ?: "???")
-////                                )
-////                            }.toMutableList(),
-//                            fields = mutableListOf(),
-//                            pkg =  c?.`package`?.name ?: "???"
-//                        )
-//                    )
-//                }
-//            } catch (e: Throwable) {
-//                errorConter++
-//                println("ОЙ!")
-//            }
-//        }
-//
-//    }
-//
-//    jar.close()
-//}
 
 fun run(args: Array<String>) {
     val argsSet = args.toSet()

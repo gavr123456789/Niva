@@ -1,6 +1,7 @@
 package main.frontend.parser.types.ast
 
 import frontend.resolver.KeywordArgAst
+import frontend.resolver.MessageMetadata
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
@@ -15,6 +16,7 @@ sealed class MethodReference(
     val name: String,
     token: Token,
     type: Type? = null,
+    var method: MessageMetadata? = null
 ) : Receiver(type, token) {
     class Unary(
         forType: TypeAST,

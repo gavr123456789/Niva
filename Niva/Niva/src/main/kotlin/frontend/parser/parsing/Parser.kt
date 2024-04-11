@@ -267,6 +267,10 @@ fun Parser.expression(
         return staticBuilder()
     }
 
+    if (match (TokenType.Ampersand)) {
+        return methodReference()
+    }
+
 
     fun tryMessageReference(): MethodReference? {
         val savepoint = this.current
