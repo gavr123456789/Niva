@@ -1358,7 +1358,7 @@ class ResolverTest {
     @Test
     fun lambdaWithReceiver() {
         val source = """
-            String msg::String.[Int, Int -> Unit] = [
+            String msg::String[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
@@ -1373,7 +1373,7 @@ class ResolverTest {
     @Test
     fun lambdaWithReceiverCall() {
         val source = """
-            String msg::String.[Int, Int -> Unit] = [
+            String msg::String[Int, Int -> Unit] = [
                 str = "sas"
                 msg this: str Int: 1 Int: 2
             ]
@@ -1523,6 +1523,30 @@ class ResolverTest {
         assertTrue { returnType.name == "Unit" }
     }
 
+    @Test
+    fun typeAlias() {
+        val source = """
+           type Sas = [Int -> Int]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as TypeAliasDeclaration
+        val w = q.realType as Type.Lambda
+        assertTrue {w.args[0].name == "Int"}
+    }
+
+    @Test
+    fun typeAliasUse() {
+        val source = """
+           type Sas = [Int -> Int]
+           sas::Sas = [x::Int -> x inc]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 2)
+        val q = statements[0] as TypeAliasDeclaration
+        val w = q.realType as Type.Lambda
+        assertTrue { w.args[0].name == "Int" }
+    }
 
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {

@@ -66,15 +66,14 @@ fun Parser.check(kind: TokenType, distance: Int = 0) =
 fun Parser.check(kind: String, distance: Int = 0) =
     peek(distance).lexeme == kind
 
-fun Parser.checkMany(vararg kind: TokenType): Boolean {
+fun Parser.checkMany(vararg kind: TokenType, distance: Int = 0): Boolean {
     kind.forEachIndexed { i, it ->
-        if (!check(it, i)) {
+        if (!check(it, i + distance)) {
             return false
         }
     }
     return true
 }
-
 
 
 //fun Parser.checkString(kind: Iterable<String>): Boolean {
@@ -101,7 +100,7 @@ fun Parser.matchAfterSkip(kind: TokenType): Boolean {
     skipNewLinesAndComments()
 
     return if (match(kind)) {
-         true
+        true
     } else {
         current = savePoint
         false
@@ -147,8 +146,25 @@ fun Parser.matchAssert(kind: TokenType, errorMessage: String? = null): Token {
         tok
     } else {
         tok.compileError(realErrorMessage)
-//        error(realErrorMessage)
     }
+}
+
+
+fun Parser.matchAssertOr(vararg kinds: TokenType, errorMessage: String? = null): Token {
+    val tok = peek()
+
+    val realErrorMessage = errorMessage
+        ?: "Parsing error, one of ${kinds.map { it.name }} expected, but found \"${tok.lexeme}\""
+
+    val result = kinds.find { it == tok.kind }
+
+    if (result == null) {
+        tok.compileError(realErrorMessage)
+    } else {
+        step()
+        return tok
+    }
+
 }
 
 fun Parser.match(kind: String) =

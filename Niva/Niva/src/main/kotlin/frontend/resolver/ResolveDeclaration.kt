@@ -54,7 +54,10 @@ fun Resolver.resolveDeclarations(
         }
 
         is EnumBranch -> TODO()
-        is AliasDeclaration -> TODO()
+
+        is TypeAliasDeclaration -> {
+            resolveTypeAlias(statement)
+        }
 
 
         is UnionBranchDeclaration -> {

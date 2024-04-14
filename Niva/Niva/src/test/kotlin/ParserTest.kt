@@ -1647,7 +1647,7 @@ class ParserTest {
     @Test
     fun extensionLambda() {
         val source = """
-            Something msg::Person.[x::Int, y::Int -> Unit] = [
+            Something msg::Person[x::Int, y::Int -> Unit] = [
                 p = Person new
                 // first variant
                 msg this: p x: 1 y: 2
@@ -1754,7 +1754,26 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-//        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
+    }
+
+    @Test
+    fun typeAlias() {
+        val source = """
+            type Sas = [Int -> Int]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun kwForLambda() {
+        val source = """
+            [x::Int -> x inc] hi: 3
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
     }
 
 

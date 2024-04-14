@@ -377,11 +377,14 @@ fun Parser.checkTypeOfMessageDeclaration2(
     parseReceiver: Boolean = true
 ): MessageDeclarationType? {
     val savepoint = current
+    val t = peek()
+    // any message declaration starts with identifier or binary symbol when "on + x::sas"
+    if (t.kind != TokenType.Identifier && t.kind != TokenType.NullableIdentifier && t.kind != TokenType.BinarySymbol)
+        return null
 
-    // receiver
+    // receiver can be typed List::Int sas = []
     if (parseReceiver)
         identifierMayBeTyped()
-
 
     if (tryUnary(isConstructor)) {
         current = savepoint

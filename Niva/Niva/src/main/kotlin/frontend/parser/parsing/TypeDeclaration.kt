@@ -241,18 +241,19 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration 
     return root
 }
 
-@Suppress("unused")
-fun Parser.typeAliasDeclaration(): AliasDeclaration {
-    val tok = matchAssert(TokenType.Alias)
-    val x = identifierMayBeTyped()
-    matchAssert(TokenType.Assign) // equal
-    val y = identifierMayBeTyped()
-    val result = AliasDeclaration(
-        x.name,
-        y.name,
-        tok
-    )
+fun Parser.typeAliasDeclaration(pragmas: MutableList<Pragma>): TypeAliasDeclaration {
+    val tok = matchAssert(TokenType.Type)
+    val name = matchAssert(TokenType.Identifier)
 
-    return result
+    matchAssert(TokenType.Assign)
+
+    val typeAST = parseType()
+
+    return TypeAliasDeclaration(
+        realTypeAST = typeAST,
+        typeName = name.lexeme,
+        token = tok,
+        pragmas = pragmas
+    )
 
 }

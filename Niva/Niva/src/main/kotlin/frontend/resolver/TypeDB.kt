@@ -19,8 +19,8 @@ sealed class TypeDBResult {
 }
 
 class TypeDB(
-    val internalTypes: MutableMap<String, Type.InternalType> = mutableMapOf(),
-    val lambdaTypes: MutableMap<String, Type.Lambda> = mutableMapOf(),
+    val internalTypes: MutableMap<TypeName, Type.InternalType> = mutableMapOf(),
+    val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf()
 )
 
@@ -75,10 +75,17 @@ fun TypeDB.getType(
         }
 
 
-    } else {
-        // not in scope, not user type, not internal type
-        return TypeDBResult.NotFound(name)
     }
+
+    // check lambdas
+    val foundInLambda = lambdaTypes[name]
+    if (foundInLambda != null) {
+        return TypeDBResult.FoundOne(foundInLambda)
+    }
+
+    // not in scope, not user type, not internal type
+    return TypeDBResult.NotFound(name)
+
 }
 
 fun TypeDB.getTypeOfIdentifierReceiver(
@@ -90,8 +97,6 @@ fun TypeDB.getTypeOfIdentifierReceiver(
     previousScope: MutableMap<String, Type>? = null,
     names: List<String> = listOf()
 ): Type? {
-
-
     val q = getType(typeName, currentScope, previousScope, names = names)
     val w = q.getTypeFromTypeDBResultConstructor(
         KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())),
@@ -103,15 +108,13 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 
 // adding
 
-fun TypeDB.add(type: Type, token: Token) {
+fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
+    val realName = customNameAlias ?: type.name
     when (type) {
-        is Type.UserLike -> addUserLike(type.name, type, token)
-        is Type.InternalType -> addInternalType(type.name, type)
-        is Type.Lambda -> addLambdaType(type.name, type)
-
-        is Type.NullableType -> TODO()
-
-        Type.RecursiveType -> TODO()
+        is Type.UserLike -> addUserLike(realName, type, token)
+        is Type.InternalType -> addInternalType(realName, type)
+        is Type.Lambda -> addLambdaType(realName, type)
+        is Type.NullableType, Type.RecursiveType -> TODO()
     }
 
 }

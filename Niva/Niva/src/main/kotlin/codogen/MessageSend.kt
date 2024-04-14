@@ -476,7 +476,10 @@ fun generateSingleUnary(
             append(it.selectorName)
         }
 
-        UnaryMsgKind.ForCodeBlock -> append("()")
+        UnaryMsgKind.ForCodeBlock -> {
+
+            append("()")
+        }
     }
 }
 

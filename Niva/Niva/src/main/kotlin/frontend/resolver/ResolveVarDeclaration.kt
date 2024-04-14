@@ -74,7 +74,11 @@ fun Resolver.resolveVarDeclaration(
     // check that declared type == inferred type
     if (statementDeclaredType != null) {
         val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
-        val realValueType = if (valueType is Type.Lambda) valueType.returnType else valueType
+        val realValueType =
+//            if (valueType is Type.Lambda)
+//                valueType.returnType
+//            else
+                valueType
         if (!compare2Types(statementDeclared, realValueType, unpackNull = true)) {
             val text = "$statementDeclaredType != $realValueType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
@@ -84,6 +88,11 @@ fun Resolver.resolveVarDeclaration(
             val nullableType = Type.NullableType(valueType)
             value.type = nullableType
             valueType = nullableType
+        }
+        // x::Sas = [x::Int -> x inc]
+        // right part here doesn't contain information about alias
+        if (valueType is Type.Lambda && statementDeclared is Type.Lambda && statementDeclared.alias != null) {
+            valueType.alias = statementDeclared.alias
         }
     }
 

@@ -303,6 +303,7 @@ sealed class Type(
         isPrivate: Boolean = false,
         var specialFlagForLambdaWithDestruct: Boolean = false,
         val extensionOfType: Type? = null,
+        var alias: String? = null
     ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
 
     sealed class InternalLike(

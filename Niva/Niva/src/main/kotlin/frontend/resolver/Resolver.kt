@@ -776,14 +776,16 @@ fun Resolver.addNewType(
     type: Type,
     statement: SomeTypeDeclaration?,
     pkg: Package? = null,
-    checkedOnUniq: Boolean = false
+    alreadyCheckedOnUnique: Boolean = false,
+    alias: Boolean = false
 ) {
-    val pack = pkg ?: getCurrentPackage(
-        statement?.token ?: createFakeToken()
-    ) // getPackage(currentPackageName, statement?.token ?: createFakeToken())
 
-    if (!checkedOnUniq && typeAlreadyRegisteredInCurrentPkg(type.name, pkg, statement?.token) != null) {
-        val err = "Type ${YEL}${type.name}${RESET} already registered in package: ${WHITE}$currentPackageName"
+    // 1 get package
+    val pack = pkg ?: getCurrentPackage(statement?.token ?: createFakeToken())
+    // 2 check type for unique
+    val typeName = if (alias) (statement as TypeAliasDeclaration).typeName else type.name
+    if (!alreadyCheckedOnUnique && typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
+        val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }
 
@@ -794,9 +796,9 @@ fun Resolver.addNewType(
     if (pack.isBinding && type is Type.UserLike) {
         type.isBinding = true
     }
-    pack.types[type.name] = type
-    typeTable[type.name] = type//fix
-    typeDB.add(type, token = statement?.token ?: createFakeToken())
+    pack.types[typeName] = type
+    typeTable[typeName] = type//fix
+    typeDB.add(type, token = statement?.token ?: createFakeToken(), customNameAlias = typeName)
 }
 
 

@@ -6,6 +6,7 @@ import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionRootDeclaration
 
@@ -17,6 +18,11 @@ fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
     return genericsOfBranches
 }
 
+fun TypeAliasDeclaration.generateTypeAlias() = buildString {
+    append("typealias ", typeName, " = ")
+    val ktType = realTypeAST.generateType()
+    append(ktType)
+}
 
 fun SomeTypeDeclaration.generateTypeDeclaration(
     isUnionRoot: Boolean = false,

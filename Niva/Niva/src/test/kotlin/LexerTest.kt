@@ -171,11 +171,6 @@ x sas
     }
 
     @Test
-    fun typeAlias() {
-        checkWithEnd("alias", listOf(Alias))
-    }
-
-    @Test
     fun nn() {
         checkWithEnd(
             """
