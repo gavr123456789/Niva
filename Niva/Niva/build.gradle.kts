@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.0.0-Beta4"
+    kotlin("jvm") version "2.0.0-RC1"
     application
     id("org.graalvm.buildtools.native") version "0.10.1"
 }

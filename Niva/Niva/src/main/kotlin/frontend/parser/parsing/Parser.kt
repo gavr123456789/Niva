@@ -43,7 +43,11 @@ fun Parser.statement(): Statement {
     }
 
     if (kind == TokenType.Type) {
-        return typeDeclaration(pragmas)
+        return if (checkMany(TokenType.Identifier, TokenType.Assign, distance = 1)){
+            typeAliasDeclaration(pragmas)
+        } else
+            typeDeclaration(pragmas)
+
     }
     if (kind == TokenType.Enum) {
         return enumDeclaration(pragmas)
@@ -139,7 +143,7 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 // if inside var decl with type, then we're getting type from it
 fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
-    val x = step()
+    val x = matchAssertOr(TokenType.Identifier, TokenType.NullableIdentifier)
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
@@ -283,7 +287,7 @@ fun Parser.expression(
                 current = savepoint
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             current = savepoint
             return null
         }
@@ -326,7 +330,7 @@ fun Parser.expression(
 
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
-                        thenDoExpression = singleExpr as Expression,
+                        thenDoExpression = singleExpr,
                         listOf()
                     )
                 } else {

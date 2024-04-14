@@ -11,6 +11,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
+import main.utils.capitalizeFirstLetter
 import main.utils.toCamelCase
 import main.utils.isGeneric
 import kotlin.collections.mutableMapOf
@@ -136,7 +137,7 @@ fun Resolver.resolveKeywordMsg(
         is BinaryMsgMetaData -> listOf()
         is KeywordMsgMetaData -> {
             // only for bind Fields feature
-            if (kwTypeFromDB.isSetter){
+            if (kwTypeFromDB.isSetter) {
                 kind = KeywordLikeType.Setter
                 statement.kind = kind
             }
@@ -145,6 +146,7 @@ fun Resolver.resolveKeywordMsg(
             }
             kwTypeFromDB.argTypes.map { it.type }
         }
+
         null -> listOf()
     }
 
@@ -152,7 +154,6 @@ fun Resolver.resolveKeywordMsg(
     if (kwTypeFromDB != null) {
         statement.pragmas = kwTypeFromDB.pragmas
     }
-
 
 
     // чтобы резолвнуть тип мне нужны резолвнутые типы у аргументов, потому что может быть такое что одинаковые имена но разные типы у них
@@ -170,7 +171,13 @@ fun Resolver.resolveKeywordMsg(
 
 
     // resolve args types
-    resolveKwArgs(statement, previousAndCurrentScope, filterCodeBlock = false, argsTypesFromDb, letterToTypeFromArgs + letterToTypeFromReceiver)
+    resolveKwArgs(
+        statement,
+        previousAndCurrentScope,
+        filterCodeBlock = false,
+        argsTypesFromDb,
+        letterToTypeFromArgs + letterToTypeFromReceiver
+    )
 
     // resolve generic args types
     resolveKwArgsGenerics(statement, argsTypesFromDb, letterToTypeFromReceiver)
@@ -200,18 +207,43 @@ fun Resolver.resolveKeywordMsg(
             statement.token.compileError(text)
         }
 
+        // check for alias
+
+        val aliasToLambda = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType) }
+
+        val findKwForLambda = {
+            val possibleKWName = statement.args.first().name + statement.args.drop(1).joinToString("") { it.name.capitalizeFirstLetter() }
+            var result: KeywordMsgMetaData? = null
+            if (aliasToLambda != null) {
+                aliasToLambda.protocols.values.forEach {
+                    val kw = it.keywordMsgs[possibleKWName]
+                    if (kw != null) result = kw
+                }
+            }
+
+            result
+        }
+        val kw = findKwForLambda()
+
+        val realArgs = if (aliasToLambda != null && receiverArgs.first().name == aliasToLambda.args.first().name)
+            aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
+        else if (kw != null) {
+            kw.argTypes     // kw message declared for lambda alias
+        } else
+            receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
+
         statement.args.forEachIndexed { ii, it ->
             // name check
             // if it lambda, then any arg name is valid
-            if (it.keywordArg.type !is Type.Lambda && it.name != receiverArgs[ii].name) {
+            if (it.keywordArg.type !is Type.Lambda && it.name != realArgs[ii].name) {
                 statement.token.compileError("$YEL${it.name}${RESET} is not valid arguments for codeblock $WHITE${statement.receiver.str}$RESET, the valid arguments are: $YEL${receiverType.args.map { it.name }}")
             }
             // type check
             val isTypesEqual =
-                compare2Types(it.keywordArg.type!!, receiverArgs[ii].type, it.keywordArg.token)
+                compare2Types(it.keywordArg.type!!, realArgs[ii].type, it.keywordArg.token)
             if (!isTypesEqual) {
                 statement.token.compileError(
-                    "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid, $YEL${receiverArgs[ii].type}$RESET expected, $WHITE${statement.receiver.str}${RESET} has signature: $YEL${receiverType.args.map { it.type }}"
+                    "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid, $YEL${realArgs[ii].type}$RESET expected, $WHITE${statement.receiver.str}${RESET} has signature: $YEL${receiverType.args.map { it.type }}"
                 )
             }
         }
@@ -333,7 +365,7 @@ fun Resolver.resolveKeywordMsg(
                 val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
                 val arg = statement.args.first()
 
-                val equalSetterTypes = compare2Types(argFromDb,arg.keywordArg.type!!, statement.token)
+                val equalSetterTypes = compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)
                 if (!equalSetterTypes) {
                     statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
                 }
@@ -380,7 +412,9 @@ fun Resolver.resolveKeywordMsg(
 
             // if return type was unwrapped nullable, we need to wrap it again
             val returnType =
-                if (returnTypeFromDb is Type.NullableType && returnType2 !is Type.NullableType) Type.NullableType(realType = returnType2) else returnType2
+                if (returnTypeFromDb is Type.NullableType && returnType2 !is Type.NullableType) Type.NullableType(
+                    realType = returnType2
+                ) else returnType2
 
             statement.type = returnType
         }
@@ -415,7 +449,7 @@ fun Resolver.resolveKwArgs(
                 usualArgs.add(it)
                 // because non codeblock args already resolved
             }
-                mapOfArgToDbArg[it.keywordArg] = argsTypesFromDb[i]
+            mapOfArgToDbArg[it.keywordArg] = argsTypesFromDb[i]
         }
     else
         statement.args.forEachIndexed { i, it ->
@@ -426,7 +460,7 @@ fun Resolver.resolveKwArgs(
         }
 
     // add to letterList code blocks types from db
-    if (!filterCodeBlock && letterToRealType != null ) {
+    if (!filterCodeBlock && letterToRealType != null) {
 
         codeBlockArgs.forEach {
 
@@ -448,7 +482,7 @@ fun Resolver.resolveKwArgs(
 
 
     // cant do this, because then argNum is wrong
-    val args = if(filterCodeBlock) usualArgs else codeBlocks
+    val args = if (filterCodeBlock) usualArgs else codeBlocks
     args.forEachIndexed { argNum, it ->
         val arg = it.keywordArg
         if (arg.type == null) {
@@ -550,7 +584,8 @@ fun Resolver.resolveReturnTypeIfGeneric(
 
     return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
         val realTypeFromTable =
-            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name] ?: returnTypeFromDb
+            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
+            ?: returnTypeFromDb
 //            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
     }

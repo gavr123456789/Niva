@@ -7,6 +7,7 @@ import main.utils.YEL
 import main.codogen.collectAllGenericsFromBranches
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
@@ -43,7 +44,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
                 ) as Type.UserUnionBranchType
             branchType.parent = rootType
 
-            addNewType(branchType, it, checkedOnUniq = true)
+            addNewType(branchType, it, alreadyCheckedOnUnique = true)
             branchType
         } else {
             // type is found, this is UNION ROOT
@@ -77,6 +78,14 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
     statement.genericFields.clear()
     statement.genericFields.addAll(allGenerics)
     // not only to statement, but to Type too
+}
+fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
+    val realType = statement.realTypeAST.toType(typeDB, typeTable)
+    statement.realType = realType
+    if (realType is Type.Lambda) {
+        realType.alias = statement.typeName
+    }
+    addNewType(realType, statement, alias = true, alreadyCheckedOnUnique = false)
 }
 
 fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScope: MutableMap<String, Type>) {

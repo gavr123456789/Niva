@@ -141,6 +141,20 @@ class TypeDeclaration(
     }
 }
 
+class TypeAliasDeclaration(
+    val realTypeAST: TypeAST,
+    typeName: String,
+    token: Token,
+    pragmas: MutableList<Pragma> = mutableListOf(),
+    var realType: Type? = null,
+) : SomeTypeDeclaration(typeName, listOf(), token, mutableSetOf(), realTypeAST.isPrivate, pragmas) {
+    override fun toString(): String {
+        return "TypeAliasDeclaration($typeName)"
+    }
+}
+
+
+
 class EnumBranch(
     name: String,
     val fieldsValues: List<EnumFieldAST>,
@@ -192,14 +206,6 @@ class UnionRootDeclaration(
         return "union $typeName"
     }
 }
-
-class AliasDeclaration(
-    val typeName: String,
-    @Suppress("unused") val matchedTypeName: String,
-    token: Token,
-    pragmas: MutableList<Pragma> = mutableListOf(),
-    isPrivate: Boolean = false,
-) : Declaration(token, isPrivate, pragmas)
 
 
 enum class InternalTypes {

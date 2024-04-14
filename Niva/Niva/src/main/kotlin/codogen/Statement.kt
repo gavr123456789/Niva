@@ -17,6 +17,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateMessageDeclaration() }
 
             is TypeDeclaration -> statement.generateTypeDeclaration()
+            is TypeAliasDeclaration -> statement.generateTypeAlias()
 
             is ReturnStatement -> {
                 val expr = statement.expression
@@ -28,8 +29,6 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             }
 
             is Assign -> "${statement.name} = ${statement.value.generateExpression()}"
-
-            is AliasDeclaration -> TODO()
 
 
             is UnionRootDeclaration -> {
