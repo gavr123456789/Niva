@@ -33,14 +33,30 @@
 
 
 // type alias
-type Sas = [Int -> Int]
-sas = [x::Int -> x inc]
+//type Sas = [Int -> Int]
+//sas = [x::Int -> x inc]
 
 //sas x: 1 |> echo
 
 // message for type alias
 //Sas hi -> Int = this Int: 1
-Sas hi::Int = this Int: hi
+//Sas hi::Int = this Int: hi
 //sas hi echo
 //sas hi: 2 |> echo
-w = [x::Int -> x inc] hi: 3
+//w = [x::Int -> x inc] hi: 3
+
+//type Sas = [Int -> Int]
+//Sas at::Int = this Int: 0 |> + at |> echo
+//[x::Int -> x inc] at: 5
+
+type Sas = [ -> Boolean]
+Sas whileTrue2: block::[ -> T] -> Unit = this do => [
+    block do
+    this whileTrue2: block
+] |=> Unit
+
+mut i = 0
+[i < 3] whileTrue2: [
+    i echo
+    i <- i inc
+]
