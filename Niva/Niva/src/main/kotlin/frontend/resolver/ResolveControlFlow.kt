@@ -196,7 +196,7 @@ fun Resolver.resolveControlFlow(
                     val firstReturnTypeName = firstBranchReturnType!!.name
 
                     if (elseReturnTypeName != firstReturnTypeName && !rootStatementIsMessageDeclAndItReturnsNullable()) {
-                        lastExpr.token.compileError("In if Expression return type of else branch and main branches are not the same(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName)")
+                        lastExpr.token.compileError("(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName) In if Expression return type of else branch and main branches are not the same")
                     }
                     elseReturnType
                 } else {

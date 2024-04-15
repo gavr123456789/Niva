@@ -383,12 +383,19 @@ fun generateSingleKeyword(
         }
 
         KeywordLikeType.ForCodeBlock -> {
-            // if whileTrue we still need to add .name
-            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse") {
+
+            // when its arg type like [Int -> Int] Int: 1 then we generate lambda(1)
+            // when its real message extension for lambda then lambda.at(1)
+            val receiverType = keywordMsg.receiver.type as Type.Lambda
+            //
+            val isExtensionForLambda = receiverType.alias != null //receiverType.args.isNotEmpty() && keywordMsg.args.first().name != receiverType.args.first().type.name
+
+            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || isExtensionForLambda ) {
                 append(receiverCode(), ".", keywordMsg.selectorName)
             } else {
                 if (i == 0) {
-                    append(receiverCode())
+                    val receiverCode = receiverCode()
+                    append(receiverCode)
                 }
             }
         }
@@ -477,7 +484,6 @@ fun generateSingleUnary(
         }
 
         UnaryMsgKind.ForCodeBlock -> {
-
             append("()")
         }
     }

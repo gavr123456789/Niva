@@ -1548,6 +1548,17 @@ class ResolverTest {
         assertTrue { w.args[0].name == "Int" }
     }
 
+    @Test
+    fun messageForLambda() {
+        val source = """
+           type Sas = [Int -> Int]
+           Sas at::Int = at echo
+           [x::Int -> x inc] at: 5
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+    }
+
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {
 //        val source = """

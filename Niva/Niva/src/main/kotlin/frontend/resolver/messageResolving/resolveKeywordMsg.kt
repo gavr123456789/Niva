@@ -186,7 +186,11 @@ fun Resolver.resolveKeywordMsg(
     if (receiverType is Type.Lambda) {
         val receiverArgs = receiverType.args
 
-        if (receiverArgs.count() != statement.args.count()) {
+        // check for alias
+        val aliasToLambda = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType) }
+
+
+        if (receiverArgs.count() != statement.args.count() && aliasToLambda == null) {
             val setOfHaveFields = statement.args.map { it.name }.toSet()
 
             val setOfNeededFields = receiverArgs.map { it.name }.toSet()
@@ -207,25 +211,26 @@ fun Resolver.resolveKeywordMsg(
             statement.token.compileError(text)
         }
 
-        // check for alias
-
-        val aliasToLambda = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType) }
 
         val findKwForLambda = {
             val possibleKWName = statement.args.first().name + statement.args.drop(1).joinToString("") { it.name.capitalizeFirstLetter() }
             var result: KeywordMsgMetaData? = null
             if (aliasToLambda != null) {
+                if (receiverType.alias == null) {
+                    receiverType.alias = aliasToLambda.alias
+                }
                 aliasToLambda.protocols.values.forEach {
                     val kw = it.keywordMsgs[possibleKWName]
-                    if (kw != null) result = kw
+                    if (kw != null)
+                        result = kw
                 }
             }
 
             result
         }
-        val kw = findKwForLambda()
+        val kw: KeywordMsgMetaData? = findKwForLambda()
 
-        val realArgs = if (aliasToLambda != null && receiverArgs.first().name == aliasToLambda.args.first().name)
+        val realArgs = if (aliasToLambda != null && receiverArgs.isNotEmpty() && aliasToLambda.args.isNotEmpty() && receiverArgs.first().name == aliasToLambda.args.first().name)
             aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
         else if (kw != null) {
             kw.argTypes     // kw message declared for lambda alias
@@ -248,7 +253,8 @@ fun Resolver.resolveKeywordMsg(
             }
         }
 
-        statement.type = receiverType.returnType
+        // if this is a message for lambda then type of statement is return type of that message
+        statement.type = if (kw != null) kw.returnType else receiverType.returnType
         statement.kind = KeywordLikeType.ForCodeBlock
         return
     }
