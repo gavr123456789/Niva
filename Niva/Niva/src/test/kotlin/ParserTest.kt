@@ -1471,6 +1471,7 @@ class ParserTest {
         assert(value.isNullable == true)
     }
 
+
     // The next syntax for if elif else
 //    @Test
 //    fun switchOnNothing() {
@@ -1774,6 +1775,19 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+    }
+
+    @Test
+    fun mutReference() {
+        val source = """
+        x::mut Person = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val w = ast[0] as VarDeclaration
+        val e = w.valueTypeAst!!
+
+        assertTrue { e.mutable }
     }
 
 

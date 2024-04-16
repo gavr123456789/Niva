@@ -181,6 +181,7 @@ sealed class Type(
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
+    var isMutable: Boolean = false
 ) {
     override fun toString(): String = when (this) {
         is InternalLike -> name
@@ -572,7 +573,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
             val type = typeTable[name]
                 ?: this.token.compileError("Can't find user type: ${YEL}$name")
 
-            return replaceToNullableIfNeeded(type)
+            val type2 = if (mutable) {
+                (type as Type.UserLike).copy().also { it.isMutable = true }
+            } else type
+
+            return replaceToNullableIfNeeded(type2)
         }
 
         is TypeAST.Lambda -> {

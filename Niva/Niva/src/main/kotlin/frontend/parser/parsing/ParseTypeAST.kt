@@ -60,7 +60,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     // List::Map::(int, string)
     // Person from: x::List::Map::(int, string)
     // x::int?
-
+    val mutableType = match(TokenType.Mut)
     val tok = peek()
 
     // literal collections type set or map
@@ -80,14 +80,14 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
 
     // check for basic type
     when (tok.kind) {
-        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, tok)
-        TokenType.Null -> return TypeAST.InternalType(InternalTypes.Null, tok)
+        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, tok).also { it.mutable = mutableType }
+        TokenType.Null -> return TypeAST.InternalType(InternalTypes.Null, tok).also { it.mutable = mutableType }
 
-        TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, tok)
-        TokenType.Double -> return TypeAST.InternalType(InternalTypes.Double, tok)
-        TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, tok)
-        TokenType.String -> return TypeAST.InternalType(InternalTypes.String, tok)
-        TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, tok)
+        TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, tok).also { it.mutable = mutableType }
+        TokenType.Double -> return TypeAST.InternalType(InternalTypes.Double, tok).also { it.mutable = mutableType }
+        TokenType.Integer -> return TypeAST.InternalType(InternalTypes.Int, tok).also { it.mutable = mutableType }
+        TokenType.String -> return TypeAST.InternalType(InternalTypes.String, tok).also { it.mutable = mutableType }
+        TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, tok).also { it.mutable = mutableType }
         else -> {}
     }
 
@@ -127,7 +127,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     if (isIdentifier && (check(TokenType.DoubleColon, 1)) || check(TokenType.OpenParen, 1)) {
         // generic
         // x::List::Map::(int, string)
-        return parseGenericType()
+        return parseGenericType().also { it.mutable = mutableType }
     } else if (isIdentifier) {
         step() // skip tok ident
         // can be dot separated
@@ -135,7 +135,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
         val path = mutableListOf(tok.lexeme)
 
         if (!isExtendDeclaration && match(TokenType.OpenBracket)) {
-            return parseLambda(tok, path)
+            return parseLambda(tok, path).also { it.mutable = mutableType }
         }
         while (match(TokenType.Dot)) {
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
@@ -148,7 +148,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
             typeArgumentList = mutableSetOf(),
             isNullable = tok.isNullable(),
             token = tok
-        )
+        ).also { it.mutable = mutableType }
     }
 
     tok.compileError("Syntax error: type declaration expected")

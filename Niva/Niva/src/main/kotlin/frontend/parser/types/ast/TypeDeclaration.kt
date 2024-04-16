@@ -12,7 +12,8 @@ sealed class TypeAST(
     val isNullable: Boolean,
     token: Token,
     isPrivate: Boolean,
-    pragmas: MutableList<Pragma>
+    pragmas: MutableList<Pragma>,
+    var mutable: Boolean = false
 ) : Statement(token, isPrivate, pragmas) {
 
     fun names(): List<String> = when (this) {

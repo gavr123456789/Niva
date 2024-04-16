@@ -7,9 +7,7 @@ import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.compileError
-import main.frontend.parser.types.ast.Receiver
-import main.frontend.parser.types.ast.TypeAST
-import main.frontend.parser.types.ast.VarDeclaration
+import main.frontend.parser.types.ast.*
 import main.utils.isGeneric
 
 fun Resolver.resolveVarDeclaration(
@@ -22,10 +20,19 @@ fun Resolver.resolveVarDeclaration(
     currentLevel++
     resolveSingle((statement.value), previousAndCurrentScope, statement)
     currentLevel--
+
+
     val value = statement.value
     var valueType = value.type
         ?: statement.token.compileError("In var declaration $WHITE${statement.name}$RED value doesn't got type")
     val statementDeclaredType = statement.valueTypeAst
+
+    if (value is MessageSendKeyword) {
+        val first = value.messages.first()
+        if (first is KeywordMsg && first.kind == KeywordLikeType.Setter) {
+            statement.token.compileError("Don't use setter as expression, it doesn't returns anything.\n       Maybe you wanted to use update and copy, then remove ${RED}mut$RESET modifier from type declaration")
+        }
+    }
 
     // generics in right part, but real type in left, x::List::Int = List
     var copyType: Type? = null
@@ -83,6 +90,8 @@ fun Resolver.resolveVarDeclaration(
             val text = "$statementDeclaredType != $realValueType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }
+
+        valueType = statementDeclared
         // if x::Int? = 42 then we need to wrap type to Nullable
         if (statementDeclaredType.isNullable && realValueType !is Type.NullableType) {
             val nullableType = Type.NullableType(valueType)
@@ -91,9 +100,10 @@ fun Resolver.resolveVarDeclaration(
         }
         // x::Sas = [x::Int -> x inc]
         // right part here doesn't contain information about alias
-        if (valueType is Type.Lambda && statementDeclared is Type.Lambda && statementDeclared.alias != null) {
-            valueType.alias = statementDeclared.alias
-        }
+//        if (valueType is Type.Lambda && statementDeclared is Type.Lambda && statementDeclared.alias != null) {
+//            valueType.alias = statementDeclared.alias
+//        }
+
     }
 
     currentScope[statement.name] = copyType ?: valueType
