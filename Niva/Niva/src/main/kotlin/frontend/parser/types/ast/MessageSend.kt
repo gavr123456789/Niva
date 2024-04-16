@@ -125,6 +125,7 @@ enum class KeywordLikeType {
     Constructor, // Sas(x = 1, y = 2)
     CustomConstructor, // Sas(1, 2)
     Setter, // x y: 1 == x.y = 1
+    SetterImmutableCopy, // x = p age: 1 == x = Person(name = p.name, age = 1)
     ForCodeBlock // [] whileDo: []
 }
 

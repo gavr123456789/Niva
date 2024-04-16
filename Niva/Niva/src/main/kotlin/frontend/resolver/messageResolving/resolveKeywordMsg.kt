@@ -83,9 +83,17 @@ fun Resolver.resolveKeywordMsg(
             val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
             if (receiverArgWithSameName != null) {
                 // this is setter
-                statement.kind = KeywordLikeType.Setter
-                statement.type = receiverArgWithSameName.type
-                return KeywordLikeType.Setter
+
+
+                if (receiverType.isMutable) {
+                    statement.type = Resolver.defaultTypes[InternalTypes.Unit]
+                    statement.kind = KeywordLikeType.Setter
+                    return KeywordLikeType.Setter
+                } else {
+                    statement.type = receiverType
+                    statement.kind = KeywordLikeType.SetterImmutableCopy
+                    return KeywordLikeType.SetterImmutableCopy
+                }
             }
         }
         // this is Keyword
@@ -371,11 +379,26 @@ fun Resolver.resolveKeywordMsg(
                 val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
                 val arg = statement.args.first()
 
+                if (!compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)) {
+                    statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
+                }
+                statement.type = Resolver.defaultTypes[InternalTypes.Unit]
+            }
+            // Nothing to do, because check for setter already sets the type of statement
+        }
+
+        KeywordLikeType.SetterImmutableCopy -> {
+            if (statement.type == null) {
+                val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
+                val arg = statement.args.first()
+
                 val equalSetterTypes = compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)
                 if (!equalSetterTypes) {
                     statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
+                TODO()
+
             }
             // Nothing to do, because check for setter already sets the type of statement
         }

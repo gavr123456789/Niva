@@ -348,6 +348,10 @@ fun generateSingleKeyword(
     }
     // end of Compiler
 
+    val receiverType = receiver.type
+        ?: receiver.token.compileError("Compiler error: type of receiver: $WHITE$receiver$RESET is unresolved")
+
+
     // args
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
@@ -369,9 +373,6 @@ fun generateSingleKeyword(
         KeywordLikeType.Setter -> {
             // emptyWallet money: 20
             // emptyWallet.money = 20
-            if (keywordMsg.args.count() != 1) {
-                keywordMsg.token.compileError("Setters must have only one argument")
-            }
             val valueArg = keywordMsg.args[0]
             if (receiver is IdentifierExpr) {
                 append(receiver.name, ".", valueArg.name, " = ")
@@ -380,6 +381,37 @@ fun generateSingleKeyword(
             } else if (receiverIsDot) {
                 append(valueArg.name, " = ")
             }
+        }
+        KeywordLikeType.SetterImmutableCopy -> {
+
+            // p age: 1
+            // Person(age = 1, name = p.name)
+            val valueArg = keywordMsg.args[0]
+
+            if (receiverType !is Type.UserLike) {
+                keywordMsg.token.compileError("Only type with fields can be used in immutable copy assign")
+            }
+            if (receiver !is IdentifierExpr) {
+                keywordMsg.token.compileError("Receiver must be identifier to be used in immutable copy assign")
+            }
+
+            val typeConstructor = receiverType.toKotlinString(true)
+
+            val newValueAssign = ", ${valueArg.name} = ${valueArg.keywordArg.generateExpression()}"
+
+            // all args except the changing one
+            val args = receiverType.fields.asSequence()
+                .filter { it.name != valueArg.name }
+                .joinToString{ "${it.name} = ${receiver.name}.${it.name}" } + newValueAssign
+
+            append(typeConstructor, "(", args, ")")
+
+//            if (receiver is IdentifierExpr) {
+//                append(receiver.name, ".", valueArg.name, " = ")
+//            } else if (receiverIsDot) {
+//                append(valueArg.name, " = ")
+//            }
+            return@buildString
         }
 
         KeywordLikeType.ForCodeBlock -> {
@@ -394,8 +426,8 @@ fun generateSingleKeyword(
                 append(receiverCode(), ".", keywordMsg.selectorName)
             } else {
                 if (i == 0) {
-                    val receiverCode = receiverCode()
-                    append(receiverCode)
+                    val receiverCode2 = receiverCode()
+                    append(receiverCode2)
                 }
             }
         }
@@ -405,8 +437,6 @@ fun generateSingleKeyword(
     // if single lambda, no brackets needed
     val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock)
     if (isNotSingleLambdaArg) append("(")
-    val receiverType = receiver.type
-        ?: receiver.token.compileError("Compiler error: type of receiver: $WHITE$receiver$RESET is unresolved")
 
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->

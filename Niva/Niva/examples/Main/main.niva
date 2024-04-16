@@ -1,4 +1,4 @@
-//String msg::String.[Int, Int -> Unit] = [
+//String msg::String[Int, Int -> Unit] = [
 //    str = "sas"
 //    msg this: str Int: 1 Int: 2
 //]
@@ -49,14 +49,22 @@
 //Sas at::Int = this Int: 0 |> + at |> echo
 //[x::Int -> x inc] at: 5
 
-type Sas = [ -> Boolean]
-Sas whileTrue2: block::[ -> T] -> Unit = this do => [
-    block do
-    this whileTrue2: block
-] |=> Unit
 
-mut i = 0
-[i < 3] whileTrue2: [
-    i echo
-    i <- i inc
-]
+
+//type Sas = [ -> Boolean]
+//Sas whileTrue2: block::[ -> T] -> Unit = this do => [
+//    block do
+//    this whileTrue2: block
+//] |=> Unit
+//
+//mut i = 0
+//[i < 3] whileTrue2: [
+//    i echo
+//    i <- i inc
+//]
+
+
+type Person name: String age: Int
+p::mut Person = Person name: "a" age: 1
+p2 = p name: "new name" // should be error
+
