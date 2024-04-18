@@ -168,7 +168,7 @@ fun Resolver.resolveKeywordMsg(
     // но чтобы резолвать женерики мне уже нужен резолвнутый тип ресивера из дб
     // выход, резолвнуть аргументы, резолвнуть тип, резолвнуть дженерики
 
-    val letterToTypeFromArgs = argsTypesFromDb.asSequence()
+    val letterToTypeFromArgs = argsTypesFromDb
         .foldIndexed(mutableMapOf<String, Type>()) { i, map, acc ->
             val realArgTypeFromCallee = statement.args[i].keywordArg.type
             if (acc is Type.UnknownGenericType && realArgTypeFromCallee !is Type.UnknownGenericType && realArgTypeFromCallee != null) {
@@ -384,7 +384,7 @@ fun Resolver.resolveKeywordMsg(
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
             }
-            // Nothing to do, because check for setter already sets the type of statement
+
         }
 
         KeywordLikeType.SetterImmutableCopy -> {
@@ -397,10 +397,19 @@ fun Resolver.resolveKeywordMsg(
                     statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
-                TODO()
-
+                TODO("statement.type == null, wat?")
             }
-            // Nothing to do, because check for setter already sets the type of statement
+            val errorText =
+                "${YEL}Warning$RESET: you forget to use the result of $WHITE$statement$RESET (it returns $YEL${statement.type}$RESET line: ${statement.token.line})"
+            if (stack.count() > 1) {
+                val previousStatement = stack[stack.count() - 2]
+                when (previousStatement) {
+                    is VarDeclaration, is MessageSend, is CodeBlock -> {}
+
+                    else -> println(errorText)
+                }
+            } else println(errorText)
+
         }
 
         // Custom constructor has no difference from Keyword message

@@ -1573,6 +1573,19 @@ class ResolverTest {
         assertTrue { (w.value as MessageSendKeyword).receiver.type?.isMutable == true}
     }
 
+    @Test
+    fun mutable2() {
+        val source = """
+            type Person name: String age: Int
+            p::Person = Person name: "a" age: 1
+            q = p name: "new name"
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 3)
+
+    }
+
+
 //    @Test
 //    fun customConstructorForInternalTypeCheck() {
 //        val source = """
