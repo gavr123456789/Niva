@@ -399,12 +399,14 @@ fun Resolver.resolveKeywordMsg(
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
                 TODO("statement.type == null, wat?")
             }
+
+            val fileLine = "(" + statement.token.file.name + ":" + statement.token.line + ")"
             val errorText =
-                "${YEL}Warning$RESET: you forget to use the result of $WHITE$statement$RESET (it returns $YEL${statement.type}$RESET line: ${statement.token.line})"
+                "${YEL}Warning$RESET: you forget to use the result of $WHITE$statement$RESET $fileLine\n         (it returns shadow copy of $YEL${statement.type}$RESET)"
             if (stack.count() > 1) {
                 val previousStatement = stack[stack.count() - 2]
                 when (previousStatement) {
-                    is VarDeclaration, is MessageSend, is CodeBlock -> {}
+                    is VarDeclaration, is MessageSend, is CodeBlock, is Assign -> {}
 
                     else -> println(errorText)
                 }
