@@ -110,7 +110,6 @@ fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 class CompilerError(text: String): Exception(text)
 
 fun Token.compileError(text: String): Nothing {
-    ":" + this.relPos.start
     val fileLine = "(" + file.name + ":" + line + ")"
 
 //    error("\n$red\t$text.$fileLine$reset")

@@ -64,13 +64,19 @@
 //]
 
 
+//type Person name: String age: Int
+//p::Person = Person name: "a" age: 1
+////p name: "new name"
+//
+//lambda = [x::Person ->
+//    1 echo
+//]
+//
+//lambda x: (p name: "new name")
+
 type Person name: String age: Int
-p::Person = Person name: "a" age: 1
-//p name: "new name"
 
-lambda = [x::Person ->
-    1 echo
-]
-
-lambda x: (p name: "new name")
-
+mut p = Person name: "a" age: 1
+p echo
+p <- p name: "b"
+p echo
