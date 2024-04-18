@@ -65,6 +65,12 @@
 
 
 type Person name: String age: Int
-p::mut Person = Person name: "a" age: 1
-p2 = p name: "new name" // should be error
+p::Person = Person name: "a" age: 1
+//p name: "new name"
+
+lambda = [x::Person ->
+    1 echo
+]
+
+lambda x: (p name: "new name")
 

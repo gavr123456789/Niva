@@ -102,7 +102,9 @@ fun Resolver.resolveMessage(
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     when (statement) {
-        is KeywordMsg -> resolveKeywordMsg(statement, previousScope, currentScope)
+        is KeywordMsg -> {
+            resolveKeywordMsg(statement, previousScope, currentScope)
+        }
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
     }

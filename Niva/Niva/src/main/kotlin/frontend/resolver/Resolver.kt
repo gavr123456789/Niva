@@ -103,7 +103,9 @@ private fun Resolver.resolveStatement(
         }
 
         is VarDeclaration -> {
+            stack.push(statement)
             resolveVarDeclaration(statement, previousScope, currentScope)
+            stack.pop()
         }
 
         is Message -> {
@@ -166,8 +168,11 @@ private fun Resolver.resolveStatement(
         }
 
         is CodeBlock -> {
+            stack.push(statement)
+
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
             addToTopLevelStatements(statement)
+            stack.pop()
         }
 
         is ListCollection -> {
@@ -223,11 +228,16 @@ private fun Resolver.resolveStatement(
         is TypeAST.UserType -> {}
 
         is ControlFlow -> {
+            stack.push(statement)
+
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
             addToTopLevelStatements(statement)
+            stack.pop()
         }
 
         is Assign -> {
+            stack.push(statement)
+
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             currentLevel++
             resolveSingle((statement.value), previousAndCurrentScope, statement)
@@ -241,9 +251,13 @@ private fun Resolver.resolveStatement(
                 }
             }
             addToTopLevelStatements(statement)
+
+            stack.pop()
         }
 
         is ReturnStatement -> {
+            stack.push(statement)
+
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             val expr = statement.expression
             if (expr != null) {
@@ -255,6 +269,8 @@ private fun Resolver.resolveStatement(
             val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
             val q = if (expr == null) unit else expr.type!!
             wasThereReturn = q
+
+            stack.pop()
         }
 
         is DotReceiver -> {
@@ -1101,7 +1117,7 @@ class Resolver(
 
     val infoTypesToPrint: MutableMap<Type, Boolean> = mutableMapOf(),
 
-    val stack: Stack<MessageSend> = Stack()
+    val stack: Stack<Statement> = Stack()
 ) {
     companion object {
 
