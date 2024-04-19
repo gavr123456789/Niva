@@ -17,7 +17,7 @@ enum class TokenType {
 //    Binary, Octal, Hex,
 
     // Keywords
-    Type, Union, Constructor, Mut,
+    Type, Union, Constructor, Mut, ErrorDomain,
     Return, // ^
     ReturnArrow, // -> for return types
     AssignArrow, // <-

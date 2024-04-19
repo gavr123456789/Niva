@@ -151,9 +151,8 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
             val erTok = peek()
             when (erTok.kind) {
                 TokenType.OpenBrace -> {
-                    val w = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
-                    w
-
+                    val errorsList = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
+                    errorsList
                 }
                 TokenType.Identifier -> {
                     listOf(step().lexeme)

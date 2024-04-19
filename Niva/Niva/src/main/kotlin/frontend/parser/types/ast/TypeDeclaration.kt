@@ -212,6 +212,16 @@ class UnionRootDeclaration(
     }
 }
 
+class ErrorDomainDeclaration(
+    val unionDeclaration: UnionRootDeclaration
+) : SomeTypeDeclaration(unionDeclaration.typeName, unionDeclaration.fields,
+    unionDeclaration.token, unionDeclaration.genericFields, unionDeclaration.isPrivate, unionDeclaration.pragmas) {
+    override fun toString(): String {
+        return "errordomain $typeName"
+    }
+}
+
+
 
 enum class InternalTypes {
     Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, CharRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric

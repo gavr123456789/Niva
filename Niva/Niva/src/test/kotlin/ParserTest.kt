@@ -9,6 +9,7 @@ import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ControlFlow
 import main.frontend.parser.types.ast.ControlFlowKind
 import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
@@ -1808,6 +1809,19 @@ class ParserTest {
         assertTrue { e.errors!!.count() == 0 }
 
 
+    }
+
+    @Test
+    fun errordomain() {
+        val source = """
+            errordomain MyError =
+            | Error1 x: Int
+            | Error2 x: Int
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0]
+        assertTrue {q is ErrorDomainDeclaration}
     }
 
 

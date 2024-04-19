@@ -59,11 +59,14 @@ fun Resolver.resolveDeclarations(
             resolveTypeAlias(statement)
         }
 
+        is ErrorDomainDeclaration -> {
+            TODO()
+        }
+
 
         is UnionBranchDeclaration -> {
             // strange
         }
-
 
     }
     currentLevel -= 1
