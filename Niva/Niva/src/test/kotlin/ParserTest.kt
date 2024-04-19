@@ -1790,6 +1790,26 @@ class ParserTest {
         assertTrue { e.mutable }
     }
 
+    @Test
+    fun errorAST_Type() {
+        val source = """
+        x::Int!Error = 1
+        x::Int!{Error1 Error2 } = 1
+        x::Int! = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        val q = ((ast[0] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
+        val w = ((ast[1] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
+        val e = ((ast[2] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
+
+        assertTrue { q.errors!!.count() == 1 }
+        assertTrue { w.errors!!.count() == 2 }
+        assertTrue { e.errors!!.count() == 0 }
+
+
+    }
+
 
 
 }

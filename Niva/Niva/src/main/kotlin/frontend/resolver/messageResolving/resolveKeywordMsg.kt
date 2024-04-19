@@ -407,7 +407,6 @@ fun Resolver.resolveKeywordMsg(
                 val previousStatement = stack[stack.count() - 2]
                 when (previousStatement) {
                     is VarDeclaration, is MessageSend, is CodeBlock, is Assign -> {}
-
                     else -> println(errorText)
                 }
             } else println(errorText)
