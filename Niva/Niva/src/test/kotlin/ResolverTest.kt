@@ -15,6 +15,7 @@ fun resolve(source: String): List<Statement> {
     val resolved = resolver.resolve(resolver.statements, mutableMapOf())
     return resolved
 }
+
 fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
     val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
@@ -593,7 +594,6 @@ class ResolverTest {
     }
 
 
-
     @Test
     fun inferReturnTypeOfSingleExpressionInMessageDeclaration() {
 
@@ -1049,7 +1049,7 @@ class ResolverTest {
         val statements = resolve(source)
         assert(statements.count() == 2)
         val sas = statements[1] as VarDeclaration
-        assertTrue{ sas.value.type?.name == "Int" }
+        assertTrue { sas.value.type?.name == "Int" }
     }
 
     @Test
@@ -1089,10 +1089,10 @@ class ResolverTest {
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
-        val values =  statements[1] as MessageSendUnary
+        val values = statements[1] as MessageSendUnary
         val setType = values.type!! as Type.UserType
         val setTypeArg = setType.typeArgumentList[0]
-        assertTrue { setTypeArg.name == "String"}
+        assertTrue { setTypeArg.name == "String" }
     }
 
     @Test
@@ -1106,7 +1106,6 @@ class ResolverTest {
         val type = msg.type
         assertTrue { type?.name == "Int" }
     }
-
 
 
     @Test
@@ -1164,9 +1163,9 @@ class ResolverTest {
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 1)
-        val sas = statements[0] as  MessageDeclarationUnary
+        val sas = statements[0] as MessageDeclarationUnary
         val wew = sas.body[0] as MessageSendKeyword
-        assertTrue {wew.type?.name == "String"}
+        assertTrue { wew.type?.name == "String" }
     }
 
     @Test
@@ -1218,7 +1217,8 @@ class ResolverTest {
         assert(statements.count() == 2)
 
     }
-@Test
+
+    @Test
     fun returnNullFromNullable() {
         val source = """
             Int sas -> Int? = null
@@ -1227,11 +1227,12 @@ class ResolverTest {
         val (statements) = resolveWithResolver(source)
         assert(statements.count() == 2)
 
-    val decl1 = statements[0] as MessageDeclarationUnary
-    val decl2 = statements[1] as MessageDeclarationUnary
-    assertTrue { decl1.returnTypeAST?.isNullable == true && decl1.returnType?.toString() == "Int?" }
-    assertTrue { decl2.returnTypeAST?.isNullable == true && decl2.returnType?.toString() == "Int?" }
-}
+        val decl1 = statements[0] as MessageDeclarationUnary
+        val decl2 = statements[1] as MessageDeclarationUnary
+        assertTrue { decl1.returnTypeAST?.isNullable == true && decl1.returnType?.toString() == "Int?" }
+        assertTrue { decl2.returnTypeAST?.isNullable == true && decl2.returnType?.toString() == "Int?" }
+    }
+
     @Test
     fun noDoubleNull() {
         val source = """
@@ -1342,7 +1343,7 @@ class ResolverTest {
         val q = statements[1] as VarDeclaration
         val w = q.value.type as Type.UserType
         val e = w.typeArgumentList.first()
-        assertEquals (e.name, "Int")
+        assertEquals(e.name, "Int")
     }
 
     @Test
@@ -1406,7 +1407,7 @@ class ResolverTest {
         val iff = codeBlock.statements[0] as ControlFlow.If
         assertTrue {
             iff.kind == ControlFlowKind.Expression &&
-            codeBlock.type?.name == "[Int -> String]"
+                    codeBlock.type?.name == "[Int -> String]"
         }
     }
 
@@ -1427,7 +1428,7 @@ class ResolverTest {
         val iff = codeBlock.statements[1] as ControlFlow.If
         assertTrue {
             iff.kind == ControlFlowKind.Expression &&
-            codeBlock.type?.name == "[Int -> String]"
+                    codeBlock.type?.name == "[Int -> String]"
         }
     }
 
@@ -1467,7 +1468,7 @@ class ResolverTest {
         val statements = resolve(source)
         assert(statements.count() == 1)
         val q = statements[0] as VarDeclaration
-        assertTrue { q.value.type?.name == "Int"}
+        assertTrue { q.value.type?.name == "Int" }
     }
 
     @Test
@@ -1532,7 +1533,7 @@ class ResolverTest {
         assert(statements.count() == 1)
         val q = statements[0] as TypeAliasDeclaration
         val w = q.realType as Type.Lambda
-        assertTrue {w.args[0].name == "Int"}
+        assertTrue { w.args[0].name == "Int" }
     }
 
     @Test
@@ -1570,7 +1571,7 @@ class ResolverTest {
         assert(statements.count() == 3)
         val w = statements[2] as VarDeclaration
         assertTrue { w.value.type?.name == "Unit" }
-        assertTrue { (w.value as MessageSendKeyword).receiver.type?.isMutable == true}
+        assertTrue { (w.value as MessageSendKeyword).receiver.type?.isMutable == true }
     }
 
     @Test
@@ -1582,7 +1583,22 @@ class ResolverTest {
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 3)
+    }
 
+    @Test
+    fun errordomainDeclaration() {
+        val source = """
+            errordomain MyError =
+            | Error1 x: Int
+            | Error2 x: Int
+        """.trimIndent()
+        val (statements, r) = resolveWithResolver(source)
+        assert(statements.count() == 1)
+        assertTrue {
+            r.typeDB.userTypes.contains("MyError") &&
+                    r.typeDB.userTypes.contains("Error2") &&
+                    r.typeDB.userTypes.contains("Error1")
+        }
     }
 
 

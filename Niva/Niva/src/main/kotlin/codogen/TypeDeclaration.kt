@@ -102,7 +102,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     // class Person (var age: Int,
 
     // root fields
-    if (receiverType is Type.UserUnionRootType) {
+    if (receiverType is Type.UnionRootType) {
         if (receiverType.fields.isNotEmpty()) {
             // comma after branch fields, before root fields
             append(", ")

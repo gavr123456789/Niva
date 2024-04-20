@@ -39,7 +39,7 @@ private fun Protocol.generateInfoProtocol() = buildString {
 
 }
 
-private fun Type.UserEnumRootType.generateInfo() = buildString {
+private fun Type.EnumRootType.generateInfo() = buildString {
     appendnl("\n## enum root $name")
     fields.forEach {
         appendnl("- ${it.name}: ${it.type}  ")
@@ -61,20 +61,24 @@ private fun Type.UserEnumRootType.generateInfo() = buildString {
 fun Type.infoPrint() = buildString {
     append(when (this@infoPrint) {
         is Type.UserType -> this@infoPrint.generateInfoType()
-        is Type.UserUnionRootType -> this@infoPrint.generateInfoUnionRoot()
-        is Type.UserEnumRootType -> this@infoPrint.generateInfo()
+        is Type.UnionRootType -> this@infoPrint.generateInfoUnionRoot()
+        is Type.EnumRootType -> this@infoPrint.generateInfo()
         is Type.InternalType -> this@infoPrint.generateInfoType()
         is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfoType()
 
         is Type.Lambda -> TODO("Can't print lambda info yet")
 
-        is Type.UserEnumBranchType -> TODO()
-        is Type.UserUnionBranchType -> TODO()
+        is Type.EnumBranchType -> TODO()
+        is Type.UnionBranchType -> TODO()
 
         is Type.UnknownGenericType -> TODO()
         is Type.KnownGenericType -> TODO()
 
+//        is Type.ErrorType -> TODO()
+
+
         Type.RecursiveType -> TODO()
+
     })
 
 }
@@ -83,7 +87,7 @@ fun Type.infoPrint() = buildString {
 private fun Type.generateInfoType() = buildString {
 //    this@generateInfo.name
 
-    if (this@generateInfoType is Type.UserUnionBranchType){
+    if (this@generateInfoType is Type.UnionBranchType){
         append("\n#### branch $name")
     } else {
         appendnl("\n## type $name")
@@ -99,7 +103,7 @@ private fun Type.generateInfoType() = buildString {
     }
 }
 
-private fun Type.UserUnionRootType.generateInfoUnionRoot() = buildString {
+private fun Type.UnionRootType.generateInfoUnionRoot() = buildString {
     appendnl("\n## union root $name")
     fields.forEach {
         appendnl("- ${it.name}: ${it.type}  ")
@@ -160,7 +164,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
         }
     }
 
-    val unionTypes = types.values.filterIsInstance<Type.UserUnionRootType>()
+    val unionTypes = types.values.filterIsInstance<Type.UnionRootType>()
     if (unionTypes.isNotEmpty()) {
         append("  \n")
         unionTypes.forEach {

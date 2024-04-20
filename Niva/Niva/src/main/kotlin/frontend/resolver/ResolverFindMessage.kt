@@ -95,7 +95,7 @@ fun Resolver.findStaticMessageType(
     if (selectorName == "new" && receiverType is Type.UserLike) {
         if (receiverType.fields.isEmpty()) {
             // u cant instantiate Root union
-            if (receiverType is Type.UserUnionRootType) {
+            if (receiverType is Type.UnionRootType) {
                 token.compileError("You can't instantiate root of the union(${YEL}$receiverType${RESET})")
             }
 

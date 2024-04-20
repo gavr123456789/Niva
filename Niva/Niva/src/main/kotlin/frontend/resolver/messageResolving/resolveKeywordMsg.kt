@@ -57,7 +57,7 @@ fun Resolver.resolveKeywordMsg(
         val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
         if (isThisConstructor) {
 
-            if (keywordReceiverType is Type.UserUnionRootType) {
+            if (keywordReceiverType is Type.UnionRootType) {
                 statement.token.compileError("You can't instantiate Union root: $YEL${keywordReceiverType.name}")
             }
             // check if custom

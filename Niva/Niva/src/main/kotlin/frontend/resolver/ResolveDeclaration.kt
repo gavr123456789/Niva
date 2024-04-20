@@ -46,7 +46,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionRootDeclaration -> {
-            resolveUnionDeclaration(statement)
+            resolveUnionDeclaration(statement, false)
         }
 
         is EnumDeclarationRoot -> {
@@ -60,12 +60,11 @@ fun Resolver.resolveDeclarations(
         }
 
         is ErrorDomainDeclaration -> {
-            TODO()
+            resolveUnionDeclaration(statement.unionDeclaration, true)
         }
 
-
         is UnionBranchDeclaration -> {
-            // strange
+            // strange we parse branches when we parse roots
         }
 
     }

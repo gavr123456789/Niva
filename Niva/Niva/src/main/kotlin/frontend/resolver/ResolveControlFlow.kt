@@ -338,10 +338,10 @@ fun Resolver.resolveControlFlow(
 
             } else if (thisIsTypeMatching) {
                 when (savedSwitchType) {
-                    is Type.UserUnionRootType -> {
+                    is Type.UnionRootType -> {
                         val realBranchTypes = mutableSetOf<Type>()
                         val root = savedSwitchType.getRoot()
-                        if (root is Type.UserUnionRootType) {
+                        if (root is Type.UnionRootType) {
                             root.branches.forEach {
                                 realBranchTypes += it
                             }
@@ -381,13 +381,13 @@ fun Resolver.resolveControlFlow(
 
 fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>): Set<Type.Union> {
     when (this) {
-        is Type.UserUnionRootType -> {
+        is Type.UnionRootType -> {
             this.branches.forEach {
                 val y = it.unpackUnionToAllBranches(x, typeToToken)
                 x.addAll(y)
             }
         }
-        is Type.UserUnionBranchType -> {
+        is Type.UnionBranchType -> {
             if (x.contains(this) && typeToToken.contains(this)) {
                 fun findSas(type: Type ,path: ArrayDeque<Type>): ArrayDeque<Type> {
                     val p = type.parent

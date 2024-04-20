@@ -152,7 +152,7 @@ private fun Resolver.resolveStatement(
             val type = statement.type
 
             // This Identifier is Type, like Person
-            if (type != null && type !is Type.UserEnumRootType && rootStatement !is ControlFlow) {
+            if (type != null && type !is Type.EnumRootType && rootStatement !is ControlFlow) {
                 if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type, statement.str != type.name)
                 }
@@ -795,7 +795,6 @@ fun Resolver.addNewType(
     alreadyCheckedOnUnique: Boolean = false,
     alias: Boolean = false
 ) {
-
     // 1 get package
     val pack = pkg ?: getCurrentPackage(statement?.token ?: createFakeToken())
     // 2 check type for unique
@@ -804,14 +803,15 @@ fun Resolver.addNewType(
         val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
         statement?.token?.compileError(err) ?: throw Exception(err)
     }
-
+    // 3 add declaration to be generated
     if (statement != null) {
         pack.declarations.add(statement)
     }
-
+    // 4 is binding
     if (pack.isBinding && type is Type.UserLike) {
         type.isBinding = true
     }
+    // 5 put type to all type sources
     pack.types[typeName] = type
     typeTable[typeName] = type//fix
     typeDB.add(type, token = statement?.token ?: createFakeToken(), customNameAlias = typeName)

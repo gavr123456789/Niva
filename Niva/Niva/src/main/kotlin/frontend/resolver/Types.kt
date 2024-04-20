@@ -321,7 +321,6 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : InternalLike(typeName, pkg, isPrivate, protocols)
 
-
     sealed class UserLike(
         name: String,
         var typeArgumentList: List<Type>,
@@ -345,7 +344,7 @@ sealed class Type(
                 protocols = this.protocols.toMutableMap(),
             ).also { it.isBinding = this.isBinding }
 
-            is UserEnumRootType -> UserEnumRootType(
+            is EnumRootType -> EnumRootType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
                 fields = this.fields.toMutableList(),
@@ -355,7 +354,7 @@ sealed class Type(
                 protocols = this.protocols.toMutableMap(),
             ).also { it.isBinding = this.isBinding }
 
-            is UserUnionRootType -> UserUnionRootType(
+            is UnionRootType -> UnionRootType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
                 fields = this.fields.toMutableList(),
@@ -363,10 +362,11 @@ sealed class Type(
                 pkg = this.pkg,
                 branches = this.branches.toList(),
                 protocols = this.protocols.toMutableMap(),
+                isError = this.isError
             ).also { it.isBinding = this.isBinding }
 
-            is UserEnumBranchType -> TODO()
-            is UserUnionBranchType -> UserUnionBranchType(
+            is EnumBranchType -> TODO()
+            is UnionBranchType -> UnionBranchType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
                 fields = this.fields.toMutableList(),
@@ -374,6 +374,7 @@ sealed class Type(
                 pkg = this.pkg,
                 root = this.root,
                 protocols = this.protocols.toMutableMap(),
+                isError = this.isError
             )
 
             is KnownGenericType -> TODO()
@@ -391,41 +392,57 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
+//    class ErrorType(
+//        var branches: List<ErrorType>,
+//        name: String,
+//        fields: MutableList<KeywordArg>,
+//        isPrivate: Boolean = false,
+//        pkg: String,
+//        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+//        val isRoot: Boolean
+//    ) : UserLike(name, listOf(), fields, isPrivate, pkg, protocols)
 
+
+    // Union -> Error, User
+    // User -> Root, Branch
+    // Error -> Root, Branch
     sealed class Union (
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        val isError: Boolean
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
-    class UserUnionRootType(
+    class UnionRootType(
         var branches: List<Union>, // can be union or branch
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols) {
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        isError: Boolean
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError) {
 //        fun getBranches1(): List<Type.UserUnionBranchType> =
     }
 
-    class UserUnionBranchType(
-        val root: UserUnionRootType,
+    class UnionBranchType(
+        val root: UnionRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        isError: Boolean
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError)
 
 
-    class UserEnumRootType(
-        var branches: List<UserEnumBranchType>,
+    class EnumRootType(
+        var branches: List<EnumBranchType>,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
@@ -434,8 +451,8 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf()
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
 
-    class UserEnumBranchType(
-        val root: UserEnumRootType,
+    class EnumBranchType(
+        val root: EnumRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
@@ -629,21 +646,23 @@ fun SomeTypeDeclaration.toType(
     typeDB: TypeDB,
     isUnion: Boolean = false,
     isEnum: Boolean = false,
-    unionRootType: Type.UserUnionRootType? = null, // if not null, then this is branch
-    enumRootType: Type.UserEnumRootType? = null,
+    isError: Boolean = false,
+    unionRootType: Type.UnionRootType? = null, // if not null, then this is branch
+    enumRootType: Type.EnumRootType? = null,
 ): Type.UserLike {
     val result = if (isUnion)
-        Type.UserUnionRootType(
+        Type.UnionRootType(
             branches = listOf(),
             name = typeName,
             typeArgumentList = listOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
-            protocols = mutableMapOf()
+            protocols = mutableMapOf(),
+            isError = isError
         )
     else if (isEnum)
-        Type.UserEnumRootType(
+        Type.EnumRootType(
             branches = listOf(),
             name = typeName,
             typeArgumentList = listOf(),
@@ -653,7 +672,7 @@ fun SomeTypeDeclaration.toType(
             protocols = mutableMapOf()
         )
     else if (enumRootType != null) {
-        Type.UserEnumBranchType(
+        Type.EnumBranchType(
             root = enumRootType,
             name = typeName,
             typeArgumentList = listOf(),
@@ -663,14 +682,15 @@ fun SomeTypeDeclaration.toType(
             protocols = mutableMapOf()
         )
     } else if (unionRootType != null) {
-        Type.UserUnionBranchType(
+        Type.UnionBranchType(
             root = unionRootType,
             name = typeName,
             typeArgumentList = listOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
-            protocols = mutableMapOf()
+            protocols = mutableMapOf(),
+            isError = isError
         )
     }
     else

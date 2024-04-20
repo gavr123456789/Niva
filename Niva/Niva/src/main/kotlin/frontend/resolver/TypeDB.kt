@@ -21,7 +21,8 @@ sealed class TypeDBResult {
 class TypeDB(
     val internalTypes: MutableMap<TypeName, Type.InternalType> = mutableMapOf(),
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
-    val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf()
+    val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
+//    val errorDomains: MutableMap<TypeName, Type.ErrorType> = mutableMapOf()
 )
 
 // getting
@@ -106,22 +107,30 @@ fun TypeDB.getTypeOfIdentifierReceiver(
     return w
 }
 
-// adding
+// region adding
 
 fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
+//        is Type.ErrorType -> addErrorDomain(realName, type, token)
         is Type.UserLike -> addUserLike(realName, type, token)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
-        is Type.NullableType, Type.RecursiveType -> TODO()
+        is Type.NullableType, Type.RecursiveType -> throw Exception("unreachable")
     }
-
 }
 
 fun TypeDB.addInternalType(typeName: TypeName, type: Type.InternalType) {
     internalTypes[typeName] = type
 }
+
+//fun TypeDB.addErrorDomain(typeName: TypeName, type: Type.ErrorType, token: Token) {
+//    if (errorDomains.contains(typeName)) {
+//        token.compileError("Errordomain with $typeName name already registered")
+//    }
+//
+//    errorDomains[typeName] = type
+//}
 
 fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
     lambdaTypes[typeName] = type
