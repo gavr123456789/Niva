@@ -124,14 +124,6 @@ fun TypeDB.addInternalType(typeName: TypeName, type: Type.InternalType) {
     internalTypes[typeName] = type
 }
 
-//fun TypeDB.addErrorDomain(typeName: TypeName, type: Type.ErrorType, token: Token) {
-//    if (errorDomains.contains(typeName)) {
-//        token.compileError("Errordomain with $typeName name already registered")
-//    }
-//
-//    errorDomains[typeName] = type
-//}
-
 fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
     lambdaTypes[typeName] = type
 }

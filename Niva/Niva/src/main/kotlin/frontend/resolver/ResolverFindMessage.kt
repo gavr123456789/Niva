@@ -131,11 +131,15 @@ fun Resolver.findAnyMsgType(
 ): MessageMetadata {
 
     val pkg = getCurrentPackage(token)
-    val result = findAnyMethod(receiverType, selectorName, pkg, msgType)
-    if (result != null)
-        return result
+    findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
+        return it
+    }
 
-    recursiveSearch(receiverType, selectorName, pkg, msgType)?.let { return it }
+    recursiveSearch(receiverType, selectorName, pkg, msgType)?.let {
+        return it
+    }
+
+
     checkForAny(selectorName, pkg, msgType)?.let {
         return it
     }

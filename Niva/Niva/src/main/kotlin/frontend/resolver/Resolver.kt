@@ -1531,7 +1531,7 @@ class Resolver(
         val errorType = Type.UserType(
             name = "Error",
             typeArgumentList = listOf(),
-            fields = mutableListOf(KeywordArg("message", stringType)),
+            fields = mutableListOf(), //mutableListOf(KeywordArg("message", stringType)),
             pkg = "core",
         )
         errorType.isBinding = true

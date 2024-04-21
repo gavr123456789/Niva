@@ -500,13 +500,14 @@ fun createExceptionProtocols(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
+            createUnary("throw", nothingType).emit("(throw $0)")
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType),
+            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
         )
     )
     return mutableMapOf(protocol.name to protocol)

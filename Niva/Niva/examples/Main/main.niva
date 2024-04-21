@@ -1,3 +1,35 @@
+
+//
+//Int sas = [
+//    x = File readAll: "sas.txt"
+//    y = File readAll: "sas.txt"
+//] hasErrors: [
+//    | errors
+//    | FileReadError -> []
+//    | IOError -> []
+//]
+
 errordomain MyError =
 | Error1 x: Int
 | Error2 x: Int
+
+
+Int sas -> Int!Error1 = [
+    x = Error1 x: 5
+    x throw
+    ^ 1
+]
+
+
+
+1 sas
+//
+//Int sas = [
+//    x = File readAll: "sas.txt"
+//
+//    | errors
+//    | FileReadError -> []
+//    | IOError -> []
+//
+//    y = File readAll: "sas.txt"
+//]

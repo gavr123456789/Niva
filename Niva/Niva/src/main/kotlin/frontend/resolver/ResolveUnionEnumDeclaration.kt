@@ -7,6 +7,7 @@ import main.utils.YEL
 import main.codogen.collectAllGenericsFromBranches
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.util.containSameFields
@@ -78,7 +79,12 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     val allGenerics = statement.collectAllGenericsFromBranches() + statement.genericFields
     statement.genericFields.clear()
     statement.genericFields.addAll(allGenerics)
-    // not only to statement, but to Type too
+
+    if (isError) {
+        val error = typeDB.userTypes["Error"]!!.find { it.pkg == "core" }!!
+        rootType.parent = error
+    }
+
 }
 fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
     val realType = statement.realTypeAST.toType(typeDB, typeTable)

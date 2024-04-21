@@ -149,5 +149,9 @@ fun Resolver.resolveUnaryMsg(
         val typeForStatement =
             resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
         statement.type = typeForStatement
+
+        if (returnTypeFromDb is Type.Union && returnTypeFromDb.isError) {
+            TODO()
+        }
     }
 }

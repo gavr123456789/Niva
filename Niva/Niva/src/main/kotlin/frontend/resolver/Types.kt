@@ -30,7 +30,8 @@ sealed class MessageMetadata(
     val pragmas: MutableList<Pragma> = mutableListOf(),
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf(),
-    var forGeneric: Boolean = false // if message declarated for generic, we need to know it to resolve it
+    var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
+    val errors: MutableSet<Type.Union> = mutableSetOf()
 ) {
     override fun toString(): String {
         return when (this) {

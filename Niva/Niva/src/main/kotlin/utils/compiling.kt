@@ -278,10 +278,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         // STD
         $jvmSpecific
 
-        class Error {
-            companion object
-        }
-        fun Error.Companion.throwWithMessage(message: String): Nothing {
+        fun throwWithMessage(message: String): Nothing {
             throw kotlin.Exception(message)
         }
         
@@ -409,18 +406,18 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
 
     append(code, "\n")
 
-    val catchExpressions = if (compilationTarget == CompilationTarget.linux) """
-        } catch (e: Exception) {
+    val catchExpressions = if (compilationTarget != CompilationTarget.jvm) """
+        } catch (e: Throwable) {
         println("----------")
         println(e.message)
         println("----------")
         println(e.stackTraceToString())
     }
     """ else """
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
 
         println("----------")
-        println("\u001B[31m" + e.message + "\u001B[0m")
+        println("\u001B[31m" + (e.message ?: "no message") + "\u001B[0m")
         println("----------")
         val q = e.stackTrace
         

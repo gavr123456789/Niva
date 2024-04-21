@@ -370,7 +370,6 @@ fun Resolver.resolveKeywordMsg(
                 resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
             } else receiverType
-
         }
 
         KeywordLikeType.Setter -> {
@@ -384,7 +383,6 @@ fun Resolver.resolveKeywordMsg(
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
             }
-
         }
 
         KeywordLikeType.SetterImmutableCopy -> {
@@ -463,7 +461,24 @@ fun Resolver.resolveKeywordMsg(
         }
     }
 
+    val returnType = statement.type!!
+    val resolvingMessageDeclaration2 = resolvingMessageDeclaration
+    if (resolvingMessageDeclaration2 != null && returnType is Type.Union && returnType.isError) {
+
+        val w = when (resolvingMessageDeclaration2) {
+            is MessageDeclarationUnary -> MessageDeclarationType.Unary
+            is MessageDeclarationBinary -> MessageDeclarationType.Binary
+            is MessageDeclarationKeyword -> MessageDeclarationType.Keyword
+            is ConstructorDeclaration -> TODO()
+        }
+        val msgType = findAnyMsgType(resolvingMessageDeclaration2.forType!!, resolvingMessageDeclaration2.name, resolvingMessageDeclaration2.token, w)
+
+        msgType.errors.add(returnType)
+    }
+
 }
+
+
 
 
 fun Resolver.resolveKwArgs(
