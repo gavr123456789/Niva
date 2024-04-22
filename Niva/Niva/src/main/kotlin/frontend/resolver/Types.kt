@@ -34,8 +34,11 @@ sealed class MessageMetadata(
     var errors: MutableSet<Type.Union>? = null
 ) {
     fun addErrors(errors: MutableSet<Type.Union>) {
-        errors.forEach{
-            addError(it)
+        val errs = this.errors
+        if (errs != null) {
+            errs.addAll(errors)
+        } else {
+            this.errors = errors
         }
     }
 
@@ -196,8 +199,57 @@ sealed class Type(
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
-    var isMutable: Boolean = false
+    var isMutable: Boolean = false,
+    var errors: MutableSet<Union>? = null
 ) {
+
+    fun copyAnyType(): Type =
+        when (this) {
+            is UserLike -> {
+                this.copy()
+            }
+            is InternalType -> {
+                InternalType(
+                    typeName = InternalTypes.valueOf(name),
+                    pkg = pkg,
+                    isPrivate = isPrivate,
+                    protocols = protocols
+                )
+            }
+            is NullableType -> {
+                NullableType(
+                    realType = realType
+                )
+            }
+            is Lambda -> TODO()
+        }
+
+
+    fun addError(err: Union) {
+        assert(this.errors == null)
+        val typeCopy = this.copyAnyType()
+        val errs = typeCopy.errors
+
+        if (errs != null) {
+            errs.add(err)
+        } else
+            typeCopy.errors = mutableSetOf(err)
+    }
+
+    fun addErrors(errors2: MutableSet<Union>) {
+        // создать настоящее копирование для всех типов
+        // копировать текущий тип и только потом добавлять к нему ерроры
+        assert(this.errors == null)
+
+        val typeCopy = this.copyAnyType()
+        val errs = typeCopy.errors
+
+        if (errs != null) {
+            errs.addAll(errors2)
+        } else
+            typeCopy.errors = errors2
+    }
+
     override fun toString(): String = when (this) {
         is InternalLike -> name
         is NullableType -> "$realType?"

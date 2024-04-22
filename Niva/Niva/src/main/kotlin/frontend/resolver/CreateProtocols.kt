@@ -488,7 +488,7 @@ fun createRangeProtocols(
     return mutableMapOf(protocol.name to protocol)
 }
 
-fun createExceptionProtocols2(
+fun createExceptionForCustomErrors(
     selfType: Type.Union,
 ): MutableMap<String, Protocol> {
 

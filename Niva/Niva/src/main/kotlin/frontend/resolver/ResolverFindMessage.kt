@@ -61,6 +61,14 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
     return findAnyMethod(anyType, selectorName, pkg, kind)
 }
 
+fun checkForError(receiverType: Type, selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
+//    if (receiverType.)
+
+    TODO()
+//    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
+//    return findAnyMethod(anyType, selectorName, pkg, kind)
+}
+
 fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
     val unknownGenericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
     return findAnyMethod(unknownGenericType, selectorName, pkg, kind)
@@ -145,6 +153,10 @@ fun Resolver.findAnyMsgType(
     }
     checkForT(selectorName, pkg, msgType)?.let {
         it.forGeneric = true
+        return it
+    }
+
+    checkForError(receiverType, selectorName, pkg, msgType)?.let {
         return it
     }
 

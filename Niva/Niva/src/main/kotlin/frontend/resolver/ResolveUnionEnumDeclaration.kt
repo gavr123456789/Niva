@@ -84,7 +84,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         rootType.parent = error
         // add protocol with throw that returns Nothing!Self
         branches.forEach{
-            val w = createExceptionProtocols2(it)
+            val w = createExceptionForCustomErrors(it)
             it.protocols.putAll(w)
         }
     }

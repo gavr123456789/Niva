@@ -22,7 +22,9 @@ Int sas -> Int!Error1 = [
 
 // error, mark return type as error
 Int sus = [
-    y = 1 sas
+    y = 1 sas ifError: [
+        5
+    ]
 ]
 
 1 sas

@@ -3,6 +3,7 @@ package main.frontend.resolver.messageResolving
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
+import frontend.resolver.Type
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationBinary
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
@@ -14,7 +15,10 @@ import main.frontend.resolver.findAnyMsgType
 // одно которое текущее обрабатываемое
 // и второе которое декларация
 // если обрабатываемое содержит еррор то добавляем его и текущему
-fun Resolver.addErrorEffect(msgFromDB: MessageMetadata) {
+
+
+// returns type updated with errors
+fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type): Type {
     val currentMsgDecl = resolvingMessageDeclaration
     if (currentMsgDecl != null) {
         fun getMetadata(): MessageMetadata {
@@ -39,8 +43,10 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata) {
 
         if (errors2 != null) {
             metadataOfCurrentDeclaration.addErrors(errors2)
+            returnType.addErrors(errors2)
         }
     }
 
     // if current method is null then its top level function!
+    return returnType
 }
