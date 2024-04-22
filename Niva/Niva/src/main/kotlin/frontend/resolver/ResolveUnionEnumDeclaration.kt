@@ -7,7 +7,6 @@ import main.utils.YEL
 import main.codogen.collectAllGenericsFromBranches
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
-import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.util.containSameFields
@@ -83,6 +82,11 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     if (isError) {
         val error = typeDB.userTypes["Error"]!!.find { it.pkg == "core" }!!
         rootType.parent = error
+        // add protocol with throw that returns Nothing!Self
+        branches.forEach{
+            val w = createExceptionProtocols2(it)
+            it.protocols.putAll(w)
+        }
     }
 
 }

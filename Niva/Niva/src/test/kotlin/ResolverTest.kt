@@ -1592,13 +1592,21 @@ class ResolverTest {
             | Error1 x: Int
             | Error2 x: Int
             
-            Int sas -> Int! = [
+            
+            Int sas -> Int!Error1 = [
                 x = Error1 x: 5
-                x throwWithMessage: "kek"
+                x throw
+                ^ 1
             ]
+            
+            Int sas2 -> Int!Error1 = [
+                x = 1 sas
+            ]
+            
+            
         """.trimIndent()
         val (statements, r) = resolveWithResolver(source)
-        assert(statements.count() == 2)
+        assert(statements.count() == 3)
         assertTrue {
             r.typeDB.userTypes.contains("MyError") &&
                     r.typeDB.userTypes.contains("Error2") &&

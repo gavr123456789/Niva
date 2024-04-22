@@ -31,8 +31,22 @@ sealed class MessageMetadata(
     @Suppress("unused")
     val msgSends: List<MsgSend> = listOf(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
-    val errors: MutableSet<Type.Union> = mutableSetOf()
+    var errors: MutableSet<Type.Union>? = null
 ) {
+    fun addErrors(errors: MutableSet<Type.Union>) {
+        errors.forEach{
+            addError(it)
+        }
+    }
+
+    fun addError(err: Type.Union) {
+        val errors = errors
+        if (errors != null)
+            errors.add(err)
+        else
+            this.errors = mutableSetOf(err)
+    }
+
     override fun toString(): String {
         return when (this) {
             is BinaryMsgMetaData -> this.toString()

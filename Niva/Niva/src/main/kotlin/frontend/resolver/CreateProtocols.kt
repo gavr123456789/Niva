@@ -488,6 +488,28 @@ fun createRangeProtocols(
     return mutableMapOf(protocol.name to protocol)
 }
 
+fun createExceptionProtocols2(
+    selfType: Type.Union,
+): MutableMap<String, Protocol> {
+
+    val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+
+    val protocol = Protocol(
+        name = "core",
+        unaryMsgs = mutableMapOf(
+            createUnary("throw", nothingType).emit("(throw $0)").also { it.second.addError(selfType) }
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+//            createKeyword(KeywordArg("addSuppressed", errorType), unitType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
+        )
+    )
+    return mutableMapOf(protocol.name to protocol)
+}
 
 fun createExceptionProtocols(
     errorType: Type.UserType,
@@ -500,7 +522,7 @@ fun createExceptionProtocols(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
-            createUnary("throw", nothingType).emit("(throw $0)")
+            createUnary("throw", nothingType).emit("(throw $0)")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(

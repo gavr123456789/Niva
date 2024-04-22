@@ -20,9 +20,13 @@ Int sas -> Int!Error1 = [
     ^ 1
 ]
 
-
+// error, mark return type as error
+Int sus = [
+    y = 1 sas
+]
 
 1 sas
+
 //
 //Int sas = [
 //    x = File readAll: "sas.txt"
