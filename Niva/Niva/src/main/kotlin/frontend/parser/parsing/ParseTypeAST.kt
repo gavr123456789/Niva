@@ -145,7 +145,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
         }
 
-        val bang = match(TokenType.BinarySymbol)
+        val bang = match("!")
 
         val errors = if (bang) {
             val erTok = peek()

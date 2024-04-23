@@ -1233,7 +1233,7 @@ class ParserTest {
             = []
             Ште from::Int to::String = []
             
-            Int + x::int = []
+            Int + x::Int = []
             Int unary -> Int = []
             
         """.trimIndent()

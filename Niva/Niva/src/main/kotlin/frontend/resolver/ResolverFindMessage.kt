@@ -61,7 +61,7 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
     return findAnyMethod(anyType, selectorName, pkg, kind)
 }
 
-fun checkForError(receiverType: Type, selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
+fun checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
     val errors = receiverType.errors ?: return null
     // y = 4 sas ifErrorDo: [5]
     // y is not errored now
@@ -71,27 +71,50 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package, kind: 
     // | Error1 => 4
     // | Error2 => 6
 
-    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]!!
-    val rootError = if (errors.isNotEmpty() && errors.first().parent != null)errors.first().parent!! else nothing
-    val pureReturnType = receiverType.copyAnyType()
+//    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]!!
+//    val rootError = if (errors.isNotEmpty() && errors.first().parent != null)errors.first().parent!! else nothing
+
+    val returnTypeWithoutErrors = receiverType.copyAnyType()
         .also { it.errors = null }
+
+    val ifErrorKW = { returnTypeWithoutErrors: Type, rootTypeOfAllErrors: Type.UnionRootType ->
+        (createKeyword(
+            "ifError",
+            listOf(
+                KeywordArg(
+                    "ifError",
+                    Type.Lambda(
+                        mutableListOf(KeywordArg("it", rootTypeOfAllErrors)),
+                        returnTypeWithoutErrors
+                    )
+                ),
+            ),
+
+            returnTypeWithoutErrors
+        ).emitKw("try {\n    $0\n} catch (it: Throwable) $1"))
+    }
+
+    val createUnionOfErrorsInCurrentScope = {
+        val w = Type.UnionRootType(
+            branches = errors.toList(),
+            name = "ErrorsOfTheScope",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(KeywordArg("message", Resolver.defaultTypes[InternalTypes.String]!!)),
+            pkg = pkg.packageName,
+//            protocols = mutableMapOf(
+//                "error" to Protocol(
+//                    name = "error",
+//                    keywordMsgs = mutableMapOf(ifErrorKW(returnTypeWithoutErrors))
+//                )
+//            ),
+            isError = true
+        )
+        w
+    }
 
     return when (selectorName) {
         "ifError" -> {
-            (createKeyword(
-                "ifError",
-                listOf(
-                    KeywordArg(
-                        "ifError",
-                        Type.Lambda(
-                            mutableListOf(KeywordArg("it", rootError)),
-                            pureReturnType
-                        )
-                    ),
-                ),
-
-                pureReturnType
-            ).emitKw("try {\n    $0\n} catch (it: Throwable) $1")).second
+            ifErrorKW(returnTypeWithoutErrors, createUnionOfErrorsInCurrentScope()).second
         }
         else -> null
     }
@@ -184,7 +207,7 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
-    checkForError(receiverType, selectorName, pkg, msgType)?.let {
+    checkForError(receiverType, selectorName, pkg)?.let {
         return it
     }
 

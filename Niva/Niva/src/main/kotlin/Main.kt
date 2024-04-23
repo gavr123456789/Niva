@@ -24,7 +24,6 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-class Person(val name: String, val age: Int)
 
 fun main(args: Array<String>) {
 

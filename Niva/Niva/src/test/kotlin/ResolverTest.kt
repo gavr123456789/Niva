@@ -104,7 +104,7 @@ class ResolverTest {
         val receiver = msg.receiver
         assert(receiver.type?.name == "Person")
         assert(receiver.str == "this")
-        assert((msg as KeywordMsg).kind == KeywordLikeType.Setter)
+        assert((msg as KeywordMsg).kind == KeywordLikeType.SetterImmutableCopy)
     }
 
 
@@ -1567,11 +1567,8 @@ class ResolverTest {
            p::mut Person = Person name: "a" age: 12
            p = p name: "new name" // p is Unit
         """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 3)
-        val w = statements[2] as VarDeclaration
-        assertTrue { w.value.type?.name == "Unit" }
-        assertTrue { (w.value as MessageSendKeyword).receiver.type?.isMutable == true }
+        // u cant use setter as expression
+        assertThrows<CompilerError> { resolve(source) }
     }
 
     @Test
@@ -1601,6 +1598,7 @@ class ResolverTest {
             
             Int sas2 -> Int!Error1 = [
                 x = 1 sas
+                ^ x
             ]
             
             
