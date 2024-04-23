@@ -10,24 +10,27 @@
 //]
 
 errordomain MyError =
-| Error1 x: Int
-| Error2 x: Int
-
+| Error1 text: String
+| Error2 code: Int
 
 Int sas -> Int!Error1 = [
-    x = Error1 x: 5
-    x throw
-    ^ 1
+    x = Error1 text: "Important error information ^_^"
+    ^ this != 0 => x throw |=> 1
 ]
 
 // error, mark return type as error
 Int sus = [
     y = 1 sas ifError: [
-        5
+        "got some error!!!" echo
+        | it
+        | Error1 => it text echo
+        | Error2 => it code echo
+        42
     ]
+    y echo
 ]
 
-1 sas
+1 sus
 
 //
 //Int sas = [

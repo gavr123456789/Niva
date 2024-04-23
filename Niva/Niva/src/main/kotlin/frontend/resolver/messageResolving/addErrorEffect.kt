@@ -43,7 +43,8 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type): Type 
 
         if (errors2 != null) {
             metadataOfCurrentDeclaration.addErrors(errors2)
-            returnType.addErrors(errors2)
+            val returnTypeWithErrors = returnType.addErrors(errors2)
+            return returnTypeWithErrors
         }
     }
 

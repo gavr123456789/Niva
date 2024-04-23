@@ -147,9 +147,9 @@ fun Resolver.resolveUnaryMsg(
         }
 
         val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
-        statement.type = typeForStatement
+//         = typeForStatement
 
-        addErrorEffect(msgFromDb, typeForStatement)
+        statement.type = addErrorEffect(msgFromDb, typeForStatement)
     }
 
 

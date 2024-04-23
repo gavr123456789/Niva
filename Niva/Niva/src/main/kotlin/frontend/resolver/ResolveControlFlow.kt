@@ -194,9 +194,9 @@ fun Resolver.resolveControlFlow(
 //                    val elseReturnType =  lastExpr.type!!
                     val elseReturnTypeName = elseReturnType.name
                     val firstReturnTypeName = firstBranchReturnType!!.name
-
-                    if (elseReturnTypeName != firstReturnTypeName && !rootStatementIsMessageDeclAndItReturnsNullable()) {
-                        lastExpr.token.compileError("(${WHITE}$firstReturnTypeName ${RESET}!= ${WHITE}$elseReturnTypeName) In if Expression return type of else branch and main branches are not the same")
+                    val areIfAndElseEqual = compare2Types(firstBranchReturnType!!, elseReturnType)
+                    if (!areIfAndElseEqual && !rootStatementIsMessageDeclAndItReturnsNullable()) {
+                        lastExpr.token.compileError("(${YEL}$firstReturnTypeName ${RESET}!= ${YEL}$elseReturnTypeName${RESET}) In if Expression return type of else branch and main branches are not the same")
                     }
                     elseReturnType
                 } else {
@@ -340,7 +340,8 @@ fun Resolver.resolveControlFlow(
                 when (savedSwitchType) {
                     is Type.UnionRootType -> {
                         val realBranchTypes = mutableSetOf<Type>()
-                        val root = savedSwitchType.getRoot()
+                        // we need to get only one level of root if its error because
+                        val root = if (savedSwitchType.isError) savedSwitchType else savedSwitchType.getRoot()
                         if (root is Type.UnionRootType) {
                             root.branches.forEach {
                                 realBranchTypes += it

@@ -62,11 +62,39 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
 }
 
 fun checkForError(receiverType: Type, selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
-//    if (receiverType.)
+    val errors = receiverType.errors ?: return null
+    // y = 4 sas ifErrorDo: [5]
+    // y is not errored now
 
-    TODO()
-//    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
-//    return findAnyMethod(anyType, selectorName, pkg, kind)
+    // y = | 4 sas
+    // | Int => ...?? // can be used if this is statement
+    // | Error1 => 4
+    // | Error2 => 6
+
+    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]!!
+    val rootError = if (errors.isNotEmpty() && errors.first().parent != null)errors.first().parent!! else nothing
+    val pureReturnType = receiverType.copyAnyType()
+        .also { it.errors = null }
+
+    return when (selectorName) {
+        "ifError" -> {
+            (createKeyword(
+                "ifError",
+                listOf(
+                    KeywordArg(
+                        "ifError",
+                        Type.Lambda(
+                            mutableListOf(KeywordArg("it", rootError)),
+                            pureReturnType
+                        )
+                    ),
+                ),
+
+                pureReturnType
+            ).emitKw("try {\n    $0\n} catch (it: Throwable) $1")).second
+        }
+        else -> null
+    }
 }
 
 fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {

@@ -599,9 +599,8 @@ fun compare2Types(
 
     // comparing with nothing is always true, its bottom type, subtype of all types,
     // so we can return nothing from switch expr branches, beside u cant do it with different types
-    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]
 
-    return type1 == nothing || type2 == nothing
+    return type1.name == InternalTypes.Nothing.name || type2.name == InternalTypes.Nothing.name
 }
 
 fun findGeneralRoot(type1: Type, type2: Type): Type? {

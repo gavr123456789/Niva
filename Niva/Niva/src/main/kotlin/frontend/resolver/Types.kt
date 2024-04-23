@@ -236,7 +236,7 @@ sealed class Type(
             typeCopy.errors = mutableSetOf(err)
     }
 
-    fun addErrors(errors2: MutableSet<Union>) {
+    fun addErrors(errors2: MutableSet<Union>): Type {
         // создать настоящее копирование для всех типов
         // копировать текущий тип и только потом добавлять к нему ерроры
         assert(this.errors == null)
@@ -248,6 +248,8 @@ sealed class Type(
             errs.addAll(errors2)
         } else
             typeCopy.errors = errors2
+
+        return typeCopy
     }
 
     override fun toString(): String = when (this) {
