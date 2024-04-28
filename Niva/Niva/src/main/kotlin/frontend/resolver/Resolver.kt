@@ -129,6 +129,16 @@ private fun Resolver.resolveStatement(
 
             }
 
+//            resolvingMessageDeclaration?.also {
+////                println("qwaww")
+//                // find the difference between stackOfPossibleErrors and msg from db?
+//                val posErrors = it.stackOfPossibleErrors.flatMap { it.second }
+//
+//                val errors = resolvingMessageDeclaration?.findMetadata(this)?.errors
+//
+//                errors?.removeAll(posErrors)
+//            }
+
             resolveTypeForMessageSend(statement)
             addToTopLevelStatements(statement)
             stack.pop()

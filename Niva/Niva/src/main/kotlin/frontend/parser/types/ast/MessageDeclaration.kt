@@ -1,8 +1,13 @@
 package main.frontend.parser.types.ast
 
+import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
+import frontend.resolver.MessageMetadata
+import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.meta.Token
+import main.frontend.resolver.findAnyMsgType
+import java.util.Stack
 
 sealed class MessageDeclaration(
     val name: String,
@@ -18,9 +23,33 @@ sealed class MessageDeclaration(
     var returnType: Type? = null,
     var isRecursive: Boolean = false,
     val typeArgs: MutableList<String> = mutableListOf(),
+    val stackOfPossibleErrors: Stack<Pair<Message, MutableSet<Type.Union>>> = Stack()
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.toString() ?: returnTypeAST?.name ?: "Unit"}"
+    }
+
+    fun getDeclType(): MessageDeclarationType = when (this) {
+        is MessageDeclarationUnary -> MessageDeclarationType.Unary
+        is MessageDeclarationBinary -> MessageDeclarationType.Binary
+        is MessageDeclarationKeyword -> MessageDeclarationType.Keyword
+        is ConstructorDeclaration -> {
+            this.msgDeclaration.getDeclType()
+        }
+    }
+    fun findMetadata(resolver: Resolver): MessageMetadata {
+
+        val msgKind = getDeclType()
+
+        val msgType = resolver.findAnyMsgType(
+            this.forType!!,
+            this.name,
+            this.token,
+            msgKind
+        )
+
+        return msgType
+
     }
 }
 

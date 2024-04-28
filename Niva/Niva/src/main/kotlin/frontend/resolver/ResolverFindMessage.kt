@@ -5,6 +5,7 @@ import frontend.resolver.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
+import main.frontend.parser.types.ast.MessageSend
 import main.utils.CYAN
 import main.utils.GlobalVariables
 import main.utils.PURP
@@ -71,9 +72,6 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
     // | Error1 => 4
     // | Error2 => 6
 
-//    val nothing = Resolver.defaultTypes[InternalTypes.Nothing]!!
-//    val rootError = if (errors.isNotEmpty() && errors.first().parent != null)errors.first().parent!! else nothing
-
     val returnTypeWithoutErrors = receiverType.copyAnyType()
         .also { it.errors = null }
 
@@ -89,7 +87,6 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
                     )
                 ),
             ),
-
             returnTypeWithoutErrors
         ).emitKw("try {\n    $0\n} catch (it: Throwable) $1"))
     }
@@ -208,6 +205,30 @@ fun Resolver.findAnyMsgType(
     }
 
     checkForError(receiverType, selectorName, pkg)?.let {
+
+        // remove one decl
+        val resolvingMsgDecl = this.resolvingMessageDeclaration
+        val msg = if (stack.isNotEmpty()) this.stack.last() else null
+
+        if (resolvingMsgDecl != null && msg is MessageSend) {
+            // TODO тут можно судить просто по наличию у msg.receiver.type.errors
+            if (msg.receiver is MessageSend) {
+                msg.receiver.messages.forEach { a ->
+                    val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.first == a }
+                    if (b != null) {
+                        resolvingMsgDecl.stackOfPossibleErrors.remove(b)
+                        // нада еще ремувить из мсг фром дб
+                        // найти метадату текущей резолв функции
+//                        val metaData = resolvingMsgDecl.findMetadata(this).errors
+//
+//                        metaData?.removeAll(b.second)
+                    }
+                }
+            } else if (msg.receiver.type?.errors != null) {
+
+            }
+        }
+
         return it
     }
 

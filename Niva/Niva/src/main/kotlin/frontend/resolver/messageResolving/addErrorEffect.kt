@@ -1,14 +1,10 @@
 package main.frontend.resolver.messageResolving
 
-import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
 import frontend.resolver.Type
-import main.frontend.parser.types.ast.ConstructorDeclaration
-import main.frontend.parser.types.ast.MessageDeclarationBinary
-import main.frontend.parser.types.ast.MessageDeclarationKeyword
-import main.frontend.parser.types.ast.MessageDeclarationUnary
-import main.frontend.resolver.findAnyMsgType
+import main.frontend.parser.types.ast.Message
+import main.frontend.parser.types.ast.MessageSend
 
 
 // мне нужно 2 сообщения
@@ -18,34 +14,46 @@ import main.frontend.resolver.findAnyMsgType
 
 
 // returns type updated with errors
-fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type): Type {
+fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statement: Message): Type {
     val currentMsgDecl = resolvingMessageDeclaration
     if (currentMsgDecl != null) {
-        fun getMetadata(): MessageMetadata {
-            val msgKind = when (currentMsgDecl) {
-                is MessageDeclarationUnary -> MessageDeclarationType.Unary
-                is MessageDeclarationBinary -> MessageDeclarationType.Binary
-                is MessageDeclarationKeyword -> MessageDeclarationType.Keyword
-                is ConstructorDeclaration -> TODO()
-            }
-            val msgType = findAnyMsgType(
-                currentMsgDecl.forType!!,
-                currentMsgDecl.name,
-                currentMsgDecl.token,
-                msgKind
-            )
+//        fun getMetadata(): MessageMetadata {
+//            val msgKind = when (currentMsgDecl) {
+//                is MessageDeclarationUnary -> MessageDeclarationType.Unary
+//                is MessageDeclarationBinary -> MessageDeclarationType.Binary
+//                is MessageDeclarationKeyword -> MessageDeclarationType.Keyword
+//                is ConstructorDeclaration -> TODO()
+//            }
+//            val msgType = findAnyMsgType(
+//                currentMsgDecl.forType!!,
+//                currentMsgDecl.name,
+//                currentMsgDecl.token,
+//                msgKind
+//            )
+//
+//            return msgType
+//        }
 
-            return msgType
-        }
-
-        val metadataOfCurrentDeclaration = getMetadata()
         val errors2 = msgFromDB.errors
 
         if (errors2 != null) {
+            val metadataOfCurrentDeclaration = currentMsgDecl.findMetadata(this)
+
             metadataOfCurrentDeclaration.addErrors(errors2)
+            val pairOfSas = Pair(statement, errors2)
+            currentMsgDecl.stackOfPossibleErrors.add(pairOfSas)
+
             val returnTypeWithErrors = returnType.addErrors(errors2)
+
             return returnTypeWithErrors
         }
+//        else {
+//            // check that declared return type dosnt contain errors
+//            val returnAst = currentMsgDecl.returnTypeAST
+//            if (returnAst != null) {
+//                println()
+//            }
+//        }
     }
 
     // if current method is null then its top level function!

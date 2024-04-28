@@ -69,5 +69,5 @@ fun Resolver.resolveBinaryMsg(
     statement.type = messageTypeFromDb.returnType
     statement.pragmas = messageTypeFromDb.pragmas
 
-    addErrorEffect(messageTypeFromDb, messageTypeFromDb.returnType)
+    addErrorEffect(messageTypeFromDb, messageTypeFromDb.returnType, statement)
 }

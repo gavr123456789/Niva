@@ -13,24 +13,25 @@ errordomain MyError =
 | Error1 text: String
 | Error2 code: Int
 
-Int sas -> Int!Error1 = [
+Int sas -> Int! = [
     x = Error1 text: "Important error information ^_^"
-//    ^ this != 0 => x throw |=> 1
-    ^ 6
+    x throw
+    ^ this != 0 => x throw |=> 1
 ]
 
 // error, mark return type as error
-Int sus = [
+Int sus -> Unit = [
     y = 1 sas ifError: [
         "got some error!!!" echo
         | it
         | Error1 => it text echo
 
-        o = | it
-        | Error1 => 5
-        42
     ]
     y echo
+]
+
+Int sus2 -> Unit = [
+    5 sus
 ]
 
 1 sus
