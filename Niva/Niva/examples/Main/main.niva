@@ -8,41 +8,33 @@
 //    | FileReadError -> []
 //    | IOError -> []
 //]
-
-errordomain MyError =
-| Error1 text: String
-| Error2 code: Int
-
-Int sas -> Int! = [
-    x = Error1 text: "Important error information ^_^"
-    x throw
-    ^ this != 0 => x throw |=> 1
-]
-
-// error, mark return type as error
-Int sus -> Unit = [
-    y = 1 sas ifError: [
-        "got some error!!!" echo
-        | it
-        | Error1 => it text echo
-
-    ]
-    y echo
-]
-
-Int sus2 -> Unit = [
-    5 sus
-]
-
-1 sus
-
 //
-//Int sas = [
-//    x = File readAll: "sas.txt"
+//errordomain MyError =
+//| Error1 text: String
+//| Error2 code: Int
 //
-//    | errors
-//    | FileReadError -> []
-//    | IOError -> []
-//
-//    y = File readAll: "sas.txt"
+//Int sas -> Int! = [
+//    x = Error1 text: "Important error information ^_^"
+//    x throw
+//    ^ this != 0 => x throw |=> 1
 //]
+//
+//// error, mark return type as error
+//Int sus -> Unit = [
+//    y = 1 sas ifError: [
+//        "got some error!!!" echo
+//        | it
+//        | Error1 => it text echo
+//
+//    ]
+//    y echo
+//]
+//
+//Int sus2 -> Unit = [
+//    5 sus
+//]
+//
+//1 sus
+
+type Sas sus: Sus
+type Sus x: Int

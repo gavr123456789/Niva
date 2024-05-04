@@ -790,6 +790,16 @@ class ResolverTest {
     }
 
     @Test
+    fun recursiveType() {
+        val source = """
+        type Sas sus: Sus
+        type Sus x: Sas
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
+
+    @Test
     fun nullableType() {
         val source = """
         mut x::Int? = null

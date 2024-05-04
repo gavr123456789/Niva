@@ -405,6 +405,7 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
+// type from db must be always first, because Ins -> arg::Number, but not the other way around
 fun compare2Types(
     type1: Type,
     type2: Type,
@@ -562,14 +563,17 @@ fun compare2Types(
 
 
         // first is parent of the second
-        var parent1: Type? = type1.parent
-        while (parent1 != null) {
-            if (compare2Types(type2, parent1)) {
-                return true
-            }
-            parent1 = parent1.parent
-        }
+//        var parent1: Type? = type1.parent
+//        while (parent1 != null) {
+//            if (compare2Types(type2, parent1)) {
+//                return true
+//            }
+//            parent1 = parent1.parent
+//        }
         // second is parent of the first
+        // actually, we can't compare parents of second
+        // this will lead to Number -> arg::Widget
+
         var parent2: Type? = type2.parent
         while (parent2 != null) {
             if (compare2Types(type1, parent2)) {
@@ -759,10 +763,7 @@ fun Resolver.addNewAnyMessage(
             st.forType
                 ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
-//    val realType =
-//        if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!! else forType
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
-
     val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this)
 
 
@@ -775,7 +776,7 @@ fun Resolver.addNewAnyMessage(
         }
     }
 
-
+    st.messageData = messageData
     addMsgToPackageDeclarations(st)
     return messageData
 }
@@ -785,6 +786,26 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
     pack.declarations.add(statement)
 
     pack.addImport(statement.forType!!.pkg)
+
+    fun addArgsPackage(messageData: MessageMetadata) {
+        when (messageData) {
+            is UnaryMsgMetaData -> { /* no args */ }
+            is BinaryMsgMetaData -> {
+                pack.addImport(messageData.argType.pkg)
+            }
+            is KeywordMsgMetaData -> {
+                messageData.argTypes.forEach {
+                    pack.addImport(it.type.pkg)
+                }
+            }
+        }
+    }
+
+    statement.messageData?.let {
+        addArgsPackage(it)
+    }
+
+
 }
 
 fun Resolver.typeAlreadyRegisteredInCurrentPkg(

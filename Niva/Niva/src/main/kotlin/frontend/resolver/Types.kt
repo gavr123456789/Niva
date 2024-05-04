@@ -701,6 +701,20 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
 
 }
 
+fun TypeFieldAST.tryToTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): KeywordArg? {
+    val r = typeAST!!
+    val w = try {
+        r.toType(typeDB, typeTable, recursiveType)
+    } catch (_: Throwable) {
+        return null
+    }
+    val result = KeywordArg(
+        name = name,
+        type = w
+    )
+    return result
+}
+
 fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): KeywordArg {
     val result = KeywordArg(
         name = name,
@@ -719,6 +733,8 @@ fun SomeTypeDeclaration.toType(
     unionRootType: Type.UnionRootType? = null, // if not null, then this is branch
     enumRootType: Type.EnumRootType? = null,
 ): Type.UserLike {
+
+//    listOf("").find {  }
     val result = if (isUnion)
         Type.UnionRootType(
             branches = listOf(),
@@ -787,7 +803,14 @@ fun SomeTypeDeclaration.toType(
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)
 
-        } else fieldsTyped.add(it.toTypeField(typeDB, typeTable, recursiveType = result))
+        } else {
+            val wf = it.tryToTypeField(typeDB, typeTable, recursiveType = result)
+            if (wf == null) {
+
+                TODO()
+            }
+            fieldsTyped.add(it.toTypeField(typeDB, typeTable, recursiveType = result))
+        }
     }
 
     fun getAllGenericTypesFromFields(

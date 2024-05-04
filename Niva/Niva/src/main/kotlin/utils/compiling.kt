@@ -185,7 +185,7 @@ fun compileProjFromFile(
     val pathToGradle = pm.pathToGradle
     val pathToAmper = pm.pathToAmper
 
-    fun listFilesRecursively(directory: File, ext: String, ext2: String): List<File> {
+    fun listFilesRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
         val fileList = mutableListOf<File>()
         val filesAndDirs = directory.listFiles()
         if (filesAndDirs != null) {
@@ -193,7 +193,7 @@ fun compileProjFromFile(
                 if (file.isFile && (file.extension == ext || file.extension == ext2)) {
                     fileList.add(file)
                 } else if (file.isDirectory) {
-                    fileList.addAll(listFilesRecursively(file, ext, ext2))
+                    fileList.addAll(listFilesRecursively(file, ext, ext2, ext3))
                 }
             }
         }
@@ -205,7 +205,7 @@ fun compileProjFromFile(
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
-            listFilesRecursively(nivaProjectFolder, "niva", "scala").filter { it.name != mainFile.name }
+            listFilesRecursively(nivaProjectFolder, "niva", "scala", "nivas").filter { it.name != mainFile.name }
         else
             listOf()
 
@@ -409,6 +409,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
     val catchExpressions = if (compilationTarget != CompilationTarget.jvm) """
         } catch (e: Throwable) {
         println("----------")
+        System.out.flush()
         println(e.message)
         println("----------")
         println(e.stackTraceToString())

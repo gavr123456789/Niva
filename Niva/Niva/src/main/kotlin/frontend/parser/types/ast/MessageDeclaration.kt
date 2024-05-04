@@ -23,7 +23,8 @@ sealed class MessageDeclaration(
     var returnType: Type? = null,
     var isRecursive: Boolean = false,
     val typeArgs: MutableList<String> = mutableListOf(),
-    val stackOfPossibleErrors: Stack<Pair<Message, MutableSet<Type.Union>>> = Stack()
+    val stackOfPossibleErrors: Stack<Pair<Message, MutableSet<Type.Union>>> = Stack(),
+    var messageData: MessageMetadata? = null
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.toString() ?: returnTypeAST?.name ?: "Unit"}"
@@ -110,7 +111,9 @@ class KeywordDeclarationArg(
     val name: String,
     val localName: String? = null,
     val typeAST: TypeAST? = null,
-) {
+    val type: Type? = null,
+
+    ) {
     override fun toString(): String {
         return "$name: ${typeAST?.name}"
     }

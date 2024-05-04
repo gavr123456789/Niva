@@ -255,7 +255,7 @@ fun Resolver.resolveKeywordMsg(
             }
             // type check
             val isTypesEqual =
-                compare2Types(it.keywordArg.type!!, realArgs[ii].type, it.keywordArg.token)
+                compare2Types(realArgs[ii].type, it.keywordArg.type!!, it.keywordArg.token)
             if (!isTypesEqual) {
                 statement.token.compileError(
                     "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid, $YEL${realArgs[ii].type}$RESET expected, $WHITE${statement.receiver.str}${RESET} has signature: $YEL${receiverType.args.map { it.type }}"

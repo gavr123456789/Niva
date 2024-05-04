@@ -107,7 +107,7 @@ fun Resolver.resolveUnaryMsg(
         val msgForType = resolvingMsgDecl?.forType
         val statementType = statement.receiver.type
         val sameTypes = if (msgForType != null && statementType !=null) {
-            compare2Types(statementType, msgForType, unpackNull = true)
+            compare2Types(msgForType, statementType, unpackNull = true)
         } else false
 
 

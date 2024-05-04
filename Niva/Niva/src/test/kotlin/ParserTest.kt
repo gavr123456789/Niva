@@ -1824,7 +1824,18 @@ class ParserTest {
         assertTrue {q is ErrorDomainDeclaration}
     }
 
+    @Test
+    fun onWithNoSas() {
+        val source = """
+          extend AdwRow [
+            on addPrefix::Widget
+            on addSuffix::Widget
+          ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
 
+    }
 
 }
 
