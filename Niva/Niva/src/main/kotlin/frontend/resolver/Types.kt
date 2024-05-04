@@ -795,20 +795,26 @@ fun SomeTypeDeclaration.toType(
     fields.forEach {
         val astType = it.typeAST
         if (astType != null && astType.name == typeName) {
-            // this is recursive type
-            val fieldType = KeywordArg(
-                name = it.name,
-                type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
-            )
-            fieldsTyped.add(fieldType)
-            unresolvedSelfTypeFields.add(fieldType)
+            if (astType.name == typeName) {
+                // this is recursive type
+                val fieldType = KeywordArg(
+                    name = it.name,
+                    type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
+                )
+                fieldsTyped.add(fieldType)
+                unresolvedSelfTypeFields.add(fieldType)
+
+            }
 
         } else {
-            val wf = it.tryToTypeField(typeDB, typeTable, recursiveType = result)
-            if (wf == null) {
+            // Если тип не найдет, то добавляем текущий тип в мапу нерезолвнутых типов к их нерезолвнутым полям
+            // в конце пробуем их резолвнуть, и вот только тогда если не получается то пишем об ошибке
 
-                TODO()
-            }
+//            val wf = it.tryToTypeField(typeDB, typeTable, recursiveType = result)
+//            if (wf == null) {
+//
+//                TODO("it = $it")
+//            }
             fieldsTyped.add(it.toTypeField(typeDB, typeTable, recursiveType = result))
         }
     }

@@ -103,7 +103,9 @@ fun Resolver.resolve(mainFile: File) {
     currentPackageName = mainFile.nameWithoutExtension
 
     // main args
+    resolvingMainFile = true
     resolve(mainAST, createArgsFromMain())
+    resolvingMainFile = false
 
     otherASTs.forEach {
         currentPackageName = it.first
