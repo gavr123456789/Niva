@@ -53,11 +53,71 @@ fun Resolver.resolve(mainFile: File) {
 
 
     resolveDeclarationsOnly(mainAST)
-    otherASTs.forEach {
+    otherASTs.forEachIndexed { i, it ->
         // create package
         changePackage(it.first, fakeTok)
         statements = it.second.toMutableList()
         resolveDeclarationsOnly(it.second)
+
+        if (typeDB.unresolvedTypes.isNotEmpty() && i != 0) {
+            val iterator = typeDB.unresolvedTypes.iterator()
+            while (iterator.hasNext()) {
+                val (a, b) = iterator.next()
+
+                val resolvedFromDifferentFileType = getAnyType(a, mutableMapOf(), mutableMapOf(), null)
+                if (resolvedFromDifferentFileType != null) {
+                    val fieldToRemove = b.parent.fields.first { it.name == b.fieldName }
+
+
+                    val ast = b.ast
+                    val realType = if (ast != null) {
+                        ast.toType(typeDB, typeTable)
+                    } else resolvedFromDifferentFileType
+                    // remove field with placeholder, and replace type to real type inside placeholder
+                    // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
+//                    fieldToRemove.type = realType
+
+                    b.typeDeclaration.fields.first { it.name == b.fieldName }.type = realType
+                    b.parent.fields.remove(fieldToRemove)
+
+                    b.parent.fields.add(
+                        KeywordArg(
+                            name = b.fieldName,
+                            type = realType
+                        )
+                    )
+
+
+
+                    iterator.remove()
+                }
+            }
+//            typeDB.unresolvedTypes.forEach { (a, b) ->
+//                val w = getAnyType(a, mutableMapOf(), mutableMapOf(), null)
+//                if (w != null) {
+//                    val fieldToRemove = b.fields.first { it.type.name == a }
+//                    b.fields.remove(fieldToRemove)
+//                    b.fields.add(
+//                        KeywordArg(
+//                            name = a,
+//                            type = w
+//                        )
+//                    )
+//
+//                }
+//            }
+        }
+    }
+
+    if (typeDB.unresolvedTypes.isNotEmpty()) {
+
+        fakeTok.compileError(buildString {
+            typeDB.unresolvedTypes.forEach { (a, b) ->
+                // "| 11 name:  is unresolved"
+                append("| ", b.ast?.token?.line ?: "")
+                append( b.fieldName, ": ", a, "is unknown type inside declaration of", b.parent.name, "\n")
+            }
+        })
     }
 
     // unresolved methods that contains unresolved types in args, receiver or return

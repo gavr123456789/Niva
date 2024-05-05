@@ -786,7 +786,7 @@ fun Resolver.getTypeForIdentifier(
 ): Type {
 
     val type =
-        getType2(x.names.first(), currentScope, previousScope, kw, x.names) ?: getType2(
+        getAnyType(x.names.first(), currentScope, previousScope, kw, x.names) ?: getAnyType(
             x.name,
             currentScope,
             previousScope,
@@ -800,7 +800,7 @@ fun Resolver.getTypeForIdentifier(
     val typeWithGenericResolved =
         if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
             // replace Generic from typeAst with sas
-            val e = getType2(x.typeAST.name, currentScope, previousScope, kw)!!
+            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw)!!
             val copy = type.copy()
             copy.typeArgumentList = listOf(e)
             copy
@@ -809,12 +809,12 @@ fun Resolver.getTypeForIdentifier(
     return typeWithGenericResolved
 }
 
-
-fun Resolver.getType2(
+// If there are more than one type with the same name, and pkg is not specified, than this method will throw
+fun Resolver.getAnyType(
     typeName: String,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
-    statement: KeywordMsg?,
+    statement: KeywordMsg?, // type constructor call
     names: List<String> = listOf()
 ): Type? {
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
@@ -961,6 +961,7 @@ class Resolver(
             createDefaultType(InternalTypes.Null),
 
             createDefaultType(InternalTypes.UnknownGeneric),
+//            createDefaultType(InternalTypes.NotResolved),
         )
 
         init {
@@ -975,6 +976,8 @@ class Resolver(
             val charRangeType = defaultTypes[InternalTypes.CharRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
+
+
 //            val nullType = defaultTypes[InternalTypes.Null]!!
 //            val compiler = defaultTypes[InternalTypes.Compiler]!!
 

@@ -65,6 +65,7 @@ fun Type.infoPrint() = buildString {
         is Type.EnumRootType -> this@infoPrint.generateInfo()
         is Type.InternalType -> this@infoPrint.generateInfoType()
         is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfoType()
+        is Type.UnresolvedType -> this@infoPrint.realType().generateInfoType()
 
         is Type.Lambda -> TODO("Can't print lambda info yet")
 

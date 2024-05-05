@@ -10,6 +10,9 @@ import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Receiver
+import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeDeclaration
 
 @Suppress("unused")
 sealed class TypeDBResult {
@@ -18,11 +21,21 @@ sealed class TypeDBResult {
     class NotFound(val notFountName: String) : TypeDBResult()
 }
 
+class FieldNameAndParent(
+    val fieldName: String,
+    val parent: Type.UserLike,
+    var ast: TypeAST? = null,
+    val typeDeclaration: SomeTypeDeclaration
+)
+
 class TypeDB(
     val internalTypes: MutableMap<TypeName, Type.InternalType> = mutableMapOf(),
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
-//    val errorDomains: MutableMap<TypeName, Type.ErrorType> = mutableMapOf()
+//    val errorDomains // errors are usual unions
+
+    // name of the Missing Type to (parent type + field of parent name)
+    val unresolvedTypes: MutableMap<String, FieldNameAndParent> = mutableMapOf()
 )
 
 // getting
@@ -116,7 +129,7 @@ fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
         is Type.UserLike -> addUserLike(realName, type, token)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
-        is Type.NullableType, Type.RecursiveType -> throw Exception("unreachable")
+        is Type.NullableType, Type.RecursiveType, is Type.UnresolvedType -> throw Exception("unreachable")
     }
 }
 

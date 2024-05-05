@@ -4,6 +4,7 @@ package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
+import frontend.resolver.FieldWithType
 import frontend.resolver.Type.RecursiveType.copy
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
@@ -152,7 +153,6 @@ class KeywordArg(
 ) : FieldWithType(name, type)
 
 
-
 class KeywordArgAst(
     val name: String,
     val keywordArg: Expression
@@ -208,6 +208,7 @@ sealed class Type(
             is UserLike -> {
                 this.copy()
             }
+
             is InternalType -> {
                 InternalType(
                     typeName = InternalTypes.valueOf(name),
@@ -216,11 +217,19 @@ sealed class Type(
                     protocols = protocols
                 )
             }
+
+            is UnresolvedType -> {
+                UnresolvedType(
+                    realType = realType
+                )
+            }
+
             is NullableType -> {
                 NullableType(
                     realType = realType
                 )
             }
+
             is Lambda -> TODO()
         }
 
@@ -255,8 +264,10 @@ sealed class Type(
     override fun toString(): String = when (this) {
         is InternalLike -> name
         is NullableType -> "$realType?"
+        is UnresolvedType ->
+            realType().toString()
         is UserLike -> {
-            val toStringWithRecursiveCheck = {x: Type, currentTypeName: String, currentTypePkg: String  ->
+            val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
                 if (x.name == currentTypeName && x.pkg == currentTypePkg) {
                     x.name
                 } else {
@@ -272,17 +283,23 @@ sealed class Type(
                             it,
                             this.name,
                             this.pkg
-                        ) } + ")"
+                        )
+                    } + ")"
                 } else ""
             val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
+
         is Lambda -> name
     }
 
     fun toKotlinString(needPkgName: Boolean): String = when (this) {
         is InternalLike, is UnknownGenericType -> name
         is NullableType -> "${realType.toKotlinString(needPkgName)}?"
+        is UnresolvedType -> {
+            val q = realType().toKotlinString(needPkgName)
+            q
+        }
         is UserLike -> {
             val genericParam =
                 if (typeArgumentList.isNotEmpty()) {
@@ -291,6 +308,7 @@ sealed class Type(
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
             "$needPkg$name$genericParam"
         }
+
         is Lambda -> buildString {
             val realArgs = if (extensionOfType != null) {
                 // fun sas(x: ^Int.(Int) -> String) =
@@ -306,8 +324,10 @@ sealed class Type(
             }
             append(") -> ")
 
+
             append(returnType.toKotlinString(needPkgName))
         }
+
     }
 
     class TypeType(
@@ -337,6 +357,7 @@ sealed class Type(
 
             is Lambda -> TODO()
             is NullableType -> TODO()
+            is UnresolvedType -> TODO()
             RecursiveType -> TODO()
         }
 
@@ -358,12 +379,25 @@ sealed class Type(
                 throw Exception("Compiler but $realType boxing into Nullable, but its nullable already")
             }
         }
+
         fun getTypeOrNullType(): Type {
             return realType
 
 //            return Resolver.defaultTypes[InternalTypes.Null]!!
         }
     }
+
+    class UnresolvedType(
+        val realType: () -> Type
+    ) : Type(
+        "???",
+        "???",
+        false,
+//        realType.name,
+//        realType.pkg,
+//        realType.isPrivate,
+//        createNullableAnyProtocols(realType)
+    )
 
 
     class Lambda(
@@ -475,7 +509,7 @@ sealed class Type(
     // Union -> Error, User
     // User -> Root, Branch
     // Error -> Root, Branch
-    sealed class Union (
+    sealed class Union(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
@@ -595,7 +629,9 @@ class Project(
     val usingProjects: MutableList<Project> = mutableListOf()
 )
 
-fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike? = null): Type {
+// if parentType not null, then we are resolving its field
+fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: Type.UserLike? = null, resolvingFieldName: String? = null,
+                   typeDeclaration: SomeTypeDeclaration? = null): Type {
 
     val replaceToNullableIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
@@ -637,7 +673,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
                         this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val typeOfArg = it.toType(typeDB, typeTable, recursiveType)
+                        val typeOfArg = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
                         typeOfArg
                     }
@@ -657,7 +693,19 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
                 }
             }
             val type = typeTable[name]
-                ?: this.token.compileError("Can't find user type: ${YEL}$name")
+            if (type == null) {
+
+                if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
+                    // we are not resolving type fields of different type
+                    this.token.compileError("Can't find user type: ${YEL}$name")
+                }
+
+                typeDB.unresolvedTypes[name] = FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
+                return Type.UnresolvedType{
+                    parentType.fields.find { it.name == resolvingFieldName }!!.type
+                }
+//                TODO()
+            }
 
             val type2 = if (mutable) {
                 (type as Type.UserLike).copy().also { it.isMutable = true }
@@ -669,28 +717,39 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
         is TypeAST.Lambda -> {
 
             val extensionOfType = if (this.extensionOfType != null) {
-                extensionOfType.toType(typeDB, typeTable, recursiveType)
+                extensionOfType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
             } else null
 
 
-            val args = if (extensionOfType!=null) {
+            val args = if (extensionOfType != null) {
                 inputTypesList.drop(1).map {
                     KeywordArg(
-                        type = it.toType(typeDB, typeTable, recursiveType), name = it.name
+                        type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration), name = it.name
                     )
-                }.toMutableList().also { it.addFirst(
-                    KeywordArg(type = extensionOfType, name = "this")
-                ) }
+                }.toMutableList().also {
+                    it.addFirst(
+                        KeywordArg(type = extensionOfType, name = "this")
+                    )
+                }
             } else inputTypesList.map {
                 KeywordArg(
-                    type = it.toType(typeDB, typeTable, recursiveType), name = it.name
+                    type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration), name = it.name
                 )
             }.toMutableList()
+
+            val returnType =
+                this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
+
+            if (returnType is Type.UnresolvedType) {
+                val q = typeDB.unresolvedTypes[this.returnType.name]!!
+                q.ast = this
+//                TODO("add the same for arguments")
+            }
 
             val lambdaType = Type.Lambda(
                 args = args,
                 extensionOfType = extensionOfType,
-                returnType = this.returnType.toType(typeDB, typeTable, recursiveType),
+                returnType = returnType,
             )
 
             return replaceToNullableIfNeeded(lambdaType)
@@ -701,24 +760,28 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType
 
 }
 
-fun TypeFieldAST.tryToTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): KeywordArg? {
-    val r = typeAST!!
-    val w = try {
-        r.toType(typeDB, typeTable, recursiveType)
-    } catch (_: Throwable) {
-        return null
-    }
-    val result = KeywordArg(
-        name = name,
-        type = w
-    )
-    return result
-}
+//fun TypeFieldAST.tryToTypeField(
+//    typeDB: TypeDB,
+//    typeTable: Map<TypeName, Type>,
+//    recursiveType: Type.UserLike
+//): KeywordArg? {
+//    val r = typeAST!!
+//    val w = try {
+//        r.toType(typeDB, typeTable, recursiveType)
+//    } catch (_: Throwable) {
+//        return null
+//    }
+//    val result = KeywordArg(
+//        name = name,
+//        type = w
+//    )
+//    return result
+//}
 
-fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, recursiveType: Type.UserLike): KeywordArg {
+fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: Type.UserLike, typeDeclaration: SomeTypeDeclaration): KeywordArg {
     val result = KeywordArg(
         name = name,
-        type = typeAST!!.toType(typeDB, typeTable, recursiveType)
+        type = typeAST!!.toType(typeDB, typeTable, parentType, resolvingFieldName = name, typeDeclaration = typeDeclaration)
     )
     return result
 }
@@ -777,8 +840,7 @@ fun SomeTypeDeclaration.toType(
             protocols = mutableMapOf(),
             isError = isError
         )
-    }
-    else
+    } else
         Type.UserType(
             name = typeName,
             typeArgumentList = listOf(),
@@ -795,16 +857,14 @@ fun SomeTypeDeclaration.toType(
     fields.forEach {
         val astType = it.typeAST
         if (astType != null && astType.name == typeName) {
-            if (astType.name == typeName) {
-                // this is recursive type
-                val fieldType = KeywordArg(
-                    name = it.name,
-                    type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
-                )
-                fieldsTyped.add(fieldType)
-                unresolvedSelfTypeFields.add(fieldType)
+            // this is recursive type
+            val fieldType = KeywordArg(
+                name = it.name,
+                type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
+            )
+            fieldsTyped.add(fieldType)
+            unresolvedSelfTypeFields.add(fieldType)
 
-            }
 
         } else {
             // Если тип не найдет, то добавляем текущий тип в мапу нерезолвнутых типов к их нерезолвнутым полям
@@ -815,15 +875,15 @@ fun SomeTypeDeclaration.toType(
 //
 //                TODO("it = $it")
 //            }
-            fieldsTyped.add(it.toTypeField(typeDB, typeTable, recursiveType = result))
+            fieldsTyped.add(it.toTypeField(typeDB, typeTable, parentType = result, typeDeclaration = this))
         }
     }
 
     fun getAllGenericTypesFromFields(
         fields2: List<KeywordArg>,
         fields: List<TypeFieldAST>,
-        setOfCheckedFields: MutableSet<Type>): MutableList<Type.UserLike>
-    {
+        setOfCheckedFields: MutableSet<Type>
+    ): MutableList<Type.UserLike> {
         val result2 = mutableListOf<Type.UserLike>()
 
         fields2.forEachIndexed { i, it ->
@@ -889,7 +949,7 @@ fun SomeTypeDeclaration.toType(
 
 
     // fill fields with real types
-    fields.forEachIndexed {i, it ->
+    fields.forEachIndexed { i, it ->
         val type = fieldsTyped[i].type
         it.type = type
 
@@ -963,7 +1023,8 @@ fun MessageDeclarationBinary.toMessageData(
     this.returnType = returnType
 
 
-    val argType = this.arg.typeAST?.toType(typeDB, typeTable) ?: this.token.compileError("Type for binary msg not specified")
+    val argType =
+        this.arg.typeAST?.toType(typeDB, typeTable) ?: this.token.compileError("Type for binary msg not specified")
 
     val result = BinaryMsgMetaData(
         name = this.name,
@@ -991,7 +1052,8 @@ fun MessageDeclarationKeyword.toMessageData(
 
         // lambda can contain generic params, and we need add them to typeArgs
         if (type is Type.Lambda) {
-            this.typeArgs.addAll( type.args.asSequence().map { it.type }.filterIsInstance<Type.UnknownGenericType>().map { it.name } )
+            this.typeArgs.addAll(
+                type.args.asSequence().map { it.type }.filterIsInstance<Type.UnknownGenericType>().map { it.name })
             if (type.returnType is Type.UnknownGenericType) this.typeArgs.add(type.returnType.name)
         }
 
@@ -1000,7 +1062,6 @@ fun MessageDeclarationKeyword.toMessageData(
             type = type
         )
     }
-
 
 
     val result = KeywordMsgMetaData(
