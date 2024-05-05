@@ -4,7 +4,6 @@ package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
-import frontend.resolver.FieldWithType
 import frontend.resolver.Type.RecursiveType.copy
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
@@ -264,8 +263,7 @@ sealed class Type(
     override fun toString(): String = when (this) {
         is InternalLike -> name
         is NullableType -> "$realType?"
-        is UnresolvedType ->
-            realType().toString()
+        is UnresolvedType -> "?unresolved type?"
         is UserLike -> {
             val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
                 if (x.name == currentTypeName && x.pkg == currentTypePkg) {
@@ -297,8 +295,7 @@ sealed class Type(
         is InternalLike, is UnknownGenericType -> name
         is NullableType -> "${realType.toKotlinString(needPkgName)}?"
         is UnresolvedType -> {
-            val q = realType().toKotlinString(needPkgName)
-            q
+            throw Exception("Compiler bug, attempt to generate code for unresolved type")
         }
         is UserLike -> {
             val genericParam =
@@ -388,7 +385,7 @@ sealed class Type(
     }
 
     class UnresolvedType(
-        val realType: () -> Type
+        val realType: () -> Type = {TODO("Compiler bug")}
     ) : Type(
         "???",
         "???",
@@ -701,9 +698,7 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: T
                 }
 
                 typeDB.unresolvedTypes[name] = FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
-                return Type.UnresolvedType{
-                    parentType.fields.find { it.name == resolvingFieldName }!!.type
-                }
+                return Type.UnresolvedType()
 //                TODO()
             }
 

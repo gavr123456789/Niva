@@ -113,7 +113,7 @@ fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
 
 //    error("\n$red\t$text.$fileLine$reset")
-    val errorText = "${RED}Error:$RESET $text$RESET.$fileLine"
+    val errorText = "${RED}Error:$RESET\n$text$RESET.$fileLine"
 //    println("$RED Error:$RESET $text$RESET.$fileLine")
     throw CompilerError(errorText)
 //    exitProcess(0)

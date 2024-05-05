@@ -26,19 +26,8 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 fun main(args: Array<String>) {
-
-//    val q = listOf(1, 2)//.sumOf {  }//.partition {  }//.fold(5) { acc, next -> acc + next }
-//    val w = listOf(1, 2).fold(mutableSetOf<Int>()) {acc, each -> if (each % 2 == 0) acc.add(each); acc }
-
-//    val args = arrayOf("/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva", "-i")
-//    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-
-    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/JSON/lexer.niva")
-
-//    val args = arrayOf("dev", "/home/gavr/Documents/Projects/Fun/Niva/Niva/Niva/examples/Main/main.niva")
-
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
 
     if (help(args)) return
 

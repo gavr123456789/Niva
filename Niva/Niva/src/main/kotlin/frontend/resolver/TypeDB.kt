@@ -12,7 +12,6 @@ import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Receiver
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.TypeAST
-import main.frontend.parser.types.ast.TypeDeclaration
 
 @Suppress("unused")
 sealed class TypeDBResult {
@@ -24,7 +23,7 @@ sealed class TypeDBResult {
 class FieldNameAndParent(
     val fieldName: String,
     val parent: Type.UserLike,
-    var ast: TypeAST? = null,
+    var ast: TypeAST? = null, // ast is here only in complex types
     val typeDeclaration: SomeTypeDeclaration
 )
 
@@ -32,8 +31,6 @@ class TypeDB(
     val internalTypes: MutableMap<TypeName, Type.InternalType> = mutableMapOf(),
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
-//    val errorDomains // errors are usual unions
-
     // name of the Missing Type to (parent type + field of parent name)
     val unresolvedTypes: MutableMap<String, FieldNameAndParent> = mutableMapOf()
 )
@@ -151,6 +148,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSE
         val listHasTypeWithThisName = list.find { it.name == type.name }
         if (listHasTypeWithThisName != null) {
             // check that their defined in different packages, if not than drop
+
             if (type.pkg == listHasTypeWithThisName.pkg) {
 //                println("typeDB: Type with name ${type.name} already defined in package ${type.pkg}")
 //                token.compileError("Type with name ${type.name} already defined in package ${type.pkg}")

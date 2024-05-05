@@ -10,6 +10,7 @@ import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.utils.CYAN
 import main.utils.RESET
+import main.utils.WHITE
 import main.utils.YEL
 import main.utils.infoPrint
 import java.io.File
@@ -52,14 +53,8 @@ fun Resolver.resolve(mainFile: File) {
     changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
 
 
-    resolveDeclarationsOnly(mainAST)
-    otherASTs.forEachIndexed { i, it ->
-        // create package
-        changePackage(it.first, fakeTok)
-        statements = it.second.toMutableList()
-        resolveDeclarationsOnly(it.second)
-
-        if (typeDB.unresolvedTypes.isNotEmpty() && i != 0) {
+    val resolveUnresolved = {
+        if (typeDB.unresolvedTypes.isNotEmpty() ) { // && i != 0
             val iterator = typeDB.unresolvedTypes.iterator()
             while (iterator.hasNext()) {
                 val (a, b) = iterator.next()
@@ -86,36 +81,30 @@ fun Resolver.resolve(mainFile: File) {
                             type = realType
                         )
                     )
-
-
-
                     iterator.remove()
                 }
             }
-//            typeDB.unresolvedTypes.forEach { (a, b) ->
-//                val w = getAnyType(a, mutableMapOf(), mutableMapOf(), null)
-//                if (w != null) {
-//                    val fieldToRemove = b.fields.first { it.type.name == a }
-//                    b.fields.remove(fieldToRemove)
-//                    b.fields.add(
-//                        KeywordArg(
-//                            name = a,
-//                            type = w
-//                        )
-//                    )
-//
-//                }
-//            }
         }
+    }
+
+    resolveDeclarationsOnly(mainAST)
+    resolveUnresolved()
+    otherASTs.forEachIndexed { i, it ->
+        // create package
+        changePackage(it.first, fakeTok)
+        statements = it.second.toMutableList()
+        resolveDeclarationsOnly(it.second)
+        resolveUnresolved()
     }
 
     if (typeDB.unresolvedTypes.isNotEmpty()) {
 
         fakeTok.compileError(buildString {
+            append("These types remained unrecognized after checking all files: \n")
             typeDB.unresolvedTypes.forEach { (a, b) ->
                 // "| 11 name:  is unresolved"
                 append("| ", b.ast?.token?.line ?: "")
-                append( b.fieldName, ": ", a, "is unknown type inside declaration of", b.parent.name, "\n")
+                append(WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".", b.parent.name, RESET, "\n")
             }
         })
     }
