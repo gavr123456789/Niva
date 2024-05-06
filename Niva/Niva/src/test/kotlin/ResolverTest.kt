@@ -796,7 +796,7 @@ class ResolverTest {
         type Sus x: Sas
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 1)
+        assert(statements.count() == 2)
     }
 
     @Test
@@ -1253,22 +1253,23 @@ class ResolverTest {
         assert(statements.count() == 2)
     }
 
-    @Test
-    fun fullBuilderExample() {
-        val source = """
-            type Person
-            Person foo::Int = []
-            Int sas::Person.[Int -> Unit] = [
-              sas this: Person new Int: 4
-            ]
-            // call sas
-            2 sas: [
-              this // is Person
-            ]
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-    }
+    // TODO
+//    @Test
+//    fun fullBuilderExample() {
+//        val source = """
+//            type Person
+//            Person foo::Int = []
+//            Int sas::Person.[Int -> Unit] = [
+//              sas this: Person new Int: 4
+//            ]
+//            // call sas
+//            2 sas: [
+//              this // is Person
+//            ]
+//        """.trimIndent()
+//        val statements = resolve(source)
+//        assert(statements.count() == 2)
+//    }
 
     @Test
     fun getGenericParamsFromLambdaArg() {

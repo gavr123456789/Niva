@@ -298,7 +298,7 @@ fun Resolver.resolveControlFlow(
 
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
-                val isTypeEqual = compare2Types(prevType, currType, unpackNull = true)
+                val isTypeEqual = compare2Types(prevType, currType, unpackNull = true, compareParentsOfBothTypes = true)
                 if (!isTypeEqual) {
                     it.ifExpression.token.compileError(
                         "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RESET is $YEL${prevType.name}$RESET "

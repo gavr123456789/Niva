@@ -22,7 +22,8 @@ fun compare2Types(
     token: Token? = null,
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type
-    unpackNullForFirst: Boolean = false // x::Int? <- y::Int
+    unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
+    compareParentsOfBothTypes: Boolean = false
 ): Boolean {
     if (type1 === type2) return true
 
@@ -42,7 +43,7 @@ fun compare2Types(
         else type2.args
 
         if (type1.extensionOfType != null && type2.extensionOfType != null) {
-            if (!compare2Types(type1.extensionOfType, type2.extensionOfType)) {
+            if (!compare2Types(type1.extensionOfType, type2.extensionOfType, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                 val text =
                     "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
                 token?.compileError(text)
@@ -66,7 +67,7 @@ fun compare2Types(
 
         argsOf1.forEachIndexed { i, it ->
             val it2 = argsOf2[i]
-            val isEqual = compare2Types(it.type, it2.type)
+            val isEqual = compare2Types(it.type, it2.type, compareParentsOfBothTypes = compareParentsOfBothTypes)
             if (!isEqual) {
                 token?.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
@@ -81,7 +82,8 @@ fun compare2Types(
                 return1,
                 return2,
                 token,
-                unpackNull
+                unpackNull,
+                compareParentsOfBothTypes = compareParentsOfBothTypes
             )
         if (!isReturnTypesEqual) {
             token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
@@ -162,7 +164,7 @@ fun compare2Types(
                     }
                 }
 
-                val sameArgs = compare2Types(arg1, arg2, token)
+                val sameArgs = compare2Types(arg1, arg2, token, compareParentsOfBothTypes = compareParentsOfBothTypes)
                 if (!sameArgs) {
                     token?.compileError("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
                     throw Exception("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
@@ -173,20 +175,22 @@ fun compare2Types(
 
 
         // first is parent of the second
-//        var parent1: Type? = type1.parent
-//        while (parent1 != null) {
-//            if (compare2Types(type2, parent1)) {
-//                return true
-//            }
-//            parent1 = parent1.parent
-//        }
+        if (compareParentsOfBothTypes) {
+            var parent1: Type? = type1.parent
+            while (parent1 != null) {
+                if (compare2Types(type2, parent1, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+                    return true
+                }
+                parent1 = parent1.parent
+            }
+        }
         // second is parent of the first
         // actually, we can't compare parents of second
         // this will lead to Number -> arg::Widget
 
         var parent2: Type? = type2.parent
         while (parent2 != null) {
-            if (compare2Types(type1, parent2)) {
+            if (compare2Types(type1, parent2, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                 return true
             }
             parent2 = parent2.parent

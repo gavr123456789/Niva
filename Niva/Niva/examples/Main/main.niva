@@ -10,39 +10,46 @@
 //]
 //
 
+//
+//errordomain MyError =
+//| Error1 text: String
+//| Error2 code: Int
+//
+//Int sas2 -> Int! = [
+//    x = Error2 code: 42
+//    x throw
+//    ^ this != 0 => x throw |=> 1
+//]
+//
+//Int sas -> Int!Error1 = [
+//    x = Error1 text: "Important error information ^_^"
+//    x throw
+//    ^ this != 0 => x throw |=> 1
+//]
+//
+//Int sus -> Int = [
+//
+//    y = 1 sas ifError: [
+//        "got some error!!!" echo
+//        | it
+//        | Error1 => it text echo
+//        42
+//    ]
+//    y echo
+//    ^3
+//]
+//
+//Int sus2 -> Int! = [
+//    ^5 sus
+//]
+//
+//1 sus
 
-errordomain MyError =
-| Error1 text: String
-| Error2 code: Int
 
-Int sas2 -> Int! = [
-    x = Error2 code: 42
-    x throw
-    ^ this != 0 => x throw |=> 1
-]
+union Sas = Sus | Sos
 
-Int sas -> Int!Error1 = [
-    x = Error1 text: "Important error information ^_^"
-    x throw
-    ^ this != 0 => x throw |=> 1
-]
-
-Int sus -> Int = [
-
-    y = 1 sas ifError: [
-        "got some error!!!" echo
-        | it
-        | Error1 => it text echo
-        42
-    ]
-    y echo
-    ^3
-]
-
-Int sus2 -> Int! = [
-    ^5 sus
-]
-
-1 sus
+Int kek::Boolean = | kek
+| true => Sus new
+| false => Sos new
 
 
