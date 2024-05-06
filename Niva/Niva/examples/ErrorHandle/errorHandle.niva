@@ -1,16 +1,4 @@
 
-//
-//Int sas = [
-//    x = File readAll: "sas.txt"
-//    y = File readAll: "sas.txt"
-//] hasErrors: [
-//    | errors
-//    | FileReadError -> []
-//    | IOError -> []
-//]
-//
-
-
 errordomain MyError =
 | Error1 text: String
 | Error2 code: Int
@@ -44,5 +32,3 @@ Int sus2 -> Int! = [
 ]
 
 1 sus
-
-

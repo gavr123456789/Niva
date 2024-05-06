@@ -149,31 +149,43 @@ fun Resolver.resolveMessageDeclaration(
                 // errors declared but there are no possible errors
                 val possibleErrors = st.stackOfPossibleErrors
                 val declaredErrors = returnTypeAST.errors
+
                 if (possibleErrors.isNotEmpty()) {
+                    val allPossibleErrors = possibleErrors.flatMap { it.second }
+                    val possibleErrorsUnion = allPossibleErrors.distinct()
+                    val possibleErrorsJoined = possibleErrorsUnion.joinToString(" ") { it.name }
+
+                    val listOfErrorsWithLines = buildString {
+                        possibleErrors.forEach {
+                            assert(it.second.isNotEmpty())
+                            append("\t" + it.first.token.line, " | $WHITE", it.first.receiver, " ", it.first, RESET)
+                            append(" !{$RED", it.second.joinToString(" ") { it.name }, "$RESET}\n")
+                        }
+                    }
+
                     // not declared anything at all
                     if (declaredErrors == null) {
-
-                        val listOfErrorsWithLines = buildString {
-                            possibleErrors.forEach {
-                                assert(it.second.isNotEmpty())
-                                append("\t" + it.first.token.line, " | $WHITE", it.first.receiver, " ", it.first, RESET)
-                                append(" !{$RED", it.second.joinToString(" ") { it.name }, "$RESET}\n")
-                            }
-                        }
-                        val allPossibleErrors = possibleErrors.flatMap { it.second }
-
                         val singleOrManyErrors = if (allPossibleErrors.count() == 1)
                             allPossibleErrors[0].name
-                        else {
-                            "{" + allPossibleErrors.joinToString(" ") { it.name } + "}"
-                        }
+                        else "{$possibleErrorsJoined}"
+
                         val possibleSolutions =
                             "$WHITE-> $returnTypeAST!$RESET or $WHITE-> $returnTypeAST!$singleOrManyErrors$RESET"
 
                         st.token.compileError("Possible errors of $WHITE$st$RESET are: \n${listOfErrorsWithLines} but you not declared them\n use $possibleSolutions")
-                    } else {
+                    } else if(declaredErrors.count() != 0 ){
                         // maybe declared but wrong
+                        val setOfPossible = possibleErrorsUnion.map { it.name }.toSet()
+                        val setOfDeclared = declaredErrors.toSet()
+                        if (setOfDeclared != setOfPossible) {
+                            val declErrors = declaredErrors.joinToString(" ")
+                            val diff = (if (setOfDeclared.count() > setOfPossible.count()) setOfDeclared - setOfPossible else setOfPossible - setOfDeclared)
+                                .joinToString(" ")
 
+                            st.token.compileError("Possible errors of $WHITE$st$RESET are: \n" +
+                                    "${listOfErrorsWithLines}\n" +
+                                    "Wrong set of errors declarated\nPossible errors: $possibleErrorsJoined\nDeclared errors: $declErrors\nDiff: $diff")
+                        }
                     }
 
 

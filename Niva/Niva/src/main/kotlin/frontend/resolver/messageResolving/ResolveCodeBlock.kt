@@ -240,6 +240,8 @@ fun Resolver.resolveCodeBlock(
             )
         }
     }
+
+
     if (type.args.isNotEmpty()) {
         val firstArg = type.args.first().type
         if (firstArg is Type.UnionRootType && firstArg.isError) {
@@ -255,5 +257,5 @@ fun Resolver.resolveCodeBlock(
             }
         }
     }
-//    println("ooop")
+
 }
