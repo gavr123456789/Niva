@@ -614,6 +614,8 @@ class Package(
 
     // imports that need to be added if this pkg used(need for bindings)
     val neededImports: MutableSet<String> = mutableSetOf(),
+    val plugins: MutableSet<String> = mutableSetOf(),
+
 ) {
     override fun toString(): String {
         return packageName

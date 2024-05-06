@@ -660,6 +660,7 @@ fun Resolver.changePackage(
     isBinding: Boolean = false,
     isMainFile: Boolean = false,
     neededImports: MutableSet<String>? = null,
+    neededPlugins: MutableSet<String>? = null,
 ) {
     currentPackageName = newCurrentPackage
     val currentProject =
@@ -684,7 +685,8 @@ fun Resolver.changePackage(
         val pack = Package(
             packageName = newCurrentPackage,
             isBinding = isBinding,
-            neededImports = neededImports ?: mutableSetOf()
+            neededImports = neededImports ?: mutableSetOf(),
+            plugins = neededPlugins ?: mutableSetOf()
         )
 
         currentProject.packages[newCurrentPackage] = pack
