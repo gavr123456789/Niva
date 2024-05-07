@@ -22,13 +22,13 @@ fun Resolver.resolveVarDeclaration(
     currentLevel--
 
 
-    val value = statement.value
-    var valueType = value.type
-        ?: statement.token.compileError("In var declaration $WHITE${statement.name}$RED value doesn't got type")
-    val statementDeclaredType = statement.valueTypeAst
+    val valueOfVarDecl = statement.value
+    var typeOfValueInVarDecl = valueOfVarDecl.type
+        ?: statement.token.compileError("Compiler BUG: In var declaration $WHITE${statement.name}$RED value doesn't got type")
+    val definedASTType = statement.valueTypeAst
 
-    if (value is MessageSendKeyword) {
-        val first = value.messages.first()
+    if (valueOfVarDecl is MessageSendKeyword) {
+        val first = valueOfVarDecl.messages.first()
         if (first is KeywordMsg && first.kind == KeywordLikeType.Setter) {
             statement.token.compileError("Don't use setter as expression, it doesn't returns anything.\n       Maybe you wanted to use update and copy, then remove ${RED}mut$RESET modifier from type declaration")
         }
@@ -36,29 +36,29 @@ fun Resolver.resolveVarDeclaration(
 
     // generics in right part, but real type in left, x::List::Int = List
     var copyType: Type? = null
-    if (value is Receiver &&
-        valueType is Type.UserType &&
-        valueType.typeArgumentList.find { it.name.isGeneric() } != null &&
-        statementDeclaredType is TypeAST.UserType && statementDeclaredType.typeArgumentList.find { it.name.isGeneric() } == null
+    if (valueOfVarDecl is Receiver &&
+        typeOfValueInVarDecl is Type.UserType &&
+        typeOfValueInVarDecl.typeArgumentList.find { it.name.isGeneric() } != null &&
+        definedASTType is TypeAST.UserType && definedASTType.typeArgumentList.find { it.name.isGeneric() } == null
     ) {
-        copyType = valueType.copy()
+        copyType = typeOfValueInVarDecl.copy()
 
-        if (statementDeclaredType.typeArgumentList.count() != copyType.typeArgumentList.count()) {
+        if (definedASTType.typeArgumentList.count() != copyType.typeArgumentList.count()) {
             statement.token.compileError(
                 "Not all generic type are presented, statement has ${
-                    statementDeclaredType.typeArgumentList.joinToString(
+                    definedASTType.typeArgumentList.joinToString(
                         ", "
                     ) { it.name }
                 } but type has ${copyType.typeArgumentList.joinToString(", ") { it.name }}"
             )
         }
         val newTypeArgList: MutableList<Type> = mutableListOf()
-        statementDeclaredType.typeArgumentList.forEachIndexed { i, typeAST ->
+        definedASTType.typeArgumentList.forEachIndexed { i, typeAST ->
             // find every type of statement and replace it in type
 
             val e = typeDB.getTypeOfIdentifierReceiver(
                 typeAST.name,
-                value,
+                valueOfVarDecl,
                 getCurrentImports(statement.token),
                 currentPackageName
             ) ?: typeAST.token.compileError("Can't find type $YEL${typeAST.name}")
@@ -67,36 +67,26 @@ fun Resolver.resolveVarDeclaration(
             newTypeArgList.add(e)
         }
         copyType.typeArgumentList = newTypeArgList
-        value.type = copyType
+        valueOfVarDecl.type = copyType
     }
-//    if (value is Receiver && (valueType is Type.UserLike && valueType.typeArgumentList.isNotEmpty() || valueType is Type.NullableType && valueType.realType is Type.UserLike && valueType.realType.typeArgumentList.isNotEmpty())) {
-//        val type = if (valueType is Type.NullableType) valueType.realType else valueType
-//        val letterTable = mutableMapOf<String, Type>()
-//
-//
-//        recursiveGenericResolving(type as Type.UserType, letterTable, mutableMapOf())
-//        // take args from value.receiver.type.typeArgList
-//    }
 
     // check that declared type == inferred type
-    if (statementDeclaredType != null) {
-        val statementDeclared = statementDeclaredType.toType(typeDB, typeTable)
-        val realValueType =
-//            if (valueType is Type.Lambda)
-//                valueType.returnType
-//            else
-                valueType
-        if (!compare2Types(statementDeclared, realValueType, unpackNull = true)) {
-            val text = "$statementDeclaredType != $realValueType"
+    if (definedASTType != null) {
+        val statementDeclared = definedASTType.toType(typeDB, typeTable)
+        val rightPartType = typeOfValueInVarDecl
+        if (!compare2Types(statementDeclared, rightPartType, unpackNull = true)) {
+            val text = "$definedASTType != $rightPartType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }
 
-        valueType = statementDeclared
+        typeOfValueInVarDecl = statementDeclared
+
+
         // if x::Int? = 42 then we need to wrap type to Nullable
-        if (statementDeclaredType.isNullable && realValueType !is Type.NullableType) {
-            val nullableType = Type.NullableType(valueType)
-            value.type = nullableType
-            valueType = nullableType
+        if (definedASTType.isNullable && rightPartType !is Type.NullableType) {
+            val nullableType = Type.NullableType(rightPartType)
+            valueOfVarDecl.type = nullableType
+            typeOfValueInVarDecl = nullableType
         }
         // x::Sas = [x::Int -> x inc]
         // right part here doesn't contain information about alias
@@ -106,7 +96,7 @@ fun Resolver.resolveVarDeclaration(
 
     }
 
-    currentScope[statement.name] = copyType ?: valueType
+    currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
     addToTopLevelStatements(statement)
 }
 

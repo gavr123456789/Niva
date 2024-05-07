@@ -3,6 +3,7 @@ package main.frontend.parser.parsing
 import frontend.parser.parsing.*
 import main.frontend.meta.*
 import main.frontend.parser.types.ast.InternalTypes
+import main.frontend.parser.types.ast.ListCollection
 import main.frontend.parser.types.ast.TypeAST
 import main.utils.isSimpleTypes
 
@@ -60,8 +61,8 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
     // List::Map::(int, string)
     // Person from: x::List::Map::(int, string)
     // x::int?
-    val mutableType = match(TokenType.Mut)
-    val tok = peek()
+    // x::Int!ErrorType
+
 
     // literal collections type set or map
 //    if (match(TokenType.OpenBraceHash)) {
@@ -72,6 +73,9 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
 //        TODO()
 //    }
 
+
+    val mutableType = match(TokenType.Mut)
+    val tok = peek()
 
     if (match(TokenType.OpenBracket)) {
         return parseLambda(tok)
@@ -141,13 +145,33 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
         }
 
+        val bang = match("!")
+
+        val errors = if (bang) {
+            val erTok = peek()
+            when (erTok.kind) {
+                TokenType.OpenBrace -> {
+                    val errorsList = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
+                    errorsList
+                }
+                TokenType.Identifier -> {
+                    listOf(step().lexeme)
+                }
+                else -> {listOf<String>()}
+            }
+            // Int!{Error1, Error2} // multiple errors
+            // Int!Error // single error
+            // Int! // errors in empty list
+        } else null
+
         // one identifier
         return TypeAST.UserType(
             name = path.last(),
             names = path,
             typeArgumentList = mutableSetOf(),
             isNullable = tok.isNullable(),
-            token = tok
+            token = tok,
+            errors = errors
         ).also { it.mutable = mutableType }
     }
 

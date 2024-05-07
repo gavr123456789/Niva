@@ -5,7 +5,9 @@ import main.utils.RED
 import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionRootDeclaration
@@ -56,7 +58,8 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append("var ")
         }
 
-        val typeName = it.type!!.toKotlinString(true)
+        // shit, better make unresolved type a different kind of types
+        val typeName =  it.type!!.toKotlinString(true) //if (it.type!!.name == InternalTypes.NotResolved.toString()) it.typeAST.generateType() else it.type!!.toKotlinString(true)
         append(it.name, ": ", typeName)
         if (fieldsCountMinus1 != i) {
             append(", ")
@@ -102,7 +105,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     // class Person (var age: Int,
 
     // root fields
-    if (receiverType is Type.UserUnionRootType) {
+    if (receiverType is Type.UnionRootType) {
         if (receiverType.fields.isNotEmpty()) {
             // comma after branch fields, before root fields
             append(", ")

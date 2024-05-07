@@ -28,8 +28,7 @@ class ArgsManager(private val argsSet: Set<String>, private val args: Array<Stri
 
     fun mainArg(): MainArgument {
         return if (args.isNotEmpty()) {
-            val firstArg = args[0]
-            when (firstArg) {
+            when (val firstArg = args[0]) {
                 "run" -> MainArgument.RUN
                 "build" -> MainArgument.BUIlD
                 "distr" -> MainArgument.DISRT

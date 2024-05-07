@@ -1,15 +1,15 @@
 package main.frontend.typer
 
 import frontend.resolver.*
-import main.utils.RED
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.resolveStaticBuilderDeclaration
 import main.frontend.typer.project.resolveProjectKeyMessage
+import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import main.utils.removeDoubleQuotes
 
 
@@ -28,6 +28,7 @@ fun Resolver.resolveDeclarations(
         is MessageDeclaration -> {
             if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
+
         is StaticBuilderDeclaration -> resolveStaticBuilderDeclaration(statement, resolveBody, previousScope)
 
         is ExtendDeclaration -> {
@@ -46,7 +47,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionRootDeclaration -> {
-            resolveUnionDeclaration(statement)
+            resolveUnionDeclaration(statement, false)
         }
 
         is EnumDeclarationRoot -> {
@@ -59,11 +60,13 @@ fun Resolver.resolveDeclarations(
             resolveTypeAlias(statement)
         }
 
-
-        is UnionBranchDeclaration -> {
-            // strange
+        is ErrorDomainDeclaration -> {
+            resolveUnionDeclaration(statement.unionDeclaration, true)
         }
 
+        is UnionBranchDeclaration -> {
+            // strange we parse branches when we parse roots
+        }
 
     }
     currentLevel -= 1
@@ -85,11 +88,11 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     if (msg !is KeywordMsg)
                         it.token.compileError("${YEL}Bind$RESET must have keyword message")
                     if (msg.args.count() < 2)
-                        it.token.compileError("${YEL}Bind$RESET must have at least 2 argument: package and content")
+                        it.token.compileError("${YEL}Bind$RESET must have at least 2 argument: package: \"name\" and content: [declarations]")
                     val pkgArg = msg.args.find { x -> x.name == "package" }
                     if (pkgArg == null)
                         msg.token.compileError("${WHITE}package$RED param is missing")
-                    val contentArg = msg.args.find {x -> x.name == "content" }
+                    val contentArg = msg.args.find { x -> x.name == "content" }
                     if (contentArg == null)
                         msg.token.compileError("${WHITE}content$RED param is missing")
 
@@ -100,20 +103,34 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     if (contentArg.keywordArg !is CodeBlock)
                         contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
+                    // imports
                     val importsArg = msg.args.find { x -> x.name == "imports" }
                     val neededImports =
-                    if (importsArg != null) {
-                        if (importsArg.keywordArg !is ListCollection) {
-                            importsArg.keywordArg.token.compileError("Imports argument must be ${YEL}List::String")
-                        }
-                         importsArg.keywordArg.initElements.map { it.token.lexeme.removeDoubleQuotes() }.toMutableSet()
-                    } else null
+                        if (importsArg != null) {
+                            if (importsArg.keywordArg !is ListCollection) {
+                                importsArg.keywordArg.token.compileError("Imports argument must be ${YEL}List::String")
+                            }
+                            importsArg.keywordArg.initElements.map { it.token.lexeme.removeDoubleQuotes() }
+                                .toMutableSet()
+                        } else null
+
+                    // plugins
+                    val pluginsArg = msg.args.find { x -> x.name == "plugins" }
+                    val neededPlugins =
+                        if (pluginsArg != null) {
+                            if (pluginsArg.keywordArg !is ListCollection) {
+                                pluginsArg.keywordArg.token.compileError("Plugins argument must be ${YEL}List::String")
+                            }
+                            pluginsArg.keywordArg.initElements.map { it.token.lexeme.removeDoubleQuotes() }
+                                .toMutableSet()
+                        } else null
 
                     val pkgName = pkgArg.keywordArg.toString()
                     if (savedPackageName == pkgName) {
                         it.token.compileError("Package $savedPackageName already exists, it is proposed to rename it to ${savedPackageName}.bind.niva")
                     }
-                    changePackage(pkgName, it.token, isBinding = true, neededImports = neededImports)
+
+                    changePackage(pkgName, it.token, isBinding = true, neededImports = neededImports, neededPlugins = neededPlugins)
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {
@@ -170,7 +187,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body=listOf(),
+                                            body = listOf(),
                                             returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
                                         )
 
@@ -201,6 +218,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                     }
 
                                 }
+
                                 else -> field.token.compileError("Use keyword msg send with fields, that fields will become getters and setters (${WHITE}Person name: String -> setName::String + getName -> String$RESET)")
                             }
                         }

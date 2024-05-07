@@ -32,7 +32,7 @@ fun Resolver.resolveUnaryMsg(
     }
 
     fun checkForStatic(receiver: Receiver): Boolean =
-        if (receiver.type is Type.UserEnumRootType) false
+        if (receiver.type is Type.EnumRootType) false
         else receiver is IdentifierExpr && typeTable[receiver.name] != null
 
 
@@ -107,7 +107,7 @@ fun Resolver.resolveUnaryMsg(
         val msgForType = resolvingMsgDecl?.forType
         val statementType = statement.receiver.type
         val sameTypes = if (msgForType != null && statementType !=null) {
-            compare2Types(statementType, msgForType, unpackNull = true)
+            compare2Types(msgForType, statementType, unpackNull = true)
         } else false
 
 
@@ -146,8 +146,11 @@ fun Resolver.resolveUnaryMsg(
             letterToTypeFromReceiver["T"] = receiverType
         }
 
-        val typeForStatement =
-            resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
-        statement.type = typeForStatement
+        val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
+//         = typeForStatement
+
+        statement.type = addErrorEffect(msgFromDb, typeForStatement, statement)
     }
+
+
 }

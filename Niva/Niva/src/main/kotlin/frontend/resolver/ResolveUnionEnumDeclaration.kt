@@ -12,14 +12,14 @@ import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
 
-fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
+fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean) {
     val rootType2 =
-        statement.toType(currentPackageName, typeTable, typeDB, isUnion = true) as Type.UserUnionRootType//fix
+        statement.toType(currentPackageName, typeTable, typeDB, isUnion = true, isError = isError) as Type.UnionRootType//fix
 
     val realType = if (statement.pkg != null) {
         val realPkgOfUnionRoot = this.findPackageOrError(statement.pkg, statement.token)
         // find type with the same name inside this pkg
-        val w = realPkgOfUnionRoot.types[rootType2.name] as Type.UserUnionRootType
+        val w = realPkgOfUnionRoot.types[rootType2.name] as Type.UnionRootType
         w
     } else null
 
@@ -40,15 +40,16 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
                     currentPackageName,
                     typeTable,
                     typeDB,
-                    unionRootType = rootType
-                ) as Type.UserUnionBranchType
+                    unionRootType = rootType,
+                    isError = isError
+                ) as Type.UnionBranchType
             branchType.parent = rootType
 
             addNewType(branchType, it, alreadyCheckedOnUnique = true)
             branchType
         } else {
             // type is found, this is UNION ROOT
-            if (alreadyRegisteredType is Type.UserUnionRootType) {
+            if (alreadyRegisteredType is Type.UnionRootType) {
                 alreadyRegisteredType.parent = rootType
 
                 // check that it has the same fields as current root
@@ -77,7 +78,17 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration) {
     val allGenerics = statement.collectAllGenericsFromBranches() + statement.genericFields
     statement.genericFields.clear()
     statement.genericFields.addAll(allGenerics)
-    // not only to statement, but to Type too
+
+    if (isError) {
+        val error = typeDB.userTypes["Error"]!!.find { it.pkg == "core" }!!
+        rootType.parent = error
+        // add protocol with throw that returns Nothing!Self
+        branches.forEach{
+            val w = createExceptionForCustomErrors(it)
+            it.protocols.putAll(w)
+        }
+    }
+
 }
 fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
     val realType = statement.realTypeAST.toType(typeDB, typeTable)
@@ -90,12 +101,12 @@ fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
 
 fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScope: MutableMap<String, Type>) {
     // resolve types of fields of root
-    val rootType = statement.toType(currentPackageName, typeTable, typeDB, isEnum = true) as Type.UserEnumRootType
+    val rootType = statement.toType(currentPackageName, typeTable, typeDB, isEnum = true) as Type.EnumRootType
     addNewType(rootType, statement)
 
     // TODO check that this enum in unique in this package
     val namesOfRootFields = rootType.fields.map { it.name }.toSet()
-    val branches = mutableListOf<Type.UserEnumBranchType>()
+    val branches = mutableListOf<Type.EnumBranchType>()
 //    val genericsOfBranches = mutableSetOf<Type>()
     statement.branches.forEach {
         val brachFields = it.fieldsValues.map { x -> x.name }.toSet()
@@ -105,7 +116,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
         }
 
         val branchType =
-            it.toType(currentPackageName, typeTable, typeDB, enumRootType = rootType) as Type.UserEnumBranchType
+            it.toType(currentPackageName, typeTable, typeDB, enumRootType = rootType) as Type.EnumBranchType
         branchType.parent = rootType
 
         // Check fields

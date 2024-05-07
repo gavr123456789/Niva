@@ -17,7 +17,8 @@ import kotlin.io.path.div
 
 // Can generate source files
 class GeneratorKt(
-    val dependencies: MutableList<String> = mutableListOf()
+    val dependencies: MutableList<String> = mutableListOf(),
+    val plugins: MutableList<String> = mutableListOf()
 ) {
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
@@ -67,6 +68,8 @@ dependencies:
 settings:
   kotlin:
     languageVersion: 2.0
+    serialization:
+      format: json
   jvm:
     target: 21
   java:
@@ -255,6 +258,7 @@ fun GeneratorKt.generateKtProject(
                 bindPackagesWithNeededImport.add(it.packageName)
                 pkgNameToNeededImports[it.packageName] = it.neededImports
             }
+
         } else
             notBindPackages.add(it)
     }

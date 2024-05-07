@@ -13,7 +13,8 @@ sealed class TypeAST(
     token: Token,
     isPrivate: Boolean,
     pragmas: MutableList<Pragma>,
-    var mutable: Boolean = false
+    var mutable: Boolean = false,
+    val errors: List<String>? = null
 ) : Statement(token, isPrivate, pragmas) {
 
     fun names(): List<String> = when (this) {
@@ -31,8 +32,9 @@ sealed class TypeAST(
         token: Token,
         val names: List<String> = listOf(name),
         isPrivate: Boolean = false,
-        pragmas: MutableList<Pragma> = mutableListOf()
-    ) : TypeAST(name, isNullable, token, isPrivate, pragmas) {
+        pragmas: MutableList<Pragma> = mutableListOf(),
+        errors: List<String>? = null
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas, errors = errors) {
         override fun toString(): String {
             return names.joinToString(".")
         }
@@ -43,8 +45,9 @@ sealed class TypeAST(
         token: Token,
         isNullable: Boolean = false,
         isPrivate: Boolean = false,
-        pragmas: MutableList<Pragma> = mutableListOf()
-    ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas)
+        pragmas: MutableList<Pragma> = mutableListOf(),
+        errors: List<String>? = null
+    ) : TypeAST(name.name, isNullable, token, isPrivate, pragmas, errors = errors)
 
     class Lambda(
         name: String,
@@ -54,8 +57,9 @@ sealed class TypeAST(
         val extensionOfType: TypeAST? = null, // String.[x: Int -> Int]
         isNullable: Boolean = false,
         isPrivate: Boolean = false,
-        pragmas: MutableList<Pragma> = mutableListOf()
-    ) : TypeAST(name, isNullable, token, isPrivate, pragmas) {
+        pragmas: MutableList<Pragma> = mutableListOf(),
+        errors: List<String>? = null
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas, errors = errors) {
         fun toMethodReference(forType: TypeAST): MethodReference {
             val names2 = inputTypesList.map { it.name }
             val count = inputTypesList.count()
@@ -208,7 +212,18 @@ class UnionRootDeclaration(
     }
 }
 
+class ErrorDomainDeclaration(
+    val unionDeclaration: UnionRootDeclaration
+) : SomeTypeDeclaration(unionDeclaration.typeName, unionDeclaration.fields,
+    unionDeclaration.token, unionDeclaration.genericFields, unionDeclaration.isPrivate, unionDeclaration.pragmas) {
+    override fun toString(): String {
+        return "errordomain $typeName"
+    }
+}
+
+
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, CharRange, Any, Bind, Compiler, Nothing, Exception, Null, UnknownGeneric
+    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, CharRange, Any, Bind, Compiler, Nothing, Null, UnknownGeneric,
+//    NotResolved
 }

@@ -488,6 +488,28 @@ fun createRangeProtocols(
     return mutableMapOf(protocol.name to protocol)
 }
 
+fun createExceptionForCustomErrors(
+    selfType: Type.Union,
+): MutableMap<String, Protocol> {
+
+    val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+
+    val protocol = Protocol(
+        name = "core",
+        unaryMsgs = mutableMapOf(
+            createUnary("throw", nothingType).emit("(throw $0)").also { it.second.addError(selfType) }
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+//            createKeyword(KeywordArg("addSuppressed", errorType), unitType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
+        )
+    )
+    return mutableMapOf(protocol.name to protocol)
+}
 
 fun createExceptionProtocols(
     errorType: Type.UserType,
@@ -500,13 +522,14 @@ fun createExceptionProtocols(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
+            createUnary("throw", nothingType).emit("(throw $0)")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType),
+            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
         )
     )
     return mutableMapOf(protocol.name to protocol)
@@ -595,8 +618,6 @@ fun createListProtocols(
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", mutListType),
             createUnary("sum", mutListType),
-
-
             ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -613,6 +634,7 @@ fun createListProtocols(
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("atOrNull", intType), Type.NullableType(itType)).rename("getOrNull"),
             createKeyword(KeywordArg("removeAt", intType), unitType),
+            createKeyword(KeywordArg("remove", itType), unitType),
             createKeyword(KeywordArg("contains", itType), unitType),
             createKeyword(KeywordArg("addAll", mutListType), boolType),
             createKeyword(KeywordArg("drop", intType), mutListType),
@@ -694,6 +716,7 @@ fun createListProtocols(
                 ),
                 itType
             ),
+
             // partition, fun <T> Iterable<T>.partition(predicate: (T) -> Boolean): Pair<List<T>, List<T>>
             createKeyword(
                 "partition",
@@ -710,6 +733,7 @@ fun createListProtocols(
             ),
             // sumOf, fun <T> Iterable<T>.sumOf(selector: (T) -> Int): Int
             createSumOf(itType),
+            createFind(itType, boolType),
 
             createKeyword(
                 "viewFromTo",
@@ -747,6 +771,26 @@ fun createSumOf(itType: Type) =
         ),
         itType
     )
+
+fun createFind(itType: Type, boolType: Type): Pair<String, KeywordMsgMetaData> {
+
+    val nullableIfNeeded = if (itType is Type.NullableType) itType else Type.NullableType(itType)
+
+    return createKeyword(
+        "find",
+        listOf(
+            KeywordArg(
+                "find",
+                Type.Lambda(
+                    mutableListOf(KeywordArg("predicate", itType)),
+                    boolType
+                )
+            )
+        ),
+        nullableIfNeeded
+    )
+}
+
 
 
 
