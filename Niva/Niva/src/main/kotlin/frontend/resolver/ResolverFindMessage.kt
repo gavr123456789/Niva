@@ -5,6 +5,7 @@ import frontend.resolver.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
+import main.frontend.parser.types.ast.MessageSend
 import main.utils.CYAN
 import main.utils.GlobalVariables
 import main.utils.PURP
@@ -61,6 +62,61 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
     return findAnyMethod(anyType, selectorName, pkg, kind)
 }
 
+fun checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
+    val errors = receiverType.errors ?: return null
+    // y = 4 sas ifErrorDo: [5]
+    // y is not errored now
+
+    // y = | 4 sas
+    // | Int => ...?? // can be used if this is statement
+    // | Error1 => 4
+    // | Error2 => 6
+
+    val returnTypeWithoutErrors = receiverType.copyAnyType()
+        .also { it.errors = null }
+
+    val ifErrorKW = { returnTypeWithoutErrors: Type, rootTypeOfAllErrors: Type.UnionRootType ->
+        (createKeyword(
+            "ifError",
+            listOf(
+                KeywordArg(
+                    "ifError",
+                    Type.Lambda(
+                        mutableListOf(KeywordArg("it", rootTypeOfAllErrors)),
+                        returnTypeWithoutErrors
+                    )
+                ),
+            ),
+            returnTypeWithoutErrors
+        ).emitKw("try {\n    $0\n} catch (it: Throwable) $1"))
+    }
+
+    val createUnionOfErrorsInCurrentScope = {
+        val w = Type.UnionRootType(
+            branches = errors.toList(),
+            name = "ErrorsOfTheScope",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(KeywordArg("message", Resolver.defaultTypes[InternalTypes.String]!!)),
+            pkg = pkg.packageName,
+//            protocols = mutableMapOf(
+//                "error" to Protocol(
+//                    name = "error",
+//                    keywordMsgs = mutableMapOf(ifErrorKW(returnTypeWithoutErrors))
+//                )
+//            ),
+            isError = true
+        )
+        w
+    }
+
+    return when (selectorName) {
+        "ifError" -> {
+            ifErrorKW(returnTypeWithoutErrors, createUnionOfErrorsInCurrentScope()).second
+        }
+        else -> null
+    }
+}
+
 fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
     val unknownGenericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
     return findAnyMethod(unknownGenericType, selectorName, pkg, kind)
@@ -95,7 +151,7 @@ fun Resolver.findStaticMessageType(
     if (selectorName == "new" && receiverType is Type.UserLike) {
         if (receiverType.fields.isEmpty()) {
             // u cant instantiate Root union
-            if (receiverType is Type.UserUnionRootType) {
+            if (receiverType is Type.UnionRootType) {
                 token.compileError("You can't instantiate root of the union(${YEL}$receiverType${RESET})")
             }
 
@@ -131,16 +187,48 @@ fun Resolver.findAnyMsgType(
 ): MessageMetadata {
 
     val pkg = getCurrentPackage(token)
-    val result = findAnyMethod(receiverType, selectorName, pkg, msgType)
-    if (result != null)
-        return result
+    findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
+        return it
+    }
 
-    recursiveSearch(receiverType, selectorName, pkg, msgType)?.let { return it }
+    recursiveSearch(receiverType, selectorName, pkg, msgType)?.let {
+        return it
+    }
+
+
     checkForAny(selectorName, pkg, msgType)?.let {
         return it
     }
     checkForT(selectorName, pkg, msgType)?.let {
         it.forGeneric = true
+        return it
+    }
+
+    checkForError(receiverType, selectorName, pkg)?.let {
+
+        // remove one decl
+        val resolvingMsgDecl = this.resolvingMessageDeclaration
+        val msg = if (stack.isNotEmpty()) this.stack.last() else null
+
+        if (resolvingMsgDecl != null && msg is MessageSend) {
+            // TODO тут можно судить просто по наличию у msg.receiver.type.errors
+            if (msg.receiver is MessageSend) {
+                msg.receiver.messages.forEach { a ->
+                    val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.first == a }
+                    if (b != null) {
+                        resolvingMsgDecl.stackOfPossibleErrors.remove(b)
+                        // нада еще ремувить из мсг фром дб
+                        // найти метадату текущей резолв функции
+//                        val metaData = resolvingMsgDecl.findMetadata(this).errors
+//
+//                        metaData?.removeAll(b.second)
+                    }
+                }
+            } else if (msg.receiver.type?.errors != null) {
+
+            }
+        }
+
         return it
     }
 

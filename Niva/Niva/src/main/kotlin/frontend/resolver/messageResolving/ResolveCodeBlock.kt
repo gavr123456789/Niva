@@ -227,7 +227,6 @@ fun Resolver.resolveCodeBlock(
         // find if it is a whileTrue or whileFalse than add an argument of type lambda to receiver
         if (receiverType is Type.Lambda && receiverType.args.isEmpty() &&
             (rootStatement.selectorName == "whileTrue" || rootStatement.selectorName == "whileFalse")
-
         ) {
             receiverType.args.add(
                 KeywordArg(
@@ -241,4 +240,22 @@ fun Resolver.resolveCodeBlock(
             )
         }
     }
+
+
+    if (type.args.isNotEmpty()) {
+        val firstArg = type.args.first().type
+        if (firstArg is Type.UnionRootType && firstArg.isError) {
+            resolvingMessageDeclaration?.also {
+                val metadata = it.findMetadata(this)
+                metadata.errors?.also {
+                    it.removeAll(firstArg.branches)
+                    if (it.isEmpty()) {
+                        // since error can be empty, it will mean that this func
+                        metadata.errors = null
+                    }
+                }
+            }
+        }
+    }
+
 }

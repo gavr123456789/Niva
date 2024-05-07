@@ -362,6 +362,11 @@ fun generateSingleKeyword(
                 dotAppend(this, withNullChecks)
             }
             append(keywordMsg.selectorName)
+
+            // Json::Person encode = Json.encode<Person>
+            if (receiver is IdentifierExpr && receiver.typeAST != null) {
+                append("<", receiver.typeAST.name, ">")
+            }
         }
 
         KeywordLikeType.Constructor -> {
@@ -383,7 +388,6 @@ fun generateSingleKeyword(
             }
         }
         KeywordLikeType.SetterImmutableCopy -> {
-
             // p age: 1
             // Person(age = 1, name = p.name)
             val valueArg = keywordMsg.args[0]
@@ -396,7 +400,6 @@ fun generateSingleKeyword(
             }
 
             val typeConstructor = receiverType.toKotlinString(true)
-
             val newValueAssign = ", ${valueArg.name} = ${valueArg.keywordArg.generateExpression()}"
 
             // all args except the changing one
@@ -405,12 +408,6 @@ fun generateSingleKeyword(
                 .joinToString{ "${it.name} = ${receiver.name}.${it.name}" } + newValueAssign
 
             append(typeConstructor, "(", args, ")")
-
-//            if (receiver is IdentifierExpr) {
-//                append(receiver.name, ".", valueArg.name, " = ")
-//            } else if (receiverIsDot) {
-//                append(valueArg.name, " = ")
-//            }
             return@buildString
         }
 
@@ -491,6 +488,7 @@ fun generateSingleUnary(
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
                 append(it.selectorName)
 
+                // Json::Person encode = Json.encode<Person>
                 if (receiver is IdentifierExpr && receiver.typeAST != null) {
                     append("<", receiver.typeAST.name, ">")
                 }

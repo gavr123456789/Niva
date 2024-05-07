@@ -10,6 +10,8 @@ import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Receiver
+import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAST
 
 @Suppress("unused")
 sealed class TypeDBResult {
@@ -18,10 +20,19 @@ sealed class TypeDBResult {
     class NotFound(val notFountName: String) : TypeDBResult()
 }
 
+class FieldNameAndParent(
+    val fieldName: String,
+    val parent: Type.UserLike,
+    var ast: TypeAST? = null, // ast is here only in complex types
+    val typeDeclaration: SomeTypeDeclaration
+)
+
 class TypeDB(
     val internalTypes: MutableMap<TypeName, Type.InternalType> = mutableMapOf(),
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
-    val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf()
+    val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
+    // name of the Missing Type to (parent type + field of parent name)
+    val unresolvedTypes: MutableMap<String, FieldNameAndParent> = mutableMapOf()
 )
 
 // getting
@@ -106,17 +117,17 @@ fun TypeDB.getTypeOfIdentifierReceiver(
     return w
 }
 
-// adding
+// region adding
 
 fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
+//        is Type.ErrorType -> addErrorDomain(realName, type, token)
         is Type.UserLike -> addUserLike(realName, type, token)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
-        is Type.NullableType, Type.RecursiveType -> TODO()
+        is Type.NullableType, Type.RecursiveType, is Type.UnresolvedType -> throw Exception("unreachable")
     }
-
 }
 
 fun TypeDB.addInternalType(typeName: TypeName, type: Type.InternalType) {
@@ -137,6 +148,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSE
         val listHasTypeWithThisName = list.find { it.name == type.name }
         if (listHasTypeWithThisName != null) {
             // check that their defined in different packages, if not than drop
+
             if (type.pkg == listHasTypeWithThisName.pkg) {
 //                println("typeDB: Type with name ${type.name} already defined in package ${type.pkg}")
 //                token.compileError("Type with name ${type.name} already defined in package ${type.pkg}")

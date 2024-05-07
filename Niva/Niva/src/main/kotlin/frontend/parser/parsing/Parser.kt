@@ -58,6 +58,10 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Union) {
         return unionDeclaration(pragmas)
     }
+    if (kind == TokenType.ErrorDomain) {
+        return errordomainDeclaration(pragmas)
+    }
+
 
     if (kind == TokenType.Constructor) {
         return constructorDeclaration(pragmas)

@@ -1,6 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.parser.types.ast.Pragma
+import main.frontend.meta.Token
 import main.utils.RESET
 import main.utils.WHITE
 import main.frontend.meta.TokenType
@@ -183,8 +184,14 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
     return fields
 }
 
-fun Parser.unionDeclaration(pragmas: MutableList<Pragma>): UnionRootDeclaration {
-    val unionTok = matchAssert(TokenType.Union, "")
+fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDeclaration {
+    val errordomainTok = step()
+    val union = unionDeclaration(pragmas, errordomainTok)
+    return ErrorDomainDeclaration(union)
+}
+
+fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed: Token? = null): UnionRootDeclaration {
+    val unionTok = firstTokAlreadyParsed ?: step()
     val unionName = dotSeparatedIdentifiers() ?: peek().compileError("name of the union expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)

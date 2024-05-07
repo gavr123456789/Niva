@@ -1,5 +1,6 @@
 package main.codogen
 
+import frontend.resolver.Type
 import main.frontend.parser.types.ast.*
 
 fun ControlFlow.If.generateIf(): String = buildString {
@@ -70,6 +71,14 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
         append(codegenKt(elseBranch, 0))
         append("}\n")
     } else {
+        // if this is switch on errors, we need fix kotlins exhaustive, because its possible to check it only on niva side
+        // (errors are effects, and set of them exist in current scope)
+        val switch = this@generateSwitch.switch
+        val type = switch.type
+        if (type is Type.Union && type.isError && this@generateSwitch.kind == ControlFlowKind.ExpressionTypeMatch) {
+            append("    else -> throw Exception(\"Compiler bug, non exhaustive switch on error, got \${$switch}\")")
+        }
+        // end of when
         append("}\n")
     }
 }

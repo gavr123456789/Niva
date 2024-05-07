@@ -47,10 +47,9 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is TypeAST.Lambda -> TODO()
             is TypeAST.UserType -> TODO()
 
-
-
             is NeedInfo -> createFakeToken().compileError("Compiler bug: u cant have ! expression inside code generation")
 
+            is ErrorDomainDeclaration -> TODO()
 
         }.addIndentationForEachString(indent)
     )

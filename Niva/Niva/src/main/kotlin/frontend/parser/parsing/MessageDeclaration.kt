@@ -286,8 +286,8 @@ fun Parser.methodBody(
 
 
 // Int sas ^ (-> Type)? =?
-fun Parser.isThereEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
-    if (isConstructor) return true
+fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
+    if (isConstructorOrOn) return true
 
     var isThereReturn = false
     var isThereEqual = false
@@ -374,7 +374,8 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
 
 fun Parser.checkTypeOfMessageDeclaration2(
     isConstructor: Boolean = false,
-    parseReceiver: Boolean = true
+    parseReceiver: Boolean = true,
+    on: Boolean = false // to skip return value if we have on in the start
 ): MessageDeclarationType? {
     val savepoint = current
     val t = peek()
@@ -386,17 +387,17 @@ fun Parser.checkTypeOfMessageDeclaration2(
     if (parseReceiver)
         identifierMayBeTyped()
 
-    if (tryUnary(isConstructor)) {
+    if (tryUnary(isConstructor )) {
         current = savepoint
         return MessageDeclarationType.Unary
     }
 
-    if (tryKeyword(isConstructor)) {
+    if (tryKeyword(isConstructor )) {
         current = savepoint
         return MessageDeclarationType.Keyword
     }
 
-    if (tryBinary(isConstructor)) {
+    if (tryBinary(isConstructor )) {
         current = savepoint
         return MessageDeclarationType.Binary
     }
@@ -445,7 +446,7 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
         val pragmas = if (check("@")) pragmas() else mutableListOf()
         pragmas.addAll(pragmasForExtend)
         matchAssert(TokenType.On)
-        val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false, on = true)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
 
         val msgDecl = messageDeclaration(isItMsgDeclaration, pragmas, forTypeAst)

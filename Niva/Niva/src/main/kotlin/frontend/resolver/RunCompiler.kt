@@ -10,6 +10,7 @@ import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.utils.CYAN
 import main.utils.RESET
+import main.utils.WHITE
 import main.utils.YEL
 import main.utils.infoPrint
 import java.io.File
@@ -52,12 +53,60 @@ fun Resolver.resolve(mainFile: File) {
     changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
 
 
+    val resolveUnresolved = {
+        if (typeDB.unresolvedTypes.isNotEmpty() ) { // && i != 0
+            val iterator = typeDB.unresolvedTypes.iterator()
+            while (iterator.hasNext()) {
+                val (a, b) = iterator.next()
+
+                val resolvedFromDifferentFileType = getAnyType(a, mutableMapOf(), mutableMapOf(), null)
+                if (resolvedFromDifferentFileType != null) {
+                    val fieldToRemove = b.parent.fields.first { it.name == b.fieldName }
+
+
+                    val ast = b.ast
+                    val realType = if (ast != null) {
+                        ast.toType(typeDB, typeTable)
+                    } else resolvedFromDifferentFileType
+                    // remove field with placeholder, and replace type to real type inside placeholder
+                    // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
+//                    fieldToRemove.type = realType
+
+                    b.typeDeclaration.fields.first { it.name == b.fieldName }.type = realType
+                    b.parent.fields.remove(fieldToRemove)
+
+                    b.parent.fields.add(
+                        KeywordArg(
+                            name = b.fieldName,
+                            type = realType
+                        )
+                    )
+                    iterator.remove()
+                }
+            }
+        }
+    }
+
     resolveDeclarationsOnly(mainAST)
-    otherASTs.forEach {
+    resolveUnresolved()
+    otherASTs.forEachIndexed { i, it ->
         // create package
         changePackage(it.first, fakeTok)
         statements = it.second.toMutableList()
         resolveDeclarationsOnly(it.second)
+        resolveUnresolved()
+    }
+
+    if (typeDB.unresolvedTypes.isNotEmpty()) {
+
+        fakeTok.compileError(buildString {
+            append("These types remained unrecognized after checking all files: \n")
+            typeDB.unresolvedTypes.forEach { (a, b) ->
+                // "| 11 name:  is unresolved"
+                append("| ", b.ast?.token?.line ?: "")
+                append(WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".", b.parent.name, RESET, "\n")
+            }
+        })
     }
 
     // unresolved methods that contains unresolved types in args, receiver or return
@@ -103,7 +152,9 @@ fun Resolver.resolve(mainFile: File) {
     currentPackageName = mainFile.nameWithoutExtension
 
     // main args
+    resolvingMainFile = true
     resolve(mainAST, createArgsFromMain())
+    resolvingMainFile = false
 
     otherASTs.forEach {
         currentPackageName = it.first

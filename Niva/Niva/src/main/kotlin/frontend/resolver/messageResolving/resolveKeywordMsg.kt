@@ -57,7 +57,7 @@ fun Resolver.resolveKeywordMsg(
         val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
         if (isThisConstructor) {
 
-            if (keywordReceiverType is Type.UserUnionRootType) {
+            if (keywordReceiverType is Type.UnionRootType) {
                 statement.token.compileError("You can't instantiate Union root: $YEL${keywordReceiverType.name}")
             }
             // check if custom
@@ -221,7 +221,8 @@ fun Resolver.resolveKeywordMsg(
 
 
         val findKwForLambda = {
-            val possibleKWName = statement.args.first().name + statement.args.drop(1).joinToString("") { it.name.capitalizeFirstLetter() }
+            val possibleKWName = statement.args.first().name + statement.args.drop(1)
+                .joinToString("") { it.name.capitalizeFirstLetter() }
             var result: KeywordMsgMetaData? = null
             if (aliasToLambda != null) {
                 if (receiverType.alias == null) {
@@ -238,12 +239,13 @@ fun Resolver.resolveKeywordMsg(
         }
         val kw: KeywordMsgMetaData? = findKwForLambda()
 
-        val realArgs = if (aliasToLambda != null && receiverArgs.isNotEmpty() && aliasToLambda.args.isNotEmpty() && receiverArgs.first().name == aliasToLambda.args.first().name)
-            aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
-        else if (kw != null) {
-            kw.argTypes     // kw message declared for lambda alias
-        } else
-            receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
+        val realArgs =
+            if (aliasToLambda != null && receiverArgs.isNotEmpty() && aliasToLambda.args.isNotEmpty() && receiverArgs.first().name == aliasToLambda.args.first().name)
+                aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
+            else if (kw != null) {
+                kw.argTypes     // kw message declared for lambda alias
+            } else
+                receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
 
         statement.args.forEachIndexed { ii, it ->
             // name check
@@ -253,7 +255,7 @@ fun Resolver.resolveKeywordMsg(
             }
             // type check
             val isTypesEqual =
-                compare2Types(it.keywordArg.type!!, realArgs[ii].type, it.keywordArg.token)
+                compare2Types(realArgs[ii].type, it.keywordArg.type!!, it.keywordArg.token)
             if (!isTypesEqual) {
                 statement.token.compileError(
                     "Arg: $WHITE${it.keywordArg}$RESET::$YEL${it.keywordArg.type}$RESET for $WHITE${it.name}$RESET is not valid, $YEL${realArgs[ii].type}$RESET expected, $WHITE${statement.receiver.str}${RESET} has signature: $YEL${receiverType.args.map { it.type }}"
@@ -370,7 +372,6 @@ fun Resolver.resolveKeywordMsg(
                 resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
             } else receiverType
-
         }
 
         KeywordLikeType.Setter -> {
@@ -384,7 +385,6 @@ fun Resolver.resolveKeywordMsg(
                 }
                 statement.type = Resolver.defaultTypes[InternalTypes.Unit]
             }
-
         }
 
         KeywordLikeType.SetterImmutableCopy -> {
@@ -407,11 +407,9 @@ fun Resolver.resolveKeywordMsg(
                 val previousStatement = stack[stack.count() - 2]
                 when (previousStatement) {
                     is VarDeclaration, is MessageSend, is CodeBlock, is Assign -> {}
-
                     else -> println(errorText)
                 }
             } else println(errorText)
-
         }
 
         // Custom constructor has no difference from Keyword message
@@ -441,12 +439,9 @@ fun Resolver.resolveKeywordMsg(
                         "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
                     )
                 }
-
             }
 
-
             val returnTypeFromDb = msgTypeFromDB.returnType
-
             val returnType2 =
                 resolveReturnTypeIfGeneric(returnTypeFromDb, letterToTypeFromReceiver, receiverGenericsTable)
 
@@ -457,12 +452,14 @@ fun Resolver.resolveKeywordMsg(
                 ) else returnType2
 
             statement.type = returnType
+            addErrorEffect(msgTypeFromDB, returnType, statement)
         }
 
         KeywordLikeType.ForCodeBlock -> {
             throw Exception("We can't reach here, because we do early return")
         }
     }
+
 
 }
 
@@ -503,7 +500,6 @@ fun Resolver.resolveKwArgs(
     if (!filterCodeBlock && letterToRealType != null) {
 
         codeBlockArgs.forEach {
-
             val typeFromDb = mapOfArgToDbArg[it]
             if (typeFromDb != null && typeFromDb is Type.Lambda) {
                 // add types to known args

@@ -133,7 +133,7 @@ x sas
 
     @Test
     fun keywords() {
-        checkWithEnd("true false type union constructor", listOf(True, False, Type, Union, Constructor))
+        checkWithEnd("true false type union constructor errordomain", listOf(True, False, Type, Union, Constructor, ErrorDomain))
     }
 
     @Test

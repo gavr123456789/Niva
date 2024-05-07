@@ -9,6 +9,7 @@ import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ControlFlow
 import main.frontend.parser.types.ast.ControlFlowKind
 import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
@@ -1232,7 +1233,7 @@ class ParserTest {
             = []
             Ште from::Int to::String = []
             
-            Int + x::int = []
+            Int + x::Int = []
             Int unary -> Int = []
             
         """.trimIndent()
@@ -1790,7 +1791,51 @@ class ParserTest {
         assertTrue { e.mutable }
     }
 
+    @Test
+    fun errorAST_Type() {
+        val source = """
+        x::Int!Error = 1
+        x::Int!{Error1 Error2 } = 1
+        x::Int! = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        val q = ((ast[0] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
+        val w = ((ast[1] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
+        val e = ((ast[2] as VarDeclaration).valueTypeAst!!) as TypeAST.UserType
 
+        assertTrue { q.errors!!.count() == 1 }
+        assertTrue { w.errors!!.count() == 2 }
+        assertTrue { e.errors!!.count() == 0 }
+
+
+    }
+
+    @Test
+    fun errordomain() {
+        val source = """
+            errordomain MyError =
+            | Error1 x: Int
+            | Error2 x: Int
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0]
+        assertTrue {q is ErrorDomainDeclaration}
+    }
+
+    //TODO
+//    @Test
+//    fun onWithNoReturnType() {
+//        val source = """
+//          extend AdwRow [
+//            on addPrefix::Widget
+//            on addSuffix::Widget
+//          ]
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
 }
 

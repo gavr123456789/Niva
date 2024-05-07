@@ -22,7 +22,6 @@ On Windows double click on compile.bat, to run `.\Niva .\main.scala`
 ### JVM
 1) `sh compile.sh jvm`  
 2) run compiler from bin folder
-You will get 
 ### Native
 1) install graalvm `yay -S jdk21-graalvm-bin` and set it default: `sudo archlinux-java set java-21-graalvm` on Arch, `nix shell nixpkgs#graalvm-ce` on nix   
 2) `sh compile.sh bin`  
@@ -30,12 +29,11 @@ You will get
 
 Niva can eat .niva and .scala files, because Scala highlight fits well for Niva :3  
 if you are using Visual Studio Code, install "Scala Syntax" ext.  
-`./niva main.scala` - compile and run  
-
-`Project target: "linux" mode: "debug"` inside code will change backend to native
-`./niva main.scala -с` - compile only, will create binary for native target and jar for jvm
-`./niva main.scala -i > info.md` - will generate info about all code base of the projects, `-iu` - only user defined files
-
+`./niva main.niva` - compile and run  
+`./niva main.niva -с` - compile only, will create binary for native target and fat-jar for jvm
+`./niva main.niva -i > info.md` - will generate info about all code base of the projects, `-iu` - only user defined files
+`./niva run` - run all files in current folder with main.niva as entry point
+`./niva build` - same but compile only
 
 
 
