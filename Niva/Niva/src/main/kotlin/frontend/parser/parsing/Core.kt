@@ -63,6 +63,11 @@ fun Parser.error(message: String): Nothing {
 fun Parser.check(kind: TokenType, distance: Int = 0) =
     peek(distance).kind == kind
 
+
+fun Parser.checkIdentifier(distance: Int = 0) =
+    peek(distance).kind.let { it == TokenType.Identifier || it == TokenType.NullableIdentifier}
+
+
 fun Parser.check(kind: String, distance: Int = 0) =
     peek(distance).lexeme == kind
 

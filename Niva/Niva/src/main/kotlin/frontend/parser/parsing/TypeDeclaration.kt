@@ -2,15 +2,16 @@ package frontend.parser.parsing
 
 import frontend.parser.types.ast.Pragma
 import main.frontend.meta.Token
-import main.utils.RESET
-import main.utils.WHITE
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
 import main.utils.RED
+import main.utils.RESET
+import main.utils.WHITE
 import main.utils.YEL
+import sun.security.util.TlsChannelBinding.parseType
 
 fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     // type Person name: string generic age: int
@@ -27,14 +28,21 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     } else null
 
     // if type decl separated
-    val apostropheOrIdentWithColon = check(TokenType.Apostrophe) ||
-            (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2))
-    if (check(TokenType.EndOfLine) && apostropheOrIdentWithColon) {
-        step()
-    }
+//    val apostropheOrIdentWithColon = check(TokenType.Apostrophe) ||
+//            (check(TokenType.Identifier, 1) && check(TokenType.Colon, 2)) ||
+//            (check(TokenType.Identifier, 1) && check(TokenType.DoubleColon, 2)) ||
+//            (check(TokenType.Identifier, 1) && check(TokenType.DoubleColon, 2))
+//
+//    if (check(TokenType.EndOfLine) && apostropheOrIdentWithColon) {
+//        step()
+//    }
 
+    skipNewLinesAndComments()
+//    val typeFields = typeFields()
+    val typeFields2 = typeFieldsAndMessageDecl(typeName)
+    val typeFields = typeFields2.a
 
-    val typeFields = typeFields()
+    tree.addAll(typeFields2.b)
 
 
     val result = TypeDeclaration(
@@ -46,6 +54,7 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     if (genericTypeParam != null) {
         result.genericFields.add(genericTypeParam.lexeme)
     }
+
     return result
 }
 
@@ -182,6 +191,118 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
         )
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1) || check(TokenType.Apostrophe))
     return fields
+}
+
+
+class TypeFieldsAndMessageDecl(val a: MutableList<TypeFieldAST>, val b: MutableList<MessageDeclaration>)
+enum class KindOfTypeDecl {
+    Field, Unary, Binary, Keyword, Nope
+}
+
+fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
+    val fields = mutableListOf<TypeFieldAST>()
+    val messageDeclarations = mutableListOf<MessageDeclaration>()
+
+    if (checkEndOfLineOrFile() || check(TokenType.If)) {
+        skipNewLinesAndComments()
+        return TypeFieldsAndMessageDecl(mutableListOf(), mutableListOf())
+    }
+
+    val checker = {
+        // 1 qq: Q -> Field
+        // 4 qq::    -> Kw
+        // 5 qq: q:: -> Kw
+        // 2 aa = -> Unary
+        // 3 + -> Binary
+        when {
+            checkMany(TokenType.Identifier, TokenType.Colon) -> {
+                // 1
+                if (checkIdentifier(2))
+                    KindOfTypeDecl.Field
+                else
+                    peek(2).compileError("parsing error, field declaration expected(Identifier after :)")
+            }
+
+            check(TokenType.On) -> {
+                if (check(TokenType.Identifier, 1)) {
+                    // 5
+                    if (checkMany(TokenType.Colon, TokenType.Identifier, TokenType.DoubleColon, distance = 2)) {
+                        KindOfTypeDecl.Keyword
+                    }
+                    // 4
+                    else if (check(TokenType.DoubleColon, 2)) {
+                        KindOfTypeDecl.Keyword
+                    }
+                    // 2
+                    else if (check(TokenType.Assign, 2))
+                        KindOfTypeDecl.Unary
+                    else
+                        peek(2).also { it.compileError("Parsing error of kw or unary message declaration inside type declaration, but found $it") }
+                } // 3
+                else if (check(TokenType.BinarySymbol, 1))
+                    KindOfTypeDecl.Binary
+                else
+                    peek(1).compileError("parsing error of message declaration inside type declaration")
+
+            }
+
+            else -> KindOfTypeDecl.Nope
+//                    peek(2).compileError("parsing error of type declaration")
+        }
+
+
+    }
+
+
+val fakeTypeAst = TypeAST.UserType(typeName.lexeme, token = typeName)
+
+
+var q = checker()
+skipNewLinesAndComments()
+//    skipOneEndOfLineOrComments()
+while (q != KindOfTypeDecl.Nope) {
+    when (q) {
+        KindOfTypeDecl.Field -> {
+            val name = step()
+            step() // colon
+            val type = parseType()
+            fields.add(
+                TypeFieldAST(
+                    name = name.lexeme,
+                    typeAST = type,
+                    token = name,
+                    type = null
+                )
+            )
+        }
+
+        KindOfTypeDecl.Unary -> {
+            match(TokenType.On)
+            val u = unaryDeclaration(fakeTypeAst)
+            messageDeclarations.add(u)
+        }
+
+        KindOfTypeDecl.Binary -> {
+            match(TokenType.On)
+            val b = binaryDeclaration(fakeTypeAst)
+            messageDeclarations.add(b)
+        }
+
+        KindOfTypeDecl.Keyword -> {
+            match(TokenType.On)
+            val k = keywordDeclaration(fakeTypeAst)
+            messageDeclarations.add(k)
+        }
+
+        KindOfTypeDecl.Nope -> TODO()
+    }
+    skipNewLinesAndComments()
+
+    q = checker()
+
+}
+
+return TypeFieldsAndMessageDecl(fields, messageDeclarations)
 }
 
 fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDeclaration {

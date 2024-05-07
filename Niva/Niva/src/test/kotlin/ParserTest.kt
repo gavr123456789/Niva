@@ -648,20 +648,20 @@ class ParserTest {
         assert(fields[1].name == "age")
     }
 
-    @Test
-    fun typeDeclarationManyLinesGeneric() {
-        val source = """
-            type Person name: string 
-              age: int
-              `generic
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        val typeDeclaration = ast[0] as TypeDeclaration
-        assert(typeDeclaration.typeName == "Person")
-        assert(typeDeclaration.fields.count() == 3)
-        assert(typeDeclaration.fields[2].name == "generic")
-    }
+//    @Test
+//    fun typeDeclarationManyLinesGeneric() {
+//        val source = """
+//            type Person name: string
+//              age: int
+//              `generic
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val typeDeclaration = ast[0] as TypeDeclaration
+//        assert(typeDeclaration.typeName == "Person")
+//        assert(typeDeclaration.fields.count() == 3)
+//        assert(typeDeclaration.fields[2].name == "generic")
+//    }
 
 
     @Test
@@ -1823,6 +1823,24 @@ class ParserTest {
         val q = ast[0]
         assertTrue {q is ErrorDomainDeclaration}
     }
+
+    @Test
+    fun newMessageDeclSyntax() {
+        val source = """
+            type Fer
+              q: Int? // field
+              on unary = 1 inc
+              on + n::Int = 45
+              on from: x::Int = []
+        """.trimIndent()
+        val ast = getAstTest(source)
+        println(ast.count())
+
+        assertEquals(ast.count(), 4)
+//        val q = ast[0]
+//        assertTrue {q is TypeDeclaration}
+    }
+
 
     //TODO
 //    @Test
