@@ -428,6 +428,13 @@ fun Parser.checkEndOfLineOrFile(i: Int = 0) =
 fun Parser.skipOneEndOfLineOrComment() =
     match(TokenType.EndOfLine) || match(TokenType.Comment)
 
+fun Parser.skipOneEndOfLineOrComments() = {
+    var wasComments = false
+    while (match(TokenType.Comment)) { wasComments = true }
+    if (!wasComments){
+        match(TokenType.EndOfLine)
+    }
+}
 
 fun Parser.skipNewLinesAndComments() {
     while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {

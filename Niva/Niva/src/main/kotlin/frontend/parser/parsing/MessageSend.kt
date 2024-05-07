@@ -290,14 +290,20 @@ fun Parser.messageSend(
     val isReceiverUnaryOrBinaryOrCodeBlock =
         receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
-
+    val savepoint = current
     return when {
         isReceiverUnaryOrBinaryOrCodeBlock && isNextKeyword -> {
             keyword(receiver)
         }
 
         isNextKeyword -> {
-            keyword(receiver)
+            val q = keyword(receiver)
+
+            if (check(TokenType.Assign)) {
+                current = savepoint
+                MessageSendUnary(receiver, listOf(), token = receiver.token)
+            } else
+                q
         }
 
         !isNextKeyword && (receiver is MessageSendBinary) -> {
@@ -305,11 +311,7 @@ fun Parser.messageSend(
         }
 
         else -> {
-            MessageSendUnary(
-                receiver,
-                listOf(),
-                token = receiver.token
-            )
+            MessageSendUnary(receiver, listOf(), token = receiver.token)
         }
     }
 }

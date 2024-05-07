@@ -46,10 +46,28 @@
 //1 sus
 
 
-union Sas = Sus | Sos
+type Fer
+    field: Int
+    on unary = 1 inc
+    // std
+    on unary2 = 2 inc
 
-Int kek::Boolean = | kek
-| true => Sus new
-| false => Sos new
+Доа
+
+f = Fer field: 42
+f unary echo
+f unary2 echo
 
 
+//type Fer
+//    q: Int // field
+//    unary = q inc
+//    from: x::Int = x inc inc
+//    + n::Int = q + n
+
+
+//f = Fer q: 4
+//
+//f unary q echo
+//f + 5 |> q echo
+//f from: 5 |> echo
