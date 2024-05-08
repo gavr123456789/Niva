@@ -1829,6 +1829,7 @@ class ParserTest {
         val source = """
             type Fer
               q: Int? // field
+              w: [ -> ] // lambda
               on unary = 1 inc
               on + n::Int = 45
               on from: x::Int = []

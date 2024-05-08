@@ -17,8 +17,6 @@ I haven't decided on the final name yet, so far I've chosen niva because my 2 fa
 P.S. u can find binary releases in the releases  
 After running compile.sh you will get niva_compiler folder that contains jvm or native binary.  
 
-On Windows double click on compile.bat, to run `.\Niva .\main.scala`
-
 ### JVM
 1) `sh compile.sh jvm`  
 2) run compiler from bin folder
@@ -27,19 +25,18 @@ On Windows double click on compile.bat, to run `.\Niva .\main.scala`
 2) `sh compile.sh bin`  
 ### Usage
 
-Niva can eat .niva and .scala files, because Scala highlight fits well for Niva :3  
-if you are using Visual Studio Code, install "Scala Syntax" ext.  
-`./niva main.niva` - compile and run  
-`./niva main.niva -с` - compile only, will create binary for native target and fat-jar for jvm
-`./niva main.niva -i > info.md` - will generate info about all code base of the projects, `-iu` - only user defined files
-`./niva run` - run all files in current folder with main.niva as entry point
-`./niva build` - same but compile only
+Niva can eat .niva and .scala files, because Scala highlight fits well for Niva :3
+`niva main.niva` - compile and run  
+`niva main.niva -с` - compile only, will create binary for native target and fat-jar for jvm
+`niva main.niva -i > info.md` - will generate info about all code base of the projects, `-iu` - only user defined files
+`niva run` - run all files in current folder with main.niva as entry point
+`niva build` - produce binary
 
-
+[VS Code plugin](https://github.com/gavr123456789/niva-vscode-bundle) for syntax highlighting
 
 # Core
 
-Almost everything in this lang is message sending(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses). 
+Almost everything in this lang is message send(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses). 
 
 #### Hello world
 Everything is sending a message to an object. 
@@ -53,19 +50,19 @@ You can send as many messages as you want
 // 12
 ```
 
-Okey, but what if the message has some arguments?  
+Okay, but what if the message has some arguments?  
 Just separate them with colons, this is called a keyword message:  
 ```Scala
 obj message: argument
 
-1 to: 5 // oh we just created ranges
+1 to: 5 // oh, we just created nice range syntax
 ```
 And what about many arguments?  
 Easy  
 ```Scala
 1 to: 5 do: [ it echo ] // 1 2 3 4 5
 ```
-aand we dont need things like hardcoded for/while/do_while loops in language anymore, the second argument here is a code block.
+aand we don't need things like hardcoded for/while/do_while loops in language anymore, the second argument here is a code block.
 
 Here some more examples:
 ```Scala

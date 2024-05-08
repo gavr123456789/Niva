@@ -1162,7 +1162,7 @@ class Resolver(
             pkg = "core",
         )
 
-        fun addCustomTypeToDb(type: Type.UserType, protocols: MutableMap<String, Protocol>) {
+        fun addCustomTypeToDb(type: Type.UserLike, protocols: MutableMap<String, Protocol>) {
             type.protocols.putAll(
                 protocols
             )
@@ -1352,13 +1352,29 @@ class Resolver(
 //        commonProject.packages["kotlin"] = kotlinPkg
 
         /// add Error
-        val errorType = Type.UserType(
+
+        /// ERROR TYPE
+        val errorRootType = Type.UnionRootType(
+            name = "ErrorRoot",
+            typeArgumentList = listOf(),
+            fields = mutableListOf(),
+            pkg = "core",
+            isError = true,
+            branches = listOf()
+        )
+
+        val errorType = Type.UnionBranchType(
             name = "Error",
             typeArgumentList = listOf(),
-            fields = mutableListOf(), //mutableListOf(KeywordArg("message", stringType)),
+            fields = mutableListOf(),
             pkg = "core",
+            isError = true,
+            root = errorRootType
         )
+        errorRootType.branches = listOf(errorType)
+
         errorType.isBinding = true
+        ///
 
         addCustomTypeToDb(
             errorType, createExceptionProtocols(
