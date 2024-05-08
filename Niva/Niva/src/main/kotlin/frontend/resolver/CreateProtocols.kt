@@ -505,31 +505,36 @@ fun createExceptionForCustomErrors(
 //            createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
+            throwWithMessageGenerate(stringType, nothingType),
         )
     )
     return mutableMapOf(protocol.name to protocol)
 }
 
+fun throwWithMessageGenerate(stringType: Type, nothingType: Type) =
+    createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)")
+
 fun createExceptionProtocols(
-    errorType: Type.UserType,
+    errorType: Type.UnionBranchType,
     unitType: Type.InternalType,
     nothingType: Type.InternalType,
     stringType: Type.InternalType
 ): MutableMap<String, Protocol> {
+    val nothingTypeWithError = nothingType.copyAnyType().also { it.errors = mutableSetOf(errorType) }
+
 
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
-            createUnary("throw", nothingType).emit("(throw $0)")//.also { it.second.errors.add() }
+            createUnary("throw", nothingTypeWithError).emit("(throw $0)")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)"),
+            throwWithMessageGenerate(stringType, nothingTypeWithError).also { it.second.errors = mutableSetOf(errorType) },
         )
     )
     return mutableMapOf(protocol.name to protocol)

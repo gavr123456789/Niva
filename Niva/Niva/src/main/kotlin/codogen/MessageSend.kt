@@ -37,10 +37,13 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")
     }
 
-    b.append("(".repeat(messages.count { it.isPiped }))
-
     val isThisACascade =
-        messages.find { it.isCascade } != null //.count() > 1 && messages[0].receiver == messages[1].receiver
+        messages.find { it.isCascade } != null
+
+    if (!isThisACascade)
+        b.append("(".repeat(messages.count { it.isPiped }))
+
+
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
@@ -51,7 +54,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
-        var newInvisibleArgs: List<String>? = null//mutableListOf()
+        var newInvisibleArgs: List<String>? = null
 
         var isThereEmitPragma = false
         // TODO replace pragmas with unions and switch on them
@@ -76,18 +79,23 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
             if (newInvisibleArgs?.isNotEmpty() == true) {
                 it.token.compileError("You cant combine Compiler with emit pragma")
             }
-
             b.append(it.selectorName)
         } else {
             if (isThisACascade) {
                 // send with i + 1, to not trigger the receiver generation
-                generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
-                b.append("; \n")
+                if (!it.isPiped)
+                    generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
+                else {
+//                    val i2 = if (messages[i-1].isPiped) i else 0
+                    generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
+                }
+
+                b.append("\n")
             } else
                 generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
         }
 
-        if (it.isPiped)
+        if (it.isPiped && !isThisACascade)
             b.append(")")
     }
 

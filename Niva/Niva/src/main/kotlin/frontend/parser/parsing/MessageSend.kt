@@ -297,13 +297,13 @@ fun Parser.messageSend(
         }
 
         isNextKeyword -> {
-            val q = keyword(receiver)
+            val kw = keyword(receiver)
 
             if (check(TokenType.Assign)) {
                 current = savepoint
                 MessageSendUnary(receiver, listOf(), token = receiver.token)
             } else
-                q
+                kw
         }
 
         !isNextKeyword && (receiver is MessageSendBinary) -> {
