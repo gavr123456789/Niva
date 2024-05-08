@@ -65,6 +65,9 @@ product: %TARGET%/app
 dependencies:
 //%IMPL%
 
+test-dependencies:
+  - org.jetbrains.kotlin:kotlin-test:1.9.20
+
 settings:
   kotlin:
     languageVersion: 2.0

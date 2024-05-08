@@ -963,7 +963,7 @@ class Resolver(
             createDefaultType(InternalTypes.Null),
 
             createDefaultType(InternalTypes.UnknownGeneric),
-//            createDefaultType(InternalTypes.NotResolved),
+            createDefaultType(InternalTypes.Test),
         )
 
         init {
@@ -978,6 +978,7 @@ class Resolver(
             val charRangeType = defaultTypes[InternalTypes.CharRange]!!
             val anyType = defaultTypes[InternalTypes.Any]!!
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
+            val test = defaultTypes[InternalTypes.Test]!!
 
 
 //            val nullType = defaultTypes[InternalTypes.Null]!!
@@ -1096,6 +1097,16 @@ class Resolver(
                 )
             )
 
+            test.protocols.putAll(
+                createTestProtocols(
+                    rangeType = charRangeType,
+                    boolType = boolType,
+                    itType = charType,
+                    unitType = unitType,
+                    any = anyType,
+                )
+            )
+
         }
 
     }
@@ -1111,9 +1122,11 @@ class Resolver(
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!
         val anyType = defaultTypes[InternalTypes.Any]!!
         val nothingType = defaultTypes[InternalTypes.Nothing]!!
+        val compiler = defaultTypes[InternalTypes.Compiler]!!
+        val test = defaultTypes[InternalTypes.Test]!!
+
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
-        val compiler = defaultTypes[InternalTypes.Compiler]!!
 
 
         /// Default packages

@@ -488,6 +488,42 @@ fun createRangeProtocols(
     return mutableMapOf(protocol.name to protocol)
 }
 
+
+fun createTestProtocols(
+    rangeType: Type.InternalType,
+    boolType: Type.InternalType,
+
+    itType: Type.InternalType,
+    unitType: Type.InternalType,
+    any: Type.InternalType,
+): MutableMap<String, Protocol> {
+
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+//            createUnary("echo", unitType),
+
+        ),
+        binaryMsgs = mutableMapOf(
+//            createBinary("==", rangeType, boolType),
+        ),
+        staticMsgs = mutableMapOf(
+            createKeyword(
+                KeywordArg(
+                    "assertTrue",
+                    Type.Lambda(
+                        mutableListOf(),
+                        boolType
+                    )
+                ),
+                unitType
+            ).emitKw("kotlin.test.assertTrue(block = $1)"),
+//            createKeyword(KeywordArg("assertTrue", itType), boolType).emitKw("kotlin.test.assertTrue $1")
+        ),
+    )
+    return mutableMapOf(protocol.name to protocol)
+}
+
 fun createExceptionForCustomErrors(
     selfType: Type.Union,
 ): MutableMap<String, Protocol> {
