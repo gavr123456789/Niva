@@ -55,12 +55,12 @@ class ParserTest {
 
     @Test
     fun varDeclWithTypeInfer() {
+
         val source = "x = 1"
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-
         val declaration: VarDeclaration = ast[0] as VarDeclaration
-        assert(declaration.name == "x")
+        kotlin.test.assertTrue(declaration.name == "x")
         assert(declaration.value.str == "1")
     }
 
