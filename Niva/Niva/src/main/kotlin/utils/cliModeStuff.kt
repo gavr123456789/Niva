@@ -3,6 +3,7 @@ package main.utils
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import java.io.File
+import kotlin.system.exitProcess
 
 enum class MainArgument {
     BUIlD,
@@ -12,7 +13,8 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DAEMON
+    DAEMON,
+    TEST
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -35,9 +37,11 @@ class ArgsManager(private val argsSet: Set<String>, private val args: Array<Stri
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 "dev" -> MainArgument.DAEMON
+                "test" -> MainArgument.TEST
                 else -> {
                     if (!File(firstArg).exists()) {
-                        createFakeToken().compileError("File $firstArg is not exist, to run full project use ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
+                        println(HELP)
+                        createFakeToken().compileError("There are no such command or File $firstArg is not exist, to run full project use ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
                     }
                     MainArgument.SINGLE_FILE_PATH
                 }
@@ -59,7 +63,7 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
 class PathManager(val args: Array<String>, mainArg: MainArgument) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
-    val pathWhereToGenerateKtAmper = pathToInfroProject / "src"
+    val pathWhereToGenerateKtAmper = pathToInfroProject // path before src or test
     val pathToGradle = pathToInfroProject / "build.gradle.kts"
     val pathToAmper = pathToInfroProject / "module.yaml"
 
@@ -67,7 +71,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
     val mainNivaFileWhileDev = File("examples" / "Main" / "main.niva")
     private val pathToTheMainExample = mainNivaFileWhileDev.absolutePath
 
-    private fun getPathToMain() =
+    private fun getPathToMain(): String =
         // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
         if (args.count() >= 2) {
             // first arg is run already
@@ -85,8 +89,11 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
                 mainNiva
             else if (File(mainScala).exists())
                 mainScala
-            else
-                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+            else {
+                println("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+                exitProcess(-1)
+//                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+            }
         }
 
 
@@ -99,7 +106,10 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
         MainArgument.USER_DEFINED_INFO_ONLY,
         MainArgument.BUIlD,
         MainArgument.DISRT,
-        MainArgument.DAEMON -> getPathToMain()
+        MainArgument.DAEMON,
+        MainArgument.TEST-> getPathToMain()
+
+
     }
 
     val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()

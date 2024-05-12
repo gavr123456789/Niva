@@ -1,52 +1,30 @@
+type Assert
 
-//
-//Int sas = [
-//    x = File readAll: "sas.txt"
-//    y = File readAll: "sas.txt"
-//] hasErrors: [
-//    | errors
-//    | FileReadError -> []
-//    | IOError -> []
-//]
-//
 
-//
-//errordomain MyError =
-//| Error1 text: String
-//| Error2 code: Int
-//
-//Int sas2 -> Int! = [
-//    x = Error2 code: 42
-//    x throw
-//    ^ this != 0 => x throw |=> 1
-//]
-//
-//Int sas -> Int!Error1 = [
-//    x = Error1 text: "Important error information ^_^"
-//    x throw
-//    ^ this != 0 => x throw |=> 1
-//]
-//
-//Int sus -> Int = [
-//
-//    y = 1 sas ifError: [
-//        "got some error!!!" echo
-//        | it
-//        | Error1 => it text echo
-//        42
-//    ]
-//    y echo
-//    ^3
-//]
-//
-//Int sus2 -> Int! = [
-//    ^5 sus
-//]
-//
-//1 sus
 
-Int sas = [
-  Test assertTrue: [
-    1 == 1
+constructor Assert that::Any equals::Any -> Unit! = [
+   a = Compiler getName: 1
+   b = Compiler getName: 2
+  that != equals => [
+    Error throwWithMessage: "Assertion failed: $a != $b ($that != $equals)"
   ]
 ]
+
+Assert that: 1 + 1 equals: 3
+
+1 echo
+
+//constructor Assert that::Any equals::Any -> Unit = [
+//  // a = Compiler getName: 1
+//  // b = Compiler getName: 2
+//
+//  that != equals => [
+//    Error throwWithMessage: "Assertion failed: $a != $b ($that != $equals)"
+//  ]
+//]
+
+//Int sas = [
+//  Test assertTrue: [
+//    1 == 1
+//  ]
+//]

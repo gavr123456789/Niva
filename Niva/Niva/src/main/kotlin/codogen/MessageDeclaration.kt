@@ -81,7 +81,7 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
         append(">")
     }
 
-    append(forTypeAst.generateType(false))
+    append(forTypeAst.generateType(generateGeneric = false))
 
     if (isStatic) {
         append(".Companion")
@@ -179,6 +179,9 @@ private fun returnTypeAndBodyPart(
     stringBuilder: StringBuilder
 ) {
     if (messageDeclaration.returnTypeAST != null) {
+        stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
+    } else {
+        // experimental infer return type
         stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
     }
     if (messageDeclaration.body.isEmpty()) {

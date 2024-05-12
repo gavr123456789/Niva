@@ -2,14 +2,19 @@
 
 package main.codogen
 
-import main.utils.addStd
-import main.utils.putInMainKotlinCode
 import frontend.resolver.CompilationTarget
 import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
+import frontend.resolver.Resolver
+import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.InternalTypes
+import main.frontend.parser.types.ast.MessageDeclaration
+import main.frontend.parser.types.ast.MessageDeclarationUnary
 import main.frontend.parser.types.ast.Statement
+import main.utils.addStd
 import main.utils.appendnl
+import main.utils.putInMainKotlinCode
 import main.utils.targetToRunCommand
 import java.io.File
 import java.nio.file.Path
@@ -81,7 +86,9 @@ settings:
 """
     }
 
-    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """kotlin {
+    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+kotlin {
     jvm {
         compilations {
             val main = getByName("main")
@@ -113,7 +120,7 @@ settings:
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
         "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
 
-    fun GRADLE_PANAMA() = """
+    fun GRADLE_OPTIONS() = """
 repositories {
     maven(url = "https://jitpack.io")
 }
@@ -130,6 +137,21 @@ tasks.withType(JavaExec::class.java) {
         "-Djava.library.path=/usr/lib64:/lib64:/lib:/usr/lib:/lib/x86_64-linux-gnu"
     )
 }
+
+allprojects {
+    tasks.withType(Test::class.java) {
+        testLogging {
+            exceptionFormat = TestExceptionFormat.FULL
+            showCauses = true
+
+            showExceptions = true
+            showStackTraces = false
+            showStandardStreams = true
+            events = setOf(TestLogEvent.PASSED , TestLogEvent.SKIPPED, TestLogEvent.FAILED, TestLogEvent.STANDARD_OUT, TestLogEvent.STANDARD_ERROR)
+        }
+    }
+}
+
 """
 }
 
@@ -150,7 +172,7 @@ fun GeneratorKt.regenerateGradleForAmper(
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
         append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
-        append(GRADLE_PANAMA())
+        append(GRADLE_OPTIONS())
     }
 
 
@@ -181,7 +203,7 @@ fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) 
     gradleFile.writeText(newGradle)
 }
 
-fun GeneratorKt.deleteAndRecreateKotlinFolder(path: File) {
+fun GeneratorKt.deleteAndRecreateFolder(path: File) {
     if (path.deleteRecursively()) {
         path.mkdir()
     } else {
@@ -211,7 +233,8 @@ fun GeneratorKt.addStdAndPutInMain(
 ) =
     buildString {
         append("package ${mainPkg.packageName}\n")
-        val code1 = ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
+        val code1 =
+            ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
         val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
@@ -219,16 +242,75 @@ fun GeneratorKt.addStdAndPutInMain(
     }
 
 
-fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Package>) {
+fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Package>, isTestsRun: Boolean) {
 //    val builder = StringBuilder()
-    notBindedPackages.forEach { v ->
+    val src = pathToSource / "src"
+
+    val pkgs1 = notBindedPackages//.filter { it.declarations.isNotEmpty() }
+
+    val testPackages = mutableMapOf<String, Package>()
+
+
+    val addIfAbsent = { pkgName: String, statement: Declaration, imports: MutableSet<String> ->
+        val q = testPackages[pkgName]
+        if (q != null) {
+            q.declarations.add(statement)
+        } else {
+            testPackages[pkgName] = Package(pkgName , declarations = mutableListOf(statement), imports = imports) // + "Test"
+        }
+    }
+
+    // move all declarations for Test to testDeclarations
+    val testType = Resolver.defaultTypes[InternalTypes.Test]!!
+    pkgs1.forEach {
+        val iter = it.declarations.iterator()
+        while (iter.hasNext()) {
+            val q = iter.next()
+            if (q is MessageDeclarationUnary && q.forType == testType) {
+                if (isTestsRun)
+                    addIfAbsent(it.packageName, q, it.imports)
+                iter.remove()
+            }
+        }
+    }
+
+
+    val generate = { v: Package ->
         val code = codegenKt(v.declarations, pkg = v)
         // generate folder for package
-        val folderForPackage = (pathToSource / v.packageName).toFile()
+        val folderForPackage = (src / v.packageName).toFile()
         folderForPackage.mkdir()
         // generate file with code
         createCodeKtFile(folderForPackage, v.packageName + ".kt", code)
     }
+
+
+    pkgs1.forEach { v ->
+        generate(v)
+    }
+
+    if (isTestsRun) {
+        val tests = pathToSource / "test"
+
+        val generateTest = { v: Package ->
+            val code = codegenKt(v.declarations, pkg = v, forTest = true)
+            // generate folder for package
+            val folderForPackage = (tests / v.packageName).toFile()
+            folderForPackage.mkdir()
+            // generate file with code
+            val codeInsideTestClass = buildString {
+                append(code)
+            }
+            createCodeKtFile(folderForPackage, v.packageName + ".kt", codeInsideTestClass)
+        }
+
+        testPackages.values.forEach { v ->
+            generateTest(v)
+        }
+    }
+
+
+
 
 }
 
@@ -249,73 +331,106 @@ fun GeneratorKt.generateKtProject(
     topLevelStatements: List<Statement>,
     compilationTarget: CompilationTarget,
     mainFileName: String, // using for binaryName
-    pathToInfroProject: String
+    pathToInfroProject: String,
+    isTestsRun: Boolean = false
 ) {
     val notBindPackages = mutableSetOf<Package>()
     val bindPackagesWithNeededImport = mutableSetOf<String>()
     val pkgNameToNeededImports = mutableMapOf<String, Set<String>>()
-
-    mainProject.packages.values.forEach {
-        if (it.isBinding ) {
-            if (it.neededImports.isNotEmpty()) {
-                bindPackagesWithNeededImport.add(it.packageName)
-                pkgNameToNeededImports[it.packageName] = it.neededImports
+    val imports = {
+        mainProject.packages.values.forEach {
+            if (it.isBinding) {
+                if (it.neededImports.isNotEmpty()) {
+                    bindPackagesWithNeededImport.add(it.packageName)
+                    pkgNameToNeededImports[it.packageName] = it.neededImports
+                }
+            } else
+                notBindPackages.add(it)
+        }
+        notBindPackages.forEach { pkg ->
+            // remove imports of empty packages from other packages
+            if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
+                notBindPackages.forEach { pkg2 ->
+                    pkg2.imports -= pkg.packageName
+                }
             }
 
-        } else
-            notBindPackages.add(it)
-    }
-    notBindPackages.forEach { pkg ->
-        // remove imports of empty packages from other packages
-        if (pkg.declarations.isEmpty() && pkg.packageName != MAIN_PKG_NAME) {
-            notBindPackages.forEach { pkg2 ->
-                pkg2.imports -= pkg.packageName
+            // if pkg1 imports some other pkg2 with needed imports, then add this imports to pkg1
+            val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
+            pkgsWithNeededImportsInCurrentImports.forEach {
+                pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
             }
         }
-
-        // if pkg1 imports some other pkg2 with needed imports, then add this imports to pkg1
-        val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
-        pkgsWithNeededImportsInCurrentImports.forEach {
-            pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
-        }
     }
+    imports()
 
 
     val path = File(pathToDotNivaFolder)
+    val pathToSrc = File("$pathToDotNivaFolder/src")
+    val pathToTests = File("$pathToDotNivaFolder/test")
     // 1 recreate pathToSrcKtFolder
-    deleteAndRecreateKotlinFolder(path)
+    deleteAndRecreateFolder(pathToSrc)
+    deleteAndRecreateFolder(pathToTests)
     // 2 generate Main.kt
     val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
 
     val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject)
-    createCodeKtFile(path, "Main.kt", mainCode)
+    createCodeKtFile(pathToSrc, "Main.kt", mainCode)
 
     // 3 generate every package like folders with code
-    generatePackages(path.toPath(), notBindPackages.toList())
+    generatePackages(path.toPath(), notBindPackages.toList(), isTestsRun)
 
 
     // 4 regenerate amper
     regenerateAmper(pathToAmper, compilationTarget)
-
     // 4 regenerate gradle
-    regenerateGradleForAmper(pathToGradle, runCommandName = targetToRunCommand(compilationTarget), compilationTarget,
-        mainFileName)
+    regenerateGradleForAmper(
+        pathToGradle, runCommandName = targetToRunCommand(compilationTarget), compilationTarget,
+        mainFileName
+    )
 }
 
-fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
+fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null, forTest: Boolean = false): String = buildString {
     if (pkg != null) {
 
         append("package ${pkg.packageName}\n\n")
         if (pkg.packageName != "core")
             append("import $MAIN_PKG_NAME.*\n")
+        if (forTest) {
+            append(
+                """
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+""")
+//            appendnl("import $it.*")
+
+        }
+
 
         append(pkg.generateImports())
 
     }
     val generator = GeneratorKt()
-    statements.forEach {
-        append(generator.generateKtStatement(it, indent), "\n")
+
+    if (forTest) {
+        append("class ", pkg!!.packageName, "{\n")
+        statements.forEach {
+            appendLine("@Test")
+            val md = it as MessageDeclaration
+            val qw = codegenKt(md.body, indent + 2)
+            append("fun ", md.name, "()", " {", "\n")
+//            val st = generator.generateKtStatement(it, indent)
+//            appendLine(st)
+            appendLine(qw)
+            append("    }")
+        }
+        append("\n}\n") // close class
+    } else {
+        statements.forEach {
+            appendLine(generator.generateKtStatement(it, indent))
+        }
     }
 
 }
