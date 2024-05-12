@@ -3,7 +3,9 @@ package main.utils
 import main.codogen.generateKtProject
 import frontend.resolver.*
 import inlineReplSystem.inlineReplSystem
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
 import java.lang.Error
 import kotlin.text.contains
 import kotlin.text.lowercase
@@ -35,14 +37,16 @@ object GlobalVariables {
 
 }
 
-fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
+fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runTests: Boolean = false) {
     val p = ProcessBuilder(this.split(" "))
         .directory(workingDir)
 
-    if (withOutputCapture) {
+    if (withOutputCapture && !runTests) {
         p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
+
+//    println("command: $this")
 
     val process = p.start()
 
@@ -56,8 +60,9 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
 
 
 //    var output = ""
-//    val inputStream = BufferedReader(InputStreamReader(process.inputStream))
-//    while ( process.isAlive) {
+//
+    val inputStream = BufferedReader(InputStreamReader(process.inputStream))
+//    while (process.isAlive) {
 //        inputStream.readLine()?.also { output = it } //!= null ||
 //        println(output)
 //    }
@@ -65,6 +70,21 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false) {
     ///
 
     process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
+    if (runTests) {
+        val first = "> Task :jvmTest"
+        val last = "> Task :allTests"
+
+        val w = inputStream.readText()
+
+        val j = w.substringAfterLast(first).substringBefore(last)
+        val l = j.replace("PASSED", "${GREEN}✅$RESET")
+        val u = l.replace("FAILED", "${RED}❌$RESET")
+            .replace("java.lang.Exception: ", "")
+
+        println(u)
+    }
+
+
 //    if (stillExist) process.destroy()
 //    inputStream.close()
 
@@ -85,20 +105,26 @@ class Compiler(
     private val mainNivaFileName: String,
     private val resolver: Resolver
 ) {
-    private fun cmd(dist: Boolean = false, buildFatJar: Boolean = false) = (if (!dist)
-        targetToRunCommand(compilationTarget)
-    else
-        when (compilationTarget) {
-            CompilationTarget.jvm -> if (buildFatJar) "fatJar" else "distZip"
-            CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
-            CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-        }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
+    // all false = run code, dist = zip, buildFatJar = single jar
+    private fun cmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
+        (if (!dist)
+            if (runTests)
+                "allTests"
+            else
+                targetToRunCommand(compilationTarget)
+        else
+            when (compilationTarget) {
+                CompilationTarget.jvm -> if (buildFatJar) "fatJar" else "distZip"
+                CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
+                CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
+            }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
 
 
-    fun run(
+    fun runCommand(
         dist: Boolean = false,
         buildFatJar: Boolean = false,
-        @Suppress("UNUSED_PARAMETER") singleFile: Boolean = false
+        singleFile: Boolean = false,
+        runTests: Boolean = false
     ) {
         // remove repl log file since it will be recreated
         val removeReplFile = {
@@ -117,13 +143,13 @@ class Compiler(
             warning("Release mode is useless with jvm target")
         }
 
-        val cmd = cmd(dist, buildFatJar)
-        val defaultArgs = "-q"// if not verbose --console=plain
+        val cmd = cmd(dist, buildFatJar, runTests)
+        val defaultArgs = if (runTests) "--warning-mode=none" else "-q"// if not verbose --console=plain
         (when (getOSType()) {
             CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat $defaultArgs $cmd"
             CurrentOS.LINUX, CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
 //            CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
-        }).runCommand(file, true)
+        }).runCommand(file, true, runTests)
 
         if (inlineReplPath.exists()) {
             if (compilationTarget == CompilationTarget.jvm) {
@@ -178,7 +204,8 @@ class Compiler(
 fun compileProjFromFile(
     pm: PathManager,
     compileOnlyOneFile: Boolean,
-    resolveOnly: Boolean = false
+    resolveOnly: Boolean = false,
+    tests: Boolean = false
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
     val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
@@ -217,7 +244,7 @@ fun compileProjFromFile(
         statements = mutableListOf()
     )
 
-    resolver.resolve(mainFile)
+    resolver.resolve(mainFile, tests)
 
     if (!resolveOnly) {
         val defaultProject = resolver.projects["common"]!!
@@ -230,7 +257,8 @@ fun compileProjFromFile(
             resolver.topLevelStatements,
             resolver.compilationTarget,
             mainFileName = mainFile.name,
-            pm.pathToInfroProject
+            pm.pathToInfroProject,
+            tests
         )
     }
     // printing all >?

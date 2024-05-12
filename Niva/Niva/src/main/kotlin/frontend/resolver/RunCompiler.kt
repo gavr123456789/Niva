@@ -25,7 +25,7 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 }
 
-fun Resolver.resolve(mainFile: File) {
+fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
         val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
@@ -169,6 +169,15 @@ fun Resolver.resolve(mainFile: File) {
     mainNivaPkg.imports += mainFilePkg.imports
     mainNivaPkg.concreteImports += mainFilePkg.concreteImports
 
+    if (isTestsRun) {
+        testRun()
+    }
+}
+
+fun Resolver.testRun() {
+    topLevelStatements = mutableListOf()
+
+//    TODO()
 }
 
 fun Resolver.printInfoFromCode() {

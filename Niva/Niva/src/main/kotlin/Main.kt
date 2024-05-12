@@ -28,7 +28,9 @@ fun lex(source: String, file: File): MutableList<Token> {
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/JSON/lexer.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
+//    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/a.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
+//    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
 
     if (help(args)) return
 
@@ -53,10 +55,10 @@ fun run(args: Array<String>) {
 
     // resolve all files!
     val resolver = try {
-        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH, tests = mainArg == MainArgument.TEST)
     } catch (e: CompilerError) {
         println(e.message)
-        exitProcess(0)
+        exitProcess(-1)
     }
     val secondTime = System.currentTimeMillis()
     am.time(secondTime - startTime, false)
@@ -77,13 +79,17 @@ fun run(args: Array<String>) {
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
 
     when (mainArg) {
-        MainArgument.BUIlD -> compiler.run(dist = true, buildFatJar = true)
-        MainArgument.DISRT -> compiler.run(dist = true)
+        MainArgument.BUIlD -> compiler.runCommand(dist = true, buildFatJar = true)
+        MainArgument.DISRT -> compiler.runCommand(dist = true)
         MainArgument.RUN ->
-            compiler.run()
+            compiler.runCommand()
 
-        MainArgument.SINGLE_FILE_PATH -> {
-            compiler.run(dist = am.compileOnly, singleFile = true)
+        MainArgument.TEST -> {
+            compiler.runCommand(runTests = true)
+        }
+
+            MainArgument.SINGLE_FILE_PATH -> {
+            compiler.runCommand(dist = am.compileOnly, singleFile = true)
         }
 
         MainArgument.INFO_ONLY ->
@@ -93,7 +99,7 @@ fun run(args: Array<String>) {
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
         MainArgument.RUN_FROM_IDEA -> {
-            compiler.run(dist = false, singleFile = true)
+            compiler.runCommand(dist = false, singleFile = true)
         }
 
         MainArgument.DAEMON -> {

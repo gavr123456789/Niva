@@ -62,7 +62,6 @@ fun Resolver.resolveMessageDeclaration(
         st.forTypeAst.typeArgumentList.forEach {
             val type = if (it.name.isGeneric()) Type.UnknownGenericType(it.name) else typeTable[it.name] //testing
 //                val testDB = typeDB.getType(it.name)
-
             if (type != null) {
                 newListOfTypeArgs.add(type)
             } else {
@@ -233,22 +232,21 @@ fun Resolver.resolveMessageDeclaration(
                 }
 
 
-                val declaredReturnType = st.returnType
+                val declaredReturnTypeOrFromReturnStatement = st.returnType
+                
                 mdgData.returnType = typeOfSingleExpr
-
-
                 st.returnType = typeOfSingleExpr
                 //!st.isRecursive && cant understand why recursive check was here
                 // ... because we cant infer type of recursive functions
-                if (!st.isRecursive && declaredReturnType != null && st.returnTypeAST != null) {
+                if (!st.isRecursive && declaredReturnTypeOrFromReturnStatement != null && st.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
-                    if (!compare2Types(typeOfSingleExpr, declaredReturnType, unpackNull = true, isOut = true))
-                        st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnType${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
-                    else if (mdgData.returnType != declaredReturnType) {
+                    if (!compare2Types(typeOfSingleExpr, declaredReturnTypeOrFromReturnStatement, unpackNull = true, isOut = true))
+                        st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnTypeOrFromReturnStatement${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
+                    else if (mdgData.returnType != declaredReturnTypeOrFromReturnStatement) {
                         // change return type to the declarated one, since they are compatible
                         // because it can be type Null returned from -> Int? msg, but it must be Int? in such case
-                        st.returnType = declaredReturnType
-                        mdgData.returnType = declaredReturnType
+                        st.returnType = declaredReturnTypeOrFromReturnStatement
+                        mdgData.returnType = declaredReturnTypeOrFromReturnStatement
                     }
                 }
             } else {
@@ -276,10 +274,15 @@ fun Resolver.resolveMessageDeclaration(
         return true
     }
 
+    if (st.returnTypeAST != null && st.returnType == null) {
+        st.returnType = st.returnTypeAST.toType(typeDB, typeTable)
+    }
 
+
+    val currentReturnType = st.returnType
     // addToDb
     if (addToDb) {
-        addNewAnyMessage(st, false, false, forType)
+        addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
     }
 
     val isResolvedSingleExpr = if(st.isSingleExpression) {
@@ -288,7 +291,16 @@ fun Resolver.resolveMessageDeclaration(
     } else false
     if (needResolveOnlyBody && !isResolvedSingleExpr) {
         resolveBody()
+        val newReturnType = st.returnType
+        // return type of expression changed after body resolved
+        if (newReturnType != null && newReturnType != currentReturnType) {
+            val msgData = findAnyMsgType(forType, st.name, st.token, st.getDeclType())
+            msgData.returnType = newReturnType
+            // change return type inside db
+        }
+
     }
+
 
     if (st is ConstructorDeclaration) {
         st.msgDeclaration.forType = st.forType

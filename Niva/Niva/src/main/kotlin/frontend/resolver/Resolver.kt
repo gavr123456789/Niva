@@ -276,8 +276,24 @@ private fun Resolver.resolveStatement(
                 }
             }
             val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
-            val q = if (expr == null) unit else expr.type!!
-            wasThereReturn = q
+            val typeOfReturnExpr = if (expr == null) unit else expr.type!!
+
+            ///
+            val previousReturnType = wasThereReturn
+            val resolvingMessageDeclaration2 = resolvingMessageDeclaration
+
+            if (resolvingMessageDeclaration2 != null && resolvingMessageDeclaration2.returnTypeAST == null) {
+                if (previousReturnType != null) {
+                    val g = findGeneralRoot(previousReturnType, typeOfReturnExpr)
+                        ?: statement.token.compileError("Cant find general root between return types $YEL$typeOfReturnExpr$RESET and $YEL$previousReturnType$RESET")
+                    resolvingMessageDeclaration2.returnType = g
+                } else {
+                    resolvingMessageDeclaration2.returnType = typeOfReturnExpr
+                }
+            }
+
+            ///
+            wasThereReturn = typeOfReturnExpr
 
             stack.pop()
         }

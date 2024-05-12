@@ -30,7 +30,7 @@ fun findAnyMethod(
     kind: MessageDeclarationType
 ): MessageMetadata? {
     receiverType.protocols.forEach { (_, v) ->
-        val msgData = lens(v, selectorName, kind)
+        val msgData = lens(v, selectorName, kind) ?: v.staticMsgs[selectorName]
 
         if (msgData != null) {
             // method can be declared in different package than it's receiver type
@@ -38,6 +38,7 @@ fun findAnyMethod(
             return msgData
         }
     }
+
     return null
 }
 
