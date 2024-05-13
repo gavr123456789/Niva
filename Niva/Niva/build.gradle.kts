@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.0.0-RC1"
     application
     id("org.graalvm.buildtools.native") version "0.10.1"
+    id("maven-publish")
 }
 
 group = "org.example"
@@ -45,7 +46,21 @@ graalvmNative {
 }
 
 application {
-    mainClass = "org.example.main.MainKt"
+    mainClass = "main.MainKt"
+}
+
+
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "com.github.gavr123456789"
+            artifactId = "niva"
+            version = "0.1"
+
+            from(components["java"])
+        }
+    }
 }
 
 
