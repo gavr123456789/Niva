@@ -43,6 +43,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 
     if (withOutputCapture && !runTests) {
         p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
 
@@ -144,7 +145,7 @@ class Compiler(
         }
 
         val cmd = cmd(dist, buildFatJar, runTests)
-        val defaultArgs = if (runTests) "--warning-mode=none" else "-q"// if not verbose --console=plain
+        val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
         (when (getOSType()) {
             CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat $defaultArgs $cmd"
             CurrentOS.LINUX, CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
@@ -437,7 +438,6 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
     val catchExpressions = if (compilationTarget != CompilationTarget.jvm) """
         } catch (e: Throwable) {
         println("----------")
-        System.out.flush()
         println(e.message)
         println("----------")
         println(e.stackTraceToString())
