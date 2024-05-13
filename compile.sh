@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 archive_path="Niva/Niva/build/distributions/niva-1.0-SNAPSHOT.zip"
-jars="annotations-23.0.0.jar:kfswatch-jvm-1.0.0.jar:kotlin-stdlib-2.0.0-Beta4.jar:kotlin-stdlib-jdk7-1.9.10.jar:kotlin-stdlib-jdk8-1.9.10.jar:kotlinx-coroutines-core-jvm-1.8.0.jar:niva-1.0-SNAPSHOT.jar"
+jars="annotations-23.0.0.jar:kfswatch-jvm-1.0.0.jar:kotlin-stdlib-2.0.0-RC1.jar:kotlin-stdlib-jdk7-1.9.10.jar:kotlin-stdlib-jdk8-1.9.10.jar:kotlinx-coroutines-core-jvm-1.8.0.jar:niva-1.0-SNAPSHOT.jar"
 
 if [ "$1" == "" ]; then
   echo "use jvm or bin argument"
