@@ -7,6 +7,7 @@ import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
 import frontend.resolver.Resolver
+import main.codogen.GeneratorKt.Companion.GRADLE_IMPORTS
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.MessageDeclaration
@@ -28,6 +29,8 @@ class GeneratorKt(
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
         const val TARGET = "%TARGET%"
+        const val GRADLE_IMPORTS = "import org.gradle.api.tasks.testing.logging.TestExceptionFormat\n" +
+                "import org.gradle.api.tasks.testing.logging.TestLogEvent\n\n"
         const val GRADLE_TEMPLATE = """
 plugins {
     kotlin("jvm") version "2.0.0-Beta4"
@@ -86,8 +89,7 @@ settings:
 """
     }
 
-    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
+    fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """
 kotlin {
     jvm {
         compilations {
@@ -152,6 +154,10 @@ allprojects {
     }
 }
 
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}
+
 """
 }
 
@@ -168,6 +174,7 @@ fun GeneratorKt.regenerateGradleForAmper(
     jarName: String
 ) {
     val newGradle = buildString {
+        append(GRADLE_IMPORTS)
         if (compilationTarget == CompilationTarget.jvm) {
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
