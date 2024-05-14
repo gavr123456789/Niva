@@ -20,13 +20,14 @@ enum class MainArgument {
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
 
 
-class ArgsManager(private val argsSet: Set<String>, private val args: Array<String>) {
+class ArgsManager(argsSet: Set<String>, private val args: Array<String>) {
 
     val compileOnly = "-c" in argsSet // args.find { it == "-c" } != null
+    val verbose = ("-v" in argsSet || "--verbose" in argsSet || argsSet.isEmpty()) // args.find { it == "-c" } != null
     val infoIndex = args.indexOf("-i")
 //    val infoOnly = infoIndex != -1
 //    val infoUserOnly = "-iu" in argsSet//argsSet.find { it == "-iu" } != null
-    val isShowTimeArg = "time" in argsSet//argsSet.find { it == "time" } != null
+    val isShowTimeArg = "time" in argsSet || verbose//argsSet.find { it == "time" } != null
 
     fun mainArg(): MainArgument {
         return if (args.isNotEmpty()) {
@@ -53,9 +54,9 @@ class ArgsManager(private val argsSet: Set<String>, private val args: Array<Stri
 fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
     if (isShowTimeArg) {
         if (kotlinPhase)
-            println("Niva compilation time: $executionTime ms")
+            println("${CYAN}Verbose$RESET: Kotlin compilation + exec time: $executionTime ms")
         else
-            println("Kotlin compilation + exec time: $executionTime ms")
+            println("${CYAN}Verbose$RESET: Niva compilation time: $executionTime ms")
     }
 }
 
@@ -68,8 +69,8 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
     val pathToAmper = pathToInfroProject / "module.yaml"
 
 
-    val mainNivaFileWhileDev = File("examples" / "Main" / "main.niva")
-    private val pathToTheMainExample = mainNivaFileWhileDev.absolutePath
+    val mainNivaFileWhileDevFromIdea = File("examples" / "Main" / "main.niva")
+    private val pathToTheMainExample = mainNivaFileWhileDevFromIdea.absolutePath
 
     private fun getPathToMain(): String =
         // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
@@ -158,8 +159,10 @@ Usage:
     ${WHITE}FILE$RESET — compile and run single file
     ${WHITE}run$RESET — compile and run project from "main" file
     ${WHITE}run FILE$RESET — compile and run project from root file
+    ${WHITE}run FILE -v$RESET or ${WHITE}-verbose$RESET — with verbose printing
     ${WHITE}build$RESET — compile only(creates binary in current folder)
     ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
+    ${WHITE}distr$RESET — create easy to share jvm distribution
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
 
 Flags for single file run:

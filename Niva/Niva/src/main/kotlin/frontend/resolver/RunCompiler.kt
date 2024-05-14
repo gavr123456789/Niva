@@ -8,12 +8,10 @@ import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
-import main.utils.CYAN
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
-import main.utils.infoPrint
+import main.utils.*
 import java.io.File
+import kotlin.time.TimeSource
+import kotlin.time.TimeSource.Monotonic.markNow
 
 const val MAIN_PKG_NAME = "mainNiva"
 
@@ -25,19 +23,31 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 }
 
-fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
+fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
+
+fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
+
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
         val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
         val ast = parser.statements()
         return ast
     }
-    val fakeTok = createFakeToken()
 
+    val fakeTok = createFakeToken()
+    verbosePrinter.print {
+        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFile.absolutePath}" +
+                (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
+                otherFilesPaths.joinToString("\n\t") { it.path }
+    }
+
+
+    val beforeParserMark = markNow()
     // generate ast for main file with filling topLevelStatements
     // 1) read content of mainFilePath
     // 2) generate ast
     val mainSource = mainFile.readText()
+
     val mainAST = getAst(source = mainSource, file = mainFile)
     // generate ast for others
     val otherASTs = otherFilesPaths.map {
@@ -45,6 +55,7 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
         it.nameWithoutExtension to getAst(source = src, file = it)
     }
 
+    verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
     /// resolve all declarations
     statements = mainAST.toMutableList()
 
@@ -54,7 +65,7 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
 
 
     val resolveUnresolved = {
-        if (typeDB.unresolvedTypes.isNotEmpty() ) { // && i != 0
+        if (typeDB.unresolvedTypes.isNotEmpty()) { // && i != 0
             val iterator = typeDB.unresolvedTypes.iterator()
             while (iterator.hasNext()) {
                 val (a, b) = iterator.next()
@@ -87,6 +98,8 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
         }
     }
 
+    val resolveDeclarationsOnlyMark = markNow()
+
     resolveDeclarationsOnly(mainAST)
     resolveUnresolved()
     otherASTs.forEachIndexed { i, it ->
@@ -97,6 +110,10 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
         resolveUnresolved()
     }
 
+    verbosePrinter.print { "Resolving: declarations in ${resolveDeclarationsOnlyMark.getMs()} ms" }
+
+    val resolveUnresolvedDeclarationsOnlyMark = markNow()
+
     if (typeDB.unresolvedTypes.isNotEmpty()) {
 
         fakeTok.compileError(buildString {
@@ -104,9 +121,40 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
             typeDB.unresolvedTypes.forEach { (a, b) ->
                 // "| 11 name:  is unresolved"
                 append("| ", b.ast?.token?.line ?: "")
-                append(WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".", b.parent.name, RESET, "\n")
+                append(
+                    WHITE,
+                    b.fieldName,
+                    ": ",
+                    YEL,
+                    a,
+                    RESET,
+                    " in declaration of ",
+                    YEL,
+                    b.parent.pkg,
+                    ".",
+                    b.parent.name,
+                    RESET,
+                    "\n"
+                )
             }
         })
+    }
+
+    val isThereUnresolvedDecls = unResolvedMessageDeclarations.isNotEmpty() || unResolvedTypeDeclarations.isNotEmpty()
+    verbosePrinter.print {
+        if (unResolvedMessageDeclarations.isNotEmpty()) {
+            "Resolving: unresolved from first pass MessageDeclarations:\n\t${
+                unResolvedMessageDeclarations.values.flatten().joinToString("\n\t") { it.name }
+            }"
+        } else ""
+    }
+
+    verbosePrinter.print {
+        if (unResolvedTypeDeclarations.isNotEmpty()) {
+            "Resolving: unresolved from first pass TypeDeclarations:\n\t${
+                unResolvedTypeDeclarations.values.flatten().joinToString("\n\t") { it.typeName }
+            }"
+        } else ""
     }
 
     // unresolved methods that contains unresolved types in args, receiver or return
@@ -145,13 +193,21 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
 
     /// end of resolve all declarations
 
+    verbosePrinter.print {
+        if (isThereUnresolvedDecls)
+            "Resolving: all unresolved declarations resolved in ${resolveUnresolvedDeclarationsOnlyMark.getMs()} ms"
+        else ""
+    }
+
     allDeclarationResolvedAlready = true
+
 
     // here we are resolving all statements(in bodies), not only declarations
 
     currentPackageName = mainFile.nameWithoutExtension
 
-    // main args
+    val resolveExpressionsMark = markNow()
+
     resolvingMainFile = true
     resolve(mainAST, createArgsFromMain())
     resolvingMainFile = false
@@ -162,23 +218,17 @@ fun Resolver.resolve(mainFile: File, isTestsRun: Boolean = false) {
         resolve(it.second, mutableMapOf())
     }
 
+    verbosePrinter.print { "Resolving: expressions in ${resolveExpressionsMark.getMs()} ms" }
+    verbosePrinter.print { "Resolving took: ${resolveDeclarationsOnlyMark.getMs()} ms" }
+
     // need to add all imports from mainFile pkg to mainNiva pkg
     val currentProject = projects[currentProjectName]!!
     val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
     val mainFilePkg = currentProject.packages[mainFile.nameWithoutExtension]!!
     mainNivaPkg.imports += mainFilePkg.imports
     mainNivaPkg.concreteImports += mainFilePkg.concreteImports
-
-    if (isTestsRun) {
-        testRun()
-    }
 }
 
-fun Resolver.testRun() {
-    topLevelStatements = mutableListOf()
-
-//    TODO()
-}
 
 fun Resolver.printInfoFromCode() {
     infoTypesToPrint.forEach { x, y ->
