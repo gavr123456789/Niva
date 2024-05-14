@@ -5,7 +5,7 @@ package main
 import frontend.Lexer
 import frontend.lex
 
-import main.utils.Compiler
+import main.utils.CompilerRunner
 import main.utils.compileProjFromFile
 import java.io.*
 import main.frontend.meta.CompilerError
@@ -31,9 +31,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/a.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
-
     if (help(args)) return
-
     run(args)
 }
 
@@ -55,7 +53,7 @@ fun run(args: Array<String>) {
 
     // resolve all files!
     val resolver = try {
-        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH, tests = mainArg == MainArgument.TEST)
+        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH, tests = mainArg == MainArgument.TEST, verbose = am.verbose)
     } catch (e: CompilerError) {
         println(e.message)
         exitProcess(-1)
@@ -66,12 +64,12 @@ fun run(args: Array<String>) {
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
-    val compiler = Compiler(
+    val compiler = CompilerRunner(
         pm.pathToInfroProject,
         inlineRepl,
         resolver.compilationTarget,
         resolver.compilationMode,
-        pm.mainNivaFileWhileDev.nameWithoutExtension,
+        pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
         resolver
     )
 

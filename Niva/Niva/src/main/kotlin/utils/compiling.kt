@@ -9,6 +9,7 @@ import java.io.InputStreamReader
 import java.lang.Error
 import kotlin.text.contains
 import kotlin.text.lowercase
+import kotlin.time.TimeSource.Monotonic.markNow
 
 object GlobalVariables {
 
@@ -98,7 +99,7 @@ fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilation
     CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
 }
 
-class Compiler(
+class CompilerRunner(
     private val pathToProjectRoot: String,
     private val inlineReplPath: File,
     private val compilationTarget: CompilationTarget,
@@ -201,17 +202,29 @@ class Compiler(
     }
 }
 
+class VerbosePrinter(val isVerboseOn: Boolean) {
+    inline fun print(string: () -> String) {
+        if (isVerboseOn) {
+            val x = string()
+            if (x != "") println("${CYAN}Verbose$RESET: ${string()}")
+        }
+    }
+}
+
+
 
 fun compileProjFromFile(
     pm: PathManager,
     compileOnlyOneFile: Boolean,
     resolveOnly: Boolean = false,
-    tests: Boolean = false
+    tests: Boolean = false,
+    verbose: Boolean = false
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
     val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
     val pathToGradle = pm.pathToGradle
     val pathToAmper = pm.pathToAmper
+    val verbosePrinter = VerbosePrinter(verbose)
 
     fun listFilesRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
         val fileList = mutableListOf<File>()
@@ -225,6 +238,7 @@ fun compileProjFromFile(
                 }
             }
         }
+
         return fileList
     }
 
@@ -245,11 +259,11 @@ fun compileProjFromFile(
         statements = mutableListOf()
     )
 
-    resolver.resolve(mainFile, tests)
+    resolver.resolve(mainFile, verbosePrinter)
 
     if (!resolveOnly) {
         val defaultProject = resolver.projects["common"]!!
-
+        val codegenMark = markNow()
         resolver.generator.generateKtProject(
             pathWhereToGenerateKt,
             pathToGradle,
@@ -261,6 +275,10 @@ fun compileProjFromFile(
             pm.pathToInfroProject,
             tests
         )
+
+        verbosePrinter.print { "Codegen took: ${codegenMark.getMs()} ms" }
+
+
     }
     // printing all >?
     resolver.printInfoFromCode()
