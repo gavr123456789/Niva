@@ -15,7 +15,6 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
-//    implementation(kotlin(“stdlib -jdk8))
     testImplementation(kotlin("test"))
 }
 
