@@ -5,5 +5,7 @@
       jdk21
       unzip
     ];
-
+    shellHook = ''
+      ./compile.sh bin
+    '';
 }
