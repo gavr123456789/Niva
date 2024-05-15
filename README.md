@@ -364,3 +364,23 @@ set add: 2 //! #{1 2 3}
 set add: 4 //! #{1 2 3 4}
 set has: 3 //! true
 ```
+
+
+## Nix-Shell Setup
+
+To get started with Niva, use the provided shell.nix file.
+
+  Navigate to the main Niva repository.
+  Enter the following command:
+
+  ```bash
+  nix-shell
+  ```
+
+This command will set up the necessary dependencies and run the compile script to produce a binary file.
+
+Afterwards, you can run the Niva compiler with the following command:
+
+```bash
+./niva_compiler/niva <file>
+```
