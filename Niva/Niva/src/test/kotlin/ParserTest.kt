@@ -60,7 +60,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val declaration: VarDeclaration = ast[0] as VarDeclaration
-        kotlin.test.assertTrue(declaration.name == "x")
+        assertTrue(declaration.name == "x")
         assert(declaration.value.str == "1")
     }
 
@@ -1806,7 +1806,7 @@ class ParserTest {
 
         assertTrue { q.errors!!.count() == 1 }
         assertTrue { w.errors!!.count() == 2 }
-        assertTrue { e.errors!!.count() == 0 }
+        assertTrue { e.errors!!.isEmpty() }
 
 
     }

@@ -1254,22 +1254,29 @@ class ResolverTest {
     }
 
     // TODO
-//    @Test
-//    fun fullBuilderExample() {
-//        val source = """
-//            type Person
-//            Person foo::Int = []
-//            Int sas::Person.[Int -> Unit] = [
-//              sas this: Person new Int: 4
-//            ]
-//            // call sas
-//            2 sas: [
-//              this // is Person
-//            ]
-//        """.trimIndent()
-//        val statements = resolve(source)
-//        assert(statements.count() == 2)
-//    }
+    @Test
+    fun extensionLambda() {
+        val source = """
+            type Person
+            Person foo::Int = []
+            Int sas::Person[Int -> Unit] = [
+              sas this: Person new Int: 4
+            ]
+            // call sas
+            2 sas: [
+              this // is Person
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+        val q = statements[3] as MessageSendKeyword
+        assertTrue {
+            val w = (q.messages.first() as KeywordMsg)
+            val f = (w.args.first().keywordArg as CodeBlock).statements.first() as IdentifierExpr
+
+            f.type!!.name == "Person"
+        }
+    }
 
     @Test
     fun getGenericParamsFromLambdaArg() {
@@ -1623,19 +1630,23 @@ class ResolverTest {
         }
     }
 
+    @Test
+    fun builder() {
+        val source = """
+            builder html init::[ -> Unit] -> HTML = [
+                html = HTML new
+                html init
+            ]
+            
+            html [
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
 
-//    @Test
-//    fun customConstructorForInternalTypeCheck() {
-//        val source = """
-//            Float from: 5
-//        """.trimIndent()
-//
-//        assertFails {
-//            val statements = resolve(source)
-//            assert(statements.count() == 1)
-//        }
-//
-//    }
+
+
 }
 
 

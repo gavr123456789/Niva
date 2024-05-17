@@ -1,5 +1,7 @@
 package main.frontend.meta
 
+import frontend.parser.parsing.Parser
+import frontend.parser.parsing.peek
 import main.utils.RED
 import main.utils.RESET
 import java.io.File
@@ -107,7 +109,7 @@ fun createFakeToken(): Token = FakeToken.fakeToken
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
-class CompilerError(text: String): Exception(text)
+class CompilerError(text: String) : Exception(text)
 
 fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
@@ -117,4 +119,37 @@ fun Token.compileError(text: String): Nothing {
 //    println("$RED Error:$RESET $text$RESET.$fileLine")
     throw CompilerError(errorText)
 //    exitProcess(0)
+}
+
+fun Parser.parsingError(text: String): Nothing {
+    val f = peek()
+    var firstOnLineTok = f
+    var counter = 0
+    while (firstOnLineTok.pos.start != 0) {
+        firstOnLineTok = peek(counter)
+        counter--
+    }
+    val fileLine = "(" + file.name + ":" + f.line + ")"
+
+    val errorText2 = "${RED}Error:$RESET Syntax\n\t$text$RESET.$fileLine"
+    val errorText =
+        buildString {
+            appendLine( errorText2)
+            append("\t${firstOnLineTok.line}| ")
+            counter++
+            var tok2 = firstOnLineTok
+            while (tok2.line != firstOnLineTok.line + 1) {
+                if (tok2 == firstOnLineTok) {
+                    append("$RED${tok2.lexeme}$RESET")
+                } else
+                    append(tok2.lexeme)
+
+                counter++
+                tok2 = peek(counter)
+            }
+            append("\n\t")
+        }
+
+    throw CompilerError(errorText)
+
 }

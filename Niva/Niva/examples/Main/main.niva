@@ -1,30 +1,18 @@
-type Assert
+:: ! + -
 
-
-
-constructor Assert that::Any equals::Any -> Unit! = [
-   a = Compiler getName: 1
-   b = Compiler getName: 2
-  that != equals => [
-    Error throwWithMessage: "Assertion failed: $a != $b ($that != $equals)"
-  ]
-]
-
-Assert that: 1 + 1 equals: 3
-
-1 echo
-
-//constructor Assert that::Any equals::Any -> Unit = [
-//  // a = Compiler getName: 1
-//  // b = Compiler getName: 2
+//type Assert
 //
+//
+//
+//constructor Assert that::Any equals::Any -> Unit! = [
+//   a = Compiler getName: 1
+//   b = Compiler getName: 2
 //  that != equals => [
 //    Error throwWithMessage: "Assertion failed: $a != $b ($that != $equals)"
 //  ]
 //]
+//
+//Assert that: 1 + 1 equals: 3
+//
+//1 echo
 
-//Int sas = [
-//  Test assertTrue: [
-//    1 == 1
-//  ]
-//]

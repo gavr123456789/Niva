@@ -10,6 +10,7 @@ import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.utils.*
 import java.io.File
+import kotlin.io.path.absolute
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.markNow
 
@@ -36,7 +37,7 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
 
     val fakeTok = createFakeToken()
     verbosePrinter.print {
-        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFile.absolutePath}" +
+        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFile.toPath().absolute()}" +
                 (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
                 otherFilesPaths.joinToString("\n\t") { it.path }
     }
