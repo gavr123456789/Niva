@@ -34,6 +34,25 @@ Niva can eat .niva and .scala files, because Scala highlight fits well for Niva 
 
 [VS Code plugin](https://github.com/gavr123456789/niva-vscode-bundle) for syntax highlighting
 
+## Nix-Shell Setup
+
+To get started with Niva, use the provided shell.nix file.
+
+  Navigate to the main Niva repository.
+  Enter the following command:
+
+  ```bash
+  nix-shell
+  ```
+
+This command will set up the necessary dependencies and run the compile script to produce a binary file.
+
+Afterwards, you can run the Niva compiler with the following command:
+
+```bash
+./niva_compiler/niva <file>
+```
+
 # Core
 
 Almost everything in this lang is message send(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses). 
@@ -364,3 +383,5 @@ set add: 2 //! #{1 2 3}
 set add: 4 //! #{1 2 3 4}
 set has: 3 //! true
 ```
+
+
