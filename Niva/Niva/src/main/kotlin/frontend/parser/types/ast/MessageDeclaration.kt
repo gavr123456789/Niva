@@ -175,6 +175,8 @@ class ExtendDeclaration(
     pragmas: MutableList<Pragma> = mutableListOf(),
 ) : Declaration(token, isPrivate, pragmas)
 
+
+
 @Suppress("unused")
 class StaticBuilderDeclaration(
     val name: String,

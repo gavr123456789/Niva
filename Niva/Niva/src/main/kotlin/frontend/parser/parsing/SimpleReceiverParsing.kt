@@ -5,6 +5,7 @@ import frontend.parser.parsing.*
 import main.utils.WHITE
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
+import main.frontend.meta.parsingError
 import main.frontend.parser.types.ast.*
 
 // simple means not message
@@ -125,7 +126,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     }
 
     if (tryPrimary == null) {
-        peek().compileError("Can't parse primary token, got $WHITE${peek().lexeme}")
+        this.parsingError("Can't parse primary token, got $WHITE${peek().lexeme}")
+//        peek().compileError("Can't parse primary token, got $WHITE${peek().lexeme}")
     }
     return tryPrimary
 }
