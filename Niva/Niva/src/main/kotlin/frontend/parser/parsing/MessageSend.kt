@@ -437,7 +437,7 @@ fun Parser.keywordMessageParsing(
         receiver,
         stringBuilder.toString(),
         null,
-        receiver.token,
+        keyWordArguments.first().keywordArg.token,
         keyWordArguments,
         firstKeywordIdentifierExpr?.names!!
     )

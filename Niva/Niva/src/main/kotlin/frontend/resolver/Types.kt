@@ -430,7 +430,7 @@ sealed class Type(
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false
     ) : Type(name, pkg, isPrivate, protocols) {
-        fun printConstructor() = fields.joinToString(": value") { it.name } + ": value"
+        fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
     }
 
     fun UserLike.copy(): UserLike =

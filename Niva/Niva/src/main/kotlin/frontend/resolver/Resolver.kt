@@ -103,12 +103,12 @@ private fun Resolver.resolveStatement(
 
         is VarDeclaration -> {
             stack.push(statement)
-            resolveVarDeclaration(statement, previousScope, currentScope)
+            resolveVarDeclaration(statement, currentScope, previousScope)
             stack.pop()
         }
 
         is Message -> {
-            resolveMessage(statement, previousScope, currentScope)
+            resolveMessage(statement, currentScope, previousScope)
         }
 
         is MessageSend -> {
@@ -127,16 +127,6 @@ private fun Resolver.resolveStatement(
                 }
 
             }
-
-//            resolvingMessageDeclaration?.also {
-////                println("qwaww")
-//                // find the difference between stackOfPossibleErrors and msg from db?
-//                val posErrors = it.stackOfPossibleErrors.flatMap { it.second }
-//
-//                val errors = resolvingMessageDeclaration?.findMetadata(this)?.errors
-//
-//                errors?.removeAll(posErrors)
-//            }
 
             resolveTypeForMessageSend(statement)
             addToTopLevelStatements(statement)
@@ -168,6 +158,10 @@ private fun Resolver.resolveStatement(
 
                 statement.isType = true
             }
+            if (GlobalVariables.isLspMode && onEachStatement != null) {
+                onEachStatement(statement, currentScope, previousScope)
+            }
+
             addToTopLevelStatements(statement)
         }
 
@@ -240,6 +234,12 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
 
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
+
+            if (GlobalVariables.isLspMode && onEachStatement != null) {
+
+                onEachStatement(statement, currentScope, previousScope)
+            }
+
             addToTopLevelStatements(statement)
             stack.pop()
         }
@@ -369,6 +369,9 @@ fun Resolver.resolveSingle(
         previousScope,
         rootStatement
     )
+
+
+
     return statement
 }
 
@@ -457,9 +460,6 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
     }
 }
 
-//fun Resolver.findAnyMessage(receiverType: Type)
-
-
 fun Resolver.findPackageOrError(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: token.compileError("There are no such package: $packageName")
@@ -469,12 +469,6 @@ fun Resolver.findPackageOrError(packageName: String, token: Token): Package {
 
 fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = null): Pair<Protocol, Package> {
     val pack = customPkg ?: findPackageOrError(currentPackageName, token)
-//    val type =
-//        pack.types[typeName]
-//        ?: getPackage("common", token).types[typeName]
-//        ?: getPackage("core", token).types[typeName]
-//        ?: token.compileError("There are no such type: $YEL$typeName${RESET} in package $WHITE$currentPackageName${RESET} in project: $WHITE$currentProjectName${RESET}")
-
     val protocol = type.protocols[currentProtocolName]
 
     if (protocol == null) {
@@ -915,7 +909,6 @@ class Resolver(
 
     var statements: MutableList<Statement>,
 
-//    val mainFile: File,
     val otherFilesPaths: List<File> = listOf(),
 
     val projects: MutableMap<String, Project> = mutableMapOf(),
@@ -954,7 +947,9 @@ class Resolver(
 
     val stack: Stack<Statement> = Stack(),
 
-    var resolvingMainFile: Boolean = false
+    var resolvingMainFile: Boolean = false,
+
+    val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
 ) {
     companion object {
 
@@ -1139,7 +1134,7 @@ class Resolver(
         val anyType = defaultTypes[InternalTypes.Any]!!
         val nothingType = defaultTypes[InternalTypes.Nothing]!!
         val compiler = defaultTypes[InternalTypes.Compiler]!!
-        val test = defaultTypes[InternalTypes.Test]!!
+//        val test = defaultTypes[InternalTypes.Test]!!
 
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")

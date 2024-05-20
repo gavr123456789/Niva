@@ -9,6 +9,7 @@ import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveBinaryMsg
 import main.frontend.resolver.messageResolving.resolveKeywordMsg
 import main.frontend.resolver.messageResolving.resolveUnaryMsg
+import main.utils.GlobalVariables
 import main.utils.RESET
 import main.utils.YEL
 import main.utils.isGeneric
@@ -95,8 +96,8 @@ fun findThisInScopes(
 
 fun Resolver.resolveMessage(
     statement: Message,
-    previousScope: MutableMap<String, Type>,
-    currentScope: MutableMap<String, Type>
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>
 ) {
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -107,6 +108,10 @@ fun Resolver.resolveMessage(
         }
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
+    }
+
+    if (GlobalVariables.isLspMode && onEachStatement != null) {
+        onEachStatement(statement, currentScope, previousScope)
     }
 }
 
