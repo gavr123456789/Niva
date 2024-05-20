@@ -40,7 +40,7 @@ sealed class Expression(
     pragmas: MutableList<Pragma> = mutableListOf(),
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
-    var isInfoRepl: Boolean = false
+    var isInfoRepl: Boolean = false,
 ) : Statement(token, isPrivate, pragmas) {
 
 //    private var _type: Type? = null
@@ -61,7 +61,7 @@ sealed class Expression(
 class NeedInfo(
     var expression: Expression,
     token: Token,
-    num: Int = 1, // selected suggestion
+//    num: Int = 1, // selected suggestion
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
 ) : Statement(token, isPrivate, pragmas)

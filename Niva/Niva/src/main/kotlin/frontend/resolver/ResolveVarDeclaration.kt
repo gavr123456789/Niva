@@ -12,8 +12,8 @@ import main.utils.isGeneric
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
+    currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
-    currentScope: MutableMap<String, Type>
 ) {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
     // currentNode, depth + 1

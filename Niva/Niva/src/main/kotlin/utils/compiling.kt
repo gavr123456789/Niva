@@ -3,6 +3,7 @@ package main.utils
 import main.codogen.generateKtProject
 import frontend.resolver.*
 import inlineReplSystem.inlineReplSystem
+import main.frontend.parser.types.ast.Statement
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -34,6 +35,13 @@ object GlobalVariables {
 
     fun enableDemonMode() {
         isDemonMode = true
+    }
+
+    var isLspMode = false
+        private set
+
+    fun enableLspMode() {
+        isLspMode = true
     }
 
 }
@@ -218,7 +226,8 @@ fun compileProjFromFile(
     compileOnlyOneFile: Boolean,
     resolveOnly: Boolean = false,
     tests: Boolean = false,
-    verbose: Boolean = false
+    verbose: Boolean = false,
+    onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
     val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
@@ -254,9 +263,9 @@ fun compileProjFromFile(
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
         projectName = "common",
-//        mainFile = mainFile,
         otherFilesPaths = otherFilesPaths,
-        statements = mutableListOf()
+        statements = mutableListOf(),
+        onEachStatement = onEachStatement
     )
 
     resolver.resolve(mainFile, verbosePrinter)

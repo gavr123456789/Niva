@@ -22,10 +22,9 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     GlobalVariables.enableDemonMode()
 
 
-
+    // read console commands
     suspend fun BufferedReader.readLineSuspending() =
         withContext(Dispatchers.IO) { readLine() }
-
 
     launch{
         val q = BufferedReader(InputStreamReader(System.`in`))
@@ -64,11 +63,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                         }
                         lock = true
                     }
-
-                        everySecond = !everySecond //!localEverySecond
-
-
-
+                    everySecond = !everySecond //!localEverySecond
                 }
             }
         }

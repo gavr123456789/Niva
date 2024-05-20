@@ -3,7 +3,6 @@ package main.utils
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import java.io.File
-import kotlin.system.exitProcess
 
 enum class MainArgument {
     BUIlD,
@@ -13,8 +12,7 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DAEMON,
-    TEST
+    DAEMON, TEST, LSP
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -61,7 +59,7 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
 }
 
 
-class PathManager(val args: Array<String>, mainArg: MainArgument) {
+class PathManager(val pathToMainOrSingleFile: String, mainArg: MainArgument) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
     val pathWhereToGenerateKtAmper = pathToInfroProject // path before src or test
@@ -72,34 +70,11 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
     val mainNivaFileWhileDevFromIdea = File("examples" / "Main" / "main.niva")
     private val pathToTheMainExample = mainNivaFileWhileDevFromIdea.absolutePath
 
-    private fun getPathToMain(): String =
-        // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
-        if (args.count() >= 2) {
-            // first arg is run already
-            val fileNameArg = args[1]
-            if (File(fileNameArg).exists()) {
-                fileNameArg
-            } else {
-                createFakeToken().compileError("File $fileNameArg doesn't exist")
-            }
-
-        } else {
-            val mainNiva = "main.niva"
-            val mainScala = "main.scala"
-            if (File(mainNiva).exists())
-                mainNiva
-            else if (File(mainScala).exists())
-                mainScala
-            else {
-                println("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
-                exitProcess(-1)
-//                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
-            }
-        }
-
 
     val pathToNivaMainFile: String = when (mainArg) {
-        MainArgument.SINGLE_FILE_PATH -> args[0]
+        MainArgument.SINGLE_FILE_PATH,
+        MainArgument.LSP -> pathToMainOrSingleFile
+
         MainArgument.RUN_FROM_IDEA -> pathToTheMainExample
 
         MainArgument.RUN,
@@ -108,9 +83,7 @@ class PathManager(val args: Array<String>, mainArg: MainArgument) {
         MainArgument.BUIlD,
         MainArgument.DISRT,
         MainArgument.DAEMON,
-        MainArgument.TEST-> getPathToMain()
-
-
+        MainArgument.TEST-> pathToMainOrSingleFile
     }
 
     val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()

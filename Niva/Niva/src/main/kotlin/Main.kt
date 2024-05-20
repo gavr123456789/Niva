@@ -10,6 +10,8 @@ import main.utils.compileProjFromFile
 import java.io.*
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
+import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.utils.ArgsManager
 import main.utils.MainArgument
 import main.utils.PathManager
@@ -32,9 +34,45 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
     if (help(args)) return
+    LS().onCompletion("file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva", 17, 17)
+
+    LS().resolveAll("file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
+
     run(args)
 }
 
+// just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
+fun getPathToMainOrSingleFile(args: Array<String>): String =
+    if (args.count() >= 2) {
+        // niva run/test/build "sas.niva"
+        val fileNameArg = args[1]
+        if (File(fileNameArg).exists()) {
+            fileNameArg
+        } else {
+            createFakeToken().compileError("File $fileNameArg doesn't exist")
+        }
+    } else if(args.count() == 1) {
+        // Single arg "niva sas.niva"
+        args[0]
+    } else if (args.count() == 0) {
+        File("examples/Main/main.niva").absolutePath
+    }
+
+
+    else {
+        val mainNiva = "main.niva"
+        val mainScala = "main.scala"
+
+        if (File(mainNiva).exists())
+            mainNiva
+        else if (File(mainScala).exists())
+            mainScala
+        else {
+            println("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+            exitProcess(-1)
+//                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+        }
+    }
 
 fun run(args: Array<String>) {
     val argsSet = args.toSet()
@@ -45,7 +83,7 @@ fun run(args: Array<String>) {
 
     val am = ArgsManager(argsSet, args)
     val mainArg = am.mainArg()
-    val pm = PathManager(args, mainArg)
+    val pm = PathManager(getPathToMainOrSingleFile(args), mainArg)
 
     if (mainArg == MainArgument.DAEMON) {
         daemon(pm, mainArg)
@@ -103,6 +141,8 @@ fun run(args: Array<String>) {
         MainArgument.DAEMON -> {
             daemon(pm, mainArg)
         }
+
+        MainArgument.LSP -> TODO()
 
     }
 

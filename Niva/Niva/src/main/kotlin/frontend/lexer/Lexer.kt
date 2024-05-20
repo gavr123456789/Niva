@@ -73,6 +73,7 @@ fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
     line += 1
     linePos = 0
     if (!done() && needAddNewLineToken && getfirstAfterSpaces() != ".") {
+        start = current
         createToken(TokenType.EndOfLine)
     }
 }
@@ -150,24 +151,25 @@ fun Lexer.match(args: Array<String>): Boolean {
 fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null) {
     try {
         val lexeme2 = source.slice(start until current)
-        val end = current - 1 - endPositionMinus
         val lexeme3 = if (addToLexeme == null) lexeme2 else lexeme2 + addToLexeme
         val lexeme = lexeme3.dropLast(endPositionMinus)
-        tokens.add(
-            Token(
-                kind = tokenType,
-                lexeme = lexeme,
-                line = line,
-                spaces = spaces,
-                pos = Position(start = start, end = end),
-                relPos = Position(start = linePos - lexeme.lastIndex - 1, end = end),
-                file = file
-            )
+        val end = current - 1 - endPositionMinus
+        val realEnd = linePos - endPositionMinus
+        val tok = Token(
+            kind = tokenType,
+            lexeme = lexeme,
+            line = line,
+            spaces = spaces,
+            pos = Position(start = start, end = end),
+            relPos = Position(start = linePos - lexeme.lastIndex, end = realEnd),
+            file = file
         )
+
+        tokens.add(tok)
         spaces = 0
 
     } catch (e: StringIndexOutOfBoundsException) {
-        error("cant create token: $tokenType, slice index out of bound: " + e.message + "\n ${source.slice(start until source.length)}")
+        error("Compiler bug: cant create token: $tokenType, slice index out of bound: " + e.message + "\n ${source.slice(start until source.length)}")
     }
 }
 
@@ -331,7 +333,7 @@ fun Lexer.parseNumber() {
     // 3.5d == Double
     if (match("d")) {
         kind = TokenType.Double
-        createToken(kind, 1) // don't generate this d in kotlin
+        createToken(kind, 1) // don't save d to not generate it in kotlin
     } else if (kind == TokenType.Float) {
         createToken(kind, addToLexeme = "f")
     } else
@@ -396,7 +398,7 @@ fun Lexer.next() {
                 step(2)
                 mode = "multi"
             }
-            val delimiter = if (mode!= "multi") peek(-1) else "\"\"\""
+            val delimiter = if (mode != "multi") peek(-1) else "\"\"\""
             parseString(delimiter, mode)
         }
 
@@ -407,11 +409,13 @@ fun Lexer.next() {
 
         match("..") -> createToken(TokenType.BinarySymbol)
 
+        // 42
         p.isDigit() -> {
             step()
             parseNumber()
         }
 
+        // -42
         check("-") && peek(1).isDigit() -> {
             step()
             step()
