@@ -2,11 +2,13 @@ package main
 
 import frontend.resolver.Resolver
 import frontend.resolver.Type
+import frontend.resolver.resolve
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.Statement
 import main.utils.GlobalVariables
 import main.utils.MainArgument
 import main.utils.PathManager
+import main.utils.VerbosePrinter
 import main.utils.compileProjFromFile
 import java.io.File
 import java.net.URI
@@ -18,7 +20,7 @@ typealias Scope = Map<String, Type>
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
-    class NotFoundLine() : LspResult
+    class NotFoundLine(val x: Pair<Statement, Scope>) : LspResult
     class Found(val x: Pair<Statement, Scope>) : LspResult
 }
 
@@ -34,6 +36,7 @@ class LS {
             val sLine = s.token.line
 
             val createSet = {
+//                val realScope = if (s is MessageDeclaration && s.isSingleExpression)
                 mutableSetOf(Pair(s, scope))
             }
 
@@ -63,31 +66,38 @@ class LS {
 
         fun find(path: String, line: Int, character: Int): LspResult {
 
-            fun <T> checkElementsFromEnd(set: Set<T>, check: (T, T) -> Boolean): T? {
+            fun <T> checkElementsFromEnd(set: Set<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
                 val list = set.toList()
                 for (i in list.size - 1 downTo 1) {
                     if (check(list[i], list[i - 1])) {
-                        return list[i]
+                        if (returnLast)
+                            return list[i]
+                        else
+                            return list[i - 1]
                     }
                 }
                 return null
             }
 
-            val findStatementInLine = { set: MutableSet<Pair<Statement, Scope>> ->
+            // when we search on empty line, we are looking only for scope or messages for previous line
+
+            val findStatementInLine = { set: MutableSet<Pair<Statement, Scope>>, onlyScope: Boolean ->
                 // if its last elem
                 val lastStatementOnTheLine = set.last().first
-                if (lastStatementOnTheLine.token.relPos.end < character) {
+                if (lastStatementOnTheLine.token.relPos.end <= character || onlyScope) {
                     // it is completion for last
                     set.last()
                 } else {
 
-                    val q = checkElementsFromEnd(set) { next, prev ->
-                        val first = next.first.token.relPos.start >= character
-                        val second = prev.first.token.relPos.start < character
-                        first && second
+                    val q = checkElementsFromEnd(set, true) { next, prev ->
+                        val a = next.first.token.relPos.start > character
+                        val b = prev.first.token.relPos.start <= character
+                        a && b
                     }
 
-                    q ?: throw Exception("Cant find stаtement in file $path, line: $line char: $character")
+                    q ?:
+                    throw Exception("Cant find statement on line: $line path: $path, char: $character\n" +
+                            "statements are: ${set.joinToString{ "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
 
                 }
 
@@ -99,11 +109,19 @@ class LS {
                 // line
                 val l = f[line]
                 if (l != null) {
-                    val q = findStatementInLine(l)
+                    val q = findStatementInLine(l, false)
 
                     return LspResult.Found(q)
                 } else {
-                    return LspResult.NotFoundLine()
+                    // no such line
+                    val lineBeforeRequested = checkElementsFromEnd(f.keys, true) { a, b ->
+                        b <= line && line <= a
+                    }
+                    if (lineBeforeRequested != null) {
+                        val p = LspResult.NotFoundLine(findStatementInLine(f[lineBeforeRequested]!!, true))
+                        return p
+                    } else throw Exception("Cant find a line before $line\nlines = ${f.keys}")
+
                 }
             } else {
                 return LspResult.NotFoundFile()
@@ -112,27 +130,56 @@ class LS {
     }
 }
 
-
-//fun LS.lspServerInit(pathToChangedFileUri: String): TypeDB? {
-//
-//    val resolver = resolveAll(pathToChangedFileUri)
-//
-//    if (resolver != null) {
-//        this.resolver = resolver
-//        return resolver.typeDB
-//    }
-//    return null
-//}
-
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
 fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspResult {
     // We don't need to resolve anything on completion, it happens when code changes
 //    resolveAll(pathToChangedFile)
     // find statement type
+
     val fileAbsolutePath = File(URI(pathToChangedFile)).absolutePath
     val a = megaStore.find(fileAbsolutePath, line + 1, character) // vsc count lines from 0
-//    println(a)
     return a
+}
+
+
+fun LS.removeDeclarations(pkgName: String) {
+    val pkg = resolver.projects["common"]!!.packages[pkgName]
+    if (pkg != null) {
+        val iter = resolver.typeDB.userTypes.iterator()
+
+        while (iter.hasNext()) {
+            val q = iter.next()
+            val typeWithSameNameIter = q.value.iterator()
+            while (typeWithSameNameIter.hasNext()) {
+                val type = typeWithSameNameIter.next()
+                if (type.pkg == pkgName)
+                    typeWithSameNameIter.remove()
+            }
+
+            if (q.value.isEmpty()) {
+                iter.remove()
+            }
+        }
+        pkg.declarations.clear()
+        pkg.imports.clear()
+        resolver.projects["common"]!!.packages.remove(pkgName)
+        resolver.statements = mutableListOf()
+    }
+}
+
+
+fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
+    val file = File(URI(pathToChangedFile))
+    val pkgName = file.nameWithoutExtension
+    // let's assume user cant change packages names for now
+    // remove everything that was declarated in this changed file
+    removeDeclarations(pkgName)
+//    removeFromMegaStore
+    megaStore.data.remove(file.absolutePath)
+
+    resolver.reset()
+                                                                                            resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
+
 }
 
 fun LS.resolveAll(pathToChangedFile: String): Resolver? {
@@ -149,16 +196,18 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver? {
 
     // returns path to main.niva and set of all files
     fun findRoot(a: File, listOfNivaFiles: MutableSet<File>): Pair<File, MutableSet<File>> {
-        listOfNivaFiles.addAll(getNivaFilesInSameDirectory(a))
+        val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
+        listOfNivaFiles.addAll(filesFromTheUpperDir)
 
-        if (listOfNivaFiles.count() == 0) throw Exception("There is no main.niva file")
+        if (filesFromTheUpperDir.count() == 0)
+            throw Exception("There is no main.niva file")
 
         // find if there is main.niva
         val nivaMain = listOfNivaFiles.find { it.nameWithoutExtension == "main" }
         if (nivaMain != null) {
             return Pair(nivaMain, listOfNivaFiles)
         } else {
-            return findRoot(a, listOfNivaFiles)
+            return findRoot(a.parentFile, listOfNivaFiles)
         }
     }
 
@@ -169,24 +218,18 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver? {
 
     GlobalVariables.enableLspMode()
 
-    val onEachStatement = { st: Statement, currentScope: Map<String, Type>?, prScope: Map<String, Type>? ->
+    megaStore.data.clear()
+
+
+
+    val onEachStatement = { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>? ->
         if (st is Expression) {
-//            val printExpression = {
-//                val scope = { cs: Map<String, Type>? ->
-//                    if (cs != null) {
-//                        cs.map { it.key + ": " + it.value }
-//
-//                    } else ""
-//                }
-//                val cur = scope(currentScope)
-//                val prev = scope(prScope)
-//
-//                println("${st.token.file.name} line: ${st.token.line} start: ${st.token.relPos.start} cur: $cur prev: $prev type: ${st.type}")
-//            }
-
-
             megaStore.addNew(
-                st, if (currentScope != null && prScope != null) currentScope + prScope else mutableMapOf()
+                st,
+                if (currentScope != null && previousScope != null)
+                    currentScope + previousScope
+                else
+                    mutableMapOf()
             )
         }
     }

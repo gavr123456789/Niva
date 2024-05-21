@@ -1,0 +1,23 @@
+a = {1 2 3}
+b = {4 5 6}
+
+makeIter = [arr::MutableList::Int ->
+  mut b = 0
+  [
+    x = arr at: (b)
+    b <- b inc
+    x
+  ]
+]
+
+zip = [left::[ -> Int], right::[ -> Int] ->
+  [ {(left do) (right do)} ]
+]
+
+ai = makeIter arr: a
+bi = makeIter arr: b
+zipped = zip left: ai right: bi
+
+zipped do echo
+zipped do echo
+zipped do echo

@@ -951,6 +951,16 @@ class Resolver(
 
     val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
 ) {
+    fun reset() {
+        statements = mutableListOf()
+        resolvingMainFile = false
+        stack.clear()
+        infoTypesToPrint.clear()
+        allDeclarationResolvedAlready = false
+        currentArgumentNumber = -1
+        currentLevel = 0
+        topLevelStatements.clear()
+    }
     companion object {
 
         val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
