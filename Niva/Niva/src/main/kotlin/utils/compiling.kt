@@ -210,6 +210,7 @@ class CompilerRunner(
     }
 }
 
+
 class VerbosePrinter(val isVerboseOn: Boolean) {
     inline fun print(string: () -> String) {
         if (isVerboseOn) {
@@ -220,7 +221,6 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
 }
 
 
-
 fun compileProjFromFile(
     pm: PathManager,
     compileOnlyOneFile: Boolean,
@@ -228,6 +228,7 @@ fun compileProjFromFile(
     tests: Boolean = false,
     verbose: Boolean = false,
     onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
+
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
     val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
@@ -290,7 +291,8 @@ fun compileProjFromFile(
 
     }
     // printing all >?
-    resolver.printInfoFromCode()
+    if (!GlobalVariables.isLspMode)
+        resolver.printInfoFromCode()
 
     return resolver
 }

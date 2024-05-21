@@ -23,6 +23,7 @@ fun Resolver.resolveKeywordMsg(
     currentScope: MutableMap<String, Type>
 
 ) {
+
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     // resolve just non-generic types of args
@@ -332,6 +333,7 @@ fun Resolver.resolveKeywordMsg(
     when (kind) {
 
         KeywordLikeType.Constructor -> {
+
             statement.type = if (receiverType is Type.UserLike) {
                 // collect all fields from parents
                 val listOfAllParentsFields = mutableListOf<KeywordArg>()
@@ -433,7 +435,7 @@ fun Resolver.resolveKeywordMsg(
                 val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
 
                 val sameTypes =
-                    compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, statement.token)
+                    compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration)
                 if (!sameTypes) {
                     argAndItsMessages.keywordArg.token.compileError(
                         "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
@@ -458,8 +460,8 @@ fun Resolver.resolveKeywordMsg(
         KeywordLikeType.ForCodeBlock -> {
             throw Exception("We can't reach here, because we do early return")
         }
-    }
 
+    }
 
 }
 

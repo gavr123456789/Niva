@@ -233,7 +233,7 @@ fun Resolver.resolveMessageDeclaration(
 
 
                 val declaredReturnTypeOrFromReturnStatement = st.returnType
-                
+
                 mdgData.returnType = typeOfSingleExpr
                 st.returnType = typeOfSingleExpr
                 //!st.isRecursive && cant understand why recursive check was here
@@ -282,6 +282,7 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = st.returnType
     // addToDb
     if (addToDb) {
+
         addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
     }
 

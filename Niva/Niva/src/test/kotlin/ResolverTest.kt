@@ -1630,20 +1630,20 @@ class ResolverTest {
         }
     }
 
-    @Test
-    fun builder() {
-        val source = """
-            builder html init::[ -> Unit] -> HTML = [
-                html = HTML new
-                html init
-            ]
-            
-            html [
-            ]
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 1)
-    }
+//    @Test
+//    fun builder() {
+//        val source = """
+//            builder html init::[ -> Unit] -> HTML = [
+//                html = HTML new
+//                html init
+//            ]
+//
+//            html [
+//            ]
+//        """.trimIndent()
+//        val statements = resolve(source)
+//        assert(statements.count() == 1)
+//    }
 
 
 

@@ -26,7 +26,7 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 
-fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
+fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter, resolveOnlyOneFile: Boolean = false, customMainSource: String? = null) {
 
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)
@@ -47,14 +47,19 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
     // generate ast for main file with filling topLevelStatements
     // 1) read content of mainFilePath
     // 2) generate ast
-    val mainSource = mainFile.readText()
+    val mainSource = customMainSource ?: mainFile.readText()
 
     val mainAST = getAst(source = mainSource, file = mainFile)
+
+
     // generate ast for others
-    val otherASTs = otherFilesPaths.map {
-        val src = it.readText()
-        it.nameWithoutExtension to getAst(source = src, file = it)
-    }
+    // in lsp mode we change one file at a time
+    val otherASTs = if (!resolveOnlyOneFile)
+        otherFilesPaths.map {
+            val src = it.readText()
+            it.nameWithoutExtension to getAst(source = src, file = it)
+        }
+    else listOf()
 
     verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
     /// resolve all declarations
@@ -121,22 +126,9 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
             append("These types remained unrecognized after checking all files: \n")
             typeDB.unresolvedTypes.forEach { (a, b) ->
                 // "| 11 name:  is unresolved"
-                append("| ", b.ast?.token?.line ?: "")
-                append(
-                    WHITE,
-                    b.fieldName,
-                    ": ",
-                    YEL,
-                    a,
-                    RESET,
-                    " in declaration of ",
-                    YEL,
-                    b.parent.pkg,
-                    ".",
-                    b.parent.name,
-                    RESET,
-                    "\n"
-                )
+                append(b.ast?.token?.line ?: "", "| ")
+                append(WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".",
+                    b.parent.name, RESET, "\n")
             }
         })
     }
@@ -171,6 +163,8 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter) {
             resolveDeclarations(it, mutableMapOf(), resolveBody = true)
         }
     }
+    unResolvedSingleExprMessageDeclarations.clear()
+
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
