@@ -178,11 +178,8 @@ fun Resolver.resolveCodeBlock(
     currentLevel++
     resolve(statement.statements, previousAndCurrentScope, statement)
     currentLevel--
-    if (statement.statements.isEmpty()) {
-        statement.token.compileError("Codeblock doesn't contain code")
-    }
 
-    val lastExpression = statement.statements.last()
+    val lastExpression = statement.statements.lastOrNull()
     // Add lambda type to code-block itself
     val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
     val returnType =

@@ -14,9 +14,25 @@
 //1 echo
 
 
-union Sas =
-| ^Tat
-| Sos
-union Tat =
-| Tut
-| Tam
+//type Cat
+//  name: String
+//  age: Int
+//type Rectangle
+//
+//
+//Cat birthday = age <- age inc
+//Cat changeName::String = name <- changeName
+//Cat outputRectangle = Rectangle new
+//
+//cat = Cat name: "sas" age: 334
+
+{1 2 3} forEach: [ x ->
+
+
+]
+
+
+
+
+
+q = 1

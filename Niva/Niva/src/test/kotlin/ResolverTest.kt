@@ -1613,6 +1613,20 @@ class ResolverTest {
     }
 
     @Test
+    fun emptyCodeBlock() {
+        val source = """
+            { 1 2 3 } forEach: [ x ->
+
+
+            ]
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
+
+
+
+    @Test
     fun errordomainDeclaration() {
         val source = """
             errordomain MyError =

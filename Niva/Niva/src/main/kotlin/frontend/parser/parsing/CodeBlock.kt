@@ -1,6 +1,7 @@
 package frontend.parser.parsing
 
 import frontend.resolver.Resolver
+import frontend.resolver.Type
 import main.utils.RESET
 import main.utils.WHITE
 import main.frontend.meta.TokenType
@@ -89,7 +90,7 @@ fun Parser.codeBlock(): CodeBlock {
     val result = CodeBlock(
         inputList = beforeStatementsPart,
         statements = statements,
-        type = if (statements.isNotEmpty()) null else Resolver.defaultTypes[InternalTypes.Unit] ,
+        type = null,
         token = openBracket
     )
 
