@@ -32,7 +32,7 @@ type Cat
   name: String
   age: Int
 type Rectangle
-t
+
 
 Cat birthday = age <- age inc
 Cat changeName::String = name <- changeName
@@ -40,9 +40,10 @@ Cat outputRectangle = Rectangle new
 
 cat = Cat name: "sas" age: 334 
 
-cat 
+{1 2 3} forEach: [ x ->
+  
 
-
+]
 
 
 
@@ -50,9 +51,7 @@ q = 1
 """
 
 fun main(args: Array<String>) {
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/JSON/lexer.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
-//    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/a.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
     if (help(args)) return
@@ -65,10 +64,7 @@ fun main(args: Array<String>) {
 //    val resolver = ls.resolveAll(qqq)
 //
 //    val fakeFileSource = sas
-//    ls.onCompletion(qqq, 4, 1)
-
-
-
+//    ls.onCompletion(qqq, 13, 2)
 
 
 //    ls.resolveAllWithChangedFile(

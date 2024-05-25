@@ -15,6 +15,7 @@ import main.utils.VerbosePrinter
 import main.utils.compileProjFromFile
 import java.io.File
 import java.net.URI
+import java.util.SortedMap
 
 
 typealias Line = Int
@@ -33,7 +34,7 @@ class LS {
     val megaStore: MegaStore = MegaStore()
 
     class MegaStore() {
-        val data: MutableMap<String, MutableMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
+        val data: MutableMap<String, SortedMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
         fun addNew(s: Statement, scope: Scope) {
             val sFile = s.token.file.absolutePath
             val sLine = s.token.line
@@ -44,7 +45,7 @@ class LS {
             }
 
             val createLineToStatement = {
-                mutableMapOf<Line, MutableSet<Pair<Statement, Scope>>>(sLine to createSet())
+                sortedMapOf<Line, MutableSet<Pair<Statement, Scope>>>(sLine to createSet())
             }
 
 
@@ -145,7 +146,6 @@ class LS {
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
 fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspResult {
     // We don't need to resolve anything on completion, it happens when code changes
-//    resolveAll(pathToChangedFile)
     // find statement type
 
     if (resolver == null) {
