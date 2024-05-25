@@ -33,6 +33,7 @@ import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
+import main.frontend.parser.types.ast.UnionBranchDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
 import main.lex
@@ -1192,6 +1193,24 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)
+    }
+
+    // ^ means that this branch include other union, to distinguish it from branch with no fields
+    @Test
+    fun unionsInsideUnionForwardDeclaration() {
+
+        val source = """
+            union Sas =
+                | ^Tat
+                | Sos
+            union Tat =
+                | Tut
+                | Tam
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val q = (ast[0] as UnionRootDeclaration).branches[0]
+        assertTrue{q.isRoot}
     }
 
     @Test

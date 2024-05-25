@@ -321,6 +321,7 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed:
 
 
             // | Rectangle => width: int height: int
+            val inlineBranch = match(TokenType.Return)
             val branchName = identifierMayBeTyped()//matchAssertAnyIdent("Name of the union branch expected")
             val fields = typeFields()
 
@@ -331,7 +332,8 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed:
                     fields = fields,
                     token = pipeTok,
                     root = root,
-                    names = branchName.names
+                    names = branchName.names,
+                    isRoot = inlineBranch
                 )
             )
 

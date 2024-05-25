@@ -26,186 +26,27 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-const val newText = """
-    // icon names close-symbolic, window-close-symbolic, mail-archive-symbolic
-// addCssClass "linked"
 
-Project use: "org.gnome.adw"
-
-app = Application name: "my.app" 
-
-type Person
+const val sas = """
+type Cat
   name: String
   age: Int
+type Rectangle
+t
 
-person = Person name: "String" age: 42
-person age 
+Cat birthday = age <- age inc
+Cat changeName::String = name <- changeName
+Cat outputRectangle = Rectangle new
 
-app onActivate: [
+cat = Cat name: "sas" age: 334 
 
-  window = (org.gnome.adw.ApplicationWindow app: app);
-    title: "Dela";
-    x: 280 y: 340 
-  
-  incButton = [
-    mut n = 1 
-    btn = (Button new); 
-      label: "Hello Adw";
-      hexpand: true; 
-      vexpand: true;
-      onClicked: [
-        "clicked n times!" echo
-        n <- n inc
-      ]
-    btn
-  ]
-
-
-  addNewProjectBtn = Button fromIconName: "tab-new-symbolic"
-  overviewTabsBtn = Button fromIconName: "preferences-desktop-keyboard-shortcuts-symbolic" // org.gnome.Settings-multitasking-symbolic //"overview-symbolic"
-  
-
-  preferencePage = [
-    createTaskConstructorRow = [ onApply:: [ String -> ] ->
-      // layout: addGroup entry removeGroup
-
-      addGroupBtn =    BtnFactory flatIcon: "list-add-symbolic" //Button fromIconName: "list-add-symbolic"
-      removeGroupBtn = BtnFactory flatIcon: "window-close-symbolic"
-
-      entryRow = (EntryRow new);
-        showApplyButton: true;
-        // addPrefix: addGroupBtn;
-        addSuffix: removeGroupBtn;
-        title: "Add new task";
-        // heightRequest: 60;
-        addCssClass: "transparent";
-        addCssClass: "rounded-corners"
-        
-
-
-      entryRow; onApply: [ onApply String: entryRow text ]
-    ]
-
-    // сделать чтобы возвращала кастом объект который содержит все виджеты
-    createTaskRow = [ text::String ->
-      // label = Label str: text
-
-      changeNameRow = (EntryRow new);
-        showApplyButton: true;
-        text: text;
-        title: "Change task name"
-
-
-      expRow = (ExpanderRow new); 
-        addRow: changeNameRow;
-        title: text
-        // child: label
-      
-      changeNameRow onApply: [ expRow title: changeNameRow text ]
-      
-      expRow
-    ]
-    
-
-
-    pp = PreferencesPage new
-
-    createGroup = [
-      model = Model widgetConstructor: createTaskRow
-      pg = model widget
-
-      ar1 = createTaskConstructorRow onApply: [taskName::String -> 
-        "adding task: taskName" echo
-        model add: taskName
-      ]
-      // ar1 subtitle: "mneieineinm"
-
-      pg add: ar1;
-        // add: ar2;
-        // add: ar3;
-        title: "hallou"
-
-      pg
-    ]
-
-    pg1 = createGroup do
-    pg2 = createGroup do
-    pg3 = createGroup do
-
-  
-    pp add: pg1;
-       add: pg2;
-       add: pg3
-
-  
-  ] 
-
-
-  mainBox = [
-    mut pageCounter = 0
-    newPageName = [ 
-      pageCounter <- pageCounter inc
-      "Page pageCounter" 
-    ]
-
-    header = (org.gnome.adw.HeaderBar new);
-      packStart: addNewProjectBtn;
-      packStart: overviewTabsBtn
-
-
-    constructMainWidget = [preferencePage do]
-    
-     
-    tabView = TabView new
-    newPage = tabView append: constructMainWidget do
-    newPage title: newPageName do
-
-    tabBar = (TabBar new);
-      view: tabView
-
-    box = (Box orientation: Orientation.VERTICAL spacing: 0);
-      append: header;
-      append: tabBar;
-      append: tabView
+cat 
 
 
 
-    overview = (TabOverview new); 
-      enableNewTab: true;
-      view: tabView;
-      child: box
-    
-    // actions
-    addNewProjectBtn onClicked: [
-      page = tabView append: constructMainWidget do
-      page title: newPageName do
-    ]
-    overview onCreateTab: [
-      page = tabView append: constructMainWidget do
-      page title: newPageName do 
-      page
-    ]
-
-    overviewTabsBtn onClicked: [
-      overview open: true
-    ]
 
 
-    tabView onClosePage: [page ->
-      pageCounter <- pageCounter dec
-      "pageCounter = pageCounter" echo
-      tabView closeFinish: page confirm: true
-      true
-    ]
-    overview
-  ]
-  
-  window content: mainBox do;
-    present
-]
-
-
-app run: args
+q = 1
 """
 
 fun main(args: Array<String>) {
@@ -217,20 +58,23 @@ fun main(args: Array<String>) {
     if (help(args)) return
 
 //    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
 //
 ////    LS().onCompletion(qqq, 11, 0)
 //    val ls = LS()
 //    val resolver = ls.resolveAll(qqq)
 //
-//    val fakeFileSource = newText
-//
+//    val fakeFileSource = sas
+//    ls.onCompletion(qqq, 4, 1)
+
+
+
+
+
 //    ls.resolveAllWithChangedFile(
 //        qqq,
 //        fakeFileSource
 //    )
-
-
 
     run(args)
 }
