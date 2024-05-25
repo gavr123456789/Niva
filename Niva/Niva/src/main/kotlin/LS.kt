@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package main
 
 import frontend.resolver.Resolver
@@ -5,6 +7,7 @@ import frontend.resolver.Type
 import frontend.resolver.resolve
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.GlobalVariables
 import main.utils.MainArgument
 import main.utils.PathManager
@@ -20,7 +23,7 @@ typealias Scope = Map<String, Type>
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
-    class NotFoundLine(val x: Pair<Statement, Scope>) : LspResult
+    class NotFoundLine(val x: Scope) : LspResult
     class Found(val x: Pair<Statement, Scope>) : LspResult
 }
 
@@ -95,9 +98,9 @@ class LS {
                         a && b
                     }
 
-                    q ?:
-                    throw Exception("Cant find statement on line: $line path: $path, char: $character\n" +
-                            "statements are: ${set.joinToString{ "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
+                    q ?: throw Exception("Cant find statement on line: $line path: $path, char: $character\n" +
+                            "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}"
+                    )
 
                 }
 
@@ -105,22 +108,31 @@ class LS {
 
             // file
             val f = data[path]
-            if (f != null) {
+            return if (f != null) {
                 // line
                 val l = f[line]
                 if (l != null) {
                     val q = findStatementInLine(l, false)
 
-                    return LspResult.Found(q)
+                    LspResult.Found(q)
                 } else {
-                    // no such line
-                    val lineBeforeRequested = checkElementsFromEnd(f.keys, true) { a, b ->
+                    // no such line so show scope
+
+                    // is that new line after last
+                    val lastLine = f.keys.last()
+                    if (line > lastLine) {
+                        LspResult.NotFoundLine(findStatementInLine(f[lastLine]!!, true).second)
+                    }
+
+
+                    val lineBeforeRequested = checkElementsFromEnd(f.keys, false) { a, b ->
                         b <= line && line <= a
                     }
                     if (lineBeforeRequested != null) {
-                        val p = LspResult.NotFoundLine(findStatementInLine(f[lineBeforeRequested]!!, true))
-                        return p
-                    } else throw Exception("Cant find a line before $line\nlines = ${f.keys}")
+                        val p = LspResult.NotFoundLine(findStatementInLine(f[lineBeforeRequested]!!, true).second)
+                        p
+                    } else
+                        LspResult.NotFoundLine(mapOf())
 
                 }
             } else {
@@ -136,6 +148,10 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
 //    resolveAll(pathToChangedFile)
     // find statement type
 
+    if (resolver == null) {
+        // from the start there is an error
+        return LspResult.NotFoundFile()
+    }
     val fileAbsolutePath = File(URI(pathToChangedFile)).absolutePath
     val a = megaStore.find(fileAbsolutePath, line + 1, character) // vsc count lines from 0
     return a
@@ -178,11 +194,11 @@ fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     megaStore.data.remove(file.absolutePath)
 
     resolver.reset()
-                                                                                            resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
+    resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
 
 }
 
-fun LS.resolveAll(pathToChangedFile: String): Resolver? {
+fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
         val directory = file.parentFile
@@ -221,16 +237,29 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver? {
     megaStore.data.clear()
 
 
-
     val onEachStatement = { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>? ->
-        if (st is Expression) {
-            megaStore.addNew(
-                st,
-                if (currentScope != null && previousScope != null)
-                    currentScope + previousScope
-                else
-                    mutableMapOf()
-            )
+        when (st) {
+            is Expression -> {
+                megaStore.addNew(
+                    st,
+                    if (currentScope != null && previousScope != null)
+                        currentScope + previousScope
+                    else
+                        mutableMapOf()
+                )
+            }
+
+            is VarDeclaration -> {
+                megaStore.addNew(
+                    st,
+                    if (currentScope != null && previousScope != null)
+                        currentScope + previousScope
+                    else
+                        mutableMapOf()
+                )
+            }
+
+            else -> {}
         }
     }
 
@@ -240,7 +269,9 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver? {
         this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatement)
         return resolver
     } catch (_: Throwable) {
-        return null
+        val emptyResolver = Resolver.empty(otherFilesPaths = allFiles.toList())
+        this.resolver = emptyResolver
+        return emptyResolver
     }
 
 }

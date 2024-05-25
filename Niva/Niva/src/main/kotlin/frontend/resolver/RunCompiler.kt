@@ -150,6 +150,20 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter, resolveOnly
         } else ""
     }
 
+    // unresolved types
+    unResolvedTypeDeclarations.forEach { (t, u) ->
+        changePackage(t, fakeTok)
+        resolveDeclarationsOnly(u.toMutableList())
+    }
+    // TODO replace to iter and remove inside, if there is type
+    unResolvedTypeDeclarations.clear()
+    unResolvedTypeDeclarations.forEach { (_, u) ->
+        if (u.isNotEmpty()) {
+            val decl = u.first()
+            decl.token.compileError("Type `${YEL}${decl}${RESET}` for unresolved type: `${YEL}${decl.typeName}${RESET}`")
+        }
+    }
+
     // unresolved methods that contains unresolved types in args, receiver or return
     unResolvedMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
@@ -173,18 +187,7 @@ fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter, resolveOnly
     }
     unResolvedMessageDeclarations.clear()
 
-    // unresolved types
-    unResolvedTypeDeclarations.forEach { (t, u) ->
-        changePackage(t, fakeTok)
-        resolveDeclarationsOnly(u.toMutableList())
-    }
-    unResolvedTypeDeclarations.forEach { (_, u) ->
-        if (u.isNotEmpty()) {
-            val decl = u.first()
-            decl.token.compileError("Type `${YEL}${decl}${RESET}` for unresolved type: `${YEL}${decl.typeName}${RESET}`")
-        }
-    }
-    unResolvedTypeDeclarations.clear()
+
 
     /// end of resolve all declarations
 

@@ -110,8 +110,8 @@ fun Resolver.resolveMessage(
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
     }
 
-    if (GlobalVariables.isLspMode && onEachStatement != null) {
-        onEachStatement(statement, currentScope, previousScope)
+    if (GlobalVariables.isLspMode) {
+        onEachStatement!!(statement, currentScope, previousScope) // message
     }
 }
 

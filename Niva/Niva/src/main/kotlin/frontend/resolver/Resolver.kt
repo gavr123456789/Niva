@@ -104,6 +104,9 @@ private fun Resolver.resolveStatement(
         is VarDeclaration -> {
             stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // var
+            }
             stack.pop()
         }
 
@@ -158,8 +161,8 @@ private fun Resolver.resolveStatement(
 
                 statement.isType = true
             }
-            if (GlobalVariables.isLspMode && onEachStatement != null) {
-                onEachStatement(statement, currentScope, previousScope)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // identifier
             }
 
             addToTopLevelStatements(statement)
@@ -167,6 +170,9 @@ private fun Resolver.resolveStatement(
 
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // (expr)
+            }
             addToTopLevelStatements(statement)
         }
 
@@ -180,51 +186,70 @@ private fun Resolver.resolveStatement(
 
         is ListCollection -> {
             resolveCollection(statement, "MutableList", (previousScope + currentScope).toMutableMap(), rootStatement)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // list
+            }
             addToTopLevelStatements(statement)
         }
 
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap(), rootStatement)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // set
+            }
             addToTopLevelStatements(statement)
         }
 
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // map
+            }
             addToTopLevelStatements(statement)
         }
 
-        is LiteralExpression.FloatExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Float]
+        is  LiteralExpression -> {
 
-        is LiteralExpression.DoubleExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Double]
+            when (statement) {
+                is LiteralExpression.FloatExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Float]
 
-        is LiteralExpression.IntExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Int]
+                is LiteralExpression.DoubleExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Double]
 
-        is LiteralExpression.StringExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.String]
+                is LiteralExpression.IntExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Int]
 
-        is LiteralExpression.CharExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Char]
+                is LiteralExpression.StringExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.String]
 
-        is LiteralExpression.TrueExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.CharExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Char]
 
-        is LiteralExpression.NullExpr -> {
-            if (rootStatement is VarDeclaration) {
-                val astValueType = rootStatement.valueTypeAst
-                if (astValueType != null) {
-                    val type = astValueType.toType(typeDB, typeTable)
-                    statement.type = type
+                is LiteralExpression.TrueExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+
+                is LiteralExpression.NullExpr -> {
+                    if (rootStatement is VarDeclaration) {
+                        val astValueType = rootStatement.valueTypeAst
+                        if (astValueType != null) {
+                            val type = astValueType.toType(typeDB, typeTable)
+                            statement.type = type
+                        }
+                    } else {
+                        statement.type = Resolver.defaultTypes[InternalTypes.Null]
+                    }
                 }
-            } else {
-                statement.type = Resolver.defaultTypes[InternalTypes.Null]
+
+                is LiteralExpression.FalseExpr ->
+                    statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+            }
+
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // literal
             }
         }
 
-        is LiteralExpression.FalseExpr ->
-            statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
         is TypeAST.InternalType -> {}
         is TypeAST.Lambda -> {}
@@ -235,9 +260,8 @@ private fun Resolver.resolveStatement(
 
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
 
-            if (GlobalVariables.isLspMode && onEachStatement != null) {
-
-                onEachStatement(statement, currentScope, previousScope)
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // if
             }
 
             addToTopLevelStatements(statement)
@@ -317,6 +341,7 @@ private fun Resolver.resolveStatement(
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
                     findSimilar(searchRequest, receiverType)
+
                     endOfSearch()
                 }
 
@@ -962,6 +987,12 @@ class Resolver(
         topLevelStatements.clear()
     }
     companion object {
+        fun empty(otherFilesPaths: List<File>) = Resolver(
+            projectName = "common",
+            otherFilesPaths = otherFilesPaths,
+            statements = mutableListOf(),
+            onEachStatement = null
+        )
 
         val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
 

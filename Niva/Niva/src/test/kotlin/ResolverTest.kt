@@ -509,6 +509,25 @@ class ResolverTest {
         assert(statements.count() == 2)
     }
 
+    @Test
+    fun unionInsideUnionForwardDeclaration() {
+
+        val source = """
+            union Sas =
+            | ^Tat
+            | Sos
+            union Tat =
+            | Tut
+            | Tam
+        """.trimIndent()
+
+        val statements = resolve(source)
+
+        assert(statements.count() == 2)
+    }
+
+
+
 //    @Test
 //    fun optionTypeGeneric() {
 //
@@ -904,7 +923,6 @@ class ResolverTest {
     fun chunked() {
         val source = """
            linesChunked = {1 2 3 4 5 6} chunked: 2
-
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 1)
@@ -997,7 +1015,6 @@ class ResolverTest {
             type Sas 
             constructor Sas t::T -> T = t 
             y = Sas t: 1
-//            y inc
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 3)
@@ -1063,7 +1080,7 @@ class ResolverTest {
     }
 
     @Test
-    fun currentLevel() {
+    fun constructorSimple() {
         val source = """
             type COLOR
             constructor COLOR RED = "\u001B[31m"
@@ -1091,11 +1108,8 @@ class ResolverTest {
     @Test
     fun valuesOfMap() {
         val source = """
-              
             nativeGroup = #{1 "sas" 2 "sus"}
             nativeGroup values 
-            
-          
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -1201,7 +1215,6 @@ class ResolverTest {
 
     @Test
     fun mustFail() {
-        // List<T> inject: G into: [G, T -> G]
         val source = """
             mut x::Int = 0
             y::Int? = 4
@@ -1253,7 +1266,6 @@ class ResolverTest {
         assert(statements.count() == 2)
     }
 
-    // TODO
     @Test
     fun extensionLambda() {
         val source = """

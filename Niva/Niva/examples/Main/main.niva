@@ -13,14 +13,10 @@
 //
 //1 echo
 
-//type Person name: String age: Int
-//Person from::T run::[T -> T] = run T: from
-//person = Person name: "sas" age: 43
-//person from: 1 run: [ it + 1 ]
 
-
-Int sas = 1 echo
-
-
-//x = 1 sas
-//>? x
+union Sas =
+| ^Tat
+| Sos
+union Tat =
+| Tut
+| Tam

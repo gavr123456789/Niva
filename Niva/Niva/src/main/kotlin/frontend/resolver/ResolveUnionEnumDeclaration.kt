@@ -25,7 +25,6 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
     val rootType = realType ?: rootType2
 
-    addNewType(rootType, statement)
 
     val branches = mutableListOf<Type.Union>()
     val genericsOfBranches = mutableSetOf<Type>()
@@ -33,7 +32,14 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         // check if type already exist, and it doesn't have fields,
         // than it's not a new type, but branch with branches
         val tok = it.token
-        val alreadyRegisteredType = typeAlreadyRegisteredInCurrentPkg(it.typeName, getCurrentPackage(tok), tok)
+        val pkg = getCurrentPackage(tok)
+        val alreadyRegisteredType = typeAlreadyRegisteredInCurrentPkg(it.typeName, pkg, tok)
+        if (alreadyRegisteredType == null && it.isRoot) {
+            // this is forward declaration of included union!
+            unResolvedTypeDeclarations.add(pkg.packageName, statement)
+            return
+        }
+
         val branchType = if (alreadyRegisteredType == null) {
             val branchType =
                 it.toType(
@@ -69,6 +75,9 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         branches.add(branchType)
         genericsOfBranches.addAll(branchType.typeArgumentList)
     }
+
+    addNewType(rootType, statement)
+
     rootType.branches = branches
     rootType.typeArgumentList += genericsOfBranches
 
