@@ -180,6 +180,10 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
 
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
+
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope) // codeblock
+            }
             addToTopLevelStatements(statement)
             stack.pop()
         }
@@ -336,16 +340,19 @@ private fun Resolver.resolveStatement(
                     resolveSingle((t.receiver), previousAndCurrentScope, statement)
                     currentLevel--
                     val receiverType = t.receiver.type!!
-                    //
+
 
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
-                    findSimilar(searchRequest, receiverType)
+                    if (!GlobalVariables.isLspMode)
+                        findSimilar(searchRequest, receiverType)
 
-                    endOfSearch()
+                    endOfSearch(currentScope + previousScope)
                 }
 
-                else -> endOfSearch()
+                else -> {
+                    endOfSearch(currentScope + previousScope)
+                }
             }
         }
 

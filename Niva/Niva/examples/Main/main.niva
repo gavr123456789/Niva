@@ -26,8 +26,8 @@
 //
 //cat = Cat name: "sas" age: 334
 
-{1 2 3} forEach: [ x ->
-
+{1 2 3} forEach: [
+    it echo
 
 ]
 

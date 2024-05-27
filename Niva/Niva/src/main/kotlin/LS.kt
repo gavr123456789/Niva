@@ -5,6 +5,7 @@ package main
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.parser.types.ast.CodeBlock
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
@@ -21,10 +22,11 @@ import java.util.SortedMap
 typealias Line = Int
 typealias Scope = Map<String, Type>
 
+class OnCompletionException(val scope: Scope): Exception()
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
-    class NotFoundLine(val x: Scope) : LspResult
+    class NotFoundLine(val x: Pair<Statement?, Scope>) : LspResult
     class Found(val x: Pair<Statement, Scope>) : LspResult
 }
 
@@ -32,6 +34,7 @@ sealed interface LspResult {
 class LS {
     lateinit var resolver: Resolver
     val megaStore: MegaStore = MegaStore()
+    var completionFromScope: Scope = mapOf()
 
     class MegaStore() {
         val data: MutableMap<String, SortedMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
@@ -68,7 +71,8 @@ class LS {
         }
 
 
-        fun find(path: String, line: Int, character: Int): LspResult {
+        // use scope if there is no expression on line
+        fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
 
             fun <T> checkElementsFromEnd(set: Set<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
                 val list = set.toList()
@@ -119,21 +123,24 @@ class LS {
                 } else {
                     // no such line so show scope
 
+                    // run resolve with scope feature
+                    LspResult.NotFoundLine(Pair(null, scope))
+                    ///
+
                     // is that new line after last
-                    val lastLine = f.keys.last()
-                    if (line > lastLine) {
-                        LspResult.NotFoundLine(findStatementInLine(f[lastLine]!!, true).second)
-                    }
-
-
-                    val lineBeforeRequested = checkElementsFromEnd(f.keys, false) { a, b ->
-                        b <= line && line <= a
-                    }
-                    if (lineBeforeRequested != null) {
-                        val p = LspResult.NotFoundLine(findStatementInLine(f[lineBeforeRequested]!!, true).second)
-                        p
-                    } else
-                        LspResult.NotFoundLine(mapOf())
+//                    val lastLine = f.keys.last()
+//                    if (line > lastLine) {
+//                        LspResult.NotFoundLine(findStatementInLine(f[lastLine]!!, true))
+//                    }
+//
+//                    val lineBeforeRequested = checkElementsFromEnd(f.keys, false) { a, b ->
+//                        b <= line && line <= a
+//                    }
+//                    if (lineBeforeRequested != null) {
+//                        val p = LspResult.NotFoundLine(findStatementInLine(f[lineBeforeRequested]!!, true))
+//                        p
+//                    } else
+//                        LspResult.NotFoundLine(Pair(null, mapOf()))
 
                 }
             } else {
@@ -148,12 +155,9 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
     // We don't need to resolve anything on completion, it happens when code changes
     // find statement type
 
-    if (resolver == null) {
-        // from the start there is an error
-        return LspResult.NotFoundFile()
-    }
     val fileAbsolutePath = File(URI(pathToChangedFile)).absolutePath
-    val a = megaStore.find(fileAbsolutePath, line + 1, character) // vsc count lines from 0
+    val a = megaStore.find(fileAbsolutePath, line + 1, character, completionFromScope) // vsc count lines from 0
+
     return a
 }
 
@@ -184,18 +188,35 @@ fun LS.removeDeclarations(pkgName: String) {
 }
 
 
+fun LS.resolveAllWithChangedFile2(pathToChangedFile: String, text: String) {
+    val file = File(URI(pathToChangedFile))
+    val pkgName = file.nameWithoutExtension
+    // let's assume user cant change packages names for now
+    // remove everything that was declarated in this changed file
+    removeDeclarations(pkgName)
+    megaStore.data.remove(file.absolutePath)
+
+    resolver.reset()
+    resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
+}
+
 fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
     val pkgName = file.nameWithoutExtension
     // let's assume user cant change packages names for now
     // remove everything that was declarated in this changed file
     removeDeclarations(pkgName)
-//    removeFromMegaStore
     megaStore.data.remove(file.absolutePath)
 
     resolver.reset()
-    resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
+    try {
+        resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
 
+    } catch (s: OnCompletionException) {
+        this.completionFromScope = s.scope
+    } catch (e: Throwable) {
+
+    }
 }
 
 fun LS.resolveAll(pathToChangedFile: String): Resolver {
@@ -239,7 +260,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
     val onEachStatement = { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>? ->
         when (st) {
-            is Expression -> {
+            is Expression, is VarDeclaration -> {
                 megaStore.addNew(
                     st,
                     if (currentScope != null && previousScope != null)
@@ -248,17 +269,6 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         mutableMapOf()
                 )
             }
-
-            is VarDeclaration -> {
-                megaStore.addNew(
-                    st,
-                    if (currentScope != null && previousScope != null)
-                        currentScope + previousScope
-                    else
-                        mutableMapOf()
-                )
-            }
-
             else -> {}
         }
     }
@@ -267,9 +277,18 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     val pm = PathManager(mainFile.path, MainArgument.LSP)
     try {
         this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatement)
+        this.completionFromScope = mapOf()
         return resolver
-    } catch (_: Throwable) {
+    } catch (s: OnCompletionException) {
+
+        this.completionFromScope = s.scope
         val emptyResolver = Resolver.empty(otherFilesPaths = allFiles.toList())
+        this.resolver = emptyResolver
+        return emptyResolver
+    }
+    catch (_: Throwable) {
+        val emptyResolver = Resolver.empty(otherFilesPaths = allFiles.toList())
+        this.completionFromScope = mapOf()
         this.resolver = emptyResolver
         return emptyResolver
     }

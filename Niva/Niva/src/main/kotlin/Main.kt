@@ -27,7 +27,7 @@ fun lex(source: String, file: File): MutableList<Token> {
 }
 
 
-const val sas = """
+const val fakeFileSource = """
 type Cat
   name: String
   age: Int
@@ -40,10 +40,17 @@ Cat outputRectangle = Rectangle new
 
 cat = Cat name: "sas" age: 334 
 
-{1 2 3} forEach: [ x ->
+{1 2 3} forEach: [
+   
   
-
+  
 ]
+Cat sas::Int = [
+ !!
+  
+]
+
+
 
 
 
@@ -56,15 +63,23 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
     if (help(args)) return
 
-//    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
-//
-////    LS().onCompletion(qqq, 11, 0)
-//    val ls = LS()
-//    val resolver = ls.resolveAll(qqq)
-//
-//    val fakeFileSource = sas
-//    ls.onCompletion(qqq, 13, 2)
+    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
+    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
+
+//    LS().onCompletion(qqq, 11, 0)
+//    try {
+        val ls = LS()
+        val resolver = ls.resolveAll(qqq)
+
+        ls.resolveAllWithChangedFile2(qqq, fakeFileSource)
+
+
+        ls.onCompletion(qqq, 13, 2)
+//    }
+//    catch (e: OnCompletionException) {
+//        TODO()
+//    }
+
 
 
 //    ls.resolveAllWithChangedFile(

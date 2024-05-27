@@ -26,7 +26,15 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 
-fun Resolver.resolve(mainFile: File, verbosePrinter: VerbosePrinter, resolveOnlyOneFile: Boolean = false, customMainSource: String? = null) {
+class ResolveUntil(val line: Int, character: Int)
+
+fun Resolver.resolve(
+    mainFile: File,
+    verbosePrinter: VerbosePrinter,
+    resolveOnlyOneFile: Boolean = false,
+    customMainSource: String? = null,
+    resolveUntil: ResolveUntil? = null
+) {
 
     fun getAst(source: String, file: File): List<Statement> {
         val tokens = lex(source, file)

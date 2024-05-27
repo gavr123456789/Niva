@@ -69,15 +69,12 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
     Runtime.getRuntime().addShutdownHook(closeChildThread)
 
 
-//    var output = ""
-//
     val inputStream = BufferedReader(InputStreamReader(process.inputStream))
 //    while (process.isAlive) {
 //        inputStream.readLine()?.also { output = it } //!= null ||
 //        println(output)
 //    }
 
-    ///
 
     process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
     if (runTests) {

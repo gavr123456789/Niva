@@ -235,7 +235,10 @@ fun Resolver.findAnyMsgType(
 
     if (GlobalVariables.isDemonMode) {
         findSimilar(to = selectorName, forType = receiverType)
-        endOfSearch()
+        endOfSearch(mapOf())
+    } else if (GlobalVariables.isLspMode) {
+        // IDK, send find similar as array?
+        TODO()
     } else
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
 }

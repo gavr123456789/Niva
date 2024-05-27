@@ -27,11 +27,13 @@ fun Parser.statement(): Statement {
 
     // x sas!! generates InfoToken x sas
     if (kind == TokenType.Bang) {
-        val lastStatement = this.tree.last()
+        val lastStatement = this.tree.lastOrNull()
         if (lastStatement is Expression) {
             tree.removeLast()
             return NeedInfo(lastStatement, step())
-        } else peek().compileError("Dot not after expression")
+        } else {
+            return NeedInfo(null, step())
+        }
     }
 
     if (tok.isIdentifier() &&
