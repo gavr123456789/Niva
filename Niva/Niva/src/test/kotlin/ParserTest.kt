@@ -1843,6 +1843,19 @@ class ParserTest {
         assertTrue {q is ErrorDomainDeclaration}
     }
 
+
+    @Test
+    fun bang() {
+        val source = """
+            {1 2} forEach: [
+                !!
+            ]
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
     @Test
     fun newMessageDeclSyntax() {
         val source = """

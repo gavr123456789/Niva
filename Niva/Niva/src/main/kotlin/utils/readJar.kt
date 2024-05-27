@@ -45,7 +45,6 @@ package main.utils
 //                }
 //            } catch (e: Throwable) {
 //                errorConter++
-//                println("ОЙ!")
 //            }
 //        }
 //

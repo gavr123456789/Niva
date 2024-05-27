@@ -59,7 +59,7 @@ sealed class Expression(
 
 
 class NeedInfo(
-    var expression: Expression,
+    var expression: Expression?,
     token: Token,
 //    num: Int = 1, // selected suggestion
     isPrivate: Boolean = false,

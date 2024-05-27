@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import main.OnCompletionException
+import main.Scope
 import main.frontend.meta.CompilerError
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -16,7 +18,7 @@ import kotlin.collections.joinToString
 import kotlin.text.lowercase
 import kotlin.text.startsWith
 
-fun endOfSearch(): Nothing = throw (Exception("end of search"))
+fun endOfSearch(scope: Scope): Nothing = throw (OnCompletionException(scope))
 
 fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     GlobalVariables.enableDemonMode()
@@ -56,8 +58,10 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                             compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
                         } catch (e: CompilerError) {
                             println(e.message)
+                        } catch (e: OnCompletionException){
+                            throw e
                         } catch (e: Exception) {
-                            if (e.message?.startsWith("end") == false) {
+                            if (e.message?.startsWith("end of search") == false) {
                                 throw e
                             }
                         }
