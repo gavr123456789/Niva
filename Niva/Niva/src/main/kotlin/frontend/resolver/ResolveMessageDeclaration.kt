@@ -282,7 +282,6 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = st.returnType
     // addToDb
     if (addToDb) {
-
         addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
     }
 

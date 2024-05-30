@@ -26,14 +26,12 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 
-class ResolveUntil(val line: Int, character: Int)
 
 fun Resolver.resolve(
     mainFile: File,
     verbosePrinter: VerbosePrinter,
     resolveOnlyOneFile: Boolean = false,
     customMainSource: String? = null,
-    resolveUntil: ResolveUntil? = null
 ) {
 
     fun getAst(source: String, file: File): List<Statement> {
@@ -52,12 +50,8 @@ fun Resolver.resolve(
 
 
     val beforeParserMark = markNow()
-    // generate ast for main file with filling topLevelStatements
-    // 1) read content of mainFilePath
-    // 2) generate ast
-    val mainSource = customMainSource ?: mainFile.readText()
 
-    val mainAST = getAst(source = mainSource, file = mainFile)
+    val mainAST = getAst(source = customMainSource ?: mainFile.readText(), file = mainFile)
 
 
     // generate ast for others
@@ -76,7 +70,7 @@ fun Resolver.resolve(
 
     // create main package
     changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
-
+    currentResolvingFileName = mainFile
 
     val resolveUnresolved = {
         if (typeDB.unresolvedTypes.isNotEmpty()) { // && i != 0
@@ -117,6 +111,7 @@ fun Resolver.resolve(
     resolveDeclarationsOnly(mainAST)
     resolveUnresolved()
     otherASTs.forEachIndexed { i, it ->
+        currentResolvingFileName = otherFilesPaths[i]
         // create package
         changePackage(it.first, fakeTok)
         statements = it.second.toMutableList()
