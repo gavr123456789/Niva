@@ -474,6 +474,16 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
         parent2 = parent2.parent
     }
 
+    if (type1 is Type.UnknownGenericType)
+        return type1
+    if (type2 is Type.UnknownGenericType)
+        return type2
+
+    // not needed for now, but maybe in future
+//    if (compare2Types(type1, type2)) {
+//        return type1
+//    }
+
     return null
 }
 
@@ -613,10 +623,13 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
 
     fun addArgsPackage(messageData: MessageMetadata) {
         when (messageData) {
-            is UnaryMsgMetaData -> { /* no args */ }
+            is UnaryMsgMetaData -> { /* no args */
+            }
+
             is BinaryMsgMetaData -> {
                 pack.addImport(messageData.argType.pkg)
             }
+
             is KeywordMsgMetaData -> {
                 messageData.argTypes.forEach {
                     pack.addImport(it.type.pkg)
@@ -818,7 +831,7 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    val type = getAnyType(x.names.first(), currentScope, previousScope, kw, ) ?: getAnyType(
+    val type = getAnyType(x.names.first(), currentScope, previousScope, kw) ?: getAnyType(
         x.name, currentScope, previousScope, kw,
     )
 
@@ -906,12 +919,14 @@ val createTypeListOfType = { name: String, internalType: Type.InternalType, list
     )
 }
 val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
-    Type.UserType(name = name,
+    Type.UserType(
+        name = name,
         typeArgumentList = listOf(key.copy().also { it.beforeGenericResolvedName = "T" },
             value.copy().also { it.beforeGenericResolvedName = "G" }),
         fields = mutableListOf(),
         pkg = "core",
-        protocols = mapType.protocols)
+        protocols = mapType.protocols
+    )
 }
 
 
@@ -988,7 +1003,7 @@ class Resolver(
             statements = mutableListOf(),
             onEachStatement = onEachStatement,
             currentResolvingFileName = currentFile,
-            )
+        )
 
         val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
 
@@ -1278,13 +1293,13 @@ class Resolver(
 
         listType.protocols
         stringType.protocols["common"]!!.keywordMsgs.putAll(
-                listOf(
-                    createKeyword(
-                        KeywordArg("split", stringType),
-                        listOfString
-                    )
+            listOf(
+                createKeyword(
+                    KeywordArg("split", stringType),
+                    listOfString
                 )
             )
+        )
 
         // add toList to IntRange
         val listOfInts = createTypeListOfType("List", intType, listType)

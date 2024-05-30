@@ -26,12 +26,38 @@
 //
 //cat = Cat name: "sas" age: 334
 
-Int add::Int = [
-    1 echo
-]
 
-union Option = Value v: T | None
 
-v = Value v: 232
 
-v echo
+
+//Int add::Int = [
+//    1 echo
+//]
+//
+//union Option = Value v: T | None
+//
+//v = Value v: 232
+//
+//Option valueOrNull = | this
+//| Value => v
+//| None => null
+//
+//v echo
+//v valueOrNull echo
+
+
+union Shape x: Int y: Int =
+    | Rectangle width: Int height: Int
+    | Circle    radius: Int
+
+
+constructor Float pi = 3.14
+
+Shape getArea -> Float =
+    | this
+    | Rectangle => width * height |> toFloat
+    | Circle => Float pi * (radius * radius) toFloat
+
+
+x = Rectangle width: 2 height: 3 x: 0 y: 0
+x getArea echo
