@@ -75,7 +75,11 @@ fun Resolver.resolveDeclarations(
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     statements.forEach {
         if (it is Declaration) {
-            resolveDeclarations(it, mutableMapOf(), resolveBody = false)
+            val x = mutableMapOf<String, Type>()
+            resolveDeclarations(it, x, resolveBody = false)
+            if (onEachStatement != null) {
+                onEachStatement(it, x, mutableMapOf(), this.currentResolvingFileName)
+            }
         }
         // special messages like Project package: ""
         if (it is MessageSendKeyword) {

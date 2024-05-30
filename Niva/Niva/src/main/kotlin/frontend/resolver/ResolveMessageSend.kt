@@ -111,7 +111,7 @@ fun Resolver.resolveMessage(
     }
 
     if (GlobalVariables.isLspMode) {
-        onEachStatement!!(statement, currentScope, previousScope) // message
+        onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // message
     }
 }
 

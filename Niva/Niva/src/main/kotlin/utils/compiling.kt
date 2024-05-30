@@ -17,6 +17,7 @@ object GlobalVariables {
     var needStackTrace = true
         private set
 
+    @Suppress("unused")
     fun enableStackTrace() {
         needStackTrace = true
     }
@@ -25,6 +26,7 @@ object GlobalVariables {
     var printTime = false
         private set
 
+    @Suppress("unused")
     fun enableTimePrinting() {
         printTime = true
     }
@@ -130,7 +132,6 @@ class CompilerRunner(
     fun runCommand(
         dist: Boolean = false,
         buildFatJar: Boolean = false,
-        singleFile: Boolean = false,
         runTests: Boolean = false
     ) {
         // remove repl log file since it will be recreated
@@ -224,7 +225,7 @@ fun compileProjFromFile(
     resolveOnly: Boolean = false,
     tests: Boolean = false,
     verbose: Boolean = false,
-    onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
+    onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null
 
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
@@ -263,7 +264,8 @@ fun compileProjFromFile(
         projectName = "common",
         otherFilesPaths = otherFilesPaths,
         statements = mutableListOf(),
-        onEachStatement = onEachStatement
+        onEachStatement = onEachStatement,
+        currentResolvingFileName = mainFile
     )
 
     resolver.resolve(mainFile, verbosePrinter)

@@ -58,9 +58,8 @@ private fun Resolver.resolveStatement(
 
 
                 if (statement2.messages.isNotEmpty()) {
-                    statement2.type =
-                        statement2.messages.last().type
-                            ?: statement2.token.compileError("Not all messages of ${YEL}${statement2.str} ${WHITE}has types")
+                    statement2.type = statement2.messages.last().type
+                        ?: statement2.token.compileError("Not all messages of ${YEL}${statement2.str} ${WHITE}has types")
                 } else {
                     // every single expressions is unary message without messages
                     if (statement2.type == null) {
@@ -89,8 +88,7 @@ private fun Resolver.resolveStatement(
                 currentLevel--
             }
 
-            if (!allDeclarationResolvedAlready)
-                resolveDeclarations(statement, previousScope, true)
+            if (!allDeclarationResolvedAlready) resolveDeclarations(statement, previousScope, true)
             else if (statement is MessageDeclaration) {
                 // first time all declarations resolved without bodies, now we need to resolve them
                 resolveMsgDeclarationOnlyBody(statement)
@@ -105,7 +103,7 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // var
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // var
             }
             stack.pop()
         }
@@ -162,7 +160,8 @@ private fun Resolver.resolveStatement(
                 statement.isType = true
             }
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // identifier
+
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // identifier
             }
 
             addToTopLevelStatements(statement)
@@ -171,7 +170,7 @@ private fun Resolver.resolveStatement(
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // (expr)
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // (expr)
             }
             addToTopLevelStatements(statement)
         }
@@ -182,7 +181,7 @@ private fun Resolver.resolveStatement(
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // codeblock
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // codeblock
             }
             addToTopLevelStatements(statement)
             stack.pop()
@@ -191,7 +190,7 @@ private fun Resolver.resolveStatement(
         is ListCollection -> {
             resolveCollection(statement, "MutableList", (previousScope + currentScope).toMutableMap(), rootStatement)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // list
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // list
             }
             addToTopLevelStatements(statement)
         }
@@ -199,7 +198,7 @@ private fun Resolver.resolveStatement(
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap(), rootStatement)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // set
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // set
             }
             addToTopLevelStatements(statement)
         }
@@ -207,31 +206,25 @@ private fun Resolver.resolveStatement(
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // map
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // map
             }
             addToTopLevelStatements(statement)
         }
 
-        is  LiteralExpression -> {
+        is LiteralExpression -> {
 
             when (statement) {
-                is LiteralExpression.FloatExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Float]
+                is LiteralExpression.FloatExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Float]
 
-                is LiteralExpression.DoubleExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Double]
+                is LiteralExpression.DoubleExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Double]
 
-                is LiteralExpression.IntExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Int]
+                is LiteralExpression.IntExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Int]
 
-                is LiteralExpression.StringExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.String]
+                is LiteralExpression.StringExpr -> statement.type = Resolver.defaultTypes[InternalTypes.String]
 
-                is LiteralExpression.CharExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Char]
+                is LiteralExpression.CharExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Char]
 
-                is LiteralExpression.TrueExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.TrueExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
 
                 is LiteralExpression.NullExpr -> {
                     if (rootStatement is VarDeclaration) {
@@ -245,12 +238,11 @@ private fun Resolver.resolveStatement(
                     }
                 }
 
-                is LiteralExpression.FalseExpr ->
-                    statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.FalseExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // literal
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // literal
             }
         }
 
@@ -265,7 +257,7 @@ private fun Resolver.resolveStatement(
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope) // if
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // if
             }
 
             addToTopLevelStatements(statement)
@@ -365,6 +357,7 @@ private fun Resolver.resolveStatement(
                         it.binaryMsgs[statement.name]?.let { method -> statement.method = method }
                     }
                 }
+
                 is MethodReference.Keyword -> {
                     val name = statement.keys.first() + statement.keys.drop(1).joinToString("") { it.uppercase() }
                     forType.protocols.values.forEach {
@@ -374,6 +367,7 @@ private fun Resolver.resolveStatement(
                         }
                     }
                 }
+
                 is MethodReference.Unary -> {
                     forType.protocols.values.forEach {
                         it.unaryMsgs[statement.name]?.let { method -> statement.method = method }
@@ -638,9 +632,7 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
 }
 
 fun Resolver.typeAlreadyRegisteredInCurrentPkg(
-    typeName: String,
-    pkg: Package? = null,
-    token: Token? = null
+    typeName: String, pkg: Package? = null, token: Token? = null
 ): Type.UserLike? {
     val pack = pkg ?: getCurrentPackage(token ?: createFakeToken())
     val result = pack.types[typeName]
@@ -689,8 +681,7 @@ fun Resolver.changeProject(newCurrentProject: String, token: Token) {
 
 
     projects[newCurrentProject] = Project(
-        name = newCurrentProject,
-        usingProjects = mutableListOf(commonProject)
+        name = newCurrentProject, usingProjects = mutableListOf(commonProject)
     )
 
     TODO()
@@ -753,15 +744,12 @@ fun Resolver.usePackage(packageName: String, noStarImport: Boolean = false) {
 }
 
 enum class CompilationTarget {
-    jvm,
-    linux,
-    macos,
+    jvm, linux, macos,
 //    windows,
 }
 
 enum class CompilationMode {
-    release,
-    debug,
+    release, debug,
 }
 
 
@@ -829,16 +817,11 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    val type =
-        getAnyType(x.names.first(), currentScope, previousScope, kw, x.names) ?: getAnyType(
-            x.name,
-            currentScope,
-            previousScope,
-            kw,
-            x.names
-        )
+    val type = getAnyType(x.names.first(), currentScope, previousScope, kw, ) ?: getAnyType(
+        x.name, currentScope, previousScope, kw,
+    )
 
-        ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+    ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
 
 
     val typeWithGenericResolved =
@@ -859,7 +842,6 @@ fun Resolver.getAnyType(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     statement: KeywordMsg?, // type constructor call
-    names: List<String> = listOf()
 ): Type? {
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
@@ -923,16 +905,12 @@ val createTypeListOfType = { name: String, internalType: Type.InternalType, list
     )
 }
 val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
-    Type.UserType(
-        name = name,
-        typeArgumentList = listOf(
-            key.copy().also { it.beforeGenericResolvedName = "T" },
-            value.copy().also { it.beforeGenericResolvedName = "G" }
-        ),
+    Type.UserType(name = name,
+        typeArgumentList = listOf(key.copy().also { it.beforeGenericResolvedName = "T" },
+            value.copy().also { it.beforeGenericResolvedName = "G" }),
         fields = mutableListOf(),
         pkg = "core",
-        protocols = mapType.protocols
-    )
+        protocols = mapType.protocols)
 }
 
 
@@ -940,6 +918,7 @@ class Resolver(
     val projectName: String,
 
     var statements: MutableList<Statement>,
+    var currentResolvingFileName: File,
 
     val otherFilesPaths: List<File> = listOf(),
 
@@ -981,10 +960,13 @@ class Resolver(
 
     var resolvingMainFile: Boolean = false,
 
-    val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?) -> Unit)? = null
+    val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, currentFile: File) -> Unit)? = null
 ) {
     fun reset() {
         statements = mutableListOf()
+        unResolvedSingleExprMessageDeclarations.clear()
+        unResolvedMessageDeclarations.clear()
+        unResolvedTypeDeclarations.clear()
         resolvingMainFile = false
         stack.clear()
         infoTypesToPrint.clear()
@@ -993,13 +975,19 @@ class Resolver(
         currentLevel = 0
         topLevelStatements.clear()
     }
+
     companion object {
-        fun empty(otherFilesPaths: List<File>) = Resolver(
+        fun empty(
+            otherFilesPaths: List<File>,
+            onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)?,
+            currentFile: File,
+        ) = Resolver(
             projectName = "common",
             otherFilesPaths = otherFilesPaths,
             statements = mutableListOf(),
-            onEachStatement = null
-        )
+            onEachStatement = onEachStatement,
+            currentResolvingFileName = currentFile,
+            )
 
         val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
 
@@ -1058,26 +1046,22 @@ class Resolver(
                 )
             )
 
-            floatType.protocols.putAll(
-                createFloatProtocols(
-                    intType = intType,
-                    stringType = stringType,
-                    unitType = unitType,
-                    boolType = boolType,
-                    floatType = floatType,
-                ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) }
-            )
+            floatType.protocols.putAll(createFloatProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                floatType = floatType,
+            ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) })
 
 
-            doubleType.protocols.putAll(
-                createFloatProtocols(
-                    intType = intType,
-                    stringType = stringType,
-                    unitType = unitType,
-                    boolType = boolType,
-                    floatType = doubleType,
-                ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) }
-            )
+            doubleType.protocols.putAll(createFloatProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                floatType = doubleType,
+            ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) })
 
 
             stringType.protocols.putAll(
@@ -1120,19 +1104,13 @@ class Resolver(
 
             anyType.protocols.putAll(
                 createAnyProtocols(
-                    unitType = unitType,
-                    any = anyType,
-                    boolType = boolType,
-                    stringType = stringType
+                    unitType = unitType, any = anyType, boolType = boolType, stringType = stringType
                 )
             )
             // we need to have different links to protocols any and T, because different msgs can be added for both
             unknownGenericType.protocols.putAll(
                 createAnyProtocols(
-                    unitType = unitType,
-                    any = anyType,
-                    boolType = boolType,
-                    stringType = stringType
+                    unitType = unitType, any = anyType, boolType = boolType, stringType = stringType
                 )
             )
 
@@ -1277,8 +1255,7 @@ class Resolver(
 
         // List
         addCustomTypeToDb(
-            listType,
-            createListProtocols(
+            listType, createListProtocols(
                 intType = intType,
                 stringType = stringType,
                 unitType = unitType,
@@ -1299,8 +1276,14 @@ class Resolver(
         val listOfString = createTypeListOfType("List", stringType, listType)
 
         listType.protocols
-        stringType.protocols["common"]!!.keywordMsgs
-            .putAll(listOf(createKeyword(KeywordArg("split", stringType), listOfString)))
+        stringType.protocols["common"]!!.keywordMsgs.putAll(
+                listOf(
+                    createKeyword(
+                        KeywordArg("split", stringType),
+                        listOfString
+                    )
+                )
+            )
 
         // add toList to IntRange
         val listOfInts = createTypeListOfType("List", intType, listType)
@@ -1450,10 +1433,7 @@ class Resolver(
 
         addCustomTypeToDb(
             errorType, createExceptionProtocols(
-                errorType,
-                unitType,
-                nothingType,
-                stringType
+                errorType, unitType, nothingType, stringType
             )
         )
 
@@ -1468,9 +1448,7 @@ class Resolver(
 
         addCustomTypeToDb(
             stringBuilderType, createStringBuilderProtocols(
-                stringBuilderType,
-                anyType,
-                stringType
+                stringBuilderType, anyType, stringType
             )
         )
 
@@ -1491,16 +1469,13 @@ class Resolver(
         )
 
         addCustomTypeToDb(
-            typeType,
-            mutableMapOf()
+            typeType, mutableMapOf()
         )
 
         // Compiler
         compiler.protocols.putAll(
             createCompilerProtocols(
-                intType = intType,
-                stringType = stringType,
-                typeType = typeType
+                intType = intType, stringType = stringType, typeType = typeType
             )
         )
 
@@ -1513,9 +1488,6 @@ class Resolver(
 
 private fun Type.InternalType.copy(): Type.InternalType {
     return Type.InternalType(
-        typeName = InternalTypes.valueOf(name),
-        pkg = this.pkg,
-        isPrivate,
-        protocols
+        typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
     )
 }

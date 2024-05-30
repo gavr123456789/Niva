@@ -27,34 +27,17 @@ fun lex(source: String, file: File): MutableList<Token> {
 }
 
 
-const val fakeFileSource = """
-type Cat
-  name: String
-  age: Int
-type Rectangle
-
-
-Cat birthday = age <- age inc
-Cat changeName::String = name <- changeName
-Cat outputRectangle = Rectangle new
-
-cat = Cat name: "sas" age: 334 
-
-{1 2 3} forEach: [
-   
-  
-  
-]
-Cat sas::Int = [
- !!
-  
-]
+const val fakeFileSourceGOOD = """
+// Int add::Int = this + add
+1 
 
 
 
+"""
+const val fakeFileSourceBAAD = """
+//Int add::Int = this + add2
+1 
 
-
-q = 1
 """
 
 fun main(args: Array<String>) {
@@ -63,29 +46,29 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
     if (help(args)) return
 
-    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
-    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
-
-//    LS().onCompletion(qqq, 11, 0)
+//    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
+//
 //    try {
-        val ls = LS()
-        val resolver = ls.resolveAll(qqq)
-
-        ls.resolveAllWithChangedFile2(qqq, fakeFileSource)
-
-
-        ls.onCompletion(qqq, 13, 2)
+//        val ls = LS()
+//        val resolver = ls.resolveAll(qqq)
+//
+//
+//        ls.resolveAllWithChangedFile(
+//            qqq,
+//            fakeFileSourceGOOD
+//        )
+//
+//        ls.onCompletion(qqq, 2, 3)
+//        println()
 //    }
 //    catch (e: OnCompletionException) {
-//        TODO()
+//        println(e.scope)
 //    }
 
 
 
-//    ls.resolveAllWithChangedFile(
-//        qqq,
-//        fakeFileSource
-//    )
+
 
     run(args)
 }
@@ -175,7 +158,7 @@ fun run(args: Array<String>) {
         }
 
             MainArgument.SINGLE_FILE_PATH -> {
-            compiler.runCommand(dist = am.compileOnly, singleFile = true)
+            compiler.runCommand(dist = am.compileOnly)
         }
 
         MainArgument.INFO_ONLY ->
@@ -185,7 +168,7 @@ fun run(args: Array<String>) {
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
         MainArgument.RUN_FROM_IDEA -> {
-            compiler.runCommand(dist = false, singleFile = true)
+            compiler.runCommand(dist = false)
         }
 
         MainArgument.DAEMON -> {

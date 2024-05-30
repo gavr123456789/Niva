@@ -26,13 +26,12 @@
 //
 //cat = Cat name: "sas" age: 334
 
-{1 2 3} forEach: [
-    it echo
-
+Int add::Int = [
+    1 echo
 ]
 
+union Option = Value v: T | None
 
+v = Value v: 232
 
-
-
-q = 1
+v echo

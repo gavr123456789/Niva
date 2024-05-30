@@ -226,7 +226,7 @@ fun Resolver.findAnyMsgType(
                     }
                 }
             } else if (msg.receiver.type?.errors != null) {
-
+                // TODO complete error switching
             }
         }
 
@@ -238,7 +238,7 @@ fun Resolver.findAnyMsgType(
         endOfSearch(mapOf())
     } else if (GlobalVariables.isLspMode) {
         // IDK, send find similar as array?
-        TODO()
+        throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
     } else
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
 }
