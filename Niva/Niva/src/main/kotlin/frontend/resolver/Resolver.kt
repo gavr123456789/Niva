@@ -152,7 +152,8 @@ private fun Resolver.resolveStatement(
             val type = statement.type
 
             // This Identifier is Type, like Person
-            if (type != null && type !is Type.EnumRootType && rootStatement !is ControlFlow) {
+            // all except statement.name == type.name is bullshit here
+            if (type != null && type !is Type.EnumRootType && rootStatement !is ControlFlow && statement.name == type.name) {
                 if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type, statement.str != type.name)
                 }
