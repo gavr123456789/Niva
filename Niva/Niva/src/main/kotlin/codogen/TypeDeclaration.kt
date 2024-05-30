@@ -5,9 +5,7 @@ import main.utils.RED
 import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
-import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.SomeTypeDeclaration
-import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionRootDeclaration
@@ -65,7 +63,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append(", ")
         }
     }
-    fun generateFieldArguments2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+    fun generateFieldArgument2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
 
 
         if (!rootFields) {
@@ -104,14 +102,14 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     }
     // class Person (var age: Int,
 
-    // root fields
-    if (receiverType is Type.UnionRootType) {
-        if (receiverType.fields.isNotEmpty()) {
+    // add fields of the root
+    if (receiverType is Type.UnionBranchType) {
+        if (receiverType.root.fields.isNotEmpty()) {
             // comma after branch fields, before root fields
             append(", ")
         }
-        receiverType.fields.forEachIndexed { i, it ->
-            generateFieldArguments2(it.name, it.type, i, true, receiverType.fields.count() - 1)
+        receiverType.root.fields.forEachIndexed { i, it ->
+            generateFieldArgument2(it.name, it.type, i, true, receiverType.root.fields.count() - 1)
         }
     }
 
