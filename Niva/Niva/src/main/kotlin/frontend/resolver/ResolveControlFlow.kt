@@ -26,10 +26,16 @@ fun getAssignTypeForControlFlow(branchReturnTypes: List<Type>, tok: Token): Type
     (1..<branchReturnTypes.count()).forEach {
         val cur = branchReturnTypes[it]
         val prev = branchReturnTypes[it - 1]
+        var oneOfReturnTypesIsActualNull = false
+
 
         val realType1 = cur.unpackNull()
         val realType2 = prev.unpackNull()
         if (!resultIsNullabel && realType1 != cur) resultIsNullabel = true
+        if (typeIsNull(prev)) {
+            resultIsNullabel = true
+//            oneOfReturnTypesIsActualNull = true
+        }
 
         val generalRoot = findGeneralRoot(realType1, realType2)
         if (generalRoot == null) {
@@ -159,7 +165,9 @@ fun Resolver.resolveControlFlow(
 
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
-                if (prevType.name != currType.name) {
+                val isTypeEqual =
+                    compare2Types(prevType, currType, unpackNull = true, compareParentsOfBothTypes = true, isOut = true, nullIsAny = true)
+                if (!isTypeEqual) {
                     it.ifExpression.token.compileError(
                         "In if Expression return type of branch on line: ${WHITE}${prev.ifExpression.token.line}$RESET is ${WHITE}${prevType.name}${RESET} " +
                                 "\n\tBut return type of branch on line ${WHITE}${it.ifExpression.token.line}${RESET} is ${WHITE}${currType.name}${RESET}, all branches must return the same type"
@@ -298,7 +306,8 @@ fun Resolver.resolveControlFlow(
 
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
-                val isTypeEqual = compare2Types(prevType, currType, unpackNull = true, compareParentsOfBothTypes = true)
+                val isTypeEqual = compare2Types(prevType, currType, unpackNull = true, compareParentsOfBothTypes = true, isOut = true,
+                    nullIsAny = true)
                 if (!isTypeEqual) {
                     it.ifExpression.token.compileError(
                         "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RESET is $YEL${prevType.name}$RESET "
