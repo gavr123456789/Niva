@@ -37,9 +37,9 @@ fun Resolver.resolveVarDeclaration(
     // generics in right part, but real type in left, x::List::Int = List
     var copyType: Type? = null
     if (valueOfVarDecl is Receiver &&
-        typeOfValueInVarDecl is Type.UserType &&
-        typeOfValueInVarDecl.typeArgumentList.find { it.name.isGeneric() } != null &&
-        definedASTType is TypeAST.UserType && definedASTType.typeArgumentList.find { it.name.isGeneric() } == null
+        typeOfValueInVarDecl is Type.UserLike &&
+        definedASTType is TypeAST.UserType && definedASTType.typeArgumentList.find { it.name.isGeneric() } == null &&
+        typeOfValueInVarDecl.typeArgumentList.find { it.name.isGeneric() } != null
     ) {
         copyType = typeOfValueInVarDecl.copy()
 

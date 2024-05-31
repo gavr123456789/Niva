@@ -14,6 +14,10 @@ import kotlin.collections.drop
 import kotlin.collections.forEachIndexed
 import kotlin.collections.isNotEmpty
 
+val typeIsNull = { type: Type ->
+    type is Type.InternalType && type.name == "Null"
+}
+
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 // type from db must be always first, because Ins -> arg::Number, but not the other way around
 fun compare2Types(
@@ -23,7 +27,8 @@ fun compare2Types(
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type
     unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
-    compareParentsOfBothTypes: Boolean = false
+    compareParentsOfBothTypes: Boolean = false,
+    nullIsAny: Boolean = false // any branch of switch can return null
 ): Boolean {
     if (type1 === type2) return true
 
@@ -97,9 +102,7 @@ fun compare2Types(
         return true
     }
 
-    val typeIsNull = { type: Type ->
-        type is Type.InternalType && type.name == "Null"
-    }
+
     // if one of them null and second is nullable
     if ((typeIsNull(type1) && type2 is Type.NullableType ||
                 typeIsNull(type2) && type1 is Type.NullableType)
@@ -107,14 +110,20 @@ fun compare2Types(
         return true
     }
 
+    // in switch one branch can return Int and the other null
+    if (nullIsAny && typeIsNull(type1) || typeIsNull(type2)) {
+        return true
+    }
+
     // if one of them is generic
-    if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType ||
-                type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType)
+    if ((type1 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType && type2 !is Type.NullableType ||
+                type2 is Type.UnknownGenericType && type1 !is Type.UnknownGenericType && type1 !is Type.NullableType)
     ) {
         return if (!isOut)
             true // getting T but got Int, is OK
         else
-            false // -> T, but Int returned
+            false // -> T, but Int returned is OK in switch, but not OK in message decl
+        // so this check has no point
     }
 
     // if both are generics of the different letters

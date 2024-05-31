@@ -447,35 +447,43 @@ sealed class Type(
             is EnumRootType -> EnumRootType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.toMutableList(),
+                fields = this.fields.copy(),
                 isPrivate = this.isPrivate,
                 pkg = this.pkg,
                 branches = this.branches.toList(),
                 protocols = this.protocols.toMutableMap(),
-            ).also { it.isBinding = this.isBinding }
+            ).also { it.isBinding = this.isBinding
+                it.parent = this.parent
+            }
 
             is UnionRootType -> UnionRootType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.toMutableList(),
+                fields = this.fields.copy(),
                 isPrivate = this.isPrivate,
                 pkg = this.pkg,
                 branches = this.branches.toList(),
                 protocols = this.protocols.toMutableMap(),
                 isError = this.isError
-            ).also { it.isBinding = this.isBinding }
+            ).also {
+                it.isBinding = this.isBinding
+                it.parent = this.parent
+            }
 
             is EnumBranchType -> TODO()
             is UnionBranchType -> UnionBranchType(
                 name = this.name,
                 typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.toMutableList(),
+                fields = this.fields.copy(),
                 isPrivate = this.isPrivate,
                 pkg = this.pkg,
                 root = this.root,
                 protocols = this.protocols.toMutableMap(),
                 isError = this.isError
-            )
+            ).also {
+                it.isBinding = this.isBinding
+                it.parent = this.parent
+            }
 
             is KnownGenericType -> TODO()
             is UnknownGenericType -> UnknownGenericType(this.name)
@@ -654,7 +662,11 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: T
 
         is TypeAST.UserType -> {
             if (name.isGeneric()) {
-                return Type.UnknownGenericType(name)
+
+                return if (!isNullable)
+                    Type.UnknownGenericType(name)
+                else
+                    Type.NullableType(Type.UnknownGenericType(name))
             }
 //            if (selfType != null && name == selfType.name) return selfType
 
@@ -825,7 +837,7 @@ fun SomeTypeDeclaration.toType(
             isPrivate = isPrivate,
             pkg = pkg,
             protocols = mutableMapOf()
-        )
+        ).also { it.parent = unionRootType }
     } else if (unionRootType != null) {
         Type.UnionBranchType(
             root = unionRootType,
@@ -835,8 +847,11 @@ fun SomeTypeDeclaration.toType(
             isPrivate = isPrivate,
             pkg = pkg,
             protocols = mutableMapOf(),
-            isError = isError
-        )
+            isError = isError,
+
+        ).also {
+            it.parent = unionRootType
+        }
     } else
         Type.UserType(
             name = typeName,

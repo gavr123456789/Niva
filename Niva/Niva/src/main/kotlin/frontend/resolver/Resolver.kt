@@ -457,6 +457,13 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name)
         return type1
 
+    val firstIsNull = typeIsNull(type1)
+    val secondIsNull = typeIsNull(type2)
+    if (firstIsNull && !secondIsNull && type2 !is Type.NullableType)
+        return Type.NullableType(type2)
+    if (!firstIsNull && secondIsNull && type1 !is Type.NullableType)
+        return Type.NullableType(type1)
+
     // first is parent of the second
     var parent1: Type? = type1.parent
     while (parent1 != null) {
