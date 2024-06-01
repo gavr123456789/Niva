@@ -28,10 +28,14 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-// Int add::Int = this + add
-1 
+union Option = Value v: T | None
 
+v = Value v: 232
+v echo
 
+Option valueOrNull -> T? = | this
+| Value => v
+| None => null
 
 """
 const val fakeFileSourceBAAD = """
@@ -48,7 +52,7 @@ fun main(args: Array<String>) {
 
 //    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
-//
+
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
@@ -65,10 +69,6 @@ fun main(args: Array<String>) {
 //    catch (e: OnCompletionException) {
 //        println(e.scope)
 //    }
-
-
-
-
 
     run(args)
 }

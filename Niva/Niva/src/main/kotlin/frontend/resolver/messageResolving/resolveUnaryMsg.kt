@@ -141,7 +141,7 @@ fun Resolver.resolveUnaryMsg(
         // add pragmas
         statement.pragmas = msgFromDb.pragmas
 
-        // add receiver if T sas = [...]
+        // add receiver if its for any generic type like "T sas = [...]"
         if (returnTypeFromDb is Type.UnknownGenericType && msgFromDb.forGeneric) {
             letterToTypeFromReceiver["T"] = receiverType
         }

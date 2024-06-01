@@ -4,6 +4,7 @@ import frontend.resolver.resolve
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
 import org.junit.jupiter.api.assertThrows
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -25,7 +26,8 @@ fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
 
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
-    statements = statements.toMutableList()
+    statements = statements.toMutableList(),
+    currentResolvingFileName = File("")
 )
 
 class ResolverTest {

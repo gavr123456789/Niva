@@ -1,13 +1,14 @@
 import frontend.resolver.Resolver
 import frontend.resolver.resolve
 import main.codogen.codegenKt
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 fun generateKotlin(source: String): String {
     val ast = getAstTest(source)
     val resolver = Resolver(
-        projectName = "common", statements = ast.toMutableList()
+        projectName = "common", statements = ast.toMutableList(), currentResolvingFileName = File("")
     )
     resolver.resolve(resolver.statements, mutableMapOf())
     val codogenerator = codegenKt(resolver.statements)
@@ -18,7 +19,7 @@ fun generateKotlin(source: String): String {
 fun generateKotlinWithoutResolve(source: String): String {
     val ast = getAstTest(source)
     val resolver = Resolver(
-        projectName = "common", statements = ast.toMutableList()
+        projectName = "common", statements = ast.toMutableList(), currentResolvingFileName = File("")
     )
 //    resolver.resolve(resolver.statements, mutableMapOf())
     val codogenerator = codegenKt(resolver.statements)
