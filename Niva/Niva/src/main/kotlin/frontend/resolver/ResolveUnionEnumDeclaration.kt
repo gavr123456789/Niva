@@ -9,7 +9,6 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
-import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
 
 fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean) {
@@ -40,36 +39,39 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
             return
         }
 
-        val branchType = if (alreadyRegisteredType == null) {
-            val branchType =
-                it.toType(
-                    currentPackageName,
-                    typeTable,
-                    typeDB,
-                    unionRootType = rootType,
-                    isError = isError
-                ) as Type.UnionBranchType
-            branchType.parent = rootType
+        val branchType = //if (alreadyRegisteredType == null) {
+            {
+                val branchType =
+                    it.toType(
+                        currentPackageName,
+                        typeTable,
+                        typeDB,
+                        unionRootType = rootType,
+                        isError = isError
+                    ) as Type.UnionBranchType
+                branchType.parent = rootType
 
-            addNewType(branchType, it, alreadyCheckedOnUnique = true)
-            branchType
-        } else {
-            // type is found, this is UNION ROOT
-            if (alreadyRegisteredType is Type.UnionRootType) {
-                alreadyRegisteredType.parent = rootType
-
-                // check that it has the same fields as current root
-                if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
-                    it.token.compileError("Union Root inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name}: ${WHITE}${alreadyRegisteredType.fields.map { it.name }} $RED!=${YEL} ${rootType.name}${RED}: $WHITE${rootType.fields.map { it.name }}")
-                }
-                it.branches = alreadyRegisteredType.branches
-                it.isRoot = true
-                alreadyRegisteredType
-
-            } else {
-                it.token.compileError("Compiler thinks: Something strange, $alreadyRegisteredType is not a union root, but inside branches")
-            }
-        }
+                addNewType(branchType, it, alreadyCheckedOnUnique = true)
+                branchType
+            }()
+//        }
+//        else {
+//            // type is found, this is UNION ROOT
+//            if (alreadyRegisteredType is Type.UnionRootType) {
+//                alreadyRegisteredType.parent = rootType
+//
+//                // check that it has the same fields as current root
+//                if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
+//                    it.token.compileError("Union Root inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name}: ${WHITE}${alreadyRegisteredType.fields.map { it.name }} $RED!=${YEL} ${rootType.name}${RED}: $WHITE${rootType.fields.map { it.name }}")
+//                }
+//                it.branches = alreadyRegisteredType.branches
+//                it.isRoot = true
+//                alreadyRegisteredType
+//
+//            } else {
+//                it.token.compileError("Compiler thinks: Something strange, $alreadyRegisteredType is not a union root, but inside branches")
+//            }
+//        }
 
         branchType.fields += rootType.fields
         branches.add(branchType)

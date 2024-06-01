@@ -12,6 +12,7 @@ import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationBinary
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.GlobalVariables
@@ -184,7 +185,7 @@ fun LS.removeDecl2(file: File) {
     val kek = fileToDecl[file.absolutePath] // тут может быть проблема, мы вроде не всегда добавляли как абсолютный путь
 
     val typeDB = resolver.typeDB
-
+    var pkgToRemove: String? = null
     // у нас теперь есть набор деклараций методов, нужно просто распределить их по унарным бинарным кв, и удалять по названиям из тайпдб
     if (kek != null)
         kek.forEach { d ->
@@ -240,10 +241,15 @@ fun LS.removeDecl2(file: File) {
                             }
 
                             is Type.InternalType -> {
-                                val usrLikeTypes = typeDB.internalTypes[forType.name]!!
-                                val protocolWithMethod =
-                                    usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }!!
-                                protocolWithMethod.keywordMsgs.remove(d.name)
+                                typeDB.internalTypes[forType.name]?.let { usrLikeTypes ->
+                                    usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }?.let { protocolWithMethod ->
+                                        protocolWithMethod.keywordMsgs.remove(d.name)
+                                    }
+                                }
+//                                val usrLikeTypes = typeDB.internalTypes[forType.name]!!
+//                                val protocolWithMethod =
+//                                    usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }!!
+//                                protocolWithMethod.keywordMsgs.remove(d.name)
 
                             }
                             is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
@@ -275,8 +281,17 @@ fun LS.removeDecl2(file: File) {
                     }
                 }
             }
-
+            if (d is SomeTypeDeclaration) {
+                // get pkg
+//                resolver.projects["common"]!!.packages[d.receiver!!.pkg]!!
+                pkgToRemove = d.receiver!!.pkg
+                //
+            }
         }
+    // remove the whole package
+    if (pkgToRemove != null) {
+        resolver.projects["common"]!!.packages.remove(pkgToRemove)
+    }
 
     fileToDecl.clear()
 }
