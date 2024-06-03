@@ -12,7 +12,9 @@ fun Parser.staticBuilder(): StaticBuilder {
     matchAssert(TokenType.OpenBracket)
     val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
+    // TODO can name can be from another package
     val result = StaticBuilder(
+        name = q.name,
         statements = statements,
         defaultAction = defaultAction,
         type = null,

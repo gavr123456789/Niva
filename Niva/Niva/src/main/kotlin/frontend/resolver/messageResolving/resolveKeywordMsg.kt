@@ -156,6 +156,13 @@ fun Resolver.resolveKeywordMsg(
             kwTypeFromDB.argTypes.map { it.type }
         }
 
+        is BuilderMetaData -> {
+            if (statement.args.count() != kwTypeFromDB.argTypes.count()) {
+                statement.token.compileError("Wrong number of arguments, $WHITE$kwTypeFromDB$RESET is needed, but you send $WHITE$statement")
+            }
+            kwTypeFromDB.argTypes.map { it.type }
+        }
+
         null -> listOf()
     }
 

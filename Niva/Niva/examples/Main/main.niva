@@ -1,45 +1,46 @@
-
-//type Assert
-
-//constructor Assert that::Any equals::Any -> Unit! = [
-//   a = Compiler getName: 1
-//   b = Compiler getName: 2
-//  that != equals => [
-//    Error throwWithMessage: "Assertion failed: $a != $b ($that != $equals)"
-//  ]
-//]
-//
-//Assert that: 1 + 1 equals: 3
-//
-//1 echo
+builder StringBuilder buildString -> String = [
+    b = StringBuilder new
+    defaultAction = [ default::String ->
+        b append: default
+    ]
 
 
-//type Cat
-//  name: String
-//  age: Int
-//type Rectangle
-//
-//
-//Cat birthday = age <- age inc
-//Cat changeName::String = name <- changeName
-//Cat outputRectangle = Rectangle new
-//
-//cat = Cat name: "sas" age: 334
-
-
-
-
-union Option = Value v: T | None
-
-Option valueOrNull -> T? = | this
-| Value => v
-| None => null
-
-Int sas::T -> T = [
-    ^ sas
+    buildString this: b defaultAction: defaultAction
+    ^ b toString
 ]
 
-n = None new
-l = n valueOrNull
-y = l unpackOrError + 1
-1 echo
+
+x = buildString [
+    32 echo
+    "sas"
+    "sus"
+    345
+]
+
+x echo
+
+
+
+
+
+
+
+
+
+
+
+
+//union Option = Value v: T | None
+//
+//Option valueOrNull -> T? = | this
+//| Value => v
+//| None => null
+//
+//Int sas::T -> T = [
+//    ^ sas
+//]
+//
+//n = None new
+//l = n valueOrNull
+//y = l unpackOrError + 1
+//1 echo

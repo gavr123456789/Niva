@@ -135,10 +135,25 @@ private fun Resolver.resolveStatement(
         }
 
         is StaticBuilder -> {
+            stack.push(statement)
+
             currentLevel++
             resolve(statement.statements, (currentScope + previousScope).toMutableMap())
+            // find in DB
+            val pkg = getCurrentPackage(statement.token)
+            val builderFromDB = pkg.builders[statement.name]
+            if (builderFromDB == null) {
+                statement.token.compileError("Can't find builder ${statement.name}, builders of this pkg: ${pkg.builders.keys}")
+            }
+            statement.type = builderFromDB.returnType
+
+            val defaultAction = builderFromDB.defaultAction
+            statement.defaultAction = defaultAction
+            statement.collectExpressions()
+
             currentLevel--
-            TODO()
+            addToTopLevelStatements(statement)
+            stack.pop()
         }
 
         is IdentifierExpr -> {
@@ -582,6 +597,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
         }
 
         is ConstructorDeclaration -> TODO()
+        is StaticBuilderDeclaration -> TODO()
     }
     return messageData
 }
@@ -612,9 +628,9 @@ fun Resolver.addNewAnyMessage(
         is MessageDeclarationUnary -> protocol.unaryMsgs[st.name] = messageData as UnaryMsgMetaData
         is MessageDeclarationBinary -> protocol.binaryMsgs[st.name] = messageData as BinaryMsgMetaData
         is MessageDeclarationKeyword -> protocol.keywordMsgs[st.name] = messageData as KeywordMsgMetaData
-        is ConstructorDeclaration -> {
-            // st.toAnyMessageData already adding static to db
-        }
+        is ConstructorDeclaration -> {} // st.toAnyMessageData already adding static to db
+
+        is StaticBuilderDeclaration -> pkg.addBuilder(messageData as BuilderMetaData, st.token)
     }
 
     st.messageData = messageData
@@ -638,6 +654,12 @@ fun Resolver.addMsgToPackageDeclarations(statement: MessageDeclaration) {
             }
 
             is KeywordMsgMetaData -> {
+                messageData.argTypes.forEach {
+                    pack.addImport(it.type.pkg)
+                }
+            }
+
+            is BuilderMetaData -> {
                 messageData.argTypes.forEach {
                     pack.addImport(it.type.pkg)
                 }
@@ -867,7 +889,10 @@ fun Resolver.getAnyType(
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
-    val type = typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
+    val type =
+        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName) ?:
+        currentPackage.builders[typeName]?.returnType
+
     return type
 }
 

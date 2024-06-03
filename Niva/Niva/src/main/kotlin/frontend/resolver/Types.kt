@@ -5,6 +5,7 @@ package frontend.resolver
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type.RecursiveType.copy
+import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
@@ -55,6 +56,7 @@ sealed class MessageMetadata(
             is BinaryMsgMetaData -> this.toString()
             is KeywordMsgMetaData -> this.toString()
             is UnaryMsgMetaData -> this.toString()
+            is BuilderMetaData -> this.toString()
         }
     }
 
@@ -69,9 +71,8 @@ sealed class MessageMetadata(
             )
         }
         return when (this) {
-            is BinaryMsgMetaData -> {
-                val arg = KeywordArg(name, argType)
-                createLambda(mutableListOf(extensionArg, arg))
+            is UnaryMsgMetaData -> {
+                createLambda(mutableListOf(extensionArg))
             }
 
             is KeywordMsgMetaData -> {
@@ -81,8 +82,17 @@ sealed class MessageMetadata(
                 createLambda(args)
             }
 
-            is UnaryMsgMetaData -> {
-                createLambda(mutableListOf(extensionArg))
+            is BuilderMetaData -> {
+                val extensionArg2 = KeywordArg("this", receiverType)
+                val args: MutableList<KeywordArg> = argTypes.toMutableList()
+                args.addFirst(extensionArg2)
+                createLambda(args)
+            }
+
+
+            is BinaryMsgMetaData -> {
+                val arg = KeywordArg(name, argType)
+                createLambda(mutableListOf(extensionArg, arg))
             }
         }
 
@@ -128,6 +138,22 @@ class KeywordMsgMetaData(
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
+    }
+}
+
+class BuilderMetaData(
+    name: String,
+    val argTypes: List<KeywordArg>,
+    returnType: Type,
+    pkg: String,
+    pragmas: MutableList<Pragma> = mutableListOf(),
+    msgSends: List<MsgSend> = listOf(),
+    val isSetter: Boolean = false,
+    val defaultAction: CodeBlock?
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
+    override fun toString(): String {
+        val args = argTypes.joinToString(" ") { it.toString() }
+        return "builder $args -> $returnType"
     }
 }
 
@@ -297,6 +323,7 @@ sealed class Type(
         is UnresolvedType -> {
             throw Exception("Compiler bug, attempt to generate code for unresolved type")
         }
+
         is UserLike -> {
             val genericParam =
                 if (typeArgumentList.isNotEmpty()) {
@@ -385,7 +412,7 @@ sealed class Type(
     }
 
     class UnresolvedType(
-        val realType: () -> Type = {TODO("Compiler bug")}
+        val realType: () -> Type = { TODO("Compiler bug") }
     ) : Type(
         "???",
         "???",
@@ -452,7 +479,8 @@ sealed class Type(
                 pkg = this.pkg,
                 branches = this.branches.toList(),
                 protocols = this.protocols.toMutableMap(),
-            ).also { it.isBinding = this.isBinding
+            ).also {
+                it.isBinding = this.isBinding
                 it.parent = this.parent
             }
 
@@ -606,12 +634,15 @@ data class Protocol(
     val binaryMsgs: MutableMap<String, BinaryMsgMetaData> = mutableMapOf(),
     val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
     val staticMsgs: MutableMap<String, MessageMetadata> = mutableMapOf(),
+//    val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
 )
 
 class Package(
     val packageName: String,
     val declarations: MutableList<Declaration> = mutableListOf(),
     val types: MutableMap<String, Type> = mutableMapOf(),
+    val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
+
 //    val usingPackages: MutableList<Package> = mutableListOf(),
     // generates as import x.y.*
     val imports: MutableSet<String> = mutableSetOf(),
@@ -624,9 +655,18 @@ class Package(
     val neededImports: MutableSet<String> = mutableSetOf(),
     val plugins: MutableSet<String> = mutableSetOf(),
 
-) {
+    ) {
     override fun toString(): String {
         return packageName
+    }
+
+    fun addBuilder(b: BuilderMetaData, token: Token) {
+        // check if builder with such name already exists
+        if (builders.contains(b.name)) {
+            token.compileError("Sorry, but u can't register more than one builder with the same name, and ${b.name} already exists in ${this.packageName} package")
+        } else {
+            builders[b.name] = b
+        }
     }
 }
 
@@ -637,8 +677,13 @@ class Project(
 )
 
 // if parentType not null, then we are resolving its field
-fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: Type.UserLike? = null, resolvingFieldName: String? = null,
-                   typeDeclaration: SomeTypeDeclaration? = null): Type {
+fun TypeAST.toType(
+    typeDB: TypeDB,
+    typeTable: Map<TypeName, Type>,
+    parentType: Type.UserLike? = null,
+    resolvingFieldName: String? = null,
+    typeDeclaration: SomeTypeDeclaration? = null
+): Type {
 
     val replaceToNullableIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
@@ -711,7 +756,8 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: T
                     this.token.compileError("Can't find user type: ${YEL}$name")
                 }
 
-                typeDB.unresolvedTypes[name] = FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
+                typeDB.unresolvedTypes[name] =
+                    FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
                 return Type.UnresolvedType()
 //                TODO()
             }
@@ -733,7 +779,8 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: T
             val args = if (extensionOfType != null) {
                 inputTypesList.drop(1).map {
                     KeywordArg(
-                        type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration), name = it.name
+                        type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration),
+                        name = it.name
                     )
                 }.toMutableList().also {
                     it.addFirst(
@@ -787,10 +834,21 @@ fun TypeAST.toType(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: T
 //    return result
 //}
 
-fun TypeFieldAST.toTypeField(typeDB: TypeDB, typeTable: Map<TypeName, Type>, parentType: Type.UserLike, typeDeclaration: SomeTypeDeclaration): KeywordArg {
+fun TypeFieldAST.toTypeField(
+    typeDB: TypeDB,
+    typeTable: Map<TypeName, Type>,
+    parentType: Type.UserLike,
+    typeDeclaration: SomeTypeDeclaration
+): KeywordArg {
     val result = KeywordArg(
         name = name,
-        type = typeAST!!.toType(typeDB, typeTable, parentType, resolvingFieldName = name, typeDeclaration = typeDeclaration)
+        type = typeAST!!.toType(
+            typeDB,
+            typeTable,
+            parentType,
+            resolvingFieldName = name,
+            typeDeclaration = typeDeclaration
+        )
     )
     return result
 }
@@ -849,7 +907,7 @@ fun SomeTypeDeclaration.toType(
             protocols = mutableMapOf(),
             isError = isError,
 
-        ).also {
+            ).also {
             it.parent = unionRootType
         }
     } else
@@ -1001,6 +1059,10 @@ fun MessageDeclaration.toAnyMessageData(
             }
             resolver.addStaticDeclaration(this)
         }
+
+        is StaticBuilderDeclaration -> {
+            toMessageData(typeDB, typeTable, pkg)
+        }
     }
 
 }
@@ -1046,6 +1108,24 @@ fun MessageDeclarationBinary.toMessageData(
         pragmas = pragmas
     )
     return result
+}
+
+fun StaticBuilderDeclaration.toMessageData(
+    typeDB: TypeDB,
+    typeTable: MutableMap<TypeName, Type>,
+    pkg: Package,
+): BuilderMetaData {
+    val x = this.msgDeclaration.toMessageData(typeDB, typeTable, pkg)
+
+    return BuilderMetaData(
+        name = x.name,
+        argTypes = x.argTypes,
+        returnType = x.returnType,
+        pkg = x.pkg,
+        pragmas = x.pragmas,
+        msgSends = x.msgSends,
+        defaultAction = defaultAction
+    )
 }
 
 fun MessageDeclarationKeyword.toMessageData(

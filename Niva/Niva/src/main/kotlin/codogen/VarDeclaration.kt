@@ -6,6 +6,7 @@ import main.utils.GlobalVariables
 
 fun VarDeclaration.generateVarDeclaration(): String {
     val valueCode = value.generateExpression()
+
     val valOrVar = if (!this.mutable) "val" else "var"
     val valueTypeAst = valueTypeAst
     val valueType = value.type

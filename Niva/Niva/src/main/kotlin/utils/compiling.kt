@@ -512,7 +512,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
                     it.lineNumber
                 )
 //            val newElement = StackTraceElement(it.className, it.methodName, nivaLine.file, nivaLine.line)
-                println(buildString {
+                println(kotlin.text.buildString {
                     append("Method: ")
                     append(it.methodName)
                     append("\t\t")

@@ -33,7 +33,6 @@ import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
-import main.frontend.parser.types.ast.UnionBranchDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
 import main.lex
@@ -1565,7 +1564,21 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val staticB = ast[0] as StaticBuilderDeclaration
-        assert(staticB.args[0].typeAST is TypeAST.Lambda)
+        assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
+    }
+
+    @Test
+    fun builder() {
+        val source = """
+            x = buildString [ "sas" ]
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+//        val staticB = ast[0] as StaticBuilderDeclaration
+//        assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
     }
 
     @Test

@@ -170,9 +170,9 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
     }
 }
 
-fun Parser.primary(typeAST: TypeAST? = null): Primary? =
-
-    when (peek().kind) {
+fun Parser.primary(typeAST: TypeAST? = null): Primary? {
+    return when (peek().kind) {
+        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped(typeAST)
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: TypeAST.InternalType(InternalTypes.Any, peek()), step())
@@ -182,9 +182,9 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? =
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Char -> LiteralExpression.CharExpr(step())
 
-        TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped(typeAST)
         else -> null
     }
+}
 
 
 fun Parser.assignVariableNewValue(): Assign {

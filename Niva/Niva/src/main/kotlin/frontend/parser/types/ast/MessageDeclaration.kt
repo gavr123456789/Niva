@@ -34,9 +34,9 @@ sealed class MessageDeclaration(
         is MessageDeclarationUnary -> MessageDeclarationType.Unary
         is MessageDeclarationBinary -> MessageDeclarationType.Binary
         is MessageDeclarationKeyword -> MessageDeclarationType.Keyword
-        is ConstructorDeclaration -> {
-            this.msgDeclaration.getDeclType()
-        }
+
+        is ConstructorDeclaration -> this.msgDeclaration.getDeclType()
+        is StaticBuilderDeclaration -> this.msgDeclaration.getDeclType()
     }
     fun findMetadata(resolver: Resolver): MessageMetadata {
 
@@ -178,15 +178,30 @@ class ExtendDeclaration(
 
 
 @Suppress("unused")
+//class StaticBuilderDeclaration67(
+//    val name: String,
+//    token: Token,
+//    val args: List<KeywordDeclarationArg>,
+//    body: List<Statement>,
+//    returnType: TypeAST?,
+//    val defaultAction: CodeBlock? = null,
+//    val typeArgs: MutableList<String> = mutableListOf(),
+//    isPrivate: Boolean = false,
+//    pragmas: MutableList<Pragma> = mutableListOf(),
+//    isInline: Boolean = false
+//) : Declaration(token, isPrivate, pragmas)
+
 class StaticBuilderDeclaration(
-    val name: String,
+    val msgDeclaration: MessageDeclarationKeyword,
+    val defaultAction: CodeBlock?,
     token: Token,
-    val args: List<KeywordDeclarationArg>,
-    body: List<Statement>,
-    returnType: TypeAST?,
-    val defaultAction: CodeBlock? = null,
-    val typeArgs: MutableList<String> = mutableListOf(),
-    isPrivate: Boolean = false,
-    pragmas: MutableList<Pragma> = mutableListOf(),
-    isInline: Boolean = false
-) : Declaration(token, isPrivate, pragmas)
+) : MessageDeclaration(
+    msgDeclaration.name,
+    msgDeclaration.forTypeAst,
+    token,
+    msgDeclaration.isSingleExpression,
+    msgDeclaration.body,
+    msgDeclaration.returnTypeAST,
+    msgDeclaration.isPrivate,
+    msgDeclaration.pragmas,
+)
