@@ -127,9 +127,36 @@ fun Resolver.resolveMessageDeclaration(
                 bodyScope[arg.name] = argType
             }
 
-            is ConstructorDeclaration -> {
+            is ConstructorDeclaration ->
                 if (st.msgDeclaration is MessageDeclarationKeyword) // there is no binary constructors
                     addArgsToBodyScope(st.msgDeclaration)
+
+            is StaticBuilderDeclaration -> {
+
+                addArgsToBodyScope(st.msgDeclaration)
+                // add lambda [this::forType, defaultAction::[Type -> ]]
+                // with the same name as builder itself
+                val lambda = Type.Lambda(
+                    args = mutableListOf(
+                        KeywordArg(
+                            name = "this",
+                            type = forType
+                        ),
+                    ),
+                    returnType = Resolver.defaultTypes[InternalTypes.Unit]!!,
+                    pkg = getCurrentPackage(st.token).packageName
+                )
+                val da = st.defaultAction
+                if (da != null && da.inputList.count() > 0 && da.inputList[0].typeAST != null) {
+                    lambda.args.add(
+                        KeywordArg(
+                            name = "defaultAction",
+                            type = Resolver.defaultTypes[InternalTypes.Any]!!//TODO use not any but lambda that takes f.typeAST!!.toType(typeDB, typeTable) but it not resolved yet
+                        )
+                    )
+                }
+                bodyScope[st.name] = lambda
+
             }
         }
         // add args to bodyScope
@@ -229,6 +256,9 @@ fun Resolver.resolveMessageDeclaration(
                         st.token,
                         MessageDeclarationType.Keyword
                     )
+
+                    is StaticBuilderDeclaration ->
+                        TODO()
                 }
 
 

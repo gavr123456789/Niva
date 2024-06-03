@@ -1619,14 +1619,11 @@ class ResolverTest {
         val source = """
             { 1 2 3 } forEach: [ x ->
 
-
             ]
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 1)
     }
-
-
 
     @Test
     fun errordomainDeclaration() {
@@ -1646,8 +1643,6 @@ class ResolverTest {
                 x = 1 sas
                 ^ x
             ]
-            
-            
         """.trimIndent()
         val (statements, r) = resolveWithResolver(source)
         assert(statements.count() == 3)
@@ -1658,20 +1653,43 @@ class ResolverTest {
         }
     }
 
-//    @Test
-//    fun builder() {
-//        val source = """
-//            builder html init::[ -> Unit] -> HTML = [
-//                html = HTML new
-//                html init
-//            ]
-//
-//            html [
-//            ]
-//        """.trimIndent()
-//        val statements = resolve(source)
-//        assert(statements.count() == 1)
-//    }
+    @Test
+    fun builder() {
+        fun buildString2(buildString2: StringBuilder.((String) -> Any) -> Unit): String {
+            val b = StringBuilder()
+            val defaultAction = {default: String ->
+                b.append(default)
+            }
+            buildString2(b, defaultAction)
+            return b.toString()
+
+        }
+        val f = buildString2 { defaultAction ->
+            defaultAction("sas")
+        }
+        val source = """
+            builder StringBuilder buildString -> String = [
+                b = StringBuilder new
+                defaultAction = [ default::String ->
+                    b append: default
+                ]
+                
+                
+                buildString this: b defaultAction: defaultAction
+                
+                ^ b toString
+            ]
+
+            buildString [
+                1 echo
+                "sas"
+                "sus"
+                345
+            ]
+        """.trimIndent()
+        val (statements, r) = resolveWithResolver(source)
+        assert(statements.count() == 2)
+    }
 
 
 

@@ -174,6 +174,40 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
 }
 
 
+fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
+    val st = this@generateBuilderDeclaration
+
+    append("fun ", st.name)
+    append("(")
+
+    // Args
+    val args = st.msgDeclaration.args
+    val c = args.count() - 1
+    args.forEachIndexed { i, arg ->
+        append(arg.name())
+        if (arg.typeAST != null) {
+            append(": ", arg.typeAST.generateType())
+            if (i != c) {
+                append(", ")
+            }
+        }
+    }
+    // default action
+    val da = st.defaultAction
+    if (da != null) {
+        if (args.count() > 0) append(", ")
+        // fun buildString2(^buildString2: StringBuilder.((String) -> Any) -> Unit): String {
+        val defaultActionType = defaultAction.inputList.first().type!!
+        val forType = forType!!
+        append(st.name, ": ")
+        append(forType.toKotlinString(true), ".")
+        append("(($defaultActionType) -> Any) -> Unit")
+    }
+    append(")")
+
+    returnTypeAndBodyPart(st, this)
+}
+
 private fun returnTypeAndBodyPart(
     messageDeclaration: MessageDeclaration,
     stringBuilder: StringBuilder
@@ -219,14 +253,15 @@ fun appendPragmas(pragmas: List<Pragma>, builder: StringBuilder) {
 
 fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
     appendPragmas(pragmas, this)
-
+    val st = this@generateMessageDeclaration
     if (isInline) append("inline ")
     append(
-        when (this@generateMessageDeclaration) {
+        when (st) {
             is ConstructorDeclaration -> generateConstructorDeclaration()
             is MessageDeclarationUnary -> generateUnaryDeclaration(isStatic)
             is MessageDeclarationBinary -> generateBinaryDeclaration(isStatic)
             is MessageDeclarationKeyword -> generateKeywordDeclaration(isStatic)
+            is StaticBuilderDeclaration -> generateBuilderDeclaration()
         }
     )
 }

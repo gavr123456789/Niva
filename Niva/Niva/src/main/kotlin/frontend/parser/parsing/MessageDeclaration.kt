@@ -7,6 +7,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
+import main.frontend.parser.types.ast.TypeAST
 import main.utils.RESET
 import main.utils.capitalizeFirstLetter
 
@@ -140,7 +141,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 }
 
 
-
+// returns kw args before `->` or `=`
 fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     val args = mutableListOf<KeywordDeclarationArg>()
 
@@ -489,46 +490,34 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
 // builder name key-args lambdaArg -> Type = []
 fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
-    val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
-//    val fakeAST = TypeAST.InternalType(InternalTypes.Unit, name.token)
+    val receiverType = parseType()
 
-    val args = keywordArgs()
+    val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
+
+    val args = if (check(TokenType.ReturnArrow) || check(TokenType.Assign))
+        listOf()
+    else
+        keywordArgs()
+
     val returnType = returnType()
     matchAssert(TokenType.Assign)
     matchAssert(TokenType.OpenBracket, "builder cant be single expression")
     val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
-
-
-
-//    val kw = keywordDeclaration(fakeAST)
-//
-//    val findIFThereDefaultAction = {
-//        var defaultAction: CodeBlock? = null
-//        kw.body.forEach {
-//            if (it is VarDeclaration && it.name == "default") {
-//                if (defaultAction != null) it.token.compileError("${WHITE}default$RESET action already declarated")
-//                val value  = it.value
-//                if (value !is CodeBlock) {
-//                    it.token.compileError("Value of ${WHITE}default$RESET action must be codeblock")
-//                }
-//                defaultAction = value
-//                return@forEach
-//            }
-//        }
-//        defaultAction
-//    }
-
-
-
-    val result = StaticBuilderDeclaration(
+    val x = MessageDeclarationKeyword(
         name = name.name,
-        defaultAction = defaultAction,
-        token = builderKeyword,
+        forType = receiverType,
+        returnType = returnType,
         args = args,
         body = body,
-        returnType = returnType,
-        pragmas = pragmas,
+        token = builderKeyword,
+        isSingleExpression = false
+    )
+
+    val result = StaticBuilderDeclaration(
+        msgDeclaration = x,
+        defaultAction = defaultAction,
+        builderKeyword
     )
 
     return result

@@ -14,6 +14,8 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is VarDeclaration -> statement.generateVarDeclaration()
 
             is MessageDeclaration -> statement.generateMessageDeclaration()
+//            is StaticBuilderDeclaration -> TODO()
+
             is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateMessageDeclaration() }
 
             is TypeDeclaration -> statement.generateTypeDeclaration()
@@ -37,7 +39,6 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is UnionBranchDeclaration -> {
                 statement.generateTypeDeclaration(false)
             }
-            is StaticBuilderDeclaration -> TODO()
 
 
             is EnumDeclarationRoot -> statement.generateEnumDeclaration()
@@ -50,7 +51,6 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             is NeedInfo -> createFakeToken().compileError("Compiler bug: u cant have ! expression inside code generation")
 
             is ErrorDomainDeclaration -> TODO()
-
         }.addIndentationForEachString(indent)
     )
 }

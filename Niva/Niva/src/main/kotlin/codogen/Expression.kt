@@ -75,7 +75,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
 
 
             is CodeBlock -> generateCodeBlock(putArgListInBrackets = (type as? Type.Lambda)?.specialFlagForLambdaWithDestruct ?: false)
-            is StaticBuilder -> TODO()
+            is StaticBuilder -> generateBuilderCall(this@generateExpression)
             is MethodReference -> generateMethodReference()
         }
     )

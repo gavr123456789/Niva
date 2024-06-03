@@ -4,7 +4,6 @@ import frontend.resolver.*
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
-import main.frontend.resolver.resolveStaticBuilderDeclaration
 import main.frontend.typer.project.resolveProjectKeyMessage
 import main.utils.RED
 import main.utils.RESET
@@ -29,7 +28,8 @@ fun Resolver.resolveDeclarations(
             if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
         }
 
-        is StaticBuilderDeclaration -> resolveStaticBuilderDeclaration(statement, resolveBody, previousScope)
+//        is StaticBuilderDeclaration ->
+//            resolveStaticBuilderDeclaration(statement, resolveBody, previousScope)
 
         is ExtendDeclaration -> {
             var atLeastOneUnresolved = false

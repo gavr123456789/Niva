@@ -26,7 +26,10 @@ fun Parser.varDeclaration(): VarDeclaration? {
             // x =^
             TokenType.Assign -> {
                 val isNextReceiver = isNextSimpleReceiver()
-                value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
+                value = if (isNextReceiver)
+                    simpleReceiver()
+                else
+                    expression(parseSingleIf = true)
                 valueType = null
             }
             // ::^int
