@@ -288,6 +288,16 @@ fun LS.removeDecl2(file: File) {
                 // get pkg
 //                resolver.projects["common"]!!.packages[d.receiver!!.pkg]!!
                 pkgToRemove = d.receiver!!.pkg
+                val t = typeDB.userTypes[d.typeName]
+                if (t != null) {
+                    val iter = t.iterator()
+                    while (iter.hasNext()) {
+                        val c = iter.next()
+                        if (c.pkg == pkgToRemove) {
+                            iter.remove()
+                        }
+                    }
+                }
                 //
             }
         }

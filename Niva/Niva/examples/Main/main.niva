@@ -20,7 +20,13 @@
 //x echo
 
 
-type Person name: Stri
+union Qwf = Ars | Zxc
+
+Qwf sas = | this
+| Ars => 1 echo
+| Zxc => 2 echo
+
+
 
 
 
