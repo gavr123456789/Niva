@@ -353,7 +353,7 @@ private fun Resolver.resolveStatement(
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
                     if (!GlobalVariables.isLspMode)
-                        findSimilar(searchRequest, receiverType)
+                        findSimilarAndPrint(searchRequest, receiverType)
 
                     endOfSearch(currentScope + previousScope)
                 }
@@ -1008,6 +1008,8 @@ class Resolver(
 
     var resolvingMainFile: Boolean = false,
 
+
+
     val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, currentFile: File) -> Unit)? = null
 ) {
     fun reset() {
@@ -1015,9 +1017,10 @@ class Resolver(
         unResolvedSingleExprMessageDeclarations.clear()
         unResolvedMessageDeclarations.clear()
         unResolvedTypeDeclarations.clear()
+        typeDB.unresolvedTypes.clear()
         resolvingMainFile = false
         stack.clear()
-        infoTypesToPrint.clear()
+//        infoTypesToPrint.clear()
         allDeclarationResolvedAlready = false
         currentArgumentNumber = -1
         currentLevel = 0

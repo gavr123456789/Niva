@@ -282,7 +282,8 @@ fun Parser.messageSend(
             matchAssert(TokenType.Dot)
         )
 
-        !keywordOnReceiverWithoutMessages -> unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
+        !keywordOnReceiverWithoutMessages ->
+            unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
         else -> simpleReceiver()
     }
     // it can be keyword on simple receiver or keyword on receiver with messages
@@ -291,7 +292,9 @@ fun Parser.messageSend(
         receiver is MessageSendBinary || receiver is MessageSendUnary || receiver is CodeBlock
 
     val savepoint = current
-    return when {
+
+
+    val result = when {
         isReceiverUnaryOrBinaryOrCodeBlock && isNextKeyword -> {
             keyword(receiver)
         }
@@ -314,6 +317,8 @@ fun Parser.messageSend(
             MessageSendUnary(receiver, listOf(), token = receiver.token)
         }
     }
+
+    return result
 }
 
 

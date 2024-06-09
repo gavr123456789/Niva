@@ -28,15 +28,11 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-union Option = Value v: T | None
 
-v = Value v: 232
-v echo
+union Sas = A | B | C
 
-Option valueOrNull -> T? = | this
-| Value => v
-| None => null
 
+1 inc 
 """
 const val fakeFileSourceBAAD = """
 //Int add::Int = this + add2

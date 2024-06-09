@@ -1,24 +1,26 @@
-builder StringBuilder buildString -> String = [
-    b = StringBuilder new
-    defaultAction = [ default::String ->
-        b append: default
-    ]
+//builder StringBuilder buildString -> String = [
+//    b = StringBuilder new
+//    defaultAction = [ default::String ->
+//        b append: default
+//    ]
+//
+//
+//    buildString this: b defaultAction: defaultAction
+//    ^ b toString
+//]
+//
+//
+//x = buildString [
+//    32 echo
+//    "sas"
+//    "sus"
+//    345
+//]
+//
+//x echo
 
 
-    buildString this: b defaultAction: defaultAction
-    ^ b toString
-]
-
-
-x = buildString [
-    32 echo
-    "sas"
-    "sus"
-    345
-]
-
-x echo
-
+type Person name: Stri
 
 
 
