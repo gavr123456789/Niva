@@ -1,9 +1,16 @@
+@file:Suppress("unused")
+
 package main.frontend.meta
 
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.peek
+import main.utils.CYAN
+import main.utils.GlobalVariables
+import main.utils.PURP
 import main.utils.RED
 import main.utils.RESET
+import main.utils.WHITE
+import main.utils.YEL
 import java.io.File
 
 enum class TokenType {
@@ -63,7 +70,7 @@ enum class TokenType {
 
 }
 
-data class Position(val start: Int, val end: Int)
+data class Position(val start: Int, var end: Int)
 
 class Token(
     val kind: TokenType,
@@ -109,7 +116,9 @@ fun createFakeToken(): Token = FakeToken.fakeToken
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
-class CompilerError(text: String) : Exception(text)
+class CompilerError(text: String, val token: Token, val noColorsMsg: String) : Exception(text)
+
+fun String.removeColors() = this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
 
 fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
@@ -117,7 +126,7 @@ fun Token.compileError(text: String): Nothing {
 //    error("\n$red\t$text.$fileLine$reset")
     val errorText = "${RED}Error:$RESET\n$text$RESET.$fileLine"
 //    println("$RED Error:$RESET $text$RESET.$fileLine")
-    throw CompilerError(errorText)
+    throw CompilerError(errorText, this, text.removeColors())
 //    exitProcess(0)
 }
 
@@ -125,20 +134,23 @@ fun Parser.parsingError(text: String): Nothing {
     val f = peek()
     var firstOnLineTok = f
     var counter = 0
-    while (firstOnLineTok.pos.start != 0) {
+    while (firstOnLineTok.pos.start != 0 && firstOnLineTok.kind != TokenType.EndOfFile) {
         firstOnLineTok = peek(counter)
         counter--
     }
     val fileLine = "(" + file.name + ":" + f.line + ")"
 
-    val errorText2 = "${RED}Error:$RESET Syntax\n\t$text$RESET.$fileLine"
+    val errorText2 = "${RED}Error:$RESET Syntax \n\t$text$RESET.$fileLine"
+    var tok2 = firstOnLineTok
+//    counter = 0
     val errorText =
         buildString {
             appendLine( errorText2)
-            append("\t${firstOnLineTok.line}| ")
+            if (!GlobalVariables.isLspMode)
+             append("\t${firstOnLineTok.line}| ")
             counter++
-            var tok2 = firstOnLineTok
-            while (tok2.line != firstOnLineTok.line + 1) {
+            // getting the full line of tokens, with coloring of the wrong one!
+            while (tok2.line != firstOnLineTok.line + 1 && tok2.kind != TokenType.EndOfFile) {
                 if (tok2 == firstOnLineTok) {
                     append("$RED${tok2.lexeme}$RESET")
                 } else
@@ -150,6 +162,8 @@ fun Parser.parsingError(text: String): Nothing {
             append("\n\t")
         }
 
-    throw CompilerError(errorText)
+
+
+    throw CompilerError(errorText, f, text.removeColors())
 
 }

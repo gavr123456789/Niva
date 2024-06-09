@@ -19,7 +19,7 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     //   name: string
 
     val typeToken = step() // skip type
-    val typeName = matchAssertAnyIdent("after \"type\" type identifier expected")
+    val typeName = matchAssertAnyIdent("name of the type expected")
     // type Person^ name: string age: int
 
     val genericTypeParam = if (match(TokenType.DoubleColon)) {
@@ -283,7 +283,7 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
                 messageDeclarations.add(k)
             }
 
-            KindOfTypeDecl.Nope -> TODO()
+//            KindOfTypeDecl.Nope -> TODO()
         }
         skipNewLinesAndComments()
 
@@ -302,7 +302,7 @@ fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDecl
 
 fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed: Token? = null): UnionRootDeclaration {
     val unionTok = firstTokAlreadyParsed ?: step()
-    val unionName = dotSeparatedIdentifiers() ?: peek().compileError("name of the union expected")
+    val unionName = dotSeparatedIdentifiers() ?: unionTok.compileError("name of the union expected")
     val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
 

@@ -1664,7 +1664,7 @@ class ResolverTest {
             return b.toString()
 
         }
-        val f = buildString2 { defaultAction ->
+        buildString2 { defaultAction ->
             defaultAction("sas")
         }
         val source = """
@@ -1690,6 +1690,8 @@ class ResolverTest {
         val (statements, r) = resolveWithResolver(source)
         assert(statements.count() == 2)
     }
+
+
 
 
 

@@ -41,10 +41,13 @@ class LS(val info: ((String) -> Unit)? = null) {
     lateinit var resolver: Resolver
     val megaStore: MegaStore = MegaStore(info)
     var completionFromScope: Scope = mapOf()
+
     val fileToDecl: MutableMap<String, MutableSet<Declaration>> = mutableMapOf()
 
     class MegaStore(val info: ((String) -> Unit)? = null) {
         val data: MutableMap<String, SortedMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
+
+
         fun addNew(s: Statement, scope: Scope) {
             val sFile = s.token.file.absolutePath
             val sLine = s.token.line

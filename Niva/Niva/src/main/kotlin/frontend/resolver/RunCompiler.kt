@@ -89,7 +89,6 @@ fun Resolver.resolve(
                     } else resolvedFromDifferentFileType
                     // remove field with placeholder, and replace type to real type inside placeholder
                     // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
-//                    fieldToRemove.type = realType
 
                     b.typeDeclaration.fields.first { it.name == b.fieldName }.type = realType
                     b.parent.fields.remove(fieldToRemove)
@@ -125,13 +124,15 @@ fun Resolver.resolve(
 
     if (typeDB.unresolvedTypes.isNotEmpty()) {
 
-        fakeTok.compileError(buildString {
+        typeDB.unresolvedTypes.values.first().typeDeclaration.token.compileError(buildString {
             append("These types remained unrecognized after checking all files: \n")
             typeDB.unresolvedTypes.forEach { (a, b) ->
                 // "| 11 name:  is unresolved"
                 append(b.ast?.token?.line ?: "", "| ")
-                append(WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".",
-                    b.parent.name, RESET, "\n")
+                append(
+                    WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".",
+                    b.parent.name, RESET, "\n"
+                )
             }
         })
     }
@@ -189,7 +190,6 @@ fun Resolver.resolve(
         }
     }
     unResolvedMessageDeclarations.clear()
-
 
 
     /// end of resolve all declarations

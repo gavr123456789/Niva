@@ -3,6 +3,7 @@ package frontend.resolver
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.InternalTypes
 import main.utils.CYAN
 import main.utils.RESET
@@ -52,7 +53,7 @@ fun compare2Types(
                 val text =
                     "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
                 token?.compileError(text)
-                throw CompilerError(text)
+                throw CompilerError(text, token ?: createFakeToken(), text)
             }
         }
 

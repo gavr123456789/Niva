@@ -305,12 +305,23 @@ fun Parser.expression(
         return methodReference
     }
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
+
+    val fixPosition = { m: MessageSend ->
+        if (m.messages.isNotEmpty()) {
+            m.token.pos.end = m.messages.last().token.pos.end
+        }
+    }
     // unwrap unnecessary MessageSend when it's a single receiver like `person`
     val unwrapped = if (messageSend.messages.isEmpty() && messageSend is MessageSendUnary) {
+        if (messageSend.receiver is MessageSend)
+            fixPosition(messageSend.receiver)
         messageSend.receiver
     } else {
+        fixPosition(messageSend)
         messageSend
     }
+
+
 
     // x > 5 ^ => ...
     if (parseSingleIf && match(TokenType.Then)) {

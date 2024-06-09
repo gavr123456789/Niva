@@ -74,13 +74,19 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     }
 }
 
-
-fun findSimilar(to: String, forType: Type) {
+fun findSimilarAndPrint(to: String, forType: Type) {
+    val (_, b) = findSimilar(to, forType)
+    println(b)
+}
+fun findSimilar(to: String, forType: Type): Pair<List<String>, String> {
     var foundCounter = 1
+    val b = StringBuilder()
 
+    val result = mutableListOf<String>()
     fun find(it: MessageMetadata){
         if (it.name.lowercase().startsWith(to)) {
-            println("$foundCounter\t$it")
+            b.appendLine("$foundCounter\t$it")
+            result.add(it.toString())
             foundCounter++
         }
     }
@@ -107,22 +113,25 @@ fun findSimilar(to: String, forType: Type) {
     if (forType is Type.UserLike) {
         forType.fields.forEach {
             if (it.name.lowercase().startsWith(to)) {
-                println("$foundCounter\tfield $it")
+                b.appendLine("$foundCounter\tfield $it")
+                result.add(it.toString())
                 foundCounter++
             }
         }
     }
     if (foundCounter == 1) {
-        println("No results for type $forType starting with $to")
-        println("Known methods:")
+        b.appendLine("No results for type $forType starting with $to")
+        b.appendLine("Known methods:")
         forType.protocols.values.forEach {
-            println(it.name)
-            println("\tunary:")
-            println("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
-            println("\tbinary:")
-            println("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
-            println("\tkeyword:")
-            println("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
+            b.appendLine(it.name)
+            b.appendLine("\tunary:")
+            b.appendLine("\t\t" + it.unaryMsgs.values.joinToString("\n\t\t"))
+            b.appendLine("\tbinary:")
+            b.appendLine("\t\t" + it.binaryMsgs.values.joinToString("\n\t\t"))
+            b.appendLine("\tkeyword:")
+            b.appendLine("\t\t" + it.keywordMsgs.values.joinToString("\n\t\t"))
         }
     }
+
+    return Pair(result, b.toString())
 }

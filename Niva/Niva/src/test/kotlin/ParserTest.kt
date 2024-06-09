@@ -1887,6 +1887,54 @@ class ParserTest {
 //        assertTrue {q is TypeDeclaration}
     }
 
+    @Test
+    fun tokenPositions() {
+        val source = "x abc"
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+        val q = ast.first()
+
+        assertTrue {
+            q.token.pos.start == 0 &&
+            q.token.pos.end == 4
+        }
+    }
+
+    // TODO should fail
+    @Test
+    fun tokenPositionsOnSyntaxError() {
+        val source = """
+            1 echo
+            ()))))))
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+        val q = ast.first()
+
+        assertTrue {
+            q.token.pos.start == 0
+        }
+    }
+
+    @Test
+    fun tokenPositionsOnSyntaxError222() {
+        val source = """
+            1 echo
+            )
+            1 echo
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+        val q = ast.first()
+
+        assertTrue {
+            q.token.pos.start == 0
+        }
+    }
+
 
     //TODO
 //    @Test

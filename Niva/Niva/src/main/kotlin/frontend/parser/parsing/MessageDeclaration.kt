@@ -248,7 +248,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 // returns true if it's single expression
 fun Parser.methodBody(
-    parseOnlyOneLineIfNoBody: Boolean = false
+    parseOnlyOneLineIfNoBody: Boolean = false // methodBody also used in control flow, where `=` is not needed
 ): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
@@ -257,6 +257,7 @@ fun Parser.methodBody(
     if (!isThereAssignOrThen) {
         return Pair(mutableListOf(), false)
     }
+
     // many expressions in body
     if (match(TokenType.OpenBracket)) {
         isSingleExpression = false
@@ -273,6 +274,9 @@ fun Parser.methodBody(
         // | switch
         // | cond => do
         // | cond => do // I wanna If here, but it will be another case
+        if (peek().kind == TokenType.EndOfFile) {
+            peek(-1).compileError("body expected")
+        }
         if (parseOnlyOneLineIfNoBody) {
             messagesOrVarStatements.add(statementWithEndLine())
         } else {

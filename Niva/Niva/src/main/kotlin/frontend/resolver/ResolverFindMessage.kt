@@ -124,6 +124,7 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
 }
 
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
+
     val cantFind = "Cant send ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET}"
     val errorText = if (receiverType is Type.NullableType)
         "$cantFind to nullable type: ${YEL}${receiverType}${RESET}, please use $CYAN unpackOrError${RESET}/${CYAN}unpackOrValue: value${RESET}/${CYAN}unpack: [it]${RESET}/${CYAN}unpack: ${WHITE}[...] ${CYAN}or: ${WHITE}T"
@@ -175,9 +176,12 @@ fun Resolver.findStaticMessageType(
         if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
         return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
     }
+    if (GlobalVariables.isLspMode) {
+        token.compileError("Message declaration in progress")
+    } else {
+        token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
 
-    throw Exception("Cant find static message: $selectorName for type ${receiverType.name}")
-//    token.compileError("Cant find static message: $selectorName for type ${receiverType.name}")
+    }
 }
 
 fun Resolver.findAnyMsgType(
@@ -238,6 +242,15 @@ fun Resolver.findAnyMsgType(
         endOfSearch(mapOf())
     } else if (GlobalVariables.isLspMode) {
         // IDK, send find similar as array?
+        val (list, _) = findSimilar(to = selectorName, forType = receiverType)
+
+        if (list.count() == 1)
+            token.compileError("Did you mean ${list.first()}")
+
+        if (list.isNotEmpty()) {
+            token.compileError("Did you mean one of $list")
+        }
+
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
     } else
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())

@@ -136,7 +136,7 @@ fun Parser.matchAssertAnyIdent(errorMessage: String): Token {
         step()
         tok
     } else {
-        peek().compileError(errorMessage)
+        peek(-1).compileError(errorMessage)
     }
 }
 
