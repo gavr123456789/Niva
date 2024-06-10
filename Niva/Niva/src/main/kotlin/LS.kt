@@ -7,6 +7,9 @@ import frontend.resolver.Type
 import frontend.resolver.resolve
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.EnumBranch
+import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.Expression
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationBinary
@@ -14,6 +17,10 @@ import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.MessageDeclarationUnary
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.TypeAliasDeclaration
+import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnionBranchDeclaration
+import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.GlobalVariables
 import main.utils.MainArgument
@@ -198,17 +205,17 @@ fun LS.removeDecl2(file: File) {
                     is MessageDeclarationUnary -> {
                         when (forType) {
                             is Type.UserLike -> {
-                                val usrLikeTypes = typeDB.userTypes[forType.name]!!
-                                val w = usrLikeTypes.find { it.pkg == forType.pkg }!!
-                                val protocolWithMethod = w.protocols.values.find { it.unaryMsgs.contains(d.name) }!!
-                                protocolWithMethod.unaryMsgs.remove(d.name)
+                                val usrLikeTypes = typeDB.userTypes[forType.name]
+                                val w = usrLikeTypes?.find { it.pkg == forType.pkg }
+                                val protocolWithMethod = w?.protocols?.values?.find { it.unaryMsgs.contains(d.name) }
+                                protocolWithMethod?.unaryMsgs?.remove(d.name)
                             }
 
                             is Type.InternalType -> {
-                                val usrLikeTypes = typeDB.internalTypes[forType.name]!!
+                                val usrLikeTypes = typeDB.internalTypes[forType.name]
                                 val protocolWithMethod =
-                                    usrLikeTypes.protocols.values.find { it.unaryMsgs.contains(d.name) }!!
-                                protocolWithMethod.unaryMsgs.remove(d.name)
+                                    usrLikeTypes?.protocols?.values?.find { it.unaryMsgs.contains(d.name) }
+                                protocolWithMethod?.unaryMsgs?.remove(d.name)
                             }
 
                             is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
@@ -218,10 +225,10 @@ fun LS.removeDecl2(file: File) {
                     is MessageDeclarationBinary -> {
                         when (forType) {
                             is Type.UserLike -> {
-                                val usrLikeTypes = typeDB.userTypes[forType.name]!!
-                                val w = usrLikeTypes.find { it.pkg == forType.pkg }!!
-                                val protocolWithMethod = w.protocols.values.find { it.binaryMsgs.contains(d.name) }!!
-                                protocolWithMethod.binaryMsgs.remove(d.name)
+                                val usrLikeTypes = typeDB.userTypes[forType.name]
+                                val w = usrLikeTypes?.find { it.pkg == forType.pkg }
+                                val protocolWithMethod = w?.protocols?.values?.find { it.binaryMsgs.contains(d.name) }
+                                protocolWithMethod?.binaryMsgs?.remove(d.name)
                             }
 
                             is Type.InternalType -> {
@@ -285,19 +292,36 @@ fun LS.removeDecl2(file: File) {
                 }
             }
             if (d is SomeTypeDeclaration) {
-                // get pkg
-//                resolver.projects["common"]!!.packages[d.receiver!!.pkg]!!
                 pkgToRemove = d.receiver!!.pkg
-                val t = typeDB.userTypes[d.typeName]
-                if (t != null) {
-                    val iter = t.iterator()
-                    while (iter.hasNext()) {
-                        val c = iter.next()
-                        if (c.pkg == pkgToRemove) {
-                            iter.remove()
+                val removeFromTypeDB = { typeName: String ->
+                    val t = typeDB.userTypes[typeName]
+                    if (t != null) {
+                        val iter = t.iterator()
+                        while (iter.hasNext()) {
+                            val c = iter.next()
+                            if (c.pkg == pkgToRemove) {
+                                iter.remove()
+                            }
+                        }
+                        if (t.isEmpty()) {
+                            typeDB.userTypes.remove(typeName)
                         }
                     }
                 }
+
+                when (d) {
+                    is TypeDeclaration, is UnionBranchDeclaration -> removeFromTypeDB(d.typeName)
+                    is UnionRootDeclaration -> {
+                        d.branches.forEach { removeFromTypeDB(it.typeName) }
+                        removeFromTypeDB(d.typeName)
+                    }
+                    is EnumDeclarationRoot -> TODO()
+                    is ErrorDomainDeclaration -> TODO()
+                    is EnumBranch -> TODO() // enums are not in top-level typedb, probably
+                    is TypeAliasDeclaration -> TODO() // idk
+                }
+
+
                 //
             }
         }

@@ -402,6 +402,9 @@ fun Resolver.resolveControlFlow(
 fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>): Set<Type.Union> {
     when (this) {
         is Type.UnionRootType -> {
+            if (branches.isEmpty()) {
+                x.add(this)
+            } else
             this.branches.forEach {
                 val y = it.unpackUnionToAllBranches(x, typeToToken)
                 x.addAll(y)
@@ -447,17 +450,19 @@ fun recursiveCheckThatEveryBranchChecked(
         .flatMap { it.unpackUnionToAllBranches(mutableSetOf(), typeToTok)}.toSet()
 
     val realSet = mutableSetOf<Type.Union>()
-    val real = branchesInSwitch
+    val real2 = branchesInSwitch
         .filterIsInstance<Type.Union>()
-        .flatMap { it.unpackUnionToAllBranches(realSet, typeToTok)}.toSet()
+    val real = real2    .flatMap { it.unpackUnionToAllBranches(realSet, typeToTok)}.toSet()
 
+    val realNamesAndPkg = real.map { it.name }
+    val fromDbNamesAndPkg = fromDb.map { it.name }
 
-    if (fromDb != real) {
-        if (fromDb.count() > real.count()) {
-            val difference = (fromDb - real).joinToString("$RESET, $YEL") { it.name }
+    if (realNamesAndPkg != fromDbNamesAndPkg) {
+        if (fromDbNamesAndPkg.count() > realNamesAndPkg.count()) {
+            val difference = (fromDbNamesAndPkg - realNamesAndPkg).joinToString("$RESET, $YEL") { it }
             tok.compileError("Not all possible variants have been checked ($YEL$difference$RESET)")
         } else {
-            val difference = (real - fromDb).joinToString("$RESET, $YEL") { it.name }
+            val difference = (realNamesAndPkg - fromDbNamesAndPkg).joinToString("$RESET, $YEL") { it }
             tok.compileError("Extra unions are checked: ($YEL$difference$RESET)")
         }
     }
