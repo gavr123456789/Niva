@@ -9,11 +9,18 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
+import main.frontend.util.containSameFields
 import main.frontend.util.setDiff
 
 fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean) {
     val rootType2 =
-        statement.toType(currentPackageName, typeTable, typeDB, isUnion = true, isError = isError) as Type.UnionRootType//fix
+        statement.toType(
+            currentPackageName,
+            typeTable,
+            typeDB,
+            isUnion = true,
+            isError = isError
+        ) as Type.UnionRootType//fix
 
     val realType = if (statement.pkg != null) {
         val realPkgOfUnionRoot = this.findPackageOrError(statement.pkg, statement.token)
@@ -33,45 +40,37 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         val tok = it.token
         val pkg = getCurrentPackage(tok)
         val alreadyRegisteredType = typeAlreadyRegisteredInCurrentPkg(it.typeName, pkg, tok)
-        if (alreadyRegisteredType == null && it.isRoot) {
+
+        if (alreadyRegisteredType == null && it.isRoot) { //
             // this is forward declaration of included union!
+            // and it's not resolved, yet
+            // otherwise it's a usual branch
             unResolvedTypeDeclarations.add(pkg.packageName, statement)
             return
         }
 
-        val branchType = //if (alreadyRegisteredType == null) {
-            {
-                val branchType =
-                    it.toType(
-                        currentPackageName,
-                        typeTable,
-                        typeDB,
-                        unionRootType = rootType,
-                        isError = isError
-                    ) as Type.UnionBranchType
-                branchType.parent = rootType
 
-                addNewType(branchType, it, alreadyCheckedOnUnique = true)
-                branchType
-            }()
-//        }
-//        else {
-//            // type is found, this is UNION ROOT
-//            if (alreadyRegisteredType is Type.UnionRootType) {
-//                alreadyRegisteredType.parent = rootType
-//
-//                // check that it has the same fields as current root
-//                if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
-//                    it.token.compileError("Union Root inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name}: ${WHITE}${alreadyRegisteredType.fields.map { it.name }} $RED!=${YEL} ${rootType.name}${RED}: $WHITE${rootType.fields.map { it.name }}")
-//                }
-//                it.branches = alreadyRegisteredType.branches
-//                it.isRoot = true
-//                alreadyRegisteredType
-//
-//            } else {
-//                it.token.compileError("Compiler thinks: Something strange, $alreadyRegisteredType is not a union root, but inside branches")
-//            }
-//        }
+        val branchType = if (alreadyRegisteredType is Type.Union && it.isRoot) {
+            if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
+                it.token.compileError("Union inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name} ${WHITE}${alreadyRegisteredType.fields.map { "${it.name}: ${it.type}" }} $RED!=${YEL} ${rootType.name}${RED} $WHITE${rootType.fields.map { "${it.name}: ${it.type}" }}")
+            }
+            alreadyRegisteredType
+        }
+        else {
+            val branchType =
+                it.toType(
+                    currentPackageName,
+                    typeTable,
+                    typeDB,
+                    unionRootType = rootType,
+                    isError = isError
+                ) as Type.UnionBranchType
+            branchType.parent = rootType
+
+            addNewType(branchType, it, alreadyCheckedOnUnique = false)
+            branchType
+        }
+
 
         branchType.fields += rootType.fields
         branches.add(branchType)
@@ -94,13 +93,14 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         val error = typeDB.userTypes["Error"]!!.find { it.pkg == "core" }!!
         rootType.parent = error
         // add protocol with throw that returns Nothing!Self
-        branches.forEach{
+        branches.forEach {
             val w = createExceptionForCustomErrors(it)
             it.protocols.putAll(w)
         }
     }
 
 }
+
 fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
     val realType = statement.realTypeAST.toType(typeDB, typeTable)
     statement.realType = realType

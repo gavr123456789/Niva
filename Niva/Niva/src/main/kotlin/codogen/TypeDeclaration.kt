@@ -104,7 +104,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
     // add fields of the root
     if (receiverType is Type.UnionBranchType) {
-        if (receiverType.root.fields.isNotEmpty()) {
+        if (receiverType.root.fields.isNotEmpty() && fields.isNotEmpty()) {
             // comma after branch fields, before root fields
             append(", ")
         }

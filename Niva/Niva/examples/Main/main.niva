@@ -19,12 +19,24 @@
 //
 //x echo
 
+//| Regular name: String age: Int
+//| Visitor name: String
 
-union Qwf = Ars | Zxc
+union Trrrr nen: Int
 
-Qwf sas = | this
-| Ars => 1 echo
-| Zxc => 2 echo
+union User nen: Int =
+| Anonymous
+| ^Trrrr
+
+User welcome = | this
+| Anonymous => "Welcome"
+| Trrrr => "rsrs"
+
+"unions !!!" echo
+
+
+
+
 
 
 
