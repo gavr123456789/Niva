@@ -101,9 +101,10 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 }
 
 fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
-    CompilationTarget.jvm -> "run"
+    CompilationTarget.jvm -> "jvmRun -DmainClass=mainNiva.MainKt"
     CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
     CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
+    CompilationTarget.jvmCompose -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
 }
 
 class CompilerRunner(
@@ -123,7 +124,7 @@ class CompilerRunner(
                 targetToRunCommand(compilationTarget)
         else
             when (compilationTarget) {
-                CompilationTarget.jvm -> if (buildFatJar) "fatJar" else "distZip"
+                CompilationTarget.jvm, CompilationTarget.jvmCompose -> if (buildFatJar) "fatJar" else "distZip"
                 CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
                 CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
             }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
@@ -169,7 +170,7 @@ class CompilerRunner(
         }
         if (dist || buildFatJar) {
             when (compilationTarget) {
-                CompilationTarget.jvm -> {
+                CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
                     if (buildFatJar) {
                         val jarFile = File("./${mainNivaFileName}.jar")
                         val whereToCopy =

@@ -31,6 +31,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "import" -> usePackage(substring, true)
                     "target" -> changeTarget(substring, statement.token)
                     "mode" -> changeCompilationMode(substring, statement.token)
+//                    "compose" -> useCompose(substring, statement.token)
                     else -> statement.token.compileError("Unexpected argument $WHITE${it.name} ${RED}for Project")
                 }
             }
