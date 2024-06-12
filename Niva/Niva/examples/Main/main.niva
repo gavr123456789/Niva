@@ -1,66 +1,22 @@
-//builder StringBuilder buildString -> String = [
-//    b = StringBuilder new
-//    defaultAction = [ default::String ->
-//        b append: default
-//    ]
-//
-//
-//    buildString this: b defaultAction: defaultAction
-//    ^ b toString
-//]
-//
-//
-//x = buildString [
-//    32 echo
-//    "sas"
-//    "sus"
-//    345
-//]
-//
-//x echo
+Project target: "compose"
+Project loadPackages: {"$compose.desktop.currentOs"}
 
-//| Regular name: String age: Int
-//| Visitor name: String
+Bind package: "androidx.compose.ui.window" content: [
+    type ApplicationScope
+    constructor ApplicationScope content::ApplicationScope[ -> ] -> Unit
 
-union Trrrr nen: Int
-
-union User nen: Int =
-| Anonymous
-| ^Trrrr
-
-User welcome = | this
-| Anonymous => "Welcome"
-| Trrrr => "rsrs"
-
-"unions !!!" echo
+    type Window
+    constructor Window onCloseRequest::[ -> ] content::Window[ -> ] -> Unit
+]
 
 
+String msg::String[Int, Int -> Unit] = [
+    str = "sas"
+    msg this: str Int: 1 Int: 2
+]
 
+1 echo
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-//union Option = Value v: T | None
-//
-//Option valueOrNull -> T? = | this
-//| Value => v
-//| None => null
-//
-//Int sas::T -> T = [
-//    ^ sas
-//]
-//
-//n = None new
-//l = n valueOrNull
-//y = l unpackOrError + 1
-//1 echo
+ApplicationScope content: [
+    1 echo
+]

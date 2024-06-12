@@ -50,6 +50,8 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
     if (help(args)) return
 
+
+
     val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
     val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
 

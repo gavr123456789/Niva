@@ -81,6 +81,8 @@ settings:
     languageVersion: 2.0
     serialization:
       format: json
+  compose: enabled
+    
   jvm:
     target: 21
   java:
@@ -118,9 +120,12 @@ kotlin {
     }
 }
 """
-
-    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String) =
-        "getTasksByName(\"$runCommandName\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+    // TODO GRADLE working dir with compose
+    fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String): String {
+        val q = runCommandName.split(" ").first()
+        return if (q == "jvmRun") "" else
+        "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+    }
 
     fun GRADLE_OPTIONS() = """
 repositories {
@@ -154,9 +159,9 @@ allprojects {
     }
 }
 
-tasks.named<JavaExec>("run") {
-    standardInput = System.`in`
-}
+//tasks.named<JavaExec>("run") {
+//    standardInput = System.`in`
+//}
 
 """
 }
@@ -204,7 +209,7 @@ fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) 
     }
     val newGradle = GeneratorKt.AMPER_TEMPLATE
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, implementations)
-        .replace(GeneratorKt.TARGET, target.name)
+        .replace(GeneratorKt.TARGET, target.targetName)
 
     val gradleFile = File(pathToAmper)
     gradleFile.writeText(newGradle)

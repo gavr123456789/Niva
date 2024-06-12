@@ -786,8 +786,8 @@ fun Resolver.usePackage(packageName: String, noStarImport: Boolean = false) {
     currentPkg.addImport(packageName, noStarImport)
 }
 
-enum class CompilationTarget {
-    jvm, linux, macos,
+enum class CompilationTarget(val targetName: String) {
+    jvm("jvm"), linux("linux"), macos("macos"), jvmCompose("jvm")
 //    windows,
 }
 
@@ -801,6 +801,7 @@ fun Resolver.changeTarget(target: String, token: Token) {
         "jvm" -> CompilationTarget.jvm
         "linux" -> CompilationTarget.linux
         "macos" -> CompilationTarget.macos
+        "compose" -> CompilationTarget.jvmCompose
         "windows" -> token.compileError("Windows native target not supported yet")
         "js" -> token.compileError("js target not supported yet")
         else -> token.compileError("There is no such target as ${WHITE}$target${RESET}, supported targets are ${WHITE}${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
