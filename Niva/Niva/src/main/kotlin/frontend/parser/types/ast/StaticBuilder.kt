@@ -1,5 +1,6 @@
 package main.frontend.parser.types.ast
 
+import frontend.resolver.KeywordArgAst
 import frontend.resolver.Type
 import frontend.resolver.compare2Types
 import main.frontend.meta.Token
@@ -14,6 +15,7 @@ class StaticBuilder(
     val name: String,
     val statements: List<Statement>,
     var defaultAction: CodeBlock? = null,
+    val args: List<KeywordArgAst>,
     type: Type?,
     token: Token,
     val expressions: MutableSet<Expression> = mutableSetOf()
@@ -21,7 +23,8 @@ class StaticBuilder(
 
 
 
-fun StaticBuilder.collectExpressions() {
+// the body should be already resolved
+fun StaticBuilder.collectExpressionsForDefaultAction() {
     val defaultAction = defaultAction
     if (defaultAction != null) {
         if (defaultAction.inputList.count() != 1) {

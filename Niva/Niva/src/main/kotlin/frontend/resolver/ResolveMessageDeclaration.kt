@@ -146,8 +146,8 @@ fun Resolver.resolveMessageDeclaration(
                     returnType = Resolver.defaultTypes[InternalTypes.Unit]!!,
                     pkg = getCurrentPackage(st.token).packageName
                 )
-                val da = st.defaultAction
-                if (da != null && da.inputList.count() > 0 && da.inputList[0].typeAST != null) {
+                val defaultAction = st.defaultAction
+                if (defaultAction != null && defaultAction.inputList.count() > 0 && defaultAction.inputList[0].typeAST != null) {
                     lambda.args.add(
                         KeywordArg(
                             name = "defaultAction",
@@ -155,7 +155,9 @@ fun Resolver.resolveMessageDeclaration(
                         )
                     )
                 }
-                bodyScope[st.name] = lambda
+                // adding builder lambda
+//                bodyScope[st.name] = lambda
+                bodyScope["build"] = lambda
 
             }
         }
@@ -236,26 +238,11 @@ fun Resolver.resolveMessageDeclaration(
                 val typeOfSingleExpr = expr.type!!
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
-                    is MessageDeclarationUnary -> findAnyMsgType(
-                        forType,
-                        st.name,
-                        st.token,
-                        MessageDeclarationType.Unary
-                    )
+                    is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
 
-                    is MessageDeclarationBinary -> findAnyMsgType(
-                        forType,
-                        st.name,
-                        st.token,
-                        MessageDeclarationType.Binary
-                    )
+                    is MessageDeclarationBinary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Binary)
 
-                    is MessageDeclarationKeyword -> findAnyMsgType(
-                        forType,
-                        st.name,
-                        st.token,
-                        MessageDeclarationType.Keyword
-                    )
+                    is MessageDeclarationKeyword -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Keyword)
 
                     is StaticBuilderDeclaration ->
                         TODO()
@@ -280,7 +267,7 @@ fun Resolver.resolveMessageDeclaration(
                     }
                 }
             } else {
-                TODO("Single expression with not expression")
+                TODO("Single-expression with not-expression, but statement, is not possible")
             }
         } else {
             val realReturn = wasThereReturn

@@ -21,7 +21,6 @@ import kotlin.collections.count
 import kotlin.collections.forEach
 import kotlin.collections.forEachIndexed
 import kotlin.collections.isNotEmpty
-import kotlin.collections.last
 import kotlin.collections.map
 import kotlin.collections.plus
 import kotlin.collections.set
@@ -104,11 +103,6 @@ fun Resolver.resolveCodeBlock(
 
                     val sameButResolvedArg = rootReceiverType.typeArgumentList[i]
 
-//                    if (sameButResolvedArg.name.isGeneric()) {
-                        // check that current resolving message declaration has some generics
-//                        println("olala, looks like the $sameButResolvedArg is Known generic")
-//                        throw Exception("Arg ${sameButResolvedArg.name} is unresolved")
-//                    }
                     genericLetterToTypesOfReceiver[it.name] = sameButResolvedArg
                 } else if (beforeName != null && beforeName.isGeneric()) {
                     // was resolved somehow

@@ -66,8 +66,8 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
                     isError = isError
                 ) as Type.UnionBranchType
             branchType.parent = rootType
-
-            addNewType(branchType, it, alreadyCheckedOnUnique = false)
+            if (alreadyRegisteredType == null)
+                addNewType(branchType, it, alreadyCheckedOnUnique = false)
             branchType
         }
 

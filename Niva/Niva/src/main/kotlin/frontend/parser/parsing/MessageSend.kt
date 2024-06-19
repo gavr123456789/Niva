@@ -390,10 +390,7 @@ fun Parser.keyword(
     )
 }
 
-fun Parser.keywordMessageParsing(
-    receiver: Receiver,
-): KeywordMsg {
-    val stringBuilder = StringBuilder()
+fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Pair<MutableList<KeywordArgAst>, IdentifierExpr?> {
 
     val keyWordArguments = mutableListOf<KeywordArgAst>()
     // next 2 we need for save path like x `Sas.from`: 1 to: 2
@@ -438,6 +435,17 @@ fun Parser.keywordMessageParsing(
         firstCycle = false
         skipNewLinesAndComments()
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
+
+    return Pair(keyWordArguments, firstKeywordIdentifierExpr)
+
+}
+
+fun Parser.keywordMessageParsing(
+    receiver: Receiver,
+): KeywordMsg {
+    val stringBuilder = StringBuilder()
+    val (keyWordArguments, firstKeywordIdentifierExpr) = keywordSendArgs(stringBuilder)
+
     val keywordMsg = KeywordMsg(
         receiver,
         stringBuilder.toString(),

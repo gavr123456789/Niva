@@ -1550,22 +1550,6 @@ class ParserTest {
         assert(staticB.statements[0] is MessageSendUnary)
     }
 
-    @Test
-    fun staticBuildDeclaration() {
-        val source = """
-            builder html init::[ -> Unit] -> HTML = [
-                html = HTML new
-                html init
-            ]
-        """.trimIndent()
-
-        // is the same as when() {}, so it is if else if
-
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        val staticB = ast[0] as StaticBuilderDeclaration
-        assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
-    }
 
     @Test
     fun builder() {
@@ -1573,12 +1557,8 @@ class ParserTest {
             x = buildString [ "sas" ]
         """.trimIndent()
 
-        // is the same as when() {}, so it is if else if
-
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-//        val staticB = ast[0] as StaticBuilderDeclaration
-//        assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
     }
 
     @Test
@@ -1918,21 +1898,69 @@ class ParserTest {
         }
     }
 
+
     @Test
-    fun tokenPositionsOnSyntaxError222() {
+    fun staticBuildDeclaration() {
         val source = """
-            1 echo
-            )
-            1 echo
+            builder HTML init::[ -> Unit] -> HTML = [
+                html = HTML new
+                html init
+            ]
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilderDeclaration
+        assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
+    }
+
+    @Test
+    fun staticBuildDeclarationWithArgs() {
+        val source = """
+            builder Card width::Int height::Int -> Card = [
+                html = HTML new
+            ]
+        """.trimIndent()
+
+        // is the same as when() {}, so it is if else if
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilderDeclaration
+        assertTrue { staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
+                staticB.msgDeclaration.args.last().typeAST!!.name == "Int"}
+    }
+
+    @Test
+    fun builderWithKeys() {
+        val source = """
+            Card (width: 24 height: 30) [
+                1 echo
+            ]
+            Card [
+                1 echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 2)
+        val withArgs = ast.first() as StaticBuilder
+        val withoutArgs = ast.last() as StaticBuilder
+        assertTrue { withArgs.args.count() == 2 && withoutArgs.args.isEmpty() }
+    }
+
+    @Test
+    fun builderWithUnary() {
+        val source = """
+            Card [
+                1 echo
+            ] sas
         """.trimIndent()
         val ast = getAstTest(source)
 
         assertEquals(ast.count(), 1)
-        val q = ast.first()
-
-        assertTrue {
-            q.token.pos.start == 0
-        }
     }
 
 

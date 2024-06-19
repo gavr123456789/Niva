@@ -193,16 +193,16 @@ fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
         }
     }
     // default action
-    val da = st.defaultAction
-    if (da != null) {
+    val da = if (st.defaultAction != null) {
+        "(" + st.defaultAction.inputList.first().type!!.toKotlinString(true) + ") -> Any"
+    } else ""
+//    if (da != null) {
         if (args.count() > 0) append(", ")
-        // fun buildString2(^buildString2: StringBuilder.((String) -> Any) -> Unit): String {
-        val defaultActionType = defaultAction.inputList.first().type!!
         val forType = forType!!
-        append(st.name, ": ")
+        append("build", ": ")
         append(forType.toKotlinString(true), ".")
-        append("(($defaultActionType) -> Any) -> Unit")
-    }
+        append("($da) -> Unit")
+//    }
     append(")")
 
     returnTypeAndBodyPart(st, this)

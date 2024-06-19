@@ -32,7 +32,7 @@ class TypeDB(
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
     // name of the Missing Type to (parent type + field of parent name)
-    val unresolvedTypes: MutableMap<String, FieldNameAndParent> = mutableMapOf()
+    val unresolvedTypesBecauseOfUnknownField: MutableMap<String, FieldNameAndParent> = mutableMapOf()
 )
 
 // getting

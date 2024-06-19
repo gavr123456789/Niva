@@ -10,6 +10,7 @@ import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
+import main.frontend.resolver.messageResolving.resolveStaticBuilder
 import main.frontend.typer.*
 import main.utils.*
 import java.io.File
@@ -135,25 +136,7 @@ private fun Resolver.resolveStatement(
         }
 
         is StaticBuilder -> {
-            stack.push(statement)
-
-            currentLevel++
-            resolve(statement.statements, (currentScope + previousScope).toMutableMap())
-            // find in DB
-            val pkg = getCurrentPackage(statement.token)
-            val builderFromDB = pkg.builders[statement.name]
-            if (builderFromDB == null) {
-                statement.token.compileError("Can't find builder ${statement.name}, builders of this pkg: ${pkg.builders.keys}")
-            }
-            statement.type = builderFromDB.returnType
-
-            val defaultAction = builderFromDB.defaultAction
-            statement.defaultAction = defaultAction
-            statement.collectExpressions()
-
-            currentLevel--
-            addToTopLevelStatements(statement)
-            stack.pop()
+          resolveStaticBuilder(statement, currentScope, previousScope)
         }
 
         is IdentifierExpr -> {
@@ -707,8 +690,21 @@ fun Resolver.addNewType(
     }
     // 5 put type to all type sources
     pack.types[typeName] = type
-    typeTable[typeName] = type//fix
+    typeTable[typeName] = type //fix
     typeDB.add(type, token = statement?.token ?: createFakeToken(), customNameAlias = typeName)
+
+    typeDB.unresolvedTypesBecauseOfUnknownField.remove(typeName)
+
+    val unresolved = unResolvedTypeDeclarations[pack.packageName]
+    if (unresolved != null && statement != null) {
+        val typeToRemove = unresolved.find { it.typeName == statement.typeName && it.receiver?.pkg == statement.receiver?.pkg }
+        unresolved.remove(typeToRemove)
+        if (unresolved.isEmpty()) {
+            unResolvedTypeDeclarations.remove(pack.packageName)
+        }
+    }
+
+//    unResolvedTypeDeclarations.remove(typeName)
 }
 
 
@@ -891,8 +887,8 @@ fun Resolver.getAnyType(
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
     val type =
-        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName) ?:
-        currentPackage.builders[typeName]?.returnType
+        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
+            ?: currentPackage.builders[typeName]?.returnType
 
     return type
 }
@@ -904,6 +900,8 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
         val t = body.type
         if (t is Type.Lambda) {
             t.returnType
+        } else if (body.statements.isEmpty()) {
+            Resolver.defaultTypes[InternalTypes.Unit]!!
         } else {
             val last = body.statements.last()
             if (last is Expression) {
@@ -914,6 +912,7 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
         }
     }
 }
+
 
 
 typealias TypeName = String
@@ -1010,7 +1009,6 @@ class Resolver(
     var resolvingMainFile: Boolean = false,
 
 
-
     val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, currentFile: File) -> Unit)? = null
 ) {
     fun reset() {
@@ -1018,7 +1016,7 @@ class Resolver(
         unResolvedSingleExprMessageDeclarations.clear()
         unResolvedMessageDeclarations.clear()
         unResolvedTypeDeclarations.clear()
-        typeDB.unresolvedTypes.clear()
+        typeDB.unresolvedTypesBecauseOfUnknownField.clear()
         resolvingMainFile = false
         stack.clear()
 //        infoTypesToPrint.clear()
@@ -1543,3 +1541,4 @@ private fun Type.InternalType.copy(): Type.InternalType {
         typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
     )
 }
+

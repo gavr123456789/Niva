@@ -101,7 +101,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 }
 
 fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
-    CompilationTarget.jvm -> "jvmRun -DmainClass=mainNiva.MainKt"
+    CompilationTarget.jvm -> "run"
     CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
     CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
     CompilationTarget.jvmCompose -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
@@ -173,9 +173,9 @@ class CompilerRunner(
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
                     if (buildFatJar) {
                         val jarFile = File("./${mainNivaFileName}.jar")
-                        val whereToCopy =
+                        val fromPath =
                             pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
-                        File(whereToCopy).copyTo(jarFile, true)
+                        File(fromPath).copyTo(jarFile, true)
                     } else {
                         val zipName = File("./${mainNivaFileName}.zip")
                         val pathToNativeExe =

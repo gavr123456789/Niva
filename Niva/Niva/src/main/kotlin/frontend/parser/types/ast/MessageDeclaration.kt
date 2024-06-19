@@ -204,4 +204,11 @@ class StaticBuilderDeclaration(
     msgDeclaration.returnTypeAST,
     msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
+    msgDeclaration.isInline,
+    msgDeclaration.forType,
+    msgDeclaration.returnType,
+    msgDeclaration.isRecursive,
+    msgDeclaration.typeArgs,
+    msgDeclaration.stackOfPossibleErrors,
+    msgDeclaration.messageData
 )

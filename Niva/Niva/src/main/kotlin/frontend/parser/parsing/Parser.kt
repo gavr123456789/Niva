@@ -274,9 +274,12 @@ fun Parser.expression(
         return ifStatementOrExpression()
     }
 
-    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
-        return staticBuilder()
-    }
+//    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
+//        return staticBuilder()
+//    }
+//    if (checkMany(TokenType.Identifier, TokenType.OpenParen)) {
+//        return staticBuilderWithArgs()
+//    }
 
     if (match (TokenType.Ampersand)) {
         return methodReference()

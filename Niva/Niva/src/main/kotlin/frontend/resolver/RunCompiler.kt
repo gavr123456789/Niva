@@ -72,9 +72,9 @@ fun Resolver.resolve(
     changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
     currentResolvingFileName = mainFile
 
-    val resolveUnresolved = {
-        if (typeDB.unresolvedTypes.isNotEmpty()) { // && i != 0
-            val iterator = typeDB.unresolvedTypes.iterator()
+    val resolveUnresolvedFromTypeDB = {
+        if (typeDB.unresolvedTypesBecauseOfUnknownField.isNotEmpty()) { // && i != 0
+            val iterator = typeDB.unresolvedTypesBecauseOfUnknownField.iterator()
             while (iterator.hasNext()) {
                 val (a, b) = iterator.next()
 
@@ -108,36 +108,15 @@ fun Resolver.resolve(
     val resolveDeclarationsOnlyMark = markNow()
 
     resolveDeclarationsOnly(mainAST)
-    resolveUnresolved()
-    otherASTs.forEachIndexed { i, it ->
-        currentResolvingFileName = otherFilesPaths[i]
-        // create package
-        changePackage(it.first, fakeTok)
-        statements = it.second.toMutableList()
-        resolveDeclarationsOnly(it.second)
-        resolveUnresolved()
-    }
+
 
     verbosePrinter.print { "Resolving: declarations in ${resolveDeclarationsOnlyMark.getMs()} ms" }
 
     val resolveUnresolvedDeclarationsOnlyMark = markNow()
 
-    if (typeDB.unresolvedTypes.isNotEmpty()) {
 
-        typeDB.unresolvedTypes.values.first().typeDeclaration.token.compileError(buildString {
-            append("These types remained unrecognized after checking all files: \n")
-            typeDB.unresolvedTypes.forEach { (a, b) ->
-                // "| 11 name:  is unresolved"
-                append(b.ast?.token?.line ?: "", "| ")
-                append(
-                    WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".",
-                    b.parent.name, RESET, "\n"
-                )
-            }
-        })
-    }
 
-    val isThereUnresolvedDecls = unResolvedMessageDeclarations.isNotEmpty() || unResolvedTypeDeclarations.isNotEmpty()
+    val isThereUnresolvedMsgDecls = unResolvedMessageDeclarations.isNotEmpty() || unResolvedTypeDeclarations.isNotEmpty()
     verbosePrinter.print {
         if (unResolvedMessageDeclarations.isNotEmpty()) {
             "Resolving: unresolved from first pass MessageDeclarations:\n\t${
@@ -155,16 +134,45 @@ fun Resolver.resolve(
     }
 
     // unresolved types
+
     unResolvedTypeDeclarations.forEach { (t, u) ->
         changePackage(t, fakeTok)
         resolveDeclarationsOnly(u.toMutableList())
     }
+
     // TODO replace to iter and remove inside, if there is type
-    unResolvedTypeDeclarations.clear()
+    if (GlobalVariables.isLspMode)
+        unResolvedTypeDeclarations.clear()
+
+    /// unresolved from typedb
+    resolveUnresolvedFromTypeDB()
+    otherASTs.forEachIndexed { i, it ->
+        currentResolvingFileName = otherFilesPaths[i]
+        // create package
+        changePackage(it.first, fakeTok)
+        statements = it.second.toMutableList()
+        resolveDeclarationsOnly(it.second)
+        resolveUnresolvedFromTypeDB()
+    }
+    if (typeDB.unresolvedTypesBecauseOfUnknownField.isNotEmpty()) {
+        typeDB.unresolvedTypesBecauseOfUnknownField.values.first().typeDeclaration.token.compileError(buildString {
+            append("These types remained unrecognized after checking all files: \n")
+            typeDB.unresolvedTypesBecauseOfUnknownField.forEach { (a, b) ->
+                // "| 11 name:  is unresolved"
+                append(b.ast?.token?.line ?: "", "| ")
+                append(
+                    WHITE, b.fieldName, ": ", YEL, a, RESET, " in declaration of ", YEL, b.parent.pkg, ".",
+                    b.parent.name, RESET, "\n"
+                )
+            }
+        })
+    }
+    ///
+
     unResolvedTypeDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
-            decl.token.compileError("Type `${YEL}${decl}${RESET}` for unresolved type: `${YEL}${decl.typeName}${RESET}`")
+            decl.token.compileError("Unresolved type declarations: $unResolvedTypeDeclarations")
         }
     }
 
@@ -195,7 +203,7 @@ fun Resolver.resolve(
     /// end of resolve all declarations
 
     verbosePrinter.print {
-        if (isThereUnresolvedDecls)
+        if (isThereUnresolvedMsgDecls)
             "Resolving: all unresolved declarations resolved in ${resolveUnresolvedDeclarationsOnlyMark.getMs()} ms"
         else ""
     }

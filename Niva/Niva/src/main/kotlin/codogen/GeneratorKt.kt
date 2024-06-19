@@ -209,7 +209,12 @@ fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) 
     }
     val newGradle = GeneratorKt.AMPER_TEMPLATE
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, implementations)
-        .replace(GeneratorKt.TARGET, target.targetName)
+        .replace(GeneratorKt.TARGET, target.targetName).let {
+            if (target != CompilationTarget.jvmCompose)
+                it.replace("compose: enabled", "")
+            else
+                it
+        }
 
     val gradleFile = File(pathToAmper)
     gradleFile.writeText(newGradle)

@@ -13,6 +13,7 @@ import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.utils.ArgsManager
+import main.utils.GlobalVariables
 import main.utils.MainArgument
 import main.utils.PathManager
 import main.utils.daemon
@@ -28,15 +29,34 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-union User =
-| Regular name: String age: Int 
-| Visitor name: String
-| Anonymous
+    // declare type with 2 fields
+type Person name: String age: Int
+person = Person name: "Alice" age: 24 // instantiate
 
-User welcome = | this 
-| Regular => "Welcome back" + name
-| Visitor => "Welcome " + name
-//| Anonymous => "Welcome"
+person name echo        // get
+person name: "new name" // set
+
+// unary method declaration
+Person hi = "Hi! my name is name" echo
+person hi // unary call
+
+// method with args
+Person foo::Int bar::Int = [
+    age + foo + bar |> echo // same as
+    (age + foo + bar) echo
+]
+person foo: 1 bar: 2 // 27 printed
+
+union Shape =
+| Rectangle width: Int height: Int
+| Circle    radius: Int
+
+constructor Float PI = 3.14
+Float PI // constructor call
+
+
+
+
 """
 const val fakeFileSourceBAAD = """
 //Int add::Int = this + add2
@@ -44,17 +64,120 @@ const val fakeFileSourceBAAD = """
 
 """
 
+
+///
+
+interface Element {
+    fun render(builder: StringBuilder, indent: String)
+}
+
+class TextElement(val text: String) : Element {
+    override fun render(builder: StringBuilder, indent: String) {
+        builder.append("$indent$text\n")
+    }
+}
+
+@DslMarker
+annotation class HtmlTagMarker
+
+@HtmlTagMarker
+abstract class Tag(val name: String) : Element {
+    val children = arrayListOf<Element>()
+    val attributes = hashMapOf<String, String>()
+
+    protected fun <T : Element> initTag(tag: T, init: T.() -> Unit): T {
+        tag.init()
+        children.add(tag)
+        return tag
+    }
+
+    override fun render(builder: StringBuilder, indent: String) {
+        builder.append("$indent<$name${renderAttributes()}>\n")
+        for (c in children) {
+            c.render(builder, indent + "  ")
+        }
+        builder.append("$indent</$name>\n")
+    }
+
+    private fun renderAttributes(): String {
+        val builder = StringBuilder()
+        for ((attr, value) in attributes) {
+            builder.append(" $attr=\"$value\"")
+        }
+        return builder.toString()
+    }
+
+    override fun toString(): String {
+        val builder = StringBuilder()
+        render(builder, "")
+        return builder.toString()
+    }
+}
+
+abstract class TagWithText(name: String) : Tag(name) {
+    operator fun String.unaryPlus() {
+        children.add(TextElement(this))
+    }
+}
+
+class HTML : TagWithText("html") {
+    fun head(init: Head.() -> Unit) = initTag(Head(), init)
+
+    fun body(init: Body.() -> Unit) = initTag(Body(), init)
+}
+
+class Head : TagWithText("head") {
+    fun title(init: Title.() -> Unit) = initTag(Title(), init)
+}
+
+class Title : TagWithText("title")
+
+abstract class BodyTag(name: String) : TagWithText(name) {
+    fun b(init: B.() -> Unit) = initTag(B(), init)
+    fun p(init: P.() -> Unit) = initTag(P(), init)
+    fun h1(init: H1.() -> Unit) = initTag(H1(), init)
+    fun a(href: String, init: A.() -> Unit) {
+        val a = initTag(A(), init)
+        a.href = href
+    }
+}
+
+class Body : BodyTag("body")
+class B : BodyTag("b")
+class P : BodyTag("p")
+class H1 : BodyTag("h1")
+
+class A : BodyTag("a") {
+    var href: String
+        get() = attributes["href"]!!
+        set(value) {
+            attributes["href"] = value
+        }
+}
+
+fun html(init: HTML.() -> Unit): HTML {
+    val html = HTML()
+    html.init()
+    return html
+}
+
+///
+
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
-//    val args = arrayOf("test", "/home/gavr/Documents/Projects/bazar/Examples/tests/main.niva")
+//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Programs/todosGleam/main.niva")
     if (help(args)) return
 
+    html {
+        head {
+            title { +"XML encoding with Kotlin" }
+        }
+    }
 
 
-    val ggg = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva"
-    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
-
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Programs/expr/sas.niva"
+//
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
@@ -128,7 +251,8 @@ fun run(args: Array<String>) {
     val resolver = try {
         compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH, tests = mainArg == MainArgument.TEST, verbose = am.verbose)
     } catch (e: CompilerError) {
-        println(e.message)
+        if (!GlobalVariables.isLspMode)
+            println(e.message)
         exitProcess(-1)
     }
     val secondTime = System.currentTimeMillis()
