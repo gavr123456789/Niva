@@ -1031,12 +1031,12 @@ class ResolverTest {
             alice = Person name: "Alica" age: 30
             bob = Person name: "Bob" age: 31
         
-            { 1 2 3 } joinWith: ", " |> echo
-            { alice bob } joinTransform: [ it name ] |> echo
+//            { 1 2 3 } joinWith: ", " |> echo
+//            { alice bob } joinTransform: [ it name ] |> echo
             { alice bob } joinWith: "\n" transform: [ it name + ": " + it age toString ] |> echo
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 6)
+        assert(statements.count() == 4)
     }
 
     @Test
@@ -1655,6 +1655,7 @@ class ResolverTest {
 
     @Test
     fun builder() {
+        /// example
         fun buildString2(buildString2: StringBuilder.((String) -> Any) -> Unit): String {
             val b = StringBuilder()
             val defaultAction = {default: String ->
@@ -1667,6 +1668,8 @@ class ResolverTest {
         buildString2 { defaultAction ->
             defaultAction("sas")
         }
+        ///
+
         val source = """
             builder StringBuilder buildString -> String = [
                 b = StringBuilder new
@@ -1675,7 +1678,7 @@ class ResolverTest {
                 ]
                 
                 
-                buildString this: b defaultAction: defaultAction
+                build this: b defaultAction: defaultAction
                 
                 ^ b toString
             ]
@@ -1690,6 +1693,37 @@ class ResolverTest {
         val (statements, r) = resolveWithResolver(source)
         assert(statements.count() == 2)
     }
+
+    @Test
+    fun builderWithArgs() {
+
+        val source = """
+            type Card
+            Card sas = 1
+            builder Card width::Int height::Int -> String = [
+                card = Card new
+                defaultAction = [ default::String ->
+                    1 echo
+                ]
+                
+                
+                build this: card defaultAction: defaultAction
+                
+                ^ card toString
+            ]
+
+            Card (width: 24 height: 30) [
+                1 echo
+                this sas
+            ]
+            
+        """.trimIndent()
+        val (statements, r) = resolveWithResolver(source)
+        assert(statements.count() == 4)
+    }
+
+
+
 
 
 

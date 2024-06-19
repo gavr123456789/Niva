@@ -8,7 +8,15 @@ fun generateBuilderCall(builder: StaticBuilder) = buildString {
     val st = builder
     // TODO add imports
     // add name
-    append(st.name, "{ $defaultActionName -> ",)
+    append(st.name)
+
+    // args
+    if (builder.args.isNotEmpty())
+        append("(",builder.args.joinToString(", ") { it.keywordArg.toString() }, ") ")
+
+    append("{")
+    if (builder.defaultAction != null)
+        append(" $defaultActionName -> ")
     // add body, but with "defaultAction" arg
 
     // TODO, just replace statements that needed to call with defaultAction in resolver

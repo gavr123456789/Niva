@@ -496,12 +496,23 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclar
     val builderKeyword = matchAssert(TokenType.Builder)
     val receiverType = parseType()
 
-    val name = dotSeparatedIdentifiers() ?: peek().compileError("Name of the builder expected")
+    // if its builder with args than the name of the builder is its receiver
+    val name = if (check(TokenType.DoubleColon, 1))
+        receiverType.name
+    else
+        (dotSeparatedIdentifiers() ?: peek(-1).compileError("Name of the builder expected")).name
 
+    skipNewLinesAndComments()
+
+    // args
     val args = if (check(TokenType.ReturnArrow) || check(TokenType.Assign))
         listOf()
     else
         keywordArgs()
+
+    args.forEach {arg ->
+        if (arg.typeAST == null) builderKeyword.compileError("You forgot to declare type of arg $arg")
+    }
 
     val returnType = returnType()
     matchAssert(TokenType.Assign)
@@ -509,7 +520,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclar
     val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
     val x = MessageDeclarationKeyword(
-        name = name.name,
+        name = name,
         forType = receiverType,
         returnType = returnType,
         args = args,
@@ -523,6 +534,8 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclar
         defaultAction = defaultAction,
         builderKeyword
     )
+
+
 
     return result
 }

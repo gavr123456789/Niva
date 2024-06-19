@@ -83,6 +83,9 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     // builder
     if (checkMany(TokenType.Identifier, TokenType.OpenBracket))
         return staticBuilder()
+    if (checkMany(TokenType.Identifier, TokenType.OpenParen))
+        return staticBuilderWithArgs()
+
 
 
     var tryPrimary: Receiver? = primary(typeAst)

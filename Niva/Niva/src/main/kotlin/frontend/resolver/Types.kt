@@ -144,6 +144,7 @@ class KeywordMsgMetaData(
 class BuilderMetaData(
     name: String,
     val argTypes: List<KeywordArg>,
+    val forType: Type,
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
@@ -756,7 +757,7 @@ fun TypeAST.toType(
                     this.token.compileError("Can't find user type: ${YEL}$name")
                 }
 
-                typeDB.unresolvedTypes[name] =
+                typeDB.unresolvedTypesBecauseOfUnknownField[name] =
                     FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
                 return Type.UnresolvedType()
 //                TODO()
@@ -797,7 +798,7 @@ fun TypeAST.toType(
                 this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
 
             if (returnType is Type.UnresolvedType) {
-                val q = typeDB.unresolvedTypes[this.returnType.name]!!
+                val q = typeDB.unresolvedTypesBecauseOfUnknownField[this.returnType.name]!!
                 q.ast = this
 //                TODO("add the same for arguments")
             }
@@ -1061,7 +1062,7 @@ fun MessageDeclaration.toAnyMessageData(
         }
 
         is StaticBuilderDeclaration -> {
-            toMessageData(typeDB, typeTable, pkg)
+            toMessageData(typeDB, typeTable, pkg, forType!!)
         }
     }
 
@@ -1114,12 +1115,14 @@ fun StaticBuilderDeclaration.toMessageData(
     typeDB: TypeDB,
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package,
+    forType: Type
 ): BuilderMetaData {
     val x = this.msgDeclaration.toMessageData(typeDB, typeTable, pkg)
 
     return BuilderMetaData(
         name = x.name,
         argTypes = x.argTypes,
+        forType = forType,
         returnType = x.returnType,
         pkg = x.pkg,
         pragmas = x.pragmas,
