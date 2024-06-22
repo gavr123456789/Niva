@@ -1722,6 +1722,38 @@ class ResolverTest {
         assert(statements.count() == 4)
     }
 
+    @Test
+    fun builderWithArgsWithReceiver() {
+
+        class Card()
+        fun String.Card(width: Int, action: Card.() -> Unit){
+            Card().action()
+        }
+
+        val source = """
+            type Card
+            Card sas = 1
+            String builder Card width::Int height::Int -> String = [
+                card = Card new
+                defaultAction = [ default::String ->
+                    1 echo
+                ]
+                
+                
+                build this: card defaultAction: defaultAction
+                
+                ^ card toString
+            ]
+
+//            "rar" Card (width: 24 height: 30) [
+//                1 echo
+//                this sas
+//            ]
+            
+        """.trimIndent()
+        val (statements, r) = resolveWithResolver(source)
+        assert(statements.count() == 3)
+    }
 
 
 

@@ -38,6 +38,7 @@ fun Message.toNivaStr(): String {
         is UnaryMsg -> this.toNivaStr()
         is BinaryMsg -> TODO()
         is KeywordMsg -> TODO()
+        is StaticBuilder -> TODO()
     }
 
 }

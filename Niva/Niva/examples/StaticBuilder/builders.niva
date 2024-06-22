@@ -1,3 +1,35 @@
+//Project target: "compose"
+//Project loadPackages: {"$compose.desktop.currentOs"}
+//
+//Bind package: "androidx.compose.ui.window" content: [
+//    type ApplicationScope
+//    constructor ApplicationScope content::ApplicationScope[ -> ] -> Unit
+//
+//    type Window
+//    constructor Window onCloseRequest::[ -> ] content::Window[ -> ] -> Unit
+//]
+//
+//
+//String msg::String[Int, Int -> Unit] = [
+//    str = "sas"
+//    msg this: str Int: 1 Int: 2
+//]
+//
+//1 echo
+//
+//ApplicationScope content: [
+//    1 echo
+//]
+
+
+//union Arrr name: String=
+//| ^Brrrr
+//
+//union Brrrr = Qq | Ww
+//
+//union Element =
+//| ^Tag
+//
 
 // name сделать просто через функцию с пм
 

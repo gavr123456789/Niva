@@ -145,6 +145,7 @@ class BuilderMetaData(
     name: String,
     val argTypes: List<KeywordArg>,
     val forType: Type,
+    val receiverType: Type?, // Surface(receiverType) builder Card(forType) =[]
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
@@ -634,6 +635,7 @@ data class Protocol(
     val unaryMsgs: MutableMap<String, UnaryMsgMetaData> = mutableMapOf(),
     val binaryMsgs: MutableMap<String, BinaryMsgMetaData> = mutableMapOf(),
     val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
+    val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
     val staticMsgs: MutableMap<String, MessageMetadata> = mutableMapOf(),
 //    val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
 )
@@ -1115,14 +1117,17 @@ fun StaticBuilderDeclaration.toMessageData(
     typeDB: TypeDB,
     typeTable: MutableMap<TypeName, Type>,
     pkg: Package,
-    forType: Type
+    forType: Type,
 ): BuilderMetaData {
     val x = this.msgDeclaration.toMessageData(typeDB, typeTable, pkg)
-
+    if (receiverAst != null) {
+        this.receiverType = receiverAst.toType(typeDB, typeTable)
+    }
     return BuilderMetaData(
         name = x.name,
         argTypes = x.argTypes,
         forType = forType,
+        receiverType = receiverType,
         returnType = x.returnType,
         pkg = x.pkg,
         pragmas = x.pragmas,

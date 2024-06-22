@@ -62,7 +62,7 @@ sealed class MessageSend(
 
 class MessageSendUnary(
     receiver: Receiver,
-    override val messages: List<Message>,
+    override val messages: MutableList<Message>,
     type: Type? = null,
     token: Token
 ) : MessageSend(receiver, messages, type, token)

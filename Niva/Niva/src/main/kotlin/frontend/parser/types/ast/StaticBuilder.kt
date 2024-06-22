@@ -11,6 +11,16 @@ import main.utils.WHITE
 import main.utils.YEL
 
 
+//class StaticBuilder(
+//    val name: String,
+//    val statements: List<Statement>,
+//    var defaultAction: CodeBlock? = null,
+//    val args: List<KeywordArgAst>,
+//    type: Type?,
+//    token: Token,
+//    val expressions: MutableSet<Expression> = mutableSetOf()
+//) : Receiver(type, token)
+
 class StaticBuilder(
     val name: String,
     val statements: List<Statement>,
@@ -18,10 +28,9 @@ class StaticBuilder(
     val args: List<KeywordArgAst>,
     type: Type?,
     token: Token,
+    val receiverOfBuilder: Receiver?,
     val expressions: MutableSet<Expression> = mutableSetOf()
-) : Receiver(type, token)
-
-
+) : Message(receiverOfBuilder ?: IdentifierExpr(name, listOf(name), null, token), name, listOf(name), type, token)
 
 // the body should be already resolved
 fun StaticBuilder.collectExpressionsForDefaultAction() {

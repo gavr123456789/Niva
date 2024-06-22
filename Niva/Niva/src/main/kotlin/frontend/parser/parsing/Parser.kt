@@ -72,6 +72,10 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Builder) {
         return builderDeclaration(pragmas)
     }
+    // extend type with many methods
+    if (tok.isIdentifier() && check(TokenType.Builder, 1)) {
+        return builderDeclarationWithReceiver(pragmas)
+    }
 
     if (kind == TokenType.Identifier && tok.lexeme == "extend") {
         return extendDeclaration(pragmas)

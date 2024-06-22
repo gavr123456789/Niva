@@ -49,7 +49,6 @@ fun Resolver.resolveMessageDeclaration(
     } else typeTable[st.forTypeAst.name]
 
 
-//    val testDB = typeDB.getType(statement.forTypeAst.name)
     if (forType == null) {
         unResolvedMessageDeclarations.add(currentPackageName, st)
         currentLevel--
@@ -158,7 +157,6 @@ fun Resolver.resolveMessageDeclaration(
                 // adding builder lambda
 //                bodyScope[st.name] = lambda
                 bodyScope["build"] = lambda
-
             }
         }
         // add args to bodyScope

@@ -109,6 +109,10 @@ private fun Resolver.resolveStatement(
             stack.pop()
         }
 
+        is StaticBuilder -> {
+            resolveStaticBuilder(statement, currentScope, previousScope)
+        }
+
         is Message -> {
             resolveMessage(statement, currentScope, previousScope)
         }
@@ -135,9 +139,6 @@ private fun Resolver.resolveStatement(
             stack.pop()
         }
 
-        is StaticBuilder -> {
-          resolveStaticBuilder(statement, currentScope, previousScope)
-        }
 
         is IdentifierExpr -> {
             val kw = if (rootStatement is KeywordMsg) {
@@ -613,7 +614,19 @@ fun Resolver.addNewAnyMessage(
         is MessageDeclarationKeyword -> protocol.keywordMsgs[st.name] = messageData as KeywordMsgMetaData
         is ConstructorDeclaration -> {} // st.toAnyMessageData already adding static to db
 
-        is StaticBuilderDeclaration -> pkg.addBuilder(messageData as BuilderMetaData, st.token)
+        is StaticBuilderDeclaration -> {
+            val builderMetaData = messageData as BuilderMetaData
+            // if we have receiver, like Surface builder Card = []
+            // then add it for this Surface type
+            if (builderMetaData.receiverType != null) {
+                val type = builderMetaData.receiverType
+
+                val (protocol, _) = getCurrentProtocol(type, st.token, customPkg)
+
+                protocol.builders[st.name] = builderMetaData
+            } else
+                pkg.addBuilder(builderMetaData, st.token)
+        }
     }
 
     st.messageData = messageData
@@ -697,7 +710,8 @@ fun Resolver.addNewType(
 
     val unresolved = unResolvedTypeDeclarations[pack.packageName]
     if (unresolved != null && statement != null) {
-        val typeToRemove = unresolved.find { it.typeName == statement.typeName && it.receiver?.pkg == statement.receiver?.pkg }
+        val typeToRemove =
+            unresolved.find { it.typeName == statement.typeName && it.receiver?.pkg == statement.receiver?.pkg }
         unresolved.remove(typeToRemove)
         if (unresolved.isEmpty()) {
             unResolvedTypeDeclarations.remove(pack.packageName)
@@ -912,7 +926,6 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
         }
     }
 }
-
 
 
 typealias TypeName = String

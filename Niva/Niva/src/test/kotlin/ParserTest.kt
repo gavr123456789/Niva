@@ -1550,17 +1550,6 @@ class ParserTest {
         assert(staticB.statements[0] is MessageSendUnary)
     }
 
-
-    @Test
-    fun builder() {
-        val source = """
-            x = buildString [ "sas" ]
-        """.trimIndent()
-
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
-
     @Test
     fun inlineCanBeOnlyExpression() {
         // when inline was parser as statement here, line 2-3 was parsed as KeywordMessageDeclaration
@@ -1881,23 +1870,16 @@ class ParserTest {
         }
     }
 
-    // TODO should fail
+
     @Test
-    fun tokenPositionsOnSyntaxError() {
+    fun builderCall() {
         val source = """
-            1 echo
-            ()))))))
+            x = buildString [ "sas" ]
         """.trimIndent()
+
         val ast = getAstTest(source)
-
-        assertEquals(ast.count(), 1)
-        val q = ast.first()
-
-        assertTrue {
-            q.token.pos.start == 0
-        }
+        assert(ast.count() == 1)
     }
-
 
     @Test
     fun staticBuildDeclaration() {
@@ -1934,6 +1916,27 @@ class ParserTest {
     }
 
     @Test
+    fun staticBuildDeclarationWithArgsWithReceiver() {
+        val source = """
+            Surface builder Card width::Int height::Int -> Card = [
+                html = HTML new
+            ]
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilderDeclaration
+        assertTrue {
+            staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
+                    staticB.msgDeclaration.args.last().typeAST!!.name == "Int"
+        }
+        assertTrue {
+            staticB.receiverAst!!.name == "Surface"
+        }
+    }
+
+    @Test
     fun builderWithKeys() {
         val source = """
             Card (width: 24 height: 30) [
@@ -1962,6 +1965,30 @@ class ParserTest {
 
         assertEquals(ast.count(), 1)
     }
+    @Test
+    fun builderWithUnaryWithReceiver() {
+        val source = """
+            card Card [
+                1 echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+    }
+
+    @Test
+    fun builderWithArgsWithReceiver() {
+        val source = """
+            "rar" Card (width: 24 height: 30) [
+                1 echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+    }
+
 
 
     //TODO
