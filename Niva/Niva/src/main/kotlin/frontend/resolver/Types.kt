@@ -563,9 +563,7 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         isError: Boolean
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError) {
-//        fun getBranches1(): List<Type.UserUnionBranchType> =
-    }
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError)
 
     class UnionBranchType(
         val root: UnionRootType,
@@ -759,7 +757,7 @@ fun TypeAST.toType(
                     this.token.compileError("Can't find user type: ${YEL}$name")
                 }
 
-                typeDB.unresolvedTypesBecauseOfUnknownField[name] =
+                typeDB.unresolvedFields[name] =
                     FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
                 return Type.UnresolvedType()
 //                TODO()
@@ -800,7 +798,7 @@ fun TypeAST.toType(
                 this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
 
             if (returnType is Type.UnresolvedType) {
-                val q = typeDB.unresolvedTypesBecauseOfUnknownField[this.returnType.name]!!
+                val q = typeDB.unresolvedFields[this.returnType.name]!!
                 q.ast = this
 //                TODO("add the same for arguments")
             }
@@ -940,14 +938,6 @@ fun SomeTypeDeclaration.toType(
 
 
         } else {
-            // Если тип не найдет, то добавляем текущий тип в мапу нерезолвнутых типов к их нерезолвнутым полям
-            // в конце пробуем их резолвнуть, и вот только тогда если не получается то пишем об ошибке
-
-//            val wf = it.tryToTypeField(typeDB, typeTable, recursiveType = result)
-//            if (wf == null) {
-//
-//                TODO("it = $it")
-//            }
             fieldsTyped.add(it.toTypeField(typeDB, typeTable, parentType = result, typeDeclaration = this))
         }
     }

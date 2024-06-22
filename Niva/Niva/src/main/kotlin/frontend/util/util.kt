@@ -15,7 +15,6 @@ import frontend.resolver.compare2Types
 //}
 
 
-
 fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
     if (x.count() == y.count() || x.count() > y.count())
         return x - y
@@ -24,12 +23,24 @@ fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
 }
 
 
-fun containSameFields(fields1: MutableList<KeywordArg>, fields2: MutableList<KeywordArg>): Boolean {
-    if (fields1.count() != fields2.count()) return false
+open class Sus (val x: Int)
+class Sas (val t: Int): Sus(56)
 
-    fields1.forEachIndexed { i, t1 ->
-        val t2 = fields2.find { compare2Types(t1.type, it.type) }
-        if (t2 == null) return false
+
+fun childContainSameFieldsAsParent(
+    fieldsChild: MutableList<KeywordArg>,
+    fieldsParent: MutableList<KeywordArg>
+): Boolean {
+    // child has less fields then parent, it need at least same amount or more
+    if (fieldsChild.count() < fieldsParent.count())
+        return false
+
+    // child must have each field of the parent
+    // so we need walk throuth fields of the parent and check that child contains each of them
+    fieldsParent.forEachIndexed { i, t1 ->
+        val t2 = fieldsChild.find { compare2Types(t1.type, it.type) }
+        if (t2 == null)
+            return false
     }
     return true
 }
