@@ -8,6 +8,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveBinaryMsg
 import main.frontend.resolver.messageResolving.resolveKeywordMsg
+import main.frontend.resolver.messageResolving.resolveStaticBuilder
 import main.frontend.resolver.messageResolving.resolveUnaryMsg
 import main.utils.GlobalVariables
 import main.utils.RESET
@@ -108,6 +109,7 @@ fun Resolver.resolveMessage(
         }
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
+        is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 
     if (GlobalVariables.isLspMode) {

@@ -6,6 +6,8 @@ import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
 import main.frontend.parser.parsing.simpleReceiver
+import main.frontend.parser.parsing.staticBuilderFromUnary
+import main.frontend.parser.parsing.staticBuilderFromUnaryWithArgs
 import main.frontend.parser.types.ast.*
 import main.frontend.parser.types.ast.TypeAST
 import main.utils.RESET
@@ -36,11 +38,28 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
         // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
         // or Person name: "Alice" |> getName
         when (val messageSend =
-            unaryOrBinary(customReceiver = customReceiver, parsePipe = !insideKeywordArgument, parseCascade = !insideKeywordArgument)) {
-            is MessageSendUnary, is MessageSendBinary -> {
+            unaryOrBinary(
+                customReceiver = customReceiver,
+                parsePipe = !insideKeywordArgument,
+                parseCascade = !insideKeywordArgument
+            )) {
+            is MessageSendUnary -> {
                 return if (messageSend.messages.isNotEmpty()) {
-                    messageSend
+                    if (check(TokenType.OpenBracket)) {
+                        staticBuilderFromUnary(messageSend)
+                    } else if (check(TokenType.OpenParen)) {
+                        staticBuilderFromUnaryWithArgs(messageSend)
+                    }
+                    else
+                        messageSend
                 } else
+                    messageSend.receiver
+            }
+
+            is MessageSendBinary -> {
+                return if (messageSend.messages.isNotEmpty())
+                    messageSend
+                else
                     messageSend.receiver
             }
 
@@ -156,6 +175,7 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
     return args
 }
+
 /**
  * Parses a keyword message declaration, which follows the format:
  *  - Receiver type, followed by arguments.
@@ -314,7 +334,11 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
 fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     val savepoint = current
 
-    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1) && !check(TokenType.Colon, 1))) {
+    if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1) && !check(
+            TokenType.Colon,
+            1
+        ))
+    ) {
         match(TokenType.Identifier)
         val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
         if (isThereEndOfMsgDecl)
@@ -392,17 +416,17 @@ fun Parser.checkTypeOfMessageDeclaration2(
     if (parseReceiver)
         identifierMayBeTyped()
 
-    if (tryUnary(isConstructor )) {
+    if (tryUnary(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Unary
     }
 
-    if (tryKeyword(isConstructor )) {
+    if (tryKeyword(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Keyword
     }
 
-    if (tryBinary(isConstructor )) {
+    if (tryBinary(isConstructor)) {
         current = savepoint
         return MessageDeclarationType.Binary
     }
@@ -491,8 +515,14 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
 }
 
 
+fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
+    val receiver = parseType()
+    var builderDecl = builderDeclaration(pragmas, receiver)
+    return builderDecl
+}
+
 // builder name key-args lambdaArg -> Type = []
-fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
+fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? = null): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
     val receiverType = parseType()
 
@@ -510,7 +540,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclar
     else
         keywordArgs()
 
-    args.forEach {arg ->
+    args.forEach { arg ->
         if (arg.typeAST == null) builderKeyword.compileError("You forgot to declare type of arg $arg")
     }
 
@@ -532,6 +562,8 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>): StaticBuilderDeclar
     val result = StaticBuilderDeclaration(
         msgDeclaration = x,
         defaultAction = defaultAction,
+        receiver,
+        null,
         builderKeyword
     )
 

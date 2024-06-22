@@ -207,7 +207,7 @@ fun Parser.unaryOrBinary(
     if (binaryMessages.isEmpty()) {
         return MessageSendUnary(
             firstReceiver,
-            messages = unaryMessages + cascadedMsgs + pipedMsgs,
+            messages = (pipedMsgs + cascadedMsgs + unaryMessages).toMutableList(),
             null,
             firstReceiver.token
         )
@@ -304,7 +304,7 @@ fun Parser.messageSend(
 
             if (check(TokenType.Assign)) {
                 current = savepoint
-                MessageSendUnary(receiver, listOf(), token = receiver.token)
+                MessageSendUnary(receiver, mutableListOf(), token = receiver.token)
             } else
                 kw
         }
@@ -314,7 +314,7 @@ fun Parser.messageSend(
         }
 
         else -> {
-            MessageSendUnary(receiver, listOf(), token = receiver.token)
+            MessageSendUnary(receiver, mutableListOf(), token = receiver.token)
         }
     }
 

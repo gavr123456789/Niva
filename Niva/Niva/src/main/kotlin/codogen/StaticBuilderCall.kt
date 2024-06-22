@@ -6,7 +6,11 @@ import main.utils.appendnl
 fun generateBuilderCall(builder: StaticBuilder) = buildString {
     val defaultActionName = "defaultAction"
     val st = builder
-    // TODO add imports
+
+    if (builder.receiverOfBuilder != null) {
+        append(builder.receiverOfBuilder.generateExpression(), ".")
+    }
+
     // add name
     append(st.name)
 

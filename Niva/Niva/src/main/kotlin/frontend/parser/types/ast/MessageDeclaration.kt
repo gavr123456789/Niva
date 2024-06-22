@@ -194,6 +194,8 @@ class ExtendDeclaration(
 class StaticBuilderDeclaration(
     val msgDeclaration: MessageDeclarationKeyword,
     val defaultAction: CodeBlock?,
+    val receiverAst: TypeAST? = null, // Surface(Receiver) builder Card(forType) = [...]
+    var receiverType: Type? = null,
     token: Token,
 ) : MessageDeclaration(
     msgDeclaration.name,

@@ -149,6 +149,9 @@ fun generateMessages(
             newInvisibleArgs,
         )
     )
+
+    is StaticBuilder ->
+        TODO()
 }
 
 enum class Pragmas(val v: String) {

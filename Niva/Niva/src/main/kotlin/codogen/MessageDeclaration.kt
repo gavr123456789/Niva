@@ -177,8 +177,11 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
 fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
     val st = this@generateBuilderDeclaration
 
-    append("fun ", st.name)
-    append("(")
+    append("inline fun " )
+    st.receiverType?.let {
+        append(it.toKotlinString(true), ".")
+    }
+    append(st.name, "(")
 
     // Args
     val args = st.msgDeclaration.args
