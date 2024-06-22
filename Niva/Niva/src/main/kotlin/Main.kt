@@ -164,16 +164,16 @@ fun html(init: HTML.() -> Unit): HTML {
 ///
 
 fun main(args: Array<String>) {
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
+    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Programs/todosGleam/main.niva")
     if (help(args)) return
 
-    html {
-        head {
-            title { +"XML encoding with Kotlin" }
-        }
-    }
+//    html {
+//        head {
+//            title { +"XML encoding with Kotlin" }
+//        }
+//    }
 
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Programs/expr/sas.niva"

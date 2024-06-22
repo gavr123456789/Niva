@@ -26,6 +26,49 @@ fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
 
 fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 
+private fun Resolver.fillFieldsWithResolvedTypes () {
+    if (typeDB.unresolvedFields.isNotEmpty()) { // && i != 0
+        val iterator = typeDB.unresolvedFields.iterator()
+        while (iterator.hasNext()) {
+            val (name, fiend) = iterator.next()
+
+            val resolvedFromDifferentFileType = getAnyType(name, mutableMapOf(), mutableMapOf(), null)
+            if (resolvedFromDifferentFileType != null) {
+                val fieldToRemove = fiend.parent.fields.first { it.name == fiend.fieldName }
+
+
+                val ast = fiend.ast
+                val realType = if (ast != null) {
+                    ast.toType(typeDB, typeTable)
+                } else resolvedFromDifferentFileType
+                // remove field with placeholder, and replace type to real type inside placeholder
+                // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
+
+                fiend.typeDeclaration.fields.first { it.name == fiend.fieldName }.type = realType
+                fiend.parent.fields.remove(fieldToRemove)
+
+                fiend.parent.fields.add(
+                    KeywordArg(
+                        name = fiend.fieldName,
+                        type = realType
+                    )
+                )
+                iterator.remove()
+            }
+        }
+    }
+}
+//fun Resolver.resolveByUnresolvedFields(otherASTs: List<Pair<String, List<Statement>>>, fakeTok: Token) {
+//    fillFieldsWithResolvedTypes()
+//    otherASTs.forEachIndexed { i, it ->
+//        currentResolvingFileName = otherFilesPaths[i]
+//        // create package
+//        changePackage(it.first, fakeTok)
+//        statements = it.second.toMutableList()
+//        resolveDeclarationsOnly(it.second)
+//        fillFieldsWithResolvedTypes()
+//    }
+//}
 
 fun Resolver.resolve(
     mainFile: File,
@@ -72,50 +115,28 @@ fun Resolver.resolve(
     changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
     currentResolvingFileName = mainFile
 
-    val resolveUnresolvedFromTypeDB = {
-        if (typeDB.unresolvedTypesBecauseOfUnknownField.isNotEmpty()) { // && i != 0
-            val iterator = typeDB.unresolvedTypesBecauseOfUnknownField.iterator()
-            while (iterator.hasNext()) {
-                val (a, b) = iterator.next()
 
-                val resolvedFromDifferentFileType = getAnyType(a, mutableMapOf(), mutableMapOf(), null)
-                if (resolvedFromDifferentFileType != null) {
-                    val fieldToRemove = b.parent.fields.first { it.name == b.fieldName }
-
-
-                    val ast = b.ast
-                    val realType = if (ast != null) {
-                        ast.toType(typeDB, typeTable)
-                    } else resolvedFromDifferentFileType
-                    // remove field with placeholder, and replace type to real type inside placeholder
-                    // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
-
-                    b.typeDeclaration.fields.first { it.name == b.fieldName }.type = realType
-                    b.parent.fields.remove(fieldToRemove)
-
-                    b.parent.fields.add(
-                        KeywordArg(
-                            name = b.fieldName,
-                            type = realType
-                        )
-                    )
-                    iterator.remove()
-                }
-            }
-        }
-    }
 
     val resolveDeclarationsOnlyMark = markNow()
 
     resolveDeclarationsOnly(mainAST)
 
+    fillFieldsWithResolvedTypes()
+    otherASTs.forEachIndexed { i, it ->
+        currentResolvingFileName = otherFilesPaths[i]
+        // create package
+        changePackage(it.first, fakeTok)
+        statements = it.second.toMutableList()
+        resolveDeclarationsOnly(it.second)
+        fillFieldsWithResolvedTypes()
+    }
+
 
     verbosePrinter.print { "Resolving: declarations in ${resolveDeclarationsOnlyMark.getMs()} ms" }
-
     val resolveUnresolvedDeclarationsOnlyMark = markNow()
 
 
-
+    /// verbosePrinter
     val isThereUnresolvedMsgDecls = unResolvedMessageDeclarations.isNotEmpty() || unResolvedTypeDeclarations.isNotEmpty()
     verbosePrinter.print {
         if (unResolvedMessageDeclarations.isNotEmpty()) {
@@ -132,32 +153,25 @@ fun Resolver.resolve(
             }"
         } else ""
     }
+    ///
 
-    // unresolved types
-
-    unResolvedTypeDeclarations.forEach { (t, u) ->
-        changePackage(t, fakeTok)
-        resolveDeclarationsOnly(u.toMutableList())
+    /// Resolving unresolved types N times, because in the worst scenario, each next can depend on previous
+    val resolveUnresolvedTypes = {
+        unResolvedTypeDeclarations.forEach { (t, u) ->
+            changePackage(t, fakeTok)
+            resolveDeclarationsOnly(u.toMutableList())
+        }
+    }
+    var c = unResolvedTypeDeclarations.flatMap { it.value }.count()
+    while (c-- > 0 && unResolvedTypeDeclarations.isNotEmpty()) {
+        resolveUnresolvedTypes()
     }
 
-    // TODO replace to iter and remove inside, if there is type
-    if (GlobalVariables.isLspMode)
-        unResolvedTypeDeclarations.clear()
 
-    /// unresolved from typedb
-    resolveUnresolvedFromTypeDB()
-    otherASTs.forEachIndexed { i, it ->
-        currentResolvingFileName = otherFilesPaths[i]
-        // create package
-        changePackage(it.first, fakeTok)
-        statements = it.second.toMutableList()
-        resolveDeclarationsOnly(it.second)
-        resolveUnresolvedFromTypeDB()
-    }
-    if (typeDB.unresolvedTypesBecauseOfUnknownField.isNotEmpty()) {
-        typeDB.unresolvedTypesBecauseOfUnknownField.values.first().typeDeclaration.token.compileError(buildString {
+    if (typeDB.unresolvedFields.isNotEmpty()) {
+        typeDB.unresolvedFields.values.first().typeDeclaration.token.compileError(buildString {
             append("These types remained unrecognized after checking all files: \n")
-            typeDB.unresolvedTypesBecauseOfUnknownField.forEach { (a, b) ->
+            typeDB.unresolvedFields.forEach { (a, b) ->
                 // "| 11 name:  is unresolved"
                 append(b.ast?.token?.line ?: "", "| ")
                 append(

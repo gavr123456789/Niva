@@ -9,7 +9,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
-import main.frontend.util.containSameFields
+import main.frontend.util.childContainSameFieldsAsParent
 import main.frontend.util.setDiff
 
 fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean) {
@@ -51,12 +51,11 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
 
         val branchType = if (alreadyRegisteredType is Type.Union && it.isRoot) {
-            if (!containSameFields(alreadyRegisteredType.fields, rootType.fields)) {
+            if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields)) {
                 it.token.compileError("Union inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name} ${WHITE}${alreadyRegisteredType.fields.map { "${it.name}: ${it.type}" }} $RED!=${YEL} ${rootType.name}${RED} $WHITE${rootType.fields.map { "${it.name}: ${it.type}" }}")
             }
             alreadyRegisteredType
-        }
-        else {
+        } else {
             val branchType =
                 it.toType(
                     currentPackageName,
@@ -65,11 +64,11 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
                     unionRootType = rootType,
                     isError = isError
                 ) as Type.UnionBranchType
-            branchType.parent = rootType
+
             if (alreadyRegisteredType == null)
                 addNewType(branchType, it, alreadyCheckedOnUnique = false)
             branchType
-        }
+        }.also { it.parent = rootType }
 
 
         branchType.fields += rootType.fields

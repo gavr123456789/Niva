@@ -706,7 +706,7 @@ fun Resolver.addNewType(
     typeTable[typeName] = type //fix
     typeDB.add(type, token = statement?.token ?: createFakeToken(), customNameAlias = typeName)
 
-    typeDB.unresolvedTypesBecauseOfUnknownField.remove(typeName)
+//    typeDB.unresolvedFields.remove(typeName)
 
     val unresolved = unResolvedTypeDeclarations[pack.packageName]
     if (unresolved != null && statement != null) {
@@ -1029,7 +1029,7 @@ class Resolver(
         unResolvedSingleExprMessageDeclarations.clear()
         unResolvedMessageDeclarations.clear()
         unResolvedTypeDeclarations.clear()
-        typeDB.unresolvedTypesBecauseOfUnknownField.clear()
+        typeDB.unresolvedFields.clear()
         resolvingMainFile = false
         stack.clear()
 //        infoTypesToPrint.clear()

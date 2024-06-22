@@ -7,7 +7,7 @@ union TagWithText children: MutableList::Element attributes: MutableMap(String, 
 | Title
 | ^BodyTag
 
-union BodyTag =
+union BodyTag children: MutableList::Element attributes: MutableMap(String, String) =
 | Body
 | PTag
 | H1
