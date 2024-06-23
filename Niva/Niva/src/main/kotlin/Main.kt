@@ -29,33 +29,48 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-    // declare type with 2 fields
-type Person name: String age: Int
-person = Person name: "Alice" age: 24 // instantiate
+Project use: "org.gnome.adw"
 
-person name echo        // get
-person name: "new name" // set
+app = Application name: "my.app"
 
-// unary method declaration
-Person hi = "Hi! my name is name" echo
-person hi // unary call
+app onActivate: [
 
-// method with args
-Person foo::Int bar::Int = [
-    age + foo + bar |> echo // same as
-    (age + foo + bar) echo
+  // window = [
+  //   x = org.gnome.adw.ApplicationWindow app: app
+  //   x title: "GTK from Niva"
+  //   x x: 250 y: 300
+  //   x
+  // ] do
+
+  window = (org.gnome.adw.ApplicationWindow app: app);
+    title: "GTK from Niva";
+    x: 250 y: 300
+ 
+
+  ui = [
+    mut n = 1
+    header = org.gnome.adw.HeaderBar new
+    btn = (Button new); 
+      label: "Hello Adw";
+      onClicked: [
+        "clicked  times!" echo
+        n <- n inc
+      ]
+
+    toolbar = (ToolbarView new); 
+      addTopBar: header;
+      content: btn
+
+    toolbar
+  ] do
+
+
+  window content: ui;
+    present
 ]
-person foo: 1 bar: 2 // 27 printed
-
-union Shape =
-| Rectangle width: Int height: Int
-| Circle    radius: Int
-
-constructor Float PI = 3.14
-Float PI // constructor call
 
 
-
+app run: args
 
 """
 const val fakeFileSourceBAAD = """
@@ -164,7 +179,8 @@ fun html(init: HTML.() -> Unit): HTML {
 ///
 
 fun main(args: Array<String>) {
-    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Programs/todosGleam/main.niva")
     if (help(args)) return
@@ -175,8 +191,8 @@ fun main(args: Array<String>) {
 //        }
 //    }
 
-
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Programs/expr/sas.niva"
+//
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva"
 //
 //    try {
 //        val ls = LS()

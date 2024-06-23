@@ -412,7 +412,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     assert(file.exists())
 
     val (mainFile, allFiles) = findRoot(file, mutableSetOf())
-
+//    println("all files is $allFiles" )
     GlobalVariables.enableLspMode()
 
     megaStore.data.clear()
