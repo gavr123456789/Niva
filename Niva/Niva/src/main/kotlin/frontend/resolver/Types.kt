@@ -647,6 +647,7 @@ class Package(
 //    val usingPackages: MutableList<Package> = mutableListOf(),
     // generates as import x.y.*
     val imports: MutableSet<String> = mutableSetOf(),
+    val importsFromUse: MutableSet<String> = mutableSetOf(),
     // generates as import x.y
     val concreteImports: MutableSet<String> = mutableSetOf(),
     val isBinding: Boolean = false,

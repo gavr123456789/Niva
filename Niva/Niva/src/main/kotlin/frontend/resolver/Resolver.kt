@@ -145,6 +145,8 @@ private fun Resolver.resolveStatement(
                 rootStatement
             } else null
 
+
+
             statement.type = getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
             )
@@ -502,6 +504,11 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
         }
     }
 }
+fun Package.addUseImport(pkg: String) {
+    if (packageName != pkg) {
+            importsFromUse.add(pkg)
+    }
+}
 
 fun Resolver.findPackageOrError(packageName: String, token: Token): Package {
     val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
@@ -793,7 +800,7 @@ fun Resolver.changeProtocol(protocolName: String) {
 
 fun Resolver.usePackage(packageName: String, noStarImport: Boolean = false) {
     val currentPkg = getCurrentPackage(this.statements.last().token)
-    currentPkg.addImport(packageName, noStarImport)
+    currentPkg.addUseImport(packageName)
 }
 
 enum class CompilationTarget(val targetName: String) {
@@ -901,7 +908,7 @@ fun Resolver.getAnyType(
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
     val type =
-        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.imports, currentPackageName)
+        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.importsFromUse, currentPackageName)
             ?: currentPackage.builders[typeName]?.returnType
 
     return type
