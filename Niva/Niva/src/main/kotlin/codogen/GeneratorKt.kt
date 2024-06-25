@@ -332,11 +332,16 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
 }
 
 fun Package.generateImports() = buildString {
-    val collectAll = imports + importsFromUse + concreteImports
+    val collectAll = imports + importsFromUse
+
 
     collectAll.forEach {
         appendnl("import $it.*")
     }
+    concreteImports.forEach {
+        appendnl("import $it")
+    }
+
 }
 
 fun GeneratorKt.generateKtProject(

@@ -28,7 +28,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     "package" -> changePackage(substring, statement.token)
                     "protocol" -> changeProtocol(substring)
                     "use" -> usePackage(substring)
-                    "import" -> usePackage(substring, true)
+                    "import" -> usePackage(substring)
                     "target" -> changeTarget(substring, statement.token)
                     "mode" -> changeCompilationMode(substring, statement.token)
 //                    "compose" -> useCompose(substring, statement.token)

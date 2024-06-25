@@ -529,7 +529,6 @@ class ResolverTest {
     }
 
 
-
 //    @Test
 //    fun optionTypeGeneric() {
 //
@@ -1658,7 +1657,7 @@ class ResolverTest {
         /// example
         fun buildString2(buildString2: StringBuilder.((String) -> Any) -> Unit): String {
             val b = StringBuilder()
-            val defaultAction = {default: String ->
+            val defaultAction = { default: String ->
                 b.append(default)
             }
             buildString2(b, defaultAction)
@@ -1690,7 +1689,7 @@ class ResolverTest {
                 345
             ]
         """.trimIndent()
-        val (statements, r) = resolveWithResolver(source)
+        val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 2)
     }
 
@@ -1718,7 +1717,7 @@ class ResolverTest {
             ]
             
         """.trimIndent()
-        val (statements, r) = resolveWithResolver(source)
+        val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 4)
     }
 
@@ -1726,7 +1725,8 @@ class ResolverTest {
     fun builderWithArgsWithReceiver() {
 
         class Card()
-        fun String.Card(width: Int, action: Card.() -> Unit){
+
+        fun String.Card(width: Int, action: Card.() -> Unit) {
             Card().action()
         }
 
@@ -1751,14 +1751,54 @@ class ResolverTest {
 //            ]
             
         """.trimIndent()
-        val (statements, r) = resolveWithResolver(source)
+        val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 3)
     }
 
 
+    @Test
+    fun assignOnlyToRealThings() {
 
+        val source = """
+           type LearnModel
+           answered: Boolean
+           
+           LearnModel answer = answer <- true // should be answered
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+    }
 
+    @Test
+    fun inlineRepl() {
 
+        val source = """
+           x = 1
+           > x
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+        val q = x.last() as IdentifierExpr
+        assert(q.isInlineRepl)
+
+    }
+
+    @Test
+    fun isTypeIdentifier() {
+
+        val source = """
+           type Sas x: Int
+           l = 25
+           l
+           Sas
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 4)
+        val q = x.last() as IdentifierExpr
+        assert(q.isType)
+
+    }
 
 
 }
