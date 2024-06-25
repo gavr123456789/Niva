@@ -280,6 +280,8 @@ private fun Resolver.resolveStatement(
                 if (!compare2Types(q, w, unpackNullForFirst = true)) {
                     statement.token.compileError("In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
+            } else {
+                statement.token.compileError("Can't find ${statement.name} in the scope")
             }
             addToTopLevelStatements(statement)
 
@@ -798,7 +800,7 @@ fun Resolver.changeProtocol(protocolName: String) {
     currentProtocolName = protocolName
 }
 
-fun Resolver.usePackage(packageName: String, noStarImport: Boolean = false) {
+fun Resolver.usePackage(packageName: String) {
     val currentPkg = getCurrentPackage(this.statements.last().token)
     currentPkg.addUseImport(packageName)
 }

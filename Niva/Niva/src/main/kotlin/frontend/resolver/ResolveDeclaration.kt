@@ -138,7 +138,9 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {
-                            resolveDeclarations(decl, mutableMapOf(), resolveBody = false)
+                            val emptyScope: MutableMap<String, Type> = mutableMapOf()
+                            resolveDeclarations(decl, emptyScope, resolveBody = false)
+                            onEachStatement?.invoke(decl, emptyScope, emptyScope, decl.token.file)
                         } else {
                             decl.token.compileError("There can be only declarations inside Bind, but found $WHITE$decl")
                         }

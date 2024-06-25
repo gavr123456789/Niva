@@ -5,6 +5,7 @@ package main
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.EnumBranch
@@ -46,6 +47,7 @@ sealed interface LspResult {
 
 class LS(val info: ((String) -> Unit)? = null) {
     lateinit var resolver: Resolver
+    /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
     var completionFromScope: Scope = mapOf()
 
@@ -120,7 +122,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                     }
 
                     q
-                        ?: throw Exception("Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
+                        ?: lastStatementOnTheLine.token.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
 
                 }
 
@@ -161,47 +163,22 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
     return a
 }
 
-
-//fun LS.removeDeclarations(pkgName: String) {
-//    val pkg = resolver.projects["common"]!!.packages[pkgName]
-//    if (pkg != null) {
-//        val iter = resolver.typeDB.userTypes.iterator()
-//
-//        while (iter.hasNext()) {
-//            val q = iter.next()
-//            val typeWithSameNameIter = q.value.iterator()
-//            while (typeWithSameNameIter.hasNext()) {
-//                val type = typeWithSameNameIter.next()
-//                if (type.pkg == pkgName)
-//                    typeWithSameNameIter.remove()
-//            }
-//
-//            if (q.value.isEmpty()) {
-//                iter.remove()
-//            }
-//        }
-//
-//        pkg.declarations.clear()
-//        pkg.imports.clear()
-//        resolver.projects["common"]!!.packages.remove(pkgName)
-//        resolver.statements = mutableListOf()
-//    }
-//}
-
 fun LS.removeDecl2(file: File) {
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
     if (info != null) {
-        info("removeDecl2 declsOfTheFile = $declsOfTheFile")
+        info("removeDecl2 declsOf current File = $declsOfTheFile")
         info("removeDecl2 fileToDecl = $fileToDecl")
     }
     val typeDB = resolver.typeDB
     var pkgName: String? = null
     declsOfTheFile?.forEach { d ->
+
+        // remove message
         if (d is MessageDeclaration) {
-            val forType = d.forType!!
+            val forType = d.forType
             when (d) {
                 is MessageDeclarationUnary -> {
                     when (forType) {
@@ -220,6 +197,7 @@ fun LS.removeDecl2(file: File) {
                         }
 
                         is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
+                        null -> {}
                     }
                 }
 
@@ -240,6 +218,7 @@ fun LS.removeDecl2(file: File) {
                         }
 
                         is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
+                        null -> {}
                     }
                 }
 
@@ -265,27 +244,31 @@ fun LS.removeDecl2(file: File) {
                         }
 
                         is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
+                        null -> {}
                     }
                 }
 
                 is ConstructorDeclaration -> {
                     when (forType) {
                         is Type.UserLike -> {
-                            val usrLikeTypes = typeDB.userTypes[forType.name]!!
-                            val w = usrLikeTypes.find { it.pkg == forType.pkg }!!
-                            val protocolWithMethod = w.protocols.values.find { it.staticMsgs.contains(d.name) }!!
-                            protocolWithMethod.staticMsgs.remove(d.name)
+                            typeDB.userTypes[forType.name]?.let { usrLikeTypes ->
+                                usrLikeTypes.find { it.pkg == forType.pkg }?.let { w ->
+                                    val protocolWithMethod = w.protocols.values.find { it.staticMsgs.contains(d.name) }
+                                    protocolWithMethod?.staticMsgs?.remove(d.name)
+                                }
+                            }
                         }
 
                         is Type.InternalType -> {
-                            val usrLikeTypes = typeDB.internalTypes[forType.name]!!
-                            val protocolWithMethod =
-                                usrLikeTypes.protocols.values.find { it.staticMsgs.contains(d.name) }!!
-                            protocolWithMethod.staticMsgs.remove(d.name)
+                            typeDB.internalTypes[forType.name]?.let { usrLikeTypes ->
+                                usrLikeTypes.protocols.values.find { it.staticMsgs.contains(d.name) }?.let { prot ->
+                                    prot.staticMsgs.remove(d.name)
+                                }
+                            }
                         }
 
                         is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
-
+                        null -> {}
                     }
                 }
 
@@ -294,9 +277,9 @@ fun LS.removeDecl2(file: File) {
                 }
             }
         }
+        // remove type
         if (d is SomeTypeDeclaration) {
             if (info != null) {
-
                 info("removing $d")
             }
 
@@ -309,6 +292,9 @@ fun LS.removeDecl2(file: File) {
                     while (iter.hasNext()) {
                         val c = iter.next()
                         if (c.pkg == pkgName) {
+                            if (info != null) {
+                                info("removing type typeDB.userTypes $typeName")
+                            }
                             iter.remove()
                         }
                     }
@@ -319,6 +305,9 @@ fun LS.removeDecl2(file: File) {
 
                 // from pkg
                 val pkg2 = resolver.projects["common"]!!.packages[pkgName]
+                if (info != null) {
+                    info("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
+                }
                 pkg2?.types?.remove(d.typeName)
             }
 
@@ -336,8 +325,6 @@ fun LS.removeDecl2(file: File) {
                 is TypeAliasDeclaration -> TODO() // idk
             }
 
-
-            //
         }
     }
     // remove the whole package
@@ -351,11 +338,9 @@ fun LS.removeDecl2(file: File) {
 
 fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
-//    val pkgName = file.nameWithoutExtension
 
     // let's assume user cant change packages names for now
     // remove everything that was declarated in this changed file
-//    removeDeclarations(pkgName)
 
     removeDecl2(file)
     megaStore.data.remove(file.absolutePath)
@@ -430,7 +415,6 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         fileToDecl[file.absolutePath] = mutableSetOf(st)
                     }
                 }
-
                 is Expression, is VarDeclaration -> {
                     megaStore.addNew(
                         st,
@@ -439,6 +423,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         else
                             mutableMapOf()
                     )
+
                 }
 
                 else -> {}

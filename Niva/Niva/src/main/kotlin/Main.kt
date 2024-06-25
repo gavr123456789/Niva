@@ -191,7 +191,6 @@ fun main(args: Array<String>) {
 //        }
 //    }
 
-//
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva"
 //
 //    try {
