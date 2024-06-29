@@ -1,17 +1,17 @@
 package frontend.resolver
 
 
-import main.utils.RED
-import main.utils.WHITE
-import main.utils.YEL
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
-import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Receiver
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.TypeAST
+import main.utils.GlobalVariables
+import main.utils.RED
+import main.utils.WHITE
+import main.utils.YEL
 
 @Suppress("unused")
 sealed class TypeDBResult {
@@ -21,9 +21,7 @@ sealed class TypeDBResult {
 }
 
 class FieldNameAndParent(
-    val fieldName: String,
-    val parent: Type.UserLike,
-    var ast: TypeAST? = null, // ast is here only in complex types
+    val fieldName: String, val parent: Type.UserLike, var ast: TypeAST? = null, // ast is here only in complex types
     val typeDeclaration: SomeTypeDeclaration
 )
 
@@ -110,9 +108,7 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 ): Type? {
     val q = getType(typeName, currentScope, previousScope, names = names)
     val w = q.getTypeFromTypeDBResultConstructor(
-        KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())),
-        imports,
-        curPkg
+        KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())), imports, curPkg, value.token
     )
     return w
 }
@@ -168,9 +164,10 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSE
 
 fun resolveTypeIfSameNamesFromConstructor(
     result: TypeDBResult.FoundMoreThanOne,
-    statement: KeywordMsg?,
+    kwConstructor: KeywordMsg?,
     imports2: Set<String>,
-    currentPkgName: String
+    currentPkgName: String,
+    tokenForError: Token
 ): Type {
 
     // case 0 we are in the same package as statement
@@ -181,24 +178,37 @@ fun resolveTypeIfSameNamesFromConstructor(
         return typeDeclaredInTheCurrentPkg
     }
 
-    if (statement == null) {
-        val typesList = result.packagesToTypes.values.map { it.name to it.pkg }
-        createFakeToken().compileError("Found more the one types with same name in different packages: $WHITE$typesList")
+    val imports = imports2 + currentPkgName
+
+    if (kwConstructor == null) {
+        // check if we have such import, so its like "Application", without constructor call
+
+        val fileImportsHasOneOfResultsPkgs = imports.intersect(result.packagesToTypes.keys)
+        if (fileImportsHasOneOfResultsPkgs.count() == 1) {
+            if (GlobalVariables.isLspMode) {
+                return result.packagesToTypes[fileImportsHasOneOfResultsPkgs.first()]!!
+            } else {
+                tokenForError.compileError("It looks like you forget to call constructor for $tokenForError")
+            }
+        }
+
+
+        val typesList = result.packagesToTypes.values.joinToString(", ") { it.name + ": " + it.pkg }
+        tokenForError.compileError("Found more than one type with same name in different packages: $WHITE$typesList")
     }
 
 
-    val imports = imports2 + currentPkgName
     // if statement has clarification already like a.Person
-    val receiver = statement.receiver
+    val receiver = kwConstructor.receiver
     if (receiver is IdentifierExpr && receiver.names.count() > 1) {
         val packageName = receiver.names.dropLast(1).joinToString(".")
         val resultType = result.packagesToTypes[packageName]
-            ?: statement.token.compileError("Can't find type $YEL${receiver.name}$RED inside ${WHITE}$packageName$RED package")
+            ?: kwConstructor.token.compileError("Can't find type $YEL${receiver.name}$RED inside ${WHITE}$packageName$RED package")
         return resultType
     }
 
-    val setOfArgsSendedNames = statement.args.map { it.name }.toSet()
-    val setOfArgsTypeNames = statement.args.map {
+    val setOfArgsSendedNames = kwConstructor.args.map { it.name }.toSet()
+    val setOfArgsTypeNames = kwConstructor.args.map {
         it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
     }.toSet()
 
@@ -224,28 +234,26 @@ fun resolveTypeIfSameNamesFromConstructor(
     // we have 2 or more absolutely same types defined in different packages
     // need to check if current package has some import
 
-    val type = if (set.isEmpty()) result.packagesToTypes.values.find { imports.contains(it.pkg) } else set.find { imports.contains(it.pkg) }
+    val type = if (set.isEmpty()) result.packagesToTypes.values.find { imports.contains(it.pkg) } else set.find {
+        imports.contains(it.pkg)
+    }
     if (type != null) {
         return type
     } else {
 
-        statement.token.compileError(
-            "Type `${statement.receiver}` is defined in many packages: ${result.packagesToTypes.values.map { it.pkg }},\n\t" +
-                    "please specify what package you wanna use with for example `${currentPkgName}.${statement.receiver}`\n\t" +
-                    "or `Project use: \"${currentPkgName}\"` "
+        kwConstructor.token.compileError(
+            "Type `${kwConstructor.receiver}` is defined in many packages: ${result.packagesToTypes.values.map { it.pkg }},\n\t" + "please specify what package you wanna use with for example `${currentPkgName}.${kwConstructor.receiver}`\n\t" + "or `Project use: \"${currentPkgName}\"` "
         )
     }
 }
 
 
 fun TypeDBResult.getTypeFromTypeDBResultConstructor(
-    statement: KeywordMsg?,
-    imports: Set<String>,
-    curPkg: String
+    statement: KeywordMsg?, imports: Set<String>, curPkg: String, tokenForError: Token
 ): Type? {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
-            resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg)
+            resolveTypeIfSameNamesFromConstructor(this, statement, imports, curPkg, tokenForError)
         }
 
         is TypeDBResult.FoundOne -> this.type

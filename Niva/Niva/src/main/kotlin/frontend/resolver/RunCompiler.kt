@@ -30,26 +30,26 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
     if (typeDB.unresolvedFields.isNotEmpty()) { // && i != 0
         val iterator = typeDB.unresolvedFields.iterator()
         while (iterator.hasNext()) {
-            val (name, fiend) = iterator.next()
+            val (name, field) = iterator.next()
 
-            val resolvedFromDifferentFileType = getAnyType(name, mutableMapOf(), mutableMapOf(), null)
+            val resolvedFromDifferentFileType = getAnyType(name, mutableMapOf(), mutableMapOf(), null, field.ast?.token ?: field.typeDeclaration.token)
             if (resolvedFromDifferentFileType != null) {
-                val fieldToRemove = fiend.parent.fields.first { it.name == fiend.fieldName }
+                val fieldToRemove = field.parent.fields.first { it.name == field.fieldName }
 
 
-                val ast = fiend.ast
+                val ast = field.ast
                 val realType = if (ast != null) {
                     ast.toType(typeDB, typeTable)
                 } else resolvedFromDifferentFileType
                 // remove field with placeholder, and replace type to real type inside placeholder
                 // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
 
-                fiend.typeDeclaration.fields.first { it.name == fiend.fieldName }.type = realType
-                fiend.parent.fields.remove(fieldToRemove)
+                field.typeDeclaration.fields.first { it.name == field.fieldName }.type = realType
+                field.parent.fields.remove(fieldToRemove)
 
-                fiend.parent.fields.add(
+                field.parent.fields.add(
                     KeywordArg(
-                        name = fiend.fieldName,
+                        name = field.fieldName,
                         type = realType
                     )
                 )
