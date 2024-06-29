@@ -313,16 +313,16 @@ fun LS.removeDecl2(file: File) {
 
 
             when (d) {
-                is TypeDeclaration, is UnionBranchDeclaration -> removeFromTypeDB(d.typeName)
+                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration -> removeFromTypeDB(d.typeName)
                 is UnionRootDeclaration -> {
                     d.branches.forEach { removeFromTypeDB(it.typeName) }
                     removeFromTypeDB(d.typeName)
                 }
 
-                is EnumDeclarationRoot -> TODO()
-                is ErrorDomainDeclaration -> TODO()
-                is EnumBranch -> TODO() // enums are not in top-level typedb, probably
-                is TypeAliasDeclaration -> TODO() // idk
+                is EnumDeclarationRoot -> {
+                    d.branches.forEach { removeFromTypeDB(it.typeName) }
+                    removeFromTypeDB(d.typeName)
+                }
             }
 
         }

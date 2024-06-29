@@ -532,7 +532,10 @@ fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = 
 }
 
 fun Resolver.getCurrentPackage(token: Token) = findPackageOrError(currentPackageName, token)
-fun Resolver.getCurrentImports(token: Token) = getCurrentPackage(token).imports
+fun Resolver.getCurrentImports(token: Token): Set<String> {
+    val pgk = getCurrentPackage(token)
+    return pgk.imports + pgk.importsFromUse
+}
 
 // TODO! make universal as toAnyMessageData
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
@@ -880,8 +883,16 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    val type = getAnyType(x.names.first(), currentScope, previousScope, kw) ?: getAnyType(
-        x.name, currentScope, previousScope, kw,
+    if (x.isType && kw == null) {
+        val type = x.type
+        val constructorSuggestion = if (type != null && type is Type.UserLike) {
+            if (type.fields.isEmpty()) "new"
+            else type.fields.joinToString(", ") { it.name }
+        } else null
+        x.token.compileError("You forget to call constructor ${constructorSuggestion ?: ""}")
+    }
+    val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
+        x.name, currentScope, previousScope, kw, x.token
     )
 
     ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
@@ -890,7 +901,7 @@ fun Resolver.getTypeForIdentifier(
     val typeWithGenericResolved =
         if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
             // replace Generic from typeAst with sas
-            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw)!!
+            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)!!
             val copy = type.copy()
             copy.typeArgumentList = listOf(e)
             copy
@@ -905,12 +916,15 @@ fun Resolver.getAnyType(
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
     statement: KeywordMsg?, // type constructor call
+    tokenForError: Token
 ): Type? {
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
+//    if (typeName == "Application")
+//        println()
     val type =
-        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.importsFromUse, currentPackageName)
+        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.importsFromUse, currentPackageName, tokenForError)
             ?: currentPackage.builders[typeName]?.returnType
 
     return type
