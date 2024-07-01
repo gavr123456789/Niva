@@ -5,6 +5,7 @@ package main
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
@@ -28,6 +29,7 @@ import main.utils.MainArgument
 import main.utils.PathManager
 import main.utils.VerbosePrinter
 import main.utils.compileProjFromFile
+import main.utils.listFilesRecursively
 import java.io.File
 import java.net.URI
 import java.util.SortedMap
@@ -47,6 +49,7 @@ sealed interface LspResult {
 
 class LS(val info: ((String) -> Unit)? = null) {
     lateinit var resolver: Resolver
+
     /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
     var completionFromScope: Scope = mapOf()
@@ -94,7 +97,9 @@ class LS(val info: ((String) -> Unit)? = null) {
         fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
             fun <T> checkElementsFromEnd(set: Set<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
                 val list = set.toList()
+                info?.invoke("-------\nfind, list = $list")
                 for (i in list.size - 1 downTo 1) {
+                    info?.invoke("i = $i")
                     if (check(list[i], list[i - 1])) {
                         if (returnLast)
                             return list[i]
@@ -102,31 +107,34 @@ class LS(val info: ((String) -> Unit)? = null) {
                             return list[i - 1]
                     }
                 }
+                info?.invoke("-------")
                 return null
             }
 
             // when we search on empty line, we are looking only for scope or messages for previous line
 
-            val findStatementInLine = { set: MutableSet<Pair<Statement, Scope>>, onlyScope: Boolean ->
-                // if its last elem
-                val lastStatementOnTheLine = set.last().first
-                if (lastStatementOnTheLine.token.relPos.end <= character || onlyScope) {
-                    // it is completion for last
-                    set.last()
-                } else {
+            val findStatementInLine: (MutableSet<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope> =
+                { set: MutableSet<Pair<Statement, Scope>>, onlyScope: Boolean ->
+                    // if its last elem
+                    val lastStatementOnTheLine = set.last().first
+                    val lastTok = lastStatementOnTheLine.token
+                    if (lastTok.relPos.end <= character || onlyScope) {
+                        // it is completion for last
+                        set.last()
+                    } else {
 
-                    val q = checkElementsFromEnd(set, true) { next, prev ->
-                        val a = next.first.token.relPos.start > character
-                        val b = prev.first.token.relPos.start <= character
-                        a && b
+                        val q = checkElementsFromEnd(set, true) { next, prev ->
+                            val a = next.first.token.relPos.start > character
+                            val b = prev.first.token.relPos.start <= character
+                            a && b
+                        }
+
+                        q
+                            ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
+
                     }
 
-                    q
-                        ?: lastStatementOnTheLine.token.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
-
                 }
-
-            }
 
             // file
             val f = data[path]
@@ -164,14 +172,15 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
 }
 
 fun LS.removeDecl2(file: File) {
+
+    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages}")
+
+
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
-    if (info != null) {
-        info("removeDecl2 declsOf current File = $declsOfTheFile")
-        info("removeDecl2 fileToDecl = $fileToDecl")
-    }
+
     val typeDB = resolver.typeDB
     var pkgName: String? = null
     declsOfTheFile?.forEach { d ->
@@ -279,11 +288,8 @@ fun LS.removeDecl2(file: File) {
         }
         // remove type
         if (d is SomeTypeDeclaration) {
-            if (info != null) {
-                info("removing $d")
-            }
+//            info?.invoke("removing $d")
 
-            // удаляешь ис тайп дб но не из пакета
             pkgName = d.receiver!!.pkg
             val removeFromTypeDB = { typeName: String ->
                 val t = typeDB.userTypes[typeName]
@@ -292,9 +298,7 @@ fun LS.removeDecl2(file: File) {
                     while (iter.hasNext()) {
                         val c = iter.next()
                         if (c.pkg == pkgName) {
-                            if (info != null) {
-                                info("removing type typeDB.userTypes $typeName")
-                            }
+                            info?.invoke("removing type typeDB.userTypes $typeName")
                             iter.remove()
                         }
                     }
@@ -305,15 +309,16 @@ fun LS.removeDecl2(file: File) {
 
                 // from pkg
                 val pkg2 = resolver.projects["common"]!!.packages[pkgName]
-                if (info != null) {
-                    info("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
-                }
+                info?.invoke("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
                 pkg2?.types?.remove(d.typeName)
             }
 
 
             when (d) {
-                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration -> removeFromTypeDB(d.typeName)
+                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration -> removeFromTypeDB(
+                    d.typeName
+                )
+
                 is UnionRootDeclaration -> {
                     d.branches.forEach { removeFromTypeDB(it.typeName) }
                     removeFromTypeDB(d.typeName)
@@ -330,6 +335,7 @@ fun LS.removeDecl2(file: File) {
     // remove the whole package
     if (pkgName != null) {
         resolver.projects["common"]!!.packages.remove(pkgName)
+        info?.invoke("The whole package removed: $pkgName")
     }
 
     fileToDecl.remove(file.absolutePath)
@@ -347,19 +353,15 @@ fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     resolver.reset()
     try {
         resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
-        if (info != null) {
-            info("3 resolveAllWithChangedFile resolve")
-        }
+//        info?.invoke("3 resolveAllWithChangedFile resolve")
     } catch (s: OnCompletionException) {
         this.completionFromScope = s.scope
 
-        if (info != null) {
-            info("3 resolveAllWithChangedFile OnCompletionException, megaStore.data = ${megaStore.data.keys}")
-        }
+//        info?.invoke("3 resolveAllWithChangedFile OnCompletionException, megaStore.data = ${megaStore.data.keys}")
     }
 //    catch (e: Throwable) {
 //        if (info != null) {
-//            info("3 resolveAllWithChangedFile Throwable!!!, e = ${e.message}")
+//            info?.invoke("3 resolveAllWithChangedFile Throwable!!!, e = ${e.message}")
 //        }
 //    }
 }
@@ -377,6 +379,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     }
 
     // returns path to main.niva and set of all files
+    // Doesn't search inside folders, only goes outside
     fun findRoot(a: File, listOfNivaFiles: MutableSet<File>): Pair<File, MutableSet<File>> {
         val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
         listOfNivaFiles.addAll(filesFromTheUpperDir)
@@ -396,8 +399,19 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     val file = File(URI(pathToChangedFile))
     assert(file.exists())
 
-    val (mainFile, allFiles) = findRoot(file, mutableSetOf())
-//    println("all files is $allFiles" )
+    // сначала заюзать listFilesRecursively, если она ничего не нашла main.niva то тогда уже добавлять к ее результатам  findRoot
+    val collectFiles = {
+        val set = listFilesRecursively(file.parentFile, "niva", "scala", "nivas").toSet()
+        val main = set.find { it.nameWithoutExtension == "main" }
+        if (main != null) {
+            Pair(main, set)
+        } else {
+            val pair = findRoot(file, mutableSetOf())
+            pair.also { it.second.addAll(set) }
+        }
+    }
+    val (mainFile, allFiles) = collectFiles()//findRoot(file, mutableSetOf())
+    info?.invoke("all files is $allFiles" )
     GlobalVariables.enableLspMode()
 
     megaStore.data.clear()
@@ -415,6 +429,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         fileToDecl[file.absolutePath] = mutableSetOf(st)
                     }
                 }
+
                 is Expression, is VarDeclaration -> {
                     megaStore.addNew(
                         st,
@@ -436,21 +451,26 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
         this.completionFromScope = mapOf()
         return resolver
-    } catch (s: OnCompletionException) {
+    }
+    catch (s: OnCompletionException) {
         this.completionFromScope = s.scope
         val emptyResolver =
             Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
         this.resolver = emptyResolver
-        return emptyResolver
-    } catch (e: Throwable) {
-        val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
-        this.completionFromScope = mapOf()
-        this.resolver = emptyResolver
-//        if (info != null) {
-//            info("3 resolveAll Throwable, megaStore.data = ${megaStore.data.keys}, e = ${e.message}")
-//        }
+        info?.invoke("NOT RESOLVED OnCompletionException, $s")
         return emptyResolver
     }
+
+//    catch (e: Throwable) {
+//        val emptyResolver =
+//            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
+//        this.completionFromScope = mapOf()
+//        this.resolver = emptyResolver
+//        info?.invoke("NOT RESOLVED, $e")
+////        if (info != null) {
+////            info("3 resolveAll Throwable, megaStore.data = ${megaStore.data.keys}, e = ${e.message}")
+////        }
+//        return emptyResolver
+//    }
 
 }
