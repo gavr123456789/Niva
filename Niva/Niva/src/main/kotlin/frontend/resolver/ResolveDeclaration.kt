@@ -140,7 +140,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                         if (decl is Declaration) {
                             val emptyScope: MutableMap<String, Type> = mutableMapOf()
                             resolveDeclarations(decl, emptyScope, resolveBody = false)
-                            onEachStatement?.invoke(decl, emptyScope, emptyScope, decl.token.file)
+                            onEachStatement?.invoke(decl, emptyScope, emptyScope, decl.token.file) // Bind content
                         } else {
                             decl.token.compileError("There can be only declarations inside Bind, but found $WHITE$decl")
                         }
@@ -221,6 +221,24 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
                                         addNewAnyMessage(msgDeclGetter, isGetter = true)
                                         addNewAnyMessage(msgDeclSetter, isSetter = true) // setter
+
+                                        // lsp
+                                        val emptyScope: MutableMap<String, Type> = mutableMapOf()
+
+                                        onEachStatement?.invoke( // Bind fields
+                                            msgDeclGetter,
+                                            emptyScope,
+                                            emptyScope,
+                                            msgDeclGetter.token.file
+                                        )
+
+                                        onEachStatement?.invoke( // Bind fields
+                                            msgDeclSetter,
+                                            emptyScope,
+                                            emptyScope,
+                                            msgDeclSetter.token.file
+                                        )
+
                                     }
 
                                 }

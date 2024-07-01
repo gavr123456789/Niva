@@ -883,14 +883,6 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    if (x.isType && kw == null) {
-        val type = x.type
-        val constructorSuggestion = if (type != null && type is Type.UserLike) {
-            if (type.fields.isEmpty()) "new"
-            else type.fields.joinToString(", ") { it.name }
-        } else null
-        x.token.compileError("You forget to call constructor ${constructorSuggestion ?: ""}")
-    }
     val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
         x.name, currentScope, previousScope, kw, x.token
     )

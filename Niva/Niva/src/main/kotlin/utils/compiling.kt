@@ -219,6 +219,21 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
     }
 }
 
+fun listFilesRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
+    val fileList = mutableListOf<File>()
+    val filesAndDirs = directory.listFiles()
+    if (filesAndDirs != null) {
+        for (file in filesAndDirs) {
+            if (file.isFile && (file.extension == ext || file.extension == ext2)) {
+                fileList.add(file)
+            } else if (file.isDirectory) {
+                fileList.addAll(listFilesRecursively(file, ext, ext2, ext3))
+            }
+        }
+    }
+
+    return fileList
+}
 
 fun compileProjFromFile(
     pm: PathManager,
@@ -235,21 +250,7 @@ fun compileProjFromFile(
     val pathToAmper = pm.pathToAmper
     val verbosePrinter = VerbosePrinter(verbose)
 
-    fun listFilesRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
-        val fileList = mutableListOf<File>()
-        val filesAndDirs = directory.listFiles()
-        if (filesAndDirs != null) {
-            for (file in filesAndDirs) {
-                if (file.isFile && (file.extension == ext || file.extension == ext2)) {
-                    fileList.add(file)
-                } else if (file.isDirectory) {
-                    fileList.addAll(listFilesRecursively(file, ext, ext2, ext3))
-                }
-            }
-        }
 
-        return fileList
-    }
 
 
     val mainFile = File(pathToNivaMainFile)
