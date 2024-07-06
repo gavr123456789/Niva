@@ -36,7 +36,7 @@ import java.util.SortedMap
 typealias Line = Int
 typealias Scope = Map<String, Type>
 
-class OnCompletionException(val scope: Scope) : Exception()
+class OnCompletionException(val scope: Scope, errorMessage22: String? = null) : Exception()
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
@@ -155,7 +155,6 @@ class LS(val info: ((String) -> Unit)? = null) {
                     LspResult.NotFoundLine(Pair(null, scope))
                 }
             } else {
-
                 return LspResult.NotFoundFile()
             }
         }
@@ -182,7 +181,7 @@ fun LS.removeDecl2(file: File) {
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
-    info?.invoke("fileToDecl = ${fileToDecl.map { it.key + it.value + "\n" }}")
+//    info?.invoke("fileToDecl = ${fileToDecl.map { it.key + it.value + "\n" }}")
 //    info?.invoke("declsOfTheFile = $declsOfTheFile")
 
     val typeDB = resolver.typeDB
@@ -360,6 +359,8 @@ fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
         resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
 //        info?.invoke("3 resolveAllWithChangedFile resolve")
     } catch (s: OnCompletionException) {
+        info?.invoke("1111 OnCompletionException ${s.scope}")
+
         this.completionFromScope = s.scope
 
 //        info?.invoke("3 resolveAllWithChangedFile OnCompletionException, megaStore.data = ${megaStore.data.keys}")
@@ -458,12 +459,15 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         return resolver
     }
     catch (s: OnCompletionException) {
+//        this.completionFromScope = s.scope
+//        val emptyResolver =
+//            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
+//        this.resolver = emptyResolver
+        info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope")
+//        return emptyResolver
+        this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
         this.completionFromScope = s.scope
-        val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
-        this.resolver = emptyResolver
-        info?.invoke("NOT RESOLVED OnCompletionException, $s")
-        return emptyResolver
+        return resolver
     }
 
 //    catch (e: Throwable) {

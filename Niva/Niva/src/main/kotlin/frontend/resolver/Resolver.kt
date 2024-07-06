@@ -886,8 +886,37 @@ fun Resolver.getTypeForIdentifier(
     val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
         x.name, currentScope, previousScope, kw, x.token
     )
+    ?: if (!GlobalVariables.isLspMode)
+        x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+    else {
 
-    ?: x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+        if (x.token.lexeme.first().isUpperCase()) {
+            // if it starts from capital letter, then its type name suggestion
+            val collectTypeNamesStartFrom = { startWith: String ->
+                val results = mutableMapOf<String, Type>()
+                val proj = projects[currentProjectName]!!
+                proj.packages.values.forEach { pkg ->
+                    pkg.types.values.forEach { type ->
+                        if (type.name.startsWith(startWith)) {
+                            results[type.name] = type
+                        }
+                    }
+                }
+
+                results
+            }
+            val typeNameSuggestions = collectTypeNamesStartFrom(x.token.lexeme)
+
+            endOfSearch(
+                typeNameSuggestions, "Unresolved type: ${x.str}"
+            )
+        } else {
+            // if from little then its local suggestion
+            endOfSearch(
+                currentScope + previousScope , "Unresolved reference: ${x.str}"
+            )
+        }
+    }
 
 
     val typeWithGenericResolved =
@@ -1055,17 +1084,17 @@ class Resolver(
     }
 
     companion object {
-        fun empty(
-            otherFilesPaths: List<File>,
-            onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)?,
-            currentFile: File,
-        ) = Resolver(
-            projectName = "common",
-            otherFilesPaths = otherFilesPaths,
-            statements = mutableListOf(),
-            onEachStatement = onEachStatement,
-            currentResolvingFileName = currentFile,
-        )
+//        fun empty(
+//            otherFilesPaths: List<File>,
+//            onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)?,
+//            currentFile: File,
+//        ) = Resolver(
+//            projectName = "common",
+//            otherFilesPaths = otherFilesPaths,
+//            statements = mutableListOf(),
+//            onEachStatement = onEachStatement,
+//            currentResolvingFileName = currentFile,
+//        )
 
         val defaultTypes: Map<InternalTypes, Type.InternalType> = mapOf(
 
