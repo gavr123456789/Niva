@@ -159,8 +159,8 @@ fun Resolver.resolveMessageDeclaration(
                 bodyScope["build"] = lambda
             }
         }
-        // add args to bodyScope
-        if (forType is Type.UserLike) {
+        // add args to bodyScope, but not for constructors
+        if (forType is Type.UserLike && st !is ConstructorDeclaration) {
             forType.fields.forEach {
                 bodyScope[it.name] = it.type
             }
