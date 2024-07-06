@@ -18,7 +18,7 @@ import kotlin.collections.joinToString
 import kotlin.text.lowercase
 import kotlin.text.startsWith
 
-fun endOfSearch(scope: Scope): Nothing = throw (OnCompletionException(scope))
+fun endOfSearch(scope: Scope, errorMessage: String? = null): Nothing = throw (OnCompletionException(scope, errorMessage))
 
 fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     GlobalVariables.enableDemonMode()
