@@ -670,7 +670,7 @@ fun createListProtocols(
             createMapKeywordIndexed(intType, itType, differentGenericType, listTypeOfDifferentGeneric),
             createFilterKeyword(itType, boolType, mutListType),
 
-            createKeyword(KeywordArg("add", itType), unitType),
+            createKeyword(KeywordArg("add", itType), boolType),
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("atOrNull", intType), Type.NullableType(itType)).rename("getOrNull"),

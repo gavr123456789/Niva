@@ -5,8 +5,6 @@ package main
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
-import main.frontend.meta.CompilerError
-import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.EnumBranch
@@ -113,7 +111,7 @@ class LS(val info: ((String) -> Unit)? = null) {
 
             // when we search on empty line, we are looking only for scope or messages for previous line
 
-            val findStatementInLine: (MutableSet<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope> =
+            val findStatementInLine: (MutableSet<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope>? =
                 { set: MutableSet<Pair<Statement, Scope>>, onlyScope: Boolean ->
                     // if its last elem
                     val lastStatementOnTheLine = set.last().first
@@ -130,7 +128,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                         }
 
                         q
-                            ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
+                            // ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
 
                     }
 
@@ -144,8 +142,12 @@ class LS(val info: ((String) -> Unit)? = null) {
                 if (l != null) {
                     val q = findStatementInLine(l, false)
 
+                    if (q != null)
+                        LspResult.Found(q)
+                    else
+                        LspResult.NotFoundLine(Pair(null, scope))
 
-                    LspResult.Found(q)
+
 
                 } else {
                     // no such line so show scope
@@ -173,13 +175,15 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
 
 fun LS.removeDecl2(file: File) {
 
-    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages}")
+    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages.keys}")
 
 
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
+    info?.invoke("fileToDecl = ${fileToDecl.map { it.key + it.value + "\n" }}")
+//    info?.invoke("declsOfTheFile = $declsOfTheFile")
 
     val typeDB = resolver.typeDB
     var pkgName: String? = null
@@ -236,10 +240,11 @@ fun LS.removeDecl2(file: File) {
                         is Type.UserLike -> {
                             val usrLikeTypes = typeDB.userTypes[forType.name]
                             if (usrLikeTypes != null) {
-                                val w = usrLikeTypes.find { it.pkg == forType.pkg }!!
+                                info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
+                                val w = usrLikeTypes.find { it.pkg == forType.pkg }
                                 val protocolWithMethod =
-                                    w.protocols.values.find { it.keywordMsgs.contains(d.name) }!!
-                                protocolWithMethod.keywordMsgs.remove(d.name)
+                                    w?.protocols?.values?.find { it.keywordMsgs.contains(d.name) }
+                                protocolWithMethod?.keywordMsgs?.remove(d.name)
                             }
                         }
 
@@ -298,7 +303,7 @@ fun LS.removeDecl2(file: File) {
                     while (iter.hasNext()) {
                         val c = iter.next()
                         if (c.pkg == pkgName) {
-                            info?.invoke("removing type typeDB.userTypes $typeName")
+//                            info?.invoke("removing type typeDB.userTypes $typeName")
                             iter.remove()
                         }
                     }
@@ -309,7 +314,7 @@ fun LS.removeDecl2(file: File) {
 
                 // from pkg
                 val pkg2 = resolver.projects["common"]!!.packages[pkgName]
-                info?.invoke("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
+//                info?.invoke("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
                 pkg2?.types?.remove(d.typeName)
             }
 
@@ -411,7 +416,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         }
     }
     val (mainFile, allFiles) = collectFiles()//findRoot(file, mutableSetOf())
-    info?.invoke("all files is $allFiles" )
+    info?.invoke("all files is ${allFiles.joinToString(", ") {it.name}}" )
     GlobalVariables.enableLspMode()
 
     megaStore.data.clear()

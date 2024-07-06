@@ -684,7 +684,8 @@ fun TypeAST.toType(
     typeTable: Map<TypeName, Type>,
     parentType: Type.UserLike? = null,
     resolvingFieldName: String? = null,
-    typeDeclaration: SomeTypeDeclaration? = null
+    typeDeclaration: SomeTypeDeclaration? = null,
+    realParentAstFromGeneric: TypeAST? = null
 ): Type {
 
     val replaceToNullableIfNeeded = { type: Type ->
@@ -731,7 +732,9 @@ fun TypeAST.toType(
                         this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val typeOfArg = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
+                        val typeOfArg = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration,
+                            realParentAstFromGeneric = realParentAstFromGeneric ?: this
+                        )
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
                         typeOfArg
                     }
@@ -758,10 +761,12 @@ fun TypeAST.toType(
                     this.token.compileError("Can't find user type: ${YEL}$name")
                 }
 
-                typeDB.unresolvedFields[name] =
-                    FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration)
+
+                typeDB.addUnresolvedField(
+                    name,
+                    FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration, ast = realParentAstFromGeneric ?: this)
+                )
                 return Type.UnresolvedType()
-//                TODO()
             }
 
             val type2 = if (mutable) {
@@ -798,11 +803,14 @@ fun TypeAST.toType(
             val returnType =
                 this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
 
-            if (returnType is Type.UnresolvedType) {
-                val q = typeDB.unresolvedFields[this.returnType.name]!!
-                q.ast = this
-//                TODO("add the same for arguments")
-            }
+//            if (returnType is Type.UnresolvedType) {
+//                val q = typeDB.unresolvedFields[this.returnType.name]!!
+//
+//                q.forEach {
+//                    if (it.ast == null)
+//                        it.ast = this
+//                }
+//            }
 
             val lambdaType = Type.Lambda(
                 args = args,

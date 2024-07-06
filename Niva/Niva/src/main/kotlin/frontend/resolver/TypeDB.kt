@@ -21,7 +21,7 @@ sealed class TypeDBResult {
 }
 
 class FieldNameAndParent(
-    val fieldName: String, val parent: Type.UserLike, var ast: TypeAST? = null, // ast is here only in complex types
+    val fieldName: String, val parent: Type.UserLike, var ast: TypeAST, // ast is here only in complex types
     val typeDeclaration: SomeTypeDeclaration
 )
 
@@ -30,8 +30,17 @@ class TypeDB(
     val lambdaTypes: MutableMap<TypeName, Type.Lambda> = mutableMapOf(),
     val userTypes: MutableMap<TypeName, MutableList<Type.UserLike>> = mutableMapOf(),
     // name of the Missing Type to (parent type + field of parent name)
-    val unresolvedFields: MutableMap<String, FieldNameAndParent> = mutableMapOf()
-)
+    val unresolvedFields: MutableMap<String, MutableSet<FieldNameAndParent>> = mutableMapOf()
+) {
+    fun addUnresolvedField(name: String, field: FieldNameAndParent) {
+        val q = unresolvedFields[name]
+        if (q != null) {
+            q.add(field)
+        } else {
+            unresolvedFields[name] = mutableSetOf(field)
+        }
+    }
+}
 
 // getting
 fun TypeDB.getType(
