@@ -7,7 +7,6 @@ import frontend.parser.types.ast.Pragma
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
-import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.utils.CYAN
 import main.utils.RED
@@ -32,7 +31,8 @@ sealed class MessageMetadata(
     @Suppress("unused")
     val msgSends: List<MsgSend> = emptyList(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
-    var errors: MutableSet<Type.Union>? = null
+    var errors: MutableSet<Type.Union>? = null,
+    val declaration: MessageDeclaration?
 ) {
     fun addErrors(errors: MutableSet<Type.Union>) {
         val errs = this.errors
@@ -105,8 +105,9 @@ class UnaryMsgMetaData(
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
-    val isGetter: Boolean = false
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
+    val isGetter: Boolean = false,
+    declaration: MessageDeclaration?
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
     override fun toString(): String {
         return "$name -> $returnType"
     }
@@ -118,8 +119,9 @@ class BinaryMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = emptyList()
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
+    msgSends: List<MsgSend> = emptyList(),
+    declaration: MessageDeclaration?
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
     }
@@ -133,8 +135,9 @@ class KeywordMsgMetaData(
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
-    val isSetter: Boolean = false
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
+    val isSetter: Boolean = false,
+    declaration: MessageDeclaration?
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
@@ -151,8 +154,9 @@ class BuilderMetaData(
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
     val isSetter: Boolean = false,
-    val defaultAction: CodeBlock?
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
+    val defaultAction: CodeBlock?,
+    declaration: MessageDeclaration
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "builder $args -> $returnType"
@@ -1071,7 +1075,8 @@ fun MessageDeclarationUnary.toMessageData(
         returnType = returnType,
         pkg = pkg.packageName,
         pragmas = pragmas,
-        isGetter = isGetter
+        isGetter = isGetter,
+        declaration = this
     )
     return result
 }
@@ -1094,7 +1099,8 @@ fun MessageDeclarationBinary.toMessageData(
         argType = argType,
         returnType = returnType,
         pkg = pkg.packageName,
-        pragmas = pragmas
+        pragmas = pragmas,
+        declaration = this
     )
     return result
 }
@@ -1118,7 +1124,8 @@ fun StaticBuilderDeclaration.toMessageData(
         pkg = x.pkg,
         pragmas = x.pragmas,
         msgSends = x.msgSends,
-        defaultAction = defaultAction
+        defaultAction = defaultAction,
+        declaration = this
     )
 }
 
@@ -1156,7 +1163,8 @@ fun MessageDeclarationKeyword.toMessageData(
         returnType = returnType,
         pragmas = pragmas,
         pkg = pkg.packageName,
-        isSetter = isSetter
+        isSetter = isSetter,
+        declaration = this
     )
     return result
 }

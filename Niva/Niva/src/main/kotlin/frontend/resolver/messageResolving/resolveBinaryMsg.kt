@@ -49,7 +49,7 @@ fun Resolver.resolveBinaryMsg(
 
     // q = "sas" + 2 toString
     // find message for this type
-    val messageTypeFromDb =
+    val msgFromDb =
         if (isUnaryForReceiver)
             findAnyMsgType(
                 statement.unaryMsgsForReceiver.last().type!!,
@@ -59,14 +59,15 @@ fun Resolver.resolveBinaryMsg(
             )
         else
             findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
+    
+    statement.declaration = msgFromDb.declaration
 
-
-    if (messageTypeFromDb is BinaryMsgMetaData && !compare2Types(argumentType, messageTypeFromDb.argType, argument.token)) {
-        argument.token.compileError("($YEL$argumentType$RESET != $YEL${messageTypeFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$messageTypeFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
+    if (msgFromDb is BinaryMsgMetaData && !compare2Types(argumentType, msgFromDb.argType, argument.token)) {
+        argument.token.compileError("($YEL$argumentType$RESET != $YEL${msgFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$msgFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
     }
 
-    statement.type = messageTypeFromDb.returnType
-    statement.pragmas = messageTypeFromDb.pragmas
+    statement.type = msgFromDb.returnType
+    statement.pragmas = msgFromDb.pragmas
 
-    addErrorEffect(messageTypeFromDb, messageTypeFromDb.returnType, statement)
+    addErrorEffect(msgFromDb, msgFromDb.returnType, statement)
 }

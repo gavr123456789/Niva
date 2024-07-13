@@ -162,6 +162,7 @@ fun Resolver.findStaticMessageType(
                 name = "__new",
                 returnType = receiverType,
                 pkg = currentPackageName,
+                declaration = null
             )
             val pkg = getCurrentPackage(token)
             pkg.addImport(receiverType.pkg)
@@ -223,15 +224,8 @@ fun Resolver.findAnyMsgType(
                     val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.first == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)
-                        // нада еще ремувить из мсг фром дб
-                        // найти метадату текущей резолв функции
-//                        val metaData = resolvingMsgDecl.findMetadata(this).errors
-//
-//                        metaData?.removeAll(b.second)
                     }
                 }
-            } else if (msg.receiver.type?.errors != null) {
-                // TODO complete error switching
             }
         }
 

@@ -44,6 +44,7 @@ fun Resolver.resolveStaticBuilder(
     if (builderFromDB == null) {
         statement.token.compileError("Can't find builder ${statement.name}, builders of this pkg: ${pkg.builders.keys}")
     }
+    statement.declaration = builderFromDB.declaration
     statement.type = builderFromDB.returnType
 
 

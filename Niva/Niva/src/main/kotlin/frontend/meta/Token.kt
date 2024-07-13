@@ -79,7 +79,8 @@ class Token(
     val pos: Position,
     val relPos: Position,
     val file: File,
-    val spaces: Int = 0
+    val spaces: Int = 0,
+//    val lineEnd
 ) {
 
 
