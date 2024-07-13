@@ -53,7 +53,7 @@ private fun Parser.codeBlockArgs(): List<IdentifierExpr> {
     return if (isThereBeforeStatementPart)
             beforeStatementsPart()
         else
-            listOf()
+            emptyList()
 }
 
 private fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
@@ -84,7 +84,7 @@ fun Parser.codeBlock(): CodeBlock {
     val statements = if (!match(TokenType.CloseBracket))
         statementsUntilCloseBracket(TokenType.CloseBracket)
     else
-        listOf()
+        emptyList()
 
 
     val result = CodeBlock(

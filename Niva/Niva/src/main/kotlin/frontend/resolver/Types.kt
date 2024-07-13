@@ -4,10 +4,10 @@ package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
-import frontend.resolver.Type.RecursiveType.copy
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.utils.CYAN
 import main.utils.RED
@@ -30,7 +30,7 @@ sealed class MessageMetadata(
     val pkg: String,
     val pragmas: MutableList<Pragma> = mutableListOf(),
     @Suppress("unused")
-    val msgSends: List<MsgSend> = listOf(),
+    val msgSends: List<MsgSend> = emptyList(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
     var errors: MutableSet<Type.Union>? = null
 ) {
@@ -104,7 +104,7 @@ class UnaryMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf(),
+    msgSends: List<MsgSend> = emptyList(),
     val isGetter: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
@@ -118,7 +118,7 @@ class BinaryMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf()
+    msgSends: List<MsgSend> = emptyList()
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
@@ -132,7 +132,7 @@ class KeywordMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf(),
+    msgSends: List<MsgSend> = emptyList(),
     val isSetter: Boolean = false
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
     override fun toString(): String {
@@ -149,7 +149,7 @@ class BuilderMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = listOf(),
+    msgSends: List<MsgSend> = emptyList(),
     val isSetter: Boolean = false,
     val defaultAction: CodeBlock?
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends) {
@@ -162,7 +162,7 @@ class BuilderMetaData(
 //class ConstructorMsgMetaData(
 //    name: String,
 //    returnType: Type,
-//    msgSends: List<MsgSend> = listOf()
+//    msgSends: List<MsgSend> = emptyList()
 //) : MessageMetadata(name, returnType, msgSends)
 
 sealed class FieldWithType(
@@ -186,19 +186,19 @@ class KeywordArgAst(
 )
 
 
-fun Type.isDescendantOf(type: Type): Boolean {
-    if (this !is Type.UserLike || type !is Type.UserLike) {
-        return false
-    }
-    var parent: Type? = this.parent
-    while (parent != null) {
-        if (compare2Types(type, parent)) {
-            return true
-        }
-        parent = parent.parent
-    }
-    return false
-}
+//fun Type.isDescendantOf(type: Type): Boolean {
+//    if (this !is Type.UserLike || type !is Type.UserLike) {
+//        return false
+//    }
+//    var parent: Type? = this.parent
+//    while (parent != null) {
+//        if (compare2Types(type, parent, createFakeToken())) {
+//            return true
+//        }
+//        parent = parent.parent
+//    }
+//    return false
+//}
 
 
 fun MutableList<KeywordArg>.copy(): MutableList<KeywordArg> =
@@ -384,7 +384,6 @@ sealed class Type(
             is Lambda -> TODO()
             is NullableType -> TODO()
             is UnresolvedType -> TODO()
-            RecursiveType -> TODO()
         }
 
         append(")")
@@ -457,88 +456,82 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>,
-        var isBinding: Boolean = false
+        var isBinding: Boolean = false,
+        val typeDeclaration: SomeTypeDeclaration? // for example List doesn't have type decl
     ) : Type(name, pkg, isPrivate, protocols) {
         fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
+
+        fun copy(): UserLike =
+            when (this) {
+                is UserType -> UserType(
+                    name = this.name,
+                    typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
+                    fields = this.fields.copy(),
+                    isPrivate = this.isPrivate,
+                    pkg = this.pkg,
+                    protocols = this.protocols.toMutableMap(),
+                    typeDeclaration = this.typeDeclaration
+                ).also { it.isBinding = this.isBinding }
+
+                is EnumRootType -> EnumRootType(
+                    name = this.name,
+                    typeArgumentList = this.typeArgumentList.toList(),
+                    fields = this.fields.copy(),
+                    isPrivate = this.isPrivate,
+                    pkg = this.pkg,
+                    branches = this.branches.toList(),
+                    protocols = this.protocols.toMutableMap(),
+                    typeDeclaration = this.typeDeclaration
+                ).also {
+                    it.isBinding = this.isBinding
+                    it.parent = this.parent
+                }
+
+                is UnionRootType -> UnionRootType(
+                    name = this.name,
+                    typeArgumentList = this.typeArgumentList.toList(),
+                    fields = this.fields.copy(),
+                    isPrivate = this.isPrivate,
+                    pkg = this.pkg,
+                    branches = this.branches.toList(),
+                    protocols = this.protocols.toMutableMap(),
+                    isError = this.isError,
+                    typeDeclaration = this.typeDeclaration
+                ).also {
+                    it.isBinding = this.isBinding
+                    it.parent = this.parent
+                }
+
+                is EnumBranchType -> TODO()
+                is UnionBranchType -> UnionBranchType(
+                    name = this.name,
+                    typeArgumentList = this.typeArgumentList.toList(),
+                    fields = this.fields.copy(),
+                    isPrivate = this.isPrivate,
+                    pkg = this.pkg,
+                    root = this.root,
+                    protocols = this.protocols.toMutableMap(),
+                    isError = this.isError,
+                    typeDeclaration = this.typeDeclaration
+                ).also {
+                    it.isBinding = this.isBinding
+                    it.parent = this.parent
+                }
+
+                is KnownGenericType -> TODO()
+                is UnknownGenericType -> UnknownGenericType(this.name)
+            }
     }
-
-    fun UserLike.copy(): UserLike =
-        when (this) {
-            is UserType -> UserType(
-                name = this.name,
-                typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
-                fields = this.fields.copy(),
-                isPrivate = this.isPrivate,
-                pkg = this.pkg,
-                protocols = this.protocols.toMutableMap(),
-            ).also { it.isBinding = this.isBinding }
-
-            is EnumRootType -> EnumRootType(
-                name = this.name,
-                typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.copy(),
-                isPrivate = this.isPrivate,
-                pkg = this.pkg,
-                branches = this.branches.toList(),
-                protocols = this.protocols.toMutableMap(),
-            ).also {
-                it.isBinding = this.isBinding
-                it.parent = this.parent
-            }
-
-            is UnionRootType -> UnionRootType(
-                name = this.name,
-                typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.copy(),
-                isPrivate = this.isPrivate,
-                pkg = this.pkg,
-                branches = this.branches.toList(),
-                protocols = this.protocols.toMutableMap(),
-                isError = this.isError
-            ).also {
-                it.isBinding = this.isBinding
-                it.parent = this.parent
-            }
-
-            is EnumBranchType -> TODO()
-            is UnionBranchType -> UnionBranchType(
-                name = this.name,
-                typeArgumentList = this.typeArgumentList.toList(),
-                fields = this.fields.copy(),
-                isPrivate = this.isPrivate,
-                pkg = this.pkg,
-                root = this.root,
-                protocols = this.protocols.toMutableMap(),
-                isError = this.isError
-            ).also {
-                it.isBinding = this.isBinding
-                it.parent = this.parent
-            }
-
-            is KnownGenericType -> TODO()
-            is UnknownGenericType -> UnknownGenericType(this.name)
-            RecursiveType -> TODO()
-        }
-
 
     class UserType(
         name: String,
-        typeArgumentList: List<Type> = listOf(), // for <T, G>
+        typeArgumentList: List<Type> = emptyList(), // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
-
-//    class ErrorType(
-//        var branches: List<ErrorType>,
-//        name: String,
-//        fields: MutableList<KeywordArg>,
-//        isPrivate: Boolean = false,
-//        pkg: String,
-//        protocols: MutableMap<String, Protocol> = mutableMapOf(),
-//        val isRoot: Boolean
-//    ) : UserLike(name, listOf(), fields, isPrivate, pkg, protocols)
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        typeDeclaration: SomeTypeDeclaration?
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
 
     // Union -> Error, User
@@ -551,8 +544,9 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
-        val isError: Boolean
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+        val isError: Boolean,
+        typeDeclaration: SomeTypeDeclaration?
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class UnionRootType(
         var branches: List<Union>, // can be union or branch
@@ -562,8 +556,9 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
-        isError: Boolean
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError)
+        isError: Boolean,
+        typeDeclaration: SomeTypeDeclaration?
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration)
 
     class UnionBranchType(
         val root: UnionRootType,
@@ -573,8 +568,9 @@ sealed class Type(
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
-        isError: Boolean
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError)
+        isError: Boolean,
+        typeDeclaration: SomeTypeDeclaration?
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration)
 
 
     class EnumRootType(
@@ -584,8 +580,9 @@ sealed class Type(
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        typeDeclaration: SomeTypeDeclaration?
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class EnumBranchType(
         val root: EnumRootType,
@@ -594,8 +591,9 @@ sealed class Type(
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        typeDeclaration: SomeTypeDeclaration?
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
 
     sealed class GenericType(
@@ -604,26 +602,27 @@ sealed class Type(
         pkg: String,
         fields: MutableList<KeywordArg> = mutableListOf(),
         isPrivate: Boolean = false,
-        protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols)
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        typeDeclaration: TypeDeclaration?
+    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class KnownGenericType(
         name: String,
         typeArgumentList: List<Type>,
         pkg: String = "common",
-    ) : GenericType(name, typeArgumentList, pkg)
+    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null)
 
     class UnknownGenericType(
         name: String,
-        typeArgumentList: List<Type> = listOf(),
+        typeArgumentList: List<Type> = emptyList(),
         pkg: String = "common",
-    ) : GenericType(name, typeArgumentList, pkg) {
+    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null) {
         override fun toString(): String {
             return name
         }
     }
 
-    object RecursiveType : UserLike("RecursiveType", listOf(), mutableListOf(), false, "common", mutableMapOf())
+//    object RecursiveType : UserLike("RecursiveType", emptyList(), mutableListOf(), false, "common", mutableMapOf())
 
 
 }
@@ -722,7 +721,8 @@ fun TypeAST.toType(
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
+                val typeFromDb = typeTable[name] ?:
+                    this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy()
@@ -826,23 +826,6 @@ fun TypeAST.toType(
 
 }
 
-//fun TypeFieldAST.tryToTypeField(
-//    typeDB: TypeDB,
-//    typeTable: Map<TypeName, Type>,
-//    recursiveType: Type.UserLike
-//): KeywordArg? {
-//    val r = typeAST!!
-//    val w = try {
-//        r.toType(typeDB, typeTable, recursiveType)
-//    } catch (_: Throwable) {
-//        return null
-//    }
-//    val result = KeywordArg(
-//        name = name,
-//        type = w
-//    )
-//    return result
-//}
 
 fun TypeFieldAST.toTypeField(
     typeDB: TypeDB,
@@ -877,57 +860,61 @@ fun SomeTypeDeclaration.toType(
 //    listOf("").find {  }
     val result = if (isUnion)
         Type.UnionRootType(
-            branches = listOf(),
+            branches = emptyList(),
             name = typeName,
-            typeArgumentList = listOf(),
-            fields = mutableListOf(),
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf(),
-            isError = isError
-        )
-    else if (isEnum)
-        Type.EnumRootType(
-            branches = listOf(),
-            name = typeName,
-            typeArgumentList = listOf(),
-            fields = mutableListOf(),
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf()
-        )
-    else if (enumRootType != null) {
-        Type.EnumBranchType(
-            root = enumRootType,
-            name = typeName,
-            typeArgumentList = listOf(),
-            fields = mutableListOf(),
-            isPrivate = isPrivate,
-            pkg = pkg,
-            protocols = mutableMapOf()
-        ).also { it.parent = unionRootType }
-    } else if (unionRootType != null) {
-        Type.UnionBranchType(
-            root = unionRootType,
-            name = typeName,
-            typeArgumentList = listOf(),
+            typeArgumentList = emptyList(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
             protocols = mutableMapOf(),
             isError = isError,
-
-            ).also {
+            typeDeclaration = this
+        )
+    else if (isEnum)
+        Type.EnumRootType(
+            branches = emptyList(),
+            name = typeName,
+            typeArgumentList = emptyList(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf(),
+            typeDeclaration = this
+        )
+    else if (enumRootType != null) {
+        Type.EnumBranchType(
+            root = enumRootType,
+            name = typeName,
+            typeArgumentList = emptyList(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf(),
+            typeDeclaration = this
+        ).also { it.parent = unionRootType }
+    } else if (unionRootType != null) {
+        Type.UnionBranchType(
+            root = unionRootType,
+            name = typeName,
+            typeArgumentList = emptyList(),
+            fields = mutableListOf(),
+            isPrivate = isPrivate,
+            pkg = pkg,
+            protocols = mutableMapOf(),
+            isError = isError,
+            typeDeclaration = this
+        ).also {
             it.parent = unionRootType
         }
     } else
         Type.UserType(
             name = typeName,
-            typeArgumentList = listOf(),
+            typeArgumentList = emptyList(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
-            protocols = mutableMapOf()
+            protocols = mutableMapOf(),
+            typeDeclaration = this
         )
 
 
@@ -940,7 +927,7 @@ fun SomeTypeDeclaration.toType(
             // this is recursive type
             val fieldType = KeywordArg(
                 name = it.name,
-                type = if (!astType.isNullable) Type.RecursiveType else Type.NullableType(Type.RecursiveType)
+                type = if (!astType.isNullable) Type.UnresolvedType() else Type.NullableType(Type.UnresolvedType())
             )
             fieldsTyped.add(fieldType)
             unresolvedSelfTypeFields.add(fieldType)

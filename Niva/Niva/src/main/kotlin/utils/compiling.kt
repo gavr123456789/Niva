@@ -259,7 +259,7 @@ fun compileProjFromFile(
         if (!compileOnlyOneFile)
             listFilesRecursively(nivaProjectFolder, "niva", "scala", "nivas").filter { it.name != mainFile.name }
         else
-            listOf()
+            emptyList()
 
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(

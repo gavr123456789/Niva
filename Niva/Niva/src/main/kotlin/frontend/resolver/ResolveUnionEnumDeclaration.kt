@@ -51,7 +51,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
 
         val branchType = if (alreadyRegisteredType is Type.Union && it.isRoot) {
-            if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields)) {
+            if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields, statement.token)) {
                 it.token.compileError("Union inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name} ${WHITE}${alreadyRegisteredType.fields.map { "${it.name}: ${it.type}" }} $RED!=${YEL} ${rootType.name}${RED} $WHITE${rootType.fields.map { "${it.name}: ${it.type}" }}")
             }
             alreadyRegisteredType
@@ -137,7 +137,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
             val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
                 ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")
 
-            if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type)) {
+            if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type, fieldAST.token)) {
                 fieldAST.token.compileError("In enum branch: `$YEL${it.typeName}$RED` field `$WHITE${fieldAST.name}$RED` has type `$YEL${fieldAST.value.type}$RED` but `$YEL${rootFieldWithSameName.type}$RED` expected")
             }
 

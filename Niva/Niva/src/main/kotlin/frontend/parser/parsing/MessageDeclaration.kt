@@ -536,7 +536,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
 
     // args
     val args = if (check(TokenType.ReturnArrow) || check(TokenType.Assign))
-        listOf()
+        emptyList()
     else
         keywordArgs()
 

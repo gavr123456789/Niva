@@ -1,6 +1,7 @@
 package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
+import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
@@ -255,7 +256,7 @@ fun Resolver.resolveMessageDeclaration(
                 // ... because we cant infer type of recursive functions
                 if (!st.isRecursive && declaredReturnTypeOrFromReturnStatement != null && st.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
-                    if (!compare2Types(typeOfSingleExpr, declaredReturnTypeOrFromReturnStatement, unpackNull = true, isOut = true))
+                    if (!compare2Types(typeOfSingleExpr, declaredReturnTypeOrFromReturnStatement, st.token, unpackNull = true, isOut = true))
                         st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnTypeOrFromReturnStatement${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
                     else if (mdgData.returnType != declaredReturnTypeOrFromReturnStatement) {
                         // change return type to the declarated one, since they are compatible
@@ -271,7 +272,7 @@ fun Resolver.resolveMessageDeclaration(
             val realReturn = wasThereReturn
             val returnType = st.returnType
             if (realReturn != null && returnType != null &&
-                !compare2Types(returnType, realReturn, unpackNull = true, isOut = true)
+                !compare2Types(returnType, realReturn, st.returnTypeAST?.token ?: st.token, unpackNull = true, isOut = true)
             ) {
                 st.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
             }
@@ -279,6 +280,7 @@ fun Resolver.resolveMessageDeclaration(
 
 
     }
+
 
     // no return type declared, not recursive, single expr
     // body is not resolved and no returnTypeAst, so we cant infer return type
@@ -290,7 +292,13 @@ fun Resolver.resolveMessageDeclaration(
     }
 
     if (st.returnTypeAST != null && st.returnType == null) {
-        st.returnType = st.returnTypeAST.toType(typeDB, typeTable)
+        try {
+            st.returnType = st.returnTypeAST.toType(typeDB, typeTable)
+        } catch (_: CompilerError) {
+            unResolvedMessageDeclarations.add(currentPackageName, st)
+            currentLevel--
+            return true
+        }
     }
 
 

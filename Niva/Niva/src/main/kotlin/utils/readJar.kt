@@ -31,7 +31,7 @@ package main.utils
 //                    nivaTypes.add(
 //                        Type.UserType(
 //                            name = c.name,
-//                            typeArgumentList = listOf(),
+//                            typeArgumentList = emptyList(),
 ////                            fields = fields.map {
 ////                                KeywordArg(
 ////                                    name = it.name,

@@ -77,7 +77,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
         if (it is Declaration) {
             val x = mutableMapOf<String, Type>()
             resolveDeclarations(it, x, resolveBody = false)
-            if (onEachStatement != null) {
+            if (onEachStatement != null) { // its true only in LSP mode
                 onEachStatement(it, x, mutableMapOf(), this.currentResolvingFileName)
             }
         }
@@ -193,7 +193,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body = listOf(),
+                                            body = emptyList(),
                                             returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
                                         )
 
@@ -205,7 +205,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body = listOf(),
+                                            body = emptyList(),
                                             returnType = null,
                                             args = listOf(
                                                 KeywordDeclarationArg(

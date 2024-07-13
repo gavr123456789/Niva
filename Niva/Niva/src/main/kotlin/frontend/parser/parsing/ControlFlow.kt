@@ -15,7 +15,7 @@ fun Parser.ifBranches(): List<IfBranch> {
         val otherIfExpressions = if (match(TokenType.Comma)) {
             val q = commaSeparatedExpressions()
             q
-        } else listOf()
+        } else emptyList()
 
         matchAssert(TokenType.Then, "\"=>\" expected, but found ${getCurrentToken().lexeme}")
 //        skipOneEndOfLineOrFile()
@@ -32,7 +32,7 @@ fun Parser.ifBranches(): List<IfBranch> {
             } else {
                 IfBranch.IfBranchWithBody(
                     ifExpression = ifExpression,
-                    body = CodeBlock(listOf(), body, token = ifExpression.token),
+                    body = CodeBlock(emptyList(), body, token = ifExpression.token),
                     otherIfExpressions = otherIfExpressions
                 )
             }

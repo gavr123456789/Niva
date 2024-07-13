@@ -29,8 +29,9 @@ class StaticBuilder(
     type: Type?,
     token: Token,
     val receiverOfBuilder: Receiver?,
-    val expressions: MutableSet<Expression> = mutableSetOf()
-) : Message(receiverOfBuilder ?: IdentifierExpr(name, listOf(name), null, token), name, listOf(name), type, token)
+    val expressions: MutableSet<Expression> = mutableSetOf(),
+    declaration: StaticBuilderDeclaration?
+) : Message(receiverOfBuilder ?: IdentifierExpr(name, listOf(name), null, token), name, listOf(name), type, token, declaration)
 
 // the body should be already resolved
 fun StaticBuilder.collectExpressionsForDefaultAction() {
@@ -47,7 +48,7 @@ fun StaticBuilder.collectExpressionsForDefaultAction() {
                 val type = it.type!!
                 when (it) {
                     is Primary, is CollectionAst, is MapCollection, is ExpressionInBrackets -> {
-                        if (compare2Types(type, typeOfDefaultAction)) {
+                        if (compare2Types(type, typeOfDefaultAction, it.token)) {
                             expressions.add(it)
                         } else {
                             if (!GlobalVariables.isLspMode) {

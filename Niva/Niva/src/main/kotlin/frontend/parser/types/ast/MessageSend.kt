@@ -5,7 +5,8 @@ import frontend.resolver.MessageMetadata
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
-sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false, var isCascade: Boolean = false) : Expression(type, token)
+sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false, var isCascade: Boolean = false) :
+    Expression(type, token)
 
 
 // Pkg.Person.[x, y]
@@ -24,6 +25,7 @@ sealed class MethodReference(
         token: Token,
         type: Type? = null,
     ) : MethodReference(forType, name, token, type)
+
     class Binary(
         forType: TypeAST,
         name: String, // +
@@ -98,6 +100,7 @@ sealed class Message(
 
     type: Type?,
     token: Token,
+    val declaration: MessageDeclaration?
 //    var isPiped: Boolean = false
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
 
@@ -109,9 +112,11 @@ class BinaryMsg(
     token: Token,
     val argument: Receiver,
     val unaryMsgsForArg: List<UnaryMsg>,
+    declaration: MessageDeclaration?
 
-//    val unaryMsgs: List<UnaryFirstMsg> = listOf(),
-) : Message(receiver, selectorName, listOf(), type, token) {
+
+//    val unaryMsgs: List<UnaryFirstMsg> = emptyList(),
+) : Message(receiver, selectorName, emptyList(), type, token, declaration) {
     override fun toString(): String {
         val y = if (unaryMsgsForReceiver.isNotEmpty()) unaryMsgsForReceiver.joinToString(" ") + " " else ""
         val x = if (unaryMsgsForArg.isNotEmpty()) unaryMsgsForArg.joinToString(" ") + " " else ""
@@ -137,7 +142,8 @@ class KeywordMsg(
     val args: List<KeywordArgAst>,
     path: List<String>,
     var kind: KeywordLikeType = KeywordLikeType.Keyword,
-) : Message(receiver, selectorName, path, type, token) {
+    declaration: MessageDeclaration?
+) : Message(receiver, selectorName, path, type, token, declaration) {
     override fun toString(): String {
         return args.joinToString(" ") { it.name + ": " + it.keywordArg }
     }
@@ -153,8 +159,9 @@ class UnaryMsg(
     identifier: List<String>,
     type: Type?,
     token: Token,
-    var kind: UnaryMsgKind = UnaryMsgKind.Unary
-) : Message(receiver, selectorName, identifier, type, token) {
+    var kind: UnaryMsgKind = UnaryMsgKind.Unary,
+    declaration: MessageDeclaration?
+) : Message(receiver, selectorName, identifier, type, token, declaration) {
     override fun toString(): String {
         return selectorName
     }

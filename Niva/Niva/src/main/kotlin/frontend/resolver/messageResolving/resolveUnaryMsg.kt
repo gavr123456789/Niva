@@ -18,7 +18,7 @@ import main.frontend.resolver.findStaticMessageType
 fun Resolver.resolveUnaryMsg(
     statement: UnaryMsg,
     previousAndCurrentScope: MutableMap<String, Type>,
-) {
+): Type {
     // if a type already has a field with the same name, then this is getter, not unary send
     val receiver = statement.receiver
 
@@ -35,26 +35,13 @@ fun Resolver.resolveUnaryMsg(
         if (receiver.type is Type.EnumRootType) false
         else receiver is IdentifierExpr && typeTable[receiver.name] != null
 
-
     // if this is message for type
     val isStaticCall = checkForStatic(receiver)
-
-//            val testDB = if (receiver is IdentifierExpr)
-//                typeDB.getTypeOfIdentifierReceiver(
-//                    receiver.name,
-//                    receiver,
-//                    getCurrentImports(receiver.token),
-//                    currentPackageName,
-//                    currentScope,
-//                    previousScope,
-//                    names = receiver.names
-//                ) else null
-
     val receiverType = receiver.type!!
-
-    val letterToTypeFromReceiver = if (receiverType is Type.UserLike)
-        getTableOfLettersFrom_TypeArgumentListOfType(receiverType)
-    else mutableMapOf()
+    val letterToTypeFromReceiver: MutableMap<String, Type> =
+        if (receiverType is Type.UserLike)
+            getTableOfLettersFrom_TypeArgumentListOfType(receiverType)
+        else mutableMapOf()
 
     if (receiverType is Type.Lambda) {
         if (statement.selectorName != "do") {
@@ -63,14 +50,14 @@ fun Resolver.resolveUnaryMsg(
                 val type = typeDB.lambdaTypes[receiverType.alias] ?: receiver.token.compileError("Can't find type alias for lambda ${receiverType.alias}::$receiverType")
                 statement.type = type
                 statement.kind = UnaryMsgKind.Unary
-                return
+                return type
             }
             // try to find same signature in the lambdaTypes
-            val w = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType) }
+            val w = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType, statement.token) }
             if (w != null) {
                 statement.type = w
                 statement.kind = UnaryMsgKind.Unary
-                return
+                return w
             }
 
             if (receiverType.args.isNotEmpty())
@@ -84,7 +71,7 @@ fun Resolver.resolveUnaryMsg(
 
         statement.type = receiverType.returnType
         statement.kind = UnaryMsgKind.ForCodeBlock
-        return
+        return receiverType.returnType
     }
 
 
@@ -98,16 +85,18 @@ fun Resolver.resolveUnaryMsg(
     val (isGetter, field) = checkForGetter()
     if (isGetter) {
         statement.kind = UnaryMsgKind.Getter
-        statement.type = field!!.type
+        val result = field!!.type
+        statement.type = result
+        return result
     } else {
         // usual message or static message
 
         // check for recursion
         val resolvingMsgDecl = this.resolvingMessageDeclaration
         val msgForType = resolvingMsgDecl?.forType
-        val statementType = statement.receiver.type
-        val sameTypes = if (msgForType != null && statementType !=null) {
-            compare2Types(msgForType, statementType, unpackNull = true)
+        val unaryReceiverType = statement.receiver.type
+        val sameTypes = if (msgForType != null && unaryReceiverType != null) {
+            compare2Types(msgForType, unaryReceiverType, statement.token, unpackNull = true)
         } else false
 
 
@@ -149,7 +138,9 @@ fun Resolver.resolveUnaryMsg(
         val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
 //         = typeForStatement
 
-        statement.type = addErrorEffect(msgFromDb, typeForStatement, statement)
+        val result = addErrorEffect(msgFromDb, typeForStatement, statement)
+        statement.type = result
+        return result
     }
 
 

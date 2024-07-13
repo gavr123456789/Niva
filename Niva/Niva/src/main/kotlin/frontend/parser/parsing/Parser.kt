@@ -356,14 +356,14 @@ fun Parser.expression(
                     IfBranch.IfBranchSingleExpr(
                         ifExpression = unwrapped,
                         thenDoExpression = singleExpr,
-                        listOf()
+                        emptyList()
                     )
                 } else {
                     // this single expression is statement
                     val body = if (singleExpr != null) {
                         // codeBlock With single expr
                         CodeBlock(
-                            inputList = listOf(),
+                            inputList = emptyList(),
                             statements = listOf(singleExpr),
                             type = null,
                             token = singleExpr.token
@@ -374,7 +374,7 @@ fun Parser.expression(
                     IfBranch.IfBranchWithBody(
                         ifExpression = unwrapped,
                         body = body,
-                        listOf()
+                        emptyList()
                     )
                 }
             ),

@@ -108,7 +108,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     append(".", name)
 
     append("(")
-    pragmas.addInvisibleArgsToMethodDeclaration(listOf(), this)
+    pragmas.addInvisibleArgsToMethodDeclaration(emptyList(), this)
     append(")")
 
     returnTypeAndBodyPart(this@generateUnaryDeclaration, this)

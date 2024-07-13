@@ -29,48 +29,15 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-Project use: "org.gnome.adw"
-
-app = Application name: "my.app"
-
-app onActivate: [
-
-  // window = [
-  //   x = org.gnome.adw.ApplicationWindow app: app
-  //   x title: "GTK from Niva"
-  //   x x: 250 y: 300
-  //   x
-  // ] do
-
-  window = (org.gnome.adw.ApplicationWindow app: app);
-    title: "GTK from Niva";
-    x: 250 y: 300
- 
-
-  ui = [
-    mut n = 1
-    header = org.gnome.adw.HeaderBar new
-    btn = (Button new); 
-      label: "Hello Adw";
-      onClicked: [
-        "clicked  times!" echo
-        n <- n inc
-      ]
-
-    toolbar = (ToolbarView new); 
-      addTopBar: header;
-      content: btn
-
-    toolbar
-  ] do
 
 
-  window content: ui;
-    present
-]
+type Person age: Int name: String
+qwf = 5
 
 
-app run: args
+qw
+
+
 
 """
 const val fakeFileSourceBAAD = """
@@ -179,8 +146,8 @@ fun html(init: HTML.() -> Unit): HTML {
 ///
 
 fun main(args: Array<String>) {
-    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/niva.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
 //    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Programs/todosGleam/main.niva")
     if (help(args)) return
 
@@ -190,8 +157,8 @@ fun main(args: Array<String>) {
 //        }
 //    }
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwHelloWorld/main.niva"
-//
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/viewModel.niva"
+
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
@@ -202,7 +169,7 @@ fun main(args: Array<String>) {
 //            fakeFileSourceGOOD
 //        )
 //
-//        ls.onCompletion(qqq, 2, 3)
+////        ls.onCompletion(qqq, 6, 1)
 //        println()
 //    }
 //    catch (e: OnCompletionException) {

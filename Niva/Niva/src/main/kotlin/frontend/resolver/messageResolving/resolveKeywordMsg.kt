@@ -136,8 +136,8 @@ fun Resolver.resolveKeywordMsg(
 
 
     val argsTypesFromDb = when (kwTypeFromDB) {
-        is UnaryMsgMetaData -> listOf()
-        is BinaryMsgMetaData -> listOf()
+        is UnaryMsgMetaData -> emptyList()
+        is BinaryMsgMetaData -> emptyList()
         is KeywordMsgMetaData -> {
             // only for bind Fields feature
             if (kwTypeFromDB.isSetter) {
@@ -157,7 +157,7 @@ fun Resolver.resolveKeywordMsg(
             kwTypeFromDB.argTypes.map { it.type }
         }
 
-        null -> listOf()
+        null -> emptyList()
     }
 
 
@@ -197,7 +197,7 @@ fun Resolver.resolveKeywordMsg(
         val receiverArgs = receiverType.args
 
         // check for alias
-        val aliasToLambda = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType) }
+        val aliasToLambda = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType, statement.token) }
 
 
         if (receiverArgs.count() != statement.args.count() && aliasToLambda == null) {
@@ -284,7 +284,7 @@ fun Resolver.resolveKeywordMsg(
                     val beforeName = it.beforeGenericResolvedName
                     if (beforeName != null) {
                         val typeFromReceiver = receiverGenericsTable[beforeName]
-                        if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it)) {
+                        if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it, statement.token)) {
                             statement.token.compileError("Generic param of receiver: `$YEL${typeFromReceiver.name}${RESET}` is different from\n\targ: `$WHITE${kwArg.name}${RESET}: $YEL${kwArg.keywordArg.str}$GREEN::$YEL${it.name}${RESET}` but both must be $YEL$beforeName")
                         }
                     }
@@ -297,7 +297,7 @@ fun Resolver.resolveKeywordMsg(
                 val currentArgType = kwArg.keywordArg.type
                 if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDb is Type.UnknownGenericType) {
                     val realTypeForKwFromDb = letterToTypeFromReceiver[kwArgFromDb.name]!!
-                    val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType)
+                    val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType, statement.token)
                     if (!isResolvedGenericParamEqualRealParam) {
                         statement.token.compileError("Generic type error, type $YEL${kwArgFromDb.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
                     }
@@ -428,7 +428,7 @@ fun Resolver.resolveKeywordMsg(
                 val typeOfArgFromDb = argsTypesFromDb[i]
                 val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
 
-                val sameTypes = compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration)
+                val sameTypes = compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, argAndItsMessages.keywordArg.token)
                 if (!sameTypes) {
                     argAndItsMessages.keywordArg.token.compileError(
                         "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
@@ -547,7 +547,7 @@ fun Resolver.resolveKwArgsGenerics(
                     receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
                 if (argTypeWithSameLetter != null) {
                     // receiver has the same generic param resolved
-                    if (!compare2Types(argType, argTypeWithSameLetter)) {
+                    if (!compare2Types(argType, argTypeWithSameLetter, it.keywordArg.token)) {
                         it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                     }
                 }

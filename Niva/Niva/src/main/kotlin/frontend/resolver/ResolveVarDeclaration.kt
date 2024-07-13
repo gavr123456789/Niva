@@ -1,13 +1,12 @@
 package main.frontend.typer
 
 import frontend.resolver.*
-import frontend.resolver.Type.RecursiveType.copy
+import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.*
 import main.utils.RED
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
-import main.frontend.meta.compileError
-import main.frontend.parser.types.ast.*
 import main.utils.isGeneric
 
 fun Resolver.resolveVarDeclaration(
@@ -74,7 +73,7 @@ fun Resolver.resolveVarDeclaration(
     if (definedASTType != null) {
         val statementDeclared = definedASTType.toType(typeDB, typeTable)
         val rightPartType = typeOfValueInVarDecl
-        if (!compare2Types(statementDeclared, rightPartType, unpackNull = true)) {
+        if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = true)) {
             val text = "$definedASTType != $rightPartType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }

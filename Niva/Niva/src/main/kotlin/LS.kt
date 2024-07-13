@@ -5,6 +5,7 @@ package main
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import main.frontend.meta.Token
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.EnumBranch
@@ -36,11 +37,12 @@ import java.util.SortedMap
 typealias Line = Int
 typealias Scope = Map<String, Type>
 
-class OnCompletionException(val scope: Scope, errorMessage22: String? = null) : Exception()
+class OnCompletionException(val scope: Scope, val errorMessage: String? = null, val token: Token? = null) : Exception()
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
-    class NotFoundLine(val x: Pair<Statement?, Scope>) : LspResult
+//    class NotFoundLine(val scope: Scope) : LspResult
+    class ScopeSuggestion(val scope: Scope) : LspResult
     class Found(val x: Pair<Statement, Scope>) : LspResult
 }
 
@@ -52,9 +54,11 @@ class LS(val info: ((String) -> Unit)? = null) {
     val megaStore: MegaStore = MegaStore(info)
     var completionFromScope: Scope = mapOf()
 
+    // since one file can contain many pkgs, we need file to declaration map
     val fileToDecl: MutableMap<String, MutableSet<Declaration>> = mutableMapOf()
 
     class MegaStore(val info: ((String) -> Unit)? = null) {
+        // file absolute path to line to a pair of statement + scope of it's line
         val data: MutableMap<String, SortedMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
 
 
@@ -63,7 +67,6 @@ class LS(val info: ((String) -> Unit)? = null) {
             val sLine = s.token.line
 
             val createSet = {
-//                val realScope = if (s is MessageDeclaration && s.isSingleExpression)
                 mutableSetOf(Pair(s, scope))
             }
 
@@ -145,14 +148,14 @@ class LS(val info: ((String) -> Unit)? = null) {
                     if (q != null)
                         LspResult.Found(q)
                     else
-                        LspResult.NotFoundLine(Pair(null, scope))
+                        LspResult.ScopeSuggestion(scope)
 
 
 
                 } else {
                     // no such line so show scope
                     // run resolve with scope feature
-                    LspResult.NotFoundLine(Pair(null, scope))
+                    LspResult.ScopeSuggestion(scope)
                 }
             } else {
                 return LspResult.NotFoundFile()
@@ -349,27 +352,17 @@ fun LS.removeDecl2(file: File) {
 fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
 
-    // let's assume user cant change packages names for now
+    // let's assume user cant change packages names for now, so pkg name always == filename
     // remove everything that was declarated in this changed file
 
     removeDecl2(file)
     megaStore.data.remove(file.absolutePath)
     resolver.reset()
-    try {
-        resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
-//        info?.invoke("3 resolveAllWithChangedFile resolve")
-    } catch (s: OnCompletionException) {
-        info?.invoke("1111 OnCompletionException ${s.scope}")
 
-        this.completionFromScope = s.scope
+    // throws on
+    resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
 
-//        info?.invoke("3 resolveAllWithChangedFile OnCompletionException, megaStore.data = ${megaStore.data.keys}")
-    }
-//    catch (e: Throwable) {
-//        if (info != null) {
-//            info?.invoke("3 resolveAllWithChangedFile Throwable!!!, e = ${e.message}")
-//        }
-//    }
+
 }
 
 fun LS.resolveAll(pathToChangedFile: String): Resolver {
@@ -460,13 +453,14 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     }
     catch (s: OnCompletionException) {
 //        this.completionFromScope = s.scope
-//        val emptyResolver =
-//            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
-//        this.resolver = emptyResolver
+        val emptyResolver =
+            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
+        this.resolver = emptyResolver
+        this.completionFromScope = s.scope
+
         info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope")
 //        return emptyResolver
-        this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
-        this.completionFromScope = s.scope
+//        this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
         return resolver
     }
 
