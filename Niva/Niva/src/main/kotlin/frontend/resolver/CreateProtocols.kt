@@ -150,17 +150,17 @@ fun createFloatProtocols(
 
 
 val createUnary = { name: String, returnType: Type ->
-    name to UnaryMsgMetaData(name, returnType, "core")
+    name to UnaryMsgMetaData(name, returnType, "core", declaration = null)
 }
 val createBinary = { name: String, argType: Type, returnType: Type ->
-    name to BinaryMsgMetaData(name, argType, returnType, "core")
+    name to BinaryMsgMetaData(name, argType, returnType, "core", declaration = null)
 }
 val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type ->
-    name to KeywordMsgMetaData(name, args, returnType, "core")
+    name to KeywordMsgMetaData(name, args, returnType, "core", declaration = null)
 }
 
 fun createKeyword(arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
-    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core")
+    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null)
 }
 
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {

@@ -109,7 +109,7 @@ fun Resolver.resolveKeywordMsg(
 
 
     // find this keyword in db
-    val kwTypeFromDB = when (kind) {
+    val kwFromDB = when (kind) {
         KeywordLikeType.Keyword -> findAnyMsgType(
             receiverType, statement.selectorName, statement.token, MessageDeclarationType.Keyword
         ) as KeywordMsgMetaData
@@ -134,35 +134,36 @@ fun Resolver.resolveKeywordMsg(
         else -> null
     }
 
+    statement.declaration = kwFromDB?.declaration
 
-    val argsTypesFromDb = when (kwTypeFromDB) {
+    val argsTypesFromDb = when (kwFromDB) {
         is UnaryMsgMetaData -> emptyList()
         is BinaryMsgMetaData -> emptyList()
         is KeywordMsgMetaData -> {
             // only for bind Fields feature
-            if (kwTypeFromDB.isSetter) {
+            if (kwFromDB.isSetter) {
                 kind = KeywordLikeType.Setter
                 statement.kind = kind
             }
-            if (statement.args.count() != kwTypeFromDB.argTypes.count()) {
-                statement.token.compileError("Wrong number of arguments, $WHITE$kwTypeFromDB$RESET is needed, but you send $WHITE$statement")
+            if (statement.args.count() != kwFromDB.argTypes.count()) {
+                statement.token.compileError("Wrong number of arguments, $WHITE$kwFromDB$RESET is needed, but you send $WHITE$statement")
             }
-            kwTypeFromDB.argTypes.map { it.type }
+            kwFromDB.argTypes.map { it.type }
         }
 
         is BuilderMetaData -> {
-            if (statement.args.count() != kwTypeFromDB.argTypes.count()) {
-                statement.token.compileError("Wrong number of arguments, $WHITE$kwTypeFromDB$RESET is needed, but you send $WHITE$statement")
+            if (statement.args.count() != kwFromDB.argTypes.count()) {
+                statement.token.compileError("Wrong number of arguments, $WHITE$kwFromDB$RESET is needed, but you send $WHITE$statement")
             }
-            kwTypeFromDB.argTypes.map { it.type }
+            kwFromDB.argTypes.map { it.type }
         }
 
         null -> emptyList()
     }
 
 
-    if (kwTypeFromDB != null) {
-        statement.pragmas = kwTypeFromDB.pragmas
+    if (kwFromDB != null) {
+        statement.pragmas = kwFromDB.pragmas
     }
 
 
@@ -371,7 +372,7 @@ fun Resolver.resolveKeywordMsg(
         KeywordLikeType.Setter -> {
             if (statement.type == null) {
 
-                val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
+                val argFromDb = (kwFromDB as KeywordMsgMetaData).argTypes.first().type
                 val arg = statement.args.first()
 
                 if (!compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)) {
@@ -383,7 +384,7 @@ fun Resolver.resolveKeywordMsg(
 
         KeywordLikeType.SetterImmutableCopy -> {
             if (statement.type == null) {
-                val argFromDb = (kwTypeFromDB as KeywordMsgMetaData).argTypes.first().type
+                val argFromDb = (kwFromDB as KeywordMsgMetaData).argTypes.first().type
                 val arg = statement.args.first()
 
                 val equalSetterTypes = compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)

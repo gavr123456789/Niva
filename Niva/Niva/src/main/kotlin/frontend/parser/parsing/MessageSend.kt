@@ -393,15 +393,17 @@ fun Parser.keyword(
     )
 }
 
-fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Pair<MutableList<KeywordArgAst>, IdentifierExpr?> {
+fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Triple<MutableList<KeywordArgAst>, IdentifierExpr?, MutableList<IdentifierExpr>> {
 
     val keyWordArguments = mutableListOf<KeywordArgAst>()
     // next 2 we need for save path like x `Sas.from`: 1 to: 2
     var firstCycle = true
     var firstKeywordIdentifierExpr: IdentifierExpr? = null
+    val keysBeforeColons = mutableListOf<IdentifierExpr>()
     do {
         val keywordPart =
             identifierMayBeTyped() //matchAssert(TokenType.Identifier, "Identifier expected inside keyword message send")
+        keysBeforeColons.add(keywordPart)
 
         matchAssert(TokenType.Colon, "Colon expected before argument, inside keyword message send") // skip colon
         // x from: ^3 inc to: 2 inc
@@ -439,16 +441,17 @@ fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Pair<MutableList<Keywo
         skipNewLinesAndComments()
     } while (check(TokenType.Identifier) && check(TokenType.Colon, 1))
 
-    return Pair(keyWordArguments, firstKeywordIdentifierExpr)
-
+    return Triple(keyWordArguments, firstKeywordIdentifierExpr, keysBeforeColons)
 }
 
 fun Parser.keywordMessageParsing(
     receiver: Receiver,
 ): KeywordMsg {
     val stringBuilder = StringBuilder()
-    val (keyWordArguments, firstKeywordIdentifierExpr) = keywordSendArgs(stringBuilder)
+    val (keyWordArguments, firstKeywordIdentifierExpr, keysBeforeColons) = keywordSendArgs(stringBuilder)
 
+    val tok = keyWordArguments.first().keywordArg.token
+    tok.relPos.start
     val keywordMsg = KeywordMsg(
         receiver,
         stringBuilder.toString(),

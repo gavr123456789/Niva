@@ -126,6 +126,8 @@ fun Resolver.resolveUnaryMsg(
             statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
             messageReturnType
         }
+        statement.declaration = msgFromDb.declaration
+
         val returnTypeFromDb = msgFromDb.returnType
         // add pragmas
         statement.pragmas = msgFromDb.pragmas

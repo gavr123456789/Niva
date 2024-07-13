@@ -555,7 +555,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 name = statement.msgDeclaration.name,
                 returnType = returnType,
                 pragmas = statement.pragmas,
-                pkg = pkg.packageName
+                pkg = pkg.packageName,
+                declaration = statement
             )
 
             protocol.staticMsgs[statement.name] = messageData
@@ -585,7 +586,8 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
                 argTypes = keywordArgs,
                 returnType = returnType,
                 pragmas = statement.pragmas,
-                pkg = pkg.packageName
+                pkg = pkg.packageName,
+                declaration = statement
             )
             protocol.staticMsgs[statement.name] = messageData
             messageData

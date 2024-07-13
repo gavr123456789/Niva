@@ -100,8 +100,7 @@ sealed class Message(
 
     type: Type?,
     token: Token,
-    val declaration: MessageDeclaration?
-//    var isPiped: Boolean = false
+    var declaration: MessageDeclaration?
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
 
 class BinaryMsg(
