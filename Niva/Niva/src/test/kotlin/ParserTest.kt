@@ -293,13 +293,22 @@ class ParserTest {
         assert(ast.count() == 3)
         val unary = (ast[0] as MessageSend).messages[0]
         val binary = (ast[1] as MessageSend).messages[0]
-        val keyword = (ast[2] as MessageSend).messages[0]
+        val keyword = (ast[2] as MessageSend).messages[0] as KeywordMsg
         assert(unary.receiver.str == "3")
         assert(binary.receiver.str == "1")
         assert(keyword.receiver.str == "x")
         assert(unary is UnaryMsg)
         assert(binary is BinaryMsg)
         assert(keyword is KeywordMsg)
+
+        val from = keyword.args.first().keywordArg
+        val to = keyword.args.last().keywordArg
+        val fullKeywordTok = keyword.token
+        assert(from.token.relPos.start == 8 && from.token.relPos.end == 9)
+        assert(to.token.relPos.start == 14 && to.token.relPos.end == 15)
+        assert(fullKeywordTok.relPos.start == 2 && fullKeywordTok.relPos.end == 12)
+
+
     }
 
 
@@ -330,6 +339,9 @@ class ParserTest {
 
         val keyword = (ast[0] as MessageSend).messages[0] as KeywordMsg
         assert(keyword.receiver.str == "x")
+
+        assert(keyword.token.lineEnd == 2)
+        assert(keyword.token.relPos.end == 4)
     }
 
     @Test

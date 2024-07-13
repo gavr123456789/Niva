@@ -80,9 +80,10 @@ class Token(
     val relPos: Position,
     val file: File,
     val spaces: Int = 0,
-//    val lineEnd
+    var lineEnd: Int = -1 // it is set only for many-line statements like type decl or kw msg
 ) {
 
+    fun isMultiline() = lineEnd != -1 && lineEnd != line
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind
