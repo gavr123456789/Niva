@@ -433,9 +433,9 @@ fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Triple<MutableList<Key
         // if the keyword was split to 2 lines
         if (check(TokenType.EndOfLine) &&
             check(TokenType.Identifier, 1) &&
-            check(TokenType.Colon, 2)
+            check(TokenType.Colon, 2) // next line starting from "key:"
         )
-            step()
+            step() // skip EndOfLine
 
         firstCycle = false
         skipNewLinesAndComments()
@@ -450,13 +450,20 @@ fun Parser.keywordMessageParsing(
     val stringBuilder = StringBuilder()
     val (keyWordArguments, firstKeywordIdentifierExpr, keysBeforeColons) = keywordSendArgs(stringBuilder)
 
-    val tok = keyWordArguments.first().keywordArg.token
-    tok.relPos.start
+    // first "key:"
+    val msgTok = keysBeforeColons.first().token
+
+    msgTok.apply {
+        val lastKv = keysBeforeColons.last().token
+        relPos.end = lastKv.relPos.end
+        lineEnd = lastKv.line
+    }
+
     val keywordMsg = KeywordMsg(
         receiver,
         stringBuilder.toString(),
         null,
-        keyWordArguments.first().keywordArg.token,
+        msgTok,
         keyWordArguments,
         firstKeywordIdentifierExpr?.names!!,
         declaration = null

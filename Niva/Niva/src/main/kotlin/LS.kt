@@ -76,19 +76,30 @@ class LS(val info: ((String) -> Unit)? = null) {
 
 
             val file = data[sFile]
-            // has such file
-            if (file != null) {
-                val line = file[sLine]
-                // has such line
-                if (line != null) {
-                    line.add(Pair(s, scope))
+            val addToSet = { s: Statement, sLine: Int ->
+                // has such file
+                if (file != null) {
+                    val line = file[sLine]
+                    // has such line
+                    if (line != null) {
+                        line.add(Pair(s, scope))
+                    } else {
+                        val value = createSet()
+                        file[sLine] = value
+                    }
                 } else {
-                    val value = createSet()
-                    file[sLine] = value
+                    val value = createLineToStatement()
+                    data[sFile] = value
                 }
-            } else {
-                val value = createLineToStatement()
-                data[sFile] = value
+            }
+
+            addToSet(s, sLine)
+
+            if (s.token.isMultiline()) {
+                val sas = (s.token.line..s.token.lineEnd).drop(1)
+                sas.forEach {
+                    addToSet(s, it)
+                }
             }
 
         }

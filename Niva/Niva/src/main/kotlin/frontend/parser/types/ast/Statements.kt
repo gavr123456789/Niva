@@ -4,7 +4,7 @@ import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
 import main.frontend.meta.Token
 
-// https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
+// absolutely not helping https://github.com/antlr/grammars-v4/blob/master/smalltalk/Smalltalk.g4
 sealed class ASTNode2(
     val token: Token
 ) {
