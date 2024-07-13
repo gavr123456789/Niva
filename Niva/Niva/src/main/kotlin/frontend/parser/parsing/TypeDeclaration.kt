@@ -50,7 +50,7 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
 fun Parser.enumDeclaration(pragmas: MutableList<Pragma>): EnumDeclarationRoot {
     val enumTok = matchAssert(TokenType.Enum, "")
     val enumName = matchAssertAnyIdent("name of the enum expected")
-    val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
+    val localFields = if (check(TokenType.Assign)) emptyList() else typeFields()
     val isThereBrunches = match(TokenType.Assign)
 
 
@@ -303,7 +303,7 @@ fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDecl
 fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed: Token? = null): UnionRootDeclaration {
     val unionTok = firstTokAlreadyParsed ?: step()
     val unionName = dotSeparatedIdentifiers() ?: unionTok.compileError("name of the union expected")
-    val localFields = if (check(TokenType.Assign)) listOf() else typeFields()
+    val localFields = if (check(TokenType.Assign)) emptyList() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
 
     if (!isThereBrunches && checkAfterSkip(TokenType.If)) {

@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import main.OnCompletionException
 import main.Scope
 import main.frontend.meta.CompilerError
+import main.frontend.meta.Token
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.collections.forEach
@@ -18,7 +19,7 @@ import kotlin.collections.joinToString
 import kotlin.text.lowercase
 import kotlin.text.startsWith
 
-fun endOfSearch(scope: Scope, errorMessage: String? = null): Nothing = throw (OnCompletionException(scope, errorMessage))
+fun endOfSearch(scope: Scope, errorMessage: String? = null, token: Token? = null): Nothing = throw (OnCompletionException(scope, errorMessage, token))
 
 fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     GlobalVariables.enableDemonMode()

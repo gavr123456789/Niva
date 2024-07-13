@@ -2,9 +2,8 @@ package main.frontend.parser.types.ast
 
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
-import frontend.resolver.Type.RecursiveType.isPrivate
-import frontend.resolver.Type.RecursiveType.name
 import main.frontend.meta.Token
+import java.lang.reflect.Modifier.isPrivate
 
 
 sealed class TypeAST(
@@ -152,7 +151,7 @@ class TypeAliasDeclaration(
     token: Token,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var realType: Type? = null,
-) : SomeTypeDeclaration(typeName, listOf(), token, mutableSetOf(), realTypeAST.isPrivate, pragmas) {
+) : SomeTypeDeclaration(typeName, emptyList(), token, mutableSetOf(), realTypeAST.isPrivate, pragmas) {
     override fun toString(): String {
         return "TypeAliasDeclaration($typeName)"
     }
@@ -166,9 +165,10 @@ class EnumBranch(
     token: Token,
     val root: EnumDeclarationRoot,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : SomeTypeDeclaration(name, listOf(), token, mutableSetOf(), isPrivate, pragmas) {
+    isPrivate: Boolean = false,
+    ) : SomeTypeDeclaration(name, emptyList(), token, mutableSetOf(), isPrivate, pragmas) {
     override fun toString(): String {
-        return name + " " + fields.joinToString(", ") { it.name + ": " + it.toString() }
+        return this.typeName + " " + fields.joinToString(", ") { it.name + ": " + it.toString() }
     }
 }
 
@@ -190,7 +190,7 @@ class UnionBranchDeclaration(
     var isRoot: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var branches: List<Type.Union>? = null,
-    val names: List<String> = listOf()
+    val names: List<String> = emptyList()
 ) : SomeTypeDeclaration(typeName, fields, token, genericFields, pragmas = pragmas) {
     override fun toString(): String {
         return typeName + " " + fields.joinToString(", ") { it.name + ": " + it.typeAST }

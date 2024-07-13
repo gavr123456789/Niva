@@ -620,21 +620,27 @@ fun createListProtocols(
         fields = mutListType.fields,
         typeArgumentList = listOf(Type.UnknownGenericType("T")),
         pkg = "core",
-        protocols = mutListType.protocols
+        protocols = mutListType.protocols,
+        typeDeclaration = null
+
     )
     val listOfLists = Type.UserType(
         name = "List",
         fields = mutListType.fields,
         typeArgumentList = listOf(list),
         pkg = "core",
-        protocols = mutListType.protocols
+        protocols = mutListType.protocols,
+        typeDeclaration = null
+
     )
     val pairOf2ListsType = Type.UserType(
         name = "Pair",
         fields = mutListType.fields,
         typeArgumentList = listOf(sequenceType, sequenceType), // List<T>, List<G>
         pkg = "core",
-        protocols = pairType.protocols
+        protocols = pairType.protocols,
+        typeDeclaration = null
+
     )
 
     val collectionProtocol = Protocol(

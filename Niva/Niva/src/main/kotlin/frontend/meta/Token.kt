@@ -118,16 +118,13 @@ fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
 class CompilerError(text: String, val token: Token, val noColorsMsg: String) : Exception(text)
 
-fun String.removeColors() = this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
+fun String.removeColors() =
+    this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
 
 fun Token.compileError(text: String): Nothing {
     val fileLine = "(" + file.name + ":" + line + ")"
-
-//    error("\n$red\t$text.$fileLine$reset")
     val errorText = "${RED}Error:$RESET\n$text$RESET.$fileLine"
-//    println("$RED Error:$RESET $text$RESET.$fileLine")
     throw CompilerError(errorText, this, text.removeColors())
-//    exitProcess(0)
 }
 
 fun Parser.parsingError(text: String): Nothing {
@@ -142,25 +139,23 @@ fun Parser.parsingError(text: String): Nothing {
 
     val errorText2 = "${RED}Error:$RESET Syntax \n\t$text$RESET.$fileLine"
     var tok2 = firstOnLineTok
-//    counter = 0
-    val errorText =
-        buildString {
-            appendLine( errorText2)
-            if (!GlobalVariables.isLspMode)
-             append("\t${firstOnLineTok.line}| ")
-            counter++
-            // getting the full line of tokens, with coloring of the wrong one!
-            while (tok2.line != firstOnLineTok.line + 1 && tok2.kind != TokenType.EndOfFile) {
-                if (tok2 == firstOnLineTok) {
-                    append("$RED${tok2.lexeme}$RESET")
-                } else
-                    append(tok2.lexeme)
+    val errorText = buildString {
+        appendLine(errorText2)
+        if (!GlobalVariables.isLspMode)
+            append("\t${firstOnLineTok.line}| ")
+        counter++
+        // getting the full line of tokens, with coloring of the wrong one!
+        while (tok2.line != firstOnLineTok.line + 1 && tok2.kind != TokenType.EndOfFile) {
+            if (tok2 == firstOnLineTok) {
+                append("$RED${tok2.lexeme}$RESET")
+            } else
+                append(tok2.lexeme)
 
-                counter++
-                tok2 = peek(counter)
-            }
-            append("\n\t")
+            counter++
+            tok2 = peek(counter)
         }
+        append("\n\t")
+    }
 
 
 

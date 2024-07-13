@@ -9,7 +9,6 @@ import main.utils.CYAN
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
-import java.lang.Exception
 import kotlin.collections.count
 import kotlin.collections.drop
 import kotlin.collections.forEachIndexed
@@ -24,7 +23,7 @@ val typeIsNull = { type: Type ->
 fun compare2Types(
     type1: Type,
     type2: Type,
-    token: Token? = null,
+    tokenForErrors: Token,
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type
     unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
@@ -49,16 +48,16 @@ fun compare2Types(
         else type2.args
 
         if (type1.extensionOfType != null && type2.extensionOfType != null) {
-            if (!compare2Types(type1.extensionOfType, type2.extensionOfType, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+            if (!compare2Types(type1.extensionOfType, type2.extensionOfType, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                 val text =
                     "extension types of codeblocs are not the same: ${type1.extensionOfType} != ${type2.extensionOfType}"
-                token?.compileError(text)
-                throw CompilerError(text, token ?: createFakeToken(), text)
+                tokenForErrors?.compileError(text)
+                throw CompilerError(text, tokenForErrors ?: createFakeToken(), text)
             }
         }
 
         if (argsOf1.count() != argsOf2.count()) {
-            token?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
+            tokenForErrors?.compileError("Codeblock `${YEL}${type1.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
             return false
         }
 
@@ -73,9 +72,9 @@ fun compare2Types(
 
         argsOf1.forEachIndexed { i, it ->
             val it2 = argsOf2[i]
-            val isEqual = compare2Types(it.type, it2.type, compareParentsOfBothTypes = compareParentsOfBothTypes)
+            val isEqual = compare2Types(it.type, it2.type, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes)
             if (!isEqual) {
-                token?.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
+                tokenForErrors?.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
             }
         }
@@ -87,12 +86,12 @@ fun compare2Types(
             (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(
                 return1,
                 return2,
-                token,
+                tokenForErrors,
                 unpackNull,
                 compareParentsOfBothTypes = compareParentsOfBothTypes
             )
         if (!isReturnTypesEqual) {
-            token?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
+            tokenForErrors?.compileError("return types are not equal: ${YEL}$type1 ${RESET}!= ${YEL}$type2")
         }
 
         return true
@@ -147,7 +146,7 @@ fun compare2Types(
         // if types from different packages, and it's not core
         // bindings can be still compatible, because there is inheritance in Java
         if (!bothTypesAreBindings && isDifferentPkgs) {
-            token?.compileError("${YEL}$type1${RESET} is from ${WHITE}$pkg1${RESET} pkg, and ${YEL}$type2${RESET} from ${WHITE}$pkg2")
+//            tokenForErrors.compileError("${YEL}$type1${RESET} is from ${WHITE}$pkg1${RESET} pkg, and ${YEL}$type2${RESET} from ${WHITE}$pkg2")
             return false
         }
 
@@ -156,7 +155,7 @@ fun compare2Types(
             val args1 = type1.typeArgumentList
             val args2 = type2.typeArgumentList
             if (args1.count() != args2.count()) {
-                token?.compileError("Types: ${YEL}$type1${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
+                tokenForErrors?.compileError("Types: ${YEL}$type1${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
                 return false
             }
 
@@ -174,10 +173,9 @@ fun compare2Types(
                     }
                 }
 
-                val sameArgs = compare2Types(arg1, arg2, token, compareParentsOfBothTypes = compareParentsOfBothTypes)
+                val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)
                 if (!sameArgs) {
-                    token?.compileError("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
-                    throw Exception("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
+                    tokenForErrors.compileError("Generic argument of type: ${YEL}${type1.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
                 } else
                     return sameArgs // List::Int and List::T are the same
             }
@@ -188,7 +186,7 @@ fun compare2Types(
         if (compareParentsOfBothTypes) {
             var parent1: Type? = type1.parent
             while (parent1 != null) {
-                if (compare2Types(type2, parent1, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+                if (compare2Types(type2, parent1, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                     return true
                 }
                 parent1 = parent1.parent
@@ -200,7 +198,7 @@ fun compare2Types(
 
         var parent2: Type? = type2.parent
         while (parent2 != null) {
-            if (compare2Types(type1, parent2, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+            if (compare2Types(type1, parent2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                 return true
             }
             parent2 = parent2.parent
@@ -216,16 +214,16 @@ fun compare2Types(
     // Ins sas -> Int? = ^42
     if (unpackNull) {
         if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
-            val win = compare2Types(type1.realType, type2, token)
+            val win = compare2Types(type1.realType, type2, tokenForErrors)
             if (win) return true
         }
         if ((type2 is Type.NullableType && type1 !is Type.NullableType)) {
-            val win = compare2Types(type1, type2.realType, token)
+            val win = compare2Types(type1, type2.realType, tokenForErrors)
             if (win) return true
         }
     } else if (unpackNullForFirst) {
         if ((type1 is Type.NullableType && type2 !is Type.NullableType)) {
-            val win = compare2Types(type1.realType, type2, token)
+            val win = compare2Types(type1.realType, type2, tokenForErrors)
             if (win) return true
         }
     }

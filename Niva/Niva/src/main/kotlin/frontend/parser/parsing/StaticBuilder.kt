@@ -24,10 +24,11 @@ fun Parser.staticBuilderFromUnary(msg: MessageSendUnary): StaticBuilder {
         name = q.selectorName,
         statements = statements,
         defaultAction = defaultAction,
-        args = listOf(),
+        args = emptyList(),
         type = null,
         receiverOfBuilder = receiver,
-        token = q.token
+        token = q.token,
+        declaration = null
     )
 
     return result
@@ -60,7 +61,9 @@ fun Parser.staticBuilderFromUnaryWithArgs(msg: MessageSendUnary): StaticBuilder 
         args = args,
         type = null,
         receiverOfBuilder = receiver,
-        token = q.token
+        token = q.token,
+        declaration = null
+
     )
 
     return result
@@ -76,10 +79,12 @@ fun Parser.staticBuilder(): StaticBuilder {
         name = q.name,
         statements = statements,
         defaultAction = defaultAction,
-        args = listOf(),
+        args = emptyList(),
         type = null,
         receiverOfBuilder = null,
-        token = q.token
+        token = q.token,
+        declaration = null
+
     )
 
     return result
@@ -105,7 +110,9 @@ fun Parser.staticBuilderWithArgs(): StaticBuilder {
         args = args,
         type = null,
         receiverOfBuilder = null,
-        token = q.token
+        token = q.token,
+        declaration = null
+
     )
 
     return result

@@ -4,7 +4,6 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Resolver
 import frontend.resolver.Type
-import frontend.resolver.Type.RecursiveType.copy
 import frontend.resolver.KeywordArg
 import frontend.resolver.compare2Types
 import frontend.resolver.fillGenericsWithLettersByOrder
@@ -193,7 +192,7 @@ fun Resolver.resolveCodeBlock(
 
 
     if (itArgType != null && args.isEmpty()) {
-        if (compare2Types(returnType, itArgType) && metaDataFound != null) {
+        if (compare2Types(returnType, itArgType, statement.token) && metaDataFound != null) {
             val e = metaDataFound.argTypes[0]
             val type = e.type
             if (type is Type.Lambda) {

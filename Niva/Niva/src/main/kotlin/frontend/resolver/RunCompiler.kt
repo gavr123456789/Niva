@@ -118,7 +118,7 @@ fun Resolver.resolve(
             val src = it.readText()
             it.nameWithoutExtension to getAst(source = src, file = it)
         }
-    else listOf()
+    else emptyList()
 
     verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
     /// resolve all declarations

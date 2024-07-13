@@ -44,7 +44,8 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
             identifier.name,
             identifier.names,
             null,
-            identifier.token
+            identifier.token,
+            declaration = null
         )
         unaryMessages.add(unaryFirstMsg)
 
@@ -78,12 +79,14 @@ fun Parser.binaryMessagesMatching(
         val unaryForArg = unaryMessagesMatching(binaryArgument)
         val binaryMsg = BinaryMsg(
             previousBinaryParsed ?: receiver,
-            if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else listOf(),
+            if (needAddMessagesForReceiverForBinary) unaryMessagesForReceiver else emptyList(),
             binarySymbol.lexeme,
             null,
             binarySymbol,
             binaryArgument,
             unaryForArg,
+            declaration = null
+
         )
         binaryMessages.add(binaryMsg)
         needAddMessagesForReceiverForBinary = false
@@ -452,7 +455,8 @@ fun Parser.keywordMessageParsing(
         null,
         keyWordArguments.first().keywordArg.token,
         keyWordArguments,
-        firstKeywordIdentifierExpr?.names!!
+        firstKeywordIdentifierExpr?.names!!,
+        declaration = null
     )
     return keywordMsg
 }

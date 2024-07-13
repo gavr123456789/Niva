@@ -23,7 +23,8 @@ fun Resolver.resolveCollection(
             typeArgumentList = typeArgumentList,
             fields = mutableListOf(),
             pkg = "core",
-            protocols = listType.protocols
+            protocols = listType.protocols,
+            typeDeclaration = null
         )
         statement2.type = collectionType
     }
@@ -127,7 +128,8 @@ fun Resolver.resolveMap(
         typeArgumentList = listOf(keyType, valueType),
         fields = mutableListOf(),
         pkg = "core",
-        protocols = mapTypeFromDb.protocols
+        protocols = mapTypeFromDb.protocols,
+        typeDeclaration = null
     )
     statement.type = mapType
 }

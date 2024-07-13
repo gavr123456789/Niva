@@ -47,7 +47,7 @@ fun TypeDB.getType(
     name: String,
     currentScope: MutableMap<String, Type>? = null,
     previousScope: MutableMap<String, Type>? = null,
-    names: List<String> = listOf()
+    names: List<String> = emptyList()
 ): TypeDBResult {
 
     // found in scope
@@ -113,11 +113,11 @@ fun TypeDB.getTypeOfIdentifierReceiver(
     curPkg: String,
     currentScope: MutableMap<String, Type>? = null,
     previousScope: MutableMap<String, Type>? = null,
-    names: List<String> = listOf()
+    names: List<String> = emptyList()
 ): Type? {
     val q = getType(typeName, currentScope, previousScope, names = names)
     val w = q.getTypeFromTypeDBResultConstructor(
-        KeywordMsg(value, "", value.type, value.token, listOf(), listOf(value.toString())), imports, curPkg, value.token
+        KeywordMsg(value, "", value.type, value.token, emptyList(), listOf(value.toString()), declaration = null), imports, curPkg, value.token //TODO 1111 передавать не нулл в декларации
     )
     return w
 }
@@ -131,7 +131,7 @@ fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
         is Type.UserLike -> addUserLike(realName, type, token)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
-        is Type.NullableType, Type.RecursiveType, is Type.UnresolvedType -> throw Exception("unreachable")
+        is Type.NullableType, is Type.UnresolvedType -> throw Exception("unreachable")
     }
 }
 

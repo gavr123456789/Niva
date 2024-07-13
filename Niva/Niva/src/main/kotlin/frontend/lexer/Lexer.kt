@@ -161,7 +161,7 @@ fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexe
             line = line,
             spaces = spaces,
             pos = Position(start = start, end = end),
-            relPos = Position(start = linePos - lexeme.lastIndex, end = realEnd),
+            relPos = Position(start = linePos - lexeme.lastIndex - 1, end = realEnd),
             file = file
         )
 
@@ -358,7 +358,8 @@ fun Lexer.parseIdentifier() {
 
 
 fun Lexer.next() {
-    fun Lexer.getToken(lexeme: String): Token? {
+
+    fun Lexer.getTokenFromSymbolTable(lexeme: String): Token? {
         val table = symbolTable
         val kind = table.symbols.getOrDefault(lexeme, table.keywords.getOrDefault(lexeme, TokenType.NoMatch))
         if (kind == TokenType.NoMatch) {
@@ -492,7 +493,7 @@ fun Lexer.next() {
             while (n > 0) {
                 for (symbol in symbolTable.getSymbols(n)) {
                     if (match(symbol)) {
-                        getToken(symbol)?.let { tokens.add(it) }
+                        getTokenFromSymbolTable(symbol)?.let { tokens.add(it) }
                         return
                     }
                 }

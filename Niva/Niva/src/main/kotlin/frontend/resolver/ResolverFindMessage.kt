@@ -93,10 +93,10 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
     }
 
     val createUnionOfErrorsInCurrentScope = {
-        val w = Type.UnionRootType(
+        val result = Type.UnionRootType(
             branches = errors.toList(),
             name = "ErrorsOfTheScope",
-            typeArgumentList = listOf(),
+            typeArgumentList = emptyList(),
             fields = mutableListOf(KeywordArg("message", Resolver.defaultTypes[InternalTypes.String]!!)),
             pkg = pkg.packageName,
 //            protocols = mutableMapOf(
@@ -105,9 +105,10 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
 //                    keywordMsgs = mutableMapOf(ifErrorKW(returnTypeWithoutErrors))
 //                )
 //            ),
-            isError = true
+            isError = true,
+            typeDeclaration = null
         )
-        w
+        result
     }
 
     return when (selectorName) {

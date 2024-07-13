@@ -78,7 +78,6 @@ fun Type.infoPrint() = buildString {
 //        is Type.ErrorType -> TODO()
 
 
-        Type.RecursiveType -> TODO()
 
     })
 

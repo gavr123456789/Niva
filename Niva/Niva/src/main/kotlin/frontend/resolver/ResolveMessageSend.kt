@@ -2,7 +2,6 @@
 
 package frontend.resolver
 
-import frontend.resolver.Type.RecursiveType.copy
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
@@ -112,6 +111,8 @@ fun Resolver.resolveMessage(
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 
+
+
     if (GlobalVariables.isLspMode) {
         onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // message
     }
@@ -161,6 +162,7 @@ fun replaceAllGenericsToRealTypeRecursive(
         fields = copyType.fields,
         isPrivate = copyType.isPrivate,
         pkg = copyType.pkg,
-        protocols = copyType.protocols
+        protocols = copyType.protocols,
+        typeDeclaration = copyType.typeDeclaration
     )
 }
