@@ -15,4 +15,3 @@ rg echo
 enum Letter = A | B | C
 
 x = Letter.A
-> x
