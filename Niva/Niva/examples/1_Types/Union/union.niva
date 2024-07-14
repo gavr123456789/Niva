@@ -28,7 +28,7 @@ union User =
     | Guest
 
 User getName -> String = | this
-    | Guest => "Welcome guest"
+    | Guest => "guest"
     | LoggedIn => name
 
 
