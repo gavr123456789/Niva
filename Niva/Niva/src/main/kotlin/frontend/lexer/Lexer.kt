@@ -89,7 +89,7 @@ fun Lexer.step(n: Int = 1): String =
 
             current++
         }
-        linePos++
+        linePos += n
     }
 
 fun Lexer.peek(distance: Int = 0, length: Int = 1): String =
@@ -150,7 +150,8 @@ fun Lexer.match(args: Array<String>): Boolean {
 
 fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null) {
     try {
-        val lexeme2 = source.slice(start until current)
+        "S kw::Str -> Int = 34"
+        val lexeme2 = source.slice(start until current)// better replace to view
         val lexeme3 = if (addToLexeme == null) lexeme2 else lexeme2 + addToLexeme
         val lexeme = lexeme3.dropLast(endPositionMinus)
         val end = current - 1 - endPositionMinus
@@ -161,7 +162,7 @@ fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexe
             line = line,
             spaces = spaces,
             pos = Position(start = start, end = end),
-            relPos = Position(start = linePos - lexeme.lastIndex - 1, end = realEnd),
+            relPos = Position(start = linePos - lexeme.length, end = realEnd),
             file = file
         )
 
@@ -461,7 +462,8 @@ fun Lexer.next() {
         }
 
 
-        match("::") -> createToken(TokenType.DoubleColon)
+        match("::") ->
+            createToken(TokenType.DoubleColon)
 
         match("||") -> createToken(TokenType.BinarySymbol)
         match("&&") -> createToken(TokenType.BinarySymbol)

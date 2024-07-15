@@ -11,12 +11,12 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.utils.removeDoubleQuotes
 
-
+// returns true if resolve failed to resolve(statement added to list of unresolved)
 fun Resolver.resolveDeclarations(
     statement: Declaration,
     previousScope: MutableMap<String, Type>,
     resolveBody: Boolean = true,
-) {
+): Boolean {
     currentLevel += 1
     when (statement) {
         is TypeDeclaration -> {
@@ -25,7 +25,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is MessageDeclaration -> {
-            if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return
+            if (resolveMessageDeclaration(statement, resolveBody, previousScope)) return true
         }
 
 //        is StaticBuilderDeclaration ->
@@ -42,7 +42,7 @@ fun Resolver.resolveDeclarations(
             }
             if (atLeastOneUnresolved) {
                 currentLevel--
-                return
+                return true
             }
         }
 
@@ -62,6 +62,7 @@ fun Resolver.resolveDeclarations(
 
         is ErrorDomainDeclaration -> {
             resolveUnionDeclaration(statement.unionDeclaration, true)
+            statement.receiver = statement.unionDeclaration.receiver
         }
 
         is UnionBranchDeclaration -> {
@@ -70,14 +71,16 @@ fun Resolver.resolveDeclarations(
 
     }
     currentLevel -= 1
+    return false
 }
 
 fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
     statements.forEach {
         if (it is Declaration) {
             val x = mutableMapOf<String, Type>()
-            resolveDeclarations(it, x, resolveBody = false)
-            if (onEachStatement != null) { // its true only in LSP mode
+            val resolveFailed = resolveDeclarations(it, x, resolveBody = false)
+
+            if (onEachStatement != null && !resolveFailed) { // its true only in LSP mode
                 onEachStatement(it, x, mutableMapOf(), this.currentResolvingFileName)
             }
         }

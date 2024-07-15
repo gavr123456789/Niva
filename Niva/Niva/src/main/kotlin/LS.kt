@@ -2,6 +2,7 @@
 
 package main
 
+import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
@@ -41,7 +42,6 @@ class OnCompletionException(val scope: Scope, val errorMessage: String? = null, 
 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
-//    class NotFoundLine(val scope: Scope) : LspResult
     class ScopeSuggestion(val scope: Scope) : LspResult
     class Found(val x: Pair<Statement, Scope>) : LspResult
 }
@@ -52,7 +52,7 @@ class LS(val info: ((String) -> Unit)? = null) {
 
     /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
-    var completionFromScope: Scope = mapOf()
+    var completionFromScope: Scope = emptyMap()
 
     // since one file can contain many pkgs, we need file to declaration map
     val fileToDecl: MutableMap<String, MutableSet<Declaration>> = mutableMapOf()
@@ -429,8 +429,19 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
     val onEachStatementCall =
         { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>?, file: File ->
+
+            val addStToMegaStore = { st: Statement ->
+                megaStore.addNew(
+                    st,
+                    if (currentScope != null && previousScope != null)
+                        currentScope + previousScope
+                    else
+                        mutableMapOf()
+                )
+            }
             when (st) {
                 is Declaration -> {
+                    // fill fileToDecl
                     val setOfStatements = this.fileToDecl[file.absolutePath]
                     if (setOfStatements != null) {
                         setOfStatements.add(st)
@@ -438,16 +449,46 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                     } else {
                         fileToDecl[file.absolutePath] = mutableSetOf(st)
                     }
+                    // add types of the decl as IdentExpr
+
+                    if (st is MessageDeclaration) {
+                        val realSt = when(st) {
+                            is ConstructorDeclaration -> st.msgDeclaration
+                            else -> st
+                        }
+
+                        // forType
+                        realSt.forType?.let {
+                            realSt.forTypeAst.toIdentifierExpr(it, true).also {
+                                addStToMegaStore(it)
+                            }
+                        }
+
+                        // return
+                        realSt.returnTypeAST
+                            ?.toIdentifierExpr(realSt.returnType!!, true)
+                            ?.also {
+                                addStToMegaStore(it)
+                            }
+                        // args
+                        if (realSt is MessageDeclarationKeyword) {
+                            realSt.args.forEachIndexed { i, arg ->
+                                // for some reason arg types are null here, so I use typeDB
+                                val type = ((realSt.messageData ?: st.messageData) as KeywordMsgMetaData).argTypes[i].type
+                                arg.typeAST
+                                    ?.toIdentifierExpr(type, true)
+                                    ?.also {
+                                        addStToMegaStore(it)
+                                    }
+                            }
+                        }
+                    }
+                    // we dont need the msg declarations itself in mega store
+//                    addStToMegaStore(st)
                 }
 
                 is Expression, is VarDeclaration -> {
-                    megaStore.addNew(
-                        st,
-                        if (currentScope != null && previousScope != null)
-                            currentScope + previousScope
-                        else
-                            mutableMapOf()
-                    )
+                    addStToMegaStore(st)
 
                 }
 
@@ -459,7 +500,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     val pm = PathManager(mainFile.path, MainArgument.LSP)
     try {
         this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
-        this.completionFromScope = mapOf()
+        this.completionFromScope = emptyMap()
         return resolver
     }
     catch (s: OnCompletionException) {

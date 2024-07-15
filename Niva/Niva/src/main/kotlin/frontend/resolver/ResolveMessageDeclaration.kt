@@ -278,6 +278,7 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
+        onEachStatement!!(st, previousScope, previousScope, currentResolvingFileName) // message decl
 
     }
 
