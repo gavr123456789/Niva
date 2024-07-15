@@ -231,7 +231,14 @@ x sas
         checkWithEnd(multiline, listOf(TokenType.String))
     }
 
-
+    @Test
+    fun kwDeclarationColonPosition() {
+        val kwDecl = "S kw::Str -> Int = 34"
+        val lexer = Lexer(kwDecl, File("Niva.iml"))
+        val f = lexer.lex()
+        val g = f[2]
+        assertTrue { g.relPos.start == 4 && g.relPos.end == 6}
+    }
 
 
     @Test

@@ -183,7 +183,10 @@ class ParserTest {
         assert(declaration.value.str == "1")
         assert(unaryMsg.selectorName == "echo")
         assert(unaryMsg.receiver.str == "x")
+
     }
+
+
 
 
     @Test
@@ -989,17 +992,6 @@ class ParserTest {
     }
 
 
-//    @Test
-//    fun typeAlias() {
-//        val source = """
-//        alias MyInt = Int
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//        val q = ast[0] as AliasDeclaration
-//        assert(q.typeName == "MyInt")
-//        assert(q.matchedTypeName == "Int")
-//    }
 
     @Test
     fun bracketExpression() {
@@ -1782,6 +1774,16 @@ class ParserTest {
     }
 
     @Test
+    fun typeAliasSimple() {
+        val source = """
+            type MyInt = Int
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
     fun kwForLambda() {
         val source = """
             [x::Int -> x inc] hi: 3
@@ -2001,6 +2003,37 @@ class ParserTest {
         assertEquals(ast.count(), 1)
     }
 
+    @Test
+    fun dotTokenLength() {
+        val source = "org.gnome.Button"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val tok = (ast[0] as IdentifierExpr).token
+
+        assertTrue {tok.relPos.start == 0 && tok.relPos.end == 16}
+    }
+
+    @Test
+    fun argsTokLength() {
+        val source = """
+            Sasss keyword::String -> Int = 34
+            constructor Sasss from::Int -> Int = 23
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val tok = (ast[0] as MessageDeclarationKeyword).args[0].typeAST!!.token
+
+        assertTrue { tok.relPos.start == 15 && tok.relPos.end == 21 }
+    }
+
+    @Test
+    fun destruct() {
+        val source = """
+            {name age} = person
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
 
     //TODO

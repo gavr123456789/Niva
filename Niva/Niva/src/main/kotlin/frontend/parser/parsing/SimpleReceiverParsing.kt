@@ -104,6 +104,11 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseBrace)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
+//                if (match(TokenType.Assign)) {
+//                    val w = simpleReceiver()
+//                    return DestructionExpr()
+//                    TODO()
+//                }
                 return ListCollection(initElements, type, token)
             }
 

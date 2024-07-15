@@ -3,7 +3,6 @@ package main.frontend.parser.types.ast
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
 import main.frontend.meta.Token
-import java.lang.reflect.Modifier.isPrivate
 
 
 sealed class TypeAST(
@@ -15,6 +14,16 @@ sealed class TypeAST(
     var mutable: Boolean = false,
     val errors: List<String>? = null
 ) : Statement(token, isPrivate, pragmas) {
+
+    fun toIdentifierExpr(type: Type, isType: Boolean): IdentifierExpr =
+        IdentifierExpr(
+            name = name,
+            names = listOf(name),
+            type = this,
+            token = token,
+            isType = isType
+        ).also { it.type = type }
+
 
     fun names(): List<String> = when (this) {
         is InternalType -> listOf(name)
@@ -215,7 +224,7 @@ class UnionRootDeclaration(
 class ErrorDomainDeclaration(
     val unionDeclaration: UnionRootDeclaration
 ) : SomeTypeDeclaration(unionDeclaration.typeName, unionDeclaration.fields,
-    unionDeclaration.token, unionDeclaration.genericFields, unionDeclaration.isPrivate, unionDeclaration.pragmas) {
+    unionDeclaration.token, unionDeclaration.genericFields, unionDeclaration.isPrivate, unionDeclaration.pragmas, receiver = unionDeclaration.receiver) {
     override fun toString(): String {
         return "errordomain $typeName"
     }

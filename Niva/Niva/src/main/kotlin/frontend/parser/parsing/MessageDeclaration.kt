@@ -235,20 +235,9 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val type = parseType()
         return (KeywordDeclarationArg(name = argName.lexeme, typeAST = type))
     }
-//    else if (lambdaWithExtension) {
-//        val extension = matchAssert(TokenType.Identifier)
-//        step() // skip dot
-//        val name = matchAssert(TokenType.Identifier, "Identifier expected in extension codeblock")
-//        matchAssert(TokenType.DoubleColon, ":: expected in extension codeblock")
-//        val typeAST = parseType(extension.lexeme)
-//
-//
-//        val result = KeywordDeclarationArg(name = name.lexeme, typeAST = typeAST)
-//        return  result
-//    }
+
     // key: localName(::int)?
     else {
-//        val key = (dotSeparatedIdentifiers() ?: peek().compileError("Identifier expected")).token
         val key = matchAssert(TokenType.Identifier)
         match(TokenType.Colon)
         val local = step()

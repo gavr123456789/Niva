@@ -86,6 +86,13 @@ fun Parser.statement(): Statement {
         return assignVariableNewValue()
     }
 
+    if (kind == TokenType.Assign && check(TokenType.CloseBrace, -1)) {
+        val q = tree.removeLast() as? ListCollection
+        if (q == null) tok.compileError("Parsing error, expected = after collection {} for destructing assign")
+        // TODO return and create DestructiveAssign Statement here
+        TODO()
+    }
+
 
     val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
     val isInlineReplWithQuestion = kind == TokenType.InlineReplWithQuestion
@@ -155,15 +162,21 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
 
     val x = matchAssertOr(TokenType.Identifier, TokenType.NullableIdentifier)
+    var lastTokenDotSeparated: Token? = null
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
         do {
             val q = matchAssert(TokenType.Identifier, "Identifier expected after dot, but found ${peek().lexeme}")
             listOfIdentifiersPath.add(q.lexeme)
+            lastTokenDotSeparated = q
         } while (match(TokenType.Dot))
     }
 
+    // change end tok for org.sas.sus.Button
+    if (listOfIdentifiersPath.count() > 1 && lastTokenDotSeparated != null) {
+        x.relPos.end = lastTokenDotSeparated.relPos.end
+    }
 
     val isTyped = match(TokenType.DoubleColon)
     return if (isTyped) {

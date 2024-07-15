@@ -29,25 +29,161 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
+Project use: "org.gnome.adw"
 
 
-type Person age: Int name: String
-qwf = 5
+app = Application name: "my.app"
+
+app onActivate: [ 
+  args isEmpty => Error throwWithMessage: "Pass path to file with questions"
+  path = args at: 0
+
+  window = (org.gnome.adw.ApplicationWindow app: app);
+    title: "GTK from Niva";
+    x: 250 y: 300
+  
+  reader = Reader new 
 
 
-qw
+  // READER
+  gameModel = reader 
+    readFromFile: path
+    wordsPerTest: 8
+    invertArgs: false
+  pages = gameModel pages
 
 
+  mainViewModel = MainViewModel fromModel: gameModel
+
+  mut score = 0
+
+  ui = [
+    header = org.gnome.adw.HeaderBar new
+    allToggles::MutableList::ToggleButton = {}
+    
+
+    resetButton = Button fromIconName: "view-refresh"
+    //shuffleButton = Button fromIconName: "media-playlist-shuffle"
+    header packStart: resetButton
+    //; packStart: shuffleButton
+
+    
+
+    createPage = [ pageModel::PageModel ->
+      hbox = GtkFactory hBoxWithSpacing: 5
+      margin = 10
+      pairModels = pageModel pairs
+            
+      
+      hbox marginTop: margin;  
+        marginBottom: margin;
+        marginStart: margin;
+        marginEnd: margin
+      
+      vboxQuestions = GtkFactory vBoxWithSpacing: 5
+      vboxAnswers = GtkFactory vBoxWithSpacing: 5
+
+      questionWidgetsList::MutableList::ToggleButton = {}
+      answerWidgetsList::MutableList::ToggleButton = {}
+
+      hbox 
+        append: vboxQuestions; 
+        append: vboxAnswers
+      
+ 
+      // create view models
+      pageViewModel = PageViewModel new
+
+      pairModels forEach: [
+        answerToggle = ToggleButton withLabel: it answer
+        questionToggle = ToggleButton withLabel: it question
+        allToggles add: answerToggle; add: questionToggle
+        
+        x = PairViewModel pairModel: it qWidget: answerToggle aWidget: questionToggle
+
+        // pageViewModel 
+
+        questionWidgetsList add: questionToggle
+        answerWidgetsList add: answerToggle
+
+        answerToggle onToggled: [
+          questionToggle active => [
+            score <- score inc
+            "all right!" + score toString |> echo
+            questionToggle sensitive: false; addCssClass: "suggested-action"
+            answerToggle sensitive: false; addCssClass: "suggested-action"
+
+          ]
+        ]
+
+        questionToggle onToggled: [
+          answerToggle active => [
+            score <- score inc
+            "all right!" + score toString |> echo
+            questionToggle sensitive: false; addCssClass: "suggested-action"
+            answerToggle sensitive: false; addCssClass: "suggested-action"
+          ]
+        ]
+      ]
+
+      questionWidgetsList shuffled forEach: [
+        vboxQuestions append: it
+      ]
+      answerWidgetsList shuffled forEach: [
+        vboxAnswers append: it
+      ]
+
+      hbox
+    ]
+
+    
+    //new way to build ui
+    pages2 = mainViewModel createUIPages
+    //
+    carousel = Carousel new
+// add pages
+    // pages2 forEach: [
+    //   carousel append: it
+    // ]
+    
+    pages forEach: [
+      carousel append: (createPage pageModel: it)
+    ]
+
+// reset
+    resetButton onClicked: [
+      allToggles forEach: [
+        it active: false; sensitive: true; removeCssClass: "suggested-action"
+      ]
+
+      // right now its not recreating
+      // allToggles clear
+    ]
+
+    dots = (CarouselIndicatorDots new); carousel: carousel
+    
+
+    boxWithCarouselDots = (GtkFactory vBoxExpanded); 
+      append: carousel; 
+      append: dots
+
+
+    toolbar = (ToolbarView new); 
+      addTopBar: header;
+      content: boxWithCarouselDots
+
+    toolbar
+  ] do
+
+  window content: ui;
+    present
+]
+
+
+app run: args
 
 """
-const val fakeFileSourceBAAD = """
-//Int add::Int = this + add2
-1 
 
-"""
-
-
-///
 
 interface Element {
     fun render(builder: StringBuilder, indent: String)
@@ -157,24 +293,25 @@ fun main(args: Array<String>) {
 //        }
 //    }
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/viewModel.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
+    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
 
-//    try {
-//        val ls = LS()
-//        val resolver = ls.resolveAll(qqq)
-//
-//
-//        ls.resolveAllWithChangedFile(
-//            qqq,
-//            fakeFileSourceGOOD
-//        )
-//
-////        ls.onCompletion(qqq, 6, 1)
-//        println()
-//    }
-//    catch (e: OnCompletionException) {
-//        println(e.scope)
-//    }
+    try {
+        val ls = LS()
+        val resolver = ls.resolveAll(qqq)
+
+
+        ls.resolveAllWithChangedFile(
+            qqq,
+            fakeFileSourceGOOD
+        )
+
+//        ls.onCompletion(qqq, 6, 1)
+        println()
+    }
+    catch (e: OnCompletionException) {
+        println(e.scope)
+    }
 
     run(args)
 }
