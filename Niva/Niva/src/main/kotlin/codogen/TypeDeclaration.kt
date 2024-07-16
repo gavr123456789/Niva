@@ -4,6 +4,7 @@ import frontend.resolver.Type
 import main.utils.RED
 import main.utils.WHITE
 import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.TypeAliasDeclaration
@@ -22,6 +23,12 @@ fun TypeAliasDeclaration.generateTypeAlias() = buildString {
     append("typealias ", typeName, " = ")
     val ktType = realTypeAST.generateType()
     append(ktType)
+}
+
+fun DestructingAssign.generateDestruction(): String {
+    return this.names.joinToString("\n") {
+        "val $it = ${this.value.generateExpression()}.$it"
+    }
 }
 
 fun SomeTypeDeclaration.generateTypeDeclaration(

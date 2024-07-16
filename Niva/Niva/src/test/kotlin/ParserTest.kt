@@ -8,6 +8,7 @@ import main.frontend.parser.types.ast.BinaryMsg
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ControlFlow
 import main.frontend.parser.types.ast.ControlFlowKind
+import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.Expression
@@ -296,13 +297,15 @@ class ParserTest {
         assert(ast.count() == 3)
         val unary = (ast[0] as MessageSend).messages[0]
         val binary = (ast[1] as MessageSend).messages[0]
-        val keyword = (ast[2] as MessageSend).messages[0] as KeywordMsg
+        val keyword2 = (ast[2] as MessageSend).messages[0]
         assert(unary.receiver.str == "3")
         assert(binary.receiver.str == "1")
-        assert(keyword.receiver.str == "x")
+        assert(keyword2.receiver.str == "x")
         assert(unary is UnaryMsg)
         assert(binary is BinaryMsg)
-        assert(keyword is KeywordMsg)
+        assert(keyword2 is KeywordMsg)
+
+        val keyword = keyword2 as KeywordMsg
 
         val from = keyword.args.first().keywordArg
         val to = keyword.args.last().keywordArg
@@ -2033,6 +2036,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+        assertTrue {ast[0] is DestructingAssign}
     }
 
 

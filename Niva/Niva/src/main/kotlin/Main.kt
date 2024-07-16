@@ -294,24 +294,24 @@ fun main(args: Array<String>) {
 //    }
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
-    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
-
-    try {
-        val ls = LS()
-        val resolver = ls.resolveAll(qqq)
-
-
-        ls.resolveAllWithChangedFile(
-            qqq,
-            fakeFileSourceGOOD
-        )
-
-//        ls.onCompletion(qqq, 6, 1)
-        println()
-    }
-    catch (e: OnCompletionException) {
-        println(e.scope)
-    }
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
+//
+//    try {
+//        val ls = LS()
+//        val resolver = ls.resolveAll(qqq)
+//
+//
+//        ls.resolveAllWithChangedFile(
+//            qqq,
+//            fakeFileSourceGOOD
+//        )
+//
+////        ls.onCompletion(qqq, 6, 1)
+//        println()
+//    }
+//    catch (e: OnCompletionException) {
+//        println(e.scope)
+//    }
 
     run(args)
 }

@@ -88,6 +88,19 @@ class VarDeclaration(
     }
 }
 
+class DestructingAssign(
+    token: Token,
+    val names: List<IdentifierExpr>,
+    val value: IdentifierExpr,
+    pragmas: MutableList<Pragma> = mutableListOf()
+) : Statement(token, false, pragmas) {
+    override fun toString(): String {
+        return "{" + "${names.joinToString(", ") + "}"} <- $value"
+    }
+}
+
+
+
 class Assign(
     token: Token,
     val name: String,
@@ -99,6 +112,7 @@ class Assign(
         return "$name <- $value"
     }
 }
+
 
 
 
