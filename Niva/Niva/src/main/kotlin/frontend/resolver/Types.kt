@@ -231,7 +231,8 @@ sealed class Type(
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
     var isMutable: Boolean = false,
-    var errors: MutableSet<Union>? = null
+    var errors: MutableSet<Union>? = null,
+    var isAlias: Boolean = false
 ) {
 
     fun copyAnyType(): Type =

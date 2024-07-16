@@ -459,7 +459,8 @@ fun generateSingleKeyword(
 
     }
     if (invisibleArgs != null) {
-        append(", ")
+        if (keywordMsg.args.isNotEmpty())
+            append(", ")
         append(invisibleArgs.joinToString(", "))
     }
 

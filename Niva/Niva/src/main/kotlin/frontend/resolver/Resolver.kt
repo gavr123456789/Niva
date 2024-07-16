@@ -107,6 +107,14 @@ private fun Resolver.resolveStatement(
             }
             stack.pop()
         }
+        is DestructingAssign -> {
+            stack.push(statement)
+            currentLevel++
+            resolveDestruction(statement, currentScope, previousScope)
+            currentLevel--
+            addToTopLevelStatements(statement)
+            stack.pop()
+        }
 
         is StaticBuilder -> {
             resolveStaticBuilder(statement, currentScope, previousScope)
@@ -286,6 +294,7 @@ private fun Resolver.resolveStatement(
 
             stack.pop()
         }
+
 
         is ReturnStatement -> {
             stack.push(statement)
@@ -709,10 +718,15 @@ fun Resolver.addNewType(
     // 3 add declaration to be generated
     if (statement != null) {
         pack.declarations.add(statement)
+        if (alias) statement.receiver = type
     }
     // 4 is binding
     if (pack.isBinding && type is Type.UserLike) {
         type.isBinding = true
+    }
+    // alias
+    if (alias) {
+        type.isAlias = true
     }
     // 5 put type to all type sources
     pack.types[typeName] = type

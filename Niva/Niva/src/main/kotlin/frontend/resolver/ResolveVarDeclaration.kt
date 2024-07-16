@@ -35,9 +35,10 @@ fun Resolver.resolveVarDeclaration(
 
     // generics in right part, but real type in left, x::List::Int = List
     var copyType: Type? = null
-    if (valueOfVarDecl is Receiver &&
-        typeOfValueInVarDecl is Type.UserLike &&
+    if (
         definedASTType is TypeAST.UserType && definedASTType.typeArgumentList.find { it.name.isGeneric() } == null &&
+        valueOfVarDecl is Receiver &&
+        typeOfValueInVarDecl is Type.UserLike &&
         typeOfValueInVarDecl.typeArgumentList.find { it.name.isGeneric() } != null
     ) {
         copyType = typeOfValueInVarDecl.copy()
@@ -97,6 +98,51 @@ fun Resolver.resolveVarDeclaration(
 
     currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
     addToTopLevelStatements(statement)
+}
+
+
+@Suppress("UnusedVariable")
+fun Resolver.resolveDestruction(
+    statement: DestructingAssign,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>,
+) {
+    // check that value has this fields
+    // {name age} = person
+
+    @Suppress("unused")
+    val resolveValue = {
+        currentLevel++
+        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+        resolveSingle((statement.value), previousAndCurrentScope, statement)
+        currentLevel--
+    }()
+
+
+    val type = statement.value.type
+    val valueTok = statement.value.token
+
+    if (type == null)
+        valueTok.compileError("Compiler bug: value of destruct assign not resolved")
+
+    if (type !is Type.UserLike)
+        valueTok.compileError("${statement.value} doesn't has fields")
+
+    if (statement.names.count() > type.fields.count())
+        valueTok.compileError("Destructing ${statement.names.count()} fields, but $type has only ${type.fields}")
+
+    statement.names.forEachIndexed { i, name ->
+        // check that there are such name
+        val field = type.fields.find { it.name == name.name }
+        if (field == null)
+            name.token.compileError("There is no $name field in $type, fields: \n${type.fields.joinToString("\n")}")
+        // assign type of that name
+        name.type = field.type
+        // add to scope
+        currentScope[name.name] = field.type
+    }
+
+
 }
 
 

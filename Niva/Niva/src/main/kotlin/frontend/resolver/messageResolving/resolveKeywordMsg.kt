@@ -53,7 +53,7 @@ fun Resolver.resolveKeywordMsg(
         if (receiverText == "Project" || receiverText == "Bind") {
             statement.token.compileError("We cant get here, type Project are ignored")
         }
-        val isThisConstructor = receiver is IdentifierExpr && receiver.names.last() == keywordReceiverType.name
+        val isThisConstructor = (receiver is IdentifierExpr && (receiver.names.last() == keywordReceiverType.name || receiver.type?.isAlias == true))
         if (isThisConstructor) {
 
             if (keywordReceiverType is Type.UnionRootType) {

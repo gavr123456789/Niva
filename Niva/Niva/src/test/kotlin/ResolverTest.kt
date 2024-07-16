@@ -1568,6 +1568,17 @@ class ResolverTest {
     }
 
     @Test
+    fun typeAliasSimple() {
+        val source = """
+           type MyInt = Int
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+        val q = statements[0] as TypeAliasDeclaration
+        assertTrue {q.receiver != null && q.receiver!!.name == "Int"}
+    }
+
+    @Test
     fun typeAliasUse() {
         val source = """
            type Sas = [Int -> Int]
@@ -1724,11 +1735,11 @@ class ResolverTest {
     @Test
     fun builderWithArgsWithReceiver() {
 
-        class Card()
-
-        fun String.Card(width: Int, action: Card.() -> Unit) {
-            Card().action()
-        }
+//        class Card()
+//
+//        fun String.Card(width: Int, action: Card.() -> Unit) {
+//            Card().action()
+//        }
 
         val source = """
             type Card

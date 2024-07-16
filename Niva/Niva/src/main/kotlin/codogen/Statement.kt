@@ -31,6 +31,9 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             }
 
             is Assign -> "${statement.name} = ${statement.value.generateExpression()}"
+            is DestructingAssign -> {
+                statement.generateDestruction()
+            }
 
 
             is UnionRootDeclaration -> {

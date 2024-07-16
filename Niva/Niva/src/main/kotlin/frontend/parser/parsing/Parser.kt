@@ -89,8 +89,25 @@ fun Parser.statement(): Statement {
     if (kind == TokenType.Assign && check(TokenType.CloseBrace, -1)) {
         val q = tree.removeLast() as? ListCollection
         if (q == null) tok.compileError("Parsing error, expected = after collection {} for destructing assign")
-        // TODO return and create DestructiveAssign Statement here
-        TODO()
+
+        // {name age} ^= person
+
+        matchAssert(TokenType.Assign)
+
+        val f = matchAssert(TokenType.Identifier)
+        val names = q.initElements.map {
+            if (it !is IdentifierExpr) {
+                it.token.compileError("In destruction you need to list identifiers")
+            } else {
+                it
+            }
+        }
+        val destructingAssign = DestructingAssign(
+            token = q.token,
+            names = names,
+            value = IdentifierExpr(f.lexeme, listOf(f.lexeme), null, f),
+        )
+        return destructingAssign
     }
 
 

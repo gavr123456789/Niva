@@ -7,6 +7,7 @@ import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
 import main.utils.CYAN
+import main.utils.GlobalVariables
 import main.utils.RED
 import main.utils.RESET
 import main.utils.WHITE
@@ -278,8 +279,9 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
-        onEachStatement!!(st, previousScope, previousScope, currentResolvingFileName) // message decl
-
+        if (GlobalVariables.isLspMode) {
+            onEachStatement!!(st, previousScope, previousScope, currentResolvingFileName) // message decl
+        }
     }
 
 
