@@ -1,34 +1,52 @@
-Project loadPackages: {"org.http4k:http4k-bom:5.10.5.0" "org.http4k:http4k-core:3.37.0"}
+Project loadPackages: {"org.http4k:http4k-core:5.25.0.0" "org.http4k:http4k-client-apache:2.17.1"}
+
+Bind package: "org.http4k.server" content: [
+    union ServerConfig port: Int =
+    | SunHttp
+
+    type Http4kServer
+    Http4kServer start -> Http4kServer
+    Http4kServer stop -> Http4kServer
+]
 
 Bind package: "org.http4k.core" content: [
-    type HttpHandler
-    type Method
-    @emit: "Method.OK"
-    Method GET -> Method
+    enum Status = OK | CREATED | ACCEPTED | NO_CONTENT | FOUND | BAD_REQUEST | NOT_FOUND
+    enum Method = | GET
+                  | POST
+                  | PUT
+                  | DELETE
+                  | OPTIONS
+                  | TRACE
+                  | PATCH
+                  | PURGE
+                  | HEAD
+
+
+    type Uri scheme: String userInfo: String host: String port: Int? path: String query: String fragment: String
 
     type Request
-    type Status
-    @emit: "Status.OK"
-    Status OK -> Status
+    Request query::String -> String //TODODODODO String?
+    @rename:"query"
+    Request query::String value::String -> String //TODODODODO String?
+    Request queries::String -> List::String
+    Request method -> Method
+    Request uri::Uri -> Method
+    Request body::String -> Request
+    Request toMessage -> String
+    Request header: name::String value::String? -> Request
 
     type Response status: Status
-    Response body::String
+    Response body::String -> Response
 
-    HttpHandler handle::[Request -> Response] -> Unit
+    type HttpHandler = [Request -> Response]
+    HttpHandler asServer: config::ServerConfig -> Http4kServer
+
 ]
 
-app::[Request -> Response] = [request::Request ->
-    Response
+app = [request::Request ->
+    response = Response status: Status.OK
+    query = request query: "name"
+    response body: "Hello, " + query
 ]
 
-
-
-//val app: HttpHandler = { request: Request ->
-//            Response(Status.OK).body("Hello, ${request.query("name")}!")
-//        }
-//
-//val request = Request(Method.GET, "/").query("name", "John Doe")
-//
-//val response = app(request)
-//
-//println(response)
+app asServer: (SunHttp port: 8080) |> start

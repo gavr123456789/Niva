@@ -9,6 +9,7 @@ import frontend.resolver.resolve
 import main.frontend.meta.Token
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.EnumBranch
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.ErrorDomainDeclaration
@@ -440,6 +441,15 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                 )
             }
             when (st) {
+                is Expression, is VarDeclaration -> {
+                    addStToMegaStore(st)
+                }
+                is DestructingAssign -> {
+                    st.names.forEach {
+                        addStToMegaStore(it)
+                    }
+                    addStToMegaStore(st.value)
+                }
                 is Declaration -> {
                     // fill fileToDecl
                     val setOfStatements = this.fileToDecl[file.absolutePath]
@@ -487,10 +497,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 //                    addStToMegaStore(st)
                 }
 
-                is Expression, is VarDeclaration -> {
-                    addStToMegaStore(st)
 
-                }
 
                 else -> {}
             }

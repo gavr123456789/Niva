@@ -91,7 +91,7 @@ class VarDeclaration(
 class DestructingAssign(
     token: Token,
     val names: List<IdentifierExpr>,
-    val value: IdentifierExpr,
+    val value: Expression,
     pragmas: MutableList<Pragma> = mutableListOf()
 ) : Statement(token, false, pragmas) {
     override fun toString(): String {

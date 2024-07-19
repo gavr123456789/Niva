@@ -2039,6 +2039,16 @@ class ParserTest {
         assertTrue {ast[0] is DestructingAssign}
     }
 
+    @Test
+    fun destructMsg() {
+        val source = """
+            {name age} = Person name: "sas" age: 23
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assertTrue { ast[0] is DestructingAssign }
+    }
+
 
     //TODO
 //    @Test
