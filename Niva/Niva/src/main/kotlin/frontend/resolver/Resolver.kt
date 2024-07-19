@@ -112,6 +112,11 @@ private fun Resolver.resolveStatement(
             currentLevel++
             resolveDestruction(statement, currentScope, previousScope)
             currentLevel--
+
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // var
+            }
+
             addToTopLevelStatements(statement)
             stack.pop()
         }

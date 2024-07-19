@@ -1,0 +1,14 @@
+type Emphasize value: T
+type MyInt = Emphasize::Int
+type MyStr = Emphasize::String
+
+
+qwf = MyInt value: 234
+qwp = MyStr value: "ars"
+
+// basically message for message
+type Sas = [Int -> Int]
+Sas at::Int = at echo
+[x::Int -> x inc] at: 5
+
+// real world example

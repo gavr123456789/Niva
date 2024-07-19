@@ -26,8 +26,10 @@ fun TypeAliasDeclaration.generateTypeAlias() = buildString {
 }
 
 fun DestructingAssign.generateDestruction(): String {
-    return this.names.joinToString("\n") {
-        "val $it = ${this.value.generateExpression()}.$it"
+    val tempName = "temp_destruct_assign_${this.names.joinToString("_")}"
+    val temp = "val $tempName = ${this.value.generateExpression()}\n"
+    return temp + this.names.joinToString("\n") {
+        "val $it = $tempName.$it"
     }
 }
 

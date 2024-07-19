@@ -1,8 +1,11 @@
+
+
+
+
 type Person name: String age: Int
 
-person = Person name: "Alice" age: 24
 
-{name age} = person
+{name age} = Person name: "Alice" age: 24
 
 name echo
 age echo
