@@ -29,14 +29,7 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-type Person name: String age: Int
-
-person = Person name: "Alice" age: 24
-
-{name age} = person
-
-name echo
-age echo
+type ParserCombinators = MutableList::Int
 """
 
 
@@ -148,7 +141,7 @@ fun main(args: Array<String>) {
 //        }
 //    }
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/parserCombinator/main.niva"
 ////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
 //
 //    try {
@@ -162,7 +155,6 @@ fun main(args: Array<String>) {
 //        )
 //
 ////        ls.onCompletion(qqq, 6, 1)
-//        println()
 //    }
 //    catch (e: OnCompletionException) {
 //        println(e.scope)

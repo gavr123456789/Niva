@@ -466,14 +466,14 @@ sealed class Type(
     ) : Type(name, pkg, isPrivate, protocols) {
         fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
 
-        fun copy(): UserLike =
+        fun copy(withDifferentPkg: String? = null): UserLike =
             when (this) {
                 is UserType -> UserType(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
                     fields = this.fields.copy(),
                     isPrivate = this.isPrivate,
-                    pkg = this.pkg,
+                    pkg = withDifferentPkg ?: this.pkg,
                     protocols = this.protocols.toMutableMap(),
                     typeDeclaration = this.typeDeclaration
                 ).also { it.isBinding = this.isBinding }
@@ -483,7 +483,7 @@ sealed class Type(
                     typeArgumentList = this.typeArgumentList.toList(),
                     fields = this.fields.copy(),
                     isPrivate = this.isPrivate,
-                    pkg = this.pkg,
+                    pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
                     protocols = this.protocols.toMutableMap(),
                     typeDeclaration = this.typeDeclaration
@@ -497,7 +497,7 @@ sealed class Type(
                     typeArgumentList = this.typeArgumentList.toList(),
                     fields = this.fields.copy(),
                     isPrivate = this.isPrivate,
-                    pkg = this.pkg,
+                    pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
                     protocols = this.protocols.toMutableMap(),
                     isError = this.isError,
@@ -513,7 +513,7 @@ sealed class Type(
                     typeArgumentList = this.typeArgumentList.toList(),
                     fields = this.fields.copy(),
                     isPrivate = this.isPrivate,
-                    pkg = this.pkg,
+                    pkg = withDifferentPkg ?: this.pkg,
                     root = this.root,
                     protocols = this.protocols.toMutableMap(),
                     isError = this.isError,
@@ -689,7 +689,8 @@ fun TypeAST.toType(
     parentType: Type.UserLike? = null,
     resolvingFieldName: String? = null,
     typeDeclaration: SomeTypeDeclaration? = null,
-    realParentAstFromGeneric: TypeAST? = null
+    realParentAstFromGeneric: TypeAST? = null,
+    customPkg: String? = null
 ): Type {
 
     val replaceToNullableIfNeeded = { type: Type ->
@@ -730,7 +731,7 @@ fun TypeAST.toType(
                     this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
-                    val copy = typeFromDb.copy()
+                    val copy = typeFromDb.copy(customPkg)
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
                     if (this.typeArgumentList.count() != copy.typeArgumentList.count()) {
@@ -821,6 +822,7 @@ fun TypeAST.toType(
                 args = args,
                 extensionOfType = extensionOfType,
                 returnType = returnType,
+                pkg = customPkg ?: "common"
             )
 
             return replaceToNullableIfNeeded(lambdaType)

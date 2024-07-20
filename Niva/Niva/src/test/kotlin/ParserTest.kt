@@ -3,6 +3,7 @@
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
 import frontend.parser.parsing.statements
+import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.Assign
 import main.frontend.parser.types.ast.BinaryMsg
 import main.frontend.parser.types.ast.ConstructorDeclaration
@@ -2049,8 +2050,23 @@ class ParserTest {
         assertTrue { ast[0] is DestructingAssign }
     }
 
+    @Test
+    fun correctParsingErrorLine() {
 
-    //TODO
+    val source = """
+            union CombinatorResult = 
+            |
+             
+        """.trimIndent()
+        try {
+            getAstTest(source)
+
+        } catch (e: CompilerError) {
+            assertTrue { e.token.line == 2 }
+        }
+    }
+
+
 //    @Test
 //    fun onWithNoReturnType() {
 //        val source = """

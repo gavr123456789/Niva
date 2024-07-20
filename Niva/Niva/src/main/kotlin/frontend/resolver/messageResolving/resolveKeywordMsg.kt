@@ -26,7 +26,7 @@ fun Resolver.resolveKeywordMsg(
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     // resolve just non-generic types of args
-    resolveKwArgs(statement, statement.args, previousAndCurrentScope, filterCodeBlock = true)
+    resolveKwArgs(statement, statement.args, previousAndCurrentScope, filterGenerics = true)
 
     // resolve receiverType
     val selectorName = statement.args.map { it.name }.toCamelCase()
@@ -108,6 +108,7 @@ fun Resolver.resolveKeywordMsg(
     } else mutableMapOf<String, Type>()
 
 
+    var thisIsConstructor = false
     // find this keyword in db
     val kwFromDB = when (kind) {
         KeywordLikeType.Keyword -> findAnyMsgType(
@@ -124,11 +125,11 @@ fun Resolver.resolveKeywordMsg(
 
         KeywordLikeType.Constructor -> {
             // there is no fields in internal types
+            thisIsConstructor = true
             if (receiverType is Type.InternalType) {
                 val keys = statement.args.joinToString(", ") { it.name }
                 statement.token.compileError("Type $CYAN$receiverType$RESET is internal and doesn't have fields or custom constructor: $WHITE$keys$RESET")
             } else null
-
         }
 
         else -> null
@@ -185,7 +186,7 @@ fun Resolver.resolveKeywordMsg(
         statement,
         statement.args,
         previousAndCurrentScope,
-        filterCodeBlock = false,
+        filterGenerics = false,
         argsTypesFromDb,
         letterToTypeFromArgs + letterToTypeFromReceiver
     )
@@ -464,57 +465,69 @@ fun Resolver.resolveKwArgs(
     statement: Expression,
     args: List<KeywordArgAst>,
     previousAndCurrentScope: MutableMap<String, Type>,
-    filterCodeBlock: Boolean,
+    filterGenerics: Boolean,
     argsTypesFromDb: List<Type>? = null,
     letterToRealType: Map<String, Type>? = null,
 ) {
     // first time we are resoling all args except the codeblocks
     val usualArgs = mutableListOf<KeywordArgAst>()
-    val codeBlockArgs = mutableListOf<CodeBlock>()
+    val genericArgs = mutableListOf<Expression>()
     val codeBlocks = mutableListOf<KeywordArgAst>()
     val mapOfArgToDbArg = mutableMapOf<Expression, Type>()
 
-    if (argsTypesFromDb != null && argsTypesFromDb.isNotEmpty()) args.forEachIndexed { i, it ->
-        if (it.keywordArg is CodeBlock) {
-            codeBlocks.add(it)
-            codeBlockArgs.add(it.keywordArg)
+    if (argsTypesFromDb != null && argsTypesFromDb.isNotEmpty())
+        args.forEachIndexed { i, it ->
+            if (it.keywordArg is CodeBlock) {
+                codeBlocks.add(it)
+            genericArgs.add(it.keywordArg)
         } else {
             usualArgs.add(it)
             // because non codeblock args already resolved
         }
         mapOfArgToDbArg[it.keywordArg] = argsTypesFromDb[i]
-    }
-    else args.forEachIndexed { i, it ->
+    } else args.forEachIndexed { i, it ->
         if (it.keywordArg is CodeBlock) {
             codeBlocks.add(it)
-            codeBlockArgs.add(it.keywordArg)
-        } else
+            genericArgs.add(it.keywordArg)
+        }
+//        else if (it.keywordArg is CollectionAst && it.keywordArg.initElements.isEmpty() ||
+//                   it.keywordArg is MapCollection && it.keywordArg.initElements.isEmpty())
+//        {
+//            genericArgs.add(it.keywordArg)
+//        }
+        else
             usualArgs.add(it)
     }
 
     // add to letterList code blocks types from db
-    if (!filterCodeBlock && letterToRealType != null) {
+    if (!filterGenerics && letterToRealType != null) {
 
-        codeBlockArgs.forEach {
+        genericArgs.forEach {
             val typeFromDb = mapOfArgToDbArg[it]
             if (typeFromDb != null && typeFromDb is Type.Lambda) {
                 // add types to known args
                 typeFromDb.args.forEachIndexed { i, lambdaArgFromDb ->
-                    val lambdaArgFromDBType = lambdaArgFromDb.type
-                    if (lambdaArgFromDBType is Type.UnknownGenericType) {
-                        val qwe = letterToRealType[lambdaArgFromDBType.name]
-                        if (qwe != null && it.inputList.isNotEmpty()) {
-                            it.inputList[i].type = qwe
+                    if (it is CodeBlock) {
+                        val lambdaArgFromDBType = lambdaArgFromDb.type
+                        if (lambdaArgFromDBType is Type.UnknownGenericType) {
+                            val qwe = letterToRealType[lambdaArgFromDBType.name]
+                            if (qwe != null && it.inputList.isNotEmpty()) {
+                                it.inputList[i].type = qwe
+                            }
                         }
+                    }
+                    else {
+                        it.token.compileError("Compiler Bug, unexpected collection literal, or non empty inited collection literal")
                     }
                 }
             }
+
         }
     }
 
 
-    val argsFiltered = if (filterCodeBlock) usualArgs else codeBlocks
-    argsFiltered.forEachIndexed { argNum, it ->
+    val realArgs = if (filterGenerics) usualArgs else codeBlocks
+    realArgs.forEachIndexed { argNum, it ->
         val arg = it.keywordArg
         if (arg.type == null) {
             currentLevel++

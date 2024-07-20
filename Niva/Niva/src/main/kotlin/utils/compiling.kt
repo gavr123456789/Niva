@@ -408,17 +408,13 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
             }
         }
         
-        inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T) {
-            if (this) {
+        inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T): T {
+            return if (this) {
                 x()
             } else y()
         }
-        
-        inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T) {
-            if (!this) {
-                x()
-            } else y()
-        }
+
+        inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T): T = this.ifTrueIfFalse(y, x)
         
         inline fun <T> Iterable<T>.joinWithTransform(separator: String, noinline transform: ((T) -> CharSequence)): String {
             return this.joinToString(separator, transform = transform)

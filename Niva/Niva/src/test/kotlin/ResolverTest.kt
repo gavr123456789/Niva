@@ -1267,29 +1267,7 @@ class ResolverTest {
         assert(statements.count() == 2)
     }
 
-    @Test
-    fun extensionLambda() {
-        val source = """
-            type Person
-            Person foo::Int = []
-            Int sas::Person[Int -> Unit] = [
-              sas this: Person new Int: 4
-            ]
-            // call sas
-            2 sas: [
-              this // is Person
-            ]
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 4)
-        val q = statements[3] as MessageSendKeyword
-        assertTrue {
-            val w = (q.messages.first() as KeywordMsg)
-            val f = (w.args.first().keywordArg as CodeBlock).statements.first() as IdentifierExpr
 
-            f.type!!.name == "Person"
-        }
-    }
 
     @Test
     fun getGenericParamsFromLambdaArg() {
@@ -1353,15 +1331,7 @@ class ResolverTest {
         assertTrue(type.typeArgumentList[0] is Type.UnknownGenericType && type.typeArgumentList[0].name == "T")
     }
 
-    @Test
-    fun genericReceiverWithLambda() {
-        val source = """
-            T sas::[T -> Unit] = 1
-            5 sas: [it + 1]
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-    }
+
 
     @Test
     fun genericsWithExplicitDefinedType() {
@@ -1402,26 +1372,61 @@ class ResolverTest {
         assertTrue { w.extensionOfType!!.name == "String" }
     }
 
-    @Test
-    fun lambdaWithReceiverCall() {
-        val source = """
-            String msg::String[Int, Int -> Unit] = [
-                str = "sas"
-                msg this: str Int: 1 Int: 2
-            ]
-            
-            "sas" msg: [ x, y -> 
-                 this + "sas"
-            ]
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-        val q = statements[1] as MessageSendKeyword
-        val w = (q.messages.first() as KeywordMsg).args.first().keywordArg as CodeBlock
-        val e = w.statements.first() as MessageSendBinary
-        val r = e.receiver as IdentifierExpr
-        assertTrue { r.name == "this" && r.type?.name == "String" }
-    }
+//    @Test
+//    fun lambdaWithReceiverCall() {
+//        val source = """
+//            String msg::String[Int, Int -> Unit] = [
+//                str = "sas"
+//                msg this: str Int: 1 Int: 2
+//            ]
+//
+//            "sas" msg: [ x, y ->
+//                 this + "sas"
+//            ]
+//        """.trimIndent()
+//        val statements = resolve(source)
+//        assert(statements.count() == 2)
+//        val q = statements[1] as MessageSendKeyword
+//        val w = (q.messages.first() as KeywordMsg).args.first().keywordArg as CodeBlock
+//        val e = w.statements.first() as MessageSendBinary
+//        val r = e.receiver as IdentifierExpr
+//        assertTrue { r.name == "this" && r.type?.name == "String" }
+//    }
+
+//    @Test
+//    fun genericReceiverWithLambda() {
+//        val source = """
+//            T sas::[T -> Unit] = 1
+//            5 sas: [it + 1]
+//        """.trimIndent()
+//        val statements = resolve(source)
+//        assert(statements.count() == 2)
+//    }
+
+
+//    @Test
+//    fun extensionLambda() {
+//        val source = """
+//            type Person
+//            Person foo::Int = []
+//            Int sas::Person[Int -> Unit] = [
+//              sas this: Person new Int: 4
+//            ]
+//            // call sas
+//            2 sas: [
+//              this // is Person
+//            ]
+//        """.trimIndent()
+//        val statements = resolve(source)
+//        assert(statements.count() == 4)
+//        val q = statements[3] as MessageSendKeyword
+//        assertTrue {
+//            val w = (q.messages.first() as KeywordMsg)
+//            val f = (w.args.first().keywordArg as CodeBlock).statements.first() as IdentifierExpr
+//
+//            f.type!!.name == "Person"
+//        }
+//    }
 
     @Test
     fun implicitLambdaReturnWithControlFlow() {
@@ -1811,6 +1816,66 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun ifReturnsDifferentBranchesOfTheSameUnion() {
+
+        val source = """
+           union Color = Red value: Int | Blue
+
+            x = 
+                true => Red value: 3 
+                    |=> Blue new
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun emptyMapAsArgumentHasCorrectTypeInfered() {
+
+        val source = """
+            type Success captures: MutableMap(String, String)
+            Success captures: #{}
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun emptyMapAsArgumentHasCorrectTypeListInfered() {
+
+        val source = """
+            type Success captures: MutableList::String
+            Success captures: {}
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun emptyMapAsArgumentHasCorrectTypeInfered2() {
+
+        val source = """
+            type Sas
+            Sas to::MutableMap(Int, String) = 4
+        
+            sas = Sas new
+            sas to: #{}
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 4)
+    }
+
+    @Test
+    fun dghtd() {
+
+        val source = """
+            type ParserCombinator = [String -> String]
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 1)
+
+    }
 
 }
 

@@ -7,6 +7,20 @@ import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
+fun Resolver.fillCollectionType(typeArgumentList: List<Type>, statement2: Receiver, collectionTypeName: String) {
+    val listType =
+        this.projects[currentProjectName]!!.packages["core"]!!.types[collectionTypeName] as Type.UserType
+
+    val collectionType = Type.UserType(
+        name = collectionTypeName,
+        typeArgumentList = typeArgumentList,
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = listType.protocols,
+        typeDeclaration = null
+    )
+    statement2.type = collectionType
+}
 
 fun Resolver.resolveCollection(
     statement: CollectionAst,
@@ -14,20 +28,7 @@ fun Resolver.resolveCollection(
     previousAndCurrentScope: MutableMap<String, Type>,
     rootStatement: Statement?
 ) {
-    val fillCollectionType = { typeArgumentList: List<Type>, statement2: CollectionAst ->
-        val listType =
-            this.projects["common"]!!.packages["core"]!!.types[typeName] as Type.UserType
 
-        val collectionType = Type.UserType(
-            name = typeName,
-            typeArgumentList = typeArgumentList,
-            fields = mutableListOf(),
-            pkg = "core",
-            protocols = listType.protocols,
-            typeDeclaration = null
-        )
-        statement2.type = collectionType
-    }
 
     if (statement.initElements.isNotEmpty()) {
         // resolve args
@@ -55,8 +56,10 @@ fun Resolver.resolveCollection(
                 else null
             } else null
 
+//            val anyType2: Type.InternalType? = null
+//            val firstElemType2: Type? = null
             // try to find list with the same generic type
-            fillCollectionType(listOf(anyType ?: firstElemType), statement)
+            fillCollectionType(listOf(anyType ?: firstElemType), statement, typeName)
 
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
@@ -66,11 +69,12 @@ fun Resolver.resolveCollection(
         statement.type = type
     }
     // empty collection assigned to keyword argument
-    else if (rootStatement is KeywordMsg && currentArgumentNumber != -1) {
-        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
-
-    } else {
-        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
+//    else if (rootStatement is KeywordMsg && currentArgumentNumber != -1) {
+//        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
+//
+//    }
+    else {
+        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement, typeName)
     }
 
 }
@@ -109,6 +113,17 @@ fun Resolver.resolveMap(
     if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
         val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
+        return
+    }
+
+    if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
+        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
+        statement.type = type
+        return
+    }
+    if (statement.initElements.isEmpty()) {
+
+        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "MutableMap")
         return
     }
     val (key, value) = statement.initElements[0]

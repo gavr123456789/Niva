@@ -358,13 +358,12 @@ fun createCharProtocols(
             createUnary("digitToInt", intType),
 
             createUnary("echo", unitType)
-
         ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", stringType, stringType),
-            createBinary("-", stringType, stringType),
-            createBinary("==", stringType, boolType),
-            createBinary("!=", stringType, boolType),
+            createBinary("+", charType, charType),
+            createBinary("-", charType, charType),
+            createBinary("==", charType, boolType),
+            createBinary("!=", charType, boolType),
             createBinary("..", charType, charRange),
         ),
         keywordMsgs = mutableMapOf(

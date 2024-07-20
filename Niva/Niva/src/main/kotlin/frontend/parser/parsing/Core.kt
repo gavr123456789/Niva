@@ -150,7 +150,7 @@ fun Parser.matchAssert(kind: TokenType, errorMessage: String? = null): Token {
         step()
         tok
     } else {
-        tok.compileError(realErrorMessage)
+        peek(-1).compileError(realErrorMessage)
     }
 }
 
@@ -164,7 +164,7 @@ fun Parser.matchAssertOr(vararg kinds: TokenType, errorMessage: String? = null):
     val result = kinds.find { it == tok.kind }
 
     if (result == null) {
-        tok.compileError(realErrorMessage)
+        peek(-1).compileError(realErrorMessage)
     } else {
         step()
         return tok

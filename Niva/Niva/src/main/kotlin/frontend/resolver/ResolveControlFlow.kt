@@ -26,8 +26,6 @@ fun getAssignTypeForControlFlow(branchReturnTypes: List<Type>, tok: Token): Type
     (1..<branchReturnTypes.count()).forEach {
         val cur = branchReturnTypes[it]
         val prev = branchReturnTypes[it - 1]
-        var oneOfReturnTypesIsActualNull = false
-
 
         val realType1 = cur.unpackNull()
         val realType2 = prev.unpackNull()
@@ -198,7 +196,7 @@ fun Resolver.resolveControlFlow(
                 }
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
-                val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token)
+                val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token, compareParentsOfBothTypes = true)
                 if (!areIfAndElseEqual && !rootStatementIsMessageDeclAndItReturnsNullable()) {
                     lastExpr.token.compileError("(${YEL}$firstReturnTypeName ${RESET}!= ${YEL}$elseReturnTypeName${RESET}) In if Expression return type of else branch and main branches are not the same")
                 }
