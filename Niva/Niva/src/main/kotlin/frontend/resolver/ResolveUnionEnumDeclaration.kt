@@ -101,10 +101,11 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 }
 
 fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
-    val realType = statement.realTypeAST.toType(typeDB, typeTable)
+    val realType = statement.realTypeAST.toType(typeDB, typeTable, customPkg = currentPackageName)
     statement.realType = realType
     if (realType is Type.Lambda) {
         realType.alias = statement.typeName
+//        realType.pkg = currentPackageName
     }
     addNewType(realType, statement, alias = true, alreadyCheckedOnUnique = false)
 }

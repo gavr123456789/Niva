@@ -72,24 +72,22 @@ fun TypeDB.getType(
             }
 
             countOfTypes > 1 -> {
-                val map = mutableMapOf<String, Type>()
-                userTypesFromDifferentPkgs.forEach {
-                    map[it.pkg] = it
-                }
                 // if already qualified
                 if (names.count() > 1) {
                     val pkgName = names.dropLast(1).joinToString(".")
-                    val q = userTypesFromDifferentPkgs.find { it.pkg == pkgName }
 
+                    val q = userTypesFromDifferentPkgs.find { it.pkg == pkgName }
                     if (q != null) {
                         return TypeDBResult.FoundOne(q)
                     }
                 }
-                return TypeDBResult.FoundMoreThanOne(map)
+                return TypeDBResult.FoundMoreThanOne(
+                    userTypesFromDifferentPkgs.map { it.pkg to it }.toMap()
+                )
             }
 
             countOfTypes == 0 -> return TypeDBResult.NotFound(name)
-            else -> throw Exception("???")
+            else -> throw Exception("???42???")
         }
 
 
@@ -103,8 +101,23 @@ fun TypeDB.getType(
 
     // not in scope, not user type, not internal type
     return TypeDBResult.NotFound(name)
-
 }
+
+//fun TypeDB.findLambdaType(name: String): TypeDBResult? {
+//    val foundInLambda = lambdaTypes[name]
+//    if (foundInLambda != null) {
+//        if (foundInLambda.count() == 1) {
+//            return TypeDBResult.FoundOne(foundInLambda[0])
+//        } else if (foundInLambda.count() > 1) {
+//             TypeDBResult.FoundMoreThanOne(
+//                foundInLambda.map { it.pkg to it }.toMap()
+//            )
+//        }
+//    }
+//
+//    return null
+//}
+
 
 fun TypeDB.getTypeOfIdentifierReceiver(
     typeName: String,
@@ -117,7 +130,10 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 ): Type? {
     val q = getType(typeName, currentScope, previousScope, names = names)
     val w = q.getTypeFromTypeDBResultConstructor(
-        KeywordMsg(value, "", value.type, value.token, emptyList(), listOf(value.toString()), declaration = null), imports, curPkg, value.token //TODO 1111 передавать не нулл в декларации
+        KeywordMsg(value, "", value.type, value.token, emptyList(), listOf(value.toString()), declaration = null),
+        imports,
+        curPkg,
+        value.token
     )
     return w
 }
@@ -128,7 +144,7 @@ fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
 //        is Type.ErrorType -> addErrorDomain(realName, type, token)
-        is Type.UserLike -> addUserLike(realName, type, token)
+        is Type.UserLike -> addUserLike(realName, type)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
         is Type.NullableType, is Type.UnresolvedType -> throw Exception("unreachable")
@@ -143,7 +159,7 @@ fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
     lambdaTypes[typeName] = type
 }
 
-fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSED_PARAMETER") token: Token) {
+fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike) {
     val list = userTypes[typeName]
     if (list == null) {
         // create list with single new type
@@ -154,10 +170,7 @@ fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike, @Suppress("UNUSE
         if (listHasTypeWithThisName != null) {
             // check that their defined in different packages, if not than drop
 
-            if (type.pkg == listHasTypeWithThisName.pkg) {
-//                println("typeDB: Type with name ${type.name} already defined in package ${type.pkg}")
-//                token.compileError("Type with name ${type.name} already defined in package ${type.pkg}")
-            } else {
+            if (type.pkg != listHasTypeWithThisName.pkg) {
                 // add new type to list
                 list.add(type)
             }

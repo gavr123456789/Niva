@@ -794,7 +794,7 @@ fun Resolver.changePackage(
                 typeDB.addInternalType(it.name, it)
             }
             if (it is Type.UserLike) {
-                typeDB.addUserLike(it.name, it, token)
+                typeDB.addUserLike(it.name, it)
             }
         }
 
@@ -1346,7 +1346,7 @@ class Resolver(
             )
 
             typeTable[type.name] = type// fixed
-            typeDB.addUserLike(type.name, type, createFakeToken())
+            typeDB.addUserLike(type.name, type)
             corePackage.types[type.name] = type
         }
         // Sequence

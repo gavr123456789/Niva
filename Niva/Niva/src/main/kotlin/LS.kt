@@ -311,7 +311,7 @@ fun LS.removeDecl2(file: File) {
 
             pkgName = d.receiver!!.pkg
             val removeFromTypeDB = { typeName: String ->
-                val t = typeDB.userTypes[typeName]
+                val t = typeDB.userTypes[typeName] //?: typeDB.lambdaTypes[typeName]
                 if (t != null) {
                     val iter = t.iterator()
                     while (iter.hasNext()) {
@@ -324,7 +324,15 @@ fun LS.removeDecl2(file: File) {
                     if (t.isEmpty()) {
                         typeDB.userTypes.remove(typeName)
                     }
+                } else {
+                    // try lambda
+                    val l = typeDB.lambdaTypes[typeName]
+                    if (l != null) {
+                        typeDB.lambdaTypes.remove(typeName)
+                    }
                 }
+
+
 
                 // from pkg
                 val pkg2 = resolver.projects["common"]!!.packages[pkgName]
@@ -334,9 +342,8 @@ fun LS.removeDecl2(file: File) {
 
 
             when (d) {
-                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration -> removeFromTypeDB(
-                    d.typeName
-                )
+                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration ->
+                    removeFromTypeDB(d.typeName)
 
                 is UnionRootDeclaration -> {
                     d.branches.forEach { removeFromTypeDB(it.typeName) }
@@ -352,8 +359,8 @@ fun LS.removeDecl2(file: File) {
         }
     }
     // remove the whole package
-    if (pkgName != null) {
-        resolver.projects["common"]!!.packages.remove(pkgName)
+    if (pkgName != null && pkgName != "core") {
+        resolver.projects[resolver.currentProjectName]!!.packages.remove(pkgName)
         info?.invoke("The whole package removed: $pkgName")
     }
 
@@ -400,17 +407,16 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
         // find if there is main.niva
         val nivaMain = listOfNivaFiles.find { it.nameWithoutExtension == "main" }
-        if (nivaMain != null) {
-            return Pair(nivaMain, listOfNivaFiles)
+        return if (nivaMain != null) {
+            Pair(nivaMain, listOfNivaFiles)
         } else {
-            return findRoot(a.parentFile, listOfNivaFiles)
+            findRoot(a.parentFile, listOfNivaFiles)
         }
     }
 
     val file = File(URI(pathToChangedFile))
     assert(file.exists())
 
-    // сначала заюзать listFilesRecursively, если она ничего не нашла main.niva то тогда уже добавлять к ее результатам  findRoot
     val collectFiles = {
         val set = listFilesRecursively(file.parentFile, "niva", "scala", "nivas").toSet()
         val main = set.find { it.nameWithoutExtension == "main" }
