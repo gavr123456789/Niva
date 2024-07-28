@@ -5,6 +5,7 @@ package frontend.parser.parsing
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
 import frontend.parser.types.ast.SingleWordPragma
+import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
@@ -45,7 +46,7 @@ fun Parser.statement(): Statement {
     }
 
     if (kind == TokenType.Type) {
-        return if (checkMany(TokenType.Identifier, TokenType.Assign, distance = 1)){
+        return if (checkMany(TokenType.Identifier, TokenType.Assign, distance = 1)) {
             typeAliasDeclaration(pragmas)
         } else
             typeDeclaration(pragmas)
@@ -152,7 +153,6 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
     }
 
     return IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x)
-
 }
 
 // if inside var decl with type, then we're getting type from it
@@ -295,7 +295,7 @@ fun Parser.expression(
 //        return staticBuilderWithArgs()
 //    }
 
-    if (match (TokenType.Ampersand)) {
+    if (match(TokenType.Ampersand)) {
         return methodReference()
     }
 
@@ -305,7 +305,8 @@ fun Parser.expression(
         try {
             val receiver = parseType()
             return if (receiver is TypeAST.Lambda && receiver.extensionOfType != null) {
-                val methodReference = receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
+                val methodReference =
+                    receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
                 methodReference
             } else {
                 current = savepoint
@@ -316,6 +317,7 @@ fun Parser.expression(
             return null
         }
     }
+
     val methodReference = tryMessageReference()
 
     if (methodReference != null) {
@@ -337,7 +339,6 @@ fun Parser.expression(
         fixPosition(messageSend)
         messageSend
     }
-
 
 
     // x > 5 ^ => ...
@@ -399,6 +400,57 @@ fun Parser.expression(
     return unwrapped
 }
 
+fun Parser.parseDocComment(): DocComment? {
+    data class WordInfo(val word: String, val startIndex: Int, val endIndex: Int, val lineNum: Int)
+
+    fun extractWordsWithIndices(input: String): List<WordInfo> {
+        val regex = Regex("@(\\w+)")
+        val result = mutableListOf<WordInfo>()
+
+        input.split("\n").forEachIndexed { lineNum, line ->
+            val matches = regex.findAll(line)
+            matches.forEachIndexed { i, matchResult ->
+                if (matchResult.groupValues.count() > 1) {
+                    val word = matchResult.groupValues[1]
+                    val startIndex = matchResult.range.first
+                    val endIndex = matchResult.range.last
+                    result.add(WordInfo(word, startIndex, endIndex, lineNum = lineNum))
+                }
+            }
+        }
+
+        return result
+    }
+
+    if (check(TokenType.DocComment)) {
+        val docComment = step()
+        val words = extractWordsWithIndices(docComment.lexeme)
+        val text = docComment.lexeme.replace("///", "").trimIndent()
+
+        val identifiers = words.map {
+            val name = it.word
+            val token = Token(
+                TokenType.Identifier,
+                name,
+                line = docComment.line + it.lineNum,
+                Position(0, 1),
+                Position(it.startIndex + 1, it.endIndex + 1),
+                docComment.file,
+                0,
+//                lineEnd = //if (words.isNotEmpty()) words.last().lineNum + docComment.line else 0
+            )
+
+
+            IdentifierExpr(name, listOf(name), null, token, true)
+        }
+
+        return DocComment(
+            text = text,
+            identifiers = identifiers,
+        )
+    }
+    return null
+}
 
 fun Parser.pragmas(): MutableList<Pragma> {
     val pragmas: MutableList<Pragma> = mutableListOf()
@@ -436,7 +488,9 @@ fun Parser.pragmas(): MutableList<Pragma> {
 
 fun Parser.statementWithEndLine(): Statement {
     skipNewLinesAndComments()
+    val docComment = parseDocComment()
     val result = this.statement()
+        .also { if (docComment != null) it.docComment = docComment }
     skipNewLinesAndComments()
 
     return result

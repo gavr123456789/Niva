@@ -1,9 +1,8 @@
 /// this is a @Person and its @Success full
-/// second param is an @Int
+/// second param is an @NotExistingType
 type Person name: String age: Int
 {name age} = Person name: "Alice" age: 24
 name echo
 age echo
 
 type Success captures: MutableList::String
-Success captures: {}

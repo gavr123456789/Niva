@@ -56,6 +56,7 @@ enum class TokenType {
     EndOfFile,
     NoMatch,   // Used internally by the symbol table
     Comment,   // Useful for documentation comments, pragmas, etc.
+    DocComment,   // Useful for documentation comments, pragmas, etc.
     BinarySymbol,    // A generic symbol
     Assign, // =,
     DoubleColon,

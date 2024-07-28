@@ -1,0 +1,79 @@
+type Node v: T next: Node?
+constructor Node v::T = Node v: v next: null
+
+Node str -> String =
+    next unpack: [ "$v, " + it str] or: "$v"
+
+nodeInt =
+  Node
+    v: 545
+    next: (
+      Node
+        v: "sas"
+        next: (Node v: true)
+    )
+
+nodeInt str echo
+
+
+
+type LinkedList head: Node? tail: Node? size: Int
+
+constructor LinkedList::T empty =
+  LinkedList::T head: null tail: null size: 0
+
+LinkedList isEmpty = size == 0
+LinkedList str = this isEmpty => "Empty!" |=> head unpackOrError str
+
+LinkedList push: v::T -> LinkedList = [
+  head <- Node v: v next: head
+  tail == null => tail <- head
+  size <- size inc
+  ^this
+]
+
+LinkedList add: v::T -> LinkedList =
+  this isEmpty => [
+    this push: v
+    this
+  ] |=> [
+    tail unpack: [
+      it next: (Node v: v)
+      tail <- it next
+      size <- size inc
+    ]
+    this
+  ]
+
+
+LinkedList at: i::Int -> Node? = [
+  mut curr = head
+  0..<i forEach: [
+    curr unpack: [curr <- it next]
+  ]
+  ^curr
+]
+
+LinkedList forEach::[T -> Unit] =
+  0..<size forEach: [
+    forEach T: (this at: it |> unpackOrError v)
+  ]
+
+
+LinkedList map::[T -> G] -> LinkedList::G = [
+   newLinkedList = LinkedList::G empty
+   this forEach: [
+     newLinkedList add: (map T: it)
+   ]
+  ^newLinkedList
+]
+
+
+list = LinkedList::Int empty
+list push: 1 |> push: 2 |> push: 3
+list add: -1 |> add: -2 |> add: -3
+"element 4" echo
+list at: 4 |> unpackOrError v echo
+"full list" echo
+list str echo
+list map: [it + 5] |> str echo

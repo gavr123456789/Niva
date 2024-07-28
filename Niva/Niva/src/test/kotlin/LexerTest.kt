@@ -168,7 +168,15 @@ x sas
     @Test
     fun comment() {
         checkWithEnd("// some important info", listOf(Comment))
+        checkWithEnd("// some important info\n// another comment", listOf(Comment))
     }
+
+    @Test
+    fun docComment() {
+        checkWithEnd("/// some @important info", listOf(DocComment))
+        checkWithEnd("/// some @important info\n/// another", listOf(DocComment))
+    }
+
 
     @Test
     fun nn() {
