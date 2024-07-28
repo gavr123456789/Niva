@@ -227,7 +227,10 @@ fun Resolver.resolve(
     }
     unResolvedMessageDeclarations.clear()
 
-
+    unresolvedDocComments.forEach { b ->
+        resolveSingle(b, mutableMapOf())
+    }
+    unresolvedDocComments.clear()
     /// end of resolve all declarations
 
     verbosePrinter.print {

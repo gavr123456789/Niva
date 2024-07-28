@@ -1,3 +1,5 @@
+@file:Suppress("ControlFlowWithEmptyBody")
+
 package frontend
 
 import main.frontend.lexer.isAlphaNumeric
@@ -12,22 +14,18 @@ typealias StringToToken = HashMap<String, TokenType>
 
 class SymbolTable(var keywords: StringToToken = hashMapOf(), var symbols: StringToToken = hashMapOf())
 
-fun SymbolTable.addSymbol(lexeme: String, tokenType: TokenType) =
-    symbols.set(lexeme, tokenType)
+fun SymbolTable.addSymbol(lexeme: String, tokenType: TokenType) = symbols.set(lexeme, tokenType)
 
-fun SymbolTable.existsKeyword(keyword: String) =
-    keyword in keywords
+fun SymbolTable.existsKeyword(keyword: String) = keyword in keywords
 
 fun SymbolTable.getMaxSymbolSize(): Int = symbols.maxOf { it.key.length }
 
 
-fun SymbolTable.getSymbols(n: Int) =
-    symbols.keys.filter { it.length == n }
+fun SymbolTable.getSymbols(n: Int) = symbols.keys.filter { it.length == n }
 
 
 class Lexer(
-    var source: String,
-    val file: File
+    var source: String, val file: File
 ) {
     val symbolTable: SymbolTable = SymbolTable()
     val tokens: MutableList<Token> = mutableListOf()
@@ -78,41 +76,36 @@ fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
     }
 }
 
-fun Lexer.step(n: Int = 1): String =
-    buildString {
-        while (length < n) {
-            if (done() || current > source.lastIndex) {
-                break
-            } else {
-                append(source[current])
-            }
-
-            current++
+fun Lexer.step(n: Int = 1): String = buildString {
+    while (length < n) {
+        if (done() || current > source.lastIndex) {
+            break
+        } else {
+            append(source[current])
         }
-        linePos += n
-    }
 
-fun Lexer.peek(distance: Int = 0, length: Int = 1): String =
-    buildString {
-        var i = distance
-        while (this.length < length) {
-            if (done() || current + i > source.lastIndex || current + i < 0)
-                break
-            else
-                append(source[current + i]) // + 1
-
-            i++
-        }
+        current++
     }
+    linePos += n
+}
 
-fun Lexer.check(arg: String, distance: Int = 0): Boolean =
-    when {
-        done() -> false
-        else -> {
-            val x = peek(distance, arg.length)
-            x == arg
-        }
+fun Lexer.peek(distance: Int = 0, length: Int = 1): String = buildString {
+    var i = distance
+    while (this.length < length) {
+        if (done() || current + i > source.lastIndex || current + i < 0) break
+        else append(source[current + i]) // + 1
+
+        i++
     }
+}
+
+fun Lexer.check(arg: String, distance: Int = 0): Boolean = when {
+    done() -> false
+    else -> {
+        val x = peek(distance, arg.length)
+        x == arg
+    }
+}
 
 
 fun Lexer.check(args: Array<String>, distance: Int = 0): Boolean {
@@ -124,17 +117,16 @@ fun Lexer.check(args: Array<String>, distance: Int = 0): Boolean {
     return false
 }
 
-fun Lexer.match(s: String): Boolean =
-    when {
-        !check(s) -> {
-            false
-        }
-
-        else -> {
-            step(s.length)
-            true
-        }
+fun Lexer.match(s: String): Boolean = when {
+    !check(s) -> {
+        false
     }
+
+    else -> {
+        step(s.length)
+        true
+    }
+}
 
 
 fun Lexer.match(args: Array<String>): Boolean {
@@ -148,9 +140,9 @@ fun Lexer.match(args: Array<String>): Boolean {
     return false
 }
 
-fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null) {
+fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null, customLine: Int? = null) {
     try {
-        "S kw::Str -> Int = 34"
+        val line = customLine ?: line
         val lexeme2 = source.slice(start until current)// better replace to view
         val lexeme3 = if (addToLexeme == null) lexeme2 else lexeme2 + addToLexeme
         val lexeme = lexeme3.dropLast(endPositionMinus)
@@ -170,7 +162,13 @@ fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexe
         spaces = 0
 
     } catch (e: StringIndexOutOfBoundsException) {
-        error("Compiler bug: cant create token: $tokenType, slice index out of bound: " + e.message + "\n ${source.slice(start until source.length)}")
+        error(
+            "Compiler bug: cant create token: $tokenType, slice index out of bound: " + e.message + "\n ${
+                source.slice(
+                    start until source.length
+                )
+            }"
+        )
     }
 }
 
@@ -337,8 +335,7 @@ fun Lexer.parseNumber() {
         createToken(kind, 1) // don't save d to not generate it in kotlin
     } else if (kind == TokenType.Float) {
         createToken(kind, addToLexeme = "f")
-    } else
-        createToken(kind)
+    } else createToken(kind)
 
 }
 
@@ -355,6 +352,28 @@ fun Lexer.parseIdentifier() {
             createToken(TokenType.Identifier)
         }
     }
+}
+
+fun Lexer.readUntilNewLine() {
+    while ((!match("\n")) && !done()) {
+        step()
+    }
+}
+
+enum class CommentType() {
+    Doc, Usual
+}
+
+fun Lexer.someComment(commentType: CommentType): Boolean {
+    if (when (commentType) {
+            CommentType.Usual -> match("//")
+            CommentType.Doc -> match("///")
+        }
+    ) {
+        readUntilNewLine()
+        return true
+    }
+    return false
 }
 
 
@@ -443,15 +462,24 @@ fun Lexer.next() {
 
         // Identifier
         p.isAlphaNumeric() || check("_") -> parseIdentifier()
-        // Comment
-        match("//") -> {
-            // inline comments
-            while (!match("\n") && !done()) {
-                step()
+        // Doc comment
+        check("///") -> {
+            val saveLine = line // because there will be wrong line number
+            while (someComment(CommentType.Doc)) {
+                incLine(false)
             }
-            createToken(TokenType.Comment)
+            createToken(TokenType.DocComment, customLine = saveLine)
+        }
+        // Comment
+        check("//") -> {
+            val saveLine = current
+
+            while (someComment(CommentType.Usual)) {
+            }
+            createToken(TokenType.Comment, customLine = saveLine)
             incLine(true)
         }
+
 
         match(">?") -> createToken(TokenType.InlineReplWithQuestion)
         // inlineRepl
@@ -462,8 +490,7 @@ fun Lexer.next() {
         }
 
 
-        match("::") ->
-            createToken(TokenType.DoubleColon)
+        match("::") -> createToken(TokenType.DoubleColon)
 
         match("||") -> createToken(TokenType.BinarySymbol)
         match("&&") -> createToken(TokenType.BinarySymbol)

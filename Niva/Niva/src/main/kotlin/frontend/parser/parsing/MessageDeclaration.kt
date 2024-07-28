@@ -289,7 +289,9 @@ fun Parser.methodBody(
         if (parseOnlyOneLineIfNoBody) {
             messagesOrVarStatements.add(statementWithEndLine())
         } else {
-            messagesOrVarStatements.add(statement())
+            val docComment = parseDocComment()
+            val statement = statement().also { if (docComment != null) it.docComment = docComment }
+            messagesOrVarStatements.add(statement)
         }
     }
 

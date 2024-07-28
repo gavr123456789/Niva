@@ -16,6 +16,7 @@ sealed class Statement(
     token: Token,
     val isPrivate: Boolean,
     var pragmas: MutableList<Pragma>,
+    var docComment: DocComment? = null
 ) : ASTNode2(token) {
     override fun toString(): String {
         return token.lexeme

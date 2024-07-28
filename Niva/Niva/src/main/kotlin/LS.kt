@@ -307,8 +307,6 @@ fun LS.removeDecl2(file: File) {
         }
         // remove type
         if (d is SomeTypeDeclaration) {
-//            info?.invoke("removing $d")
-
             pkgName = d.receiver!!.pkg
             val removeFromTypeDB = { typeName: String ->
                 val t = typeDB.userTypes[typeName] //?: typeDB.lambdaTypes[typeName]
@@ -465,8 +463,11 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                     } else {
                         fileToDecl[file.absolutePath] = mutableSetOf(st)
                     }
+                    // add doc comments so u can ctrl click them
+                    st.docComment?.let {
+                        it.identifiers.forEach { addStToMegaStore(it) }
+                    }
                     // add types of the decl as IdentExpr
-
                     if (st is MessageDeclaration) {
                         val realSt = when(st) {
                             is ConstructorDeclaration -> st.msgDeclaration

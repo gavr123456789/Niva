@@ -1065,6 +1065,7 @@ class Resolver(
     val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
     val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
     val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
+    val unresolvedDocComments: MutableSet<IdentifierExpr> = mutableSetOf(),
     var allDeclarationResolvedAlready: Boolean = false,
 
     val generator: GeneratorKt = GeneratorKt(),

@@ -83,6 +83,11 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             if (onEachStatement != null && !resolveFailed) { // its true only in LSP mode
                 onEachStatement(it, x, mutableMapOf(), this.currentResolvingFileName)
             }
+            // remember doc comments to resolve references from them later
+            val docComment = it.docComment
+            if (docComment != null) {
+                unresolvedDocComments.addAll(docComment.identifiers)
+            }
         }
         // special messages like Project package: ""
         if (it is MessageSendKeyword) {
