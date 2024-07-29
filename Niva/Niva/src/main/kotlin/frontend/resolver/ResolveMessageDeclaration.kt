@@ -156,8 +156,7 @@ fun Resolver.resolveMessageDeclaration(
                         )
                     )
                 }
-                // adding builder lambda
-//                bodyScope[st.name] = lambda
+                // lambda that calls body of the caller always named build
                 bodyScope["build"] = lambda
             }
         }
@@ -239,13 +238,11 @@ fun Resolver.resolveMessageDeclaration(
                 val mdgData = when (st) {
                     is ConstructorDeclaration -> findStaticMessageType(forType, st.name, st.token).first
                     is MessageDeclarationUnary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Unary)
-
                     is MessageDeclarationBinary -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Binary)
-
                     is MessageDeclarationKeyword -> findAnyMsgType(forType, st.name, st.token, MessageDeclarationType.Keyword)
 
                     is StaticBuilderDeclaration ->
-                        TODO()
+                        TODO("single expr builder is impossible")
                 }
 
 

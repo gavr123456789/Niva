@@ -19,6 +19,7 @@ sealed class MessageDeclaration(
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     val isInline: Boolean = false,
+    val isSuspend: Boolean = false,
     var forType: Type? = null,
     var returnType: Type? = null,
     var isRecursive: Boolean = false,
@@ -63,7 +64,8 @@ class MessageDeclarationUnary(
     returnType: TypeAST?,
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    isInline: Boolean = false,
+    isInline: Boolean,
+    isSuspend: Boolean,
     typeArgs: MutableList<String> = mutableListOf()
 
 ) : MessageDeclaration(
@@ -76,6 +78,7 @@ class MessageDeclarationUnary(
     isPrivate,
     pragmas,
     isInline,
+    isSuspend,
     typeArgs = typeArgs
 )
 
@@ -90,6 +93,7 @@ class MessageDeclarationBinary(
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false,
+    isSuspend: Boolean,
     typeArgs: MutableList<String> = mutableListOf()
 
 ) : MessageDeclaration(
@@ -102,6 +106,7 @@ class MessageDeclarationBinary(
     isPrivate,
     pragmas,
     isInline,
+    isSuspend,
     typeArgs = typeArgs
 )
 
@@ -133,8 +138,10 @@ class MessageDeclarationKeyword(
     typeArgs: MutableList<String> = mutableListOf(),
     isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    isInline: Boolean = false
-) : MessageDeclaration(
+    isInline: Boolean = false,
+    isSuspend: Boolean,
+
+    ) : MessageDeclaration(
     name,
     forType,
     token,
@@ -144,6 +151,7 @@ class MessageDeclarationKeyword(
     isPrivate,
     pragmas,
     isInline,
+    isSuspend,
     typeArgs = typeArgs
 ) {
     override fun toString(): String {
@@ -176,21 +184,6 @@ class ExtendDeclaration(
 ) : Declaration(token, isPrivate, pragmas)
 
 
-
-@Suppress("unused")
-//class StaticBuilderDeclaration67(
-//    val name: String,
-//    token: Token,
-//    val args: List<KeywordDeclarationArg>,
-//    body: List<Statement>,
-//    returnType: TypeAST?,
-//    val defaultAction: CodeBlock? = null,
-//    val typeArgs: MutableList<String> = mutableListOf(),
-//    isPrivate: Boolean = false,
-//    pragmas: MutableList<Pragma> = mutableListOf(),
-//    isInline: Boolean = false
-//) : Declaration(token, isPrivate, pragmas)
-
 class StaticBuilderDeclaration(
     val msgDeclaration: MessageDeclarationKeyword,
     val defaultAction: CodeBlock?,
@@ -207,6 +200,7 @@ class StaticBuilderDeclaration(
     msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
     msgDeclaration.isInline,
+    msgDeclaration.isSuspend,
     msgDeclaration.forType,
     msgDeclaration.returnType,
     msgDeclaration.isRecursive,

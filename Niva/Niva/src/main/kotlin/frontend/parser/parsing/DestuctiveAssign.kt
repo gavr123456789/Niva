@@ -15,7 +15,6 @@ fun Parser.destructiveAssignParse(tokForError: Token): DestructingAssign {
     val q = tree.removeLast() as? ListCollection
     if (q == null) tokForError.compileError("Parsing error, expected = after collection {} for destructing assign")
 
-    // {name age} ^= person
     skipNewLinesAndComments()
     matchAssert(TokenType.Assign)
     skipNewLinesAndComments()

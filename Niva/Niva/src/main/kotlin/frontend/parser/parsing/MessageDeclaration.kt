@@ -1,83 +1,15 @@
 package frontend.parser.parsing
 
 import frontend.parser.types.ast.*
+import kotlinx.coroutines.runBlocking
 import main.utils.RED
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.parsing.parseType
-import main.frontend.parser.parsing.simpleReceiver
-import main.frontend.parser.parsing.staticBuilderFromUnary
-import main.frontend.parser.parsing.staticBuilderFromUnaryWithArgs
 import main.frontend.parser.types.ast.*
 import main.frontend.parser.types.ast.TypeAST
-import main.utils.RESET
 import main.utils.capitalizeFirstLetter
 
-// also recevier can be unary or binary message
-
-// receiver examples - (receiver)
-// (1) sas // simple unary
-// (1) + 2 // simple binary
-// (1) to: 2 // simple keyword
-// (1 sas) to: 2 // keyword with unary receiver
-// (1 + 2) to: 2 // keyword with binary receiver
-// (1 inc + 2 inc) to: 2 // keyword with binary receiver
-// So unary and binary messages can be the receiver,
-// also collections
-// also code blocks
-
-
-fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
-    customReceiver: Receiver? = null,
-    insideKeywordArgument: Boolean = false
-): Receiver {
-
-    val safePoint = current
-    try {
-        // we don't need to parse cascade if we are inside keyword argument parsing, since this cascade will be applied to
-        // the kw argument itself, like x from: 1 - 1 |> echo, echo will be applied to 1 - 1, not x
-        // or Person name: "Alice" |> getName
-        when (val messageSend =
-            unaryOrBinary(
-                customReceiver = customReceiver,
-                parsePipe = !insideKeywordArgument,
-                parseCascade = !insideKeywordArgument
-            )) {
-            is MessageSendUnary -> {
-                return if (messageSend.messages.isNotEmpty()) {
-                    if (check(TokenType.OpenBracket)) {
-                        staticBuilderFromUnary(messageSend)
-                    } else if (check(TokenType.OpenParen)) {
-                        staticBuilderFromUnaryWithArgs(messageSend)
-                    }
-                    else
-                        messageSend
-                } else
-                    messageSend.receiver
-            }
-
-            is MessageSendBinary -> {
-                return if (messageSend.messages.isNotEmpty())
-                    messageSend
-                else
-                    messageSend.receiver
-            }
-
-            is MessageSendKeyword -> error("keyword can be a receiver only when piped, 1 from: 2 |> to: 3")
-        }
-    } catch (e: Throwable) {
-        if (e.message?.startsWith("${RED}Error:$RESET") == true) {
-            throw e
-        }
-        current = safePoint
-    }
-    current = safePoint
-    // no messages as receiver
-    return simpleReceiver()
-}
-
-
-// receiver like collection, code block, identifier,
 
 
 fun Parser.returnType(): TypeAST? {
@@ -98,6 +30,7 @@ fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
     ///// BODY PARSING
 
     val isInline = match(TokenType.Return)
+    val isSuspend = match(">>") // Int sas >>= []
 
     val pair = methodBody() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
@@ -115,7 +48,9 @@ fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
         body = messagesOrVarDeclarations,
         returnType = returnType,
         isSingleExpression = isSingleExpression,
-        isInline = isInline
+        isInline = isInline,
+        isSuspend = isSuspend
+
     )
     return result
 }
@@ -138,6 +73,10 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
     val returnType = returnType()
 
     // BODY PARSING
+
+    val isInline = match(TokenType.Return)
+    val isSuspend = match(">>") // Int sas >>= []
+
     val pair = methodBody() // (body, is single expression)
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
@@ -154,7 +93,9 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
         arg = arg,
         body = messagesOrVarDeclarations,
         returnType = returnType,
-        isSingleExpression = isSingleExpression
+        isSingleExpression = isSingleExpression,
+        isInline = isInline,
+        isSuspend = isSuspend
     )
     return result
 }
@@ -172,7 +113,7 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
         args.add(keyArg())
         skipNewLinesAndComments()
 
-    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow)))
+    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow) || check(">>")))
     return args
 }
 
@@ -190,6 +131,9 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
     val returnType = returnType()
 
     // BODY PARSING
+    val isInline = match(TokenType.Return)
+    val isSuspend = match(">>") // Int sas >>= []
+
     val pair = methodBody()
     val messagesOrVarDeclarations = pair.first
     val isSingleExpression = pair.second
@@ -207,7 +151,9 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
         args = args,
         body = messagesOrVarDeclarations,
         returnType = returnType,
-        isSingleExpression = isSingleExpression
+        isSingleExpression = isSingleExpression,
+        isInline = isInline,
+        isSuspend = isSuspend
     )
     return result
 }
@@ -301,8 +247,12 @@ fun Parser.methodBody(
 }
 
 
-// Int sas ^ (-> Type)? =?
+// Int sas ^ (-> Type)? (^)?(>>)?(=)?
 fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
+
+    runBlocking {
+
+    }
     if (isConstructorOrOn) return true
 
     var isThereReturn = false
@@ -313,7 +263,8 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
         isThereReturn = true
         identifierMayBeTyped()
     }
-    match(TokenType.Return)
+    match(TokenType.Return) // (^)?
+    match(">>")             // (>>)?
     val equal = match(TokenType.Assign)
     if (equal) isThereEqual = true
 
@@ -515,13 +466,8 @@ fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticB
 // builder name key-args lambdaArg -> Type = []
 fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? = null): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
-    val receiverType = parseType()
-
-    // if its builder with args than the name of the builder is its receiver
-    val name = if (check(TokenType.DoubleColon, 1))
-        receiverType.name
-    else
-        (dotSeparatedIdentifiers() ?: peek(-1).compileError("Name of the builder expected")).name
+    val receiverTypeOrName = parseType()
+    val name = receiverTypeOrName.name
 
     skipNewLinesAndComments()
 
@@ -540,14 +486,16 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     matchAssert(TokenType.OpenBracket, "builder cant be single expression")
     val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
-    val x = MessageDeclarationKeyword(
+    val x =  MessageDeclarationKeyword(
         name = name,
-        forType = receiverType,
+        forType = receiver ?: receiverTypeOrName, // if this is builder with receiver "Type builder name from::Int = []", then use Type as receiver, not name(`receiverType`)
         returnType = returnType,
         args = args,
         body = body,
         token = builderKeyword,
-        isSingleExpression = false
+        isSingleExpression = false,
+        isSuspend = false,
+        pragmas = pragmas
     )
 
     val result = StaticBuilderDeclaration(
@@ -555,7 +503,8 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
         defaultAction = defaultAction,
         receiver,
         null,
-        builderKeyword
+        builderKeyword,
+
     )
 
 

@@ -1,0 +1,13 @@
+// receiver name,     builder name
+StringBuilder builder buildSomething -> String = [
+    this append: "added from builder\n"
+    build this: this
+    ^ this toString
+]
+
+// same as builder without receiver ... but receiver is needed
+y = StringBuilder new buildSomething [
+    this append: "added from body\n"
+]
+
+y echo

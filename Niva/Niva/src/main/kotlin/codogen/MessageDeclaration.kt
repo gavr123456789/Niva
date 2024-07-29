@@ -184,6 +184,7 @@ fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
     append(st.name, "(")
 
     // Args
+
     val args = st.msgDeclaration.args
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
@@ -258,6 +259,9 @@ fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): St
     appendPragmas(pragmas, this)
     val st = this@generateMessageDeclaration
     if (isInline) append("inline ")
+    if (isSuspend) append("suspend ")
+
+
     append(
         when (st) {
             is ConstructorDeclaration -> generateConstructorDeclaration()

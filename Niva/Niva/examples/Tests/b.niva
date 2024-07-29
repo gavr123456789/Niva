@@ -1,0 +1,5 @@
+Test sas = 
+  Assert 
+    that: ("a.b.c" split: "." |> count) 
+    equals: 3
+

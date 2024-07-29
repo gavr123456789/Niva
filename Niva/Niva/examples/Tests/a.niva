@@ -1,0 +1,10 @@
+Test sas = 
+  Assert that: 1 + 1 equals: 2
+
+Test sas2 = [
+  a = 1
+  b = 2
+  Assert that: a + b equals: 3
+]
+
+3 echo
