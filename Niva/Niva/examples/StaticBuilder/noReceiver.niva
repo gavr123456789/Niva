@@ -1,0 +1,27 @@
+type Card
+
+Card callFromBuilder = "call from builder" echo
+
+builder Card width::Int height::Int -> Int = [
+    card = Card new
+
+    mut x = 0
+    defaultAction = [ default::String ->
+        x <- x + default toInt
+    ]
+
+
+    build this: card defaultAction: defaultAction
+
+    ^ x + width + height
+]
+
+Card (width: 24 height: 30) [
+    "11" "12" "13"
+    .callFromBuilder // u can use . instead of this, anywhere
+    this callFromBuilder
+] echo
+
+// call from builder
+// call from builder
+// 90 // "^ x + width + height" from line 16

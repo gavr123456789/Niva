@@ -41,6 +41,7 @@ import main.lex
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class ParserTest {
@@ -1540,7 +1541,7 @@ class ParserTest {
     }
 
     @Test
-    fun staticBuild() {
+    fun staticBuilderCall() {
         val source = """
             sas [ 
                 it echo 
@@ -1935,6 +1936,8 @@ class ParserTest {
 
     @Test
     fun staticBuildDeclarationWithArgsWithReceiver() {
+        // Surface is the receiver type
+        // Card is the builder's name
         val source = """
             Surface builder Card width::Int height::Int -> Card = [
                 html = HTML new
@@ -1946,6 +1949,9 @@ class ParserTest {
         assert(ast.count() == 1)
         val staticB = ast[0] as StaticBuilderDeclaration
         assertTrue {
+            staticB.msgDeclaration is MessageDeclarationKeyword
+        }
+        assertTrue {
             staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
                     staticB.msgDeclaration.args.last().typeAST!!.name == "Int"
         }
@@ -1955,7 +1961,27 @@ class ParserTest {
     }
 
     @Test
-    fun builderWithKeys() {
+    fun staticBuildDeclarationWithArgsWithReceiver2() {
+        // Surface is the receiver type
+        // Card is the builder's name
+        val source = """
+            StringBuilder builder buildSomething -> String = [
+                1 echo
+            ]
+            
+        """.trimIndent()
+
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val staticB = ast[0] as StaticBuilderDeclaration
+        assertIs<MessageDeclarationKeyword>(staticB.msgDeclaration)
+    }
+
+
+
+    @Test
+    fun builderCallsWithKeys() {
         val source = """
             Card (width: 24 height: 30) [
                 1 echo
@@ -1983,6 +2009,7 @@ class ParserTest {
 
         assertEquals(ast.count(), 1)
     }
+
     @Test
     fun builderWithUnaryWithReceiver() {
         val source = """
@@ -1996,7 +2023,7 @@ class ParserTest {
     }
 
     @Test
-    fun builderWithArgsWithReceiver() {
+    fun builderWithArgsWithReceiverCall() {
         val source = """
             "rar" Card (width: 24 height: 30) [
                 1 echo
@@ -2064,6 +2091,67 @@ class ParserTest {
         } catch (e: CompilerError) {
             assertTrue { e.token.line == 2 }
         }
+    }
+
+    @Test
+    fun inlineAndSuspendFunc() {
+        val source = """
+            Int sas ^= 1
+            Int sas::Int >>= 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+
+    }
+
+
+    @Test
+    fun manyLineCommentsNotRuiningTokLineNumbers() {
+        val source = """
+            // qwf
+            // ars
+            // ars
+            Int sas ^= 1
+            Int sas::Int >>= 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val firstTok = ast[0].token
+        val secondTok = ast[1].token
+        assert(firstTok.line == 4)
+        assert(secondTok.line == 5)
+
+    }
+
+    @Test
+    fun manyLineDocCommentsNotRuiningTokLineNumbers() {
+        val source = """
+            /// qwf
+            /// ars
+            Int sas ^= 1
+            Int sas::Int >>= 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val firstTok = ast[0].token
+        val secondTok = ast[1].token
+        assert(firstTok.line == 3)
+        assert(secondTok.line == 4)
+
+    }
+
+    @Test
+    fun strangeCommentsBug() {
+        val source = """
+            // qwf
+
+            x = 1
+            x echo
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+
+
     }
 
 

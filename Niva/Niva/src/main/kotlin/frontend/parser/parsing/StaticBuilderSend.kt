@@ -41,7 +41,7 @@ fun Parser.staticBuilderFromUnaryWithArgs(msg: MessageSendUnary): StaticBuilder 
         msg.receiver
     else
         msg.also { it.messages.removeLast() }
-    ///
+
     matchAssert(TokenType.OpenParen)
 
     val b = StringBuilder()
@@ -53,7 +53,7 @@ fun Parser.staticBuilderFromUnaryWithArgs(msg: MessageSendUnary): StaticBuilder 
 
     val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
-    // TODO can name can be from another package
+    // TODO can name can be from another package? probably
     val result = StaticBuilder(
         name = q.selectorName,
         statements = statements,

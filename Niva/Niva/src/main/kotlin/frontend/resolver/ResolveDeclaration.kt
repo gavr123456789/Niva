@@ -203,6 +203,8 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             isSingleExpression = false,
                                             body = emptyList(),
                                             returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
+                                            isInline = false,
+                                            isSuspend = false,
                                         )
 
                                         msgDeclGetter.forType = forTypeReal
@@ -220,7 +222,8 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                                     name = it.name,
                                                     typeAST = typeAstFromArg
                                                 )
-                                            )
+                                            ),
+                                            isSuspend = false
                                         )
 
                                         msgDeclSetter.forType = forTypeReal

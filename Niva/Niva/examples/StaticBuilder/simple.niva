@@ -1,0 +1,22 @@
+builder StringBuilder buildStr -> String = [
+    // 1 create main object
+    b = StringBuilder new
+
+    // 2 define default action that will be called with every type of first argument
+    defaultAction = [ default::Any ->
+        b append: default; append: "\n"
+    ]
+
+    // 3 run the body of the builder (defaultAction is optional)
+    // every builder has `build` codeblock implicitly
+    build this: b defaultAction: defaultAction
+
+    // 4 return result of the builder
+    ^ b toString
+]
+
+buildStr [
+    123
+    "abc"
+    "hello"
+] echo

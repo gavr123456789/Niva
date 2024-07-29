@@ -27,21 +27,6 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-
-const val fakeFileSourceGOOD = """
-/// this is a @Person and its @Success full
-/// second param is an @Int
-type Person name: String age: Int
-{name age} = Person name: "Alice" age: 24
-name echo
-age echo
-x::Int = 4
-type Success captures: MutableList::String
-Success captures: {}
-
-"""
-
-
 interface Element {
     fun render(builder: StringBuilder, indent: String)
 }
@@ -136,7 +121,13 @@ fun html(init: HTML.() -> Unit): HTML {
     return html
 }
 
-///
+
+const val fakeFileSourceGOOD = """
+type Person name: String  age: Int
+{name age} = Person name: "Alice" age: 24
+
+
+"""
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
@@ -168,7 +159,6 @@ fun main(args: Array<String>) {
 //    catch (e: OnCompletionException) {
 //        println(e.scope)
 //    }
-
     run(args)
 }
 

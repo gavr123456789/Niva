@@ -1,0 +1,27 @@
+type COLOR
+constructor COLOR RED = "\u001B[31m"
+constructor COLOR CYAN = "\u001B[36m"
+constructor COLOR YEL = "\u001B[33m"
+constructor COLOR RESET = "\u001B[0m"
+constructor COLOR WHITE = "\u001B[37m"
+String red = COLOR RED + this + COLOR RESET 
+String yel = COLOR YEL + this + COLOR RESET 
+String cyan = COLOR CYAN + this + COLOR RESET 
+
+// "Hello"yel + " World"red + "!"cyan |> echo
+
+
+type Assert 
+
+constructor Assert that::Any equals::Any -> Unit! = [
+  a = Compiler getName: 1
+  b = Compiler getName: 2
+
+  that != equals => [
+    Error throwWithMessage: "Assertion failed: $a' != $b' ($that != $equals)"
+  ]
+]
+
+
+
+// Assert that: "sas" equals: "sas"

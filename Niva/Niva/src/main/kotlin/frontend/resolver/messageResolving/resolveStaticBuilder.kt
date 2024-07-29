@@ -22,7 +22,7 @@ fun Resolver.resolveStaticBuilder(
 
     // resolve receiver
     if (statement.receiverOfBuilder != null) {
-        resolveSingle(statement.receiverOfBuilder, previousScope, statement)
+        resolveSingle(statement.receiverOfBuilder, previousAndCurrentScope, statement)
     }
 
 
@@ -52,16 +52,19 @@ fun Resolver.resolveStaticBuilder(
     val defaultAction = builderFromDB.defaultAction
     if (defaultAction != null) {
         statement.defaultAction = defaultAction
-        previousAndCurrentScope["this"] = builderFromDB.forType
     }
     // add this
+    previousAndCurrentScope["this"] = builderFromDB.forType
     // resolve body
     resolve(statement.statements, (previousAndCurrentScope))
 
 
     statement.collectExpressionsForDefaultAction()
 
-
+    // check the args, because builder always have keyword msg, but it can be unary msg actually
+    if (builderFromDB.argTypes.isEmpty() && statement.args.isNotEmpty()) {
+        statement.token.compileError("You calling builder $statement with args, but it have no args at the declaration")
+    }
     // resolve arguments
     resolveKwArgs(
         statement,

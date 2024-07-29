@@ -1,9 +1,37 @@
-/// this is a @Person and its @Success full
-/// second param is an @Int
-type Person name: String age: Int
-{name age} = Person name: "Alice" age: 24
-name echo
-age echo
 
-type Success captures: MutableList::String
-Success captures: {}
+
+
+
+// receiver name,     builder name
+StringBuilder builder buildSomething -> String = [
+    this append: "added from builder\n"
+    build this: this
+    ^ this toString
+]
+
+// same as builder without receiver ... but receiver is needed
+y = StringBuilder new buildSomething [
+    this append: "added from body\n"
+]
+
+y echo
+
+//simple
+
+//StringBuilder builder buildStr arg::Int -> String = [
+//    defaultAction = [ default::Any ->
+//        this append: default; append: "\n"
+//    ]
+//
+//    build this: this defaultAction: defaultAction
+//
+//    ^ this toString
+//]
+//
+//x = StringBuilder new buildStr (arg: 34) [
+//    this append: "ast"
+//    123
+//    "abc"
+//    "hello"
+//]
+//x echo

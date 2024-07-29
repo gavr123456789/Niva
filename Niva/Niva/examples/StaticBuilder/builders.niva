@@ -80,32 +80,32 @@ builder HTML html -> HTML = [
 
 
 
-// static builder
+// no r
 //
-//type Card
-//
-//Card somethingForBuilder = 1 echo
-//
-//builder Card width::Int height::Int -> Int = [
-//    card = Card new
-//
-//    mut x = 0
-//    defaultAction = [ default::String ->
-//        x <- x + default toInt
-//    ]
-//
-//
-//    build this: card defaultAction: defaultAction
-//
-//    ^ x + width + height
-//]
-//
-//Card (width: 24 height: 30) [
-//    "11" "12" "13"
-//    .somethingForBuilder
-//    this somethingForBuilder
-//    this somethingForBuilder
-//] echo
+type Card
+
+Card somethingForBuilder = 1 echo
+
+builder Card width::Int height::Int -> Int = [
+    card = Card new
+
+    mut x = 0
+    defaultAction = [ default::String ->
+        x <- x + default toInt
+    ]
+
+
+    build this: card defaultAction: defaultAction
+
+    ^ x + width + height
+]
+
+Card (width: 24 height: 30) [
+    "11" "12" "13"
+    .somethingForBuilder
+    this somethingForBuilder
+    this somethingForBuilder
+] echo
 
 
 

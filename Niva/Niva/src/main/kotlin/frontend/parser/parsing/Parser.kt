@@ -288,13 +288,6 @@ fun Parser.expression(
         return ifStatementOrExpression()
     }
 
-//    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
-//        return staticBuilder()
-//    }
-//    if (checkMany(TokenType.Identifier, TokenType.OpenParen)) {
-//        return staticBuilderWithArgs()
-//    }
-
     if (match(TokenType.Ampersand)) {
         return methodReference()
     }
@@ -462,7 +455,6 @@ fun Parser.pragmas(): MutableList<Pragma> {
             do {
                 val name = step()
                 matchAssert(TokenType.Colon)
-//        step() // skip colon
                 val value = primary() ?: name.compileError("Inside code attribute after : value expected")
 
                 pragmas.add(

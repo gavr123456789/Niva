@@ -647,7 +647,6 @@ fun Resolver.addNewAnyMessage(
             // then add it for this Surface type
             if (builderMetaData.receiverType != null) {
                 val type = builderMetaData.receiverType
-
                 val (protocol, _) = getCurrentProtocol(type, st.token, customPkg)
 
                 protocol.builders[st.name] = builderMetaData

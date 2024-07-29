@@ -398,6 +398,17 @@ fun Lexer.next() {
         return result
     }
 
+    val someComment = { commentType: CommentType ->
+        val saveLine = line // because there will be wrong line number
+        while (someComment(commentType)) {
+            incLine(false)
+        }
+        when (commentType) {
+            CommentType.Doc -> createToken(TokenType.DocComment, customLine = saveLine)
+            CommentType.Usual -> createToken(TokenType.Comment, customLine = saveLine)
+        }
+    }
+
     val p = peek()
     when {
         done() -> return
@@ -462,23 +473,12 @@ fun Lexer.next() {
 
         // Identifier
         p.isAlphaNumeric() || check("_") -> parseIdentifier()
-        // Doc comment
-        check("///") -> {
-            val saveLine = line // because there will be wrong line number
-            while (someComment(CommentType.Doc)) {
-                incLine(false)
-            }
-            createToken(TokenType.DocComment, customLine = saveLine)
-        }
-        // Comment
-        check("//") -> {
-            val saveLine = current
 
-            while (someComment(CommentType.Usual)) {
-            }
-            createToken(TokenType.Comment, customLine = saveLine)
-            incLine(true)
-        }
+        // Doc comment
+        check("///") -> someComment(CommentType.Doc)
+        // Comment
+        check("//") -> someComment(CommentType.Usual)
+
 
 
         match(">?") -> createToken(TokenType.InlineReplWithQuestion)
