@@ -46,7 +46,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
-        b.append(".also { cascade_receiver -> ") // then generate function calls on this receiver
+        b.append(".also { cascade_receiver ->\n") // then generate function calls on this receiver
         IdentifierExpr(name = "cascade_receiver", token = token)
             .also { it.type = receiver.type } // because next we will read type of receiver
     } else

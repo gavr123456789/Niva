@@ -592,6 +592,7 @@ fun createStringBuilderProtocols(
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("append", anyType), stringBuilderType),
+            createKeyword(KeywordArg("appendLine", anyType), stringBuilderType),
         ),
         staticMsgs = mutableMapOf(
             createKeyword(KeywordArg("withText", stringType), stringBuilderType),

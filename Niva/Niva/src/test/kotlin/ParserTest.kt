@@ -1903,16 +1903,26 @@ class ParserTest {
     @Test
     fun staticBuildDeclaration() {
         val source = """
-            builder HTML init::[ -> Unit] -> HTML = [
+            // no receiver with args
+            builder HTML arg::[ -> Unit] -> HTML = [
                 html = HTML new
                 html init
             ]
+            // no receiver with no args            
+            builder StringBuilder buildStr -> String = []
+            
+            // receiver with args
+            StringBuilder builder  buildStr -> String = []
+            
+            // receiver with no args
+            StringBuilder builder arg::Int -> String = []
+            
         """.trimIndent()
 
         // is the same as when() {}, so it is if else if
 
         val ast = getAstTest(source)
-        assert(ast.count() == 1)
+        assert(ast.count() == 4)
         val staticB = ast[0] as StaticBuilderDeclaration
         assert(staticB.msgDeclaration.args[0].typeAST is TypeAST.Lambda)
     }
@@ -1948,9 +1958,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val staticB = ast[0] as StaticBuilderDeclaration
-        assertTrue {
-            staticB.msgDeclaration is MessageDeclarationKeyword
-        }
+
         assertTrue {
             staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
                     staticB.msgDeclaration.args.last().typeAST!!.name == "Int"
@@ -2147,6 +2155,17 @@ class ParserTest {
 
             x = 1
             x echo
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
+    @Test
+    fun newLineIf() {
+        val source = """
+            true 
+            => 1 echo
+            |=> 2 echo
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)

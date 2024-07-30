@@ -1,37 +1,81 @@
+union Node =
+| Sub left: Node right: Node
+| Add left: Node right: Node
+| Value v: Int
+
+Node walk -> Int = | this
+| Add => left walk + right walk
+| Sub => left walk - right walk
+| Value => v
 
 
 
-
-// receiver name,     builder name
-StringBuilder builder buildSomething -> String = [
-    this append: "added from builder\n"
-    build this: this
-    ^ this toString
-]
-
-// same as builder without receiver ... but receiver is needed
-y = StringBuilder new buildSomething [
-    this append: "added from body\n"
-]
-
-y echo
-
-//simple
-
-//StringBuilder builder buildStr arg::Int -> String = [
+//builder StringBuilder buildStr -> String = [
+//    // 1 create main object
+//    b = StringBuilder new
+//
+//    // 2 define default action that will be called with every type of first argument
 //    defaultAction = [ default::Any ->
-//        this append: default; append: "\n"
+//        b append: default; append: "\n"
 //    ]
 //
-//    build this: this defaultAction: defaultAction
+//    // 3 run the body of the builder (defaultAction is optional)
+//    // every builder has `build` codeblock implicitly
+//    build this: b defaultAction: defaultAction
+//
+//    // 4 return result of the builder
+//    ^ b toString
+//]
+//
+//buildStr [
+//    123
+//    "abc"
+//    "hello"
+//] echo
+
+
+//builder StringBuilder buildStr -> String = [
+//    b = StringBuilder new
+//
+//    defaultAction = [ default::Any->
+//        b appendLine: default
+//    ]
+//
+//
+//    build this: b defaultAction: defaultAction
 //
 //    ^ this toString
 //]
 //
-//x = StringBuilder new buildStr (arg: 34) [
-//    this append: "ast"
+//x = buildStr [
+//    .appendLine: "ast"
+//    .appendLine: buildStr ["kek"]
+//
 //    123
-//    "abc"
-//    "hello"
 //]
 //x echo
+
+// .........
+
+
+//builder Int buildStr -> Int = [
+//    mut x = 0
+//    defaultAction = [ default::Any->
+//        | default
+//        | Int => x <- x + default
+//        | String => x <- x + default toInt
+//        |=> []
+//    ]
+//
+//    build this: x defaultAction: defaultAction
+//
+//    ^ x
+//]
+//
+//x = buildStr [
+//    123
+//    "123"
+//]
+
+
+
