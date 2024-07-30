@@ -85,7 +85,10 @@ fun Resolver.resolveMessageDeclaration(
     val bodyScope = mutableMapOf<String, Type>()
 
     val resolveBody = {
-        bodyScope["this"] = forType
+
+        val isStaticBuilderWithoutReceiver = st is StaticBuilderDeclaration && !st.withReceiver
+        if (!isStaticBuilderWithoutReceiver)
+            bodyScope["this"] = forType
 
         // args from kw or constructor
         fun addArgsToBodyScope(st: MessageDeclarationKeyword) {

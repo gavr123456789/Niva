@@ -54,6 +54,7 @@ fun Resolver.resolveStaticBuilder(
         statement.defaultAction = defaultAction
     }
     // add this
+    // there are always some this inside builder
     previousAndCurrentScope["this"] = builderFromDB.forType
     // resolve body
     resolve(statement.statements, (previousAndCurrentScope))
@@ -62,8 +63,8 @@ fun Resolver.resolveStaticBuilder(
     statement.collectExpressionsForDefaultAction()
 
     // check the args, because builder always have keyword msg, but it can be unary msg actually
-    if (builderFromDB.argTypes.isEmpty() && statement.args.isNotEmpty()) {
-        statement.token.compileError("You calling builder $statement with args, but it have no args at the declaration")
+    if (builderFromDB.argTypes.count() != statement.args.count()) {
+        statement.token.compileError("You calling builder $statement with ${statement.args.count()} args, but it have ${builderFromDB.argTypes.count()} args at the declaration")
     }
     // resolve arguments
     resolveKwArgs(

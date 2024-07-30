@@ -1,7 +1,5 @@
 package frontend.parser.parsing
 
-import frontend.resolver.Resolver
-import frontend.resolver.Type
 import main.utils.RESET
 import main.utils.WHITE
 import main.frontend.meta.TokenType
@@ -21,6 +19,9 @@ private fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Sta
 fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType): Pair<MutableList<Statement>, CodeBlock?> {
     val result = mutableListOf<Statement>()
     var defaultAction: CodeBlock? = null
+    if (match(bracketType))
+        return Pair(mutableListOf(), null)
+
     do {
         val q = statementWithEndLine()
         result.add(q)

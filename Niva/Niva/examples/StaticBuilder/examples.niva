@@ -1,0 +1,22 @@
+// switching on Any
+
+builder Int buildStr -> Int = [
+    mut x = 0
+    defaultAction = [ default::Any->
+        | default
+        | Int => x <- x + default
+        | String => x <- x + default toInt
+        |=> []
+    ]
+
+    build this: x defaultAction: defaultAction
+
+    ^ x
+]
+
+x = buildStr [
+    123
+    "123"
+]
+//> 246
+> x

@@ -1,7 +1,6 @@
 package frontend.parser.parsing
 
 import frontend.parser.types.ast.*
-import kotlinx.coroutines.runBlocking
 import main.utils.RED
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
@@ -249,10 +248,6 @@ fun Parser.methodBody(
 
 // Int sas ^ (-> Type)? (^)?(>>)?(=)?
 fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
-
-    runBlocking {
-
-    }
     if (isConstructorOrOn) return true
 
     var isThereReturn = false
@@ -464,10 +459,19 @@ fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticB
 }
 
 // builder name key-args lambdaArg -> Type = []
+// receiver is null when its builder without receiver `builder StringBuilder buildString = []`
 fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? = null): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
     val receiverTypeOrName = parseType()
-    val name = receiverTypeOrName.name
+    // if next is not arguments and this is not builder with receiver
+    // builder StringBuilder^ (arg::Int)? (buildStr)? -> String = []
+
+    val withReceiver = receiver != null || check(TokenType.DoubleColon, 1)
+    val name = if (withReceiver)
+        receiverTypeOrName.name
+    else
+            (dotSeparatedIdentifiers() ?: peek(-1).compileError("Name of the builder expected")).name
+
 
     skipNewLinesAndComments()
 
@@ -501,6 +505,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     val result = StaticBuilderDeclaration(
         msgDeclaration = x,
         defaultAction = defaultAction,
+        withReceiver = withReceiver ,
         receiver,
         null,
         builderKeyword,

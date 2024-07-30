@@ -56,8 +56,6 @@ fun getAssignTypeForControlFlow(branchReturnTypes: List<Type>, tok: Token): Type
 }
 
 
-
-
 fun Resolver.resolveControlFlow(
     statement: ControlFlow,
     previousScope: MutableMap<String, Type>,
@@ -185,7 +183,7 @@ fun Resolver.resolveControlFlow(
             currentLevel++
             resolve(statement.elseBranch, previousAndCurrentScope, statement)
             currentLevel--
-            if (statement.kind == ControlFlowKind.Expression) {
+            if (statement.kind == ControlFlowKind.Expression && statement.elseBranch.isNotEmpty()) {
                 val lastExpr = statement.elseBranch.last()
 
                 val elseReturnType = when (lastExpr) {
@@ -327,18 +325,20 @@ fun Resolver.resolveControlFlow(
             currentLevel++
             resolve(statement.elseBranch, previousAndCurrentScope, statement)
             currentLevel--
-            val lastExpr = statement.elseBranch.last()
+            if (statement.elseBranch.isNotEmpty()) {
+                val lastExpr = statement.elseBranch.last()
 
-            val elseReturnType = when (lastExpr) {
-                is Expression -> lastExpr.type!!
-                is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
-                is Assign -> lastExpr.value.type!!
-                else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                val elseReturnType = when (lastExpr) {
+                    is Expression -> lastExpr.type!!
+                    is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
+                    is Assign -> lastExpr.value.type!!
+                    else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                }
+                if (!compare2Types(firstBranchReturnType2, elseReturnType, lastExpr.token)) {
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
+                }
             }
-            if (!compare2Types(firstBranchReturnType2, elseReturnType, lastExpr.token)) {
-                lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
-            }
-//                statement.type = elseReturnType
+
             statement.type =
                 getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
 
@@ -369,6 +369,11 @@ fun Resolver.resolveControlFlow(
                             statement.ifBranches.map { it.getReturnTypeOrThrow() },
                             statement.token
                         )
+                    }
+                }
+                is Type.InternalLike -> {
+                    if (savedSwitchType.name == InternalTypes.Any.name) {
+                        statement.token.compileError("When switching on Any else branch is required, add |=>, if its statement you can use |=> []")
                     }
                 }
 
@@ -448,10 +453,10 @@ fun recursiveCheckThatEveryBranchChecked(
     val realSet = mutableSetOf<Type.Union>()
     val real2 = branchesInSwitch
         .filterIsInstance<Type.Union>()
-    val real = real2    .flatMap { it.unpackUnionToAllBranches(realSet, typeToTok)}.toSet()
+    val real = real2.flatMap { it.unpackUnionToAllBranches(realSet, typeToTok)}.toSet()
 
-    val realNamesAndPkg = real.map { it.name }
-    val fromDbNamesAndPkg = fromDb.map { it.name }
+    val realNamesAndPkg = real.map { it.name }.toSet()
+    val fromDbNamesAndPkg = fromDb.map { it.name }.toSet()
 
     if (realNamesAndPkg != fromDbNamesAndPkg) {
         if (fromDbNamesAndPkg.count() > realNamesAndPkg.count()) {
