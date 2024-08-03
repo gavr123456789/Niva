@@ -292,30 +292,31 @@ fun Parser.expression(
         return methodReference()
     }
 
+    // old method reference sas[sus] - conflicts with builders syntax
+//    fun tryMessageReference(): MethodReference? {
+//        val savepoint = this.current
+//        try {
+//            val receiver = parseType()
+//            return if (receiver is TypeAST.Lambda && receiver.extensionOfType != null) {
+//                val methodReference =
+//                    receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
+//                methodReference
+//            } else {
+//                current = savepoint
+//                null
+//            }
+//        } catch (_: Exception) {
+//            current = savepoint
+//            return null
+//        }
+//    }
+//
+//    val methodReference = tryMessageReference()
+//
+//    if (methodReference != null) {
+//        return methodReference
+//    }
 
-    fun tryMessageReference(): MethodReference? {
-        val savepoint = this.current
-        try {
-            val receiver = parseType()
-            return if (receiver is TypeAST.Lambda && receiver.extensionOfType != null) {
-                val methodReference =
-                    receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
-                methodReference
-            } else {
-                current = savepoint
-                null
-            }
-        } catch (_: Exception) {
-            current = savepoint
-            return null
-        }
-    }
-
-    val methodReference = tryMessageReference()
-
-    if (methodReference != null) {
-        return methodReference
-    }
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
 
     val fixPosition = { m: MessageSend ->

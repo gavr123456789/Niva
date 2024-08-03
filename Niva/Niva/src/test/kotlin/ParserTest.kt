@@ -2188,6 +2188,22 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+    @Test
+    fun builderWithoutDefaultAction() {
+        val source = """
+            type Person name: String
+            builder Person sas -> Unit = [
+                build this: (Person name: "sas")
+            ]
+
+            sas [name echo]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+        val q = ast[2]
+        assertIs<StaticBuilder>(q)
+    }
+
 
 
 //    @Test
