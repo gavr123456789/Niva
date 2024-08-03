@@ -1888,6 +1888,17 @@ class ResolverTest {
         assert(x.count() == 2)
 
     }
+    @Test
+    fun dontAddThisToTheCostructor() {
+
+        val source = """
+             constructor Int sas = this + this
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (x, _) = resolveWithResolver(source)
+        }
+
+    }
 
 }
 

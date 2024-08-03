@@ -87,7 +87,8 @@ fun Resolver.resolveMessageDeclaration(
     val resolveBody = {
 
         val isStaticBuilderWithoutReceiver = st is StaticBuilderDeclaration && !st.withReceiver
-        if (!isStaticBuilderWithoutReceiver)
+        val isThisAConstructor = st is ConstructorDeclaration
+        if (!isStaticBuilderWithoutReceiver && !isThisAConstructor)
             bodyScope["this"] = forType
 
         // args from kw or constructor
