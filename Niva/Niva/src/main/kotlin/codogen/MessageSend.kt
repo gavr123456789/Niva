@@ -65,7 +65,7 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
                 newInvisibleArgs = ctArgs
             }
         }
-        // do same for binary args
+        // pragmas for binary args
         if (it is BinaryMsg) {
             it.unaryMsgsForArg.forEach { binary ->
                 isThereEmitPragma = evalPragmas(binary).first

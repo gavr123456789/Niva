@@ -336,6 +336,7 @@ private fun Resolver.resolveStatement(
         }
 
         is DotReceiver -> {
+            statement.token.compileError("Compiler bug, should be replaced to 'this' inside lexer")
             statement.type = findThisInScopes(statement.token, currentScope, previousScope)
         }
 
