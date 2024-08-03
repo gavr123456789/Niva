@@ -333,6 +333,7 @@ fun Parser.expression(
         messageSend
     }
 
+    skipNewLinesAndComments()
 
     // x > 5 ^ => ...
     if (parseSingleIf && match(TokenType.Then)) {
