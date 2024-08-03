@@ -273,20 +273,16 @@ fun Parser.messageSend(
         !keywordOnReceiverWithoutMessages && check(TokenType.Dot) && dotReceiver -> {
 
             unaryOrBinaryMessageOrPrimaryReceiver(
-                DotReceiver(
-                    null,
-                    matchAssert(TokenType.Dot)
-                )
+                IdentifierExpr("this", listOf("this"), type = null, token = matchAssert(TokenType.Dot), isType = false)
             )
         }
         // pure keyword, then add dot receiver
-        keywordOnReceiverWithoutMessages && check(TokenType.Dot) && dotReceiver -> DotReceiver(
-            null,
-            matchAssert(TokenType.Dot)
-        )
+        keywordOnReceiverWithoutMessages && check(TokenType.Dot) && dotReceiver ->
+            IdentifierExpr("this", listOf("this"), type = null, token = matchAssert(TokenType.Dot), isType = false)
 
         !keywordOnReceiverWithoutMessages ->
             unaryOrBinaryMessageOrPrimaryReceiver(insideKeywordArgument = dontParseKeywords)
+
         else -> simpleReceiver()
     }
     // it can be keyword on simple receiver or keyword on receiver with messages
