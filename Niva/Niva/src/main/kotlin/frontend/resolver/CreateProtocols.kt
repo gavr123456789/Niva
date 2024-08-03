@@ -20,7 +20,8 @@ fun createIntProtocols(
     doubleType: Type.InternalType,
     intRangeType: Type.InternalType,
     anyType: Type.InternalType,
-    charType: Type.InternalType
+    charType: Type.InternalType,
+    longType: Type.InternalType
 
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
@@ -32,6 +33,7 @@ fun createIntProtocols(
             createUnary("inc", intType),
             createUnary("dec", intType),
             createUnary("toFloat", floatType),
+            createUnary("toLong", longType),
             createUnary("toDouble", doubleType),
             createUnary("toString", stringType),
             createUnary("toChar", charType),
@@ -897,20 +899,23 @@ fun createSetProtocols(
 fun createCompilerProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
-    typeType: Type.UserType
+    typeType: Type.UserType,
+    listOfString: Type.UserType
 ): MutableMap<String, Protocol> {
-    val collectionProtocol = Protocol(
-        name = "collectionProtocol",
-        unaryMsgs = mutableMapOf(),
+    val commonProtocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("getArgs", listOfString),
+        ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
             createKeyword(KeywordArg("getName", intType), stringType),
             createKeyword(KeywordArg("getType", intType), typeType),
-        )
+            )
     )
 
-    return mutableMapOf(collectionProtocol.name to collectionProtocol)
+    return mutableMapOf(commonProtocol.name to commonProtocol)
 }
 
 private fun createOnEach(

@@ -207,7 +207,7 @@ fun Parser.assignVariableNewValue(): Assign {
     matchAssert(TokenType.AssignArrow)
 
     val isNextReceiver = isNextSimpleReceiver()
-    val value = if (isNextReceiver) simpleReceiver() else expression()
+    val value = if (isNextReceiver) simpleReceiver() else expression(parseSingleIf = true)
 
 
     val result = Assign(identTok, identTok.lexeme, value)

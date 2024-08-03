@@ -370,12 +370,20 @@ fun Lexer.someComment(commentType: CommentType): Boolean {
             CommentType.Doc -> match("///")
         }
     ) {
+
         readUntilNewLine()
         return true
     }
     return false
 }
 
+
+fun Lexer.skipSpaces() {
+    while (match(" ")) {
+        spaces++
+        start += 2 // 1 to go to space ("^__word"), 2 to skip spase ("_^_word")
+    }
+}
 
 fun Lexer.next() {
 
@@ -402,6 +410,7 @@ fun Lexer.next() {
         val saveLine = line // because there will be wrong line number
         while (someComment(commentType)) {
             incLine(false)
+            skipSpaces()
         }
         when (commentType) {
             CommentType.Doc -> createToken(TokenType.DocComment, customLine = saveLine)
