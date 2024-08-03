@@ -31,8 +31,12 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-runBlocking [
-    1
+builder Int buildStr  = [ 
+    x = 23 
+]
+
+buildStr [ 
+    1 echo
 ]
 
 """
@@ -52,7 +56,7 @@ fun main(args: Array<String>) {
 
 
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/builder/main.niva"
 ////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
 //
 //    try {

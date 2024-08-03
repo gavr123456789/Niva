@@ -20,6 +20,7 @@ import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.MessageDeclarationUnary
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnionBranchDeclaration
@@ -305,11 +306,17 @@ fun LS.removeDecl2(file: File) {
                 }
             }
         }
+
+        // fill pkgName, when only builder in package -> pkg it not being deleted
+        if (d is StaticBuilderDeclaration) {
+            pkgName = d.messageData!!.pkg
+        }
+
         // remove type
         if (d is SomeTypeDeclaration) {
             pkgName = d.receiver!!.pkg
             val removeFromTypeDB = { typeName: String ->
-                val t = typeDB.userTypes[typeName] //?: typeDB.lambdaTypes[typeName]
+                val t = typeDB.userTypes[typeName]
                 if (t != null) {
                     val iter = t.iterator()
                     while (iter.hasNext()) {
@@ -333,7 +340,7 @@ fun LS.removeDecl2(file: File) {
 
 
                 // from pkg
-                val pkg2 = resolver.projects["common"]!!.packages[pkgName]
+                val pkg2 = resolver.projects[resolver.currentProjectName]!!.packages[pkgName]
 //                info?.invoke("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
                 pkg2?.types?.remove(d.typeName)
             }
