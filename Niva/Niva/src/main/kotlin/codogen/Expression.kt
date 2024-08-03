@@ -52,7 +52,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
             is LiteralExpression.CharExpr -> str
-            is DotReceiver -> ""
+            is DotReceiver -> "this"
 
             is ListCollection -> {
                 generateList()

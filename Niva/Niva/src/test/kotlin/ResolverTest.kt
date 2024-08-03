@@ -1866,6 +1866,29 @@ class ResolverTest {
 
     }
 
+
+    @Test
+    fun ifExpr() {
+
+        val source = """
+             x = 0 > 1 => 3 |=> 4
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 1)
+
+    }
+    @Test
+    fun qwfqwf() {
+
+        val source = """
+             mut w = 0
+             w <- 0 > 1 => 3 |=> 4
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+
+    }
+
 }
 
 

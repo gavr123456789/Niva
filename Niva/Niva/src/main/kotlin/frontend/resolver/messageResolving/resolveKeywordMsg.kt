@@ -561,7 +561,7 @@ fun Resolver.resolveKwArgsGenerics(
                     receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
                 if (argTypeWithSameLetter != null) {
                     // receiver has the same generic param resolved
-                    if (!compare2Types(argType, argTypeWithSameLetter, it.keywordArg.token)) {
+                    if (!compare2Types(argTypeWithSameLetter, argType, it.keywordArg.token)) {
                         it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                     }
                 }

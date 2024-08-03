@@ -17,10 +17,9 @@ fun generateBuilderCall(builder: StaticBuilder) = buildString {
     // args
     if (builder.args.isNotEmpty())
         append("(",builder.args.joinToString(", ") { it.keywordArg.toString() }, ") ")
-
     append("{")
     if (builder.defaultAction != null)
-        append(" $defaultActionName -> ")
+        append(" $defaultActionName ->\n")
     // add body, but with "defaultAction" arg
 
     // TODO, just replace statements that needed to call with defaultAction in resolver

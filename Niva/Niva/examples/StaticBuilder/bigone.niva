@@ -1,0 +1,96 @@
+union Node =
+| Sub nodes: MutableList::Node
+| Add nodes: MutableList::Node
+| Value v: Int
+
+Add walkAdd: init::Int -> Int = [
+    // no fold variant
+    mut acc = init
+    nodes forEach: [
+        | it
+        | Value => acc <- acc + it v
+        | Add => acc <- acc + (it walkAdd: acc)
+        | Sub => acc <- acc + (it walkSub: acc)
+    ]
+
+    ^ acc
+]
+
+Sub walkSub: init::Int -> Int = [
+    // no fold variant
+    mut acc = init
+    nodes forEachIndexed: [ i, it ->
+        | it
+        | Value => acc <- i == 0
+                            ifTrue: [acc + it v]
+                            ifFalse: [acc - it v]
+        | Add =>   acc <- acc - (it walkAdd: acc)
+        | Sub =>   acc <- acc - (it walkSub: acc)
+    ]
+
+    ^ acc
+]
+
+Node walk: init::Int -> Int = [
+
+    x = | this
+    | Add => this walkAdd: init
+    | Sub => this walkSub: init
+    | Value => v
+    x echo
+    ^ x
+]
+
+
+type NodeList
+    list: MutableList::Node
+
+builder NodeList node -> Int = [
+    n = NodeList list: {}
+
+    build this: n
+
+    result = n list map: [it walk: 0]
+
+//> [20, 30]
+    > result
+
+    ^ result inject: 0 into: [a, b -> a + b]
+]
+
+
+
+NodeList builder add = [
+    addNode = Add nodes: {}
+    defaultAction = [ x::Int->
+        addNode nodes add: (Value v: x)
+    ]
+
+    build this: this defaultAction: defaultAction
+
+    this list add: addNode
+
+]
+
+NodeList builder sub = [
+    subNode = Sub nodes: {}
+    defaultAction = [ x::Int->
+        subNode nodes add: (Value v: x)
+    ]
+
+    build this: this defaultAction: defaultAction
+
+    this list add: subNode
+
+]
+
+node [
+    .add [
+        10
+        20
+        .sub [
+            40
+            20
+        ]
+    ]
+] echo

@@ -233,6 +233,6 @@ class ErrorDomainDeclaration(
 
 
 enum class InternalTypes {
-    Int, String, Float, Double, Boolean, Unit, Project, Char, IntRange, CharRange, Any, Bind, Compiler, Nothing, Null, UnknownGeneric, Test
+    Int, String, Float, Double, Boolean, Unit, Project, Char, Long, IntRange, CharRange, Any, Bind, Compiler, Nothing, Null, UnknownGeneric, Test
 //    NotResolved
 }

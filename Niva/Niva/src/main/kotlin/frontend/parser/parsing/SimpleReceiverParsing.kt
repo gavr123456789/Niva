@@ -137,7 +137,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
 
     if (tryPrimary == null) {
         step(-2)
-        this.parsingError("Primary was expected but received '$WHITE${peek(-1).lexeme} ${peek().lexeme}$RESET'")
+        this.parsingError("Primary was expected but received '$WHITE${peek(0).lexeme} ${peek(1).lexeme}$RESET'")
 //        peek().compileError("Can't parse primary token, got $WHITE${peek().lexeme}")
     }
     return tryPrimary

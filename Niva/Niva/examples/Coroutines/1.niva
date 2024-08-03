@@ -1,0 +1,12 @@
+// simple
+Int sec = this * 1000 |> toLong
+
+
+runBlocking [
+    this launch: [
+        this delay: 1 sec
+        "World!" echo
+    ]
+
+    "Hello" echo
+]

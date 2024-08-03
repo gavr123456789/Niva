@@ -1,0 +1,13 @@
+// extracted method
+
+Int sec = this * 1000 |> toLong
+
+String delayedEcho >>= [
+    CoroutineContext delay: 1 sec
+    this echo
+]
+
+runBlocking [
+    this launch: [ "World!" delayedEcho ]
+    "Hello" echo
+]

@@ -290,7 +290,7 @@ private fun Resolver.resolveStatement(
                 // this is <-, not =
                 val w = statement.value.type!!
                 if (!compare2Types(q, w, statement.token, unpackNullForFirst = true)) {
-                    statement.token.compileError("In $WHITE$statement $YEL$q$RESET != $YEL$w")
+                    statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
                 statement.token.compileError("Can't find ${statement.name} in the scope")
@@ -356,11 +356,11 @@ private fun Resolver.resolveStatement(
                     if (!GlobalVariables.isLspMode)
                         findSimilarAndPrint(searchRequest, receiverType)
 
-                    endOfSearch(currentScope + previousScope)
+                    endOfSearch(currentScope + previousScope) // NeedInfo
                 }
 
                 else -> {
-                    endOfSearch(currentScope + previousScope)
+                    endOfSearch(currentScope + previousScope) // NeedInfo
                 }
             }
         }
@@ -525,9 +525,9 @@ fun Package.addUseImport(pkg: String) {
     }
 }
 
-fun Resolver.findPackageOrError(packageName: String, token: Token): Package {
-    val p = this.projects[currentProjectName] ?: token.compileError("There are no such project: $currentProjectName")
-    val pack = p.packages[packageName] ?: token.compileError("There are no such package: $packageName")
+fun Resolver.findPackageOrError(packageName: String, errorToken: Token): Package {
+    val p = this.projects[currentProjectName] ?: errorToken.compileError("There are no such project: $currentProjectName")
+    val pack = p.packages[packageName] ?: errorToken.compileError("There are no such package: $packageName")
     return pack
 }
 
@@ -544,9 +544,9 @@ fun Resolver.getCurrentProtocol(type: Type, token: Token, customPkg: Package? = 
     return Pair(protocol, pack)
 }
 
-fun Resolver.getCurrentPackage(token: Token) = findPackageOrError(currentPackageName, token)
-fun Resolver.getCurrentImports(token: Token): Set<String> {
-    val pgk = getCurrentPackage(token)
+fun Resolver.getCurrentPackage(errorToken: Token) = findPackageOrError(currentPackageName, errorToken)
+fun Resolver.getCurrentImports(errorToken: Token): Set<String> {
+    val pgk = getCurrentPackage(errorToken)
     return pgk.imports + pgk.importsFromUse
 }
 
@@ -926,10 +926,10 @@ fun Resolver.getTypeForIdentifier(
             }
             val typeNameSuggestions = collectTypeNamesStartFrom(x.token.lexeme)
 
-            endOfSearch(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token)
+            endOfSearch(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token)// types
         } else {
             // if from little then its local suggestion
-            endOfSearch(currentScope + previousScope , "Unresolved reference: ${x.str}", token = x.token)
+            endOfSearch(currentScope + previousScope , "Unresolved reference: ${x.str}", token = x.token) // scope
         }
     }
 
@@ -1120,6 +1120,7 @@ class Resolver(
             createDefaultType(InternalTypes.String),
             createDefaultType(InternalTypes.Char),
             createDefaultType(InternalTypes.Float),
+            createDefaultType(InternalTypes.Long),
             createDefaultType(InternalTypes.Double),
             createDefaultType(InternalTypes.Boolean),
             createDefaultType(InternalTypes.Unit),
@@ -1142,6 +1143,8 @@ class Resolver(
             val intType = defaultTypes[InternalTypes.Int]!!
             val stringType = defaultTypes[InternalTypes.String]!!
             val charType = defaultTypes[InternalTypes.Char]!!
+            val longType = defaultTypes[InternalTypes.Long]!!
+
             val floatType = defaultTypes[InternalTypes.Float]!!
             val doubleType = defaultTypes[InternalTypes.Double]!!
             val boolType = defaultTypes[InternalTypes.Boolean]!!
@@ -1156,19 +1159,23 @@ class Resolver(
 //            val nullType = defaultTypes[InternalTypes.Null]!!
 //            val compiler = defaultTypes[InternalTypes.Compiler]!!
 
-
+            val numProtocol = createIntProtocols(
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                floatType = floatType,
+                doubleType = doubleType,
+                intRangeType = intRangeType,
+                anyType = anyType,
+                charType = charType,
+                longType = longType
+            )
             intType.protocols.putAll(
-                createIntProtocols(
-                    intType = intType,
-                    stringType = stringType,
-                    unitType = unitType,
-                    boolType = boolType,
-                    floatType = floatType,
-                    doubleType = doubleType,
-                    intRangeType = intRangeType,
-                    anyType = anyType,
-                    charType = charType
-                )
+                numProtocol
+            )
+            longType.protocols.putAll(
+                numProtocol
             )
 
             floatType.protocols.putAll(createFloatProtocols(
@@ -1623,7 +1630,8 @@ class Resolver(
         // Compiler
         compiler.protocols.putAll(
             createCompilerProtocols(
-                intType = intType, stringType = stringType, typeType = typeType
+                intType = intType, stringType = stringType, typeType = typeType,
+                listOfString
             )
         )
 

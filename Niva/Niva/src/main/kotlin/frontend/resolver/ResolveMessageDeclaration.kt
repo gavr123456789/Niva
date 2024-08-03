@@ -328,10 +328,16 @@ fun Resolver.resolveMessageDeclaration(
     }
 
 
+    if (st.returnType == null) {
+        st.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
+    }
+
     if (st is ConstructorDeclaration) {
         st.msgDeclaration.forType = st.forType
         st.msgDeclaration.returnType = st.returnType
     }
+
+
 
     return false
 }

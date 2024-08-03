@@ -1912,10 +1912,10 @@ class ParserTest {
             builder StringBuilder buildStr -> String = []
             
             // receiver with args
-            StringBuilder builder  buildStr -> String = []
+            StringBuilder builder arg::Int -> String = []
             
             // receiver with no args
-            StringBuilder builder arg::Int -> String = []
+            StringBuilder builder buildStr -> String = []
             
         """.trimIndent()
 
@@ -2147,6 +2147,24 @@ class ParserTest {
         assert(secondTok.line == 4)
 
     }
+
+    @Test
+    fun manyLineDocComment() {
+        val source = """
+        
+          /// and resumes it after a specified time.
+             /// using Millis
+          CoroutineContext delay::Int -> Unit 
+        
+        
+        
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+    }
+
+
 
     @Test
     fun strangeCommentsBug() {
