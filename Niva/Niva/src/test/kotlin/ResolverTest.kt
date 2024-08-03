@@ -646,7 +646,7 @@ class ResolverTest {
     @Test
     fun dotAsThis() {
         val source = """
-            Int from::Int = from
+            Int from::Int = 5
             
             Int
                 from::Int
@@ -1888,6 +1888,7 @@ class ResolverTest {
         assert(x.count() == 2)
 
     }
+
     @Test
     fun dontAddThisToTheCostructor() {
 
@@ -1895,8 +1896,24 @@ class ResolverTest {
              constructor Int sas = this + this
         """.trimIndent()
         assertThrows<CompilerError> {
-            val (x, _) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
         }
+
+    }
+
+    @Test
+    fun addFieldsToTheScopeOfBuilders() {
+
+        val source = """
+             type Person name: String
+             builder Person sas -> Unit = [
+                build this: (Person name: "sas")
+             ]
+
+             sas [ name echo ]
+        """.trimIndent()
+
+        val (_, _) = resolveWithResolver(source)
 
     }
 
