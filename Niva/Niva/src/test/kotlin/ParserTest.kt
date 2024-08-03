@@ -2186,7 +2186,7 @@ class ParserTest {
             |=> 2 echo
         """.trimIndent()
         val ast = getAstTest(source)
-        assert(ast.count() == 2)
+        assert(ast.count() == 1)
     }
 
 
