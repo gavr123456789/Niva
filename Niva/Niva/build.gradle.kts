@@ -113,7 +113,7 @@ tasks.register(buildNativeNiva) {
 fun moveBinary() {
     val userHome = System.getProperty("user.home")
     val nivaBinary = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
-    val targetDir = file("$userHome/.niva/bin").toPath()
+    val targetDir = file("$userHome/.niva/bin/niva").toPath()
     Files.createDirectories(targetDir)
     copyRecursively(nivaBinary, targetDir)
 }
