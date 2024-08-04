@@ -11,6 +11,12 @@ It's Smalltalk like language, but statically typed.
 ## Name
 So far I've chosen niva because my 2 favorite static languages are nim and vala.
 
+## Some strange demo
+
+https://github.com/user-attachments/assets/dfeef595-685f-4124-8eaf-9956919e07af
+
+
+
 ## Compile from sources 
 If you have graalvm in your JAVA_HOME then inside /Niva/Niva/Niva folder run:  
 `./gradlew buildNativeNiva` this will create native binary in ~/.niva/bin  
@@ -31,7 +37,8 @@ If you have `expanded from macro 'NS_FORMAT_ARGUMENT'` problem with buildNativeN
 
 ### How to install VSCode extension
 TODO
-[VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) for syntax highlighting
+[VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
+There is no ez way to install it yet
 
 ## Nix-Shell Setup
 
