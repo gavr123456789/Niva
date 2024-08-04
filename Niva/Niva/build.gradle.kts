@@ -1,8 +1,10 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+import org.jetbrains.kotlin.cli.common.modules.ModuleXmlParser.PATH
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlin.io.path.div
 
 
 plugins {
@@ -47,12 +49,9 @@ graalvmNative {
         buildArgs.add("-O4")
 
         if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
-            println("You are using linux! binary will be static")
             buildArgs.add("--static")
-        } else {
-            println("No linux = no static binary for u")
         }
-
+        this.runtimeArgs()
         buildArgs.add("--no-fallback")
         buildArgs.add("-march=native")
         buildArgs.add("--initialize-at-build-time")
@@ -66,6 +65,7 @@ application {
 
 val checkAndBuildNativeTask = "checkAndBuildNative"
 val buildNativeNiva = "buildNativeNiva"
+val buildJvmNiva = "buildJvmNiva"
 val javaHomeMayBeHere = "Library/Java/JavaVirtualMachines/graalvm-jdk-22.0.2/Contents/Home"
 
 val checkGraalVMTask = "checkGraalVM"
@@ -101,22 +101,93 @@ tasks.register(checkAndBuildNativeTask) {
     dependsOn(checkGraalVMTask, "nativeCompile")
 }
 
-tasks.register(buildNativeNiva) {
+tasks.register(buildJvmNiva) {
+    dependsOn("installDist")
 
+    fun moveJvm() {
+        val userHome = System.getProperty("user.home")
+        val nivaJvmBinary = file("${layout.buildDirectory.get()}/install/niva").toPath()
+        val targetDir = file("$userHome/.niva/niva").toPath()
+        Files.createDirectories(targetDir)
+        copyRecursively(nivaJvmBinary, targetDir)
+
+        printNivaWelcome(targetDir, targetDir.toString() + "/bin")
+    }
+
+    doLast {
+        moveInfroDir()
+        moveJvm()
+
+        buildInfroProject()
+
+    }
+}
+
+val green = "\u001B[32m"
+val purple = "\u001B[35m"
+fun printNivaWelcome(targetDir: Path, path: String) {
+    println(
+        """
+        $green
+        niva binary has been installed in $targetDir, you can add it to PATH
+        
+        Try to compile file main.niva with "Hello niva" echo with `niva main.niva`
+        First compilation will take time, but others are instant
+        Read about niva here: https://gavr123456789.github.io/niva-site/reference.html
+        Check examples from examples folder(in repo)
+        
+        $purple
+        Adding to PATH: 
+        
+    """.trimIndent() +
+                "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
+                "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
+                "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc"
+    )
+}
+
+fun buildInfroProject() {
+    val infroDir = File("${System.getProperty("user.home")}/.niva/infroProject")
+    if (infroDir.exists()) {
+        val javaVersionOutput = ByteArrayOutputStream()
+        exec {
+            this.workingDir = infroDir
+            commandLine("./gradlew", "build")
+            standardOutput = javaVersionOutput
+            errorOutput = javaVersionOutput
+            isIgnoreExitValue = true
+        }
+    }
+}
+
+tasks.register(buildNativeNiva) {
     dependsOn("publishToMavenLocal", checkAndBuildNativeTask)
+
+    fun moveBinary() {
+        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
+            println("You are using linux! binary will be static")
+        } else {
+            println("No linux = no static binary for u")
+        }
+
+        val userHome = System.getProperty("user.home")
+        val nivaBinary = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
+        val targetDir = file("$userHome/.niva/bin/niva").toPath()
+        Files.createDirectories(targetDir)
+        copyRecursively(nivaBinary, targetDir)
+
+        buildInfroProject()
+
+        printNivaWelcome(targetDir, targetDir.toString())
+    }
+
     doLast {
         moveInfroDir()
         moveBinary()
     }
 }
 
-fun moveBinary() {
-    val userHome = System.getProperty("user.home")
-    val nivaBinary = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
-    val targetDir = file("$userHome/.niva/bin/niva").toPath()
-    Files.createDirectories(targetDir)
-    copyRecursively(nivaBinary, targetDir)
-}
+
 
 fun moveInfroDir() {
     val userHome = System.getProperty("user.home")
