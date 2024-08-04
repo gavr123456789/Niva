@@ -1,17 +1,15 @@
+
+<img align="left" width="96px" height="96px" src="Niva/niva-icon.svg" />  
+
 # Niva
-It will be Smalltalk like language, but statically typed.  
- 
+It's Smalltalk like language, but statically typed.  
+
 <img src="https://github.com/gavr123456789/Niva/assets/30507409/55f54aa9-760b-43ea-9518-33b06b07cc8a" width=30% height=30%>
 
 <img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width=30% height=30%>
 
-
-## Backend
-Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
-A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
-
 ## Name
-I haven't decided on the final name yet, so far I've chosen niva because my 2 favorite static languages are nim and vala.
+So far I've chosen niva because my 2 favorite static languages are nim and vala.
 
 ## Compile from sources
 P.S. u can find binary releases in the releases  
@@ -383,5 +381,9 @@ set add: 2 //! #{1 2 3}
 set add: 4 //! #{1 2 3 4}
 set has: 3 //! true
 ```
+
+## Backend
+Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich.
+A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
 
 
