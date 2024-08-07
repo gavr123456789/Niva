@@ -76,7 +76,7 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
     val returnTypeWithoutErrors = receiverType.copyAnyType()
         .also { it.errors = null }
 
-    val ifErrorKW = { returnTypeWithoutErrors: Type, rootTypeOfAllErrors: Type.UnionRootType ->
+    val ifErrorKW = { returnTypeWithoutErrors2: Type, rootTypeOfAllErrors: Type.UnionRootType ->
         (createKeyword(
             "ifError",
             listOf(
@@ -84,11 +84,11 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
                     "ifError",
                     Type.Lambda(
                         mutableListOf(KeywordArg("it", rootTypeOfAllErrors)),
-                        returnTypeWithoutErrors
+                        returnTypeWithoutErrors2
                     )
                 ),
             ),
-            returnTypeWithoutErrors
+            returnTypeWithoutErrors2
         ).emitKw("try {\n    $0\n} catch (it: Throwable) $1"))
     }
 
@@ -142,15 +142,32 @@ fun Resolver.findStaticMessageType(
     token: Token,
     msgType: MessageDeclarationType? = null
 ): Pair<MessageMetadata, Boolean> {
-    receiverType.protocols.forEach { (_, v) ->
-        val metadata = v.staticMsgs[selectorName]
-        if (metadata != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
-            return Pair(metadata, false)
+
+    fun search(type: Type): MessageMetadata? {
+        var result: MessageMetadata? = null
+
+        type.protocols.forEach { (_, v) ->
+            val metadata = v.staticMsgs[selectorName]
+            if (metadata != null) {
+                result = metadata
+            }
         }
+        return result
     }
 
+    var type: Type? = receiverType
+    while (type != null) {
+        val result = search(type)
+        if (result != null) {
+            val pkg = getCurrentPackage(token)
+            pkg.addImport(receiverType.pkg)
+            pkg.addImport(result.pkg)
+            return Pair(result, false)
+        }
+        type = type.parent
+    }
+
+    // this is default new message if type doesn't have any fields
     if (selectorName == "new" && receiverType is Type.UserLike) {
         if (receiverType.fields.isEmpty()) {
             // u cant instantiate Root union

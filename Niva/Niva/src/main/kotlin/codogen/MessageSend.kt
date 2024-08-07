@@ -354,7 +354,7 @@ fun generateSingleKeyword(
             append("(__arg$arg)")
             return@buildString
         } else if (firstArg.name == "getType") {
-            TODO()
+            TODO("getType not implemented yet")
         } else throw Exception("unexpected Compiler arg: $CYAN${firstArg.name}")
     }
     // end of Compiler
@@ -367,7 +367,8 @@ fun generateSingleKeyword(
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
             if ((i == 0) && !receiverIsDot) {
-                append(receiverCode())
+                val receiverCode2 = receiverCode()
+                append(receiverCode2)
                 dotAppend(this, withNullChecks)
             } else if (keywordMsg.isPiped) {
                 dotAppend(this, withNullChecks)
@@ -382,7 +383,8 @@ fun generateSingleKeyword(
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                append(receiverCode())
+                val recCode = receiverCode()
+                append(recCode)
             }
         }
 
@@ -426,11 +428,13 @@ fun generateSingleKeyword(
 
             // when its arg type like [Int -> Int] Int: 1 then we generate lambda(1)
             // when its real message extension for lambda then lambda.at(1)
-            val receiverType = keywordMsg.receiver.type as Type.Lambda
-            //
-            val isExtensionForLambda = receiverType.alias != null //receiverType.args.isNotEmpty() && keywordMsg.args.first().name != receiverType.args.first().type.name
-
-            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || isExtensionForLambda ) {
+            val receiverType2 = keywordMsg.receiver.type as Type.Lambda
+            val isExtensionForLambda = receiverType2.alias != null
+            // printingClient Request: request // here we dont need to generate .Request()
+            // type Filter = [HttpHandler -> HttpHandler]
+            // we use "Request:" just because we don't have real name for arg, and it still can be alias
+            val firstArgIsSelectorName = receiverType2.args.isNotEmpty() && receiverType2.args[0].name == keywordMsg.selectorName
+            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || (isExtensionForLambda && !firstArgIsSelectorName) ) {
                 append(receiverCode(), ".", keywordMsg.selectorName)
             } else {
                 if (i == 0) {

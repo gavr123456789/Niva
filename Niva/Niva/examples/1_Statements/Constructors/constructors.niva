@@ -1,5 +1,6 @@
 type Wallet money: Int
 constructor Wallet empty = Wallet money: 0
+
 Wallet empty = this money: 0
 
 emptyWallet = Wallet empty

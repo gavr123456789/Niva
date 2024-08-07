@@ -47,10 +47,7 @@ fun Resolver.resolveUnaryMsg(
         if (statement.selectorName != "do") {
             // try to find such message for type, maybe its aliased
             if (receiverType.alias != null) {
-                val type = typeDB.lambdaTypes[receiverType.alias] ?: receiver.token.compileError("Can't find type alias for lambda ${receiverType.alias}::$receiverType")
-                statement.type = type
-                statement.kind = UnaryMsgKind.Unary
-                return type
+                return resolveUnaryAliasLambda(statement, receiverType, receiver.token)
             }
             // try to find same signature in the lambdaTypes
             val w = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType, statement.token) }
