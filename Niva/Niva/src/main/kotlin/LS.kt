@@ -78,16 +78,16 @@ class LS(val info: ((String) -> Unit)? = null) {
 
 
             val file = data[sFile]
-            val addToSet = { s: Statement, sLine: Int ->
+            val addToSet = { st: Statement, stLine: Int ->
                 // has such file
                 if (file != null) {
-                    val line = file[sLine]
+                    val line = file[stLine]
                     // has such line
                     if (line != null) {
-                        line.add(Pair(s, scope))
+                        line.add(Pair(st, scope))
                     } else {
                         val value = createSet()
-                        file[sLine] = value
+                        file[stLine] = value
                     }
                 } else {
                     val value = createLineToStatement()
@@ -265,14 +265,20 @@ fun LS.removeDecl2(file: File) {
 
                         is Type.InternalType -> {
                             typeDB.internalTypes[forType.name]?.let { usrLikeTypes ->
-                                usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }
-                                    ?.let { protocolWithMethod ->
-                                        protocolWithMethod.keywordMsgs.remove(d.name)
-                                    }
+                                usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }?.keywordMsgs?.remove(d.name)
                             }
                         }
 
-                        is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
+                        is Type.Lambda -> {
+                            // find where lambda type is and delete it in typedb
+                            if (forType.isAlias) {
+                                val aliasName = forType.alias!!
+                                typeDB.lambdaTypes.remove(aliasName)
+                            } else
+                                TODO()
+                        }
+                        is Type.NullableType,
+                        is Type.UnresolvedType -> TODO()
                         null -> {}
                     }
                 }
@@ -289,14 +295,23 @@ fun LS.removeDecl2(file: File) {
                         }
 
                         is Type.InternalType -> {
-                            typeDB.internalTypes[forType.name]?.let { usrLikeTypes ->
-                                usrLikeTypes.protocols.values.find { it.staticMsgs.contains(d.name) }?.let { prot ->
-                                    prot.staticMsgs.remove(d.name)
+                            typeDB.internalTypes[forType.name]?.let { usrLikeType ->
+                                usrLikeType.protocols.values.find { it.staticMsgs.contains(d.name) }?.staticMsgs?.remove(d.name)
+                            }
+                        }
+
+                        is Type.Lambda -> {
+                            val alias = forType.alias
+                            if (alias != null) {
+                                typeDB.lambdaTypes[alias]?.let { lambdaType ->
+                                    lambdaType.protocols.values.find { it.staticMsgs.contains(d.name) }?.staticMsgs?.remove(
+                                        d.name
+                                    )
                                 }
                             }
                         }
 
-                        is Type.Lambda, is Type.NullableType, is Type.UnresolvedType -> TODO()
+                        is Type.NullableType, is Type.UnresolvedType -> TODO()
                         null -> {}
                     }
                 }
@@ -395,7 +410,9 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         val directory = file.parentFile
         if (directory.isDirectory) {
             val q = directory.listFiles()
-            return q.asSequence().filter { it.extension == "niva" || it.extension == "scala" }.toSet()
+            if (q != null) {
+                return q.asSequence().filter { it.extension == "niva" || it.extension == "scala" }.toSet()
+            } else TODO("Cant find files in the $directory")
         } else {
             return emptySet()
         }
@@ -440,11 +457,11 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
 
     val onEachStatementCall =
-        { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>?, file: File ->
+        { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>?, file2: File ->
 
-            val addStToMegaStore = { st: Statement ->
+            val addStToMegaStore = { s: Statement ->
                 megaStore.addNew(
-                    st,
+                    s,
                     if (currentScope != null && previousScope != null)
                         currentScope + previousScope
                     else
@@ -463,12 +480,12 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                 }
                 is Declaration -> {
                     // fill fileToDecl
-                    val setOfStatements = this.fileToDecl[file.absolutePath]
+                    val setOfStatements = this.fileToDecl[file2.absolutePath]
                     if (setOfStatements != null) {
                         setOfStatements.add(st)
                         Unit
                     } else {
-                        fileToDecl[file.absolutePath] = mutableSetOf(st)
+                        fileToDecl[file2.absolutePath] = mutableSetOf(st)
                     }
                     // add doc comments so u can ctrl click them
                     st.docComment?.let {

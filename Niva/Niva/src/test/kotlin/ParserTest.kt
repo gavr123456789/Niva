@@ -69,12 +69,20 @@ class ParserTest {
 
     @Test
     fun collectionList() {
-        val source = "{1 2 3}"
+        val source = """
+            {1 2 3}
+            {
+              1
+              2
+            }
+        """.trimIndent()
         val ast = getAstTest(source)
-        assert(ast.count() == 1)
+        assert(ast.count() == 2)
 
         val list = ast[0] as ListCollection
+        val list2 = ast[1] as ListCollection
         assert(list.initElements.count() == 3)
+        assert(list2.initElements.count() == 2)
     }
 
     @Test
@@ -110,16 +118,6 @@ class ParserTest {
         val list = ast[0] as ListCollection
         assert(list.initElements.count() == 3)
     }
-
-//    @Test
-//    fun collectionListOfObjectConstructors() {
-//        val source = "{Person age: 1, Person age: 2, Person age: 3}"
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//
-//        val list = ast[0] as ListCollection
-//        assert(list.initElements.count() == 3)
-//    }
 
     @Test
     fun literalInt() {

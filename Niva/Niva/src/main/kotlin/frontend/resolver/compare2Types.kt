@@ -55,7 +55,7 @@ fun compare2Types(
 
         if (argsOf1.count() != argsOf2.count()) {
             tokenForErrors.compileError("Codeblock `${YEL}${type1OrChildOf2.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
-            return false
+//            return false
         }
 
         // temp for adding "(k,v)" for map, filter for hash maps
@@ -71,7 +71,7 @@ fun compare2Types(
             val it2 = argsOf2[i]
             val isEqual = compare2Types(it.type, it2.type, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes)
             if (!isEqual) {
-                tokenForErrors.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
+//                tokenForErrors.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
             }
         }
@@ -153,7 +153,7 @@ fun compare2Types(
             val args2 = type2.typeArgumentList
             if (args1.count() != args2.count()) {
                 tokenForErrors.compileError("Types: ${YEL}$type1OrChildOf2${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
-                return false
+//                return false
             }
 
             val isSameNames = type1OrChildOf2.toString() == type2.toString()

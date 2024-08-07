@@ -31,13 +31,21 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-builder Int buildStr  = [ 
-    x = 23 
+app = [request::Request ->
+    response = Response status: Status.OK
+    // query = request query: "name"
+    response body: "Hello, " + "gavr"
 ]
 
-buildStr [ 
-    1 echo
-]
+app asServer: (SunHttp port: 9000) |> start
+
+
+client = JavaHttpClient new
+printingClient::HttpHandler = PrintResponse new |> then: client
+
+request = Request method: Method.GET uri: "http://localhost:9000"
+responce = printingClient Request: request // BAD
+
 
 """
 
@@ -52,11 +60,9 @@ fun main2() = runBlocking { // this: CoroutineScope
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
-//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Programs/todosGleam/main.niva")
+//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Examples/server/main.niva")
 
-
-
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/builder/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/server/http.bind.niva"
 ////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
 //
 //    try {
@@ -69,6 +75,7 @@ fun main(args: Array<String>) {
 //            fakeFileSourceGOOD
 //        )
 //
+//        ls.onCompletion(qqq, 6, 1)
 //        ls.onCompletion(qqq, 6, 1)
 //    }
 //    catch (e: OnCompletionException) {

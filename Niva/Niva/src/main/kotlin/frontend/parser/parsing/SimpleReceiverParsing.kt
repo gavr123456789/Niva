@@ -32,6 +32,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             } else primary(typeAst)
 
             match(TokenType.Comma)
+            skipNewLinesAndComments()
+
             if (primaryTok != null) {
                 if (lastCollectionElem != null && primaryTok.type?.name != lastCollectionElem.type?.name) {
                     error("Heterogeneous collections are not supported")
@@ -91,7 +93,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     var tryPrimary: Receiver? = primary(typeAst)
     // check for collections
     if (tryPrimary == null) {
-        val token = step()
+        val token = step() // open
         skipOneEndOfLineOrComment()
 
         tryPrimary = when (token.kind) {
@@ -101,6 +103,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
 
                 //if there are keyword call, then read collection of constructors
                 val initElements = readPrimaryCollection()
+                skipNewLinesAndComments()
                 match(TokenType.CloseBrace)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
@@ -111,8 +114,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             TokenType.OpenBraceHash -> {
                 // #{"a" 1 "b" 2}
                 val initElements = readPrimaryMap()
-                skipOneEndOfLineOrComment()
-
+                skipNewLinesAndComments()
                 match(TokenType.CloseBrace)
 
                 return MapCollection(initElements, null, token)
@@ -121,8 +123,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             TokenType.OpenParenHash -> {
                 // #(1, 2 3)
                 val initElements = readPrimaryCollection()
-                skipOneEndOfLineOrComment()
-
+                skipNewLinesAndComments()
                 match(TokenType.CloseParen)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
