@@ -1890,6 +1890,18 @@ class ResolverTest {
     }
 
     @Test
+    fun doubleFloat() {
+
+        val source = """
+             x = 0.0
+             y = 0.0f
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+
+    }
+
+    @Test
     fun dontAddThisToTheCostructor() {
 
         val source = """

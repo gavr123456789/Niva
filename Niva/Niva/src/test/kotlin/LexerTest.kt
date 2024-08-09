@@ -27,6 +27,12 @@ class LexerTest {
         checkWithEnd(manyExpr, listOf(Identifier, Colon))
     }
 
+    @Test
+    fun double() {
+        val manyExpr = "0.0"
+        checkWithEnd(manyExpr, listOf(TokenType.Double))
+    }
+
 
     @Test
     fun manyExpr() {

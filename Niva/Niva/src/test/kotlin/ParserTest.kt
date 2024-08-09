@@ -2202,6 +2202,17 @@ class ParserTest {
         assertIs<StaticBuilder>(q)
     }
 
+    @Test
+    fun dotParsingWithMessage() {
+        val source = """
+        Int sas = [
+          .plus: 767 inc
+          .plus: 78
+        ] 
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
 
 //    @Test

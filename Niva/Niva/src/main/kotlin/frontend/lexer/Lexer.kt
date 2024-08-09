@@ -4,9 +4,7 @@ package frontend
 
 import main.frontend.lexer.isAlphaNumeric
 import main.frontend.lexer.isDigit
-import main.frontend.meta.Position
-import main.frontend.meta.Token
-import main.frontend.meta.TokenType
+import main.frontend.meta.*
 import main.frontend.util.fillSymbolTable
 import java.io.File
 
@@ -174,7 +172,7 @@ fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexe
 
 fun Lexer.error(message: String): Nothing {
     val msg = "${message}\nline: ${line}\n$file\npos: $lineCurrent - ${linePos - 1}\n"
-    throw Throwable(msg)
+    this.tokens.last().compileError(msg)
 }
 
 fun String.set(index: Int, char: Char): String {
@@ -319,7 +317,7 @@ fun Lexer.parseNumber() {
         if (!peek().isDigit()) {
             error("invalid float number literal")
         }
-        kind = TokenType.Float
+        kind = TokenType.Double
         stepWhileDigit()
         if (check(arrayOf("e", "E"))) {
             step()
@@ -329,13 +327,12 @@ fun Lexer.parseNumber() {
     if (match("'")) {
         stepWhileAlphaNumeric()
     }
-    // 3.5d == Double
-    if (match("d")) {
-        kind = TokenType.Double
-        createToken(kind, 1) // don't save d to not generate it in kotlin
-    } else if (kind == TokenType.Float) {
-        createToken(kind, addToLexeme = "f")
-    } else createToken(kind)
+    // 3.5f == Float
+    if (match("f")) {
+        kind = TokenType.Float
+        createToken(kind) // don't save d to not generate it in kotlin
+    } else
+        createToken(kind)
 
 }
 

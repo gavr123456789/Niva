@@ -269,7 +269,10 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                     "cascade_receiver"
                 else when (msg.receiver) {
                     is Message -> {
-                        "" // if there are messages already, then do not generate duplicates
+                        if (msg.receiver.isPiped)
+                            msg.receiver.generateExpression()
+                        else
+                            "" // if there are messages already, then do not generate duplicates
                     }
 
                     !is LiteralExpression.StringExpr -> msg.receiver.generateExpression()

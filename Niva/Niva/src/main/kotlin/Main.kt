@@ -60,7 +60,7 @@ fun main2() = runBlocking { // this: CoroutineScope
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
-//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Examples/server/main.niva")
+//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/server/http.bind.niva"
 ////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
