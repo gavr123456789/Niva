@@ -36,7 +36,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
         when (this@generateExpression) {
             is ExpressionInBrackets -> generateExpressionInBrackets(withNullChecks)
 
-            is MessageSend -> generateMessageCall(withNullChecks)
+            is MessageSend ->
+                generateMessageCall(withNullChecks)
             is IdentifierExpr ->
                 if (names.count() == 1) {
                     replaceKeywords(replaceLiteral ?: name)
@@ -71,7 +72,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is BinaryMsg -> binaryGenerate(this@generateExpression)
             is KeywordMsg -> keywordGenerate(this@generateExpression)
 
-            is UnaryMsg -> unaryGenerate(this@generateExpression)
+            is UnaryMsg ->
+                unaryGenerate(this@generateExpression)
 
 
             is CodeBlock -> generateCodeBlock(putArgListInBrackets = (type as? Type.Lambda)?.specialFlagForLambdaWithDestruct ?: false)

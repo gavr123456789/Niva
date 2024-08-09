@@ -135,7 +135,7 @@ fun Parser.statement(): Statement {
     }
 
     skipNewLinesAndComments()
-    return expression(parseSingleIf = true)
+    return expression(parseSingleIf = true, dot = true)
 }
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
@@ -155,19 +155,38 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
     return IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x)
 }
 
+
+
+
 // if inside var decl with type, then we're getting type from it
 fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
+    val matchDotIfItsNotOnNewLine = { lastLine: Int ->
+        val tok = step()
+        if (tok.kind != TokenType.Dot) {
+            this.current--
+            false
+        } else {
+            if (tok.line > lastLine) {
+                this.current--
+                false
+            } else {
+                true
+            }
+        }
+    }
 
     val x = matchAssertOr(TokenType.Identifier, TokenType.NullableIdentifier)
     var lastTokenDotSeparated: Token? = null
-    val dotMatched = match(TokenType.Dot)
+    val dotMatched = matchDotIfItsNotOnNewLine(x.line)//match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
+
+
     if (dotMatched) {
         do {
             val q = matchAssert(TokenType.Identifier, "Identifier expected after dot, but found ${peek().lexeme}")
             listOfIdentifiersPath.add(q.lexeme)
             lastTokenDotSeparated = q
-        } while (match(TokenType.Dot))
+        } while (matchDotIfItsNotOnNewLine(q.line)) // dot can be on new line, but no new-line tokens is generated
     }
 
     // change end tok for org.sas.sus.Button

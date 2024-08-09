@@ -19,9 +19,9 @@ enum class TokenType {
 
     // Literal types
     Integer,
-    Float, // 4.2
+    Float, // 4.2f
     String, Char,
-    Double, // 4.2d
+    Double, // 4.2
     Identifier, NullableIdentifier,
 //    Binary, Octal, Hex,
 

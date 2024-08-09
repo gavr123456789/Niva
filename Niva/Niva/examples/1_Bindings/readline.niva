@@ -1,5 +1,6 @@
 Bind package: "kotlin.io" content: [
     type Console
     @emit: "kotlin.io.readln()"
-    Console readln -> String
+    constructor Console readln -> String
+    // from niva: Console readln
 ]

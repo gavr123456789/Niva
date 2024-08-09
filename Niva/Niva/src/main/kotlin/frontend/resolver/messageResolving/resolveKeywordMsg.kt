@@ -587,7 +587,7 @@ fun Resolver.resolveKwArgsGenerics(
 
         if (typeFromDBForThisArg is Type.Lambda) {
             if (argType !is Type.Lambda) {
-                throw Exception("If typeFromDBForThisArg is codeblock then argType must be codeblock too")
+                it.keywordArg.token.compileError("type ($argType) != ($typeFromDBForThisArg) ")
             }
             /// remember letter to type args
             typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
