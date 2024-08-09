@@ -33,6 +33,7 @@ fun createIntProtocols(
             createUnary("inc", intType),
             createUnary("dec", intType),
             createUnary("toFloat", floatType),
+            createUnary("toDouble", doubleType),
             createUnary("toLong", longType),
             createUnary("-", doubleType),
             createUnary("toString", stringType),
