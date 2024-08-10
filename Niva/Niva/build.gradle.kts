@@ -1,10 +1,8 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-import org.jetbrains.kotlin.cli.common.modules.ModuleXmlParser.PATH
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import kotlin.io.path.div
 
 
 plugins {
@@ -102,7 +100,7 @@ tasks.register(checkAndBuildNativeTask) {
 }
 
 tasks.register(buildJvmNiva) {
-    dependsOn("installDist")
+    dependsOn("installDist", "publishToMavenLocal")
 
     fun moveJvm() {
         val userHome = System.getProperty("user.home")

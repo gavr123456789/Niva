@@ -336,8 +336,8 @@ private fun Resolver.resolveStatement(
         }
 
         is DotReceiver -> {
-            statement.token.compileError("Compiler bug, should be replaced to 'this' inside lexer")
-            statement.type = findThisInScopes(statement.token, currentScope, previousScope)
+            statement.token.compileError("Compiler bug, should be replaced to 'this' inside parser now")
+//            statement.type = findThisInScopes(statement.token, currentScope, previousScope)
         }
 
         is NeedInfo -> {
@@ -1614,7 +1614,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
         val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapType)
 
