@@ -2,6 +2,7 @@ package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
+import main.frontend.meta.Token
 import main.utils.CYAN
 import main.utils.GREEN
 import main.utils.RESET
@@ -108,7 +109,6 @@ fun Resolver.resolveKeywordMsg(
     } else mutableMapOf<String, Type>()
 
 
-    var thisIsConstructor = false
     // find this keyword in db
     val kwFromDB = when (kind) {
         KeywordLikeType.Keyword -> findAnyMsgType(
@@ -125,7 +125,6 @@ fun Resolver.resolveKeywordMsg(
 
         KeywordLikeType.Constructor -> {
             // there is no fields in internal types
-            thisIsConstructor = true
             if (receiverType is Type.InternalType) {
                 val keys = statement.args.joinToString(", ") { it.name }
                 statement.token.compileError("Type $CYAN$receiverType$RESET is internal and doesn't have fields or custom constructor: $WHITE$keys$RESET")
@@ -566,7 +565,13 @@ fun Resolver.resolveKwArgsGenerics(
                     }
                 }
             }
-            letterToRealType[typeFromDBForThisArg.name] = argType
+//            letterToRealType[typeFromDBForThisArg.name] = argType
+            letterToRealType.genericAdd(
+                typeFromDBForThisArg.name,
+                argType,
+                statement.token,
+                "receiver type: $receiverType"
+            )
         }
         // This is Box::T
         if (typeFromDBForThisArg is Type.UserLike && argType is Type.UserLike && typeFromDBForThisArg.typeArgumentList.isNotEmpty()) {
@@ -575,14 +580,19 @@ fun Resolver.resolveKwArgsGenerics(
                 argType.typeArgumentList.forEachIndexed { i, type ->
                     val fromDb = typeFromDBForThisArg.typeArgumentList[i]
                     if (fromDb.name.isGeneric() && !(type.name.isGeneric())) {
-                        letterToRealType[fromDb.name] = type
+//                        letterToRealType[fromDb.name] = type
+                        letterToRealType.genericAdd(
+                            fromDb.name,
+                            type,
+                            statement.token,
+                            "generic param №$i"
+                        )
                     }
                 }
             } else {
                 throw Exception("Something strange in generic resolving going on, $YEL${argType.name}$RESET != $YEL${typeFromDBForThisArg.name}")
             }
         }
-
 
 
         if (typeFromDBForThisArg is Type.Lambda) {
@@ -593,24 +603,67 @@ fun Resolver.resolveKwArgsGenerics(
             typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
                 val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
                 if (typeField.type.name.isGeneric()) {
-                    letterToRealType[typeField.type.name] = argType.args[i].type
+//                    letterToRealType[typeField.type.name] = argType.args[i].type
+                    letterToRealType.genericAdd(
+                        typeField.type.name,
+                        argType.args[i].type,
+                        statement.token,
+                        "codeblock argument №$i"
+                    )
                 } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.isGeneric()) {
-                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
+//                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
+                    letterToRealType.genericAdd(
+                        beforeGenericResolvedName,
+                        argType.args[i].type,
+                        statement.token,
+                        "codeblock argument №$i"
+                    )
+
                 }
             }
             /// remember letter to return type
             val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
 
             if (typeFromDBForThisArg.returnType.name.isGeneric()) {
-                letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
+//                letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
+                letterToRealType.genericAdd(typeFromDBForThisArg.returnType.name, argType.returnType, statement.token, "return type")
             } else if (returnTypeBefore != null && returnTypeBefore.isGeneric()) {
-                letterToRealType[returnTypeBefore] = argType.returnType
+//                letterToRealType[returnTypeBefore] = argType.returnType
+                letterToRealType.genericAdd(
+                    returnTypeBefore,
+                    argType.returnType,
+                    statement.token,
+                    "return type"
+                )
+
             }
 
         }
     }
     currentArgumentNumber = -1
 }
+
+typealias GenericTable = MutableMap<String, Type>
+
+fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlaceInCode: String?) {
+    val alreadyAddedType = this[str]
+
+    if (alreadyAddedType != null) {
+        //compare2Types(alreadyAddedType, type, errorTok, nullIsAny = true, compareParentsOfBothTypes = true, isOut = true)
+        // faster than compare2Types, and we don't need any fancy features here
+        val sameTypes = type.pkg == alreadyAddedType.pkg && type.name == alreadyAddedType.name
+        // той же букве дали другой тип
+        if (!sameTypes) {
+            val place = if (customPlaceInCode != null) {
+                " in $customPlaceInCode"
+            } else ""
+            errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
+        }
+    } else {
+        this[str] = type
+    }
+}
+
 
 
 @Suppress("UnusedReceiverParameter")

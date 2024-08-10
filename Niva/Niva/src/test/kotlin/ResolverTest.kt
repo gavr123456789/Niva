@@ -1929,6 +1929,18 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun ifTrueFalseTUnification() {
+
+        val source = """
+             false ifFalse: ["rrst"] ifTrue: [34]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_, _) = resolveWithResolver(source)
+        }
+
+    }
+
 }
 
 
