@@ -18,14 +18,17 @@ enum class MainArgument {
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
 
 
-class ArgsManager(argsSet: Set<String>, private val args: Array<String>) {
+class ArgsManager(val args: MutableList<String>) {
 
-    val compileOnly = "-c" in argsSet // args.find { it == "-c" } != null
-    val verbose = ("-v" in argsSet || "--verbose" in argsSet || argsSet.isEmpty()) // args.find { it == "-c" } != null
+    val compileOnly = "-c" in args // args.find { it == "-c" } != null
+    val verbose = if ("--verbose" in args || args.isEmpty()) {
+        args.remove("--verbose")
+        true
+    } else false
     val infoIndex = args.indexOf("-i")
 //    val infoOnly = infoIndex != -1
 //    val infoUserOnly = "-iu" in argsSet//argsSet.find { it == "-iu" } != null
-    val isShowTimeArg = "time" in argsSet || verbose//argsSet.find { it == "time" } != null
+    val isShowTimeArg = "time" in args || verbose//argsSet.find { it == "time" } != null
 
     fun mainArg(): MainArgument {
         return if (args.isNotEmpty()) {
@@ -106,7 +109,7 @@ fun help(args: Array<String>): Boolean {
 }
 
 
-fun getSpecialInfoArg(args: Array<String>, minusIindex: Int): String? {
+fun getSpecialInfoArg(args: List<String>, minusIindex: Int): String? {
     val specialPkgToInfoPrint = if (minusIindex != -1)
     // get word after -i
         if (args.count() - 1 > minusIindex)
