@@ -6,20 +6,11 @@ import frontend.Lexer
 import frontend.lex
 import kotlinx.coroutines.*
 
-import main.utils.CompilerRunner
-import main.utils.compileProjFromFile
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
-import main.utils.ArgsManager
-import main.utils.GlobalVariables
-import main.utils.MainArgument
-import main.utils.PathManager
-import main.utils.daemon
-import main.utils.getSpecialInfoArg
-import main.utils.help
-import main.utils.time
+import main.utils.*
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -60,7 +51,7 @@ fun main2() = runBlocking { // this: CoroutineScope
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
-//    val args = arrayOf("build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
+//    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/server/http.bind.niva"
 ////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
@@ -87,7 +78,7 @@ fun main(args: Array<String>) {
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
-fun getPathToMainOrSingleFile(args: Array<String>): String =
+fun getPathToMainOrSingleFile(args: List<String>): String =
     if (args.count() >= 2) {
         // niva run/test/build "sas.niva"
         val fileNameArg = args[1]
@@ -120,14 +111,14 @@ fun getPathToMainOrSingleFile(args: Array<String>): String =
         }
     }
 
-fun run(args: Array<String>) {
-    val argsSet = args.toSet()
+fun run(args2: Array<String>) {
+    val args = args2.toMutableList()
 
 //    readJar("/home/gavr/.gradle/caches/modules-2/files-2.1/io.github.jwharm.javagi/gtk/0.9.0/2caa1960a0bec1c8ed7127a6804693418441f166/gtk-0.9.0.jar")
 
     val startTime = System.currentTimeMillis()
 
-    val am = ArgsManager(argsSet, args)
+    val am = ArgsManager(args)
     val mainArg = am.mainArg()
     val pm = PathManager(getPathToMainOrSingleFile(args), mainArg)
 
