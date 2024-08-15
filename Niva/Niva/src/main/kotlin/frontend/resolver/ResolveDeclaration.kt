@@ -220,6 +220,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             args = listOf(
                                                 KeywordDeclarationArg(
                                                     name = it.name,
+                                                    it.keywordArg.token,
                                                     typeAST = typeAstFromArg
                                                 )
                                             ),

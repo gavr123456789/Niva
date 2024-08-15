@@ -18,14 +18,12 @@ val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
 
         replaceNameFromPragma(it, keyPragmas)
         emitFromPragma(it, keyPragmas)
-        noPkgEmit(it)
         val newInvisibleArgs = ctNames(it, keyPragmas)
         Pair(it.pragmas.find { it.name == Pragmas.EMIT.v } != null, newInvisibleArgs)
     } else Pair(false, null)
 }
 
 fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
-
     val b = StringBuilder()
 
     if (GlobalVariables.needStackTrace) {
@@ -151,7 +149,7 @@ fun generateMessages(
     )
 
     is StaticBuilder ->
-        TODO()
+        msg.token.compileError("TODO")
 }
 
 enum class Pragmas(val v: String) {
@@ -161,11 +159,7 @@ enum class Pragmas(val v: String) {
     CT_NAME("arg")
 }
 
-val setOfPragmaNames = setOf("rename", "emit", "noPkgEmit", "arg")
-
-fun noPkgEmit(@Suppress("UNUSED_PARAMETER") msg: Message) {
-//    TODO()
-}
+val setOfPragmaNames = setOf("rename", "emit", "arg")
 
 
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {

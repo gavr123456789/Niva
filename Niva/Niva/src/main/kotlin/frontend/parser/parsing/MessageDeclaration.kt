@@ -43,7 +43,7 @@ fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
     val result = MessageDeclarationUnary(
         name = unarySelector.lexeme,
         forType = forTypeAst,
-        token = forTypeAst.token,
+        token = unarySelector,
         body = messagesOrVarDeclarations,
         returnType = returnType,
         isSingleExpression = isSingleExpression,
@@ -68,7 +68,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
         if (match(TokenType.DoubleColon))
             parseType()
         else null
-    val arg = (KeywordDeclarationArg(name = argName.lexeme, typeAST = typeName))
+    val arg = (KeywordDeclarationArg(name = argName.lexeme, argName,typeAST = typeName))
     val returnType = returnType()
 
     // BODY PARSING
@@ -88,7 +88,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
     val result = MessageDeclarationBinary(
         name = binarySelector.lexeme,
         forType = forType,
-        token = forType.token,
+        token = binarySelector,
         arg = arg,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -146,7 +146,7 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
     val result = MessageDeclarationKeyword(
         name = keywordMessageName,
         forType = forType,
-        token = forType.token,
+        token = if (args.isNotEmpty()) args.first().tok else forType.token,
         args = args,
         body = messagesOrVarDeclarations,
         returnType = returnType,
@@ -168,7 +168,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         if (argName.kind != TokenType.Identifier) {
             argName.compileError("You tried to declare keyword message with arg without type and local name, identifier expected after colon :foobar")
         }
-        return (KeywordDeclarationArg(name = argName.lexeme))
+        return (KeywordDeclarationArg(name = argName.lexeme, argName))
     }
     // arg::int
     else if (noLocalName) {
@@ -178,7 +178,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         }
         match(TokenType.DoubleColon)
         val type = parseType()
-        return (KeywordDeclarationArg(name = argName.lexeme, typeAST = type))
+        return (KeywordDeclarationArg(name = argName.lexeme, argName,typeAST = type))
     }
 
     // key: localName(::int)?
@@ -193,7 +193,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
             null
         }
 
-        val result = KeywordDeclarationArg(name = key.lexeme, localName = local.lexeme, typeAST = type)
+        val result = KeywordDeclarationArg(name = key.lexeme, key, localName = local.lexeme, typeAST = type)
         return result
 
     }
@@ -417,6 +417,7 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
 
         val msgDecl = messageDeclaration(isItMsgDeclaration, pragmas, forTypeAst)
         list.add(msgDecl)
+
         skipNewLinesAndComments()
     } while (!match(TokenType.CloseBracket))
 
