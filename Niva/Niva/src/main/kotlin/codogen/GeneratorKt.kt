@@ -120,7 +120,6 @@ kotlin {
     }
 }
 """
-    // TODO GRADLE working dir with compose
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String): String {
         val q = runCommandName.split(" ").first()
         return if (q == "jvmRun") "" else
