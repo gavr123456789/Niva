@@ -399,7 +399,14 @@ fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     resolver.reset()
 
     // throws on
-    resolver.resolve(file, VerbosePrinter(false), resolveOnlyOneFile = true, customMainSource = text)
+    resolver.resolve(
+        file.readText(),
+        file.absolutePath,
+        file.nameWithoutExtension,
+        VerbosePrinter(false),
+        resolveOnlyOneFile = true,
+        customMainSource = text
+    )
 
 
 }
@@ -411,7 +418,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         if (directory.isDirectory) {
             val q = directory.listFiles()
             if (q != null) {
-                return q.asSequence().filter { it.extension == "niva" || it.extension == "scala" }.toSet()
+                return q.asSequence().filter { it.extension == "niva" }.toSet() // || it.extension == "scala"
             } else TODO("Cant find files in the $directory")
         } else {
             return emptySet()
@@ -440,7 +447,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     assert(file.exists())
 
     val collectFiles = {
-        val set = listFilesRecursively(file.parentFile, "niva", "scala", "nivas").toSet()
+        val set = listFilesRecursively(file.parentFile, "niva", "kek", "nivas").toSet() //"scala"
         val main = set.find { it.nameWithoutExtension == "main" }
         if (main != null) {
             Pair(main, set)
@@ -492,7 +499,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         it.identifiers.forEach { addStToMegaStore(it) }
                     }
                     // add types of the decl as IdentExpr
-                    if (st is MessageDeclaration) {
+                    if (st is MessageDeclaration && st.returnType != null) {
                         val realSt = when(st) {
                             is ConstructorDeclaration -> st.msgDeclaration
                             else -> st
@@ -504,8 +511,6 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                                 addStToMegaStore(it)
                             }
                         }
-
-                        // return
                         realSt.returnTypeAST
                             ?.toIdentifierExpr(realSt.returnType!!, true)
                             ?.also {

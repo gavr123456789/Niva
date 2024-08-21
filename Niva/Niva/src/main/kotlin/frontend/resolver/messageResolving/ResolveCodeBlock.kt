@@ -57,6 +57,8 @@ fun Resolver.resolveCodeBlock(
     }
 
 
+
+
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
 
@@ -67,8 +69,8 @@ fun Resolver.resolveCodeBlock(
     val genericLetterToTypes = mutableMapOf<String, Type>()
     val genericLetterToTypesOfReceiver = mutableMapOf<String, Type>()
     if (rootStatement is KeywordMsg &&
-        rootStatement.kind != KeywordLikeType.CustomConstructor &&
-        rootStatement.kind != KeywordLikeType.Constructor &&
+//        rootStatement.kind != KeywordLikeType.CustomConstructor &&
+//        rootStatement.kind != KeywordLikeType.Constructor &&
         currentArgumentNumber != -1 &&
         rootStatement.receiver !is CodeBlock &&
         rootStatement.receiver.type !is Type.Lambda)
@@ -163,7 +165,8 @@ fun Resolver.resolveCodeBlock(
 
     namedLambdaArgs.forEach {
         val type =
-            it.type ?: it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name}$RESET codeblock parameter")
+            it.type ?:
+            it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name}$RESET codeblock parameter")
         previousAndCurrentScope.putIfAbsent(it.name, type)
     }
 

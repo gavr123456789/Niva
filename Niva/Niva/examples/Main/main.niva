@@ -1,8 +1,9 @@
-type Person name: String
-builder Person sas -> Unit = [
-    build this: (Person name: "Alice")
+type Sas
+
+Sas x::[Int, Int -> Unit] = 1 echo
+
+sas = Sas new
+sas x: [q, f ->
+    q + f
+    Unit
 ]
-
-sas [name echo]
-
-

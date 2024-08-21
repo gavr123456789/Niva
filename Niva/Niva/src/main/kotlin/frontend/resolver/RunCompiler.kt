@@ -10,7 +10,6 @@ import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
 import main.utils.*
 import java.io.File
-import kotlin.io.path.absolute
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.markNow
 
@@ -85,7 +84,9 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
 //}
 
 fun Resolver.resolve(
-    mainFile: File,
+    mainFileContent: String,
+    mainFilePath: String,
+    mainFileNameWithoutExtension: String,
     verbosePrinter: VerbosePrinter,
     resolveOnlyOneFile: Boolean = false,
     customMainSource: String? = null,
@@ -100,7 +101,7 @@ fun Resolver.resolve(
 
     val fakeTok = createFakeToken()
     verbosePrinter.print {
-        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFile.toPath().absolute()}" +
+        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFilePath}" +
                 (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
                 otherFilesPaths.joinToString("\n\t") { it.path }
     }
@@ -108,7 +109,7 @@ fun Resolver.resolve(
 
     val beforeParserMark = markNow()
 
-    val mainAST = getAst(source = customMainSource ?: mainFile.readText(), file = mainFile)
+    val mainAST = getAst(source = customMainSource ?: mainFileContent, file = File(mainFilePath))
 
 
     // generate ast for others
@@ -126,8 +127,8 @@ fun Resolver.resolve(
 
 
     // create main package
-    changePackage(mainFile.nameWithoutExtension, fakeTok, isMainFile = true)
-    currentResolvingFileName = mainFile
+    changePackage(mainFileNameWithoutExtension, fakeTok, isMainFile = true)
+    currentResolvingFileName = File(mainFilePath)
 
 
 
@@ -244,7 +245,7 @@ fun Resolver.resolve(
 
     // here we are resolving all statements(in bodies), not only declarations
 
-    currentPackageName = mainFile.nameWithoutExtension
+    currentPackageName = mainFileNameWithoutExtension
 
     val resolveExpressionsMark = markNow()
 
@@ -264,7 +265,7 @@ fun Resolver.resolve(
     // need to add all imports from mainFile pkg to mainNiva pkg
     val currentProject = projects[currentProjectName]!!
     val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
-    val mainFilePkg = currentProject.packages[mainFile.nameWithoutExtension]!!
+    val mainFilePkg = currentProject.packages[mainFileNameWithoutExtension]!!
     mainNivaPkg.imports += mainFilePkg.imports
     mainNivaPkg.concreteImports += mainFilePkg.concreteImports
 }

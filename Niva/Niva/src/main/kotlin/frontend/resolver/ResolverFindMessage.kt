@@ -12,7 +12,7 @@ import main.utils.PURP
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
-import main.utils.endOfSearch
+import main.utils.onCompletionExc
 import main.utils.findSimilar
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
@@ -251,7 +251,7 @@ fun Resolver.findAnyMsgType(
 
     if (GlobalVariables.isDemonMode) {
         findSimilar(to = selectorName, forType = receiverType)
-        endOfSearch(mapOf())
+        onCompletionExc(mapOf())
     } else if (GlobalVariables.isLspMode) {
         // IDK, send find similar as array?
         val (list, _) = findSimilar(to = selectorName, forType = receiverType)

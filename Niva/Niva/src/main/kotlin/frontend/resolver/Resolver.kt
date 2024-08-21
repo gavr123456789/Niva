@@ -357,11 +357,11 @@ private fun Resolver.resolveStatement(
                     if (!GlobalVariables.isLspMode)
                         findSimilarAndPrint(searchRequest, receiverType)
 
-                    endOfSearch(currentScope + previousScope) // NeedInfo
+                    onCompletionExc(currentScope + previousScope) // NeedInfo
                 }
 
                 else -> {
-                    endOfSearch(currentScope + previousScope) // NeedInfo
+                    onCompletionExc(currentScope + previousScope) // NeedInfo
                 }
             }
         }
@@ -927,10 +927,10 @@ fun Resolver.getTypeForIdentifier(
             }
             val typeNameSuggestions = collectTypeNamesStartFrom(x.token.lexeme)
 
-            endOfSearch(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token)// types
+            onCompletionExc(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token)// types
         } else {
             // if from little then its local suggestion
-            endOfSearch(currentScope + previousScope , "Unresolved reference: ${x.str}", token = x.token) // scope
+            onCompletionExc(currentScope + previousScope , "Unresolved reference: ${x.str}", token = x.token) // scope
         }
     }
 

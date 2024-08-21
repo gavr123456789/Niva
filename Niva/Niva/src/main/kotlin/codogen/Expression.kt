@@ -9,7 +9,7 @@ fun replaceKeywords(str: String) =
         else -> str
     }
 
-fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks: Boolean = false): String = buildString {
+fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks: Boolean = false, isArgument: Boolean = false): String = buildString {
 
     if (isInfoRepl) {
         return@buildString
@@ -75,8 +75,12 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is UnaryMsg ->
                 unaryGenerate(this@generateExpression)
 
+            // we dont need to generate types if this is arg list.forEach: {it ~~: Int~~ -> ...}
+            is CodeBlock -> generateCodeBlock(
+                withTypeDeclaration = !isArgument,
+                putArgListInBrackets = (type as? Type.Lambda)?.specialFlagForLambdaWithDestruct == true
+            )
 
-            is CodeBlock -> generateCodeBlock(putArgListInBrackets = (type as? Type.Lambda)?.specialFlagForLambdaWithDestruct ?: false)
             is StaticBuilder -> generateBuilderCall(this@generateExpression)
             is MethodReference -> generateMethodReference()
         }

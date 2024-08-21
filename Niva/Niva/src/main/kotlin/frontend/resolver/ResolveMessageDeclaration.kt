@@ -176,23 +176,26 @@ fun Resolver.resolveMessageDeclaration(
         // check that errors that returns and stack are the same
         val validateErrorsDeclarated = {
             val returnTypeAST = st.returnTypeAST
+            val possibleErrors = st.stackOfPossibleErrors
+            val declaredErrors = returnTypeAST?.errors
+            val listOfErrorsWithLines = {
+                buildString {
+                    possibleErrors.forEach {
+                        assert(it.second.isNotEmpty())
+                        append("\t" + it.first.token.line, " | $WHITE", it.first.receiver, " ", it.first, RESET)
+                        append(" !{$RED", it.second.joinToString(" ") { it.name }, "$RESET}\n")
+                    }
+                }
+            }
             if (returnTypeAST != null) {
                 // errors declared but there are no possible errors
-                val possibleErrors = st.stackOfPossibleErrors
-                val declaredErrors = returnTypeAST.errors
 
                 if (possibleErrors.isNotEmpty()) {
                     val allPossibleErrors = possibleErrors.flatMap { it.second }
                     val possibleErrorsUnion = allPossibleErrors.distinct()
                     val possibleErrorsJoined = possibleErrorsUnion.joinToString(" ") { it.name }
 
-                    val listOfErrorsWithLines = buildString {
-                        possibleErrors.forEach {
-                            assert(it.second.isNotEmpty())
-                            append("\t" + it.first.token.line, " | $WHITE", it.first.receiver, " ", it.first, RESET)
-                            append(" !{$RED", it.second.joinToString(" ") { it.name }, "$RESET}\n")
-                        }
-                    }
+
 
                     // not declared anything at all
                     if (declaredErrors == null) {
@@ -203,7 +206,7 @@ fun Resolver.resolveMessageDeclaration(
                         val possibleSolutions =
                             "$WHITE-> $returnTypeAST!$RESET or $WHITE-> $returnTypeAST!$singleOrManyErrors$RESET"
 
-                        st.token.compileError("Possible errors of $WHITE$st$RESET are: \n${listOfErrorsWithLines} but you not declared them\n use $possibleSolutions")
+                        st.token.compileError("Possible errors of $WHITE$st$RESET are: \n${listOfErrorsWithLines()} but you not declared them\n use $possibleSolutions")
                     } else if(declaredErrors.count() != 0 ){
                         // maybe declared but wrong
                         val setOfPossible = possibleErrorsUnion.map { it.name }.toSet()
@@ -214,7 +217,7 @@ fun Resolver.resolveMessageDeclaration(
                                 .joinToString(" ")
 
                             st.token.compileError("Possible errors of $WHITE$st$RESET are: \n" +
-                                    "${listOfErrorsWithLines}\n" +
+                                    "${listOfErrorsWithLines()}\n" +
                                     "Wrong set of errors declarated\nPossible errors: $possibleErrorsJoined\nDeclared errors: $declErrors\nDiff: $diff")
                         }
                     }
@@ -223,8 +226,11 @@ fun Resolver.resolveMessageDeclaration(
                 }
                 // errors are possible but not declared
                 if (possibleErrors.isEmpty() && declaredErrors?.isNotEmpty() == true) {
-                    st.token.compileError("There is no possible errors but you declared ${declaredErrors.joinToString()}")
+                    st.token.compileError("there are possible errors:\n${listOfErrorsWithLines()}\nbut you didn't specify them in return type: `-> Type!{Errors}`")
                 }
+            }
+            if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
+                st.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString()}")
             }
 
         }
@@ -309,7 +315,15 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = st.returnType
     // addToDb
     if (addToDb) {
-        addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
+        try {
+            addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
+        } catch (_: CompilerError) {
+            unResolvedMessageDeclarations.add(currentPackageName, st)
+            currentLevel--
+            return true
+        }
+
+//        addNewAnyMessage(st, isGetter = false, isSetter = false, forType = forType)
     }
 
     val isResolvedSingleExpr = if(st.isSingleExpression) {
