@@ -257,7 +257,7 @@ fun compileProjFromFile(
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
-            listFilesRecursively(nivaProjectFolder, "niva", "scala", "nivas").filter { it.name != mainFile.name }
+            listFilesRecursively(nivaProjectFolder, "niva", "kek","nivas").filter { it.name != mainFile.name } //  "scala",
         else
             emptyList()
 
@@ -270,7 +270,12 @@ fun compileProjFromFile(
         currentResolvingFileName = mainFile
     )
 
-    resolver.resolve(mainFile, verbosePrinter)
+    resolver.resolve(
+        mainFile.readText(),
+        mainFile.absolutePath,
+        mainFile.nameWithoutExtension,
+        verbosePrinter
+    )
 
     if (!resolveOnly) {
         val defaultProject = resolver.projects["common"]!!

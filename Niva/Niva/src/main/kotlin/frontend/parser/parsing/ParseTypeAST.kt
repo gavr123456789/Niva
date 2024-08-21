@@ -152,7 +152,7 @@ fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
             when (erTok.kind) {
                 TokenType.OpenBrace -> {
                     val errorsList = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
-                    errorsList
+                    if (errorsList.isEmpty()) null else errorsList
                 }
                 TokenType.Identifier -> {
                     listOf(step().lexeme)

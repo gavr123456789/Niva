@@ -49,12 +49,12 @@ fun main2() = runBlocking { // this: CoroutineScope
 }
 
 fun main(args: Array<String>) {
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
+    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/server/http.bind.niva"
-////    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
 //
 //    try {
 //        val ls = LS()
@@ -72,8 +72,8 @@ fun main(args: Array<String>) {
 //    catch (e: OnCompletionException) {
 //        println(e.scope)
 //    }
-
-    if (help(args)) return
+//
+//    if (help(args)) return
     run(args)
 }
 

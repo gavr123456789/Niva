@@ -38,7 +38,6 @@ fun Resolver.resolveCollection(
             } else {
                 currentLevel++
                 resolveSingle(it, previousAndCurrentScope, statement)
-//                if (it.type == null) it.token.compileError("Compiler bug: Can't infer type of $it")
                 currentLevel--
             }
         }
@@ -116,13 +115,7 @@ fun Resolver.resolveMap(
         return
     }
 
-    if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
-        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
-        statement.type = type
-        return
-    }
     if (statement.initElements.isEmpty()) {
-
         fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "MutableMap")
         return
     }

@@ -590,7 +590,7 @@ fun Resolver.resolveKwArgsGenerics(
                     }
                 }
             } else {
-                throw Exception("Something strange in generic resolving going on, $YEL${argType.name}$RESET != $YEL${typeFromDBForThisArg.name}")
+                it.keywordArg.token.compileError("$YEL${typeFromDBForThisArg.name}$RESET expected but found $YEL${argType.name}")
             }
         }
 

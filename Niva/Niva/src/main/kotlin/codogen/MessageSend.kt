@@ -35,20 +35,18 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         this.token.compileError("Message list for ${YEL}${this.str}${RESET} can't be empty")
     }
 
-    val isThisACascade =
-        messages.find { it.isCascade } != null
+    val isThisACascade = messages.find { it.isCascade } != null
 
-    if (!isThisACascade)
-        b.append("(".repeat(messages.count { it.isPiped }))
+    if (!isThisACascade) b.append("(".repeat(messages.count { it.isPiped }))
 
 
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver ->\n") // then generate function calls on this receiver
-        IdentifierExpr(name = "cascade_receiver", token = token)
-            .also { it.type = receiver.type } // because next we will read type of receiver
-    } else
-        null
+        IdentifierExpr(name = "cascade_receiver", token = token).also {
+                it.type = receiver.type
+            } // because next we will read type of receiver
+    } else null
 
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
@@ -81,24 +79,20 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         } else {
             if (isThisACascade) {
                 // send with i + 1, to not trigger the receiver generation
-                if (!it.isPiped)
-                    generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
+                if (!it.isPiped) generateMessages(it, b, 0, fakeReceiver!!, withNullChecks, newInvisibleArgs)
                 else {
 //                    val i2 = if (messages[i-1].isPiped) i else 0
                     generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
                 }
 
                 b.append("\n")
-            } else
-                generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
+            } else generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
         }
 
-        if (it.isPiped && !isThisACascade)
-            b.append(")")
+        if (it.isPiped && !isThisACascade) b.append(")")
     }
 
-    if (isThisACascade)
-        b.append("\n}") // close also
+    if (isThisACascade) b.append("\n}") // close also
     return b.toString()
 
 
@@ -148,15 +142,11 @@ fun generateMessages(
         )
     )
 
-    is StaticBuilder ->
-        msg.token.compileError("TODO")
+    is StaticBuilder -> msg.token.compileError("TODO")
 }
 
 enum class Pragmas(val v: String) {
-    RENAME("rename"),
-    EMIT("emit"),
-    NO_PKG_EMIT("noPkgEmit"),
-    CT_NAME("arg")
+    RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg")
 }
 
 val setOfPragmaNames = setOf("rename", "emit", "arg")
@@ -164,8 +154,7 @@ val setOfPragmaNames = setOf("rename", "emit", "arg")
 
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
 
-    val ctPragmas = keyPragmas
-        .filter { it.name == Pragmas.CT_NAME.v }
+    val ctPragmas = keyPragmas.filter { it.name == Pragmas.CT_NAME.v }
 
     if (ctPragmas.isEmpty()) return null
 
@@ -212,13 +201,11 @@ fun replaceNameFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
     }
 
     val value = renamePragmas[0].value
-    val replacedSelectorName =
-        when (value) {
-            is LiteralExpression.StringExpr ->
-                value.toString()
+    val replacedSelectorName = when (value) {
+        is LiteralExpression.StringExpr -> value.toString()
 
-            else -> null
-        }
+        else -> null
+    }
     if (replacedSelectorName != null) {
         msg.selectorName = replacedSelectorName
     }
@@ -258,27 +245,23 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                     map[(i + 1).toString()] = it.keywordArg.generateExpression()
                 }
             }
-            val receiverCode =
-                if (msg.isCascade)
-                    "cascade_receiver"
-                else when (msg.receiver) {
-                    is Message -> {
-                        if (msg.receiver.isPiped)
-                            msg.receiver.generateExpression()
-                        else
-                            "" // if there are messages already, then do not generate duplicates
-                    }
-
-                    !is LiteralExpression.StringExpr -> msg.receiver.generateExpression()
-                    else -> msg.receiver.token.lexeme
+            val receiverCode = if (msg.isCascade) "cascade_receiver"
+            else when (msg.receiver) {
+                is Message -> {
+                    if (msg.receiver.isPiped) msg.receiver.generateExpression()
+                    else "" // if there are messages already, then do not generate duplicates
                 }
+
+                !is LiteralExpression.StringExpr -> msg.receiver.generateExpression()
+                else -> msg.receiver.token.lexeme
+            }
 
             map["0"] = receiverCode
 
             msg.selectorName = replacePatternsWithValues(value.toString(), map)
         }
-        else ->
-            msg.token.compileError("String literal expected for emit pragma")
+
+        else -> msg.token.compileError("String literal expected for emit pragma")
     }
 
 }
@@ -296,10 +279,7 @@ fun generateSingleKeyword(
     val receiverCode = {
         buildString {
             val needBrackets =
-                keywordMsg.kind != KeywordLikeType.Constructor &&
-                        keywordMsg.kind != KeywordLikeType.CustomConstructor && !receiverIsDot ||
-                        keywordMsg.kind == KeywordLikeType.ForCodeBlock ||
-                        receiver is ExpressionInBrackets
+                keywordMsg.kind != KeywordLikeType.Constructor && keywordMsg.kind != KeywordLikeType.CustomConstructor && !receiverIsDot || keywordMsg.kind == KeywordLikeType.ForCodeBlock || receiver is ExpressionInBrackets
 
             if (needBrackets) append("(")
 
@@ -310,10 +290,7 @@ fun generateSingleKeyword(
             // if it is a.b.Person already, then generateExpression will add this names
             val hasNoDotNames = kwReceiver is IdentifierExpr && kwReceiver.names.count() == 1
 
-            if (!receiverIsDot && kwReceiver.type?.pkg != "core" &&
-                isConstructor
-                && hasNoDotNames
-            ) {
+            if (!receiverIsDot && kwReceiver.type?.pkg != "core" && isConstructor && hasNoDotNames) {
                 val type = kwReceiver.type
                 if (type != null) {
                     append(type.pkg)
@@ -397,6 +374,7 @@ fun generateSingleKeyword(
                 append(valueArg.name, " = ")
             }
         }
+
         KeywordLikeType.SetterImmutableCopy -> {
             // p age: 1
             // Person(age = 1, name = p.name)
@@ -413,9 +391,8 @@ fun generateSingleKeyword(
             val newValueAssign = ", ${valueArg.name} = ${valueArg.keywordArg.generateExpression()}"
 
             // all args except the changing one
-            val args = receiverType.fields.asSequence()
-                .filter { it.name != valueArg.name }
-                .joinToString{ "${it.name} = ${receiver.name}.${it.name}" } + newValueAssign
+            val args = receiverType.fields.asSequence().filter { it.name != valueArg.name }
+                .joinToString { "${it.name} = ${receiver.name}.${it.name}" } + newValueAssign
 
             append(typeConstructor, "(", args, ")")
             return@buildString
@@ -430,8 +407,9 @@ fun generateSingleKeyword(
             // printingClient Request: request // here we dont need to generate .Request()
             // type Filter = [HttpHandler -> HttpHandler]
             // we use "Request:" just because we don't have real name for arg, and it still can be alias
-            val firstArgIsSelectorName = receiverType2.args.isNotEmpty() && receiverType2.args[0].name == keywordMsg.selectorName
-            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || (isExtensionForLambda && !firstArgIsSelectorName) ) {
+            val firstArgIsSelectorName =
+                receiverType2.args.isNotEmpty() && receiverType2.args[0].name == keywordMsg.selectorName
+            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || (isExtensionForLambda && !firstArgIsSelectorName)) {
                 append(receiverCode(), ".", keywordMsg.selectorName)
             } else {
                 if (i == 0) {
@@ -450,18 +428,16 @@ fun generateSingleKeyword(
     // generate args
     keywordMsg.args.forEachIndexed { i, it ->
 
-        val expressionStr = it.keywordArg.generateExpression()
+        val expressionStr = it.keywordArg.generateExpression(isArgument = true)
         if (keywordMsg.kind == KeywordLikeType.Constructor && receiverType is Type.UserLike && !receiverType.isBinding) {
             append(it.name, " = ")
         }
         append(expressionStr)
-        if (i != keywordMsg.args.count() - 1)
-            append(", ")
+        if (i != keywordMsg.args.count() - 1) append(", ")
 
     }
     if (invisibleArgs != null) {
-        if (keywordMsg.args.isNotEmpty())
-            append(", ")
+        if (keywordMsg.args.isNotEmpty()) append(", ")
         append(invisibleArgs.joinToString(", "))
     }
 
@@ -487,8 +463,7 @@ fun generateSingleUnary(
 
         val type = receiver.type!!
         if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
-            if (type.typeArgumentList.count() == 1)
-                append("<", type.typeArgumentList[0].name + ">")
+            if (type.typeArgumentList.count() == 1) append("<", type.typeArgumentList[0].name + ">")
 
         }
     }
@@ -497,14 +472,18 @@ fun generateSingleUnary(
 
     when (it.kind) {
         UnaryMsgKind.Unary -> {
-            val isThatDefaultConstructorFor0Fields = if (it.selectorName == "new") {
+            fun isThatDefaultConstructor(): Boolean {
+                if (it.selectorName != "new") return false
                 val w = it.receiver.type!!
-                if (w is Type.UserLike) {
-                    w.fields.isEmpty()
-                } else
-                    false
-            } else false
-            if (!isThatDefaultConstructorFor0Fields) {
+                if (w !is Type.UserLike) return false
+                // has new static method
+                if (w.protocols.values.find { it.staticMsgs.containsKey("new") } != null) return false
+                return w.fields.isEmpty()
+            }
+            val isThatDefaultConstructor = isThatDefaultConstructor()
+
+
+            if (!isThatDefaultConstructor) {
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
                 append(it.selectorName)
 
@@ -562,8 +541,7 @@ fun generateSingleBinary(
         if (receiver !is DotReceiver) {
             append(
                 generateUnarySends(
-                    receiver,
-                    it.unaryMsgsForReceiver
+                    receiver, it.unaryMsgsForReceiver
                 )
             )
         } else {
