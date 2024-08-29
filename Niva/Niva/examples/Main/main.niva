@@ -1,9 +1,7 @@
-type Sas
+x = {1 2 3 4 5}
+y = x indexOfFirst: [it == 676]
+y echo
 
-Sas x::[Int, Int -> Unit] = 1 echo
-
-sas = Sas new
-sas x: [q, f ->
-    q + f
-    Unit
-]
+q = x firstOrNull: [it == 676]
+z = q unpackOrValue: 42
+z echo

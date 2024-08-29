@@ -408,16 +408,14 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         }
         
         inline fun <T> Boolean.ifFalse(x: () -> T) {
-            if (!this) {
-                x()
-            }
+            if (!this) { x() }
         }
         
         inline fun <T> Boolean.ifTrueIfFalse(x: () -> T, y: () -> T): T {
-            return if (this) {
-                x()
-            } else y()
+            return if (this) x() else y()
         }
+        
+        inline fun <T> T?.unpackOrValue(v: T) = this ?: v 
 
         inline fun <T> Boolean.ifFalseIfTrue(x: () -> T, y: () -> T): T = this.ifTrueIfFalse(y, x)
         

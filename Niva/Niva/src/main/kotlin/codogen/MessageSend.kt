@@ -86,7 +86,8 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
                 }
 
                 b.append("\n")
-            } else generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
+            } else
+                generateMessages(it, b, i, receiver, withNullChecks, newInvisibleArgs)
         }
 
         if (it.isPiped && !isThisACascade) b.append(")")

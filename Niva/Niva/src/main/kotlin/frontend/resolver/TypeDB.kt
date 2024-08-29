@@ -140,7 +140,7 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 
 // region adding
 
-fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
+fun TypeDB.add(type: Type, _token: Token, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
 //        is Type.ErrorType -> addErrorDomain(realName, type, token)
@@ -264,7 +264,7 @@ fun resolveTypeIfSameNamesFromConstructor(
     } else {
 
         kwConstructor.token.compileError(
-            "Type `${kwConstructor.receiver}` is defined in many packages: ${result.packagesToTypes.values.map { it.pkg }},\n\t" + "please specify what package you wanna use with for example `${currentPkgName}.${kwConstructor.receiver}`\n\t" + "or `Project use: \"${currentPkgName}\"` "
+            "Type `${kwConstructor.receiver}` is defined in many packages: ${result.packagesToTypes.values.map { it.pkg }},\n\t" + "please specify what package you wanna use with example `${currentPkgName}.${kwConstructor.receiver}`\n\t" + "or `Project use: \"${currentPkgName}\"` "
         )
     }
 }

@@ -127,7 +127,10 @@ fun getSpecialInfoArg(args: List<String>, minusIindex: Int): String? {
     return specialPkgToInfoPrint
 }
 
-fun warning(string: String) = println("${YEL}Warning: $string$RESET")
+fun warning(string: String) {
+    if (!GlobalVariables.isLspMode)
+        println("${YEL}Warning:$RESET $string$RESET")
+}
 
 
 const val HELP = """

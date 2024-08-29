@@ -2214,6 +2214,20 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun pipeMessagesAmount() {
+        val source = """
+            combinators asSequence map: [it do] |>
+            firstOrNull: [
+            | it
+            | Success => true
+            | Failure => false
+            ] |> unpackOrValue: Failure new
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 
 //    @Test
 //    fun differences() {

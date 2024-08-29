@@ -380,6 +380,8 @@ fun createCharProtocols(
     return result
 }
 
+
+
 fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
     // receiver is already T(on kotlin side)
     // so we need only one generic here
@@ -398,8 +400,7 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
-            createKeyword(KeywordArg("unpackOrValue", realTypeOrNothing), realTypeOrNothing)
-                .emitKw("($0 ?: $1)"),
+            createKeyword(KeywordArg("unpackOrValue", realTypeOrNothing), realTypeOrNothing),
 
             createKeyword(
                 KeywordArg(
@@ -643,8 +644,8 @@ fun createListProtocols(
         pkg = "core",
         protocols = pairType.protocols,
         typeDeclaration = null
-
     )
+    val itTypeNullable = Type.NullableType(itType)
 
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
@@ -652,7 +653,6 @@ fun createListProtocols(
             createUnary("count", intType),
             createUnary("echo", unitType),
             createUnary("first", itType),
-            createUnary("firstOrNull", itType),
 
             createUnary("last", itType),
             createUnary("lastOrNull", itType),
@@ -705,6 +705,28 @@ fun createListProtocols(
 
             createKeyword(
                 KeywordArg(
+                    "indexOfFirst",
+                    Type.Lambda(mutableListOf(KeywordArg("indexOfFirst", itType)), boolType)
+                ),
+                intType
+            ),
+            createKeyword(
+                KeywordArg(
+                    "indexOfLast",
+                    Type.Lambda(mutableListOf(KeywordArg("indexOfLast", itType)), boolType)
+                ),
+                intType
+            ),
+            createKeyword(
+                KeywordArg(
+                    "firstOrNull",
+                    Type.Lambda(mutableListOf(KeywordArg("firstOrNull", itType)), boolType)
+                ),
+                itTypeNullable
+            ),
+
+            createKeyword(
+                KeywordArg(
                     "sortedBy",
                     Type.Lambda(
                         mutableListOf(KeywordArg("transform", itType)),
@@ -713,6 +735,7 @@ fun createListProtocols(
                 ),
                 mutListType
             ),
+
 
             createKeyword(
                 "joinWithTransform",

@@ -242,6 +242,9 @@ fun Resolver.resolveKeywordMsg(
                 kw.argTypes     // kw message declared for lambda alias
             } else receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
 
+        if (realArgs.count() != statement.args.count()) {
+            statement.token.compileError("Number of arguments for code-block: ${WHITE}${realArgs.count()}$RESET, you passed ${WHITE}${statement.args.count()}")
+        }
         statement.args.forEachIndexed { ii, it ->
             // name check
             // if it lambda, then any arg name is valid
@@ -601,7 +604,7 @@ fun Resolver.resolveKwArgsGenerics(
             }
             /// remember letter to type args
             typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
-                val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
+//                val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
                 if (typeField.type.name.isGeneric()) {
 //                    letterToRealType[typeField.type.name] = argType.args[i].type
                     letterToRealType.genericAdd(
@@ -610,16 +613,17 @@ fun Resolver.resolveKwArgsGenerics(
                         statement.token,
                         "codeblock argument №$i"
                     )
-                } else if (beforeGenericResolvedName != null && beforeGenericResolvedName.isGeneric()) {
-//                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
-                    letterToRealType.genericAdd(
-                        beforeGenericResolvedName,
-                        argType.args[i].type,
-                        statement.token,
-                        "codeblock argument №$i"
-                    )
-
                 }
+                // its not possible for type from db to have a resolved generic!
+//                else if (beforeGenericResolvedName != null && beforeGenericResolvedName.isGeneric()) {
+////                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
+//                    letterToRealType.genericAdd(
+//                        beforeGenericResolvedName,
+//                        argType.args[i].type,
+//                        statement.token,
+//                        "codeblock argument №$i"
+//                    )
+//                }
             }
             /// remember letter to return type
             val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
@@ -649,15 +653,16 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlac
     val alreadyAddedType = this[str]
 
     if (alreadyAddedType != null) {
-        //compare2Types(alreadyAddedType, type, errorTok, nullIsAny = true, compareParentsOfBothTypes = true, isOut = true)
+        val sameTypes = compare2Types(alreadyAddedType, type, errorTok, nullIsAny = true, compareParentsOfBothTypes = true, isOut = true)
         // faster than compare2Types, and we don't need any fancy features here
-        val sameTypes = type.pkg == alreadyAddedType.pkg && type.name == alreadyAddedType.name
+//        val sameTypes = type.pkg == alreadyAddedType.pkg && type.name == alreadyAddedType.name
         // той же букве дали другой тип
         if (!sameTypes) {
             val place = if (customPlaceInCode != null) {
                 " in $customPlaceInCode"
             } else ""
-            errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
+            if (!GlobalVariables.isLspMode)
+                errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
         }
     } else {
         this[str] = type

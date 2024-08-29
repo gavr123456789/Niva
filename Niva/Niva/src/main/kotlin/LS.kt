@@ -197,8 +197,6 @@ fun LS.removeDecl2(file: File) {
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
-//    info?.invoke("fileToDecl = ${fileToDecl.map { it.key + it.value + "\n" }}")
-//    info?.invoke("declsOfTheFile = $declsOfTheFile")
 
     val typeDB = resolver.typeDB
     var pkgName: String? = null
@@ -362,7 +360,7 @@ fun LS.removeDecl2(file: File) {
 
 
             when (d) {
-                is TypeDeclaration, is UnionBranchDeclaration, is TypeAliasDeclaration, is EnumBranch, is ErrorDomainDeclaration ->
+                is TypeDeclaration,  is TypeAliasDeclaration, is UnionBranchDeclaration,is EnumBranch, is ErrorDomainDeclaration ->
                     removeFromTypeDB(d.typeName)
 
                 is UnionRootDeclaration -> {
