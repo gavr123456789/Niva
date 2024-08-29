@@ -54,7 +54,9 @@ fun compare2Types(
         }
 
         if (argsOf1.count() != argsOf2.count()) {
-            tokenForErrors.compileError("Codeblock `${YEL}${type1OrChildOf2.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
+            val itsNotAUnitType = !(argsOf1.isNotEmpty() && argsOf1.first().type is Type.InternalType && argsOf1.first().type.name == InternalTypes.Unit.name)
+            if (itsNotAUnitType)
+                tokenForErrors.compileError("Codeblock `${YEL}${type1OrChildOf2.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
 //            return false
         }
 

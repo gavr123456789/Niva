@@ -563,7 +563,25 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         isError: Boolean,
         typeDeclaration: SomeTypeDeclaration?
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration)
+    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration) {
+        fun allBranchesDeep(): Set<Union> {
+            return branches.flatMap { it.unpackUnionToAllBranches(mutableSetOf(), null) }.toSet()
+        }
+        fun allBranchesTopLevel(): Set<Union> {
+            return branches.toSet()
+        }
+        fun stringAllBranches(ident: String, deep: Boolean, ): String {
+            val unions = if(deep) this.allBranchesDeep() else this.allBranchesTopLevel()
+            return buildString {
+                // | ident
+                append("| $ident\n")
+                unions.forEachIndexed { i, union ->
+                    append("| ",union.name, " => ", "[]")
+                    if (i != unions.count() - 1) append("\n")
+                }
+            }
+        }
+    }
 
     class UnionBranchType(
         val root: UnionRootType,

@@ -62,9 +62,7 @@ fun Resolver.resolveStaticBuilder(
         val currentProject = projects[currentProjectName]!!
 
         findBuilderInManyPkg(currentProject.packages.values.toList(), statement.name, statement.token)
-//        pkg.builders[statement.name]
-    }
-    else {
+    } else {
         //pkg.types[statement.receiver.type!!.name]
         val proto = statement.receiverOfBuilder.type!!.protocols.values.find {
             it.builders.contains(statement.name)

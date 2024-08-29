@@ -1,5 +1,6 @@
 // extracted method
 
+// the main difference is >>= instead of =, its like async modifier
 Int sec = this * 1000 |> toLong
 
 String delayedEcho >>= [

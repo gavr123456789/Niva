@@ -8,6 +8,7 @@ import main.frontend.parser.types.ast.*
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
+import main.utils.warning
 import kotlin.collections.ArrayDeque
 
 
@@ -400,7 +401,7 @@ fun Resolver.resolveControlFlow(
 
 }
 
-fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>): Set<Type.Union> {
+fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>?): Set<Type.Union> {
     when (this) {
         is Type.UnionRootType -> {
             if (branches.isEmpty()) {
@@ -412,7 +413,7 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
             }
         }
         is Type.UnionBranchType -> {
-            if (x.contains(this) && typeToToken.contains(this)) {
+            if (x.contains(this) && (typeToToken == null || typeToToken.contains(this))) {
                 fun findSas(type: Type ,path: ArrayDeque<Type>): ArrayDeque<Type> {
                     val p = type.parent
                     if (p != null) {
@@ -424,15 +425,15 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
                 }
                 val path = findSas(this, ArrayDeque())
                 val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
-                val tokFromMap = {
-                    val e = path.find { typeToToken[it] != null }
-                    typeToToken[e]
-                }()
-//                 val w =   typeToToken[path.first()]
-                val curLine = (typeToToken[this]?.line)
-                val curLineText = if (curLine != null) "(line $curLine)" else ""
-                val onLine = if (tokFromMap!=null) "on line ${tokFromMap.line}" else ""
-                println("${YEL}Warning:$RESET$curLineText $this was already checked $onLine ($strPath$RESET)")
+                if(typeToToken != null) {
+                    val tokFromMap = {
+                        val e = path.find { typeToToken[it] != null }
+                        typeToToken[e]
+                    }()
+                    val onLine = if (tokFromMap != null) "on line ${tokFromMap.line}" else ""
+                    // TODO make warning mechanism in LSP
+                    warning("curLineText $this was already checked $onLine ($strPath$RESET)")
+                }
             }
             x.add(this)
         }

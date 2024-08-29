@@ -1878,7 +1878,7 @@ class ResolverTest {
 
     }
     @Test
-    fun qwfqwf() {
+    fun notFixedYet() {
 
         val source = """
              mut w = 0
@@ -1940,6 +1940,24 @@ class ResolverTest {
         }
 
     }
+
+    @Test
+    fun returnDifferentTypesFromIf() {
+
+        val source = """
+            union Sas = Sus | Sos
+        
+            false
+                ifFalse: [Sus new]
+                ifTrue: [Sos new]
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+
+    }
+
+
+
 
 }
 

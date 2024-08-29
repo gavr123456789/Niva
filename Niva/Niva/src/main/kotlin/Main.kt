@@ -22,22 +22,20 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-app = [request::Request ->
-    response = Response status: Status.OK
-    // query = request query: "name"
-    response body: "Hello, " + "gavr"
-]
-
-app asServer: (SunHttp port: 9000) |> start
+union JsonObj =
+| JsonArray arr: MutableList::JsonObj
+| JsonNumber num: Double
+| JsonString str: String
+| JsonFields fld: MutableMap(String, JsonObj)
 
 
-client = JavaHttpClient new
-printingClient::HttpHandler = PrintResponse new |> then: client
 
-request = Request method: Method.GET uri: "http://localhost:9000"
-responce = printingClient Request: request // BAD
+jsonNum = JsonNumber num: 5.0
+jsonStr = JsonString str: "t'e'x't"
+jsonFields = JsonFields fld: #{"a\ng'e" jsonNum}
 
-
+arr = JsonArray arr: {jsonNum jsonNum jsonStr jsonFields}
+arr toJson echo 
 """
 
 fun main2() = runBlocking { // this: CoroutineScope
@@ -50,11 +48,12 @@ fun main2() = runBlocking { // this: CoroutineScope
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/parserCombinator/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/server/http.bind.niva"
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/JSON/main.niva"
 //
 //    try {
 //        val ls = LS()
@@ -72,8 +71,8 @@ fun main(args: Array<String>) {
 //    catch (e: OnCompletionException) {
 //        println(e.scope)
 //    }
-//
-//    if (help(args)) return
+
+    if (help(args)) return
     run(args)
 }
 
