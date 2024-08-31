@@ -107,6 +107,7 @@ private fun Resolver.resolveStatement(
             }
             stack.pop()
         }
+
         is DestructingAssign -> {
             stack.push(statement)
             currentLevel++
@@ -173,6 +174,7 @@ private fun Resolver.resolveStatement(
 
                 statement.isType = true
             }
+
             if (GlobalVariables.isLspMode) {
 
                 onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // identifier
@@ -354,8 +356,7 @@ private fun Resolver.resolveStatement(
 
                     // get what to search
                     val searchRequest = t.messages.first().selectorName.lowercase()
-                    if (!GlobalVariables.isLspMode)
-                        findSimilarAndPrint(searchRequest, receiverType)
+                    if (!GlobalVariables.isLspMode) findSimilarAndPrint(searchRequest, receiverType)
 
                     onCompletionExc(currentScope + previousScope) // NeedInfo
                 }
@@ -408,10 +409,7 @@ fun Resolver.resolveSingle(
 ): Statement {
     val currentScope = mutableMapOf<String, Type>()
     resolveStatement(
-        statement,
-        currentScope,
-        previousScope,
-        rootStatement
+        statement, currentScope, previousScope, rootStatement
     )
 
 
@@ -430,10 +428,7 @@ fun Resolver.resolve(
     statements.forEach { statement ->
 
         resolveStatement(
-            statement,
-            currentScope,
-            previousScope,
-            rootStatement
+            statement, currentScope, previousScope, rootStatement
         )
 
 //        println("$currentLevel on line ${statement.token.line} resolving1 ${statement::class.simpleName} $statement")
@@ -469,17 +464,13 @@ fun Resolver.resolveExpressionInBrackets(
 
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
 
-    if (type1 == type2)
-        return type1
-    if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name)
-        return type1
+    if (type1 == type2) return type1
+    if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name) return type1
 
     val firstIsNull = typeIsNull(type1)
     val secondIsNull = typeIsNull(type2)
-    if (firstIsNull && !secondIsNull && type2 !is Type.NullableType)
-        return Type.NullableType(type2)
-    if (!firstIsNull && secondIsNull && type1 !is Type.NullableType)
-        return Type.NullableType(type1)
+    if (firstIsNull && !secondIsNull && type2 !is Type.NullableType) return Type.NullableType(type2)
+    if (!firstIsNull && secondIsNull && type1 !is Type.NullableType) return Type.NullableType(type1)
 
     // first is parent of the second
     var parent1: Type? = type1.parent
@@ -498,10 +489,8 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
         parent2 = parent2.parent
     }
 
-    if (type1 is Type.UnknownGenericType)
-        return type1
-    if (type2 is Type.UnknownGenericType)
-        return type2
+    if (type1 is Type.UnknownGenericType) return type1
+    if (type2 is Type.UnknownGenericType) return type2
 
     // not needed for now, but maybe in future
 //    if (compare2Types(type1, type2)) {
@@ -520,14 +509,16 @@ fun Package.addImport(pkg: String, concrete: Boolean = false) {
         }
     }
 }
+
 fun Package.addUseImport(pkg: String) {
     if (packageName != pkg) {
-            importsFromUse.add(pkg)
+        importsFromUse.add(pkg)
     }
 }
 
 fun Resolver.findPackageOrError(packageName: String, errorToken: Token): Package {
-    val p = this.projects[currentProjectName] ?: errorToken.compileError("There are no such project: $currentProjectName")
+    val p =
+        this.projects[currentProjectName] ?: errorToken.compileError("There are no such project: $currentProjectName")
     val pack = p.packages[packageName] ?: errorToken.compileError("There are no such package: $packageName")
     return pack
 }
@@ -555,10 +546,8 @@ fun Resolver.getCurrentImports(errorToken: Token): Set<String> {
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
     val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
     // if return type is not declared then use receiver
-    val returnType = if (statement.returnTypeAST == null)
-        typeOfReceiver
-    else
-        statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
+    val returnType = if (statement.returnTypeAST == null) typeOfReceiver
+    else statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
 
     val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
@@ -590,8 +579,7 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
-                    name = it.name,
-                    type = it.typeAST?.toType(typeDB, typeTable)//fix
+                    name = it.name, type = it.typeAST?.toType(typeDB, typeTable)//fix
                         ?: statement.token.compileError("Type of keyword message ${YEL}${statement.msgDeclaration.name}${RESET}'s arg ${WHITE}${it.name}${RESET} not registered")
                 )
             }
@@ -616,21 +604,15 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
 
 
 fun Resolver.addNewAnyMessage(
-    st: MessageDeclaration,
-    isGetter: Boolean = false,
-    isSetter: Boolean = false,
-    forType: Type? = null
+    st: MessageDeclaration, isGetter: Boolean = false, isSetter: Boolean = false, forType: Type? = null
 ): MessageMetadata {
     val customPkg = if (st.forTypeAst is TypeAST.UserType && st.forTypeAst.names.count() > 1) {
         findPackageOrError(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
     } else null
 
-    val type =
-        if (forType is Type.UnknownGenericType)
-            Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
-        else
-            st.forType
-                ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
+    val type = if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+    else st.forType
+        ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
     val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this)
@@ -651,8 +633,7 @@ fun Resolver.addNewAnyMessage(
                 val (protocol, _) = getCurrentProtocol(type, st.token, customPkg)
 
                 protocol.builders[st.name] = builderMetaData
-            } else
-                pkg.addBuilder(builderMetaData, st.token)
+            } else pkg.addBuilder(builderMetaData, st.token)
         }
     }
 
@@ -905,33 +886,28 @@ fun Resolver.getTypeForIdentifier(
 
     val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
         x.name, currentScope, previousScope, kw, x.token
-    )
-    ?: if (!GlobalVariables.isLspMode)
-        x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+    ) ?: if (!GlobalVariables.isLspMode) x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
     else {
+        // Search similar for lsp mode
+        coolErrorForLSP(x, currentScope, previousScope)
+    }
 
-        if (x.token.lexeme.first().isUpperCase()) {
-            // if it starts from capital letter, then its type name suggestion
-            val collectTypeNamesStartFrom = { startWith: String ->
-                val results = mutableMapOf<String, Type>()
-                val proj = projects[currentProjectName]!!
-                proj.packages.values.forEach { pkg ->
-                    pkg.types.values.forEach { type ->
-                        if (type.name.startsWith(startWith)) {
-                            results[type.name] = type
-                        }
-                    }
-                }
+    if (type is Type.EnumRootType && x.names.count() > 1) {
+        // check that this Enum root has such
+        val name = type.branches.find { it.name == x.name }
+        if (name == null) {
+            val startsWithSameWord = type.branches.filter {it.name.startsWith(x.name)}.joinToString(", ") { it.name }
+            val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 2) {
+                val x = type.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
+                x.joinToString(", ") { it.name }
+            } else
+                startsWithSameWord
 
-                results
-            }
-            val typeNameSuggestions = collectTypeNamesStartFrom(x.token.lexeme)
-
-            onCompletionExc(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token)// types
-        } else {
-            // if from little then its local suggestion
-            onCompletionExc(currentScope + previousScope , "Unresolved reference: ${x.str}", token = x.token) // scope
+            val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {""} else orStartsWithFirst2Letters
+            x.token.compileError("Can't find enum $x, $maybeUMeant")
         }
+
+        getCurrentPackage(x.token).addImport(type.pkg)
     }
 
 
@@ -947,6 +923,33 @@ fun Resolver.getTypeForIdentifier(
     return typeWithGenericResolved
 }
 
+private fun Resolver.coolErrorForLSP(
+    x: IdentifierExpr,
+    currentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>
+): Nothing {
+    if (x.token.lexeme.first().isUpperCase()) {
+        // if it starts from capital letter, then its type name suggestion
+        val collectTypeNamesStartFrom = { startWith: String ->
+            val results = mutableMapOf<String, Type>()
+            val proj = projects[currentProjectName]!!
+            proj.packages.values.forEach { pkg ->
+                pkg.types.values.forEach { type ->
+                    if (type.name.startsWith(startWith)) {
+                        results[type.name] = type
+                    }
+                }
+            }
+            results
+        }
+        val typeNameSuggestions = collectTypeNamesStartFrom(x.token.lexeme)
+        onCompletionExc(typeNameSuggestions, "Unresolved type: ${x.str}", token = x.token) // types
+    } else {
+        // if from little then its local suggestion
+        onCompletionExc(currentScope + previousScope, "Unresolved reference: ${x.str}", token = x.token) // scope
+    }
+}
+
 // If there are more than one type with the same name, and pkg is not specified, than this method will throw
 fun Resolver.getAnyType(
     typeName: String,
@@ -958,11 +961,12 @@ fun Resolver.getAnyType(
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
-//    if (typeName == "Application")
+//    if (typeName == "Sas")
 //        println()
-    val type =
-        typeFromDb.getTypeFromTypeDBResultConstructor(statement, currentPackage.importsFromUse, currentPackageName, tokenForError)
-            ?: currentPackage.builders[typeName]?.returnType
+    val type = typeFromDb.getTypeFromTypeDBResultConstructor(
+        statement, currentPackage.importsFromUse, currentPackageName, tokenForError
+    ) ?: currentPackage.builders[typeName]?.returnType
+
 
     return type
 }
@@ -1423,8 +1427,7 @@ class Resolver(
         stringType.protocols["common"]!!.keywordMsgs.putAll(
             listOf(
                 createKeyword(
-                    KeywordArg("split", stringType),
-                    listOfString
+                    KeywordArg("split", stringType), listOfString
                 )
             )
         )
@@ -1636,8 +1639,7 @@ class Resolver(
         // Compiler
         compiler.protocols.putAll(
             createCompilerProtocols(
-                intType = intType, stringType = stringType, typeType = typeType,
-                listOfString
+                intType = intType, stringType = stringType, typeType = typeType, listOfString
             )
         )
 

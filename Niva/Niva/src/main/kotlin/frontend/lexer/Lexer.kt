@@ -418,13 +418,10 @@ fun Lexer.next() {
             spaces++
             start += 2 // 1 to go to space, 2 to skip spase
         }
-
         match("\t") -> error("tabs are not allowed dud")
         match("\n") -> incLine(true)
-
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
-
             // if """ then it must be multiline string
             if (peek(-1) != "'" && check(peek(-1)) && check(peek(-1), 1)) {
                 // Multiline strings start with 3 quotes
@@ -434,27 +431,22 @@ fun Lexer.next() {
             val delimiter = if (mode != "multi") peek(-1) else "\"\"\""
             parseString(delimiter, mode)
         }
-
         // before digit because of floats "3.14"
         match("..<") -> {
             createToken(TokenType.BinarySymbol)
         }
-
         match("..") -> createToken(TokenType.BinarySymbol)
-
         // 42
         p.isDigit() -> {
             step()
             parseNumber()
         }
-
         // -42
         check("-") && peek(1).isDigit() -> {
             step()
             step()
             parseNumber()
         }
-
         // String
         p.isAlphaNumeric() && check(arrayOf("\"", "'"), 1) -> {
 

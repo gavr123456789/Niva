@@ -4,7 +4,6 @@ package main
 
 import frontend.Lexer
 import frontend.lex
-import kotlinx.coroutines.*
 
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
@@ -38,17 +37,10 @@ arr = JsonArray arr: {jsonNum jsonNum jsonStr jsonFields}
 arr toJson echo 
 """
 
-fun main2() = runBlocking { // this: CoroutineScope
-    launch { // launch a new coroutine and continue
-        delay(4534) // non-blocking delay for 1 second (default time unit is ms)
-        println("World!") // print after delay
-    }
-    println("Hello") // main coroutine continues while a previous one is delayed
-}
 
 fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/bug/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/Lexer/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwLearnGreek/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
