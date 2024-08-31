@@ -1247,26 +1247,6 @@ class Resolver(
                 )
             )
 
-            intRangeType.protocols.putAll(
-                createRangeProtocols(
-                    rangeType = intRangeType,
-                    boolType = boolType,
-                    itType = intType,
-                    unitType = unitType,
-                    any = anyType,
-                )
-            )
-
-            charRangeType.protocols.putAll(
-                createRangeProtocols(
-                    rangeType = charRangeType,
-                    boolType = boolType,
-                    itType = charType,
-                    unitType = unitType,
-                    any = anyType,
-                )
-            )
-
             test.protocols.putAll(
                 createTestProtocols(
                     rangeType = charRangeType,
@@ -1285,16 +1265,16 @@ class Resolver(
         // Default types
         val intType = defaultTypes[InternalTypes.Int]!!
         val stringType = defaultTypes[InternalTypes.String]!!
-//        val charType = defaultTypes[InternalTypes.Char]!!
+        val charType = defaultTypes[InternalTypes.Char]!!
 //        val floatType = defaultTypes[InternalTypes.Float]!!
         val boolType = defaultTypes[InternalTypes.Boolean]!!
         val unitType = defaultTypes[InternalTypes.Unit]!!
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!
+        val charRangeType = defaultTypes[InternalTypes.CharRange]!!
+
         val anyType = defaultTypes[InternalTypes.Any]!!
         val nothingType = defaultTypes[InternalTypes.Nothing]!!
         val compiler = defaultTypes[InternalTypes.Compiler]!!
-//        val test = defaultTypes[InternalTypes.Test]!!
-
         val genericType = Type.UnknownGenericType("T")
         val differentGenericType = Type.UnknownGenericType("G")
 
@@ -1357,6 +1337,7 @@ class Resolver(
             typeDB.addUserLike(type.name, type)
             corePackage.types[type.name] = type
         }
+
         // Sequence
         val sequenceType = Type.UserType(
             name = "Sequence",
@@ -1390,6 +1371,31 @@ class Resolver(
 
         sequenceTypeOfDifferentGeneric.protocols.putAll(sequenceType.protocols)
 
+        // Ranges
+        val listOfChar = createTypeListOfType("List", charType, listType)
+        val listOfInt = createTypeListOfType("List", intType, listType)
+        val seqOfChar = createTypeListOfType("Sequence", charType, sequenceType)
+        val seqOfInt = createTypeListOfType("Sequence", intType, sequenceType)
+        intRangeType.protocols.putAll(
+            createRangeProtocols(
+                rangeType = intRangeType,
+                boolType = boolType,
+                itType = intType,
+                unitType = unitType,
+                listOfIt = listOfInt,
+                sequenceOfIt = seqOfInt,
+            )
+        )
+        charRangeType.protocols.putAll(
+            createRangeProtocols(
+                rangeType = charRangeType,
+                boolType = boolType,
+                itType = charType,
+                unitType = unitType,
+                listOfIt = listOfChar,
+                sequenceOfIt = seqOfChar,
+            )
+        )
 
         // List
         addCustomTypeToDb(
@@ -1602,7 +1608,7 @@ class Resolver(
 
         addCustomTypeToDb(
             stringBuilderType, createStringBuilderProtocols(
-                stringBuilderType, anyType, stringType
+                stringBuilderType, anyType, stringType, intType
             )
         )
 

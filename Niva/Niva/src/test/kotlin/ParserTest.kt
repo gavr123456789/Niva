@@ -96,6 +96,20 @@ class ParserTest {
     }
 
     @Test
+    fun collectionMapWithNewLines() {
+        val source = """
+            #{1 2
+             
+             3 4}
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val map = ast[0] as MapCollection
+        assert(map.initElements.count() == 2)
+    }
+
+    @Test
     fun collectionSet() {
         val source = "#(1 2 3 3)"
         val ast = getAstTest(source)

@@ -67,7 +67,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             } else primary(typeAst)
 
             match(TokenType.Comma)
-            skipOneEndOfLineOrComment()
+            skipNewLinesAndComments()
 
             if (primaryTok != null && primaryTok2 != null) {
                 initElementsPairs.add(Pair(primaryTok, primaryTok2))

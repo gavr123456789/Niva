@@ -245,6 +245,7 @@ fun createStringProtocols(
 
 
             createKeyword(KeywordArg("substring", intType), stringType),
+            createKeyword(KeywordArg("slice", intRangeType), stringType),
             createKeyword(KeywordArg("substringAfter", stringType), stringType),
             createKeyword(KeywordArg("substringAfterLast", stringType), stringType),
             createKeyword(KeywordArg("substringBefore", stringType), stringType),
@@ -459,11 +460,14 @@ fun createAnyProtocols(
 fun createRangeProtocols(
     rangeType: Type.InternalType,
     boolType: Type.InternalType,
-
     itType: Type.InternalType,
     unitType: Type.InternalType,
-    any: Type.InternalType,
+
+    listOfIt: Type.UserType,
+    sequenceOfIt: Type.UserType
 ): MutableMap<String, Protocol> {
+    //     listType: Type.UserType,
+    //    sequenceType: Type.UserType,
 
     val protocol = Protocol(
         name = "common",
@@ -473,6 +477,8 @@ fun createRangeProtocols(
             createUnary("first", itType),
             createUnary("last", itType),
             createUnary("random", itType),
+            createUnary("toList", listOfIt),
+            createUnary("asSequence", sequenceOfIt),
         ),
         binaryMsgs = mutableMapOf(
             createBinary("==", rangeType, boolType),
@@ -582,7 +588,8 @@ fun createExceptionProtocols(
 fun createStringBuilderProtocols(
     stringBuilderType: Type.UserType,
     anyType: Type.InternalType,
-    stringType: Type.InternalType
+    stringType: Type.InternalType,
+    intType: Type.InternalType
 ): MutableMap<String, Protocol> {
 
     val protocol = Protocol(
@@ -591,6 +598,7 @@ fun createStringBuilderProtocols(
             createUnary("toString", stringType),
             createUnary("first", stringType),
             createUnary("last", stringType),
+            createUnary("count", intType),
 
             ),
         binaryMsgs = mutableMapOf(),
