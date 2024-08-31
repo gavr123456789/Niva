@@ -1956,7 +1956,29 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun enums() {
+        val source = """
+            enum Sas = Sus | Sos
+        
+            x = Sas.Sus2
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_, _) = resolveWithResolver(source)
+        }
+    }
 
+    @Test
+    fun ifsChain() {
+        val source = """
+            x = "1"
+            x == "1" => 2 |=> 
+            x == "4" => 3 |=> 
+            5
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
 
 
 }

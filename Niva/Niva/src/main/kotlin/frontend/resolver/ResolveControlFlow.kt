@@ -73,7 +73,7 @@ fun Resolver.resolveControlFlow(
 
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
-    val detectExprOrStatement = {
+    val detectExprOrStatementBasedOnRootSt = {
         when (rootStatement) {
             null -> {
                 ControlFlowKind.Statement
@@ -112,7 +112,7 @@ fun Resolver.resolveControlFlow(
     val resolveControlFlowIf = { statement: ControlFlow.If ->
 
         var firstBranchReturnType: Type? = null
-        statement.kind = detectExprOrStatement()
+        statement.kind = detectExprOrStatementBasedOnRootSt()
 
         val isStatement =
             statement.kind == ControlFlowKind.StatementTypeMatch || statement.kind == ControlFlowKind.Statement
@@ -179,25 +179,36 @@ fun Resolver.resolveControlFlow(
         if (statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
             statement.token.compileError("If expression must contain else branch `|=>`")
         }
-
         statement.type = if (statement.elseBranch != null) {
             currentLevel++
             resolve(statement.elseBranch, previousAndCurrentScope, statement)
             currentLevel--
-            if (statement.kind == ControlFlowKind.Expression && statement.elseBranch.isNotEmpty()) {
+
+            if (statement.elseBranch.isNotEmpty()) {
                 val lastExpr = statement.elseBranch.last()
 
                 val elseReturnType = when (lastExpr) {
                     is Expression -> lastExpr.type!!
                     is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
                     is Assign -> lastExpr.value.type!!
-                    else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                    else ->
+                        if (statement.kind == ControlFlowKind.Expression)
+                            lastExpr.token.compileError("In switch expression body last statement must be an expression")
+                        else Resolver.defaultTypes[InternalTypes.Unit]!!
                 }
+                // check if this still can be an if expression
+                // if body and else types are the same, then change kind to expr
+
+                //
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
                 val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token, compareParentsOfBothTypes = true)
-                if (!areIfAndElseEqual && !rootStatementIsMessageDeclAndItReturnsNullable()) {
+
+                if (!areIfAndElseEqual && !rootStatementIsMessageDeclAndItReturnsNullable() && statement.kind == ControlFlowKind.Expression) {
                     lastExpr.token.compileError("(${YEL}$firstReturnTypeName ${RESET}!= ${YEL}$elseReturnTypeName${RESET}) In if Expression return type of else branch and main branches are not the same")
+                }
+                if (areIfAndElseEqual && statement.kind == ControlFlowKind.Statement) {
+                    statement.kind = ControlFlowKind.Expression
                 }
                 elseReturnType
             } else {
@@ -212,7 +223,7 @@ fun Resolver.resolveControlFlow(
 
     val resolveControlFlowSwitch = { statement: ControlFlow.Switch ->
 
-        statement.kind = detectExprOrStatement()
+        statement.kind = detectExprOrStatementBasedOnRootSt()
 
         if (statement.switch.type == null) {
             currentLevel++
