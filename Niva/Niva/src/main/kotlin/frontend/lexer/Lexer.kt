@@ -30,8 +30,6 @@ class Lexer(
     var line: Int = 1
     var start: Int = 0
     var current: Int = 0
-    val lines: MutableList<Position> = mutableListOf()
-    var lastLine: Int = 0
     var linePos: Int = 0
     var lineCurrent: Int = 0
     var spaces: Int = 0
@@ -64,8 +62,6 @@ fun Lexer.lex() = tokens
 fun Lexer.done() = current >= source.length
 
 fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
-    lines.add(Position(start = lastLine, end = current))
-    lastLine = current
     line += 1
     linePos = 0
     if (!done() && needAddNewLineToken && getfirstAfterSpaces() != ".") {
@@ -92,7 +88,6 @@ fun Lexer.peek(distance: Int = 0, length: Int = 1): String = buildString {
     while (this.length < length) {
         if (done() || current + i > source.lastIndex || current + i < 0) break
         else append(source[current + i]) // + 1
-
         i++
     }
 }

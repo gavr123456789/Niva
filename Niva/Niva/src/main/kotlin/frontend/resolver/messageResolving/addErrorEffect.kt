@@ -20,9 +20,9 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statem
         val metadataOfCurrentDeclaration = currentMsgDecl.findMetadata(this)
         metadataOfCurrentDeclaration.addErrors(errors2)
 
-        val pairOfSas = Pair(statement, errors2)
+        val pairOfStAndErrorSet = Pair(statement, errors2)
 
-        currentMsgDecl.stackOfPossibleErrors.add(pairOfSas)
+        currentMsgDecl.stackOfPossibleErrors.add(pairOfStAndErrorSet)
         val returnTypeWithErrors = returnType.addErrors(errors2)
 
         return returnTypeWithErrors

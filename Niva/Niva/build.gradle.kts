@@ -22,6 +22,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
+    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
     testImplementation(kotlin("test"))
 }
 

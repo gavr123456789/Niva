@@ -140,7 +140,7 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 
 // region adding
 
-fun TypeDB.add(type: Type, _token: Token, customNameAlias: String? = null) {
+fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
 //        is Type.ErrorType -> addErrorDomain(realName, type, token)

@@ -226,7 +226,7 @@ fun Resolver.resolveMessageDeclaration(
                 }
                 // errors are possible but not declared
                 if (possibleErrors.isEmpty() && declaredErrors?.isNotEmpty() == true) {
-                    st.token.compileError("there are possible errors:\n${listOfErrorsWithLines()}\nbut you didn't specify them in return type: `-> Type!{Errors}`")
+                    st.token.compileError("there are declared errors:\n${listOfErrorsWithLines()}\nbut no possible ones you didn't specify them in return type: `-> Type!{Errors}`")
                 }
             }
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
