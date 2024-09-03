@@ -1,7 +1,6 @@
-x = {1 2 3 4 5}
-y = x indexOfFirst: [it == 676]
-y echo
+union Result = Fail | Success num: Int
+x = 1
 
-q = x firstOrNull: [it == 676]
-z = q unpackOrValue: 42
-z echo
+| x
+| 1 => Fail new
+|=> Success num: 123

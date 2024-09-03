@@ -1980,6 +1980,28 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+    @Test
+    fun whileTruef() {
+        val source = """
+            [this done not] whileTrue: [
+        
+            ]
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun resultOfIfShouldBeGeneralRoot() {
+        val source = """
+            union Sas = Sus | Sos
+            x = 1 > 2 => Sus new |=> Sos new
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+
 
 }
 

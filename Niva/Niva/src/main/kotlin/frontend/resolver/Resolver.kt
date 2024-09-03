@@ -904,7 +904,7 @@ fun Resolver.getTypeForIdentifier(
                 startsWithSameWord
 
             val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {""} else orStartsWithFirst2Letters
-            x.token.compileError("Can't find enum $x, $maybeUMeant")
+            x.token.compileError("Can't find enum $x, ${if (maybeUMeant.isNotEmpty()) "maybe $maybeUMeant?" else ""}")
         }
 
         getCurrentPackage(x.token).addImport(type.pkg)

@@ -1156,7 +1156,7 @@ fun createMapProtocols(
                 .rename("get"),
 
             createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
-            createKeyword(KeywordArg("addAll", mapType), unitType),
+            createKeyword(KeywordArg("putAll", mapType), unitType),
             createKeyword(KeywordArg("containsKey", keyType), boolType),
             createKeyword(KeywordArg("containsValue", valueType), boolType)
         ),

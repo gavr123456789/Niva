@@ -15,7 +15,7 @@ import kotlin.collections.ArrayDeque
 fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
-fun getAssignTypeForControlFlow(branchReturnTypes: List<Type>, tok: Token): Type  {
+fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     if (branchReturnTypes.isEmpty()) throw Exception("Compiler bug: 0 branches in ControlFlow")
     if (branchReturnTypes.count() == 1) return branchReturnTypes.first()
 
@@ -202,15 +202,16 @@ fun Resolver.resolveControlFlow(
                 //
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
-                val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token, compareParentsOfBothTypes = true)
-
-                if (!areIfAndElseEqual && !rootStatementIsMessageDeclAndItReturnsNullable() && statement.kind == ControlFlowKind.Expression) {
+//                val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token, compareParentsOfBothTypes = true)
+                val whatIsTheGeneralRoot = findGeneralRoot(firstBranchReturnType, elseReturnType)
+                if (whatIsTheGeneralRoot == null && !rootStatementIsMessageDeclAndItReturnsNullable() && statement.kind == ControlFlowKind.Expression) {
                     lastExpr.token.compileError("(${YEL}$firstReturnTypeName ${RESET}!= ${YEL}$elseReturnTypeName${RESET}) In if Expression return type of else branch and main branches are not the same")
                 }
-                if (areIfAndElseEqual && statement.kind == ControlFlowKind.Statement) {
+                if (whatIsTheGeneralRoot != null && statement.kind == ControlFlowKind.Statement) {
                     statement.kind = ControlFlowKind.Expression
+                    statement.type = whatIsTheGeneralRoot
                 }
-                elseReturnType
+                whatIsTheGeneralRoot
             } else {
                 Resolver.defaultTypes[InternalTypes.Unit]!!
             }
@@ -346,14 +347,14 @@ fun Resolver.resolveControlFlow(
                     is Assign -> lastExpr.value.type!!
                     else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                 }
-                if (!compare2Types(firstBranchReturnType2, elseReturnType, lastExpr.token)) {
+                val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
+                if (generalRoot == null) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
                 }
             }
 
             statement.type =
-                getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
-
+                findGeneralRootMany(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
         } else if (thisIsTypeMatching) {
             when (savedSwitchType) {
                 is Type.UnionRootType -> {
@@ -377,7 +378,7 @@ fun Resolver.resolveControlFlow(
 
                     if (statement.type == null) {
 //                            statement.type = firstBranchReturnType2
-                        statement.type = getAssignTypeForControlFlow(
+                        statement.type = findGeneralRootMany(
                             statement.ifBranches.map { it.getReturnTypeOrThrow() },
                             statement.token
                         )
@@ -398,7 +399,7 @@ fun Resolver.resolveControlFlow(
         } else {
             if (statement.type == null) {
                 statement.type =
-                    getAssignTypeForControlFlow(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
+                    findGeneralRootMany(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
 
             }
         }
