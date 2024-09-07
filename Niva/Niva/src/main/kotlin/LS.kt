@@ -144,7 +144,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                         }
 
                         q
-                            // ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
+                        // ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
 
                     }
 
@@ -162,7 +162,6 @@ class LS(val info: ((String) -> Unit)? = null) {
                         LspResult.Found(q)
                     else
                         LspResult.ScopeSuggestion(scope)
-
 
 
                 } else {
@@ -263,7 +262,9 @@ fun LS.removeDecl2(file: File) {
 
                         is Type.InternalType -> {
                             typeDB.internalTypes[forType.name]?.let { usrLikeTypes ->
-                                usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }?.keywordMsgs?.remove(d.name)
+                                usrLikeTypes.protocols.values.find { it.keywordMsgs.contains(d.name) }?.keywordMsgs?.remove(
+                                    d.name
+                                )
                             }
                         }
 
@@ -275,8 +276,10 @@ fun LS.removeDecl2(file: File) {
                             } else
                                 TODO()
                         }
+
                         is Type.NullableType,
                         is Type.UnresolvedType -> TODO()
+
                         null -> {}
                     }
                 }
@@ -294,7 +297,9 @@ fun LS.removeDecl2(file: File) {
 
                         is Type.InternalType -> {
                             typeDB.internalTypes[forType.name]?.let { usrLikeType ->
-                                usrLikeType.protocols.values.find { it.staticMsgs.contains(d.name) }?.staticMsgs?.remove(d.name)
+                                usrLikeType.protocols.values.find { it.staticMsgs.contains(d.name) }?.staticMsgs?.remove(
+                                    d.name
+                                )
                             }
                         }
 
@@ -351,7 +356,6 @@ fun LS.removeDecl2(file: File) {
                 }
 
 
-
                 // from pkg
                 val pkg2 = resolver.projects[resolver.currentProjectName]!!.packages[pkgName]
 //                info?.invoke("removing ${d.typeName} from $pkg2 from ${pkg2?.types}")
@@ -360,7 +364,7 @@ fun LS.removeDecl2(file: File) {
 
 
             when (d) {
-                is TypeDeclaration,  is TypeAliasDeclaration, is UnionBranchDeclaration,is EnumBranch, is ErrorDomainDeclaration ->
+                is TypeDeclaration, is TypeAliasDeclaration, is UnionBranchDeclaration, is EnumBranch, is ErrorDomainDeclaration ->
                     removeFromTypeDB(d.typeName)
 
                 is UnionRootDeclaration -> {
@@ -455,7 +459,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         }
     }
     val (mainFile, allFiles) = collectFiles()//findRoot(file, mutableSetOf())
-    info?.invoke("all files is ${allFiles.joinToString(", ") {it.name}}" )
+    info?.invoke("all files is ${allFiles.joinToString(", ") { it.name }}")
     GlobalVariables.enableLspMode()
 
     megaStore.data.clear()
@@ -477,12 +481,14 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                 is Expression, is VarDeclaration -> {
                     addStToMegaStore(st)
                 }
+
                 is DestructingAssign -> {
                     st.names.forEach {
                         addStToMegaStore(it)
                     }
                     addStToMegaStore(st.value)
                 }
+
                 is Declaration -> {
                     // fill fileToDecl
                     val setOfStatements = this.fileToDecl[file2.absolutePath]
@@ -498,7 +504,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                     }
                     // add types of the decl as IdentExpr
                     if (st is MessageDeclaration && st.returnType != null) {
-                        val realSt = when(st) {
+                        val realSt = when (st) {
                             is ConstructorDeclaration -> st.msgDeclaration
                             else -> st
                         }
@@ -518,19 +524,20 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         if (realSt is MessageDeclarationKeyword) {
                             realSt.args.forEachIndexed { i, arg ->
                                 // for some reason arg types are null here, so I use typeDB
-                                val type = ((realSt.messageData ?: st.messageData) as KeywordMsgMetaData).argTypes[i].type
-                                arg.typeAST
-                                    ?.toIdentifierExpr(type, true)
-                                    ?.also {
-                                        addStToMegaStore(it)
-                                    }
+                                val type =
+                                    ((realSt.messageData ?: st.messageData) as? KeywordMsgMetaData)?.argTypes[i]?.type
+                                if (type != null)
+                                    arg.typeAST
+                                        ?.toIdentifierExpr(type, true)
+                                        ?.also {
+                                            addStToMegaStore(it)
+                                        }
                             }
                         }
                     }
                     // we dont need the msg declarations itself in mega store
 //                    addStToMegaStore(st)
                 }
-
 
 
                 else -> {}
@@ -540,33 +547,22 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     // Resolve
     val pm = PathManager(mainFile.path, MainArgument.LSP)
     try {
-        this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
+        this.resolver = compileProjFromFile(
+            pm,
+            resolveOnly = true,
+            compileOnlyOneFile = false,
+            onEachStatement = onEachStatementCall
+        )
         this.completionFromScope = emptyMap()
         return resolver
-    }
-    catch (s: OnCompletionException) {
-//        this.completionFromScope = s.scope
+    } catch (s: OnCompletionException) {
         val emptyResolver =
             Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
         this.resolver = emptyResolver
         this.completionFromScope = s.scope
 
         info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope")
-//        return emptyResolver
-//        this.resolver = compileProjFromFile(pm, compileOnlyOneFile = false, onEachStatement = onEachStatementCall)
         return resolver
     }
-
-//    catch (e: Throwable) {
-//        val emptyResolver =
-//            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
-//        this.completionFromScope = mapOf()
-//        this.resolver = emptyResolver
-//        info?.invoke("NOT RESOLVED, $e")
-////        if (info != null) {
-////            info("3 resolveAll Throwable, megaStore.data = ${megaStore.data.keys}, e = ${e.message}")
-////        }
-//        return emptyResolver
-//    }
 
 }

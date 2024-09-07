@@ -45,10 +45,11 @@ class LexerTest {
 
     @Test
     fun oneManyLinesExpr() {
-        val oneExpr = """x sas: 1
-  .ses: 2
-x sas
-"""
+        val oneExpr = """
+            x sas: 1
+            .ses: 2
+            x sas
+        """.trimIndent()
         // there no end of line after "sas" because there end of file
         checkWithEnd(
             oneExpr, listOf(
@@ -56,6 +57,7 @@ x sas
                 Identifier,
                 Colon,
                 Integer,
+                EndOfLine,
                 Dot,
                 Identifier,
                 Colon,
@@ -243,6 +245,15 @@ x sas
     fun multilineString() {
         val multiline = "\"\"\" a\"b\"c \"\"\""
         checkWithEnd(multiline, listOf(TokenType.String))
+    }
+
+    @Test
+    fun newLines() {
+        val manyExpr = """
+            start <- start
+            .match: "..<"
+        """.trimIndent()
+        checkWithEnd(manyExpr, listOf(Identifier, AssignArrow, Identifier, EndOfLine, Dot, Identifier, Colon, TokenType.String))
     }
 
     @Test

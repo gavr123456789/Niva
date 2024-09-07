@@ -17,8 +17,6 @@ fun SymbolTable.addSymbol(lexeme: String, tokenType: TokenType) = symbols.set(le
 fun SymbolTable.existsKeyword(keyword: String) = keyword in keywords
 
 fun SymbolTable.getMaxSymbolSize(): Int = symbols.maxOf { it.key.length }
-
-
 fun SymbolTable.getSymbols(n: Int) = symbols.keys.filter { it.length == n }
 
 
@@ -53,7 +51,7 @@ class Lexer(
                 file = file
             )
         )
-        incLine()
+        incLine(false) // EOF
     }
 }
 
@@ -64,7 +62,7 @@ fun Lexer.done() = current >= source.length
 fun Lexer.incLine(needAddNewLineToken: Boolean = false) {
     line += 1
     linePos = 0
-    if (!done() && needAddNewLineToken && getfirstAfterSpaces() != ".") {
+    if (!done() && needAddNewLineToken) { // && getfirstAfterSpaces() != "."
         start = current
         createToken(TokenType.EndOfLine)
     }
@@ -197,7 +195,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
 
         if (this.match("\n")) {
             if (mode == "multi") {
-                this.incLine(false)
+                this.incLine(false)// multi-string
             } else {
                 this.error("unexpected EOL while parsing string literal")
             }
@@ -257,17 +255,17 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
     }
 }
 
-fun Lexer.getfirstAfterSpaces(): String {
-    var x = 0
-    while (true) {
-        val symbol = peek(x)
-        if (symbol == " ") {
-            x += 1
-        } else {
-            return symbol
-        }
-    }
-}
+//fun Lexer.getfirstAfterSpaces(): String {
+//    var x = 0
+//    while (true) {
+//        val symbol = peek(x)
+//        if (symbol == " ") {
+//            x += 1
+//        } else {
+//            return symbol
+//        }
+//    }
+//}
 
 fun Lexer.stepWhileDigit() {
     while (peek().isDigit() && !done()) {
@@ -283,7 +281,6 @@ fun Lexer.stepWhileAlphaNumeric() {
 
 fun Lexer.parseNumber() {
     var kind: TokenType = TokenType.Integer
-    peek()
     stepWhileDigit()
 
     // .. operator
@@ -306,9 +303,6 @@ fun Lexer.parseNumber() {
 
     } else if (check(".")) {
         step()
-
-
-
         if (!peek().isDigit()) {
             error("invalid float number literal")
         }
@@ -346,17 +340,17 @@ fun Lexer.parseIdentifier() {
     }
 }
 
-fun Lexer.readUntilNewLine() {
-    while ((!match("\n")) && !done()) {
-        step()
-    }
-}
-
 enum class CommentType() {
     Doc, Usual
 }
 
 fun Lexer.someComment(commentType: CommentType): Boolean {
+    fun Lexer.readUntilNewLine() {
+        while ((!match("\n")) && !done()) {
+            step()
+        }
+    }
+
     if (when (commentType) {
             CommentType.Usual -> match("//")
             CommentType.Doc -> match("///")
@@ -401,7 +395,7 @@ fun Lexer.next() {
     val someComment = { commentType: CommentType ->
         val saveLine = line // because there will be wrong line number
         while (someComment(commentType)) {
-            incLine(false)
+            incLine(false)// comment
             skipSpaces()
         }
         when (commentType) {
@@ -419,7 +413,8 @@ fun Lexer.next() {
             start += 2 // 1 to go to space, 2 to skip spase
         }
         match("\t") -> error("tabs are not allowed dud")
-        match("\n") -> incLine(true)
+        match("\n") ->
+            incLine(true)
         match(arrayOf("\"", "'")) -> {
             var mode = "single"
             // if """ then it must be multiline string
@@ -465,7 +460,8 @@ fun Lexer.next() {
         }
 
         // Identifier
-        p.isAlphaNumeric() || check("_") -> parseIdentifier()
+        p.isAlphaNumeric() || check("_") ->
+            parseIdentifier()
 
         // Doc comment
         check("///") -> someComment(CommentType.Doc)

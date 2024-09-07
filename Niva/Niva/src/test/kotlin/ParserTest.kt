@@ -1369,7 +1369,7 @@ class ParserTest {
     @Test
     fun double() {
         val source = """
-            3.14d
+            3.14
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -2242,6 +2242,24 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun argsMustStartWithSmallerLetter() {
+        // MutableList::T forEachBreak::[ -> T] was parsed as kw method decl for Unit receiver
+
+        val source = """
+            type Cond = [ -> Boolean] 
+            Cond whileLoop: block::[ -> Boolean] -> Unit = 
+              this do => [
+                block do => [this whileLoop: block]
+              ] |=> Unit
+
+            MutableList::T forEachBreak::[ -> T] -> Unit = [
+                  
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
+    }
 
 //    @Test
 //    fun differences() {
