@@ -232,10 +232,10 @@ fun Parser.methodBody(
             peek(-1).compileError("body expected")
         }
         if (parseOnlyOneLineIfNoBody) {
-            messagesOrVarStatements.add(statementWithEndLine())
+            messagesOrVarStatements.add(statementWithEndLine(false)) // expression(parseSingleIf = true)
         } else {
             val docComment = parseDocComment()
-            val statement = statement().also { if (docComment != null) it.docComment = docComment }
+            val statement= statement(false).also { if (docComment != null) it.docComment = docComment }
             messagesOrVarStatements.add(statement)
         }
     }

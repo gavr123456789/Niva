@@ -9,7 +9,7 @@ fun Parser.ifBranches(): List<IfBranch> {
     val result = mutableListOf<IfBranch>()
 
     do {
-        step() // skip Pipe
+        step() // skip Pipe(|)
         val ifExpression = expression(dot = true)
         // 1^,2,3 => 1 echo
         val otherIfExpressions = if (match(TokenType.Comma)) {

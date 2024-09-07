@@ -15,7 +15,7 @@ import main.frontend.parser.types.ast.*
 
 
 // Declaration without end of line
-fun Parser.statement(): Statement {
+fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
     val pragmas = if (check("@")) pragmas() else mutableListOf()
     val tok = peek()
 
@@ -129,9 +129,11 @@ fun Parser.statement(): Statement {
         tok.compileError("Nothing to compile :(")
     }
 
-    val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
-    if (isItMsgDeclaration != null) {
-        return messageDeclaration(isItMsgDeclaration, pragmas)
+    if (parseMsgDecls) {
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
+        if (isItMsgDeclaration != null) {
+            return messageDeclaration(isItMsgDeclaration, pragmas)
+        }
     }
 
     skipNewLinesAndComments()
@@ -294,8 +296,8 @@ fun Parser.commaSeparatedExpressions(): List<Expression> {
 // we don't have to parse `y to: z` as new keyword, only y expression
 fun Parser.expression(
     dontParseKeywordsAndUnaryNewLines: Boolean = false, // true if it's a keyword argument to prevent stack overflow of parsing keywords inside keywords
-    dot: Boolean = false,
-    parseSingleIf: Boolean = false // TODO replace on checking root, make root always required
+    dot: Boolean = false, // expression for dot, so it was before
+    parseSingleIf: Boolean = false // parse => after expr // TODO replace on checking root, make root always required
 ): Expression {
 
     if (check(TokenType.If)) {
@@ -310,31 +312,6 @@ fun Parser.expression(
     if (match(TokenType.Ampersand)) {
         return methodReference()
     }
-
-    // old method reference sas[sus] - conflicts with builders syntax
-//    fun tryMessageReference(): MethodReference? {
-//        val savepoint = this.current
-//        try {
-//            val receiver = parseType()
-//            return if (receiver is TypeAST.Lambda && receiver.extensionOfType != null) {
-//                val methodReference =
-//                    receiver.toMethodReference(receiver.extensionOfType)//lambda.toMethodReference(receiver)
-//                methodReference
-//            } else {
-//                current = savepoint
-//                null
-//            }
-//        } catch (_: Exception) {
-//            current = savepoint
-//            return null
-//        }
-//    }
-//
-//    val methodReference = tryMessageReference()
-//
-//    if (methodReference != null) {
-//        return methodReference
-//    }
 
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
 
@@ -499,10 +476,10 @@ fun Parser.pragmas(): MutableList<Pragma> {
 }
 
 
-fun Parser.statementWithEndLine(): Statement {
+fun Parser.statementWithEndLine(parseMsgDecls: Boolean = true): Statement {
     skipNewLinesAndComments()
     val docComment = parseDocComment()
-    val result = this.statement()
+    val result = this.statement(parseMsgDecls)
         .also { if (docComment != null) it.docComment = docComment }
     skipNewLinesAndComments()
 
