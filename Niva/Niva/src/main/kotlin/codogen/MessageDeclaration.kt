@@ -58,10 +58,10 @@ fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
         genericsFromReceiverAndReturnType.addAll(isThereUnresolvedTypeArgs)
     }
 
+
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
-        genericsFromReceiverAndReturnType.addAll(forTypeVal.typeArgumentList.asSequence().filter { it.name.isGeneric() }
-            .map { it.name })
+        genericsFromReceiverAndReturnType.addAll(forTypeVal.collectGenericParamsRecursively(mutableSetOf()))
     }
 
     return genericsFromReceiverAndReturnType
@@ -91,12 +91,17 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
     val forType2 = forType
     if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty() && !isStatic) {
         append("<")
-        val typeArgs = mutableListOf<String>()
-        typeArgs.addAll(forType2.typeArgumentList.map { it.name }.toSet())
+//        val typeArgs = mutableListOf<String>()
+//        typeArgs.addAll(forType2.typeArgumentList.map { it.name }.toSet())
 
-        forType2.typeArgumentList.forEach {
-            append(it.name)
-        }
+//        forType2.typeArgumentList.forEach {
+//            append(it.name)
+//        }
+        append(
+            forType2.typeArgumentList.joinToString(", ") {
+                it.toKotlinString(true)
+            }
+        )
         append(">")
     }
 }

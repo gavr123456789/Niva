@@ -4,18 +4,17 @@ import frontend.parser.types.ast.*
 import main.utils.RED
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
-import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.parseTypeAST
 import main.frontend.parser.types.ast.*
 import main.frontend.parser.types.ast.TypeAST
 import main.utils.capitalizeFirstLetter
-
 
 
 fun Parser.returnType(): TypeAST? {
     if (!match(TokenType.ReturnArrow)) {
         return null
     }
-    val returnType = parseType()
+    val returnType = parseTypeAST()
     return returnType
 }
 
@@ -66,9 +65,9 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
     val argName = matchAssertAnyIdent("in binary message identifier after operator expected")
     val typeName =
         if (match(TokenType.DoubleColon))
-            parseType()
+            parseTypeAST()
         else null
-    val arg = (KeywordDeclarationArg(name = argName.lexeme, argName,typeAST = typeName))
+    val arg = (KeywordDeclarationArg(name = argName.lexeme, argName, typeAST = typeName))
     val returnType = returnType()
 
     // BODY PARSING
@@ -177,8 +176,8 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
             error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
         }
         match(TokenType.DoubleColon)
-        val type = parseType()
-        return (KeywordDeclarationArg(name = argName.lexeme, argName,typeAST = type))
+        val type = parseTypeAST()
+        return (KeywordDeclarationArg(name = argName.lexeme, argName, typeAST = type))
     }
 
     // key: localName(::int)?
@@ -188,7 +187,7 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val local = step()
         val type: TypeAST? = if (check(TokenType.DoubleColon)) {
             step()// skip doubleColon
-            parseType()
+            parseTypeAST()
         } else {
             null
         }
@@ -235,7 +234,7 @@ fun Parser.methodBody(
             messagesOrVarStatements.add(statementWithEndLine(false)) // expression(parseSingleIf = true)
         } else {
             val docComment = parseDocComment()
-            val statement= statement(false).also { if (docComment != null) it.docComment = docComment }
+            val statement = statement(false).also { if (docComment != null) it.docComment = docComment }
             messagesOrVarStatements.add(statement)
         }
     }
@@ -351,7 +350,10 @@ fun Parser.checkTypeOfMessageDeclaration2(
 
     // receiver can be typed List::Int sas = []
     if (parseReceiver)
-        identifierMayBeTyped()
+    // parse complex receiver like Map(Int, Int)
+        if (check(TokenType.OpenParen, 1) && !check(TokenType.Colon, 3))
+            parseTypeAST()
+        else identifierMayBeTyped() // simple List::Int
 
     if (tryUnary(isConstructor)) {
         current = savepoint
@@ -385,7 +387,7 @@ fun Parser.messageDeclaration(
     customForTypeAst: TypeAST? = null,
 ): MessageDeclaration {
 
-    val forTypeAst = customForTypeAst ?: parseType()
+    val forTypeAst = customForTypeAst ?: parseTypeAST()
     val result = when (type) {
         MessageDeclarationType.Unary -> unaryDeclaration(forTypeAst)
         MessageDeclarationType.Binary -> binaryDeclaration(forTypeAst)
@@ -401,7 +403,7 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
     // extend Person [
     match("extend")
 
-    val forTypeAst = parseType(true)
+    val forTypeAst = parseTypeAST(true)
     skipNewLinesAndComments()
     matchAssert(TokenType.OpenBracket)
     skipNewLinesAndComments()
@@ -454,7 +456,7 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
 
 
 fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
-    val receiver = parseType()
+    val receiver = parseTypeAST()
     var builderDecl = builderDeclaration(pragmas, receiver)
     return builderDecl
 }
@@ -463,7 +465,7 @@ fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticB
 // receiver is null when its builder without receiver `builder StringBuilder buildString = []`
 fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? = null): StaticBuilderDeclaration {
     val builderKeyword = matchAssert(TokenType.Builder)
-    val receiverTypeOrName = parseType()
+    val receiverTypeOrName = parseTypeAST()
     // if next is not arguments and this is not builder with receiver
     // builder StringBuilder^ (arg::Int)? (buildStr)? -> String = []
 
@@ -471,7 +473,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     val name = if (withReceiver)
         receiverTypeOrName.name
     else
-            (dotSeparatedIdentifiers() ?: peek(-1).compileError("Name of the builder expected")).name
+        (dotSeparatedIdentifiers() ?: peek(-1).compileError("Name of the builder expected")).name
 
 
     skipNewLinesAndComments()
@@ -491,9 +493,10 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     matchAssert(TokenType.OpenBracket, "builder cant be single expression")
     val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
 
-    val x =  MessageDeclarationKeyword(
+    val x = MessageDeclarationKeyword(
         name = name,
-        forType = receiver ?: receiverTypeOrName, // if this is builder with receiver "Type builder name from::Int = []", then use Type as receiver, not name(`receiverType`)
+        forType = receiver
+            ?: receiverTypeOrName, // if this is builder with receiver "Type builder name from::Int = []", then use Type as receiver, not name(`receiverType`)
         returnType = returnType,
         args = args,
         body = body,
@@ -506,12 +509,12 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     val result = StaticBuilderDeclaration(
         msgDeclaration = x,
         defaultAction = defaultAction,
-        withReceiver = withReceiver ,
+        withReceiver = withReceiver,
         receiver,
         null,
         builderKeyword,
 
-    )
+        )
 
 
 

@@ -88,11 +88,11 @@ fun compare2Types(
                 unpackNull,
                 compareParentsOfBothTypes = compareParentsOfBothTypes
             )
-        if (!isReturnTypesEqual) {
-            tokenForErrors.compileError("return types are not equal: ${YEL}$type1OrChildOf2 ${RESET}!= ${YEL}$type2")
-        }
 
-        return true
+
+//            tokenForErrors.compileError("return types are not equal: ${YEL}$type1OrChildOf2 ${RESET}!= ${YEL}$type2")
+
+        return isReturnTypesEqual
     }
 
     // one of the types is top type Any
@@ -153,8 +153,8 @@ fun compare2Types(
             val args1 = type1OrChildOf2.typeArgumentList
             val args2 = type2.typeArgumentList
             if (args1.count() != args2.count()) {
-                tokenForErrors.compileError("Types: ${YEL}$type1OrChildOf2${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
-//                return false
+//                tokenForErrors.compileError("Types: ${YEL}$type1OrChildOf2${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
+                return false
             }
 
             val isSameNames = type1OrChildOf2.toString() == type2.toString()

@@ -611,7 +611,8 @@ fun Resolver.addNewAnyMessage(
     } else null
 
     val type = if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
-    else st.forType
+    else forType
+        ?: st.forType
         ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
@@ -896,14 +897,16 @@ fun Resolver.getTypeForIdentifier(
         // check that this Enum root has such
         val name = type.branches.find { it.name == x.name }
         if (name == null) {
-            val startsWithSameWord = type.branches.filter {it.name.startsWith(x.name)}.joinToString(", ") { it.name }
+            val startsWithSameWord = type.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
             val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 2) {
                 val x = type.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
                 x.joinToString(", ") { it.name }
             } else
                 startsWithSameWord
 
-            val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {""} else orStartsWithFirst2Letters
+            val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {
+                ""
+            } else orStartsWithFirst2Letters
             x.token.compileError("Can't find enum $x, ${if (maybeUMeant.isNotEmpty()) "maybe $maybeUMeant?" else ""}")
         }
 

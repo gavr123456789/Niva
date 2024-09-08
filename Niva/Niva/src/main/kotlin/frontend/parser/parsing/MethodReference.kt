@@ -11,7 +11,7 @@ import main.frontend.parser.types.ast.MethodReference
 // &Pkg.String from:to:
 fun Parser.methodReference(): MethodReference {
     val tok = peek(-1)
-    val forType = parseType()
+    val forType = parseTypeAST()
 
     // binary
     if (check(TokenType.BinarySymbol)) {
