@@ -34,7 +34,7 @@ fun Parser.varDeclaration(): VarDeclaration? {
             }
             // ::^int
             TokenType.DoubleColon -> {
-                valueType = parseType()
+                valueType = parseTypeAST()
                 // x::int^ =
                 matchAssert(TokenType.Assign)
                 skipNewLinesAndComments()

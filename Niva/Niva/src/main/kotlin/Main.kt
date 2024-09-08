@@ -249,6 +249,7 @@ Lexer main  = [
 
 """
 
+
 fun main(args: Array<String>) {
 
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/experiments/main.niva")

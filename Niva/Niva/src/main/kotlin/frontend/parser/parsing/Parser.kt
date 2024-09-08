@@ -198,7 +198,7 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
 
     val isTyped = match(TokenType.DoubleColon)
     return if (isTyped) {
-        val type = parseType()
+        val type = parseTypeAST()
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
     } else {
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, typeAST, x) // look for type in table

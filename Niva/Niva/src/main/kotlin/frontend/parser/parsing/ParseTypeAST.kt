@@ -14,7 +14,7 @@ fun Parser.parseLambda(tok: Token, extensionTypeName: List<String>? = null): Typ
         val result = mutableListOf<TypeAST>()
         // anyType, anyType, ...
         do {
-            result.add(parseType())
+            result.add(parseTypeAST())
         } while (match(TokenType.Comma))
 
         return result
@@ -28,7 +28,7 @@ fun Parser.parseLambda(tok: Token, extensionTypeName: List<String>? = null): Typ
     val listOfInputTypes = if (!thereIsReturnArrowAndCloseBracket) listOfInputTypes() else mutableListOf()
     match(TokenType.ReturnArrow)
 
-    val returnType = if (!check(TokenType.CloseBracket)) parseType() else createUnitAstType(createFakeToken())
+    val returnType = if (!check(TokenType.CloseBracket)) parseTypeAST() else createUnitAstType(createFakeToken())
     matchAssert(TokenType.CloseBracket, "Closing paren expected in codeblock type declaration")
     val isNullable = match("?")
 
@@ -54,7 +54,7 @@ fun Parser.parseLambda(tok: Token, extensionTypeName: List<String>? = null): Typ
     )
 }
 // use only after ::
-fun Parser.parseType(isExtendDeclaration: Boolean = false): TypeAST {
+fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier

@@ -464,6 +464,18 @@ sealed class Type(
         var isBinding: Boolean = false,
         val typeDeclaration: SomeTypeDeclaration? // for example List doesn't have type decl
     ) : Type(name, pkg, isPrivate, protocols) {
+
+        // will get T from types like List::List::T
+        fun collectGenericParamsRecursively(x: MutableSet<String>): Set<String> {
+            typeArgumentList.forEach {
+                if (it.name.isGeneric()) x.add(it.name)
+                if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
+                    it.collectGenericParamsRecursively(x)
+                }
+            }
+            return x
+        }
+
         fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
 
         fun copy(withDifferentPkg: String? = null): UserLike =

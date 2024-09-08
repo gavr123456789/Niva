@@ -4,7 +4,7 @@ import frontend.parser.types.ast.Pragma
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
-import main.frontend.parser.parsing.parseType
+import main.frontend.parser.parsing.parseTypeAST
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
 import main.utils.RED
@@ -163,7 +163,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
             if (isThereEndOfLine) {
                 skipNewLinesAndComments()
             }
-            parseType()
+            parseTypeAST()
         } else {
             null
         }
@@ -254,7 +254,7 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
             KindOfTypeDecl.Field -> {
                 val name = step()
                 step() // colon
-                val type = parseType()
+                val type = parseTypeAST()
                 fields.add(
                     TypeFieldAST(
                         name = name.lexeme,
@@ -366,7 +366,7 @@ fun Parser.typeAliasDeclaration(pragmas: MutableList<Pragma>): TypeAliasDeclarat
 
     matchAssert(TokenType.Assign)
 
-    val typeAST = parseType()
+    val typeAST = parseTypeAST()
 
     return TypeAliasDeclaration(
         realTypeAST = typeAST,

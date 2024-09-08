@@ -2261,6 +2261,20 @@ class ParserTest {
         assert(ast.count() == 3)
     }
 
+    @Test
+    fun messageDeclForTypeWith2Generics() {
+        // MutableList::T forEachBreak::[ -> T] was parsed as kw method decl for Unit receiver
+
+        val source = """
+           Pair(MutableList::T, MutableList::G) sas = []
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+
+
+
 //    @Test
 //    fun differences() {
 //        val source = """
