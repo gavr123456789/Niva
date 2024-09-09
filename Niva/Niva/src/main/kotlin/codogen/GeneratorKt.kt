@@ -435,7 +435,7 @@ import kotlin.test.assertTrue
     val generator = GeneratorKt()
 
     if (forTest) {
-        append("class ", pkg!!.packageName, "{\n")
+        append("class ", pkg!!.packageName + "Test", "{\n")
         statements.forEach {
             appendLine("@Test")
             val md = it as MessageDeclaration

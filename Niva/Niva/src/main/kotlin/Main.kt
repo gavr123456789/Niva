@@ -21,232 +21,15 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-type Cond = [ -> Boolean] 
-Cond whileLoop: block::[ -> Boolean] -> Unit = 
-  this do => [
-    block do => [this whileLoop: block]
-  ] |=> Unit
-
-mut x = 3
-[x > 0] whileLoop: [
-  x <- x dec
-  x echo
-  false
-]
+lexer = Lexer input: "((()))"
+//> Lexer input: ((())) pos: 0 readPos: 1 ch: (
+>lexer
 
 
+type Person name: String age: Int 
+// Person sas = 123
 
-type Lexer 
-  source: String
-  line: Int
-  start: Int
-  current: Int
-  spaces: Int
-  linePos: Int
-  lineCurrent: Int
-  tokens: MutableList::Token
-
-constructor Lexer source::String = Lexer 
-  source: source
-  line: 1
-  start: 0
-  current: 0
-  spaces: 0
-  linePos: 0
-  lineCurrent: 0
-  tokens: {}
-
-Lexer done = current >= source count
-
-Lexer peek = this peekDistance: 0 length: 1
-Lexer peekDistance: distance::Int length::Int -> String = [
-  b = StringBuilder new
-  mut i = distance
-
-  // IGNORED || current + i > source.lastIndex || current + i < 0
-  [b count < length] whileLoop: [
-    mut condition = true
-    this done 
-      => condition <- false
-      |=> b append: (source at: current + i)
-    
-    i <- i inc
-    condition
-  ]
-
-  ^ b toString
-]
-
-Lexer step = this step: 1
-Lexer step: n::Int -> String = [
-  b = StringBuilder new
-
-  // IGNORED current > source.lastIndex
-  [b count < n] whileLoop: [
-    mut condition = true
-    this done 
-      => condition <- false
-      |=> b append: (source at: current)
-    
-    current <- current inc
-    condition
-  ]
-  
-  linePos <- linePos + n
-  ^ b toString
-]
-
-
-Lexer check: arg::String = this check: arg distance: 0
-Lexer check: arg::String distance::Int -> Boolean = [
-  this done => ^false
-  ^(this peekDistance: distance length: arg count) == arg
-]
-
-Lexer match::String -> Boolean = [
-  this check: match |> not => ^ false
-  this step: match count
-  ^ true
-]
-
-
-Lexer createTokenWithType: tokType::TokenType -> Token = [
-  lexeme = source slice: start..<current
-
-  end = current - 1
-
-  tok = Token 
-    kind: tokType 
-    lexeme: lexeme
-    line: line
-    pos: (Position start: start end: end) 
-    lineEnd: -1
-
-  ^tok
-]
-
-
-Lexer incLine = this incLineWithNewToken: false
-Lexer incLineWithNewToken: needNewToken::Boolean = [
-  line <- line inc
-  linePos <- 0
-  // needNewToken => [
-  //   start <- current
-  // ]
-]
-
-
-String isDigit -> Boolean = [
-  this forEach: [
-    it isDigit not => ^false
-  ]
-  ^true
-]
-String isAlphaNumeric -> Boolean = [
-  this forEach: [
-    it isLetterOrDigit not => ^false
-  ]
-  ^true
-]
-
-Lexer stepWhileDigits = [
-  [this peek isDigit && (this done not)] whileTrue: [
-    this step
-  ]
-]
-Lexer stepWhileAlphaNumeric = [
-  [(this peek isAlphaNumeric || (this check: "_")) && (this done not)] whileTrue: [
-    this step
-  ]
-]
-
-Lexer parseNumberOrDotDot = [ 
-  mut kind = TokenType.Integer
-  .stepWhileDigits
-
-  // .. binary operator
-  (.check: "..<") || (.check: "..") => [
-    this createTokenWithType: TokenType.Integer
-    start <- start inc 
-    .match: "..<"
-    .match: ".."
-
-
-  ]
-]
-
-
-
-
-
-
-Lexer parseIdentifier = [ ]
-
-Lexer next = [
-  
-  this done => ^
-
-  letter = this step
-  // check for all complex variants like words and numbers first
-  letter first isDigit => this parseNumberOrDotDot
-  letter first isLetter => this parseIdentifier
-
-  // spaces and stuff
-  (this match: " ") || (this match: "\t") => [
-    spaces <- spaces inc
-    start <- start inc
-    ^
-  ]
-  this match: "\n" => [
-    this incLine
-    ^
-  ]
-  
-  // then match on symbols
-  tokType = | letter 
-  | "(" => TokenType.OpenParen
-  | ")" => TokenType.CloseParen
-  | "{" => TokenType.OpenBrace
-  | "}" => TokenType.CloseBrace
-  | "[" => TokenType.OpenBracket
-  | "]" => TokenType.CloseBracket
-
-  | "," => TokenType.Comma
-  | ":" => TokenType.Colon
-  | ";" => TokenType.Cascade
-  
-  //TODO NEGATIVE NUMS
-  | "-" => // -(BinSym), -42(Number)
-    TokenType.BinarySymbol 
-
-  | "+", "/", "*" => TokenType.BinarySymbol
-
-  | "." => // ., ..(BinSym), ..<(BinSym)
-    this match: ".<" => TokenType.BinarySymbol |=>
-    this match: "." => TokenType.BinarySymbol |=> TokenType.Dot
-  | "|" => // |, |>, |=>
-    this match: ">" => TokenType.Pipe |=>
-    this match: "=>" => TokenType.Else |=> TokenType.If
-  
-  | "=" => // =, ==, =>
-    this match: "=" => TokenType.BinarySymbol |=>
-    this match: ">" => TokenType.Then |=> TokenType.Assign
-  |=> TokenType.Unknown
-
-  // create token with that type
-  tokens add: (this createTokenWithType: tokType)
-]
-
-Lexer main  = [
-  // while not done, scan next token with `next`
-  [this done not] whileTrue: [
-    this next
-    start <- current
-    lineCurrent <- linePos
-  ]
-
-]
-
+p = Person 
 """
 
 
@@ -257,24 +40,14 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/parserCombinator/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/Lexer/lexer.niva"
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/JSON/main.niva"
-
+//    val qqq = "file:///home/gavr/Documents/Projects/Fun/byLangs/niva/writing-an-interpreter-in-niva/niva/main.niva"
+//
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
-//
-//
-//        ls.resolveAllWithChangedFile(
-//            qqq,
-//            fakeFileSourceGOOD
-//        )
-//
-//        (1..200).forEach {
-//            ls.onCompletion(qqq, 131, 20)
-//        }
-//        ls.onCompletion(qqq, 131, 20)
-//
+//        ls.resolveAllWithChangedFile(qqq, fakeFileSourceGOOD)
+//        val q = ls.onCompletion(qqq, 9, 12)
+//        println(q)
 //    }
 //    catch (e: OnCompletionException) {
 //        println(e.scope)

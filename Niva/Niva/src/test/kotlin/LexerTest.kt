@@ -257,6 +257,17 @@ class LexerTest {
     }
 
     @Test
+    fun utfChar() {
+        val char = """
+            '\u0000'
+        """.trimIndent()
+        checkWithEnd(
+            char,
+            listOf(TokenType.Char)
+        )
+    }
+
+    @Test
     fun kwDeclarationColonPosition() {
         val kwDecl = "S kw::Str -> Int = 34"
         val lexer = Lexer(kwDecl, File("Niva.iml"))

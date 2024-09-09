@@ -31,7 +31,7 @@ import main.utils.MainArgument
 import main.utils.PathManager
 import main.utils.VerbosePrinter
 import main.utils.compileProjFromFile
-import main.utils.listFilesRecursively
+import main.utils.listFilesDownUntilNivaIsFoundRecursively
 import java.io.File
 import java.net.URI
 import java.util.SortedMap
@@ -417,19 +417,19 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
         val directory = file.parentFile
-        if (directory.isDirectory) {
+        return if (directory.isDirectory) {
             val q = directory.listFiles()
             if (q != null) {
-                return q.asSequence().filter { it.extension == "niva" }.toSet() // || it.extension == "scala"
+                q.asSequence().filter { it.extension == "niva" }.toSet() // || it.extension == "scala"
             } else TODO("Cant find files in the $directory")
         } else {
-            return emptySet()
+            emptySet()
         }
     }
 
     // returns path to main.niva and set of all files
     // Doesn't search inside folders, only goes outside
-    fun findRoot(a: File, listOfNivaFiles: MutableSet<File>): Pair<File, MutableSet<File>> {
+    fun findMainUpRecursively(a: File, listOfNivaFiles: MutableSet<File>): Pair<File, MutableSet<File>> {
         val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
         listOfNivaFiles.addAll(filesFromTheUpperDir)
 
@@ -441,7 +441,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         return if (nivaMain != null) {
             Pair(nivaMain, listOfNivaFiles)
         } else {
-            findRoot(a.parentFile, listOfNivaFiles)
+            findMainUpRecursively(a.parentFile, listOfNivaFiles)
         }
     }
 
@@ -449,14 +449,11 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     assert(file.exists())
 
     val collectFiles = {
-        val set = listFilesRecursively(file.parentFile, "niva", "kek", "nivas").toSet() //"scala"
-        val main = set.find { it.nameWithoutExtension == "main" }
-        if (main != null) {
-            Pair(main, set)
-        } else {
-            val pair = findRoot(file, mutableSetOf())
-            pair.also { it.second.addAll(set) }
-        }
+        // get main file
+        val pair = findMainUpRecursively(file, mutableSetOf())
+        // listFilesDownUntilNivaIsFoundRecursively from main to get all files
+        val set = listFilesDownUntilNivaIsFoundRecursively(pair.first.parentFile, "niva", "sas", "nivas")
+        pair.also { it.second.addAll(set) }
     }
     val (mainFile, allFiles) = collectFiles()//findRoot(file, mutableSetOf())
     info?.invoke("all files is ${allFiles.joinToString(", ") { it.name }}")
@@ -494,7 +491,6 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                     val setOfStatements = this.fileToDecl[file2.absolutePath]
                     if (setOfStatements != null) {
                         setOfStatements.add(st)
-                        Unit
                     } else {
                         fileToDecl[file2.absolutePath] = mutableSetOf(st)
                     }
