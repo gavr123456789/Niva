@@ -103,7 +103,7 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // var
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
             }
             stack.pop()
         }
@@ -115,7 +115,7 @@ private fun Resolver.resolveStatement(
             currentLevel--
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // var
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
             }
 
             addToTopLevelStatements(statement)
@@ -177,7 +177,7 @@ private fun Resolver.resolveStatement(
 
             if (GlobalVariables.isLspMode) {
 
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // identifier
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // identifier
             }
 
             addToTopLevelStatements(statement)
@@ -186,7 +186,7 @@ private fun Resolver.resolveStatement(
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // (expr)
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // (expr)
             }
             addToTopLevelStatements(statement)
         }
@@ -197,7 +197,7 @@ private fun Resolver.resolveStatement(
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // codeblock
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // codeblock
             }
             addToTopLevelStatements(statement)
             stack.pop()
@@ -206,7 +206,7 @@ private fun Resolver.resolveStatement(
         is ListCollection -> {
             resolveCollection(statement, "MutableList", (previousScope + currentScope).toMutableMap(), rootStatement)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // list
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list
             }
             addToTopLevelStatements(statement)
         }
@@ -214,7 +214,7 @@ private fun Resolver.resolveStatement(
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap(), rootStatement)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // set
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // set
             }
             addToTopLevelStatements(statement)
         }
@@ -222,7 +222,7 @@ private fun Resolver.resolveStatement(
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // map
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // map
             }
             addToTopLevelStatements(statement)
         }
@@ -258,7 +258,7 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // literal
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // literal
             }
         }
 
@@ -273,7 +273,7 @@ private fun Resolver.resolveStatement(
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // if
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // if
             }
 
             addToTopLevelStatements(statement)

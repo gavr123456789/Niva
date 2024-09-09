@@ -81,7 +81,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             val resolveFailed = resolveDeclarations(it, x, resolveBody = false)
 
             if (onEachStatement != null && !resolveFailed) { // its true only in LSP mode
-                onEachStatement(it, x, mutableMapOf(), this.currentResolvingFileName)
+                onEachStatement(it, x, mutableMapOf(), it.token.file) // this.currentResolvingFileName
             }
             // remember doc comments to resolve references from them later
             val docComment = it.docComment

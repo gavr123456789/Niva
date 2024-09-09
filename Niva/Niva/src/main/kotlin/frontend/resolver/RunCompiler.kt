@@ -99,7 +99,6 @@ fun Resolver.resolve(
         return ast
     }
 
-    val fakeTok = createFakeToken()
     verbosePrinter.print {
         "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFilePath}" +
                 (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
@@ -127,6 +126,7 @@ fun Resolver.resolve(
 
 
     // create main package
+    val fakeTok = createFakeToken()
     changePackage(mainFileNameWithoutExtension, fakeTok, isMainFile = true)
     currentResolvingFileName = File(mainFilePath)
 

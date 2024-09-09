@@ -27,7 +27,7 @@ pair forEach: [a, b ->
   "$a + $b = ${a + b}" echo
 ]
 
-
+x = '\й0000'
 //MutableList::T forEachBreak::[T -> Boolean] -> Unit = [
 //  this forEach: [
 //    forEachBreak T: it |> not => ^

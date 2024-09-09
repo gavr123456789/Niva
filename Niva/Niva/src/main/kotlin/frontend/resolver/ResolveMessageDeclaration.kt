@@ -17,14 +17,14 @@ import main.utils.isGeneric
 
 // returns true if unresolved
 fun Resolver.resolveMessageDeclaration(
-    st: MessageDeclaration,
+    statement: MessageDeclaration,
     needResolveOnlyBody: Boolean,
     previousScope: MutableMap<String, Type>,
     addToDb: Boolean = true
 ): Boolean {
-    val forTypeAst = st.forTypeAst
+    val forTypeAst = statement.forTypeAst
 
-    val typeFromDB: Type? = st.forType ?: if (forTypeAst is TypeAST.UserType) {
+    val typeFromDB: Type? = statement.forType ?: if (forTypeAst is TypeAST.UserType) {
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
@@ -33,37 +33,37 @@ fun Resolver.resolveMessageDeclaration(
         val q = typeDB.getTypeOfIdentifierReceiver(
             forTypeAst.name,
             ident,
-            getCurrentImports(st.token),
+            getCurrentImports(statement.token),
             currentPackageName,
             names = forTypeAst.names
         ) ?: if (forTypeAst.name.isGeneric()) {
-            st.typeArgs.add(forTypeAst.name)
+            statement.typeArgs.add(forTypeAst.name)
             Type.UnknownGenericType(forTypeAst.name)
         } else null
 
 
         if (q == null) {
-            unResolvedMessageDeclarations.add(currentPackageName, st)
+            unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
             return true
         } else q
 
-    } else typeTable[st.forTypeAst.name]
+    } else typeTable[statement.forTypeAst.name]
     val copyTypeIfGenerics = if (typeFromDB is Type.UserType && typeFromDB.typeArgumentList.isNotEmpty())
         typeFromDB.copyAnyType()
     else typeFromDB
 
 
     if (copyTypeIfGenerics == null || typeFromDB == null) {
-        unResolvedMessageDeclarations.add(currentPackageName, st)
+        unResolvedMessageDeclarations.add(currentPackageName, statement)
         currentLevel--
         return true
     }
     // but wait maybe some generic param's type is unresolved (List::T unary = [])
-    if (copyTypeIfGenerics is Type.UserLike && st.forTypeAst is TypeAST.UserType && st.forTypeAst.typeArgumentList.isNotEmpty()) {
+    if (copyTypeIfGenerics is Type.UserLike && statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.isNotEmpty()) {
         var alTypeArgsAreFound = true
         val newListOfTypeArgs = mutableListOf<Type>()
-        st.forTypeAst.typeArgumentList.forEach {
+        statement.forTypeAst.typeArgumentList.forEach {
             val type = if (it.name.isGeneric()) Type.UnknownGenericType(it.name) else typeTable[it.name] //testing
             if (type != null) {
                 newListOfTypeArgs.add(type)
@@ -75,21 +75,21 @@ fun Resolver.resolveMessageDeclaration(
         if (alTypeArgsAreFound) {
             copyTypeIfGenerics.typeArgumentList = newListOfTypeArgs
         } else {
-            unResolvedMessageDeclarations.add(currentPackageName, st)
+            unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
             return true
         }
     }
-    unResolvedMessageDeclarations.remove(currentPackageName, st)
-    st.forType = copyTypeIfGenerics
+    unResolvedMessageDeclarations.remove(currentPackageName, statement)
+    statement.forType = copyTypeIfGenerics
 
 
     val bodyScope = mutableMapOf<String, Type>()
 
     val resolveBody = {
 
-        val isStaticBuilderWithoutReceiver = st is StaticBuilderDeclaration && !st.withReceiver
-        val isThisAConstructor = st is ConstructorDeclaration
+        val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
+        val isThisAConstructor = statement is ConstructorDeclaration
         if (!isStaticBuilderWithoutReceiver && !isThisAConstructor)
             bodyScope["this"] = copyTypeIfGenerics
 
@@ -118,9 +118,9 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
-        when (st) {
+        when (statement) {
             is MessageDeclarationKeyword -> {
-                addArgsToBodyScope(st)
+                addArgsToBodyScope(statement)
             }
 
             is MessageDeclarationUnary -> {
@@ -128,19 +128,19 @@ fun Resolver.resolveMessageDeclaration(
             }
 
             is MessageDeclarationBinary -> {
-                val arg = st.arg
+                val arg = statement.arg
                 val argType = arg.typeAST?.toType(typeDB, typeTable)
-                    ?: st.token.compileError("Cant infer type of argument: `${YEL}${arg.name}${RED}` for binary message declaration `${YEL}${st.forTypeAst.name} ${CYAN}${st.name}`")
+                    ?: statement.token.compileError("Cant infer type of argument: `${YEL}${arg.name}${RED}` for binary message declaration `${YEL}${statement.forTypeAst.name} ${CYAN}${statement.name}`")
                 bodyScope[arg.name] = argType
             }
 
             is ConstructorDeclaration ->
-                if (st.msgDeclaration is MessageDeclarationKeyword) // there is no binary constructors
-                    addArgsToBodyScope(st.msgDeclaration)
+                if (statement.msgDeclaration is MessageDeclarationKeyword) // there is no binary constructors
+                    addArgsToBodyScope(statement.msgDeclaration)
 
             is StaticBuilderDeclaration -> {
 
-                addArgsToBodyScope(st.msgDeclaration)
+                addArgsToBodyScope(statement.msgDeclaration)
                 // add lambda [this::forType, defaultAction::[Type -> ]]
                 // with the same name as builder itself
                 val lambda = Type.Lambda(
@@ -151,9 +151,9 @@ fun Resolver.resolveMessageDeclaration(
                         ),
                     ),
                     returnType = Resolver.defaultTypes[InternalTypes.Unit]!!,
-                    pkg = getCurrentPackage(st.token).packageName
+                    pkg = getCurrentPackage(statement.token).packageName
                 )
-                val defaultAction = st.defaultAction
+                val defaultAction = statement.defaultAction
                 if (defaultAction != null && defaultAction.inputList.count() > 0 && defaultAction.inputList[0].typeAST != null) {
                     lambda.args.add(
                         KeywordArg(
@@ -167,13 +167,13 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
         // add args to bodyScope, but not for constructors
-        if (copyTypeIfGenerics is Type.UserLike && st !is ConstructorDeclaration) {
+        if (copyTypeIfGenerics is Type.UserLike && statement !is ConstructorDeclaration) {
             if (copyTypeIfGenerics.typeArgumentList.isNotEmpty()) {
                 // check that all generics of receiver were instantiated
                 val genericFields = copyTypeIfGenerics.fields.filter { it.name.isGeneric() }
 
                 if (genericFields.count() > copyTypeIfGenerics.typeArgumentList.count()) {
-                    st.token.compileError("Not all generic arguments were instantiated got ${copyTypeIfGenerics.typeArgumentList} but generic fields are $genericFields")
+                    statement.token.compileError("Not all generic arguments were instantiated got ${copyTypeIfGenerics.typeArgumentList} but generic fields are $genericFields")
                 }
                 // match types of args from forType to Generics fields\
                 copyTypeIfGenerics.fields.forEachIndexed { i, it ->
@@ -188,12 +188,12 @@ fun Resolver.resolveMessageDeclaration(
                 }
         }
         wasThereReturn = null
-        resolvingMessageDeclaration = st
-        resolve(st.body, (previousScope + bodyScope).toMutableMap(), st)
+        resolvingMessageDeclaration = statement
+        resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
         // check that errors that returns and stack are the same
         val validateErrorsDeclarated = {
-            val returnTypeAST = st.returnTypeAST
-            val possibleErrors = st.stackOfPossibleErrors
+            val returnTypeAST = statement.returnTypeAST
+            val possibleErrors = statement.stackOfPossibleErrors
             val declaredErrors = returnTypeAST?.errors
             val listOfErrorsWithLines = {
                 buildString {
@@ -222,7 +222,7 @@ fun Resolver.resolveMessageDeclaration(
                         val possibleSolutions =
                             "$WHITE-> $returnTypeAST!$RESET or $WHITE-> $returnTypeAST!$singleOrManyErrors$RESET"
 
-                        st.token.compileError("Possible errors of $WHITE$st$RESET are: \n${listOfErrorsWithLines()} but you not declared them\n use $possibleSolutions")
+                        statement.token.compileError("Possible errors of $WHITE$statement$RESET are: \n${listOfErrorsWithLines()} but you not declared them\n use $possibleSolutions")
                     } else if (declaredErrors.count() != 0) {
                         // maybe declared but wrong
                         val setOfPossible = possibleErrorsUnion.map { it.name }.toSet()
@@ -233,8 +233,8 @@ fun Resolver.resolveMessageDeclaration(
                                 (if (setOfDeclared.count() > setOfPossible.count()) setOfDeclared - setOfPossible else setOfPossible - setOfDeclared)
                                     .joinToString(" ")
 
-                            st.token.compileError(
-                                "Possible errors of $WHITE$st$RESET are: \n" +
+                            statement.token.compileError(
+                                "Possible errors of $WHITE$statement$RESET are: \n" +
                                         "${listOfErrorsWithLines()}\n" +
                                         "Wrong set of errors declarated\nPossible errors: $possibleErrorsJoined\nDeclared errors: $declErrors\nDiff: $diff"
                             )
@@ -245,45 +245,45 @@ fun Resolver.resolveMessageDeclaration(
                 }
                 // errors are possible but not declared
                 if (possibleErrors.isEmpty() && declaredErrors?.isNotEmpty() == true) {
-                    st.token.compileError("there are declared errors:\n${listOfErrorsWithLines()}\nbut no possible ones you didn't specify them in return type: `-> Type!{Errors}`")
+                    statement.token.compileError("there are declared errors:\n${listOfErrorsWithLines()}\nbut no possible ones you didn't specify them in return type: `-> Type!{Errors}`")
                 }
             }
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
-                st.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString()}")
+                statement.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString()}")
             }
 
         }
         validateErrorsDeclarated()
 
-        if (!st.isSingleExpression && wasThereReturn == null && st.returnTypeAST != null && st.returnTypeAST.name != InternalTypes.Unit.name) {
-            st.token.compileError("You missed returning(^) a value of type: ${YEL}${st.returnTypeAST.name}")
+        if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
+            statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
         }
         resolvingMessageDeclaration = null
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
-        if (st.isSingleExpression) {
-            val expr = st.body[0]
+        if (statement.isSingleExpression) {
+            val expr = statement.body[0]
             if (expr is Expression) {
                 val typeOfSingleExpr = expr.type!!
-                val mdgData = when (st) {
-                    is ConstructorDeclaration -> findStaticMessageType(copyTypeIfGenerics, st.name, st.token).first
+                val mdgData = when (statement) {
+                    is ConstructorDeclaration -> findStaticMessageType(copyTypeIfGenerics, statement.name, statement.token).first
                     is MessageDeclarationUnary -> findAnyMsgType(
                         copyTypeIfGenerics,
-                        st.name,
-                        st.token,
+                        statement.name,
+                        statement.token,
                         MessageDeclarationType.Unary
                     )
 
                     is MessageDeclarationBinary -> findAnyMsgType(
                         copyTypeIfGenerics,
-                        st.name,
-                        st.token,
+                        statement.name,
+                        statement.token,
                         MessageDeclarationType.Binary
                     )
 
                     is MessageDeclarationKeyword -> findAnyMsgType(
                         copyTypeIfGenerics,
-                        st.name,
-                        st.token,
+                        statement.name,
+                        statement.token,
                         MessageDeclarationType.Keyword
                     )
 
@@ -292,27 +292,27 @@ fun Resolver.resolveMessageDeclaration(
                 }
 
 
-                val declaredReturnTypeOrFromReturnStatement = st.returnType
+                val declaredReturnTypeOrFromReturnStatement = statement.returnType
 
                 mdgData.returnType = typeOfSingleExpr
-                st.returnType = typeOfSingleExpr
+                statement.returnType = typeOfSingleExpr
                 //!st.isRecursive && cant understand why recursive check was here
                 // ... because we cant infer type of recursive functions
-                if (!st.isRecursive && declaredReturnTypeOrFromReturnStatement != null && st.returnTypeAST != null) {
+                if (!statement.isRecursive && declaredReturnTypeOrFromReturnStatement != null && statement.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
                     if (!compare2Types(
                             typeOfSingleExpr,
                             declaredReturnTypeOrFromReturnStatement,
-                            st.token,
+                            statement.token,
                             unpackNull = true,
                             isOut = true
                         )
                     )
-                        st.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnTypeOrFromReturnStatement${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
+                        statement.returnTypeAST.token.compileError("Return type defined: ${YEL}$declaredReturnTypeOrFromReturnStatement${RESET} but real type returned: ${YEL}$typeOfSingleExpr")
                     else if (mdgData.returnType != declaredReturnTypeOrFromReturnStatement) {
                         // change return type to the declarated one, since they are compatible
                         // because it can be type Null returned from -> Int? msg, but it must be Int? in such case
-                        st.returnType = declaredReturnTypeOrFromReturnStatement
+                        statement.returnType = declaredReturnTypeOrFromReturnStatement
                         mdgData.returnType = declaredReturnTypeOrFromReturnStatement
                     }
                 }
@@ -321,22 +321,22 @@ fun Resolver.resolveMessageDeclaration(
             }
         } else {
             val realReturn = wasThereReturn
-            val returnType = st.returnType
+            val returnType = statement.returnType
             if (realReturn != null && returnType != null &&
                 !compare2Types(
                     returnType,
                     realReturn,
-                    st.returnTypeAST?.token ?: st.token,
+                    statement.returnTypeAST?.token ?: statement.token,
                     unpackNull = true,
                     isOut = true
                 )
             ) {
-                st.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
+                statement.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
             }
         }
 
         if (GlobalVariables.isLspMode) {
-            onEachStatement!!(st, previousScope, previousScope, currentResolvingFileName) // message decl
+            onEachStatement!!(statement, previousScope, previousScope, statement.token.file) // message decl
         }
     }
 
@@ -344,45 +344,45 @@ fun Resolver.resolveMessageDeclaration(
     // no return type declared, not recursive, single expr
     // body is not resolved and no returnTypeAst, so we cant infer return type
     // because not all declarations resolved yet
-    if (st.returnTypeAST == null && !st.isRecursive && st.isSingleExpression && !needResolveOnlyBody) {
-        unResolvedSingleExprMessageDeclarations.add(currentPackageName, st)
+    if (statement.returnTypeAST == null && !statement.isRecursive && statement.isSingleExpression && !needResolveOnlyBody) {
+        unResolvedSingleExprMessageDeclarations.add(currentPackageName, statement)
         currentLevel--
         return true
     }
 
-    if (st.returnTypeAST != null && st.returnType == null) {
+    if (statement.returnTypeAST != null && statement.returnType == null) {
         try {
-            st.returnType = st.returnTypeAST.toType(typeDB, typeTable)
+            statement.returnType = statement.returnTypeAST.toType(typeDB, typeTable)
         } catch (_: CompilerError) {
-            unResolvedMessageDeclarations.add(currentPackageName, st)
+            unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
             return true
         }
     }
 
 
-    val currentReturnType = st.returnType
+    val currentReturnType = statement.returnType
     // addToDb
     if (addToDb) {
         try {
-            addNewAnyMessage(st, isGetter = false, isSetter = false, forType = typeFromDB)
+            addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
         } catch (_: CompilerError) {
-            unResolvedMessageDeclarations.add(currentPackageName, st)
+            unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
             return true
         }
     }
 
-    val isResolvedSingleExpr = if (st.isSingleExpression) {
-        val first = st.body.first()
+    val isResolvedSingleExpr = if (statement.isSingleExpression) {
+        val first = statement.body.first()
         first is Expression && first.type != null
     } else false
     if (needResolveOnlyBody && !isResolvedSingleExpr) {
         resolveBody()
-        val newReturnType = st.returnType
+        val newReturnType = statement.returnType
         // return type of expression changed after body resolved
         if (newReturnType != null && newReturnType != currentReturnType) {
-            val msgData = findAnyMsgType(typeFromDB, st.name, st.token, st.getDeclType())
+            val msgData = findAnyMsgType(typeFromDB, statement.name, statement.token, statement.getDeclType())
             // change return type inside db
             msgData.returnType = newReturnType
         }
@@ -390,13 +390,13 @@ fun Resolver.resolveMessageDeclaration(
     }
 
 
-    if (st.returnType == null) {
-        st.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
+    if (statement.returnType == null) {
+        statement.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
     }
 
-    if (st is ConstructorDeclaration) {
-        st.msgDeclaration.forType = st.forType
-        st.msgDeclaration.returnType = st.returnType
+    if (statement is ConstructorDeclaration) {
+        statement.msgDeclaration.forType = statement.forType
+        statement.msgDeclaration.returnType = statement.returnType
     }
 
 

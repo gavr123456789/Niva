@@ -86,20 +86,11 @@ fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst
 }
 
 
-fun findThisInScopes(
-    token: Token,
-    currentScope: MutableMap<String, Type>,
-    previousScope: MutableMap<String, Type>,
-) = previousScope["this"] ?: currentScope["this"]
-?: token.compileError("Cant resolve type of receiver for dot expression")
-
-
 fun Resolver.resolveMessage(
     statement: Message,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
 ) {
-
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     when (statement) {
@@ -111,10 +102,8 @@ fun Resolver.resolveMessage(
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 
-
-
     if (GlobalVariables.isLspMode) {
-        onEachStatement!!(statement, currentScope, previousScope, currentResolvingFileName) // message
+        onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // message
     }
 }
 

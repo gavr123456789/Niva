@@ -188,29 +188,36 @@ fun String.set(index: Int, str: String): String {
 //    }
 //}
 
+enum class StrMode {
+    Single,
+    Raw,
+    Multi,
+    Format,
+    Bytes
+}
 
-fun Lexer.parseString(delimiter: String, mode: String = "single") {
+fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
     var slen = 0
+    var wasUtfSymbol = false
     while (!this.check(delimiter) && !this.done()) {
 
         if (this.match("\n")) {
-            if (mode == "multi") {
+            if (mode == StrMode.Multi) {
                 this.incLine(false)// multi-string
             } else {
                 this.error("unexpected EOL while parsing string literal")
             }
         }
 
-        if (arrayOf("raw", "multi").contains(mode)) {
+        if (arrayOf(StrMode.Raw, StrMode.Multi).contains(mode)) {
             this.step()
             continue
         } else {
+            wasUtfSymbol = wasUtfSymbol || match("\\u")
             this.match("\\")
-//            source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex-1)
-//            parseEscape()
         }
 
-        if (mode == "format" && match("{")) {
+        if (mode == StrMode.Format && match("{")) {
             if (match("{")) {
                 source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
                 continue
@@ -222,7 +229,7 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
             if (check("\"")) {
                 error("unclosed '{' in format string")
             }
-        } else if (mode == "format" && check("}")) {
+        } else if (mode == StrMode.Format && check("}")) {
             if (check("}", 1)) {
                 error("unmatched '}' in format string")
             } else {
@@ -231,14 +238,14 @@ fun Lexer.parseString(delimiter: String, mode: String = "single") {
         }
         step()
         slen++
-        if (slen > 1 && delimiter == "'") {
-            error("invalid character literal (length must be one!)")
+        if (slen > 1 && delimiter == "'" && !wasUtfSymbol) {
+            error("invalid character literal (length of char sequence must be one!)")
         }
     }
 
 
 
-    if (mode == "multi") {
+    if (mode == StrMode.Multi) {
         if (!match(delimiter)) {
             error("unexpected EOL while parsing multi-line string literal, $delimiter must be repeated 3 times for multi strings")
         }
@@ -416,14 +423,14 @@ fun Lexer.next() {
         match("\n") ->
             incLine(true)
         match(arrayOf("\"", "'")) -> {
-            var mode = "single"
+            var mode = StrMode.Single
             // if """ then it must be multiline string
             if (peek(-1) != "'" && check(peek(-1)) && check(peek(-1), 1)) {
                 // Multiline strings start with 3 quotes
                 step(2)
-                mode = "multi"
+                mode = StrMode.Multi
             }
-            val delimiter = if (mode != "multi") peek(-1) else "\"\"\""
+            val delimiter = if (mode != StrMode.Multi) peek(-1) else "\"\"\""
             parseString(delimiter, mode)
         }
         // before digit because of floats "3.14"
@@ -447,9 +454,9 @@ fun Lexer.next() {
 
             //  Prefixed string literal (i.e. f"Hi {name}!")
             when (step()) {
-                "r" -> parseString(step(), "raw")
-                "b" -> parseString(step(), "bytes")
-                "f" -> parseString(step(), "format")
+                "r" -> parseString(step(), StrMode.Raw)
+                "b" -> parseString(step(), StrMode.Bytes)
+                "f" -> parseString(step(), StrMode.Format)
                 else -> error("unknown string prefix '${peek(-1)}'")
             }
         }
