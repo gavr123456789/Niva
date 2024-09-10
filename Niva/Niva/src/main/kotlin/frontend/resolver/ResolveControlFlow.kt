@@ -238,8 +238,8 @@ fun Resolver.resolveControlFlow(
 
         val typesAlreadyChecked = mutableSetOf<Type>()
         var thisIsTypeMatching = false
+        // resolve | (^) => ... part
         statement.ifBranches.forEachIndexed { i, it ->
-            /// resolving if (^)
             currentLevel++
             resolveSingle(it.ifExpression, previousAndCurrentScope, statement)
             currentLevel--
@@ -293,9 +293,7 @@ fun Resolver.resolveControlFlow(
                 is IfBranch.IfBranchWithBody -> {
                     if (it.body.statements.isNotEmpty()) {
                         currentLevel++
-//                            resolve(it.body, scopeWithFields, statement)
                         resolveCodeBlockAsBody(it.body, previousScope, currentScope, statement)
-
                         currentLevel--
 
                         val lastExpr = it.body.statements.last()

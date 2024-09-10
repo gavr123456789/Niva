@@ -984,11 +984,12 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
         } else if (body.statements.isEmpty()) {
             Resolver.defaultTypes[InternalTypes.Unit]!!
         } else {
+            val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
             val last = body.statements.last()
-            if (last is Expression) {
-                last.type!!
-            } else {
-                Resolver.defaultTypes[InternalTypes.Unit]!!
+            when (last) {
+                is Expression -> last.type!!
+                is ReturnStatement -> last.expression?.type ?: unit
+                else -> unit
             }
         }
     }

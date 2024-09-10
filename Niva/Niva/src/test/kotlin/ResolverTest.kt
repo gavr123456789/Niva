@@ -2001,6 +2001,31 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+    @Test
+    fun earlyReturnFromSwitch() {
+        val source = """
+            union Sas = Sus | Sos
+        
+            Sas sas -> String = [
+                x =
+                | this
+                | Sus => [
+                    1 echo
+                    ^ "sas" // HERE
+                ]
+                | Sos => [
+                    "qwf"
+                ]
+        
+                ^ x
+            ]
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+
+
 
 
 }
