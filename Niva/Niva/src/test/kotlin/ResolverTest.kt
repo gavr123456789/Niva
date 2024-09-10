@@ -2024,6 +2024,24 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+    @Test
+    fun earlyReturnFromIf() {
+        val source = """
+            union Sas = Sus | Sos
+            
+            Sas sas -> String = [
+                x = 1 > 2 => [
+                    ^ "wfqwf"
+                ] |=> [
+                    "qwfasqwf"
+                ]
+                ^ x
+            ]
+        """.trimIndent()
+        val (x, _) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
 
 
 

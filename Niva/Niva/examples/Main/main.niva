@@ -1,15 +1,10 @@
 union Sas = Sus | Sos
 
 Sas sas -> String = [
-    x =
-    | this
-    | Sus => [
-        1 echo
-        ^ "sas"
+    x = 1 > 2 => [
+        ^ "wfqwf"
+    ] |=> [
+        "qwfasqwf"
     ]
-    | Sos => [
-        "qwf"
-    ]
-
     ^ x
 ]
