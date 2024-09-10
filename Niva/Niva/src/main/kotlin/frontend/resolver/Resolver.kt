@@ -979,10 +979,10 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
     is IfBranch.IfBranchSingleExpr -> this.thenDoExpression.type!!
     is IfBranch.IfBranchWithBody -> {
         val t = body.type
-        if (t is Type.Lambda) {
-            t.returnType
-        } else if (body.statements.isEmpty()) {
+        if (body.statements.isEmpty()) {
             Resolver.defaultTypes[InternalTypes.Unit]!!
+        } else if (body.statements.last() !is ReturnStatement && t is Type.Lambda) {
+            t.returnType
         } else {
             val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
             val last = body.statements.last()

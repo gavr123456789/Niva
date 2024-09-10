@@ -159,7 +159,6 @@ fun Resolver.resolveControlFlow(
             // compare the current branch type with the last one
             if (i > 0) {
                 val prev = statement.ifBranches[i - 1]
-
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
                 val isTypeEqual =
