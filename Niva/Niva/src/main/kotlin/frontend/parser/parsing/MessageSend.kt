@@ -407,7 +407,7 @@ fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Triple<MutableList<Key
             firstKeywordIdentifierExpr = keywordPart
         }
         skipNewLinesAndComments()
-        val argument = expression(true)
+        val argument = expression(dontParseKeywordsAndUnaryNewLines = true, dot = true, parseSingleIf = true)
 
         if (argument is KeywordMsg) {
             argument.token.compileError("Argument can't be another keyword message, use ${WHITE}()$RED, ${CYAN}foo: $WHITE(x ${CYAN}bar: ${WHITE}y)")
