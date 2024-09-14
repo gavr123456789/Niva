@@ -2243,6 +2243,15 @@ class ParserTest {
     }
 
     @Test
+    fun dotWithIfExpr() {
+        val source = """
+            Sas fwp = .sas => 3 |=> 23
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
     fun argsMustStartWithSmallerLetter() {
         // MutableList::T forEachBreak::[ -> T] was parsed as kw method decl for Unit receiver
 

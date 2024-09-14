@@ -19,7 +19,7 @@ fun Parser.destructiveAssignParse(tokForError: Token): DestructingAssign {
     matchAssert(TokenType.Assign)
     skipNewLinesAndComments()
 
-    val f = expression()
+    val f = expression(parseSingleIf = true, dot = true)
 //    val f = matchAssert(TokenType.Identifier)
     val names = q.initElements.map {
         if (it !is IdentifierExpr) {
