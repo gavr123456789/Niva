@@ -12,15 +12,34 @@ It's Smalltalk like language, but statically typed.
 So far I've chosen niva because my 2 favorite static languages are nim and vala.
 
 ## Some strange demo
-
 https://github.com/user-attachments/assets/dfeef595-685f-4124-8eaf-9956919e07af
 
+## Examples
 
+You can start from some fibonacci [here](https://github.com/gavr123456789/Niva/tree/main/Niva/Niva/examples/Algoritms)  
+And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva) repo you can find WIP implementation of interpreter from the book 
+
+## Bullet points
+- amm
+- ...
+- bla bla bla simplicity
+- OOP - inheritance - late bindings + some FP(unions, matching, immutability by default)
+- kinda scripting experience `"Hello World!" echo`
+- Smalltalk Syntax
+- Inline REPL
+- Imports inference
+- JVM/Kotlin interop
+- Smalltalk syntax
+- Editor support with [LSP](https://github.com/gavr123456789/vaLSe) and [vscode](https://github.com/gavr123456789/niva-vscode-bundle)/zed(not public) plugin
 
 ## Compile from sources 
-If you have graalvm in your JAVA_HOME then inside /Niva/Niva/Niva folder run:  
+Run in Niva/Niva folder:
+`./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path
+
+### Getting native binary with GraalVM
+If you have graalvm in your JAVA_HOME then run:  
 `./gradlew buildNativeNiva` this will create native binary in ~/.niva/bin  
-`./gradlew buildJvmNiva` this will create jvm based binary in ~/.niva/niva/bin  
+ 
 
 ### How to install GraalVM
 Arch: `yay -S jdk22-graalvm-bin`  
@@ -35,31 +54,28 @@ macOS: `brew install --cask graalvm-jdk`
 If you have `expanded from macro 'NS_FORMAT_ARGUMENT'` problem with buildNativeNiva on macOS then [update XCode](https://wails.io/docs/guides/troubleshooting/#my-mac-app-gives-me-weird-compilation-errors)
 `xcode-select -p && sudo xcode-select --switch /Library/Developer/CommandLineTools`
 
-### How to install VSCode extension
-TODO
+## VSCode extension
 [VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
-There is no ez way to install it yet
+
 
 ## Nix-Shell Setup
 
-To get started with Niva, use the provided shell.nix file.
+To get started with Niva, use the provided shell.nix file.  
 
-  Navigate to the main Niva repository.
   Enter the following command:
 
   ```bash
   nix-shell
   ```
 
-This command will set up the necessary dependencies and run the compile script to produce a binary file.
-
+This command will set up the necessary dependencies and run the compile script to produce a binary file.  
 Afterwards, you can run the Niva compiler with the following command:
-
 ```bash
 ./niva_compiler/niva <file>
 ```
 
 # Core
+
 
 Almost everything in this lang is message send(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses). 
 
@@ -71,8 +87,7 @@ There no such things as `function(arg)`, only `object message`
 ```
 You can send as many messages as you want 
 ```Scala
-"12.08.2009" asDate days echo 
-// 12
+"12.08.2009" asDate days echo // not real, just syntax example
 ```
 
 Okay, but what if the message has some arguments?  
@@ -91,9 +106,10 @@ aand we don't need things like hardcoded for/while/do_while loops in language an
 
 Here some more examples:
 ```Scala
-5 factorial //unary 
+5 factorial // unary 
 5 + 5       // binary (only math symbols allowed)
 map at: "key" put: "value" // keyword
+1..5 forEach: [it echo] // all together + codeblock
 ```
 
 #### Type and methods declaration
@@ -101,9 +117,8 @@ Niva is statically typed language, so we need a way to declare custom types, her
 
 Each type automatically has a constructor that represents as the same keyword message, isn't it beautiful?
 ```Scala
-// Declare type Person with 2 fields
+// Declare type Person with 2 fields and create obj
 type Person name: String age: Int
-// Instantiation
 person = Person name: "Bob" age: 42
 ```
 To declare method for type just type `Type function_signature = body`
@@ -129,13 +144,13 @@ All methods are extension methods(like in Kotlin or C#), so you can add new meth
 You can also define many methods at once
 ```Scala
 extend Int [
-    unary1 = []
-    unary2 = []
+    on increment = this + 1
+    on decrement = this - 1
 ]
 
 // instead of
-Int unary1 = []
-Int unary2 = []
+Int increment = this + 1
+Int decrement = this - 1
 ```
 
 # Control frow
@@ -148,10 +163,16 @@ Int unary2 = []
 1 > 2 ifTrue: [...] ifFalse: [...]
 // ifTrue:ifFalse: can be used as expression
 x = 42 < 69 ifTrue: [1] ifFalse: [0] // x == 1
-
+```
+There are no special syntax for loops, only messages
+```Scala
 // Loops
+// collections have forEach method that takes block
 {1 2 3} forEach: [it echo] // 1 2 3
-1..3
+{1 2 3} forEachIndexed: [i, it -> i echo] // 0 1 2
+// IntRange
+1..3 forEach: [it echo]  // 1 2 3
+1..<3 forEach: [it echo] // 1 2 
 ```
 
 
@@ -185,23 +206,18 @@ m = |x| 1 => x inc | 2 => x dec |=> 0
 // m == 2 because of x inc
 ```
 ### If Elif Else chain
-You can think of that as pattern matching on true(`_`) the first expression that matches will evaluate then expression.
-The ball of execution flow seems to fall from above along the flow of execution onto this stick, and rolls out of one of the conditions
-
+There is no elseIf syntax but you can chain simple then-else
 ```Scala
-// multiline
-_
-| x > 5 => 1  // if
-| x > 4 => 2  // elif
-| x < 4 => 3  // else
-|=> 0
+x = 1
 
-single line
-y = _| x > 5 => 1 |=> 2
+y = x > 2 => ">2" |=>
+x < 2 => "<2" |=>
+"???"
+// y == "<2"
 ```
 
 
-#### Program exmaple: Factorial
+#### Program example: Factorial
 `factorial` is a message for `Int` type, that returns `Int`.
 `self` is context-dependent variable that represents Int on which factorial is called.
 The whole function is one expression, we pattern matching on self with `|` operator that acts as swith expression here.
@@ -214,22 +230,11 @@ Int factorial -> Int = | this
 5 factorial echo
 ```
 
-#### Fibonacci
-```F#
-//
-Int fib -> Int = _
-| this < 2 => 1
-|=> (this - 2) fib + (this - 1) fib
-
-5 fib echo
-```
-
 #### Is even
 ```F#
-Int isEven = [
-  | self % 2 == 0 => true
+Int isEven =
+  this % 2 == 0 => true
   |=> false
-]
 
 5 isEven echo
 4 isEven echo

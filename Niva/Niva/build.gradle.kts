@@ -146,6 +146,7 @@ fun printNivaWelcome(targetDir: Path, path: String) {
 }
 
 fun buildInfroProject() {
+    println("Building test project, first time it can take up to 2 min, thanks to Gradle :(")
     val infroDir = File("${System.getProperty("user.home")}/.niva/infroProject")
     if (infroDir.exists()) {
         val javaVersionOutput = ByteArrayOutputStream()
