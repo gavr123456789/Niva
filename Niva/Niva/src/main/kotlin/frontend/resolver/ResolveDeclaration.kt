@@ -45,6 +45,19 @@ fun Resolver.resolveDeclarations(
                 return true
             }
         }
+        is ManyConstructorDecl -> {
+            var atLeastOneUnresolved = false
+            statement.messageDeclarations.forEach {
+                val cantBeResolve = resolveMessageDeclaration(it, resolveBody, previousScope)
+
+                if (cantBeResolve) currentLevel++
+                if (!atLeastOneUnresolved && cantBeResolve) atLeastOneUnresolved = true
+            }
+            if (atLeastOneUnresolved) {
+                currentLevel--
+                return true
+            }
+        }
 
         is UnionRootDeclaration -> {
             resolveUnionDeclaration(statement, isError = false)

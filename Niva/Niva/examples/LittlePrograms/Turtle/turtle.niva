@@ -1,3 +1,4 @@
+// its like a programming learning program with turtle that u can turn to create lines, but no gui here.
 Bind package: "java.lang" content: [
   type Math
   constructor Math cos::Double -> Double

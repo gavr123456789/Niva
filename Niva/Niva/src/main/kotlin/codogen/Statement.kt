@@ -17,6 +17,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
 //            is StaticBuilderDeclaration -> TODO()
 
             is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateMessageDeclaration() }
+            is ManyConstructorDecl -> statement.messageDeclarations.joinToString("\n") { it.generateMessageDeclaration() }
 
             is TypeDeclaration -> statement.generateTypeDeclaration()
             is TypeAliasDeclaration -> statement.generateTypeAlias()

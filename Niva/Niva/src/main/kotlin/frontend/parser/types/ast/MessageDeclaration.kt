@@ -174,10 +174,14 @@ class ConstructorDeclaration(
     msgDeclaration.pragmas,
 )
 
+class ManyConstructorDecl(
+    val messageDeclarations: List<ConstructorDeclaration>,
+    token: Token,
+    isPrivate: Boolean = false,
+    pragmas: MutableList<Pragma> = mutableListOf(),
+) : Declaration(token, isPrivate, pragmas)
 
 class ExtendDeclaration(
-    @Suppress("unused")
-    val forTypeAst: TypeAST,
     val messageDeclarations: List<MessageDeclaration>,
     token: Token,
     isPrivate: Boolean = false,
