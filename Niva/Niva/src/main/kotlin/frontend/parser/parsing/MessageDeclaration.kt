@@ -399,16 +399,12 @@ fun Parser.messageDeclaration(
     return result
 }
 
-fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDeclaration {
-    // extend Person [
-    match("extend")
 
-    val forTypeAst = parseTypeAST(true)
-    skipNewLinesAndComments()
-    matchAssert(TokenType.OpenBracket)
-    skipNewLinesAndComments()
-
-
+// extend Person [ ^ on unary = [] ...]
+fun Parser.onMessageDeclList(
+    forTypeAst: TypeAST,
+    pragmasForExtend: MutableList<Pragma>
+): MutableList<MessageDeclaration> {
     val list = mutableListOf<MessageDeclaration>()
     do {
         val pragmas = if (check("@")) pragmas() else mutableListOf()
@@ -422,10 +418,21 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
 
         skipNewLinesAndComments()
     } while (!match(TokenType.CloseBracket))
+    return list
+}
 
+fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDeclaration {
+    // extend Person [
+    match("extend")
+
+    val forTypeAst = parseTypeAST(true)
+    skipNewLinesAndComments()
+    matchAssert(TokenType.OpenBracket)
+    skipNewLinesAndComments()
+
+    val list = onMessageDeclList(forTypeAst, pragmasForExtend)
 
     return ExtendDeclaration(
-        forTypeAst = forTypeAst,
         messageDeclarations = list,
         token = forTypeAst.token
     )
@@ -433,9 +440,11 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
 }
 
 
+const val ConstructorExpected = "Constructor expected"
+
 // constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDeclaration {
-    val constructorKeyword = matchAssert(TokenType.Constructor, "Constructor expected")
+    val constructorKeyword = matchAssert(TokenType.Constructor, ConstructorExpected)
 
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
@@ -450,6 +459,29 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
     val result = ConstructorDeclaration(
         msgDeclaration = msgDecl,
         constructorKeyword,
+    )
+    return result
+}
+
+fun Parser.manyConstructorsDecl(pragmas: MutableList<Pragma>): ManyConstructorDecl {
+    matchAssert(TokenType.Constructor, ConstructorExpected)
+    val forTypeAst = parseTypeAST(true)
+    skipNewLinesAndComments()
+    matchAssert(TokenType.OpenBracket)
+    skipNewLinesAndComments()
+
+    val list = this.onMessageDeclList(forTypeAst, pragmas)
+
+    val result = ManyConstructorDecl(
+        messageDeclarations = list.map {
+            ConstructorDeclaration(
+                msgDeclaration = it,
+                token = it.token
+            )
+        },
+        token = forTypeAst.token,
+        isPrivate = false,
+        pragmas = pragmas
     )
     return result
 }

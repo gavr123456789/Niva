@@ -67,6 +67,9 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
 
 
     if (kind == TokenType.Constructor) {
+        if (check(TokenType.OpenBracket, 2)) {
+            return manyConstructorsDecl(pragmas)
+        }
         return constructorDeclaration(pragmas)
     }
 

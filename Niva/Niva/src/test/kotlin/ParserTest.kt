@@ -202,8 +202,6 @@ class ParserTest {
     }
 
 
-
-
     @Test
     fun binaryFirst() {
         val source = "1 + 2 to: 3"
@@ -921,6 +919,7 @@ class ParserTest {
         val e = q.messages[1]
         assertTrue { w.receiver == e.receiver }
     }
+
     @Test
     fun cascadeOperatorOnLambdaCall() {
         val source = """
@@ -1007,7 +1006,6 @@ class ParserTest {
         val r = (((ast[1] as VarDeclaration).value as MessageSendKeyword).messages[0] as KeywordMsg)
         assert(r.selectorName == "x")
     }
-
 
 
     @Test
@@ -1230,7 +1228,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 2)
         val q = (ast[0] as UnionRootDeclaration).branches[0]
-        assertTrue{q.isRoot}
+        assertTrue { q.isRoot }
     }
 
     @Test
@@ -1665,7 +1663,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val msgUnaryDecl = ast[0] as MessageDeclarationUnary
-        assertTrue{msgUnaryDecl.pragmas.count() == 2}
+        assertTrue { msgUnaryDecl.pragmas.count() == 2 }
     }
 
     @Test
@@ -1853,7 +1851,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val q = ast[0]
-        assertTrue {q is ErrorDomainDeclaration}
+        assertTrue { q is ErrorDomainDeclaration }
     }
 
 
@@ -1897,7 +1895,7 @@ class ParserTest {
 
         assertTrue {
             q.token.pos.start == 0 &&
-            q.token.pos.end == 4
+                    q.token.pos.end == 4
         }
     }
 
@@ -1952,8 +1950,10 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val staticB = ast[0] as StaticBuilderDeclaration
-        assertTrue { staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
-                staticB.msgDeclaration.args.last().typeAST!!.name == "Int"}
+        assertTrue {
+            staticB.msgDeclaration.args.first().typeAST!!.name == "Int" &&
+                    staticB.msgDeclaration.args.last().typeAST!!.name == "Int"
+        }
     }
 
     @Test
@@ -1997,7 +1997,6 @@ class ParserTest {
         val staticB = ast[0] as StaticBuilderDeclaration
         assertIs<MessageDeclarationKeyword>(staticB.msgDeclaration)
     }
-
 
 
     @Test
@@ -2061,7 +2060,7 @@ class ParserTest {
         assert(ast.count() == 1)
         val tok = (ast[0] as IdentifierExpr).token
 
-        assertTrue {tok.relPos.start == 0 && tok.relPos.end == 16}
+        assertTrue { tok.relPos.start == 0 && tok.relPos.end == 16 }
     }
 
     @Test
@@ -2084,7 +2083,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        assertTrue {ast[0] is DestructingAssign}
+        assertTrue { ast[0] is DestructingAssign }
     }
 
     @Test
@@ -2100,7 +2099,7 @@ class ParserTest {
     @Test
     fun correctParsingErrorLine() {
 
-    val source = """
+        val source = """
             union CombinatorResult = 
             |
              
@@ -2177,7 +2176,6 @@ class ParserTest {
     }
 
 
-
     @Test
     fun strangeCommentsBug() {
         val source = """
@@ -2200,6 +2198,7 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
     @Test
     fun builderWithoutDefaultAction() {
         val source = """
@@ -2273,7 +2272,6 @@ class ParserTest {
     @Test
     fun messageDeclForTypeWith2Generics() {
         // MutableList::T forEachBreak::[ -> T] was parsed as kw method decl for Unit receiver
-
         val source = """
            Pair(MutableList::T, MutableList::G) sas = []
         """.trimIndent()
@@ -2281,7 +2279,18 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
-
+    @Test
+    fun manyConstructors() {
+        val source = """
+            constructor Person [
+              on sas = [1 echo]
+              on sas::Int = [1 echo]
+            ]
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
 
 //    @Test
