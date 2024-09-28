@@ -49,16 +49,24 @@ fun Resolver.resolveMessageDeclaration(
         } else q
 
     } else typeTable[statement.forTypeAst.name]
-    val copyTypeIfGenerics = if (typeFromDB is Type.UserType && typeFromDB.typeArgumentList.isNotEmpty())
-        typeFromDB.copyAnyType()
-    else typeFromDB
-
-
-    if (copyTypeIfGenerics == null || typeFromDB == null) {
+    if (typeFromDB == null) {
         unResolvedMessageDeclarations.add(currentPackageName, statement)
         currentLevel--
         return true
     }
+
+    val checkThatTypeGenericsResolvable = {
+        if (typeFromDB is Type.UserType &&
+            typeFromDB.typeArgumentList.isNotEmpty() &&
+            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
+        ) {
+            typeFromDB.copyAnyType()
+        } else
+            typeFromDB
+
+    }
+    val copyTypeIfGenerics = checkThatTypeGenericsResolvable()
+
     // but wait maybe some generic param's type is unresolved (List::T unary = [])
     if (copyTypeIfGenerics is Type.UserLike && statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.isNotEmpty()) {
         var alTypeArgsAreFound = true
@@ -265,7 +273,12 @@ fun Resolver.resolveMessageDeclaration(
             if (expr is Expression) {
                 val typeOfSingleExpr = expr.type!!
                 val mdgData = when (statement) {
-                    is ConstructorDeclaration -> findStaticMessageType(copyTypeIfGenerics, statement.name, statement.token).first
+                    is ConstructorDeclaration -> findStaticMessageType(
+                        copyTypeIfGenerics,
+                        statement.name,
+                        statement.token
+                    ).first
+
                     is MessageDeclarationUnary -> findAnyMsgType(
                         copyTypeIfGenerics,
                         statement.name,
@@ -364,6 +377,10 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = statement.returnType
     // addToDb
     if (addToDb) {
+//        if (typeFromDB != statement.forType) {
+//            statement.forType = typeFromDB
+////            statement.token.compileError("Compiler bug: while adding msg to db: typeFromDB($typeFromDB) != statement.forType(${statement.forType})")
+//        }
         try {
             addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
         } catch (_: CompilerError) {
@@ -373,7 +390,7 @@ fun Resolver.resolveMessageDeclaration(
         }
     }
 
-    val isResolvedSingleExpr = if (statement.isSingleExpression) {
+    val isResolvedSingleExpr = if (statement.isSingleExpression && statement.body.isNotEmpty()) {
         val first = statement.body.first()
         first is Expression && first.type != null
     } else false

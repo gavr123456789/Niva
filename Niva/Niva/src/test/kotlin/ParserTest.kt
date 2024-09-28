@@ -2098,7 +2098,6 @@ class ParserTest {
 
     @Test
     fun correctParsingErrorLine() {
-
         val source = """
             union CombinatorResult = 
             |
@@ -2106,7 +2105,6 @@ class ParserTest {
         """.trimIndent()
         try {
             getAstTest(source)
-
         } catch (e: CompilerError) {
             assertTrue { e.token.line == 2 }
         }
@@ -2120,9 +2118,7 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)
-
     }
-
 
     @Test
     fun manyLineCommentsNotRuiningTokLineNumbers() {
@@ -2139,7 +2135,6 @@ class ParserTest {
         val secondTok = ast[1].token
         assert(firstTok.line == 4)
         assert(secondTok.line == 5)
-
     }
 
     @Test
@@ -2162,19 +2157,13 @@ class ParserTest {
     @Test
     fun manyLineDocComment() {
         val source = """
-        
           /// and resumes it after a specified time.
              /// using Millis
           CoroutineContext delay::Int -> Unit 
-        
-        
-        
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-
     }
-
 
     @Test
     fun strangeCommentsBug() {
@@ -2286,12 +2275,31 @@ class ParserTest {
               on sas = [1 echo]
               on sas::Int = [1 echo]
             ]
-            
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun newUnionSyntax() {
+        val source = """
+            type Sas = Sus x: Int | Sas y: String
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun newUnionSynta2x() {
+        val source = """
+            type Node v: T
+            type LinkedList head: Node?
+            constructor LinkedList::T empty =
+                LinkedList::T head: null
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 
 //    @Test
 //    fun differences() {

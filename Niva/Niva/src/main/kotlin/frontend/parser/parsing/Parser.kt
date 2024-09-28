@@ -21,7 +21,6 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
 
     val kind = tok.kind
 
-
     if (kind == TokenType.Dot) {
         return expression(dot = true, parseSingleIf = true)
     }

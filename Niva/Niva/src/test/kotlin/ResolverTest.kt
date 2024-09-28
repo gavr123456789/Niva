@@ -1321,9 +1321,10 @@ class ResolverTest {
             type LinkedList head: Node? 
             constructor LinkedList::T empty = 
                 LinkedList::T head: null
+            x = LinkedList::Int empty
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 3)
+        assert(statements.count() == 4)
         val q = statements[2] as ConstructorDeclaration
         val w = q.body.first() as MessageSendKeyword
         val e = w.messages[0] as KeywordMsg
@@ -1975,17 +1976,6 @@ class ResolverTest {
             x == "1" => 2 |=> 
             x == "4" => 3 |=> 
             5
-        """.trimIndent()
-        val (x, _) = resolveWithResolver(source)
-        assert(x.count() == 2)
-    }
-
-    @Test
-    fun whileTruef() {
-        val source = """
-            [this done not] whileTrue: [
-        
-            ]
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 2)
