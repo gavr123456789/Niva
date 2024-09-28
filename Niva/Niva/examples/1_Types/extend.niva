@@ -1,0 +1,30 @@
+type Person
+
+// many messages for same type
+extend Person [
+  on unary = 1 echo
+  on + binary::Int = binary echo
+  on key::Int word::String = key echo
+  on withLocalName: x::Int = x echo
+]
+
+p = Person new
+
+p unary
+p + 5
+p key: 1 word: "2"
+p withLocalName: 1
+
+// many constructors for same type
+constructor Person [
+  on unary = 1 echo
+  on key::Int word::String = key echo
+  on withLocalName: x::Int = x echo
+]
+constructor Person [
+  on sas = 1 echo
+  on sus::Int = sus echo
+]
+
+Person sas
+Person sus: 5

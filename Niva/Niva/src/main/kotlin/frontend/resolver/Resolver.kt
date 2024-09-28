@@ -465,6 +465,13 @@ fun Resolver.resolveExpressionInBrackets(
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
 
     if (type1 == type2) return type1
+    val firstIsNothing = type1.name == "Nothing"
+    val secondIsNothing = type2.name == "Nothing"
+    if (firstIsNothing && !secondIsNothing) return type2 else
+    if (!firstIsNothing && secondIsNothing) return type1 else
+    if (firstIsNothing && secondIsNothing) return type2
+
+
     if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name) return type1
 
     val firstIsNull = typeIsNull(type1)
