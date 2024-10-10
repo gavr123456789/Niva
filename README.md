@@ -19,19 +19,18 @@ https://github.com/user-attachments/assets/dfeef595-685f-4124-8eaf-9956919e07af
 You can start from some fibonacci [here](https://github.com/gavr123456789/Niva/tree/main/Niva/Niva/examples/Algoritms)  
 And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva) repo you can find WIP implementation of interpreter from the book 
 
-## Bullet points
-- amm
-- ...
-- bla bla bla simplicity
+## Features
+- simplicity - its types, tagged unions and methods for them
 - OOP - inheritance - late bindings + some FP(unions, matching, immutability by default)
-- kinda scripting experience `"Hello World!" echo`
+- kinda scripting langs experience, this is the whole helloworld program `"Hello World!" echo`
 - Smalltalk Syntax
-- Inline REPL
-- Imports inference
+- Inline REPL - new way of print debugging ^_^
+- Imports inference -  2 types have no identical names and set of fields, u dont need to write imports
 - JVM/Kotlin interop
 - Smalltalk syntax
 - Editor support with [LSP](https://github.com/gavr123456789/vaLSe) and [vscode](https://github.com/gavr123456789/niva-vscode-bundle)/zed(not public) plugin
-
+- Smalltalk syntax(Iloveit)
+  
 ## Compile from sources 
 Run in Niva/Niva folder:
 `./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path
@@ -40,7 +39,6 @@ Run in Niva/Niva folder:
 If you have graalvm in your JAVA_HOME then run:  
 `./gradlew buildNativeNiva` this will create native binary in ~/.niva/bin  
  
-
 ### How to install GraalVM
 Arch: `yay -S jdk22-graalvm-bin`  
 `archlinux-java status`  
