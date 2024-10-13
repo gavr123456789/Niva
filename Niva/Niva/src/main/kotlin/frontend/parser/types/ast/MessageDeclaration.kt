@@ -9,6 +9,8 @@ import main.frontend.meta.Token
 import main.frontend.resolver.findAnyMsgType
 import java.util.Stack
 
+class PairOfErrorAndMessage (val msg: Message, val errors: Set<Type.Union>)
+
 sealed class MessageDeclaration(
     val name: String,
     val forTypeAst: TypeAST,
@@ -24,7 +26,7 @@ sealed class MessageDeclaration(
     var returnType: Type? = null,
     var isRecursive: Boolean = false,
     val typeArgs: MutableList<String> = mutableListOf(),
-    val stackOfPossibleErrors: Stack<Pair<Message, MutableSet<Type.Union>>> = Stack(),
+    val stackOfPossibleErrors: Stack<PairOfErrorAndMessage> = Stack(),
     var messageData: MessageMetadata? = null
 ) : Declaration(token, isPrivate, pragmas) {
     override fun toString(): String {

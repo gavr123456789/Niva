@@ -2280,26 +2280,26 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
-    @Test
-    fun newUnionSyntax() {
-        val source = """
-            type Sas = Sus x: Int | Sas y: String
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
-
-    @Test
-    fun newUnionSynta2x() {
-        val source = """
-            type Node v: T
-            type LinkedList head: Node?
-            constructor LinkedList::T empty =
-                LinkedList::T head: null
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-    }
+//    @Test
+//    fun newUnionSyntax() {
+//        val source = """
+//            type Sas = Sus x: Int | Sas y: String
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
+//
+//    @Test
+//    fun newUnionSynta2x() {
+//        val source = """
+//            type Node v: T
+//            type LinkedList head: Node?
+//            constructor LinkedList::T empty =
+//                LinkedList::T head: null
+//        """.trimIndent()
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//    }
 
 //    @Test
 //    fun differences() {

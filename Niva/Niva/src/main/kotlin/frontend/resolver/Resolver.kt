@@ -331,7 +331,7 @@ private fun Resolver.resolveStatement(
                 }
             }
 
-            ///
+
             wasThereReturn = typeOfReturnExpr
 
             stack.pop()
@@ -467,6 +467,7 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 == type2) return type1
     val firstIsNothing = type1.name == "Nothing"
     val secondIsNothing = type2.name == "Nothing"
+    @Suppress("KotlinConstantConditions")
     if (firstIsNothing && !secondIsNothing) return type2 else
     if (!firstIsNothing && secondIsNothing) return type1 else
     if (firstIsNothing && secondIsNothing) return type2

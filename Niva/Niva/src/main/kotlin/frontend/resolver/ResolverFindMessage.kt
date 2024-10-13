@@ -64,7 +64,8 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
 }
 
 fun checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
-    val errors = receiverType.errors ?: return null
+    val errors = receiverType.errors
+        ?: return null
     // y = 4 sas ifErrorDo: [5]
     // y is not errored now
 
@@ -77,11 +78,9 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
         .also { it.errors = null }
 
     val ifErrorKW = { returnTypeWithoutErrors2: Type, rootTypeOfAllErrors: Type.UnionRootType ->
-        (createKeyword(
-            "ifError",
+        (createKeyword("ifError",
             listOf(
-                KeywordArg(
-                    "ifError",
+                KeywordArg("ifError",
                     Type.Lambda(
                         mutableListOf(KeywordArg("it", rootTypeOfAllErrors)),
                         returnTypeWithoutErrors2
@@ -228,6 +227,7 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
+    // return ifError method if return type have possible errors
     checkForError(receiverType, selectorName, pkg)?.let {
 
         // remove one decl
@@ -235,10 +235,12 @@ fun Resolver.findAnyMsgType(
         val msg = if (stack.isNotEmpty()) this.stack.last() else null
 
         if (resolvingMsgDecl != null && msg is MessageSend) {
+//            if (msg.receiver.type?.errors?.isNotEmpty() == true) {
+//            }
             // TODO тут можно судить просто по наличию у msg.receiver.type.errors
             if (msg.receiver is MessageSend) {
                 msg.receiver.messages.forEach { a ->
-                    val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.first == a }
+                    val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)
                     }

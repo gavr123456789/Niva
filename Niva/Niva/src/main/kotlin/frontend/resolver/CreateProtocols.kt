@@ -579,7 +579,9 @@ fun createExceptionProtocols(
             createKeyword(KeywordArg("addSuppressed", errorType), unitType),
         ),
         staticMsgs = mutableMapOf(
-            throwWithMessageGenerate(stringType, nothingTypeWithError).also { it.second.errors = mutableSetOf(errorType) },
+            throwWithMessageGenerate(stringType, nothingTypeWithError).also {
+                it.second.addError(errorType)
+            }
         )
     )
     return mutableMapOf(protocol.name to protocol)

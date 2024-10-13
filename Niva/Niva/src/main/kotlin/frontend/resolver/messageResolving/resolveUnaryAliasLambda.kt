@@ -22,7 +22,7 @@ fun Resolver.resolveUnaryAliasLambda(statement: UnaryMsg, receiverType: Type.Lam
 
     statement.apply {
         type = s.returnType
-        type?.errors = s.errors
+        type?.errors = s.errors?.toMutableSet()
         pragmas = s.pragmas
         declaration = s.declaration
         kind = UnaryMsgKind.Unary
