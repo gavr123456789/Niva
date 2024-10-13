@@ -58,7 +58,7 @@ fun Resolver.resolveMessageDeclaration(
     val checkThatTypeGenericsResolvable = {
         if (typeFromDB is Type.UserType &&
             typeFromDB.typeArgumentList.isNotEmpty() &&
-            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
+            statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
         ) {
             typeFromDB.copyAnyType()
         } else
@@ -206,9 +206,9 @@ fun Resolver.resolveMessageDeclaration(
             val listOfErrorsWithLines = {
                 buildString {
                     possibleErrors.forEach {
-                        assert(it.second.isNotEmpty())
-                        append("\t" + it.first.token.line, " | $WHITE", it.first.receiver, " ", it.first, RESET)
-                        append(" !{$RED", it.second.joinToString(" ") { it.name }, "$RESET}\n")
+                        assert(it.errors.isNotEmpty())
+                        append("\t" + it.msg.token.line, " | $WHITE", it.msg.receiver, " ", it.msg, RESET)
+                        append(" !{$RED", it.errors.joinToString(" ") { it.name }, "$RESET}\n")
                     }
                 }
             }
@@ -216,7 +216,7 @@ fun Resolver.resolveMessageDeclaration(
                 // errors declared but there are no possible errors
 
                 if (possibleErrors.isNotEmpty()) {
-                    val allPossibleErrors = possibleErrors.flatMap { it.second }
+                    val allPossibleErrors = possibleErrors.flatMap { it.errors }
                     val possibleErrorsUnion = allPossibleErrors.distinct()
                     val possibleErrorsJoined = possibleErrorsUnion.joinToString(" ") { it.name }
 
@@ -377,10 +377,6 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = statement.returnType
     // addToDb
     if (addToDb) {
-//        if (typeFromDB != statement.forType) {
-//            statement.forType = typeFromDB
-////            statement.token.compileError("Compiler bug: while adding msg to db: typeFromDB($typeFromDB) != statement.forType(${statement.forType})")
-//        }
         try {
             addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
         } catch (_: CompilerError) {

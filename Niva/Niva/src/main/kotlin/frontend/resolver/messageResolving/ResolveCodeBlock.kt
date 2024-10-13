@@ -234,19 +234,13 @@ fun Resolver.resolveCodeBlock(
         }
     }
 
-
+    // if we are resolving codeblock with error as first arg, then its error
     if (type.args.isNotEmpty()) {
         val firstArg = type.args.first().type
         if (firstArg is Type.UnionRootType && firstArg.isError) {
             resolvingMessageDeclaration?.also {
                 val metadata = it.findMetadata(this)
-                metadata.errors?.also {
-                    it.removeAll(firstArg.branches)
-                    if (it.isEmpty()) {
-                        // since error can be empty, it will mean that this func
-                        metadata.errors = null
-                    }
-                }
+                metadata.clearErrors(firstArg.branches)
             }
         }
     }

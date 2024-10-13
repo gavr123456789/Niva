@@ -21,15 +21,26 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-lexer = Lexer input: "((()))"
-//> Lexer input: ((())) pos: 0 readPos: 1 ch: (
->lexer
+errordomain MyError =
+| Error1 text: String
 
+Int sas -> Int!Error1 = [
+    x = Error1 text: "Important error information ^_^"
+    x throw
+    ^ this != 0 => x throw |=> 1
+]
 
-type Person name: String age: Int 
-// Person sas = 123
-
-p = Person 
+Int sus -> Int = [
+ 
+    y = 1 sas 
+        ifError: [
+            "got some error!!!" echo
+            | it
+            | Error1 => it text echo
+            42
+        ] 
+    ^3
+]
 """
 
 fun main(args: Array<String>) {
@@ -39,7 +50,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/parserCombinator/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/Fun/byLangs/niva/writing-an-interpreter-in-niva/niva/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/wc/main.niva"
 //
 //    try {
 //        val ls = LS()

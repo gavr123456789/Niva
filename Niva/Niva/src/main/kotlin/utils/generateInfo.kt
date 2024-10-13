@@ -73,7 +73,6 @@ fun Type.infoPrint() = buildString {
         is Type.UnionBranchType -> TODO()
 
         is Type.UnknownGenericType -> TODO()
-        is Type.KnownGenericType -> TODO()
 
 //        is Type.ErrorType -> TODO()
 

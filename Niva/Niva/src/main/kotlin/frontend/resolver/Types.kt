@@ -31,24 +31,37 @@ sealed class MessageMetadata(
     @Suppress("unused")
     val msgSends: List<MsgSend> = emptyList(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
-    var errors: MutableSet<Type.Union>? = null,
+    private var _errors: MutableSet<Type.Union>? = null,
     val declaration: MessageDeclaration?
 ) {
-    fun addErrors(errors: MutableSet<Type.Union>) {
-        val errs = this.errors
+    val errors: Set<Type.Union>?
+        get() = _errors?.toSet()
+
+    fun clearErrors(branches: List<Type.Union>) {
+        val localErrors = _errors
+        if (localErrors != null) {
+            localErrors.removeAll(branches)
+            if (localErrors.isEmpty()) {
+                _errors = null
+            }
+        }
+    }
+    fun addErrors(errors: Set<Type.Union>) {
+        assert(errors.isNotEmpty())
+        val errs = this._errors
         if (errs != null) {
             errs.addAll(errors)
         } else {
-            this.errors = errors
+            this._errors = errors.toMutableSet()
         }
     }
 
     fun addError(err: Type.Union) {
-        val errors = errors
+        val errors = _errors
         if (errors != null)
             errors.add(err)
         else
-            this.errors = mutableSetOf(err)
+            this._errors = mutableSetOf(err)
     }
 
     override fun toString(): String {
@@ -236,7 +249,7 @@ sealed class Type(
 ) {
 
     fun copyAnyType(): Type =
-        when (this) {
+        (when (this) {
             is UserLike -> {
                 this.copy()
             }
@@ -246,7 +259,7 @@ sealed class Type(
                     typeName = InternalTypes.valueOf(name),
                     pkg = pkg,
                     isPrivate = isPrivate,
-                    protocols = protocols
+                    protocols = protocols,
                 )
             }
 
@@ -263,6 +276,11 @@ sealed class Type(
             }
 
             is Lambda -> TODO()
+        }).also {
+            it.errors = errors
+            it.parent = parent
+            it.isMutable = isMutable
+            it.isAlias = isAlias
         }
 
 
@@ -277,7 +295,7 @@ sealed class Type(
             typeCopy.errors = mutableSetOf(err)
     }
 
-    fun addErrors(errors2: MutableSet<Union>): Type {
+    fun addErrors(errors2: Set<Union>): Type {
         // создать настоящее копирование для всех типов
         // копировать текущий тип и только потом добавлять к нему ерроры
         assert(this.errors == null)
@@ -288,13 +306,23 @@ sealed class Type(
         if (errs != null) {
             errs.addAll(errors2)
         } else
-            typeCopy.errors = errors2
+            typeCopy.errors = errors2.toMutableSet()
 
+        val errors2 = typeCopy.errors
+        if (errors2 != null) {
+            assert(errors2.isNotEmpty())
+        }
         return typeCopy
     }
 
+    private fun possibleErrors(): String {
+        val errors = errors
+        return if (errors == null) "" else {
+            "!{" + errors.joinToString(",") + "}"
+        }
+    }
     override fun toString(): String = when (this) {
-        is InternalLike -> name
+        is InternalLike -> name + possibleErrors()
         is NullableType -> "$realType?"
         is UnresolvedType -> "?unresolved type?"
         is UserLike -> {
@@ -318,7 +346,10 @@ sealed class Type(
                     } + ")"
                 } else ""
             val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
-            "$needPkg$name$genericParam"
+
+
+
+            "$needPkg$name$genericParam${possibleErrors()}"
         }
 
         is Lambda -> name
@@ -479,7 +510,7 @@ sealed class Type(
         fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
 
         fun copy(withDifferentPkg: String? = null): UserLike =
-            when (this) {
+            (when (this) {
                 is UserType -> UserType(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
@@ -488,7 +519,7 @@ sealed class Type(
                     pkg = withDifferentPkg ?: this.pkg,
                     protocols = this.protocols.toMutableMap(),
                     typeDeclaration = this.typeDeclaration
-                ).also { it.isBinding = this.isBinding }
+                )
 
                 is EnumRootType -> EnumRootType(
                     name = this.name,
@@ -499,10 +530,7 @@ sealed class Type(
                     branches = this.branches.toList(),
                     protocols = this.protocols.toMutableMap(),
                     typeDeclaration = this.typeDeclaration
-                ).also {
-                    it.isBinding = this.isBinding
-                    it.parent = this.parent
-                }
+                )
 
                 is UnionRootType -> UnionRootType(
                     name = this.name,
@@ -514,10 +542,7 @@ sealed class Type(
                     protocols = this.protocols.toMutableMap(),
                     isError = this.isError,
                     typeDeclaration = this.typeDeclaration
-                ).also {
-                    it.isBinding = this.isBinding
-                    it.parent = this.parent
-                }
+                )
 
                 is EnumBranchType -> TODO()
                 is UnionBranchType -> UnionBranchType(
@@ -530,13 +555,13 @@ sealed class Type(
                     protocols = this.protocols.toMutableMap(),
                     isError = this.isError,
                     typeDeclaration = this.typeDeclaration
-                ).also {
-                    it.isBinding = this.isBinding
-                    it.parent = this.parent
-                }
+                )
 
-                is KnownGenericType -> TODO()
                 is UnknownGenericType -> UnknownGenericType(this.name)
+            }).also {
+                it.isBinding = this.isBinding
+                it.parent = this.parent
+                it.errors = this.errors?.toMutableSet()
             }
     }
 
@@ -641,11 +666,11 @@ sealed class Type(
         typeDeclaration: TypeDeclaration?
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
-    class KnownGenericType(
-        name: String,
-        typeArgumentList: List<Type>,
-        pkg: String = "common",
-    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null)
+//    class KnownGenericType(
+//        name: String,
+//        typeArgumentList: List<Type>,
+//        pkg: String = "common",
+//    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null)
 
     class UnknownGenericType(
         name: String,

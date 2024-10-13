@@ -36,6 +36,7 @@ class LexerTest {
 
     @Test
     fun manyExpr() {
+
         val manyExpr = """
             x sas
             y sus
@@ -45,28 +46,29 @@ class LexerTest {
 
     @Test
     fun oneManyLinesExpr() {
-        val oneExpr = """
+        """
             x sas: 1
             .ses: 2
             x sas
-        """.trimIndent()
-        // there no end of line after "sas" because there end of file
-        checkWithEnd(
-            oneExpr, listOf(
-                Identifier,
-                Identifier,
-                Colon,
-                Integer,
-                EndOfLine,
-                Dot,
-                Identifier,
-                Colon,
-                Integer,
-                EndOfLine,
-                Identifier,
-                Identifier,
+        """.trimIndent().also {
+            // there no end of line after "sas" because there end of file
+            checkWithEnd(
+                it, listOf(
+                    Identifier,
+                    Identifier,
+                    Colon,
+                    Integer,
+                    EndOfLine,
+                    Dot,
+                    Identifier,
+                    Colon,
+                    Integer,
+                    EndOfLine,
+                    Identifier,
+                    Identifier,
+                )
             )
-        )
+        }
     }
 
     @Test

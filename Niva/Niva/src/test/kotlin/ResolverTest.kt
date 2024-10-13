@@ -1302,12 +1302,12 @@ class ResolverTest {
     fun genericArgFromInputParamsNotNeedToBeResolved() {
         val source = """
             type Node v: T next: Node?
-        
-            Node str2 -> String = next unpackOrError str2
+            Node::T str = "rar" 
+            Node str2 -> String = next unpackOrError str
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 2)
-        val str2 = statements[1] as MessageDeclarationUnary
+        assert(statements.count() == 3)
+        val str2 = statements[2] as MessageDeclarationUnary
         val unpackOrErrorType = (str2.body.first() as MessageSendUnary).messages.first().type as Type.UserType
         assertTrue {
             unpackOrErrorType.typeArgumentList.isNotEmpty() && unpackOrErrorType.name == "Node"
@@ -1655,9 +1655,9 @@ class ResolverTest {
                 ^ 1
             ]
             
-            Int sas2 -> Int!Error1 = [
+            Int sas2 -> String!Error1 = [
                 x = 1 sas
-                ^ x
+                ^ x toString
             ]
         """.trimIndent()
         val (statements, r) = resolveWithResolver(source)

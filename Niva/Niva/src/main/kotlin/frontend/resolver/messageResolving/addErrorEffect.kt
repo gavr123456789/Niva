@@ -4,6 +4,7 @@ import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.parser.types.ast.Message
+import main.frontend.parser.types.ast.PairOfErrorAndMessage
 
 
 // мне нужно 2 сообщения
@@ -15,15 +16,16 @@ import main.frontend.parser.types.ast.Message
 // returns type updated with errors
 fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statement: Message): Type {
     val currentMsgDecl = resolvingMessageDeclaration
-    val errors2 = msgFromDB.errors
-    if (errors2 != null && currentMsgDecl != null) {
+    val errors = msgFromDB.errors
+    if (errors != null && currentMsgDecl != null) {
         val metadataOfCurrentDeclaration = currentMsgDecl.findMetadata(this)
-        metadataOfCurrentDeclaration.addErrors(errors2)
+        metadataOfCurrentDeclaration.addErrors(errors)
 
-        val pairOfStAndErrorSet = Pair(statement, errors2)
+        val pairOfStAndErrorSet = PairOfErrorAndMessage(statement, errors)
+        assert(errors.isNotEmpty())
 
         currentMsgDecl.stackOfPossibleErrors.add(pairOfStAndErrorSet)
-        val returnTypeWithErrors = returnType.addErrors(errors2)
+        val returnTypeWithErrors = returnType.addErrors(errors)
 
         return returnTypeWithErrors
     }
