@@ -9,7 +9,7 @@ import main.frontend.meta.Token
 import main.frontend.resolver.findAnyMsgType
 import java.util.Stack
 
-class PairOfErrorAndMessage (val msg: Message, val errors: Set<Type.Union>)
+data class PairOfErrorAndMessage (val msg: Message, val errors: Set<Type.Union>)
 
 sealed class MessageDeclaration(
     val name: String,

@@ -321,6 +321,14 @@ sealed class Type(
             "!{" + errors.joinToString(",") + "}"
         }
     }
+    // needed for comparison
+    fun toStringWithoutErrors() : String {
+        fun removeAfterExclamation(s: String): String {
+            val index = s.indexOf('!')
+            return if (index != -1) s.substring(0, index) else s
+        }
+        return removeAfterExclamation(this.toString())
+    }
     override fun toString(): String = when (this) {
         is InternalLike -> name + possibleErrors()
         is NullableType -> "$realType?"
@@ -736,6 +744,21 @@ class Project(
     val packages: MutableMap<String, Package> = mutableMapOf(),
     val usingProjects: MutableList<Project> = mutableListOf()
 )
+
+//fun TypeAST.toType(
+//    typeDB: TypeDB,
+//    typeTable: Map<TypeName, Type>,
+//    parentType: Type.UserLike? = null,
+//    resolvingFieldName: String? = null,
+//    typeDeclaration: SomeTypeDeclaration? = null,
+//    realParentAstFromGeneric: TypeAST? = null,
+//    customPkg: String? = null
+//): Type {
+//    val result = this.toType2(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration,
+//        realParentAstFromGeneric, customPkg)
+//    return result
+//}
+
 
 // if parentType not null, then we are resolving its field
 fun TypeAST.toType(

@@ -365,7 +365,32 @@ fun Resolver.resolveMessageDeclaration(
 
     if (statement.returnTypeAST != null && statement.returnType == null) {
         try {
-            statement.returnType = statement.returnTypeAST.toType(typeDB, typeTable)
+            val returnType = statement.returnTypeAST.toType(typeDB, typeTable)
+            // we cant infer error effects from bidings, because they have no body
+            // so we need to infer errors from ASTReturnType
+            val isThisABinding = statement.body.isEmpty()
+            statement.returnType =
+                if (isThisABinding && statement.returnTypeAST.errors != null && returnType.errors == null) {
+                    val copy = returnType.copyAnyType()
+                    val errors = inferErrorTypeFromASTReturnTYpe(
+                        statement.returnTypeAST.errors,
+                        this.typeDB,
+                        statement.returnTypeAST.token
+                    )
+                    copy.errors = errors
+
+                    statement.stackOfPossibleErrors.add(
+                        PairOfErrorAndMessage(
+                            createFakeMsg(
+                                statement.token,
+                                copy
+                            ), errors
+                        )
+                    )
+
+                    copy
+                } else returnType
+
         } catch (_: CompilerError) {
             unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
@@ -378,7 +403,12 @@ fun Resolver.resolveMessageDeclaration(
     // addToDb
     if (addToDb) {
         try {
-            addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
+            val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
+
+            val errors = statement.returnType?.errors
+            if (errors != null && x.errors == null ) {
+                x.addErrors(errors)
+            }
         } catch (_: CompilerError) {
             unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--
