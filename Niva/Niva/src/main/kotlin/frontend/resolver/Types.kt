@@ -248,6 +248,9 @@ sealed class Type(
     var isAlias: Boolean = false
 ) {
 
+    fun isCollection() = name in listOf("List", "MutableList", "Set", "MutableSet", "Map", "MutableMap")
+
+
     fun copyAnyType(): Type =
         (when (this) {
             is UserLike -> {
@@ -582,7 +585,6 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
-
 
     // Union -> Error, User
     // User -> Root, Branch
