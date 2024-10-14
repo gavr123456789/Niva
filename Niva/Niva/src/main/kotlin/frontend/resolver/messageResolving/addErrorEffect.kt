@@ -3,6 +3,7 @@ package main.frontend.resolver.messageResolving
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
 import frontend.resolver.Type
+import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.PairOfErrorAndMessage
 
@@ -17,6 +18,9 @@ import main.frontend.parser.types.ast.PairOfErrorAndMessage
 fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statement: Message): Type {
     val currentMsgDecl = resolvingMessageDeclaration
     val errors = msgFromDB.errors
+    if (errors == null && returnType.errors != null) {
+        statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
+    }
     if (errors != null && currentMsgDecl != null) {
         val metadataOfCurrentDeclaration = currentMsgDecl.findMetadata(this)
         metadataOfCurrentDeclaration.addErrors(errors)

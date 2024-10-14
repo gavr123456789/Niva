@@ -3,6 +3,7 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
+import frontend.resolver.Type.Union
 import frontend.resolver.messageResolving.resolveCodeBlock
 import main.codogen.GeneratorKt
 import main.frontend.meta.Token
@@ -1116,6 +1117,37 @@ class Resolver(
         currentArgumentNumber = -1
         currentLevel = 0
         topLevelStatements.clear()
+    }
+
+    fun createFakeMsg(token: Token, type: Type): Message {
+        return UnaryMsg(
+            receiver = LiteralExpression.IntExpr(token),
+            selectorName = "bindingFakeMsg",
+            identifier = listOf("bindingFakeMsg"),
+            type = type,
+            token = token,
+            declaration = null
+        )
+    }
+    fun inferErrorTypeFromASTReturnTYpe(errors: List<String>, db: TypeDB, errorTok: Token): MutableSet<Union> {
+        assert(errors.isNotEmpty())
+        val result = mutableSetOf<Union>()
+        errors.forEach {
+            val q = db.getType(it)
+            when (q) {
+                is TypeDBResult.FoundMoreThanOne -> errorTok.compileError("Found more than one error domain type with the same name ${q.packagesToTypes}")
+                is TypeDBResult.FoundOne -> {
+
+                    if (q.type !is Union) {
+                        errorTok.compileError("Found type ${q.type} but its not an error type")
+                    }
+                    result.add(q.type)
+                }
+                is TypeDBResult.NotFound -> errorTok.compileError("Cant find error domain type: $it ")
+            }
+
+        }
+        return result
     }
 
     companion object {

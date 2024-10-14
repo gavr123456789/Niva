@@ -227,7 +227,7 @@ fun compare2Types(
     }
 
 
-    if (type1OrChildOf2.toString() == type2.toString() && !isDifferentPkgs) {
+    if (type1OrChildOf2.toStringWithoutErrors() == type2.toStringWithoutErrors() && !isDifferentPkgs) {
         return true
     }
 

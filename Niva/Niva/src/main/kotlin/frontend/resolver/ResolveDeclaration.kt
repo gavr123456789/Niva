@@ -124,7 +124,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
 
 
                     if (pkgArg.keywordArg !is LiteralExpression)
-                        pkgArg.keywordArg.token.compileError("Package argument must be a string")
+                        pkgArg.keywordArg.token.compileError("Package argument must be a String")
                     if (contentArg.keywordArg !is CodeBlock)
                         contentArg.keywordArg.token.compileError("Content argument must be a code block with type and method declarations")
 
