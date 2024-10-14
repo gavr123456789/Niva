@@ -9,6 +9,14 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.utils.isGeneric
 
+
+// x = {} // ERROR need x::List::Int = {}
+fun checkThatCollectionIsTyped(statement: VarDeclaration, type: Type) {
+    if (statement.valueTypeAst == null && type.isCollection() && type is Type.UserType) {
+        statement.token.compileError("(x::MutableList::Int = {})\nCan't infer type of empty collection, please specify it like x::MutableList::Int = {}")
+    }
+}
+
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
     currentScope: MutableMap<String, Type>,
@@ -20,10 +28,11 @@ fun Resolver.resolveVarDeclaration(
     resolveSingle((statement.value), previousAndCurrentScope, statement)
     currentLevel--
 
-
     val valueOfVarDecl = statement.value
     var typeOfValueInVarDecl = valueOfVarDecl.type
         ?: statement.token.compileError("Compiler BUG: In var declaration $WHITE${statement.name}$RED value doesn't got type")
+    // check that collection is typed
+    checkThatCollectionIsTyped(statement, typeOfValueInVarDecl)
     val definedASTType = statement.valueTypeAst
 
     if (valueOfVarDecl is MessageSendKeyword) {
@@ -78,9 +87,7 @@ fun Resolver.resolveVarDeclaration(
             val text = "$definedASTType != $rightPartType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }
-
         typeOfValueInVarDecl = statementDeclared
-
 
         // if x::Int? = 42 then we need to wrap type to Nullable
         if (definedASTType.isNullable && rightPartType !is Type.NullableType) {
@@ -88,11 +95,6 @@ fun Resolver.resolveVarDeclaration(
             valueOfVarDecl.type = nullableType
             typeOfValueInVarDecl = nullableType
         }
-        // x::Sas = [x::Int -> x inc]
-        // right part here doesn't contain information about alias
-//        if (valueType is Type.Lambda && statementDeclared is Type.Lambda && statementDeclared.alias != null) {
-//            valueType.alias = statementDeclared.alias
-//        }
 
     }
 
