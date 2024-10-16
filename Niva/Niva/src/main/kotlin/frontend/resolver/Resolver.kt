@@ -449,15 +449,9 @@ fun Resolver.resolveExpressionInBrackets(
     statement: ExpressionInBrackets,
     previousAndCurrentScope: MutableMap<String, Type>,
 ): Type {
-    if (statement.statements.isEmpty()) {
-        statement.token.compileError("Parens must contain expression")
-    }
-    val lastExpr = statement.statements.last()
-    if (lastExpr !is Expression) {
-        statement.token.compileError("Last statement inside parens must be expression")
-    }
+    val lastExpr = statement.expr
 
-    resolve(statement.statements, previousAndCurrentScope, statement)
+    resolveSingle(statement.expr, previousAndCurrentScope, statement)
     statement.type = lastExpr.type
     return lastExpr.type!!
 }

@@ -273,6 +273,9 @@ fun Resolver.resolveControlFlow(
                 previousAndCurrentScope[statement.switch.name] = currentType
                 statement.switch.type = currentType
                 typesAlreadyChecked += currentType
+                // add import of the type (if it's an errordomain it used only one time in matching)
+                val currentPackage = getCurrentPackage(statement.token)
+                currentPackage.addImport(currentType.pkg)
             }
 
             val curTok = it.ifExpression.token

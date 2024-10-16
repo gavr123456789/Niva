@@ -156,6 +156,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     }
 
                     changePackage(pkgName, it.token, isBinding = true, neededImports = neededImports, neededPlugins = neededPlugins)
+                    // declarations
                     val declarations = contentArg.keywordArg.statements
                     declarations.forEach { decl ->
                         if (decl is Declaration) {

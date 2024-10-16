@@ -2280,6 +2280,15 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun genericTypeDeclarationWithError() {
+        val source = """
+            x::List::Int!Error = 4
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """

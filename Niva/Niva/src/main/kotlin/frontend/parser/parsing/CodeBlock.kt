@@ -102,9 +102,11 @@ fun Parser.bracketExpression(): ExpressionInBrackets {
     val openBracket = matchAssert(TokenType.OpenParen)
 
     val statements = statementsUntilCloseBracket(TokenType.CloseParen)
-
+    if (statements.count() != 1) openBracket.compileError("Expected one expression in brackets but got ${statements.count()}")
+    val expr = statements.first()
+    if (expr !is Expression) openBracket.compileError("Expected expression, not a statement")
     val result = ExpressionInBrackets(
-        statements = statements,
+        expr = expr,
         type = null,
         token = openBracket
     )

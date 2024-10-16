@@ -4,6 +4,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.MessageSend
 import main.utils.CYAN
@@ -73,7 +74,6 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
     // | Int => ...?? // can be used if this is statement
     // | Error1 => 4
     // | Error2 => 6
-
     val returnTypeWithoutErrors = receiverType.copyAnyType()
         .also { it.errors = null }
 
@@ -238,8 +238,10 @@ fun Resolver.findAnyMsgType(
 //            if (msg.receiver.type?.errors?.isNotEmpty() == true) {
 //            }
             // TODO тут можно судить просто по наличию у msg.receiver.type.errors
-            if (msg.receiver is MessageSend) {
-                msg.receiver.messages.forEach { a ->
+            val receiver = msg.receiver
+            val unbranckedExpression = if (receiver is ExpressionInBrackets) receiver.expr else receiver
+            if (unbranckedExpression is MessageSend) {
+                unbranckedExpression.messages.forEach { a ->
                     val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)
