@@ -2033,7 +2033,6 @@ class ResolverTest {
     }
 
 
-
     @Test
     fun errors() {
         val source = """
@@ -2076,7 +2075,14 @@ class ResolverTest {
         assert(x.count() == 6)
     }
 
-
+    @Test
+    fun docCommentInsideDefaultMsg() {
+        val source = """
+            1 to: 2 do: [it echo]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 1)
+    }
 }
 
 

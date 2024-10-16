@@ -234,7 +234,7 @@ fun Parser.methodBody(
             messagesOrVarStatements.add(statementWithEndLine(false)) // expression(parseSingleIf = true)
         } else {
             val docComment = parseDocComment()
-            val statement = statement(false).also { if (docComment != null) it.docComment = docComment }
+            val statement = statement(parseMsgDecls = false).also { if (docComment != null) it.docComment = docComment }
             messagesOrVarStatements.add(statement)
         }
     }

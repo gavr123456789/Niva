@@ -496,7 +496,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                     }
                     // add doc comments so u can ctrl click them
                     st.docComment?.let {
-                        it.identifiers.forEach { addStToMegaStore(it) }
+                        it.identifiers?.forEach { addStToMegaStore(it) }
                     }
                     // add types of the decl as IdentExpr
                     if (st is MessageDeclaration && st.returnType != null) {

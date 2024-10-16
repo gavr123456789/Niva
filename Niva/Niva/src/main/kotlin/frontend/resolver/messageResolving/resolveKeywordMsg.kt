@@ -135,6 +135,7 @@ fun Resolver.resolveKeywordMsg(
     }
 
     statement.declaration = kwFromDB?.declaration
+    statement.msgMetaData = kwFromDB
 
     val argsTypesFromDb = when (kwFromDB) {
         is UnaryMsgMetaData -> emptyList()
