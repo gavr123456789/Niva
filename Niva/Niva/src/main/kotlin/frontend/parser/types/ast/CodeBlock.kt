@@ -23,16 +23,13 @@ class CodeBlock(
 }
 
 class ExpressionInBrackets(
-    val statements: List<Statement>,
+    val expr: Expression,
     type: Type?,
     token: Token,
 ) : Receiver(type, token) {
-    override fun toString(): String {
-        return if (statements.isNotEmpty())
-            "(${statements.first()})"
-        else
-            "()"
-    }
+    override fun toString(): String =
+        expr.toString()
+
 }
 
 

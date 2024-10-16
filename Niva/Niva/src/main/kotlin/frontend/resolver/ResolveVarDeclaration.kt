@@ -12,7 +12,11 @@ import main.utils.isGeneric
 
 // x = {} // ERROR need x::List::Int = {}
 fun checkThatCollectionIsTyped(statement: VarDeclaration, type: Type) {
-    if (statement.valueTypeAst == null && type.isCollection() && type is Type.UserType) {
+    if (statement.valueTypeAst != null) return
+    val value = statement.value
+    val emptyMap = value is MapCollection && value.initElements.isEmpty()
+    val emptyList = value is CollectionAst && value.initElements.isEmpty()
+    if (emptyMap || emptyList) {
         statement.token.compileError("(x::MutableList::Int = {})\nCan't infer type of empty collection, please specify it like x::MutableList::Int = {}")
     }
 }

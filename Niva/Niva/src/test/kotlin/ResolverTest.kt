@@ -2083,6 +2083,17 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 1)
     }
+
+    @Test
+    fun emptyCollectionWithoutTypeIsError() {
+        val source = """
+            x = {}
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+
+    }
 }
 
 

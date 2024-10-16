@@ -96,7 +96,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
 fun ExpressionInBrackets.generateExpressionInBrackets(withNullChecks: Boolean = false) = buildString {
     if (withNullChecks) throw Exception("Compiler error, not realized nullable check with brackets")
     append("(")
-    val statementsCode = codegenKt(statements, 0).removeSuffix("\n")
+    val statementsCode = codegenKt(listOf(expr), 0).removeSuffix("\n")
     append(statementsCode)
     append(")")
 }
