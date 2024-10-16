@@ -32,7 +32,8 @@ sealed class MessageMetadata(
     val msgSends: List<MsgSend> = emptyList(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
     private var _errors: MutableSet<Type.Union>? = null,
-    val declaration: MessageDeclaration?
+    val declaration: MessageDeclaration?,
+    var docComment: DocComment? = null
 ) {
     val errors: Set<Type.Union>?
         get() = _errors?.toSet()
@@ -119,8 +120,9 @@ class UnaryMsgMetaData(
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
     val isGetter: Boolean = false,
-    declaration: MessageDeclaration?
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
+    declaration: MessageDeclaration?,
+    docComment: DocComment? = null
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name -> $returnType"
     }
@@ -133,8 +135,9 @@ class BinaryMsgMetaData(
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
-    declaration: MessageDeclaration?
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
+    declaration: MessageDeclaration?,
+    docComment: DocComment? = null
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
     }
@@ -149,8 +152,9 @@ class KeywordMsgMetaData(
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: List<MsgSend> = emptyList(),
     val isSetter: Boolean = false,
-    declaration: MessageDeclaration?
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
+    declaration: MessageDeclaration?,
+    docComment: DocComment? = null
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
@@ -168,8 +172,9 @@ class BuilderMetaData(
     msgSends: List<MsgSend> = emptyList(),
     val isSetter: Boolean = false,
     val defaultAction: CodeBlock?,
-    declaration: MessageDeclaration
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration) {
+    declaration: MessageDeclaration,
+    docComment: DocComment? = null
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "builder $args -> $returnType"

@@ -76,6 +76,7 @@ fun Resolver.resolveStaticBuilder(
     pkg.addImport(builderFromDB.pkg)
 
     statement.declaration = builderFromDB.declaration
+    statement.msgMetaData = builderFromDB
     statement.type = builderFromDB.returnType
 
 

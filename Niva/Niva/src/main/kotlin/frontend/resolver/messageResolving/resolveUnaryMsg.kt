@@ -124,6 +124,7 @@ fun Resolver.resolveUnaryMsg(
             messageReturnType
         }
         statement.declaration = msgFromDb.declaration
+        statement.msgMetaData = msgFromDb
 
         val returnTypeFromDb = msgFromDb.returnType
         // add pragmas

@@ -100,7 +100,8 @@ sealed class Message(
 
     type: Type?,
     token: Token,
-    var declaration: MessageDeclaration?
+    var declaration: MessageDeclaration?,
+    var msgMetaData: MessageMetadata? = null
 ) : Receiver(type, token) // any message can be receiver for other message(kw through |>)
 
 class BinaryMsg(

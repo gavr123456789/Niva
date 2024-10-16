@@ -6,8 +6,12 @@ import frontend.parser.types.ast.KeyPragma
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
+import main.frontend.meta.createFakeToken
+import main.frontend.parser.types.ast.DocComment
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.LiteralExpression
+import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.TypeAST
 import java.io.File
 
 
@@ -29,13 +33,12 @@ fun createIntProtocols(
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
-            createUnary("inc", intType),
+            createUnary("echo", unitType, ),
+            createUnary("inc", intType, docComment = "increments the number by 1"),
             createUnary("dec", intType),
             createUnary("toFloat", floatType),
             createUnary("toDouble", doubleType),
             createUnary("toLong", longType),
-            createUnary("-", doubleType),
             createUnary("toString", stringType),
             createUnary("toChar", charType),
         ),
@@ -51,21 +54,20 @@ fun createIntProtocols(
             createBinary("*", intType, intType),
             createBinary("%", intType, intType),
             createBinary("/", intType, intType),
-            createBinary("..", intType, intRangeType),
-            createBinary("..<", intType, intRangeType),
-
+            createBinary("..", intType, intRangeType, "Creates a range from this value to the specified (included), use ..< for excluded"),
+            createBinary("..<", intType, intRangeType, "Creates a range from this value to the specified (excluded)"),
             ),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("plus", intType), intType),
-            createKeyword(KeywordArg("to", intType), intRangeType),
-            createKeyword(KeywordArg("downTo", intType), intRangeType),
+            createKeyword(KeywordArg("downTo", intType), intRangeType, "Returns a Range from this value down to the specified to value with the step -1"),
             createKeyword(
                 "toDo",
                 listOf(
                     KeywordArg("to", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType
+                intType,
+                docComment = "1 to: 3 do: [it echo] // 1 2 3"
             ),
 
             createKeyword(
@@ -74,7 +76,8 @@ fun createIntProtocols(
                     KeywordArg("until", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType
+                intType,
+                "1 until: 4 do: [it echo] // 1 2 3"
             ),
 
             createKeyword(
@@ -83,7 +86,8 @@ fun createIntProtocols(
                     KeywordArg("downTo", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType
+                intType,
+                "3 downTo: 1 do: [it echo] // 3 2 1"
             ),
         ),
     )
@@ -101,7 +105,6 @@ fun createFloatProtocols(
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
 
-    3.24.mod(3.4)
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
@@ -151,19 +154,23 @@ fun createFloatProtocols(
     return result
 }
 
+fun String.createDocComment(): DocComment =
+    DocComment(this)
 
-val createUnary = { name: String, returnType: Type ->
-    name to UnaryMsgMetaData(name, returnType, "core", declaration = null)
+fun createUnary(name: String, returnType: Type, docComment: String? = null): Pair<String, UnaryMsgMetaData> {
+    return name to UnaryMsgMetaData(name, returnType, "core", declaration = null, docComment = docComment?.createDocComment())
 }
-val createBinary = { name: String, argType: Type, returnType: Type ->
-    name to BinaryMsgMetaData(name, argType, returnType, "core", declaration = null)
+fun createBinary(name: String, argType: Type, returnType: Type, docComment: String? = null): Pair<String, BinaryMsgMetaData> {
+    return name to BinaryMsgMetaData(name, argType, returnType, "core", declaration = null,
+        docComment = docComment?.createDocComment())
 }
-val createKeyword = { name: String, args: List<KeywordArg>, returnType: Type ->
-    name to KeywordMsgMetaData(name, args, returnType, "core", declaration = null)
-}
+fun createKeyword(name: String, args: List<KeywordArg>, returnType: Type, docComment: String? = null) =
+    name to KeywordMsgMetaData(name, args, returnType, "core", declaration = null,
+        docComment = docComment?.createDocComment())
 
-fun createKeyword(arg: KeywordArg, returnType: Type): Pair<String, KeywordMsgMetaData> {
-    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null)
+fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null): Pair<String, KeywordMsgMetaData> {
+    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null,
+        docComment = docComment?.createDocComment())
 }
 
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
@@ -180,6 +187,43 @@ fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMs
     this.second.pragmas.add(createRenameAtttribure(str))
     return this
 }
+
+
+private class FakeType() {
+    companion object { val fakeType = Type.InternalType(
+            typeName = InternalTypes.Unit,
+            pkg = "common")
+    }
+}
+
+fun createFakeType(): Type = FakeType.fakeType
+
+
+private class FakeASTType() {
+    companion object {
+        val fakeASTType = TypeAST.InternalType(InternalTypes.String, createFakeToken())
+    }
+}
+fun createFakeASTType(): TypeAST = FakeASTType.fakeASTType
+
+
+
+private class FakeDeclaration {
+    companion object {
+        val fakeType = createFakeType()
+        val fakeDeclaration = MessageDeclarationUnary(
+            name = "fakeDeclaration",
+            forType = createFakeASTType(),
+            token = createFakeToken(),
+            body = listOf(),
+            returnType = null,
+            isSingleExpression = false,
+            isInline = false,
+            isSuspend = false
+        )
+    }
+}
+fun createFakeDeclaration(): MessageDeclarationUnary = FakeDeclaration.fakeDeclaration
 
 fun createStringProtocols(
     intType: Type.InternalType,
@@ -233,9 +277,8 @@ fun createStringProtocols(
             createKeyword(
                 "replaceWith",
                 listOf(KeywordArg("replace", stringType), KeywordArg("with", stringType)), stringType
-            )
-                .rename("replace"),
-            createForEachKeyword(charType, unitType),
+            ).rename("replace"),
+            createForEachKeyword(charType, unitType, docComment = """ "abc" forEach: [char::Char -> char echo] // a b c """),
             createForEachKeywordIndexed(intType, charType, unitType),
             createFilterKeyword(charType, boolType, stringType),
 
@@ -245,7 +288,9 @@ fun createStringProtocols(
 
 
             createKeyword(KeywordArg("substring", intType), stringType),
-            createKeyword(KeywordArg("slice", intRangeType), stringType),
+            createKeyword(KeywordArg("slice", intRangeType), stringType, docComment = """```niva
+                |> "abcd" slice: 0..<3 // abc
+                |```""".trimMargin()),
             createKeyword(KeywordArg("substringAfter", stringType), stringType),
             createKeyword(KeywordArg("substringAfterLast", stringType), stringType),
             createKeyword(KeywordArg("substringBefore", stringType), stringType),
@@ -974,7 +1019,8 @@ private fun createOnEach(
 
 private fun createForEachKeyword(
     genericTypeOfSetElements: Type,
-    unitType: Type.InternalType
+    unitType: Type.InternalType,
+    docComment: String? = null
 ) = createKeyword(
     "forEach",
     listOf(
@@ -988,7 +1034,8 @@ private fun createForEachKeyword(
             )
         )
     ),
-    unitType
+    unitType,
+    docComment
 )
 
 private fun createForEachKeywordIndexed(

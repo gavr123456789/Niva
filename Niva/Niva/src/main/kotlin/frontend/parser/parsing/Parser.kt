@@ -439,7 +439,7 @@ fun Parser.parseDocComment(): DocComment? {
 
         return DocComment(
             text = text,
-            identifiers = identifiers,
+            identifiers = if (identifiers.isEmpty()) null else identifiers,
         )
     }
     return null

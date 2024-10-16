@@ -98,7 +98,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             }
             // remember doc comments to resolve references from them later
             val docComment = it.docComment
-            if (docComment != null) {
+            if (docComment != null && docComment.identifiers != null) {
                 unresolvedDocComments.addAll(docComment.identifiers)
             }
         }

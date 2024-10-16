@@ -59,8 +59,9 @@ fun Resolver.resolveBinaryMsg(
             )
         else
             findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
-    
+
     statement.declaration = msgFromDb.declaration
+    statement.msgMetaData = msgFromDb
 
     if (msgFromDb is BinaryMsgMetaData && !compare2Types(argumentType, msgFromDb.argType, argument.token)) {
         argument.token.compileError("($YEL$argumentType$RESET != $YEL${msgFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$msgFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
