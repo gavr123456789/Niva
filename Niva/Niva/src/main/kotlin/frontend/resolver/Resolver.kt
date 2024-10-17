@@ -1238,7 +1238,6 @@ class Resolver(
                 floatType = doubleType,
             ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) })
 
-
             stringType.protocols.putAll(
                 createStringProtocols(
                     intType = intType,
@@ -1249,7 +1248,8 @@ class Resolver(
                     any = anyType,
                     floatType = floatType,
                     doubleType = doubleType,
-                    intRangeType = intRangeType
+                    intRangeType = intRangeType,
+
                 )
             )
 
@@ -1452,8 +1452,16 @@ class Resolver(
                 differentGenericType = differentGenericType,
                 sequenceType = sequenceType,
                 pairType = pairType
-            )
+            ).also {
+                it.remove("add")
+                it.remove("addAll")
+                it.remove("removeAt")
+                it.remove("remove")
+            }
         )
+        listType.protocols["collectionProtocol"]!!.keywordMsgs.remove("add")
+        val kw = createMapKeyword(charType, genericType, listType)
+        stringType.protocols["common"]!!.keywordMsgs[kw.first] = kw.second
 
         listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
@@ -1492,7 +1500,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
 
         addCustomTypeToDb(
@@ -1506,7 +1513,7 @@ class Resolver(
                 itType = genericType,
                 differentGenericType = differentGenericType,
                 sequenceType = sequenceType,
-                pairType = pairType
+                pairType = pairType,
             )
         )
 

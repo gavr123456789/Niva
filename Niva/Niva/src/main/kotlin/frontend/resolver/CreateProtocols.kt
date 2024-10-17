@@ -234,17 +234,10 @@ fun createStringProtocols(
     any: Type.InternalType,
     floatType: Type.InternalType,
     doubleType: Type.InternalType,
-    intRangeType: Type.InternalType
+    intRangeType: Type.InternalType,
+//    genericType: Type.UnknownGenericType,
+//    listOfGenericType: Type.UserType
 ): MutableMap<String, Protocol> {
-
-
-//    val listOfString = Type.UserType(
-//        name = "MutableList",
-//        typeArgumentList = listOf(stringType),
-//        fields = mutableListOf(),
-//        pkg = "core",
-//    )
-
     val result = mutableMapOf<String, Protocol>()
     val arithmeticProtocol = Protocol(
         name = "common",
@@ -263,7 +256,6 @@ fun createStringProtocols(
             createUnary("first", charType),
             createUnary("last", charType),
             createUnary("indices", intRangeType).emit("$0.indices"),
-
 
             createUnary("echo", unitType),
 
@@ -409,17 +401,14 @@ fun createCharProtocols(
             createUnary("echo", unitType)
         ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", charType, charType),
-            createBinary("-", charType, charType),
+            createBinary("+", intType, charType),
+            createBinary("-", intType, charType),
             createBinary("==", charType, boolType),
             createBinary("!=", charType, boolType),
             createBinary("..", charType, charRange),
         ),
         keywordMsgs = mutableMapOf(
-            createKeyword(
-                KeywordArg("addInt", intType),
-                charType
-            ).rename("plus")
+
         ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
@@ -722,7 +711,7 @@ fun createListProtocols(
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", mutListType),
-            createUnary("sum", mutListType),
+            createUnary("sum", intType),
             ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -735,7 +724,6 @@ fun createListProtocols(
             createFilterKeyword(itType, boolType, mutListType),
 
             createKeyword(KeywordArg("add", itType), boolType),
-            createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("at", intType), itType).rename("get"),
             createKeyword(KeywordArg("atOrNull", intType), Type.NullableType(itType)).rename("getOrNull"),
             createKeyword(KeywordArg("removeAt", intType), unitType),
@@ -1216,7 +1204,7 @@ fun createMapProtocols(
     return result
 }
 
-private fun createMapKeyword(
+fun createMapKeyword(
     genericTypeOfListElements: Type,
     differentGenericType: Type.UnknownGenericType,
     listTypeOfDifferentGeneric: Type.UserType
