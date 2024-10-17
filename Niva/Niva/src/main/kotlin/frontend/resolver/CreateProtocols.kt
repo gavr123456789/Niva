@@ -807,7 +807,7 @@ fun createListProtocols(
                         differentGenericType
                     ),
                     KeywordArg(
-                        "info",
+                        "into",
                         Type.Lambda(
                             mutableListOf(KeywordArg("acc", differentGenericType), KeywordArg("each", itType)),
                             differentGenericType
