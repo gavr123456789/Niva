@@ -17,25 +17,30 @@ https://github.com/user-attachments/assets/dfeef595-685f-4124-8eaf-9956919e07af
 ## Examples
 
 You can start from some fibonacci [here](https://github.com/gavr123456789/Niva/tree/main/Niva/Niva/examples/Algoritms)  
-And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva) repo you can find WIP implementation of interpreter from the book 
+And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva) repo you can find WIP implementation of interpreter from the book https://interpreterbook.com/
+Learn language here: https://gavr123456789.github.io/niva-site
 
 ## Features
 - simplicity - its types, tagged unions and methods for them
-- OOP - inheritance - late bindings + some FP(unions, matching, immutability by default)
+- (OOP - inheritance - late bindings) + some FP(unions, matching, immutability by default)
 - kinda scripting langs experience, this is the whole helloworld program `"Hello World!" echo`
 - Smalltalk Syntax
 - Inline REPL - new way of print debugging ^_^
-- Imports inference -  2 types have no identical names and set of fields, u dont need to write imports
+- Imports inference - while types have no identical names and set of fields, u dont need to write imports!
 - JVM/Kotlin interop
 - Smalltalk syntax
-- Editor support with [LSP](https://github.com/gavr123456789/vaLSe) and [vscode](https://github.com/gavr123456789/niva-vscode-bundle)/zed(not public) plugin
+- Editor support with [LSP](https://github.com/gavr123456789/vaLSe) and [vscode](https://github.com/gavr123456789/niva-vscode-bundle) or zed(not public yet) plugin
 - Smalltalk syntax(Iloveit)
+- Errors are effects, catching is pattern matching on possible errors of the call. You can ignore catching, but then you need to put them to return type signature `-> Int!IOError` or `-> Int!`
   
 ## Compile from sources 
-Run in Niva/Niva folder:
+Warning: the first compilation of hello world niva program will take time because of gradle deps.  
+
+Run in Niva/Niva folder:  
 `./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path
 
 ### Getting native binary with GraalVM
+GraalVM binary compiles hello world 300ms faster on M1(70% of the time takes gradle anyway)
 If you have graalvm in your JAVA_HOME then run:  
 `./gradlew buildNativeNiva` this will create native binary in ~/.niva/bin  
  
@@ -51,6 +56,12 @@ macOS: `brew install --cask graalvm-jdk`
 [select java on mac os](https://stackoverflow.com/questions/21964709/how-to-set-or-change-the-default-java-jdk-version-on-macos)  
 If you have `expanded from macro 'NS_FORMAT_ARGUMENT'` problem with buildNativeNiva on macOS then [update XCode](https://wails.io/docs/guides/troubleshooting/#my-mac-app-gives-me-weird-compilation-errors)
 `xcode-select -p && sudo xcode-select --switch /Library/Developer/CommandLineTools`
+
+`niva filename.niva` to run file  
+`niva run` to run all files in the folder recursivelly starting from main.niva  
+`niva run filename.niva` same but different entry point  
+dont use `run` inside niva repo, since niva has no build system or project files it just collect all the files recursively, so it will try to compile all the examples.  
+use --verbose flag to mesure time of compilation steps. 
 
 ## VSCode extension
 [VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
