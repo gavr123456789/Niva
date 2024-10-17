@@ -1,45 +1,7 @@
-//x = {}
-//x::MutableList::Int = {}
-//
-//Int sas::MutableList::Int = [
-//    sas echo
-//]
-//
-//1 sas: {}
-//> abc
-> "abcd" slice: 0..<3
 
-//type Pair
-//    x: T
-//    y: G
-//
-//Pair(MutableList::T, MutableList::T) forEach: block::[T, T -> Unit] = [
-//    iterate = [x::MutableList::T, y::MutableList::T ->
-//        x forEachIndexed: [ i, first ->
-//            second = y at: i
-//            block T: first T: second
-//        ]
-//    ]
-//    x count < y count
-//        ifTrue:  [iterate x: x y: y]
-//        ifFalse: [iterate x: y y: x]
-//]
-//
-//list1 = {1 2 3 4}
-//list2 = {5 6 7}
-//
-//Pair x: list1 y: list2 |> forEach: [a, b ->
-//    "$a + $b = ${a + b}" echo
-//]
-//
-//
-//MutableList::T forEachBreak::[T -> Boolean] -> Unit = [
-// this forEach: [
-//   forEachBreak T: it |> not => ^
-// ]
-//]
-//
-//{1 2 3} forEachBreak: [
-//    it echo
-//    false
-//]
+q = "abc" map: [it + 1]
+> q at: 0
+
+x = {1 2 3} sum
+//> 7
+> x + 1
