@@ -377,6 +377,14 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun Int.toDo(to: Int, `do`: (Int) -> Unit) {
             for (element in this.rangeTo(to)) `do`(element)
         }
+        
+        inline fun Int.toByDo(to: Int, by: Int, `do`: (Int) -> Unit) {
+            if (this <= to) {
+                for (element in this..to step by) `do`(element)
+            } else {
+                for (element in this downTo to step by) `do`(element)
+            }
+        }
 
         inline fun Int.untilDo(until: Int, `do`: (Int) -> Unit) {
             for (element in this.rangeUntil(until)) `do`(element)
