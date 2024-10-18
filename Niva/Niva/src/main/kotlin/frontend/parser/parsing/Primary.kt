@@ -41,7 +41,7 @@ fun Parser.unaryOrBinaryMessageOrPrimaryReceiver(
         when (val messageSend =
             unaryOrBinary(
                 customReceiver = customReceiver,
-                parsePipe = !insideKeywordArgument,
+                parsePipe = !insideKeywordArgument || check(TokenType.EndOfLine, 1),
                 parseCascade = !insideKeywordArgument
             )) {
             is MessageSendUnary -> {
