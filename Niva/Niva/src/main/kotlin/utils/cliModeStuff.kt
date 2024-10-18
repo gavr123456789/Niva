@@ -3,6 +3,7 @@ package main.utils
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import java.io.File
+import kotlin.system.exitProcess
 
 enum class MainArgument {
     BUIlD,
@@ -42,8 +43,9 @@ class ArgsManager(val args: MutableList<String>) {
                 "test" -> MainArgument.TEST
                 else -> {
                     if (!File(firstArg).exists()) {
+                        println("There are no such command or File \"$firstArg\" is not exist, to run all files starting from main.niva run ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
                         println(HELP)
-                        createFakeToken().compileError("There are no such command or File $firstArg is not exist, to run full project use ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
+                        exitProcess(0)
                     }
                     MainArgument.SINGLE_FILE_PATH
                 }
@@ -132,23 +134,21 @@ fun warning(string: String) {
         println("${YEL}Warning:$RESET $string$RESET")
 }
 
-
+//Flags for single file run:
+//-c      — compile only(creates binary in current folder)
+//-i      — get info about packages(it is usable to pipe it to .md file)
+//-iu     — print info only about user-defined types
+//-i pkg  — print info only about specific pkg
 const val HELP = """
 Usage:
     ${WHITE}FILE$RESET — compile and run single file
     ${WHITE}run$RESET — compile and run project from "main" file
     ${WHITE}run FILE$RESET — compile and run project from root file
     ${WHITE}run FILE -v$RESET or ${WHITE}-verbose$RESET — with verbose printing
-    ${WHITE}build$RESET — compile only(creates binary in current folder)
+    ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
     ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
     ${WHITE}distr$RESET — create easy to share jvm distribution
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
-
-Flags for single file run:
-    -c      — compile only(creates binary in current folder)
-    -i      — get info about packages(it is usable to pipe it to .md file)
-    -iu     — print info only about user-defined types
-    -i pkg  — print info only about specific pkg
 
 In code: 
     > EXPR  — inline print result of expression in comment above

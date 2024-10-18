@@ -1,5 +1,6 @@
 
 q = "abc" map: [it + 1]
+//> b
 > q at: 0
 
 x = {1 2 3} sum
