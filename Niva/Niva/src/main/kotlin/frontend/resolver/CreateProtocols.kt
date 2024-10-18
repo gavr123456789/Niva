@@ -66,8 +66,18 @@ fun createIntProtocols(
                     KeywordArg("to", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType,
+                unitType,
                 docComment = "1 to: 3 do: [it echo] // 1 2 3"
+            ),
+            createKeyword(
+                "toByDo",
+                listOf(
+                    KeywordArg("to", intType),
+                    KeywordArg("by", intType),
+                    KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
+                ),
+                unitType,
+                docComment = "1 to: 10 by: 2 do: [it echo] // 1 3 5 7 9"
             ),
 
             createKeyword(
@@ -76,7 +86,7 @@ fun createIntProtocols(
                     KeywordArg("until", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType,
+                unitType,
                 "1 until: 4 do: [it echo] // 1 2 3"
             ),
 
@@ -86,7 +96,7 @@ fun createIntProtocols(
                     KeywordArg("downTo", intType),
                     KeywordArg("do", Type.Lambda(mutableListOf(KeywordArg("do", intType)), anyType))
                 ),
-                intType,
+                unitType,
                 "3 downTo: 1 do: [it echo] // 3 2 1"
             ),
         ),

@@ -334,7 +334,7 @@ fun Parser.keyword(
 
     val messages = mutableListOf<Message>(keyColonCycle())
 
-    while (check(TokenType.PipeOperator) || check(TokenType.Cascade)) {
+    while (checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Cascade)) {
         val tok = step()
         val isPipe = tok.kind == TokenType.PipeOperator // else its
         skipNewLinesAndComments()

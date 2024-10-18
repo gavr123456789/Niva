@@ -2292,7 +2292,7 @@ class ParserTest {
     @Test
     fun pipeForUnaryOnNewLine() {
         val source = """
-            1 from: 3 
+            1 to: 2 do: [4]
             |> inc
             |> inc
         """.trimIndent()
