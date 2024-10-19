@@ -109,7 +109,7 @@ fun compare2Types(
     }
 
     // in switch one branch can return Int and the other null
-    if (nullIsAny && typeIsNull(type1OrChildOf2) || typeIsNull(type2)) {
+    if (nullIsAny && (typeIsNull(type1OrChildOf2) || typeIsNull(type2))) {
         return true
     }
 

@@ -2092,8 +2092,49 @@ class ResolverTest {
         assertThrows<CompilerError> {
             resolveWithResolver(source)
         }
-
     }
+
+
+    @Test
+    fun destructFromBody() {
+        val source = """
+            type Last2Elems last: Int secondLast: Int
+
+            g = [
+              ppp = Last2Elems last: 1 secondLast: 2
+              {last secondLast} = ppp
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun returnCheck() {
+        val source = """
+            Int sus -> Int = [
+                ^ 3
+                ^ "qwf"
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+
+        val source2 = """
+            type Person name: String
+            
+            Int sas -> Person = [
+                ^ null
+                ^ Person name: "qwf"
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source2)
+        }
+    }
+
+
 }
 
 

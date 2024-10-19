@@ -38,20 +38,20 @@ kotlin {
 graalvmNative {
     binaries {
         named("main") {
-            buildArgs.add("-O4")
+            buildArgs.add("-O3")
             mainClass.set("main.MainKt")
         }
     }
     binaries.all {
 
         imageName.set("niva")
-        buildArgs.add("-O4")
+        buildArgs.add("-O3")
 
         // temp solution
-        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
+//        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
 //            buildArgs.add("--static")
 //            buildArgs.add("--libc=musl")
-        }
+//        }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")
         buildArgs.add("-march=native")
