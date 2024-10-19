@@ -2079,7 +2079,7 @@ class ParserTest {
     @Test
     fun destruct() {
         val source = """
-            {name age} = person
+            {a b} = qwf
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
@@ -2094,6 +2094,18 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         assertTrue { ast[0] is DestructingAssign }
+    }
+
+    @Test
+    fun destructInsideBody() {
+        val source = """
+            StackLang add = [
+              {a b} = qwf
+            ]
+        """.trimIndent()
+
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
     }
 
     @Test
