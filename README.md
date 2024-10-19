@@ -57,11 +57,16 @@ macOS: `brew install --cask graalvm-jdk`
 If you have `expanded from macro 'NS_FORMAT_ARGUMENT'` problem with buildNativeNiva on macOS then [update XCode](https://wails.io/docs/guides/troubleshooting/#my-mac-app-gives-me-weird-compilation-errors)
 `xcode-select -p && sudo xcode-select --switch /Library/Developer/CommandLineTools`
 
+## Compile niva code
+
 `niva filename.niva` to run file  
 `niva run` to run all files in the folder recursivelly starting from main.niva  
 `niva run filename.niva` same but different entry point  
+`niva build` to output jar\binary file  
+`niva info > info.md` to output all types and their method signature  
+  
 dont use `run` inside niva repo, since niva has no build system or project files it just collect all the files recursively, so it will try to compile all the examples.  
-use --verbose flag to mesure time of compilation steps. 
+use `--verbose` flag to mesure time of compilation steps. 
 
 ## VSCode extension
 [VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
