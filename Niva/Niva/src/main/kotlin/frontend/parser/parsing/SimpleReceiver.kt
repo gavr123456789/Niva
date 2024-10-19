@@ -107,8 +107,9 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseBrace)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
-
-                return ListCollection(initElements, type, token)
+                val result =  ListCollection(initElements, type, token)
+                this.lastListCollection = result
+                return result
             }
 
             TokenType.OpenBraceHash -> {

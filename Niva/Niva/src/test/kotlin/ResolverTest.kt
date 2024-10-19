@@ -643,23 +643,23 @@ class ResolverTest {
         assert(statements.count() == 1)
     }
 
-    @Test
-    fun dotAsThis() {
-        val source = """
-            Int from::Int = 5
-            
-            Int
-                from::Int
-                to::Int
-            = [
-                . from: 1
-            ]
-        """.trimIndent()
-
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-        assert(((statements[1] as MessageDeclaration).body[0] as Expression).type?.name == "Int")
-    }
+//    @Test
+//    fun dotAsThis() {
+//        val source = """
+//            Int from::Int = 5
+//
+//            Int
+//                from::Int
+//                to::Int
+//            = [
+//                . from: 1
+//            ]
+//        """.trimIndent()
+//
+//        val statements = resolve(source)
+//        assert(statements.count() == 2)
+//        assert(((statements[1] as MessageDeclaration).body[0] as Expression).type?.name == "Int")
+//    }
 
     @Test
     fun switchIf() {

@@ -12,8 +12,10 @@ import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.ListCollection
 
 fun Parser.destructiveAssignParse(tokForError: Token): DestructingAssign {
-    val q = tree.removeLast() as? ListCollection
-    if (q == null) tokForError.compileError("Parsing error, expected = after collection {} for destructing assign")
+    val q = (if (tree.count() > 0 && tree.last() is ListCollection ) {
+        tree.removeLast() as? ListCollection
+    } else this.lastListCollection)
+        ?: tokForError.compileError("Parsing error, expected = after collection {} for destructing assign")
 
     skipNewLinesAndComments()
     matchAssert(TokenType.Assign)

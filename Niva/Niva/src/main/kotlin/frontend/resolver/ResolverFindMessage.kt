@@ -184,7 +184,7 @@ fun Resolver.findStaticMessageType(
             pkg.addImport(receiverType.pkg)
             return Pair(result, false)
         } else {
-            val fields = receiverType.fields.joinToString(" e") { it.name + ": " + it.type.name + "_value"}
+            val fields = receiverType.fields.joinToString(" ") { it.name + ": " + it.type.name}
             token.compileError("${WHITE}new${RESET} can't be used with ${YEL}$receiverType${RESET}, since it has fields(use $YEL$receiverType$RESET $CYAN$fields)")
         }
     }

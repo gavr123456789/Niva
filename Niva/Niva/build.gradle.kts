@@ -6,7 +6,7 @@ import java.nio.file.StandardCopyOption
 
 
 plugins {
-    kotlin("jvm") version "2.0.0"
+    kotlin("jvm") version "2.0.20"
     application
     id("org.graalvm.buildtools.native") version "0.10.1"
     id("maven-publish")
@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
 //    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
     testImplementation(kotlin("test"))
@@ -47,8 +47,10 @@ graalvmNative {
         imageName.set("niva")
         buildArgs.add("-O4")
 
+        // temp solution
         if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
-            buildArgs.add("--static")
+//            buildArgs.add("--static")
+//            buildArgs.add("--libc=musl")
         }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")

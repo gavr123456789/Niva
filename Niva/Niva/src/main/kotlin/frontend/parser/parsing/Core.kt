@@ -1,6 +1,7 @@
 package frontend.parser.parsing
 
 import main.frontend.meta.*
+import main.frontend.parser.types.ast.ListCollection
 import main.frontend.parser.types.ast.Statement
 import java.io.File
 
@@ -10,6 +11,7 @@ class Parser(
     val source: String,
     val tree: MutableList<Statement> = mutableListOf(),
     var current: Int = 0,
+    var lastListCollection: ListCollection? = null
 )
 
 fun Parser.getCurrent() = current

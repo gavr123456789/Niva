@@ -1,7 +1,7 @@
 type Person name: String age: Int
 
 person = Person name: "Alice" age: 24
-
+// destruct
 {name age} = person
 
 name echo
