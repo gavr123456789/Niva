@@ -54,9 +54,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
     if (kind == TokenType.Enum) {
         return enumDeclaration(pragmas)
     }
-//    if (kind == TokenType.Alias) {
-//        return typeAliasDeclaration()
-//    }
+
     if (kind == TokenType.Union) {
         return unionDeclaration(pragmas)
     }
@@ -89,10 +87,16 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         return assignVariableNewValue()
     }
 
-    if (kind == TokenType.Assign && check(TokenType.CloseBrace, -1)) {
-        return destructiveAssignParse(tok)
+    // tryDestruct
+    if (kind == TokenType.OpenBrace) {
+        val safePoint = current
+        val destruct = tryDestructiveAssign()
+        if (destruct != null) {
+            return destruct
+        } else {
+            current = safePoint
+        }
     }
-
 
     val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
     val isInlineReplWithQuestion = kind == TokenType.InlineReplWithQuestion

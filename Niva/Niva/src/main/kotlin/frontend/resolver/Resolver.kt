@@ -334,6 +334,22 @@ private fun Resolver.resolveStatement(
 
 
             wasThereReturn = typeOfReturnExpr
+            val root = this.resolvingMessageDeclaration
+            if (root != null) {
+                val realReturn = wasThereReturn
+                val returnType = root.returnType
+                if (realReturn != null && returnType != null &&
+                    !compare2Types(
+                        returnType,
+                        realReturn,
+                        root.returnTypeAST?.token ?: statement.token,
+                        unpackNull = true,
+                        isOut = true
+                    )
+                ) {
+                    root.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
+                }
+            }
 
             stack.pop()
         }
@@ -890,7 +906,8 @@ fun Resolver.getTypeForIdentifier(
 
     val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
         x.name, currentScope, previousScope, kw, x.token
-    ) ?: if (!GlobalVariables.isLspMode) x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+    ) ?: if (!GlobalVariables.isLspMode)
+        x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
     else {
         // Search similar for lsp mode
         coolErrorForLSP(x, currentScope, previousScope)

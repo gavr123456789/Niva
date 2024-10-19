@@ -1,8 +1,13 @@
 
-q = "abc" map: [it + 1]
-//> b
-> q at: 0
+Int sus -> Int = [
+    ^ 3
+    ^ "qwf"
+]
+type Person name: String
 
-x = {1 2 3} sum
-//> 7
-> x + 1
+Int sas -> Person? = [
+    ^ null
+    ^ Person name: "qwf"
+]
+
+1 sus echo

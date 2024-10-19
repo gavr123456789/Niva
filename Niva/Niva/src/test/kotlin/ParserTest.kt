@@ -2106,6 +2106,9 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+        val msgDecl= ast[0] as MessageDeclarationUnary
+        val body = msgDecl.body
+        assert(body.count() == 1)
     }
 
     @Test

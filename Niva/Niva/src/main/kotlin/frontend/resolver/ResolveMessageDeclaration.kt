@@ -332,21 +332,8 @@ fun Resolver.resolveMessageDeclaration(
             } else {
                 TODO("Single-expression with not-expression, but statement, is not possible")
             }
-        } else {
-            val realReturn = wasThereReturn
-            val returnType = statement.returnType
-            if (realReturn != null && returnType != null &&
-                !compare2Types(
-                    returnType,
-                    realReturn,
-                    statement.returnTypeAST?.token ?: statement.token,
-                    unpackNull = true,
-                    isOut = true
-                )
-            ) {
-                statement.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
-            }
         }
+
 
         if (GlobalVariables.isLspMode) {
             onEachStatement!!(statement, previousScope, previousScope, statement.token.file) // message decl
