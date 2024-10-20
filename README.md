@@ -37,6 +37,8 @@ Learn language here: https://gavr123456789.github.io/niva-site
 ## Compile from sources 
 Warning: the first compilation of hello world niva program will take time because of gradle deps.  
 
+You can choose jar or native version, jar is much easier to get, native is ~300ms faster on m1. 
+### Jar version
 Run in Niva/Niva folder:  
 `./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path
 
