@@ -32,6 +32,7 @@ Learn language here: https://gavr123456789.github.io/niva-site
 - Editor support with [LSP](https://github.com/gavr123456789/vaLSe) and [vscode](https://github.com/gavr123456789/niva-vscode-bundle) or zed(not public yet) plugin
 - Smalltalk syntax(Iloveit)
 - Errors are effects, catching is pattern matching on possible errors of the call. You can ignore catching, but then you need to put them to return type signature `-> Int!IOError` or `-> Int!`
+- No NPE, nullability works the same as in Kotlin\Swift 
   
 ## Compile from sources 
 Warning: the first compilation of hello world niva program will take time because of gradle deps.  
