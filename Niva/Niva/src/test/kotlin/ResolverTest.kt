@@ -497,23 +497,18 @@ class ResolverTest {
 
     @Test
     fun unionTypes() {
-
         val source = """
             union Shape area: Int =
             | Rectangle width: Int height: Int
             | Circle    radius: Int
             circle = Circle radius: 25 area: 5
-
         """.trimIndent()
-
         val statements = resolve(source)
-
         assert(statements.count() == 2)
     }
 
     @Test
     fun unionInsideUnionForwardDeclaration() {
-
         val source = """
             union Sas =
             | ^Tat
@@ -703,27 +698,15 @@ class ResolverTest {
     }
 
     @Test
-    fun unionDeclaration() {
-        val source = """
-            union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
-            x = Red r: 66
-        """.trimIndent()
-
-        val statements = resolve(source)
-        assert(statements.count() == 2)
-    }
-
-    @Test
     fun unionInsideSwitch() {
         val source = """
-                union Shape area: Int =
+            union Shape area: Int =
                 | Rectangle width: Int height: Int
-                
-                x = Rectangle width: 2 height: 3 area: 6
-                | x
-                | Rectangle => x width echo // Rectangle not constructor
+            
+            x = Rectangle width: 2 height: 3 area: 6
+            | x
+            | Rectangle => x width echo // Rectangle not constructor
         """.trimIndent()
-
         val statements = resolve(source)
         assert(statements.count() == 3)
     }
@@ -857,8 +840,6 @@ class ResolverTest {
         x unpack: [it inc]
         y = x unpackOrValue: 5
         """.trimIndent()
-
-
         val statements = resolve(source)
         assert(statements.count() == 5)
 
@@ -866,8 +847,6 @@ class ResolverTest {
         assert((statements[2] as MessageSendUnary).type is Type.InternalType)
         assert((statements[3] as MessageSendKeyword).type is Type.InternalType)
         assert((statements[4] as VarDeclaration).value.type is Type.InternalType)
-
-
     }
 
     @Test
@@ -877,15 +856,11 @@ class ResolverTest {
         x = 5 sas
         x unpackOrError inc 
         """.trimIndent()
-
-
         val statements = resolve(source)
         assert(statements.count() == 3)
 
         assert((statements[1] as VarDeclaration).value.type is Type.NullableType)
         assert((statements[2] as MessageSendUnary).type is Type.InternalType)
-
-
     }
 
     @Test
@@ -2132,6 +2107,37 @@ class ResolverTest {
         assertThrows<CompilerError> {
             resolveWithResolver(source2)
         }
+    }
+
+    @Test
+    fun unionNestedMatching() {
+        val source = """
+            union Car = RaceCar | Truck | PassengerCar
+
+            union Vehicle = 
+                | ^Car
+                | Plane
+                | Ship
+          
+            Vehicle printSpeed = | this
+                | Plane => "fast" echo
+                | Ship =>  "slow" echo
+                | Car => [
+                    | this
+                    | RaceCar => "fast" echo
+                    | Truck => "slow" echo
+                    | PassengerCar => "medium" echo
+                ]
+            Vehicle printSpeed2 =  | this
+                | RaceCar => []
+                | Truck => []
+                | PassengerCar => []
+                | Plane => []
+                | Ship => []
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 4)
+
     }
 
 

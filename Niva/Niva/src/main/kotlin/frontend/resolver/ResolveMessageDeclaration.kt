@@ -212,44 +212,55 @@ fun Resolver.resolveMessageDeclaration(
                     }
                 }
             }
+
+            fun errorDeclaredMismatch(
+                possibleErrorsUnion: List<Type.Union>,
+                possibleErrorsJoined: String,
+                declaredErrors: List<String>
+            ) {
+                // maybe declared but wrong
+                val setOfPossible = possibleErrorsUnion.map { it.name }.toSet()
+                val setOfDeclared = declaredErrors.toSet()
+                if (setOfDeclared != setOfPossible) {
+                    val declErrors = declaredErrors.joinToString(" ")
+                    val diff =
+                        (if (setOfDeclared.count() > setOfPossible.count()) setOfDeclared - setOfPossible else setOfPossible - setOfDeclared)
+                            .joinToString(" ")
+
+                    statement.token.compileError(
+                        "Possible errors of $WHITE$statement$RESET are: \n" +
+                                "${listOfErrorsWithLines()}\n" +
+                                "Wrong set of errors declarated\nPossible errors: $possibleErrorsJoined\nDeclared errors: $declErrors\nDiff: $diff"
+                    )
+                }
+            }
+
+            fun errorsMismatchCompileError() {
+                val allPossibleErrors = possibleErrors.flatMap { it.errors }
+                val possibleErrorsUnion = allPossibleErrors.distinct()
+                val possibleErrorsJoined = possibleErrorsUnion.joinToString(" ") { it.name }
+
+
+                // not declared anything at all
+                if (declaredErrors == null) {
+                    val singleOrManyErrors = if (allPossibleErrors.count() == 1)
+                        allPossibleErrors[0].name
+                    else "{$possibleErrorsJoined}"
+                    val returnTypeASTOrUnit = if (returnTypeAST == null) Resolver.defaultTypes[InternalTypes.Unit]!! else returnTypeAST
+                    val possibleSolutions =
+                        "$WHITE-> $returnTypeASTOrUnit!$RESET or $WHITE-> $returnTypeASTOrUnit!$singleOrManyErrors$RESET"
+
+                    statement.token.compileError("Possible errors of $WHITE$statement$RESET are: \n${listOfErrorsWithLines()} but you not declared them\n use $possibleSolutions")
+                } else if (declaredErrors.count() != 0) {
+                    errorDeclaredMismatch(possibleErrorsUnion, possibleErrorsJoined, declaredErrors)
+                }
+            }
+
             if (returnTypeAST != null) {
                 // errors declared but there are no possible errors
 
                 if (possibleErrors.isNotEmpty()) {
-                    val allPossibleErrors = possibleErrors.flatMap { it.errors }
-                    val possibleErrorsUnion = allPossibleErrors.distinct()
-                    val possibleErrorsJoined = possibleErrorsUnion.joinToString(" ") { it.name }
-
-
-                    // not declared anything at all
-                    if (declaredErrors == null) {
-                        val singleOrManyErrors = if (allPossibleErrors.count() == 1)
-                            allPossibleErrors[0].name
-                        else "{$possibleErrorsJoined}"
-
-                        val possibleSolutions =
-                            "$WHITE-> $returnTypeAST!$RESET or $WHITE-> $returnTypeAST!$singleOrManyErrors$RESET"
-
-                        statement.token.compileError("Possible errors of $WHITE$statement$RESET are: \n${listOfErrorsWithLines()} but you not declared them\n use $possibleSolutions")
-                    } else if (declaredErrors.count() != 0) {
-                        // maybe declared but wrong
-                        val setOfPossible = possibleErrorsUnion.map { it.name }.toSet()
-                        val setOfDeclared = declaredErrors.toSet()
-                        if (setOfDeclared != setOfPossible) {
-                            val declErrors = declaredErrors.joinToString(" ")
-                            val diff =
-                                (if (setOfDeclared.count() > setOfPossible.count()) setOfDeclared - setOfPossible else setOfPossible - setOfDeclared)
-                                    .joinToString(" ")
-
-                            statement.token.compileError(
-                                "Possible errors of $WHITE$statement$RESET are: \n" +
-                                        "${listOfErrorsWithLines()}\n" +
-                                        "Wrong set of errors declarated\nPossible errors: $possibleErrorsJoined\nDeclared errors: $declErrors\nDiff: $diff"
-                            )
-                        }
-                    }
-
-
+                    errorsMismatchCompileError()
                 }
                 // errors are possible but not declared
                 if (possibleErrors.isEmpty() && declaredErrors?.isNotEmpty() == true) {
@@ -257,7 +268,8 @@ fun Resolver.resolveMessageDeclaration(
                 }
             }
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
-                statement.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString()}")
+                errorsMismatchCompileError()
+//                statement.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString(", ")}")
             }
 
         }

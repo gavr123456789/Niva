@@ -358,18 +358,10 @@ fun Resolver.resolveControlFlow(
         } else if (thisIsTypeMatching) {
             when (savedSwitchType) {
                 is Type.UnionRootType -> {
-                    val realBranchTypes = mutableSetOf<Type>()
-                    // we need to get only one level of root if its error
-                    // because all errors domain have one general root,
-                    // and we don't want to pattern match them all
-                    val root = if (savedSwitchType.isError) savedSwitchType else savedSwitchType.getRoot()
-                    if (root is Type.UnionRootType) {
-                        root.branches.forEach {
-                            realBranchTypes += it
-                        }
-                    }
+                    val branchesFromDb: MutableSet<Type> = savedSwitchType.branches.toMutableSet()
+
                     recursiveCheckThatEveryBranchChecked(
-                        realBranchTypes,
+                        branchesFromDb,
                         typesAlreadyChecked,
                         statement.token,
                         statement.ifBranches.associateBy({ it.ifExpression.type },
@@ -377,7 +369,6 @@ fun Resolver.resolveControlFlow(
                     )
 
                     if (statement.type == null) {
-//                            statement.type = firstBranchReturnType2
                         statement.type = findGeneralRootMany(
                             statement.ifBranches.map { it.getReturnTypeOrThrow() },
                             statement.token

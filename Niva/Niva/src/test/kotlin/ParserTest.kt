@@ -1760,11 +1760,12 @@ class ParserTest {
     @Test
     fun oneLineUnion() {
         val source = """
-            union A = B | C
+            union A = B | C | D
+            union Color = Red r: Int | Green g: Int | Purple r: Int g: Int
         """.trimIndent()
 
         val ast = getAstTest(source)
-        assert(ast.count() == 1)
+        assert(ast.count() == 2)
 //        val msgUnaryDecl = ast[0] as MessageDeclarationKeyword
     }
 

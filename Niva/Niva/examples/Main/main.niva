@@ -1,13 +1,18 @@
+errordomain MyError =
+| Error1 text: String
+| Error2 code: Int
 
-Int sus -> Int = [
-    ^ 3
-    ^ "qwf"
-]
+
 type Person name: String
 
-Int sas -> Person? = [
-    ^ null
+Int sas -> Person!Error = [
+    Error throwWithMessage: "Hi ^_^"
     ^ Person name: "qwf"
 ]
 
-1 sus echo
+Int sus -> Unit = [
+    x = 1 sas orPANIC
+    x echo
+]
+
+1 sus

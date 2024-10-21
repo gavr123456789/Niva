@@ -9,7 +9,13 @@ import main.frontend.meta.Token
 import main.frontend.resolver.findAnyMsgType
 import java.util.Stack
 
-data class PairOfErrorAndMessage (val msg: Message, val errors: Set<Type.Union>)
+class PairOfErrorAndMessage (val msg: Message, val errors: Set<Type.Union>) {
+    override fun toString(): String {
+        val errorsStr = if (errors.count() == 1) errors.first() else errors.joinToString(prefix = "(", postfix = ")")
+        return "${msg.selectorName} $errorsStr"
+    }
+
+}
 
 sealed class MessageDeclaration(
     val name: String,

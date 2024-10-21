@@ -347,7 +347,7 @@ private fun Resolver.resolveStatement(
                         isOut = true
                     )
                 ) {
-                    root.returnTypeAST?.token?.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
+                    statement.token.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
                 }
             }
 
@@ -1007,7 +1007,7 @@ fun IfBranch.getReturnTypeOrThrow(): Type = when (this) {
             val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
             val last = body.statements.last()
             when (last) {
-                is Expression -> last.type!!
+                is Expression -> last.type ?: last.token.compileError("Compiler bug, branch exp doesn't have type")
                 is ReturnStatement -> last.expression?.type ?: unit
                 else -> unit
             }

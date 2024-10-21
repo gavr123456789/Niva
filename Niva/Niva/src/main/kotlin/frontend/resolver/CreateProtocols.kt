@@ -253,20 +253,20 @@ fun createStringProtocols(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
-            createUnary("trim", stringType),
-            createUnary("trimIndent", stringType),
-            createUnary("isBlank", boolType),
-            createUnary("isEmpty", boolType),
-            createUnary("isAlphaNumeric", boolType),
-            createUnary("isNotBlank", boolType),
-            createUnary("isNotEmpty", boolType),
+            createUnary("reversed", stringType, "Returns a string with characters in reversed order"),
+            createUnary("trim", stringType, "Returns a string having leading and trailing whitespace removed"),
+            createUnary("trimIndent", stringType, "Detects a common minimal indent of all the input lines, removes it from every line"),
+            createUnary("isBlank", boolType, "true if this char sequence is empty or consists solely of whitespace characters"),
+            createUnary("isEmpty", boolType, "Only the \"\" is true"),
+            createUnary("isAlphaNumeric", boolType, "True if its only digits and characters like \"abc123\""),
+            createUnary("isNotBlank", boolType, "Opposite to isBlank"),
+            createUnary("isNotEmpty", boolType, "Opposite to isEmpty"),
             createUnary("toInt", intType),
             createUnary("toFloat", floatType),
             createUnary("toDouble", doubleType),
-            createUnary("first", charType),
-            createUnary("last", charType),
-            createUnary("indices", intRangeType).emit("$0.indices"),
-
+            createUnary("first", charType, "Returns the first character or throw TODO"),
+            createUnary("last", charType, "Returns the last character or throw TODO"),
+            createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`
             createUnary("echo", unitType),
 
             ),
@@ -289,25 +289,29 @@ fun createStringProtocols(
             createKeyword(KeywordArg("endsWith", stringType), boolType),
 
 
-            createKeyword(KeywordArg("substring", intType), stringType),
-            createKeyword(KeywordArg("slice", intRangeType), stringType, docComment = """```niva
-                |> "abcd" slice: 0..<3 // abc
+            createKeyword(KeywordArg("substring", intType), stringType, "Returns a substring of this string that starts at the specified startIndex and continues to the end of the string"),
+            createKeyword(KeywordArg("slice", intRangeType), stringType, docComment = """
+                | Returns a string containing characters of the original string at the specified range
+                |```niva
+                | "abcd" slice: 0..<3 // abc
                 |```""".trimMargin()),
-            createKeyword(KeywordArg("substringAfter", stringType), stringType),
+            createKeyword(KeywordArg("substringAfter", stringType), stringType,
+                "Returns a substring after the first occurrence of delimiter"),
             createKeyword(KeywordArg("substringAfterLast", stringType), stringType),
-            createKeyword(KeywordArg("substringBefore", stringType), stringType),
+            createKeyword(KeywordArg("substringBefore", stringType), stringType, "look substringAfter:"),
             createKeyword(KeywordArg("substringBeforeLast", stringType), stringType),
 
             createKeyword(
                 "fromTo",
-                listOf(KeywordArg("from", intType), KeywordArg("to", intType)),
-                stringType
+                listOf(KeywordArg("substringFrom", intType), KeywordArg("to", intType)),
+                stringType,
+                "see substring:"
             ).rename("substring"),
 
 
             createKeyword(KeywordArg("at", intType), charType).rename("get"),
-            createKeyword(KeywordArg("drop", intType), stringType),
-            createKeyword(KeywordArg("dropLast", intType), stringType),
+            createKeyword(KeywordArg("drop", intType), stringType, "Returns a string with the first n characters removed"),
+            createKeyword(KeywordArg("dropLast", intType), stringType, "Returns a string with the last n characters removed"),
         ),
     )
 
