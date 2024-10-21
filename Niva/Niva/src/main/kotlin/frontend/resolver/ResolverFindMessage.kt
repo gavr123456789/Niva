@@ -67,6 +67,7 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
 fun checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
     val errors = receiverType.errors
         ?: return null
+
     // y = 4 sas ifErrorDo: [5]
     // y is not errored now
 
@@ -98,12 +99,6 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
             typeArgumentList = emptyList(),
             fields = mutableListOf(KeywordArg("message", Resolver.defaultTypes[InternalTypes.String]!!)),
             pkg = pkg.packageName,
-//            protocols = mutableMapOf(
-//                "error" to Protocol(
-//                    name = "error",
-//                    keywordMsgs = mutableMapOf(ifErrorKW(returnTypeWithoutErrors))
-//                )
-//            ),
             isError = true,
             typeDeclaration = null
         )
@@ -114,6 +109,25 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
         "ifError" -> {
             ifErrorKW(returnTypeWithoutErrors, createUnionOfErrorsInCurrentScope()).second
         }
+        "orValue" -> {
+            (createKeyword(
+                "orValue",
+                listOf(
+                    KeywordArg(
+                        "orValue",
+                        returnTypeWithoutErrors
+                    ),
+                ),
+                returnTypeWithoutErrors
+            ).emitKw("try {\n    $0\n} catch (it: Throwable) {$1}")).second
+        }
+        "orPANIC" -> {
+            createUnary(
+                "orPANIC",
+                returnTypeWithoutErrors
+            ).second
+        }
+
         else -> null
     }
 }
@@ -227,21 +241,25 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
-    // return ifError method if return type have possible errors
+    // return ifError method if return type has possible errors
     checkForError(receiverType, selectorName, pkg)?.let {
 
-        // remove one decl
+        // remove error from method decl
         val resolvingMsgDecl = this.resolvingMessageDeclaration
         val msg = if (stack.isNotEmpty()) this.stack.last() else null
 
         if (resolvingMsgDecl != null && msg is MessageSend) {
-//            if (msg.receiver.type?.errors?.isNotEmpty() == true) {
-//            }
-            // TODO тут можно судить просто по наличию у msg.receiver.type.errors
             val receiver = msg.receiver
             val unbranckedExpression = if (receiver is ExpressionInBrackets) receiver.expr else receiver
             if (unbranckedExpression is MessageSend) {
                 unbranckedExpression.messages.forEach { a ->
+                    val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
+                    if (b != null) {
+                        resolvingMsgDecl.stackOfPossibleErrors.remove(b)
+                    }
+                }
+            } else {
+                msg.messages.forEach { a ->
                     val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)

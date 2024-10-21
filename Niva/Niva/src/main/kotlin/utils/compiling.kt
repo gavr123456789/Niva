@@ -348,6 +348,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)
+        inline fun Any?.orPANIC() {}
         
         inline fun <T, R> T?.unpack(block: (T) -> R) {
             if (this != null)
