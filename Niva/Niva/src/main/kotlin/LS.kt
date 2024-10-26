@@ -14,6 +14,7 @@ import main.frontend.parser.types.ast.EnumBranch
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationBinary
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
@@ -132,7 +133,10 @@ class LS(val info: ((String) -> Unit)? = null) {
                     // if its last elem
                     val lastStatementOnTheLine = set.last().first
                     val lastTok = lastStatementOnTheLine.token
-                    if (lastTok.relPos.end <= character || onlyScope) {
+                    // if it next-line Then Its After Pipe NewLine Completion
+                    if (lastTok.line + 1 == line) {
+                        set.last()
+                    } else if (lastTok.relPos.end <= character || onlyScope) {
                         // it is completion for last
                         set.last()
                     } else {
@@ -153,8 +157,24 @@ class LS(val info: ((String) -> Unit)? = null) {
             // file
             val f = data[path]
             return if (f != null) {
+                fun getTheLineThroughPipe(): MutableSet<Pair<Statement, Scope>>? {
+                    val cursor = f[line]
+                    if (cursor != null)
+                        return cursor
+
+                    // check that last line is not ended with piped msg
+                    val lastLineIndex = line - 1
+                    val prevLineCursor = f[lastLineIndex]
+                    if (prevLineCursor != null && prevLineCursor.isNotEmpty()) {
+                        val lastExprOnTheLine = prevLineCursor.last().first
+                        if (lastExprOnTheLine is Message && lastExprOnTheLine.isPiped) {
+                            return prevLineCursor
+                        }
+                    }
+                    return null
+                }
                 // line
-                val l = f[line]
+                val l = getTheLineThroughPipe()
                 if (l != null) {
                     val q = findStatementInLine(l, false)
 
@@ -511,11 +531,15 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                                 addStToMegaStore(it)
                             }
                         }
-                        realSt.returnTypeAST
-                            ?.toIdentifierExpr(realSt.returnType!!, true)
-                            ?.also {
-                                addStToMegaStore(it)
-                            }
+
+                        val returnType = st.returnType
+                        if (returnType != null) {
+                            realSt.returnTypeAST
+                                ?.toIdentifierExpr(returnType, true)
+                                ?.also {
+                                    addStToMegaStore(it)
+                                }
+                        }
                         // args
                         if (realSt is MessageDeclarationKeyword) {
                             realSt.args.forEachIndexed { i, arg ->

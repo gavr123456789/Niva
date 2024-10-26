@@ -24,6 +24,7 @@ fun String.isGeneric() = count() == 1 && this[0].isUpperCase()
 
 // experriments
 
+@Suppress("unused")
 object StringUtils {
     /**
      * Returns a minimal set of characters that have to be removed from (or added to) the respective
@@ -73,8 +74,7 @@ fun String.capitalizeFirstLetter(): String {
     if (isEmpty()) {
         return this
     }
-    val result = substring(0, 1).uppercase() + substring(1)
-    return result
+    return substring(0, 1).uppercase() + substring(1)
 }
 
 fun String.removeDoubleQuotes(): String = this.substring(1, this.count() - 1)

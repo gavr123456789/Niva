@@ -360,26 +360,36 @@ private fun Resolver.resolveStatement(
         }
 
         is NeedInfo -> {
-            val t = statement.expression
-            when (t) {
-                is MessageSend -> {
-                    // resolve receiver
-                    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-                    currentLevel++
-                    resolveSingle((t.receiver), previousAndCurrentScope, statement)
-                    currentLevel--
-                    val receiverType = t.receiver.type!!
+            if (!GlobalVariables.isLspMode) {
+                val t = statement.expression
 
 
-                    // get what to search
-                    val searchRequest = t.messages.first().selectorName.lowercase()
-                    if (!GlobalVariables.isLspMode) findSimilarAndPrint(searchRequest, receiverType)
+                when (t) {
+                    is MessageSend -> {
+                        // resolve receiver
+                        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+                        currentLevel++
+                        resolveSingle((t.receiver), previousAndCurrentScope, statement)
+                        currentLevel--
+                        val receiverType = t.receiver.type!!
 
-                    onCompletionExc(currentScope + previousScope) // NeedInfo
-                }
 
-                else -> {
-                    onCompletionExc(currentScope + previousScope) // NeedInfo
+                        // get what to search
+                        val searchRequest = t.messages.first().selectorName.lowercase()
+                        if (!GlobalVariables.isLspMode) {
+                            findSimilarAndPrint(searchRequest, receiverType)
+                        }
+
+                        onCompletionExc(currentScope + previousScope) // NeedInfo
+                    }
+
+                    else -> {
+                        if (t != null) {
+                            println("$t is ${t.type} ")
+                        }
+
+                        onCompletionExc(currentScope + previousScope) // NeedInfo
+                    }
                 }
             }
         }
@@ -1043,6 +1053,7 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
 }
 
 val createTypeListOfType = { name: String, internalType: Type.InternalType, listType: Type.UserType ->
+    assert(listType.protocols.isNotEmpty())
     Type.UserType(
         name = name,
         typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
@@ -1403,7 +1414,7 @@ class Resolver(
             typeArgumentList = listOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
-            typeDeclaration = null
+            typeDeclaration = null,
         )
         val sequenceTypeOfDifferentGeneric = Type.UserType(
             name = "Sequence",
@@ -1413,13 +1424,15 @@ class Resolver(
             typeDeclaration = null
         )
 
+        // also adds protocol to sequence
         addCustomTypeToDb(
             sequenceType, createListProtocols(
+                isMutable = false,
                 intType = intType,
                 stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
-                mutListType = sequenceType,
+                listType = sequenceType,
                 listTypeOfDifferentGeneric = sequenceTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
@@ -1427,6 +1440,27 @@ class Resolver(
                 pairType = pairType
             )
         )
+
+        // List
+        addCustomTypeToDb(
+            listType, createListProtocols(
+                isMutable = false,
+                intType = intType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                listType = listType,
+                listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
+                itType = genericType,
+                differentGenericType = differentGenericType,
+                sequenceType = sequenceType,
+                pairType = pairType
+            )
+        )
+        val kw = createMapKeyword(charType, genericType, listType)
+        stringType.protocols["common"]!!.keywordMsgs[kw.first] = kw.second
+        listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
+        //
 
         sequenceTypeOfDifferentGeneric.protocols.putAll(sequenceType.protocols)
 
@@ -1456,37 +1490,11 @@ class Resolver(
             )
         )
 
-        // List
-        addCustomTypeToDb(
-            listType, createListProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType,
-                mutListType = listType,
-                listTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
-                itType = genericType,
-                differentGenericType = differentGenericType,
-                sequenceType = sequenceType,
-                pairType = pairType
-            ).also {
-                it.remove("add")
-                it.remove("addAll")
-                it.remove("removeAt")
-                it.remove("remove")
-            }
-        )
-        listType.protocols["collectionProtocol"]!!.keywordMsgs.remove("add")
-        val kw = createMapKeyword(charType, genericType, listType)
-        stringType.protocols["common"]!!.keywordMsgs[kw.first] = kw.second
-
-        listTypeOfDifferentGeneric.protocols.putAll(listType.protocols)
 
 
+        // List continue
         // now when we have list type with its protocols, we add split method for String, that returns List::String
         val listOfString = createTypeListOfType("List", stringType, listType)
-
-        listType.protocols
         stringType.protocols["common"]!!.keywordMsgs.putAll(
             listOf(
                 createKeyword(
@@ -1502,6 +1510,7 @@ class Resolver(
         val toListForIntProtocol = createUnary("toList", listOfInts)
         val toMutListForIntProtocol = createUnary("toMutableList", mutListOfInts)
         intRangeProto.unaryMsgs.putAll(arrayOf(toListForIntProtocol, toMutListForIntProtocol))
+
         // Mutable list
         val mutableListType = Type.UserType(
             name = "MutableList",
@@ -1509,8 +1518,10 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
+        sequenceType.also {
+            it.protocols["collectionProtocol"]!!.unaryMsgs["toMutableList"]!!.returnType = mutableListType
+        }
         val mutListTypeOfDifferentGeneric = Type.UserType(
             name = "MutableList",
             typeArgumentList = listOf(differentGenericType),
@@ -1521,11 +1532,12 @@ class Resolver(
 
         addCustomTypeToDb(
             mutableListType, createListProtocols(
+                isMutable = true,
                 intType = intType,
                 stringType = stringType,
                 unitType = unitType,
                 boolType = boolType,
-                mutListType = mutableListType,
+                listType = mutableListType,
                 listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
                 itType = genericType,
                 differentGenericType = differentGenericType,
