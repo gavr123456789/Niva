@@ -19,6 +19,7 @@ import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationBinary
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.MessageSend
 import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
@@ -167,7 +168,13 @@ class LS(val info: ((String) -> Unit)? = null) {
                     val prevLineCursor = f[lastLineIndex]
                     if (prevLineCursor != null && prevLineCursor.isNotEmpty()) {
                         val lastExprOnTheLine = prevLineCursor.last().first
-                        if (lastExprOnTheLine is Message && lastExprOnTheLine.isPiped) {
+                        val unpackVarDecl = if (lastExprOnTheLine is VarDeclaration) {
+                            val value = lastExprOnTheLine.value
+                            if (value is MessageSend) {
+                                value.messages.last()
+                            } else lastExprOnTheLine
+                        } else lastExprOnTheLine
+                        if (unpackVarDecl is Message && unpackVarDecl.isPiped) {
                             return prevLineCursor
                         }
                     }

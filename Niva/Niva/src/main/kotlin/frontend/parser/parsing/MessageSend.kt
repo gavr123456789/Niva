@@ -172,6 +172,14 @@ fun Parser.unaryOrBinary(
                 error("sas!")
             }
 
+            else -> {
+                if (GlobalVariables.isLspMode && unaryMessages.isNotEmpty()) {
+                    unaryMessages.last().isPiped = true
+                } else
+                    firstReceiver.token.compileError("message after pipe expected")
+                // we got |> but nothing afth
+            }
+
 
         }
     }
