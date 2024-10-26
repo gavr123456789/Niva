@@ -238,17 +238,18 @@ fun Resolver.resolveKeywordMsg(
         val kw: KeywordMsgMetaData? = findKwForLambda()
 
         val realArgs =
-            if (aliasToLambda != null && receiverArgs.isNotEmpty() && aliasToLambda.args.isNotEmpty() && receiverArgs.first().name == aliasToLambda.args.first().name) aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
+            if (aliasToLambda != null && receiverArgs.isNotEmpty() && statement.args.isNotEmpty() && statement.args.first().name == aliasToLambda.args.first().name) // aliasToLambda.args.isNotEmpty() && receiverArgs.first().name
+                aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
             else if (kw != null) {
                 kw.argTypes     // kw message declared for lambda alias
-            } else receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
+            } else
+                receiverArgs // message to declared in lambda arguments [x::Int -> Int] x: ...
 
         if (realArgs.count() != statement.args.count()) {
             statement.token.compileError("Number of arguments for code-block: ${WHITE}${realArgs.count()}$RESET, you passed ${WHITE}${statement.args.count()}")
         }
         statement.args.forEachIndexed { ii, it ->
             // name check
-            // if it lambda, then any arg name is valid
             if (it.keywordArg.type !is Type.Lambda && it.name != realArgs[ii].name) {
                 statement.token.compileError(
                     "$YEL${it.name}${RESET} is not valid arguments for codeblock $WHITE${statement.receiver.str}$RESET, the valid arguments are: $YEL${receiverType.args.map { it.name }}"

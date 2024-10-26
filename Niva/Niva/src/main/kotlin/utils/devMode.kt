@@ -43,7 +43,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     }
 
     val scope = this
-    val watcher: KfsDirectoryWatcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
+    val watcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
     watcher.add(pm.nivaRootFolder)
     println("watching " + pm.nivaRootFolder)
     var everySecond = false
@@ -60,9 +60,12 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                         } catch (e: CompilerError) {
                             println(e.message)
                         } catch (e: OnCompletionException){
-                            throw e
+                            println(e.scope)
+//                            throw e
                         } catch (e: Exception) {
                             if (e.message?.startsWith("end of search") == false) {
+                                println("Exception: ${e.message}")
+
                                 throw e
                             }
                         }

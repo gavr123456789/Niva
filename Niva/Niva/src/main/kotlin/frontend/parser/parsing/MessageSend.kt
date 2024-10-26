@@ -9,6 +9,7 @@ import main.utils.RED
 import main.utils.WHITE
 import main.frontend.parser.parsing.simpleReceiver
 import main.frontend.parser.types.ast.*
+import main.utils.GlobalVariables
 
 ////   // MESSAGES
 ////  messages = (unaryMessage+ binaryMessage* keywordMessage?)  -- unaryFirst
@@ -376,7 +377,12 @@ fun Parser.keyword(
                 }
             })
         } else {
-            peek().compileError("Can't parse message after pipe operator |>")
+            if (!GlobalVariables.isLspMode)
+                peek().compileError("Can't parse message after pipe operator |>")
+            else if (messages.isNotEmpty()) {
+                val last = messages.last()
+                last.isPiped = true
+            }
         }
     }
 

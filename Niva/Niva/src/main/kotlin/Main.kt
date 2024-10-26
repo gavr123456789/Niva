@@ -21,42 +21,30 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-errordomain MyError =
-| Error1 text: String
+file = File path: "main.niva"
+content = file readText
+content echo
+File path: "main.niva" |>
+readText |>
 
-Int sas -> Int!Error1 = [
-    x = Error1 text: "Important error information ^_^"
-    x throw
-    ^ this != 0 => x throw |=> 1
-]
 
-Int sus -> Int = [
- 
-    y = 1 sas 
-        ifError: [
-            "got some error!!!" echo
-            | it
-            | Error1 => it text echo
-            42
-        ] 
-    ^3
-]
+
 """
 
 fun main(args: Array<String>) {
 
 //    val args = arrayOf("-h")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/Lexer/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/http4kserver/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/wc/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/wc/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva"
 //
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
 //        ls.resolveAllWithChangedFile(qqq, fakeFileSourceGOOD)
-//        val q = ls.onCompletion(qqq, 9, 12)
+//        val q = ls.onCompletion(qqq, line = 6, character = 2)
 //        println(q)
 //    }
 //    catch (e: OnCompletionException) {
