@@ -21,9 +21,15 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-file = File path: "main.niva"
-content = file readText |> 
+Int a::Int b::Int c::Int = "arsars"
 
+1 
+  a: 1 inc inc toString toInt
+  b: 2 
+  c: 3 
+union Sas = Sa| Su
+
+Sas kkk = this 
 
 """
 
@@ -35,12 +41,12 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva"
-
+//
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
 //        ls.resolveAllWithChangedFile(qqq, fakeFileSourceGOOD)
-//        val q = ls.onCompletion(qqq, line = 3, character = 5)
+//        val q = ls.onCompletion(qqq, line = 9, character = 17)
 //        println(q)
 //    }
 //    catch (e: OnCompletionException) {

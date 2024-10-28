@@ -259,7 +259,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                         )
 
                                         onEachStatement?.invoke( // Bind fields
-                                            msgDeclSetter,
+                                            msgDeclSetter, // setter
                                             emptyScope,
                                             emptyScope,
                                             msgDeclSetter.token.file
