@@ -880,6 +880,7 @@ fun createListProtocols(
         // kw
         val mutKwMsgs = mutableMapOf(
             createKeyword(KeywordArg("add", itType), boolType),
+            createKeyword(KeywordArg("addFirst", itType), unitType),
             createKeyword(KeywordArg("addAll", listType), boolType),
             createKeyword(KeywordArg("removeAt", intType), unitType),
             createKeyword(KeywordArg("remove", itType), unitType),

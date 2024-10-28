@@ -85,6 +85,7 @@ class Token(
 ) {
 
     fun isMultiline() = lineEnd != -1 && lineEnd != line
+    fun getLastLine() = if (isMultiline()) lineEnd else line
 
     override fun equals(other: Any?): Boolean =
         other is Token && kind == other.kind

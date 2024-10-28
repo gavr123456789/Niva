@@ -7,36 +7,18 @@ import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
 import main.frontend.meta.Token
-import main.frontend.parser.types.ast.ConstructorDeclaration
-import main.frontend.parser.types.ast.Declaration
-import main.frontend.parser.types.ast.DestructingAssign
-import main.frontend.parser.types.ast.EnumBranch
-import main.frontend.parser.types.ast.EnumDeclarationRoot
-import main.frontend.parser.types.ast.ErrorDomainDeclaration
-import main.frontend.parser.types.ast.Expression
-import main.frontend.parser.types.ast.Message
-import main.frontend.parser.types.ast.MessageDeclaration
-import main.frontend.parser.types.ast.MessageDeclarationBinary
-import main.frontend.parser.types.ast.MessageDeclarationKeyword
-import main.frontend.parser.types.ast.MessageDeclarationUnary
-import main.frontend.parser.types.ast.MessageSend
-import main.frontend.parser.types.ast.SomeTypeDeclaration
-import main.frontend.parser.types.ast.Statement
-import main.frontend.parser.types.ast.StaticBuilderDeclaration
-import main.frontend.parser.types.ast.TypeAliasDeclaration
-import main.frontend.parser.types.ast.TypeDeclaration
-import main.frontend.parser.types.ast.UnionBranchDeclaration
-import main.frontend.parser.types.ast.UnionRootDeclaration
-import main.frontend.parser.types.ast.VarDeclaration
-import main.utils.GlobalVariables
-import main.utils.MainArgument
-import main.utils.PathManager
-import main.utils.VerbosePrinter
-import main.utils.compileProjFromFile
-import main.utils.listFilesDownUntilNivaIsFoundRecursively
+import main.frontend.parser.types.ast.*
+import main.utils.*
 import java.io.File
 import java.net.URI
-import java.util.SortedMap
+import java.util.*
+
+private fun Statement.unpackMessage() = if (this is VarDeclaration) {
+    val value = this.value
+    if (value is MessageSend) {
+        value.messages.last()
+    } else this
+} else this
 
 
 typealias Line = Int
@@ -63,32 +45,36 @@ class LS(val info: ((String) -> Unit)? = null) {
 
     class MegaStore(val info: ((String) -> Unit)? = null) {
         // file absolute path to line to a pair of statement + scope of it's line
-        val data: MutableMap<String, SortedMap<Line, MutableSet<Pair<Statement, Scope>>>> = mutableMapOf()
+        val data: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>> = mutableMapOf()
 
 
-        fun addNew(s: Statement, scope: Scope) {
+        fun addNew(s: Statement, scope: Scope, prepend: Boolean) {
             val sFile = s.token.file.absolutePath
             val sLine = s.token.line
 
-            val createSet = {
-                mutableSetOf(Pair(s, scope))
+            val createList = {
+                mutableListOf(Pair(s, scope))
             }
 
             val createLineToStatement = {
-                sortedMapOf<Line, MutableSet<Pair<Statement, Scope>>>(sLine to createSet())
+                sortedMapOf<Line, MutableList<Pair<Statement, Scope>>>(sLine to createList())
             }
 
 
             val file = data[sFile]
-            val addToSet = { st: Statement, stLine: Int ->
+            val addToList = { st: Statement, stLine: Int ->
                 // has such file
                 if (file != null) {
                     val line = file[stLine]
                     // has such line
                     if (line != null) {
-                        line.add(Pair(st, scope))
+                        if (!prepend)
+                            line.add(Pair(st, scope))
+                        else
+                            line.addFirst(Pair(st, scope))
+
                     } else {
-                        val value = createSet()
+                        val value = createList()
                         file[stLine] = value
                     }
                 } else {
@@ -97,12 +83,12 @@ class LS(val info: ((String) -> Unit)? = null) {
                 }
             }
 
-            addToSet(s, sLine)
+            addToList(s, sLine)
 
             if (s.token.isMultiline()) {
                 val sas = (s.token.line..s.token.lineEnd).drop(1)
                 sas.forEach {
-                    addToSet(s, it)
+                    addToList(s, it)
                 }
             }
 
@@ -111,16 +97,14 @@ class LS(val info: ((String) -> Unit)? = null) {
 
         // use scope if there is no expression on line
         fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
-            fun <T> checkElementsFromEnd(set: Set<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
-                val list = set.toList()
+            fun <T> checkElementsFromEnd(set: List<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
+                val list = set
                 info?.invoke("-------\nfind, list = $list")
                 for (i in list.size - 1 downTo 1) {
                     info?.invoke("i = $i")
                     if (check(list[i], list[i - 1])) {
-                        if (returnLast)
-                            return list[i]
-                        else
-                            return list[i - 1]
+                        return if (returnLast) list[i]
+                        else list[i - 1]
                     }
                 }
                 info?.invoke("-------")
@@ -129,20 +113,22 @@ class LS(val info: ((String) -> Unit)? = null) {
 
             // when we search on empty line, we are looking only for scope or messages for previous line
 
-            val findStatementInLine: (MutableSet<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope>? =
-                { set: MutableSet<Pair<Statement, Scope>>, onlyScope: Boolean ->
+            val findStatementInLine: (MutableList<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope>? =
+                { list: MutableList<Pair<Statement, Scope>>, onlyScope: Boolean ->
                     // if its last elem
-                    val lastStatementOnTheLine = set.last().first
+                    val lastStatementOnTheLine = list.last().first
                     val lastTok = lastStatementOnTheLine.token
-                    // if it next-line Then Its After Pipe NewLine Completion
-                    if (lastTok.line + 1 == line) {
-                        set.last()
+                    // After Pipe NewLine Completion
+                    if (lastTok.getLastLine() + 1 == line && lastStatementOnTheLine is Message && lastStatementOnTheLine.isPiped) {
+                        list.last()
                     } else if (lastTok.relPos.end <= character || onlyScope) {
                         // it is completion for last
-                        set.last()
+                        val x = list.last().first
+                        if (x.token.isMultiline() && x is KeywordMsg && list.count() > 1) list[list.count() - 2]
+                        else list.last()
                     } else {
 
-                        val q = checkElementsFromEnd(set, true) { next, prev ->
+                        val q = checkElementsFromEnd(list, true) { next, prev ->
                             val a = next.first.token.relPos.start > character
                             val b = prev.first.token.relPos.start <= character
                             a && b
@@ -158,22 +144,16 @@ class LS(val info: ((String) -> Unit)? = null) {
             // file
             val f = data[path]
             return if (f != null) {
-                fun getTheLineThroughPipe(): MutableSet<Pair<Statement, Scope>>? {
+                fun getTheLineThroughPipe(): MutableList<Pair<Statement, Scope>>? {
                     val cursor = f[line]
-                    if (cursor != null)
-                        return cursor
+                    if (cursor != null) return cursor
 
                     // check that last line is not ended with piped msg
                     val lastLineIndex = line - 1
                     val prevLineCursor = f[lastLineIndex]
                     if (prevLineCursor != null && prevLineCursor.isNotEmpty()) {
                         val lastExprOnTheLine = prevLineCursor.last().first
-                        val unpackVarDecl = if (lastExprOnTheLine is VarDeclaration) {
-                            val value = lastExprOnTheLine.value
-                            if (value is MessageSend) {
-                                value.messages.last()
-                            } else lastExprOnTheLine
-                        } else lastExprOnTheLine
+                        val unpackVarDecl = lastExprOnTheLine.unpackMessage()
                         if (unpackVarDecl is Message && unpackVarDecl.isPiped) {
                             return prevLineCursor
                         }
@@ -185,10 +165,8 @@ class LS(val info: ((String) -> Unit)? = null) {
                 if (l != null) {
                     val q = findStatementInLine(l, false)
 
-                    if (q != null)
-                        LspResult.Found(q)
-                    else
-                        LspResult.ScopeSuggestion(scope)
+                    if (q != null) LspResult.Found(q)
+                    else LspResult.ScopeSuggestion(scope)
 
 
                 } else {
@@ -281,8 +259,7 @@ fun LS.removeDecl2(file: File) {
                             if (usrLikeTypes != null) {
                                 info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
                                 val w = usrLikeTypes.find { it.pkg == forType.pkg }
-                                val protocolWithMethod =
-                                    w?.protocols?.values?.find { it.keywordMsgs.contains(d.name) }
+                                val protocolWithMethod = w?.protocols?.values?.find { it.keywordMsgs.contains(d.name) }
                                 protocolWithMethod?.keywordMsgs?.remove(d.name)
                             }
                         }
@@ -300,12 +277,10 @@ fun LS.removeDecl2(file: File) {
                             if (forType.isAlias) {
                                 val aliasName = forType.alias!!
                                 typeDB.lambdaTypes.remove(aliasName)
-                            } else
-                                TODO()
+                            } else TODO()
                         }
 
-                        is Type.NullableType,
-                        is Type.UnresolvedType -> TODO()
+                        is Type.NullableType, is Type.UnresolvedType -> TODO()
 
                         null -> {}
                     }
@@ -391,8 +366,9 @@ fun LS.removeDecl2(file: File) {
 
 
             when (d) {
-                is TypeDeclaration, is TypeAliasDeclaration, is UnionBranchDeclaration, is EnumBranch, is ErrorDomainDeclaration ->
-                    removeFromTypeDB(d.typeName)
+                is TypeDeclaration, is TypeAliasDeclaration, is UnionBranchDeclaration, is EnumBranch, is ErrorDomainDeclaration -> removeFromTypeDB(
+                    d.typeName
+                )
 
                 is UnionRootDeclaration -> {
                     d.branches.forEach { removeFromTypeDB(it.typeName) }
@@ -460,8 +436,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
         listOfNivaFiles.addAll(filesFromTheUpperDir)
 
-        if (filesFromTheUpperDir.count() == 0)
-            throw Exception("There is no main.niva file")
+        if (filesFromTheUpperDir.count() == 0) throw Exception("There is no main.niva file")
 
         // find if there is main.niva
         val nivaMain = listOfNivaFiles.find { it.nameWithoutExtension == "main" }
@@ -491,16 +466,18 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
 
     val onEachStatementCall =
         { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>?, file2: File ->
-
-            val addStToMegaStore = { s: Statement ->
+            fun addStToMegaStore(s: Statement, prepend: Boolean = false) {
                 megaStore.addNew(
-                    s,
-                    if (currentScope != null && previousScope != null)
-                        currentScope + previousScope
-                    else
-                        mutableMapOf()
+                    s = s,
+                    scope =
+                        if (currentScope != null && previousScope != null)
+                            currentScope + previousScope
+                        else
+                            mutableMapOf(),
+                    prepend
                 )
             }
+
             when (st) {
                 is Expression, is VarDeclaration -> {
                     addStToMegaStore(st)
@@ -535,17 +512,19 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                         // forType
                         realSt.forType?.let {
                             realSt.forTypeAst.toIdentifierExpr(it, true).also {
-                                addStToMegaStore(it)
+                                // we prepend here because
+                                // `Sas kek = this | match deep |`
+                                // Sas is the last expression on the line, so it replace the whole line instead of
+                                // only `this`
+                                addStToMegaStore(it, prepend = true)
                             }
                         }
 
                         val returnType = st.returnType
                         if (returnType != null) {
-                            realSt.returnTypeAST
-                                ?.toIdentifierExpr(returnType, true)
-                                ?.also {
-                                    addStToMegaStore(it)
-                                }
+                            realSt.returnTypeAST?.toIdentifierExpr(returnType, true)?.also {
+                                addStToMegaStore(it, prepend = true)
+                            }
                         }
                         // args
                         if (realSt is MessageDeclarationKeyword) {
@@ -553,12 +532,9 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
                                 // for some reason arg types are null here, so I use typeDB
                                 val type =
                                     ((realSt.messageData ?: st.messageData) as? KeywordMsgMetaData)?.argTypes[i]?.type
-                                if (type != null)
-                                    arg.typeAST
-                                        ?.toIdentifierExpr(type, true)
-                                        ?.also {
-                                            addStToMegaStore(it)
-                                        }
+                                if (type != null) arg.typeAST?.toIdentifierExpr(type, true)?.also {
+                                    addStToMegaStore(it)
+                                }
                             }
                         }
                     }
@@ -575,10 +551,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
     val pm = PathManager(mainFile.path, MainArgument.LSP)
     try {
         this.resolver = compileProjFromFile(
-            pm,
-            resolveOnly = true,
-            compileOnlyOneFile = false,
-            onEachStatement = onEachStatementCall
+            pm, resolveOnly = true, compileOnlyOneFile = false, onEachStatement = onEachStatementCall
         )
         this.completionFromScope = emptyMap()
         return resolver
