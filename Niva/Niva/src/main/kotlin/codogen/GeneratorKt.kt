@@ -74,19 +74,15 @@ dependencies:
 //%IMPL%
 
 test-dependencies:
-  - org.jetbrains.kotlin:kotlin-test:1.9.20
+  - org.jetbrains.kotlin:kotlin-test:2.0.21
 
 settings:
   kotlin:
-    languageVersion: 2.0
     serialization:
       format: json
-  compose: enabled
-    
+      
   jvm:
-    target: 21
-  java:
-    source: 21
+    release: 21
 
 """
     }
