@@ -481,7 +481,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
         println("----------")
         val q = e.stackTrace
         
-        val thisProjectPath = "$pathToInfroProject/src/"
+        val thisProjectPath = "${pathToInfroProject.replace("\\", "/")}/src/"
         
         fun replaceLinesInStackTrace(x: List<StackTraceElement>) {
 

@@ -119,7 +119,7 @@ kotlin {
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String): String {
         val q = runCommandName.split(" ").first()
         return if (q == "jvmRun") "" else
-        "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"$workingDir\")\n"
+        "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"\"\"$workingDir\"\"\")\n"
     }
 
     fun GRADLE_OPTIONS() = """
