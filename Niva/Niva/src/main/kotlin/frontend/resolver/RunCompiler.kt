@@ -215,6 +215,8 @@ fun Resolver.resolve(
     unResolvedSingleExprMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
         unresolvedDecl.forEach {
+            val (protocol, it) = it
+            changeProtocol(protocol)
             resolveDeclarations(it, mutableMapOf(), resolveBody = true)
         }
     }
