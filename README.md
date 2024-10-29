@@ -35,12 +35,15 @@ Learn language here: https://gavr123456789.github.io/niva-site
 - No NPE, nullability works the same as in Kotlin\Swift 
   
 ## Compile from sources 
-Warning: the first compilation of hello world niva program will take time because of gradle deps.  
+Tested on Linux Arch\Nix, Mac M1 and Window$, both compiler and LSP server.  
+Warning: the first compilation of "Hello world" niva program can take time because of gradle deps.  
 
 You can choose jar or native version, jar is much easier to get, native is ~300ms faster on m1. 
 ### Jar version
 Run in Niva/Niva folder:  
-`./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path
+`./gradlew buildJvmNiva` - will create jvm based binary in ~/.niva/niva/bin, u can add it in path  
+JVM > 22 is required, Im using https://www.graalvm.org/downloads/  
+
 
 ### Getting native binary with GraalVM
 GraalVM binary compiles hello world 300ms faster on M1(70% of the time takes gradle anyway)
@@ -71,20 +74,17 @@ If you have `expanded from macro 'NS_FORMAT_ARGUMENT'` problem with buildNativeN
 dont use `run` inside niva repo, since niva has no build system or project files it just collect all the files recursively, so it will try to compile all the examples.  
 use `--verbose` flag to mesure time of compilation steps. 
 
+## Tutorial
+Is here https://gavr123456789.github.io/niva-site  
+
 ## VSCode extension
-[VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
+- [LSP](https://github.com/gavr123456789/vaLSe) Server  
+- [VS Code extension](https://github.com/gavr123456789/niva-vscode-bundle) full lsp support with autocompletion, error highlighting, goto definitions
 
 
 ## Nix-Shell Setup
-
 To get started with Niva, use the provided shell.nix file.  
-
-  Enter the following command:
-
-  ```bash
-  nix-shell
-  ```
-
+Enter the following command: `nix-shell`  
 This command will set up the necessary dependencies and run the compile script to produce a binary file.  
 Afterwards, you can run the Niva compiler with the following command:
 ```bash
@@ -93,8 +93,9 @@ Afterwards, you can run the Niva compiler with the following command:
 
 # Core
 
-
-Almost everything in this lang is message send(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses). 
+Can be outdated, read https://gavr123456789.github.io/niva-site  
+  
+Almost everything in this lang is message send(function call), because of that there are 3 ways of doing it(don't worry, none of them requires parentheses).  
 
 #### Hello world
 Everything is sending a message to an object. 
