@@ -1,18 +1,13 @@
-errordomain MyError =
-| Error1 text: String
-| Error2 code: Int
+type Person
 
+Project protocol: "a"
+Person a = 1
+Person b = 1
+Person c = 1
+Project protocol: "b"
+Person aa = 1
+Person bb = 1
+Person cc = 1
 
-type Person name: String
-
-Int sas -> Person!Error = [
-    Error throwWithMessage: "Hi ^_^"
-    ^ Person name: "qwf"
-]
-
-Int sus -> Unit = [
-    x = 1 sas orPANIC
-    x echo
-]
-
-1 sus
+p = Person new
+p

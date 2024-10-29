@@ -357,7 +357,7 @@ fun Resolver.resolveMessageDeclaration(
     // body is not resolved and no returnTypeAst, so we cant infer return type
     // because not all declarations resolved yet
     if (statement.returnTypeAST == null && !statement.isRecursive && statement.isSingleExpression && !needResolveOnlyBody) {
-        unResolvedSingleExprMessageDeclarations.add(currentPackageName, statement)
+        unResolvedSingleExprMessageDeclarations.add(currentPackageName, Pair(currentProtocolName,statement))
         currentLevel--
         return true
     }

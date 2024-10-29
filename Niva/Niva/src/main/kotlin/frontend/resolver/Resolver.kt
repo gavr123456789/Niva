@@ -1102,7 +1102,7 @@ class Resolver(
 
     // for recursive types
     val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
-    val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
+    val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<Pair<String, MessageDeclaration>> = mutableMapOf(), // String in pair is protocol
     val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
     val unresolvedDocComments: MutableSet<IdentifierExpr> = mutableSetOf(),
     var allDeclarationResolvedAlready: Boolean = false,
