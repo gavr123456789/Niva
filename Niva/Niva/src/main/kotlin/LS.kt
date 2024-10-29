@@ -29,9 +29,10 @@ class OnCompletionException(val scope: Scope, val errorMessage: String? = null, 
 sealed interface LspResult {
     class NotFoundFile() : LspResult
     class ScopeSuggestion(val scope: Scope) : LspResult
-    class Found(val x: Pair<Statement, Scope>) : LspResult
+    class Found(val statement: Statement, val needBraceWrap: Boolean) : LspResult
 }
 
+//class FoundResult(val statement: Statement, scope: Scope, needBraceWrap: Boolean)
 
 class LS(val info: ((String) -> Unit)? = null) {
     lateinit var resolver: Resolver
@@ -112,20 +113,23 @@ class LS(val info: ((String) -> Unit)? = null) {
             }
 
             // when we search on empty line, we are looking only for scope or messages for previous line
-
-            val findStatementInLine: (MutableList<Pair<Statement, Scope>>, Boolean) -> Pair<Statement, Scope>? =
-                { list: MutableList<Pair<Statement, Scope>>, onlyScope: Boolean ->
+            val findStatementInLine: (MutableList<Pair<Statement, Scope>>) -> LspResult.Found? =
+                { list: MutableList<Pair<Statement, Scope>> ->
                     // if its last elem
                     val lastStatementOnTheLine = list.last().first
                     val lastTok = lastStatementOnTheLine.token
                     // After Pipe NewLine Completion
                     if (lastTok.getLastLine() + 1 == line && lastStatementOnTheLine is Message && lastStatementOnTheLine.isPiped) {
-                        list.last()
-                    } else if (lastTok.relPos.end <= character || onlyScope) {
-                        // it is completion for last
+                        LspResult.Found(list.last().first, false)
+                    } else if (lastTok.relPos.end <= character) {
+                        // it is completion for an arg of kw
                         val x = list.last().first
-                        if (x.token.isMultiline() && x is KeywordMsg && list.count() > 1) list[list.count() - 2]
-                        else list.last()
+                        if (x.token.isMultiline() && x is KeywordMsg && list.count() > 1) {
+                            LspResult.Found(list[list.count() - 2].first, true) // last but one
+                        }
+                        else {
+                            LspResult.Found(list.last().first, false)
+                        }
                     } else {
 
                         val q = checkElementsFromEnd(list, true) { next, prev ->
@@ -134,7 +138,11 @@ class LS(val info: ((String) -> Unit)? = null) {
                             a && b
                         }
 
-                        q
+                        if (q == null)
+                            null
+                        else
+                            LspResult.Found(q.first, false)
+
                         // ?: lastTok.compileError("LSP: Cant find statement on line: $line path: $path, char: $character\n" + "statements are: ${set.joinToString { "start: " + it.first.token.relPos.start + " end: " + it.first.token.relPos.end }}")
 
                     }
@@ -163,12 +171,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                 // line
                 val l = getTheLineThroughPipe()
                 if (l != null) {
-                    val q = findStatementInLine(l, false)
-
-                    if (q != null) LspResult.Found(q)
-                    else LspResult.ScopeSuggestion(scope)
-
-
+                    findStatementInLine(l) ?: LspResult.ScopeSuggestion(scope)
                 } else {
                     // no such line so show scope
                     // run resolve with scope feature
