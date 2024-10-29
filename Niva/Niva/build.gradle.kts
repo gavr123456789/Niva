@@ -1,4 +1,5 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+import org.jetbrains.kotlin.cli.common.isWindows
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -120,7 +121,6 @@ tasks.register(buildJvmNiva) {
         moveJvm()
 
         buildInfroProject()
-
     }
 }
 
@@ -143,7 +143,8 @@ fun printNivaWelcome(targetDir: Path, path: String) {
     """.trimIndent() +
                 "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
                 "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
-                "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc"
+                "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc" +
+                "\twindows: setx PATH \"%PATH%;$path\""
     )
 }
 
@@ -154,7 +155,12 @@ fun buildInfroProject() {
         val javaVersionOutput = ByteArrayOutputStream()
         exec {
             this.workingDir = infroDir
-            commandLine("./gradlew", "build")
+            val isWindows = isWindows
+            if (isWindows) {
+                commandLine("./gradlew.bat", "build")
+            } else {
+                commandLine("./gradlew", "build")
+            }
             standardOutput = javaVersionOutput
             errorOutput = javaVersionOutput
             isIgnoreExitValue = true
