@@ -21,6 +21,8 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
 
+
+
 // Can generate source files
 class GeneratorKt(
     val dependencies: MutableList<String> = mutableListOf(),
@@ -118,11 +120,14 @@ kotlin {
 """
     fun GRADLE_FOR_AMPER_TEMPLATE(workingDir: String, runCommandName: String): String {
         val q = runCommandName.split(" ").first()
-        return if (q == "jvmRun") "" else
-        "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"\"\"$workingDir\"\"\")\n"
+        return "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"\"\"$workingDir\"\"\")\n"
+        return if (q == "jvmRun")
+            ""
+        else
+            "getTasksByName(\"${q}\", true).first().setProperty(\"workingDir\", \"\"\"$workingDir\"\"\")\n"
     }
 
-    fun GRADLE_OPTIONS() = """
+    fun GRADLE_OPTIONS(workingDir: String) = """
 repositories {
     maven(url = "https://jitpack.io")
 }
@@ -138,6 +143,8 @@ tasks.withType(JavaExec::class.java) {
         "--enable-native-access=ALL-UNNAMED",
         "-Djava.library.path=/usr/lib64:/lib64:/lib:/usr/lib:/lib/x86_64-linux-gnu"
     )
+    setProperty("workingDir", ""${'"'}$workingDir""${'"'})
+    standardInput = System.`in`
 }
 
 allprojects {
@@ -153,10 +160,6 @@ allprojects {
         }
     }
 }
-
-//tasks.named<JavaExec>("run") {
-//    standardInput = System.`in`
-//}
 
 """
 }
@@ -178,8 +181,8 @@ fun GeneratorKt.regenerateGradleForAmper(
         if (compilationTarget == CompilationTarget.jvm) {
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
-        append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
-        append(GRADLE_OPTIONS())
+//        append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))
+        append(GRADLE_OPTIONS(File(".").absolutePath))
     }
 
 
