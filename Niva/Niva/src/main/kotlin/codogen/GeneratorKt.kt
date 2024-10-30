@@ -82,7 +82,7 @@ settings:
       format: json
       
   jvm:
-    release: 21
+    target: 22
 
 """
     }
