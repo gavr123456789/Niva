@@ -101,7 +101,7 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 }
 
 fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
-    CompilationTarget.jvm -> "run"
+    CompilationTarget.jvm -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
     CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
     CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
     CompilationTarget.jvmCompose -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
