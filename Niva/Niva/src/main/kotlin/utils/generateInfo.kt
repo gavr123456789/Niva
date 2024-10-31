@@ -6,8 +6,18 @@ import frontend.resolver.Protocol
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.meta.createFakeToken
+import main.frontend.parser.types.ast.DocComment
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
+fun StringBuilder.appendnlWithCodeBlock(s: String, doc: DocComment?) {
+    if (doc != null) {
+        this.appendnl(doc.text)
+    }
+    this.appendnl("```Scala")
+    this.append("$s\n")
+    this.appendnl("```")
+
+}
 
 private fun Protocol.generateInfoProtocol() = buildString {
     val it = this@generateInfoProtocol
@@ -15,25 +25,32 @@ private fun Protocol.generateInfoProtocol() = buildString {
     if (it.unaryMsgs.isNotEmpty()) {
         appendnl("### unary")
         it.unaryMsgs.values.forEach { u ->
-            appendnl("\t" + u.toString())
+            appendnlWithCodeBlock(u.toString(), u.docComment)
+//            appendnl("\t" + u.toString())
         }
     }
     if (it.binaryMsgs.isNotEmpty()) {
         appendnl("### binary")
         it.binaryMsgs.values.forEach { u ->
-            appendnl("\t" + u.toString())
+            appendnlWithCodeBlock(u.toString(), u.docComment)
+
+//            appendnl("\t" + u.toString())
         }
     }
     if (it.keywordMsgs.isNotEmpty()) {
         appendnl("### keyword")
         it.keywordMsgs.values.forEach { u ->
-            appendnl("\t" + u.toString())
+            appendnlWithCodeBlock(u.toString(), u.docComment)
+
+//            appendnl("\t" + u.toString())
         }
     }
     if (it.staticMsgs.isNotEmpty()) {
         appendnl("### static")
         it.staticMsgs.values.forEach { u ->
-            appendnl("\t" + u.toString())
+            appendnlWithCodeBlock(u.toString(), u.docComment)
+
+//            appendnl("\t" + u.toString())
         }
     }
 

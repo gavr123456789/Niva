@@ -474,8 +474,8 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
 
                 genericR
             ),
-            createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
-                .emitKw("$0 ?: $1"),
+//            createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
+//                .emitKw("$0 ?: $1"),
         ),
     )
     return mutableMapOf(protocol.name to protocol)
