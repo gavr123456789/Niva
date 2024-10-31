@@ -180,6 +180,7 @@ fun Resolver.resolve(
         resolveUnresolvedTypes()
     }
 
+    fillFieldsWithResolvedTypes()
 
     if (typeDB.unresolvedFields.isNotEmpty()) {
         typeDB.unresolvedFields.values.first().first().typeDeclaration.token.compileError(buildString {
