@@ -214,7 +214,7 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
     inline fun print(string: () -> String) {
         if (isVerboseOn) {
             val x = string()
-            if (x != "") println("${CYAN}Verbose$RESET: ${string()}")
+            if (x.isNotEmpty()) println("${CYAN}Verbose$RESET: $x")
         }
     }
 }

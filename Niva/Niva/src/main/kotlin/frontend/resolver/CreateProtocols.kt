@@ -347,6 +347,7 @@ fun createBoolProtocols(
             createBinary("||", boolType, boolType),
         ),
         keywordMsgs = mutableMapOf(
+
             createKeyword(KeywordArg("or", boolType), boolType),
             createKeyword(KeywordArg("and", boolType), boolType),
             createKeyword(KeywordArg("xor", boolType), boolType),
@@ -396,8 +397,9 @@ fun createCharProtocols(
     val arithmeticProtocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("dec", charType),
-            createUnary("inc", charType),
+
+            createUnary("dec", charType, "'b' inc == 'a'"),
+            createUnary("inc", charType, "'a' inc == 'b'"),
             createUnary("isDigit", boolType),
             createUnary("isLetter", boolType),
             createUnary("isUpperCase", boolType),
@@ -406,16 +408,17 @@ fun createCharProtocols(
 
             createUnary("isLetterOrDigit", boolType),
 
-            createUnary("lowercase", stringType),
-            createUnary("lowercaseChar", charType),
-            createUnary("uppercaseChar", charType),
+            createUnary("lowercase", stringType, "Converts this character to lower case using Unicode mapping rules of the invariant locale"),
+            createUnary("lowercaseChar", charType, "see lowercase"),
+            createUnary("uppercase", charType, "see lowercase"),
+            createUnary("uppercaseChar", charType, "see lowercase"),
 
             createUnary("digitToInt", intType),
 
             createUnary("echo", unitType)
         ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", intType, charType),
+            createBinary("+", intType, charType, "a + 2 == c"),
             createBinary("-", intType, charType),
             createBinary("==", charType, boolType),
             createBinary("!=", charType, boolType),
@@ -444,8 +447,8 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
-            createUnary("echonnl", unitType),
-            createUnary("unpackOrError", realTypeOrNothing)//.emit("$0!!")
+            createUnary("echonnl", unitType, "echo no new line"),
+            createUnary("unpackOrPANIC", realTypeOrNothing, "if the value is null - exit the program")//.emit("$0!!")
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -456,7 +459,9 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
                     "unpack",
                     Type.Lambda(mutableListOf(KeywordArg("it", realTypeOrNothing)), genericR)
                 ),
-                unitType
+                unitType,
+                "Do something with value if its not nullable. " +
+                        "`x unpack: [it echo]`"
             ),
 
             createKeyword(
@@ -472,7 +477,8 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
                     ),
                 ),
 
-                genericR
+                genericR,
+                "unpack and transform if not null, or defalt value `x unpack: [it toString] or: \"no value\"`"
             ),
 //            createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
 //                .emitKw("$0 ?: $1"),
@@ -492,7 +498,7 @@ fun createAnyProtocols(
         name = "common",
         unaryMsgs = mutableMapOf(
             createUnary("echo", unitType),
-            createUnary("echonnl", unitType),
+            createUnary("echonnl", unitType, "echo no new line"),
             createUnary("toString", stringType),
 
             ),
@@ -516,7 +522,6 @@ fun createRangeProtocols(
 ): MutableMap<String, Protocol> {
     //     listType: Type.UserType,
     //    sequenceType: Type.UserType,
-
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -524,7 +529,7 @@ fun createRangeProtocols(
             createUnary("isEmpty", boolType),
             createUnary("first", itType),
             createUnary("last", itType),
-            createUnary("random", itType),
+            createUnary("random", itType, "Returns a random element from this range"),
             createUnary("toList", listOfIt),
             createUnary("asSequence", sequenceOfIt),
         ),
@@ -533,7 +538,7 @@ fun createRangeProtocols(
             createBinary("!=", rangeType, boolType)
         ),
         keywordMsgs = mutableMapOf(
-            createKeyword(KeywordArg("step", itType), rangeType),
+            createKeyword(KeywordArg("step", itType), rangeType, "The step of the progression"),
 
             createForEachKeyword(itType, unitType),
             createForEachKeywordIndexed(itType, itType, unitType),
@@ -558,23 +563,21 @@ fun createTestProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-//            createUnary("echo", unitType),
 
         ),
         binaryMsgs = mutableMapOf(
-//            createBinary("==", rangeType, boolType),
         ),
         staticMsgs = mutableMapOf(
-            createKeyword(
-                KeywordArg(
-                    "assertTrue",
-                    Type.Lambda(
-                        mutableListOf(),
-                        boolType
-                    )
-                ),
-                unitType
-            ).emitKw("kotlin.test.assertTrue(block = $1)"),
+//            createKeyword(
+//                KeywordArg(
+//                    "assertTrue",
+//                    Type.Lambda(
+//                        mutableListOf(),
+//                        boolType
+//                    )
+//                ),
+//                unitType
+//            ).emitKw("kotlin.test.assertTrue(block = $1)"),
 //            createKeyword(KeywordArg("assertTrue", itType), boolType).emitKw("kotlin.test.assertTrue $1")
         ),
     )
@@ -725,9 +728,9 @@ fun createListProtocols(
             createUnary("toList", list),
             createUnary("toMutableList", listType),
 
-            createUnary("shuffled", listType),
+            createUnary("shuffled", listType, "Like in Solitaire"),
 
-            createUnary("asSequence", sequenceType),
+            createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", listType),
@@ -788,7 +791,7 @@ fun createListProtocols(
                     )
                 ),
                 listType,
-                "For sorting collection of types by one of their field"
+                "For sorting collection of objects by one of their field"
             ),
 
 
@@ -826,7 +829,8 @@ fun createListProtocols(
                         )
                     )
                 ),
-                differentGenericType
+                differentGenericType,
+                "Accumulates value starting with injected value and applying operation from left to right to current accumulator value and each element(kinjw fold)"
             ).rename("fold"),
 
 
@@ -842,8 +846,10 @@ fun createListProtocols(
                         )
                     )
                 ),
-                itType
+                itType,
+                "Accumulates value starting with the first element and applying operation from left to right to current accumulator value and each element"
             ),
+
 
             // partition, fun <T> Iterable<T>.partition(predicate: (T) -> Boolean): Pair<List<T>, List<T>>
             createKeyword(
@@ -857,7 +863,8 @@ fun createListProtocols(
                         )
                     )
                 ),
-                pairOf2ListsType
+                pairOf2ListsType,
+                "Splits the original collection into pair of lists, where first list contains elements for which predicate yielded true, while second list contains elements for which predicate yielded false."
             ),
             // sumOf, fun <T> Iterable<T>.sumOf(selector: (T) -> Int): Int
             createSumOf(itType),
@@ -866,7 +873,8 @@ fun createListProtocols(
             createKeyword(
                 "viewFromTo",
                 listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)),
-                listType
+                listType,
+                "Returns a view of the portion of this list between the specified fromIndex (inclusive) and toIndex (exclusive). The returned list is backed by this list, so non-structural changes in the returned list are reflected in this list, and vice-versa."
             ).rename("subList"),
 
 
@@ -890,7 +898,8 @@ fun createListProtocols(
                     KeywordArg("at", intType),
                     KeywordArg("put", itType)
                 ),
-                unitType
+                unitType,
+                "like C arr[x] = y"
             ).rename("set")
         )
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
@@ -917,7 +926,6 @@ fun createSumOf(itType: Type) =
 fun createFind(itType: Type, boolType: Type): Pair<String, KeywordMsgMetaData> {
 
     val nullableIfNeeded = if (itType is Type.NullableType) itType else Type.NullableType(itType)
-
     return createKeyword(
         "find",
         listOf(
@@ -929,7 +937,8 @@ fun createFind(itType: Type, boolType: Type): Pair<String, KeywordMsgMetaData> {
                 )
             )
         ),
-        nullableIfNeeded
+        nullableIfNeeded,
+        "Returns the first element matching the given predicate, or null if no such element was found."
     )
 }
 
