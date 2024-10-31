@@ -113,7 +113,7 @@ fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
 fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScope: MutableMap<String, Type>) {
     // resolve types of fields of root
     val rootType = statement.toType(currentPackageName, typeTable, typeDB, isEnum = true) as Type.EnumRootType
-    addNewType(rootType, statement)
+
 
     // TODO check that this enum in unique in this package
     val namesOfRootFields = rootType.fields.map { it.name }.toSet()
@@ -132,8 +132,15 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
 
         // Check fields
         it.fieldsValues.forEach { fieldAST ->
+
             currentLevel++
-            resolveSingle((fieldAST.value), previousScope)
+            try {
+                resolveSingle((fieldAST.value), previousScope)
+
+            } catch (_: Throwable) {
+                unResolvedTypeDeclarations.add(getCurrentPackage(it.token).packageName, statement)
+                return
+            }
             currentLevel--
             val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
                 ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")
@@ -147,6 +154,8 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
         branchType.fields += rootType.fields
         branches.add(branchType)
     }
+
+    addNewType(rootType, statement) // we're adding type after, because branch resolving can fail
 
     rootType.branches = branches
 

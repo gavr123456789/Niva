@@ -9,7 +9,7 @@ import java.nio.file.StandardCopyOption
 plugins {
     kotlin("jvm") version "2.0.20"
     application
-    id("org.graalvm.buildtools.native") version "0.10.1"
+    id("org.graalvm.buildtools.native") version "0.10.3"
     id("maven-publish")
 }
 
@@ -33,7 +33,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(22)
 }
 
 graalvmNative {
