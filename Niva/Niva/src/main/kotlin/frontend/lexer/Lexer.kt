@@ -98,14 +98,14 @@ fun Lexer.check(arg: String, distance: Int = 0): Boolean = when {
     }
 }
 
-
+// TODO I think we need swap true and false here
 fun Lexer.check(args: Array<String>, distance: Int = 0): Boolean {
     for (arg in args) {
-        if (check(arg, distance)) {
-            return true
+        if (check(arg, distance)) { // add !
+            return true // reverse
         }
     }
-    return false
+    return false // reverse
 }
 
 fun Lexer.match(s: String): Boolean = when {
@@ -119,7 +119,7 @@ fun Lexer.match(s: String): Boolean = when {
     }
 }
 
-
+// TODO I think we need swap true and false here
 fun Lexer.match(args: Array<String>): Boolean {
 
 
