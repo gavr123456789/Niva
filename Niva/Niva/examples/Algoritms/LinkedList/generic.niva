@@ -23,7 +23,7 @@ constructor LinkedList::T empty =
   LinkedList::T head: null tail: null size: 0
 
 LinkedList isEmpty = size == 0
-LinkedList str = this isEmpty => "Empty!" |=> head unpackOrError str
+LinkedList str = this isEmpty => "Empty!" |=> head unpackOrPANIC str
 
 LinkedList push: v::T -> LinkedList = [
   head <- Node v: v next: head
@@ -56,7 +56,7 @@ LinkedList at: i::Int -> Node? = [
 
 LinkedList forEach::[T -> Unit] =
   0..<size forEach: [
-    forEach T: (this at: it |> unpackOrError v)
+    forEach T: (this at: it |> unpackOrPANIC v)
   ]
 
 
@@ -73,7 +73,7 @@ list = LinkedList::Int empty
 list push: 1 |> push: 2 |> push: 3
 list add: -1 |> add: -2 |> add: -3
 "element 4" echo
-list at: 4 |> unpackOrError v echo
+list at: 4 |> unpackOrPANIC v echo
 "full list" echo
 list str echo
 list map: [it + 5] |> str echo

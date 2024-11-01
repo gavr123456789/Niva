@@ -7,7 +7,6 @@ import main.frontend.parser.types.ast.Statement
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
-import java.lang.Error
 import kotlin.text.contains
 import kotlin.text.lowercase
 import kotlin.time.TimeSource.Monotonic.markNow
@@ -440,7 +439,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
         
-        fun <T> T?.unpackOrError(): T {
+        fun <T> T?.unpackOrPANIC(): T {
             return this!!
         } 
         
@@ -537,7 +536,7 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
 //        return replacedStack
         }
         val methodName = q[0].methodName
-        replaceLinesInStackTrace(if (methodName == "unpackOrError" || methodName == "throwWithMessage") q.drop(1) else q.toList())
+        replaceLinesInStackTrace(if (methodName == "unpackOrPANIC" || methodName == "throwWithMessage") q.drop(1) else q.toList())
 
 //    println(e.stackTraceToString())
     }

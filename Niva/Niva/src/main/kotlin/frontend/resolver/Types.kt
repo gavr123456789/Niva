@@ -4,6 +4,7 @@ package frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
+import main.addFirst
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError

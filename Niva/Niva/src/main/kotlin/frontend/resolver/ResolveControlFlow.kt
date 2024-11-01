@@ -1,5 +1,6 @@
 package frontend.resolver
 
+import frontend.resolver.Type.EnumBranchType
 import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
 import main.frontend.meta.Token
@@ -236,7 +237,7 @@ fun Resolver.resolveControlFlow(
         val savedSwitchType = statement.switch.type!!
 
         val typesAlreadyChecked = mutableSetOf<Type>()
-        var thisIsTypeMatching = false
+        var thisIsTypeMatching = false // need to generate `is`
         // resolve | (^) => ... part
         statement.ifBranches.forEachIndexed { i, it ->
             currentLevel++
@@ -394,6 +395,15 @@ fun Resolver.resolveControlFlow(
 
             }
         }
+        // check for enum exhaustiveness
+        if (savedSwitchType is Type.EnumRootType && statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
+            exhaustivenessEnumCheck(
+                savedSwitchType.branches,
+                statement.ifBranches.map { it.ifExpression },
+                statement.token
+            )
+        }
+        // check for true exhaustiveness
 
     }
 
@@ -403,7 +413,30 @@ fun Resolver.resolveControlFlow(
     }
 
 }
+fun exhaustivenessEnumCheck(branchesFromDB: List<EnumBranchType>, switchingOn: List<Expression>, errToken: Token) {
+    val setOfBranchesFromDb = branchesFromDB.map { it.name }.toSet()
+    val setOfCheckedNames = mutableSetOf<String>()
+    switchingOn.forEach {
+        val type = it.type
+        if (it is IdentifierExpr && (type is Type.EnumRootType || type is EnumBranchType)) {
+            setOfCheckedNames.add(it.name)
+        } else {
+            val firstThreeBranches = branchesFromDB.take(3).joinToString()
+            errToken.compileError("$it must be enum branch, one of $firstThreeBranches ...")
+        }
+    }
+    val intersect = setOfBranchesFromDb - setOfCheckedNames
 
+    if (intersect.isNotEmpty() ) {
+        val rootName = branchesFromDB.first().root.name
+        val strIntersect = intersect.joinToString(", ") { "$rootName.$it" }
+//        if (setOfCheckedNames.count() < setOfBranchesFromDb.count())
+            errToken.compileError("Exhaustiveness enum check failed, not checked: $strIntersect")
+//        else if (setOfCheckedNames.count() > setOfBranchesFromDb.count()) {
+//            errToken.compileError("You checked extra enums: $strIntersect")
+//        }
+    }
+}
 fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: Map<Type?, Token>?): Set<Type.Union> {
     when (this) {
         is Type.UnionRootType -> {
