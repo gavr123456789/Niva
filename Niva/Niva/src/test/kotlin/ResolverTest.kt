@@ -2155,6 +2155,33 @@ class ResolverTest {
         }
     }
 
+    @Test
+    fun exhaustiveCheckOfEnumMatchingWithOr() {
+        val source = """
+            enum Color = Red | Blue
+            Int c::Color = [
+              x = | c
+              | Color.Blue, Color.Red => 1 echo
+            ]
+        """.trimIndent()
+
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun exhaustiveCheckOfUnionMatchingWithOr() {
+        val source = """
+            union Color = Red | Blue
+            Int c::Color = [
+              x = | c
+              | Blue, Red => 1 echo
+            ]
+        """.trimIndent()
+
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
 
 }
 

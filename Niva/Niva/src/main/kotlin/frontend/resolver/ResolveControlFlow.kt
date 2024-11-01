@@ -242,6 +242,11 @@ fun Resolver.resolveControlFlow(
         statement.ifBranches.forEachIndexed { i, it ->
             currentLevel++
             resolveSingle(it.ifExpression, previousAndCurrentScope, statement)
+            // resolving `| X, Y, Z` Y and Z here
+            it.otherIfExpressions.forEach { otherExpr ->
+                resolveSingle(otherExpr, previousAndCurrentScope, statement)
+                typesAlreadyChecked.add(otherExpr.type!!)
+            }
             currentLevel--
             val currentTypeName = it.ifExpression.type?.name
             val currentType = it.ifExpression.type!!
@@ -399,7 +404,7 @@ fun Resolver.resolveControlFlow(
         if (savedSwitchType is Type.EnumRootType && statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
             exhaustivenessEnumCheck(
                 savedSwitchType.branches,
-                statement.ifBranches.map { it.ifExpression },
+                statement.ifBranches.flatMap { listOf(it.ifExpression) + it.otherIfExpressions },
                 statement.token
             )
         }
