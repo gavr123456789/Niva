@@ -836,7 +836,7 @@ class ResolverTest {
         val source = """
         Int sas -> Int? = ^41
         x = 5 sas
-        x unpackOrError inc 
+        x unpackOrPANIC inc 
         x unpack: [it inc]
         y = x unpackOrValue: 5
         """.trimIndent()
@@ -850,11 +850,11 @@ class ResolverTest {
     }
 
     @Test
-    fun unpackOrError() {
+    fun unpackOrPANIC() {
         val source = """
         Int sas -> Int? = ^41
         x = 5 sas
-        x unpackOrError inc 
+        x unpackOrPANIC inc 
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 3)
@@ -1209,7 +1209,7 @@ class ResolverTest {
     fun receiverOfpipedIsMsg() {
         val source = """
             x::Int? = null
-            y = x |> unpackOrError inc
+            y = x |> unpackOrPANIC inc
         """.trimIndent()
         val (statements) = resolveWithResolver(source)
 
@@ -1236,7 +1236,7 @@ class ResolverTest {
     fun noDoubleNull() {
         val source = """
             Int sas::Int -> Int? = 45
-            1 sas: 5 |> unpackOrError inc
+            1 sas: 5 |> unpackOrPANIC inc
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -1278,7 +1278,7 @@ class ResolverTest {
         val source = """
             type Node v: T next: Node?
             Node::T str = "rar" 
-            Node str2 -> String = next unpackOrError str
+            Node str2 -> String = next unpackOrPANIC str
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 3)
@@ -2138,6 +2138,21 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 4)
 
+    }
+
+    @Test
+    fun exhaustiveCheckOfEnumMatching() {
+        val source = """
+            enum Color = Red | Blue
+            Int c::Color = [
+              x = | c
+              | Color.Blue => 1 echo
+//              | Color.Red => 1 echo
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
     }
 
 

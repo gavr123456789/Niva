@@ -1698,8 +1698,8 @@ class ParserTest {
     fun msgsForPipedMustHaveMsgAsReceiver() {
         // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
         val source = """
-            x |> unpackOrError inc
-            list at: 5 |> unpackOrError inc
+            x |> unpackOrPANIC inc
+            list at: 5 |> unpackOrPANIC inc
         """.trimIndent()
 
         val ast = getAstTest(source)

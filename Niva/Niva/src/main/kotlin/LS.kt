@@ -32,6 +32,10 @@ sealed interface LspResult {
     class Found(val statement: Statement, val needBraceWrap: Boolean) : LspResult
 }
 
+fun <T> MutableList<T>.addFirst(element: T) {
+    this.add(0, element)
+}
+
 //class FoundResult(val statement: Statement, scope: Scope, needBraceWrap: Boolean)
 
 class LS(val info: ((String) -> Unit)? = null) {

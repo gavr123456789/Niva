@@ -1,6 +1,7 @@
 package main.frontend.parser.parsing
 
 import frontend.parser.parsing.*
+import main.addFirst
 import main.frontend.meta.*
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.ListCollection
