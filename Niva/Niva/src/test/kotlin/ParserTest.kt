@@ -2316,6 +2316,16 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun kwAfterUnaryAfterPipe() {
+
+        val source = """
+            1 to: 2 |> inc from: 4
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """

@@ -15,7 +15,6 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMsgType
 import main.utils.isGeneric
-import java.lang.Exception
 import kotlin.collections.count
 import kotlin.collections.forEach
 import kotlin.collections.forEachIndexed
@@ -77,12 +76,27 @@ fun Resolver.resolveCodeBlock(
     {
 
         val rootReceiverType = rootStatement.receiver.type!!
-        val metaDataFromDb = findAnyMsgType(
-            rootReceiverType,
-            rootStatement.selectorName,
-            rootStatement.token,
-            MessageDeclarationType.Keyword
-        ) as KeywordMsgMetaData
+        val metaDataFromDb = {
+            if (rootStatement.kind == KeywordLikeType.Constructor  && rootStatement.receiver.type is Type.UserLike) {
+                // this is
+                // `type Sas add: [Int, Int -> Int]`
+                // situation, so we need to find this add arg in receiver and create fake KeywordMsgMetaData
+                val rootReceiverType = rootStatement.receiver.type as? Type.UserLike ?: statement.token.compileError("Bug: ${rootStatement.receiver} type should be resolved")
+                KeywordMsgMetaData(
+                    name = "",//rootReceiverType.fields.joinToString(""){it.name},
+                    argTypes = rootReceiverType.fields,
+                    returnType = rootReceiverType,
+                    pkg = rootReceiverType.pkg,
+                    declaration = null,
+                )
+            } else
+            findAnyMsgType(
+                rootReceiverType,
+                rootStatement.selectorName,
+                rootStatement.token,
+                MessageDeclarationType.Keyword
+            ) as KeywordMsgMetaData
+        }()
         metaDataFound = metaDataFromDb
         val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
         // T sas -> T = []
@@ -118,7 +132,6 @@ fun Resolver.resolveCodeBlock(
                 if (currentArgType.args.first().name != "this") {
                     statement.token.compileError("Compiler bug, no this arg in extension lambda")
                 }
-//                thisArgType = currentArgType.extensionOfType
                 previousAndCurrentScope["this"] = currentArgType.extensionOfType
                 currentArgType.args.drop(1)
             } else currentArgType.args
@@ -163,13 +176,13 @@ fun Resolver.resolveCodeBlock(
         isThisWhileCycle = false
     }
 
+    // add codeblock's args to the scope
     namedLambdaArgs.forEach {
         val type =
             it.type ?:
             it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name}$RESET codeblock parameter")
         previousAndCurrentScope.putIfAbsent(it.name, type)
     }
-
 
     currentLevel++
     resolve(statement.statements, previousAndCurrentScope, statement)

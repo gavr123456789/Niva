@@ -343,9 +343,12 @@ fun Parser.keyword(
 
     val messages = mutableListOf<Message>(keyColonCycle())
 
-    while (checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Cascade)) {
-        val tok = step()
-        val isPipe = tok.kind == TokenType.PipeOperator // else its
+    // checkForKeyword for `1 to: 2 |> kek ^ from: 4` situation
+    while (checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Cascade) || checkForKeyword()) {
+        val tok = step() // |> or ;
+        val isPipe = tok.kind == TokenType.PipeOperator
+        val isIdent = tok.kind == TokenType.Identifier
+        if (isIdent) step(-1) // we don't need to step on keyword beginning now, after checkForKeyword is added
         skipNewLinesAndComments()
         // any msg
         if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
@@ -392,6 +395,7 @@ fun Parser.keyword(
                 last.isPiped = true
             }
         }
+
     }
 
 

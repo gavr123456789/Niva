@@ -137,6 +137,7 @@ fun generateMessages(
         generateSingleKeyword(
             i,
             receiver,
+            msg.kind == KeywordLikeType.Constructor,
             msg,
             withNullChecks,
             newInvisibleArgs,
@@ -271,6 +272,7 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
 fun generateSingleKeyword(
     i: Int,
     receiver: Receiver,
+    isConstructor: Boolean,
     keywordMsg: KeywordMsg,
     withNullChecks: Boolean = false,
     invisibleArgs: List<String>? = null,
@@ -423,7 +425,8 @@ fun generateSingleKeyword(
 
 
     // if single lambda, no brackets needed
-    val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock)
+    // but not needed for contructors call, there is no such things as builder constructors, I hope
+    val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock && !isConstructor)
     if (isNotSingleLambdaArg) append("(")
 
     // generate args
