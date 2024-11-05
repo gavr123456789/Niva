@@ -347,11 +347,13 @@ fun Parser.keyword(
     while (checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Cascade) || checkForKeyword()) {
         val tok = step() // |> or ;
         val isPipe = tok.kind == TokenType.PipeOperator
-        val isIdent = tok.kind == TokenType.Identifier
-        if (isIdent) step(-1) // we don't need to step on keyword beginning now, after checkForKeyword is added
+        val isCascade = tok.kind == TokenType.Cascade
+        val isKeywordAfterUnary = tok.kind == TokenType.Identifier //
+        if (isKeywordAfterUnary) step(-1) // we don't need to step on keyword beginning now, after checkForKeyword is added
         skipNewLinesAndComments()
+        val nextIsIdent = check(TokenType.Identifier)
         // any msg
-        if (check(TokenType.Identifier) && check(TokenType.Colon, 1)) {
+        if (nextIsIdent && check(TokenType.Colon, 1)) {
             var last = messages.last()
             // keyword pipe
             messages.add(keyColonCycle().also {
@@ -359,11 +361,14 @@ fun Parser.keyword(
                     it.isPiped = true
                     it.receiver = last
                     last = it
-                } else {
+                } else if (isCascade) {
                     it.isCascade = true
+                } else if (isKeywordAfterUnary) {
+                    it.receiver = last
+                    last = it
                 }
             })
-        } else if (check(TokenType.Identifier)) {
+        } else if (nextIsIdent) {
             var last = messages.last()
             // unary pipe
             messages.addAll(unaryMessagesMatching(receiver).onEach {
@@ -371,7 +376,7 @@ fun Parser.keyword(
                     it.isPiped = true
                     it.receiver = last
                     last = it
-                } else {
+                } else if (isCascade) {
                     it.isCascade = true
                 }
             })
@@ -383,7 +388,7 @@ fun Parser.keyword(
                     it.isPiped = true
                     it.receiver = last
                     last = it
-                } else {
+                } else if (isCascade) {
                     it.isCascade = true
                 }
             })
