@@ -2182,6 +2182,21 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
     }
+    @Test
+    fun codeBlockFieldInitialization() {
+        val source = """
+            type Functions
+              add: [Int, Int -> Int]
+            
+            
+            functions = Functions add: [x, y -> x + y]
+            lambda = functions add
+        """.trimIndent()
+
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
+
 
 }
 

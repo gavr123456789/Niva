@@ -21,7 +21,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
 
     val keywordGenerate = { kw: KeywordMsg ->
         evalPragmas(kw)
-        generateSingleKeyword(0, kw.receiver, kw)
+        generateSingleKeyword(0, kw.receiver, kw.kind == KeywordLikeType.Constructor, kw)
     }
 
     val unaryGenerate = { unaryMsg: UnaryMsg ->
