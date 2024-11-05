@@ -2197,6 +2197,21 @@ class ResolverTest {
         assert(x.count() == 3)
     }
 
+    @Test
+    fun sendAMessageToCodeblockField() {
+        val source = """
+            type Functions
+              add: [Int, Int -> Int]
+            
+            
+            Functions add: [x, y -> x + y] |> add Int: 1 Int: 2
+
+        """.trimIndent()
+
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
 
 }
 
