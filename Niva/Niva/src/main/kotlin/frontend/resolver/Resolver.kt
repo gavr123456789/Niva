@@ -1556,7 +1556,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
         val mutSetTypeOfDifferentGeneric = Type.UserType(
             name = "MutableSet",
@@ -1565,8 +1564,10 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
+
         addCustomTypeToDb(
             mutableSetType, createSetProtocols(
+                isMutable = true,
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
@@ -1595,7 +1596,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
 
         /// MapEntry
@@ -1614,7 +1614,7 @@ class Resolver(
 //        addCustomTypeToDb(
 //            mapEntryType, mutableMapOf()
 //        )
-        ///
+
 
 
         addCustomTypeToDb(
@@ -1628,7 +1628,6 @@ class Resolver(
                 valueType = differentGenericType,
                 setType = mutableSetType,
                 setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-//                mapEntryType
             )
         )
 
