@@ -256,7 +256,7 @@ fun compileProjFromFile(
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
-            listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva", "kek","nivas").filter { it.name != mainFile.name } //  "scala",
+            listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva", "kek","nivas").filter { it.name != mainFile.name }.sortedBy { file -> file.name } //  "scala",
         else
             emptyList()
 

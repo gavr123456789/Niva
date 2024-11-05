@@ -45,22 +45,30 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
                 )
 
                 if (resolvedFromDifferentFileType != null) {
-                    val fieldToRemove = field.parent.fields.first { it.name == field.fieldName }
-                    val ast = field.ast
-                    val resolvedType = ast.toType(typeDB, typeTable)
+                    val resolveAndRemoveField = { field2: FieldNameAndParent ->
+                        val fieldToRemove = field2.parent.fields.first { it.name == field2.fieldName }
+                        val ast = field2.ast
+                        val resolvedType = ast.toType(typeDB, typeTable)
 
-                    // remove field with placeholder, and replace type to real type inside placeholder
-                    // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
+                        // remove field with placeholder, and replace type to real type inside placeholder
+                        // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
+                        // UPD not sure why before we were removing the fields, but looks like it works just with replacing the type only
+                        field2.typeDeclaration.fields.first { it.name == field2.fieldName }.type = resolvedType
+                        fieldToRemove.type = resolvedType
 
-                    field.typeDeclaration.fields.first { it.name == field.fieldName }.type = resolvedType
-                    field.parent.fields.remove(fieldToRemove)
+                        val unionRoot = field2.parent
+                        if (unionRoot is Type.UnionRootType) {
+                            unionRoot.branches.forEach { b ->
+                                b.fields.find {it.name == field2.fieldName}?.let {
+                                    it.type = resolvedType
+                                }
+                            }
+                        }
+                    }
+                    resolveAndRemoveField(field)
 
-                    field.parent.fields.add(
-                        KeywordArg(
-                            name = field.fieldName,
-                            type = resolvedType
-                        )
-                    )
+                    // resolve types in branches, if this is union root with common field
+
 
                     fieldIter.remove()
                 }

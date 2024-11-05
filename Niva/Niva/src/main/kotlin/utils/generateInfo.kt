@@ -104,7 +104,7 @@ private fun Type.generateInfoType() = buildString {
 //    this@generateInfo.name
 
     if (this@generateInfoType is Type.UnionBranchType){
-        append("\n#### branch $name")
+        appendnl("\n#### branch $name")
     } else {
         appendnl("\n## type $name")
     }
