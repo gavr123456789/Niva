@@ -280,16 +280,23 @@ fun getAst(source: String, file: File): List<Statement> {
     return ast
 }
 
-fun getAstFromFiles(mainFileContent:String, otherFileContents: List<File>, mainFilePath: String, resolveOnlyOneFile: Boolean): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
+// third param is list of file paths
+fun getAstFromFiles(
+    mainFileContent: String,
+    otherFileContents: List<File>,
+    mainFilePath: String,
+    resolveOnlyOneFile: Boolean
+): Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>> {
     val mainAST = getAst(source = mainFileContent, file = File(mainFilePath))
-
+    val listOfPaths = mutableListOf<File>()
     // generate ast for others
     // in lsp mode we change one file at a time
     val otherASTs = if (!resolveOnlyOneFile)
         otherFileContents.map {
             val src = it.readText()
+            listOfPaths.add(it)
             it.nameWithoutExtension to getAst(source = src, file = it)
         }
     else emptyList()
-    return Pair(mainAST, otherASTs)
+    return Triple(mainAST, otherASTs, listOfPaths)
 }

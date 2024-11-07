@@ -7,6 +7,8 @@ import main.frontend.parser.types.ast.Statement
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import kotlin.Pair
+import kotlin.collections.List
 import kotlin.text.contains
 import kotlin.text.lowercase
 import kotlin.time.TimeSource.Monotonic.markNow
@@ -221,13 +223,13 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
 fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
     val fileList = mutableListOf<File>()
     val filesAndDirs = directory.listFiles()
-    if (filesAndDirs != null) {
-        for (file in filesAndDirs) {
-            if (file.isFile && (file.extension == ext || file.extension == ext2)) {
-                fileList.add(file)
-            } else if (file.isDirectory) {
-                fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext, ext2, ext3))
-            }
+    if (filesAndDirs == null) return emptyList()
+
+    for (file in filesAndDirs) {
+        if (file.isFile && (file.extension == ext || file.extension == ext2)) {
+            fileList.add(file)
+        } else if (file.isDirectory) {
+            fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext, ext2, ext3))
         }
     }
 
@@ -237,11 +239,11 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String, ext2:
 fun compileProjFromFile(
     pm: PathManager,
     compileOnlyOneFile: Boolean,
-    resolveOnly: Boolean = false,
+    resolveOnlyNoBackend: Boolean = false,
     tests: Boolean = false,
     verbose: Boolean = false,
-    onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null
-
+    onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null,
+    customAst: Pair<List<Statement>, List<Pair<String, List<Statement>>>>? = null
 ): Resolver {
     val pathToNivaMainFile = pm.pathToNivaMainFile
     val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
@@ -251,8 +253,6 @@ fun compileProjFromFile(
 
 
     val mainFile = File(pathToNivaMainFile)
-    val mainText = mainFile.readText()
-
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
@@ -269,12 +269,21 @@ fun compileProjFromFile(
         currentResolvingFileName = mainFile
     )
 
-    val (mainAst, otherAst) = getAstFromFiles(
-        mainFileContent = mainText,
-        otherFileContents = resolver.otherFilesPaths,
-        mainFilePath = mainFile.absolutePath,
-        resolveOnlyOneFile = compileOnlyOneFile
-    )
+    // we need custom ast to fill file to ast table in LS(non incremental store)
+    val (mainAst, otherAst) = {
+        if (customAst == null) {
+            val mainText = mainFile.readText()
+            val w = getAstFromFiles(
+                mainFileContent = mainText,
+                otherFileContents = resolver.otherFilesPaths,
+                mainFilePath = mainFile.absolutePath,
+                resolveOnlyOneFile = compileOnlyOneFile
+            )
+            Pair(w.first, w.second)
+        }
+        else
+            customAst
+    }()
 
     resolver.resolveWithBackTracking(
         mainAst,
@@ -284,7 +293,7 @@ fun compileProjFromFile(
         verbosePrinter
     )
 
-    if (!resolveOnly) {
+    if (!resolveOnlyNoBackend) {
         val defaultProject = resolver.projects["common"]!!
         val codegenMark = markNow()
         resolver.generator.generateKtProject(

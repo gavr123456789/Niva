@@ -9,11 +9,13 @@ import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
-//import main.languageServer.LS
-//import main.languageServer.OnCompletionException
-//import main.languageServer.onCompletion
-//import main.languageServer.resolveAll
-//import main.languageServer.resolveIncremental
+import main.languageServer.LS
+import main.languageServer.OnCompletionException
+import main.languageServer.onCompletion
+import main.languageServer.resolveAllFirstTime
+import main.languageServer.resolveNonIncremental
+
+
 import main.utils.*
 import java.io.File
 import kotlin.system.exitProcess
@@ -26,16 +28,22 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-Int a::Int b::Int c::Int = "arsars"
+lexer = Lexer input: "++++ > < << >> /*some comment*/ DPND somefile.ebf foo % foo # bar\n@bar\r!#bar\tEND"
 
-1 
-  a: 1 inc inc toString toInt
-  b: 2 
-  c: 3 
-union Sas = Sa| Su
+ast = AST empty
+[lexer ch != '\u0000'] whileTrue: [
+    tok = lexer nextToken
+    ast append: tok
+]
 
-Sas kkk = this 
+ast print // debug
 
+astc = ASTC empty
+secondPass = SecondPass ast: ast
+[secondPass tok kind != TokenType.END] whileTrue: [
+    command = secondPass nextToken
+    astc append: command
+] 
 """
 
 fun main(args: Array<String>) {
@@ -46,21 +54,22 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
-//
-//    try {
-//        val ls = LS()
-//        val resolver = ls.resolveAll(qqq)
-////        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
-//        val q = ls.onCompletion(qqq, line = 9, character = 17)
-//        println(q)
-//    }
-//    catch (e: OnCompletionException) {
-//        println(e.scope)
-//    }
+    val qqq = "file:/home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
 
-    if (help(args)) return
-    run(args)
+    try {
+        val ls = LS()
+        val resolver = ls.resolveAllFirstTime(qqq, true)
+        ls.resolveNonIncremental(qqq, fakeFileSourceGOOD)
+//        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
+        val q = ls.onCompletion(qqq, line = 9, character = 17)
+        println(q)
+    }
+    catch (e: OnCompletionException) {
+        println(e.scope)
+    }
+
+//    if (help(args)) return
+//    run(args)
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root

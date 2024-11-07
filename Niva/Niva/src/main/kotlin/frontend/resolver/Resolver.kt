@@ -1121,6 +1121,7 @@ class Resolver(
 
     val stack: Stack<Statement> = Stack(),
 
+    // signal to remember top level expressions
     var resolvingMainFile: Boolean = false,
 
 
