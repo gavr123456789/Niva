@@ -630,6 +630,7 @@ fun clearNonIncrementalStoreFromTypes(nonIncrementalStore: MutableMap<String, Li
 
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
     megaStore.data.clear()
+    fileToDecl.clear()
 
     clearNonIncrementalStoreFromTypes(nonIncrementalStore)
     //    0) clear from types
