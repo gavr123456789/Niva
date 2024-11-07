@@ -435,47 +435,227 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
 fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri: String): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
     val listOfStatements = mutableListOf<Pair<String, List<Statement>>>()
     var mainAst: List<Statement>? = null
-    val mainUrlStr = File(mainUri).toURI().toString()
+    val mainUrlStr = File(mainUri).absolutePath//.toURI().toString()
 
-    nonIncrementalStore.forEach { url, ast ->
-        if (mainAst == null && url == mainUrlStr)
+    nonIncrementalStore.forEach { absolutePath, ast ->
+        if (mainAst == null && absolutePath == mainUrlStr)
             mainAst = ast
         else {
-            val pkgName = File(URI(url)).nameWithoutExtension
+            val pkgName = File(absolutePath).nameWithoutExtension
             listOfStatements.add(Pair(pkgName, ast))
         }
 
     }
     if (mainAst == null)
-        createFakeToken().compileError("Bug: Can't find main in nonIncrementalStore ${nonIncrementalStore.keys}, main is $mainUri")
+        createFakeToken().compileError("Bug: Can't find main in nonIncrementalStore ${nonIncrementalStore.keys}, main is $mainUrlStr")
 
     return Pair(mainAst, listOfStatements)
 }
 
-fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String) {
+
+fun Statement.clearFromType() {
+    when (this) {
+        is VarDeclaration -> {
+            this.value.clearFromType()
+        }
+        is Assign -> this.value.clearFromType()
+
+        is ExtendDeclaration -> {
+            this.messageDeclarations.forEach { t ->
+                t.clearFromType()
+            }
+        }
+        is ManyConstructorDecl -> {
+            this.messageDeclarations.forEach { t ->
+                t.clearFromType()
+            }
+        }
+        is ConstructorDeclaration -> {
+            this.forType = null
+            this.returnType = null
+            this.messageData = null
+            this.stackOfPossibleErrors.clear()
+            this.body.forEach { it.clearFromType() }
+            this.msgDeclaration.clearFromType()
+        }
+        is MessageDeclaration -> {
+            this.forType = null
+            this.returnType = null
+            this.messageData = null
+            this.stackOfPossibleErrors.clear()
+            this.body.forEach { it.clearFromType() }
+        }
+        is EnumBranch -> {
+            this.receiver = null
+        }
+        is EnumDeclarationRoot -> {
+            this.receiver = null
+            this.branches.forEach { it.clearFromType() }
+        }
+        is ErrorDomainDeclaration -> {
+            this.unionDeclaration.clearFromType()
+            this.receiver = null
+        }
+
+        is TypeAliasDeclaration -> {
+            this.receiver = null
+            this.realType = null
+        }
+        is TypeDeclaration -> {
+            this.receiver = null
+        }
+        is UnionBranchDeclaration -> {
+            this.receiver = null
+        }
+        is UnionRootDeclaration -> {
+            this.receiver = null
+            this.branches.forEach { it.clearFromType() }
+        }
+
+        is DestructingAssign -> {
+            this.value.clearFromType()
+        }
+        is ControlFlow.If -> {
+            this.ifBranches.forEach {
+                it.ifExpression.clearFromType()
+                it.otherIfExpressions.forEach { it.clearFromType() }
+                when (it) {
+                    is IfBranch.IfBranchSingleExpr -> {
+                        it.thenDoExpression.clearFromType()
+                    }
+                    is IfBranch.IfBranchWithBody -> {
+                        it.body.clearFromType()
+                    }
+                }
+            }
+            this.elseBranch?.forEach { it.clearFromType() }
+            this.type = null
+        }
+        is ControlFlow.Switch -> {
+            this.ifBranches.forEach {
+                it.ifExpression.clearFromType()
+                it.otherIfExpressions.forEach { it.clearFromType() }
+                when (it) {
+                    is IfBranch.IfBranchSingleExpr -> {
+                        it.thenDoExpression.clearFromType()
+                    }
+                    is IfBranch.IfBranchWithBody -> {
+                        it.body.clearFromType()
+                    }
+                }
+            }
+            this.elseBranch?.forEach { it.clearFromType() }
+
+            this.type = null
+            this.switch.clearFromType()
+        }
+        is CodeBlock -> {
+            this.type = null
+            this.inputList.forEach { it.clearFromType() }
+            this.statements.forEach { it.clearFromType() }
+        }
+        is CollectionAst -> {
+            this.initElements.forEach { t -> t.clearFromType() }
+            this.type = null
+        }
+        is DotReceiver -> {
+            this.type = null
+        }
+        is ExpressionInBrackets -> {
+            this.type = null
+            this.expr.clearFromType()
+        }
+        is MapCollection -> {
+            this.type = null
+            this.initElements.forEach { it.first.clearFromType(); it.second.clearFromType() }
+        }
+        is BinaryMsg -> {
+            this.receiver.clearFromType()
+            this.type = null
+            this.argument.clearFromType()
+            this.unaryMsgsForArg.forEach { it.clearFromType() }
+            this.unaryMsgsForReceiver.forEach { it.clearFromType() }
+
+            this.msgMetaData = null
+            this.declaration = null
+
+        }
+        is KeywordMsg -> {
+            this.type = null
+            this.receiver.clearFromType()
+            this.msgMetaData = null
+            this.args.forEach { it.keywordArg.clearFromType() }
+        }
+        is StaticBuilder -> {
+            this.type = null
+            this.receiver.clearFromType()
+            this.msgMetaData = null
+        }
+        is UnaryMsg -> {
+            this.type = null
+            this.receiver.clearFromType()
+            this.msgMetaData = null
+        }
+        is MessageSend -> {
+            this.type = null
+            this.receiver.clearFromType()
+            this.messages.forEach { it.clearFromType() }
+        }
+        is MethodReference -> {
+            this.type = null
+            this.method = null
+        }
+        is IdentifierExpr -> this.type = null
+        is LiteralExpression -> {
+            this.type = null
+        }
+        is NeedInfo -> {
+            this.expression?.clearFromType()
+        }
+        is ReturnStatement -> this.expression?.clearFromType()
+        is TypeAST.InternalType -> {}
+        is TypeAST.Lambda -> {}
+        is TypeAST.UserType ->{}
+
+    }
+}
+
+fun clearNonIncrementalStoreFromTypes(nonIncrementalStore: MutableMap<String, List<Statement>>) {
+    nonIncrementalStore.values.forEach {
+        it.forEach { statement ->
+            statement.clearFromType()
+        }
+    }
+}
+
+fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
     megaStore.data.clear()
 
+    clearNonIncrementalStoreFromTypes(nonIncrementalStore)
+    //    0) clear from types
     //    1) lex parse new changed file
     //    2) replace its ast in the NIS
     //    3) resolve everything again
+
     val file = File(URI(uriOfChangedFile))
-    val astOfOtherFiles = getAst(source = source, file = file)
-    nonIncrementalStore[uriOfChangedFile] = astOfOtherFiles
+    val fileAbsolute = file.absolutePath
+    val mainAst = getAst(source = source, file = file)
+    nonIncrementalStore[fileAbsolute] = mainAst
     // resolve everything and return resolver
-    val resolveFromNIS = { nonIncrementalStore: Map<String, List<Statement>> ->
+//    val resolveFromNIS = { nonIncrementalStore: Map<String, List<Statement>> ->
         val localpm = pm
         if (localpm != null) {
-            // find main Ast
-
             resolver = compileProjFromFile(
-                localpm, compileOnlyOneFile = false, resolveOnlyNoBackend = true, onEachStatement = ::onEachStatementCall,
+                localpm,
+                compileOnlyOneFile = false,
+                resolveOnlyNoBackend = true,
+                onEachStatement = ::onEachStatementCall,
                 customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)) // astOfTheMain, Ast of everything
             )
-        }
-
-
-    }
-    resolveFromNIS(this.nonIncrementalStore)
+        } else throw Exception("Local pm == null")
+    return resolver
+//    }
+//    resolveFromNIS(this.nonIncrementalStore)
 
 //
 //
@@ -567,7 +747,10 @@ fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: B
             fillNonIncrementalStore(customAst, mainFile)
 
         this.resolver = compileProjFromFile(
-            pm, resolveOnlyNoBackend = true, compileOnlyOneFile = false, onEachStatement = ::onEachStatementCall,
+            pm,
+            resolveOnlyNoBackend = true,
+            compileOnlyOneFile = false,
+            onEachStatement = ::onEachStatementCall,
             customAst = Pair(customAst.first, customAst.second)
         )
         // not sure why reset this?
@@ -593,13 +776,15 @@ fun LS.fillNonIncrementalStore(
 ) {
     val (mainAst, pkgToAst, otherFiles) = customAst
     // add main
-    val uri = mainFile.toURI().toString()
+//    val uri = mainFile.toURI().toString()
+    val uri = mainFile.absolutePath
     nonIncrementalStore[uri] = mainAst
 
     // add othersAst
     pkgToAst.forEachIndexed { index, pair ->
         val file = otherFiles[index]
-        val uri = file.toURI().toString()
+//        val uri = file.toURI().toString()
+        val uri = file.absolutePath
         nonIncrementalStore[uri] = pair.second
     }
 }
@@ -683,8 +868,6 @@ fun LS.onEachStatementCall(
                     }
                 }
             }
-            // we dont need the msg declarations itself in mega store
-//                    addStToMegaStore(st)
         }
 
 

@@ -113,7 +113,7 @@ fun Resolver.resolveWithBackTracking(
 
     val resolveDeclarationsOnlyMark = markNow()
 
-    resolveDeclarationsOnly(mainAST)
+    resolveDeclarationsOnly(statements)
 
     fillFieldsWithResolvedTypes()
     otherASTs.forEachIndexed { i, it ->
