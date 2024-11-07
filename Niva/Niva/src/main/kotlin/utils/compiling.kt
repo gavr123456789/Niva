@@ -250,9 +250,9 @@ fun compileProjFromFile(
     val verbosePrinter = VerbosePrinter(verbose)
 
 
-
-
     val mainFile = File(pathToNivaMainFile)
+    val mainText = mainFile.readText()
+
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
@@ -269,8 +269,16 @@ fun compileProjFromFile(
         currentResolvingFileName = mainFile
     )
 
-    resolver.resolve(
-        mainFile.readText(),
+    val (mainAst, otherAst) = getAstFromFiles(
+        mainFileContent = mainText,
+        otherFileContents = resolver.otherFilesPaths,
+        mainFilePath = mainFile.absolutePath,
+        resolveOnlyOneFile = compileOnlyOneFile
+    )
+
+    resolver.resolveWithBackTracking(
+        mainAst,
+        otherAst,
         mainFile.absolutePath,
         mainFile.nameWithoutExtension,
         verbosePrinter

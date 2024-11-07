@@ -9,6 +9,11 @@ import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
+//import main.languageServer.LS
+//import main.languageServer.OnCompletionException
+//import main.languageServer.onCompletion
+//import main.languageServer.resolveAll
+//import main.languageServer.resolveIncremental
 import main.utils.*
 import java.io.File
 import kotlin.system.exitProcess
@@ -41,12 +46,12 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
 //
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAll(qqq)
-//        ls.resolveAllWithChangedFile(qqq, fakeFileSourceGOOD)
+////        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
 //        val q = ls.onCompletion(qqq, line = 9, character = 17)
 //        println(q)
 //    }

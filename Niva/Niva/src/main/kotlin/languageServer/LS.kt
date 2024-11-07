@@ -1,19 +1,21 @@
 @file:Suppress("unused")
 
-package main
+package main.languageServer
 
 import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Resolver
 import frontend.resolver.Type
-import frontend.resolver.resolve
+import frontend.resolver.getAstFromFiles
+import frontend.resolver.resolveWithBackTracking
 import main.frontend.meta.Token
+import main.frontend.meta.removeColors
 import main.frontend.parser.types.ast.*
 import main.utils.*
 import java.io.File
 import java.net.URI
 import java.util.*
 
-private fun Statement.unpackMessage() = if (this is VarDeclaration) {
+fun Statement.unpackMessage() = if (this is VarDeclaration) {
     val value = this.value
     if (value is MessageSend) {
         value.messages.last()
@@ -43,6 +45,9 @@ class LS(val info: ((String) -> Unit)? = null) {
 
     /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
+    //
+    val nonIncrementalStore = mutableMapOf<String, String>()
+
     var completionFromScope: Scope = emptyMap()
 
     // since one file can contain many pkgs, we need file to declaration map
@@ -400,7 +405,9 @@ fun LS.removeDecl2(file: File) {
 }
 
 
-fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
+
+
+fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
 
     // let's assume user cant change packages names for now, so pkg name always == filename
@@ -410,20 +417,26 @@ fun LS.resolveAllWithChangedFile(pathToChangedFile: String, text: String) {
     megaStore.data.remove(file.absolutePath)
     resolver.reset()
 
+    val (mainAst, otherAst) = getAstFromFiles(
+        mainFileContent = text,
+        otherFileContents = resolver.otherFilesPaths,
+        mainFilePath = file.absolutePath,
+        resolveOnlyOneFile = true
+    )
+
     // throws on
-    resolver.resolve(
-        file.readText(),
+    resolver.resolveWithBackTracking(
+        mainAst,
+        otherAst,
         file.absolutePath,
         file.nameWithoutExtension,
         VerbosePrinter(false),
-        resolveOnlyOneFile = true,
-        customMainSource = text
     )
-
-
 }
 
-fun LS.resolveAll(pathToChangedFile: String): Resolver {
+// first time, all files reading
+// if non-incremental, then we will fill the nonIncrementalStore store
+fun LS.resolveAll(pathToChangedFile: String, incremental: Boolean = true): Resolver {
 
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
         val directory = file.parentFile
@@ -464,8 +477,8 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         val set = listFilesDownUntilNivaIsFoundRecursively(pair.first.parentFile, "niva", "sas", "nivas")
         pair.also { it.second.addAll(set) }
     }
-    val (mainFile, allFiles) = collectFiles()//findRoot(file, mutableSetOf())
-    info?.invoke("all files is ${allFiles.joinToString(", ") { it.name }}")
+    val (mainFile, allFiles) = collectFiles()
+    info?.invoke("main file is $mainFile ") //all files is ${allFiles.joinToString(", ") { it.name }}
     GlobalVariables.enableLspMode()
 
     megaStore.data.clear()
@@ -560,6 +573,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         this.resolver = compileProjFromFile(
             pm, resolveOnly = true, compileOnlyOneFile = false, onEachStatement = onEachStatementCall
         )
+        // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     } catch (s: OnCompletionException) {
@@ -568,7 +582,7 @@ fun LS.resolveAll(pathToChangedFile: String): Resolver {
         this.resolver = emptyResolver
         this.completionFromScope = s.scope
 
-        info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope")
+        info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope , error message = ${s.errorMessage?.removeColors()}")
         return resolver
     }
 
