@@ -63,7 +63,7 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
     }
 }
 
-
+// TODO replace with function that return a class with all paths
 class PathManager(val pathToMainOrSingleFile: String, mainArg: MainArgument) {
 
     val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"

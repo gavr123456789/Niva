@@ -2,12 +2,10 @@
 
 package main.languageServer
 
-import frontend.resolver.KeywordMsgMetaData
-import frontend.resolver.Resolver
-import frontend.resolver.Type
-import frontend.resolver.getAstFromFiles
-import frontend.resolver.resolveWithBackTracking
+import frontend.resolver.*
 import main.frontend.meta.Token
+import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.meta.removeColors
 import main.frontend.parser.types.ast.*
 import main.utils.*
@@ -45,8 +43,10 @@ class LS(val info: ((String) -> Unit)? = null) {
 
     /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
+    var pm: PathManager? = null
+
     //
-    val nonIncrementalStore = mutableMapOf<String, String>()
+    val nonIncrementalStore = mutableMapOf<String, List<Statement>>() // URI from LSP to AST
 
     var completionFromScope: Scope = emptyMap()
 
@@ -135,8 +135,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                         val x = list.last().first
                         if (x.token.isMultiline() && x is KeywordMsg && list.count() > 1) {
                             LspResult.Found(list[list.count() - 2].first, true) // last but one
-                        }
-                        else {
+                        } else {
                             LspResult.Found(list.last().first, false)
                         }
                     } else {
@@ -405,8 +404,6 @@ fun LS.removeDecl2(file: File) {
 }
 
 
-
-
 fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
 
@@ -417,7 +414,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     megaStore.data.remove(file.absolutePath)
     resolver.reset()
 
-    val (mainAst, otherAst) = getAstFromFiles(
+    val (mainAst) = getAstFromFiles(
         mainFileContent = text,
         otherFileContents = resolver.otherFilesPaths,
         mainFilePath = file.absolutePath,
@@ -427,16 +424,88 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     // throws on
     resolver.resolveWithBackTracking(
         mainAst,
-        otherAst,
+        emptyList(),
         file.absolutePath,
         file.nameWithoutExtension,
         VerbosePrinter(false),
     )
 }
 
+
+fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri: String): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
+    val listOfStatements = mutableListOf<Pair<String, List<Statement>>>()
+    var mainAst: List<Statement>? = null
+    val mainUrlStr = File(mainUri).toURI().toString()
+
+    nonIncrementalStore.forEach { url, ast ->
+        if (mainAst == null && url == mainUrlStr)
+            mainAst = ast
+        else {
+            val pkgName = File(URI(url)).nameWithoutExtension
+            listOfStatements.add(Pair(pkgName, ast))
+        }
+
+    }
+    if (mainAst == null)
+        createFakeToken().compileError("Bug: Can't find main in nonIncrementalStore ${nonIncrementalStore.keys}, main is $mainUri")
+
+    return Pair(mainAst, listOfStatements)
+}
+
+fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String) {
+    megaStore.data.clear()
+
+    //    1) lex parse new changed file
+    //    2) replace its ast in the NIS
+    //    3) resolve everything again
+    val file = File(URI(uriOfChangedFile))
+    val astOfOtherFiles = getAst(source = source, file = file)
+    nonIncrementalStore[uriOfChangedFile] = astOfOtherFiles
+    // resolve everything and return resolver
+    val resolveFromNIS = { nonIncrementalStore: Map<String, List<Statement>> ->
+        val localpm = pm
+        if (localpm != null) {
+            // find main Ast
+
+            resolver = compileProjFromFile(
+                localpm, compileOnlyOneFile = false, resolveOnlyNoBackend = true, onEachStatement = ::onEachStatementCall,
+                customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)) // astOfTheMain, Ast of everything
+            )
+        }
+
+
+    }
+    resolveFromNIS(this.nonIncrementalStore)
+
+//
+//
+//    removeDecl2(file)
+//    megaStore.data.remove(file.absolutePath)
+//    resolver.reset()
+//
+//    val (mainAst) = getAstFromFiles(
+//        mainFileContent = text,
+//        otherFileContents = resolver.otherFilesPaths,
+//        mainFilePath = file.absolutePath,
+//        resolveOnlyOneFile = true
+//    )
+//
+//    // throws on
+//    resolver.resolveWithBackTracking(
+//        mainAst,
+//        emptyList(),
+//        file.absolutePath,
+//        file.nameWithoutExtension,
+//        VerbosePrinter(false),
+//    )
+}
+
+
 // first time, all files reading
 // if non-incremental, then we will fill the nonIncrementalStore store
-fun LS.resolveAll(pathToChangedFile: String, incremental: Boolean = true): Resolver {
+fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: Boolean = false): Resolver {
+    GlobalVariables.enableLspMode()
+    megaStore.data.clear()
 
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
         val directory = file.parentFile
@@ -479,106 +548,34 @@ fun LS.resolveAll(pathToChangedFile: String, incremental: Boolean = true): Resol
     }
     val (mainFile, allFiles) = collectFiles()
     info?.invoke("main file is $mainFile ") //all files is ${allFiles.joinToString(", ") { it.name }}
-    GlobalVariables.enableLspMode()
-
-    megaStore.data.clear()
-
-
-    val onEachStatementCall =
-        { st: Statement, currentScope: Map<String, Type>?, previousScope: Map<String, Type>?, file2: File ->
-            fun addStToMegaStore(s: Statement, prepend: Boolean = false) {
-                megaStore.addNew(
-                    s = s,
-                    scope =
-                        if (currentScope != null && previousScope != null)
-                            currentScope + previousScope
-                        else
-                            mutableMapOf(),
-                    prepend
-                )
-            }
-
-            when (st) {
-                is Expression, is VarDeclaration -> {
-                    addStToMegaStore(st)
-                }
-
-                is DestructingAssign -> {
-                    st.names.forEach {
-                        addStToMegaStore(it)
-                    }
-                    addStToMegaStore(st.value)
-                }
-
-                is Declaration -> {
-                    // fill fileToDecl
-                    val setOfStatements = this.fileToDecl[file2.absolutePath]
-                    if (setOfStatements != null) {
-                        setOfStatements.add(st)
-                    } else {
-                        fileToDecl[file2.absolutePath] = mutableSetOf(st)
-                    }
-                    // add doc comments so u can ctrl click them
-                    st.docComment?.let {
-                        it.identifiers?.forEach { addStToMegaStore(it) }
-                    }
-                    // add types of the decl as IdentExpr
-                    if (st is MessageDeclaration && st.returnType != null) {
-                        val realSt = when (st) {
-                            is ConstructorDeclaration -> st.msgDeclaration
-                            else -> st
-                        }
-
-                        // forType
-                        realSt.forType?.let {
-                            realSt.forTypeAst.toIdentifierExpr(it, true).also {
-                                // we prepend here because
-                                // `Sas kek = this | match deep |`
-                                // Sas is the last expression on the line, so it replace the whole line instead of
-                                // only `this`
-                                addStToMegaStore(it, prepend = true)
-                            }
-                        }
-
-                        val returnType = st.returnType
-                        if (returnType != null) {
-                            realSt.returnTypeAST?.toIdentifierExpr(returnType, true)?.also {
-                                addStToMegaStore(it, prepend = true)
-                            }
-                        }
-                        // args
-                        if (realSt is MessageDeclarationKeyword) {
-                            realSt.args.forEachIndexed { i, arg ->
-                                // for some reason arg types are null here, so I use typeDB
-                                val type =
-                                    ((realSt.messageData ?: st.messageData) as? KeywordMsgMetaData)?.argTypes[i]?.type
-                                if (type != null) arg.typeAST?.toIdentifierExpr(type, true)?.also {
-                                    addStToMegaStore(it)
-                                }
-                            }
-                        }
-                    }
-                    // we dont need the msg declarations itself in mega store
-//                    addStToMegaStore(st)
-                }
-
-
-                else -> {}
-            }
-        }
-
+    allFiles.remove(mainFile)
     // Resolve
     val pm = PathManager(mainFile.path, MainArgument.LSP)
+    this.pm = pm
+
     try {
+
+        // custom ast
+        val customAst = getAstFromFiles(
+            mainFileContent = mainFile.readText(),
+            otherFileContents = allFiles.toList(),
+            mainFilePath = mainFile.absolutePath,
+            resolveOnlyOneFile = false
+        )
+
+        if (fillNonIncrementalStore)
+            fillNonIncrementalStore(customAst, mainFile)
+
         this.resolver = compileProjFromFile(
-            pm, resolveOnly = true, compileOnlyOneFile = false, onEachStatement = onEachStatementCall
+            pm, resolveOnlyNoBackend = true, compileOnlyOneFile = false, onEachStatement = ::onEachStatementCall,
+            customAst = Pair(customAst.first, customAst.second)
         )
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     } catch (s: OnCompletionException) {
         val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles.toList(), onEachStatementCall, currentFile = mainFile)
+            Resolver.empty(otherFilesPaths = allFiles.toList(), ::onEachStatementCall, currentFile = mainFile)
         this.resolver = emptyResolver
         this.completionFromScope = s.scope
 
@@ -587,3 +584,111 @@ fun LS.resolveAll(pathToChangedFile: String, incremental: Boolean = true): Resol
     }
 
 }
+
+
+fun LS.fillNonIncrementalStore(
+    // main ast, other ast, otherFiles
+    customAst: Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>>,
+    mainFile: File
+) {
+    val (mainAst, pkgToAst, otherFiles) = customAst
+    // add main
+    val uri = mainFile.toURI().toString()
+    nonIncrementalStore[uri] = mainAst
+
+    // add othersAst
+    pkgToAst.forEachIndexed { index, pair ->
+        val file = otherFiles[index]
+        val uri = file.toURI().toString()
+        nonIncrementalStore[uri] = pair.second
+    }
+}
+
+
+fun LS.onEachStatementCall(
+    st: Statement,
+    currentScope: Map<String, Type>?,
+    previousScope: Map<String, Type>?,
+    file2: File
+) {
+    fun addStToMegaStore(s: Statement, prepend: Boolean = false) {
+        megaStore.addNew(
+            s = s,
+            scope =
+                if (currentScope != null && previousScope != null)
+                    currentScope + previousScope
+                else
+                    mutableMapOf(),
+            prepend
+        )
+    }
+
+    when (st) {
+        is Expression, is VarDeclaration -> {
+            addStToMegaStore(st)
+        }
+
+        is DestructingAssign -> {
+            st.names.forEach {
+                addStToMegaStore(it)
+            }
+            addStToMegaStore(st.value)
+        }
+
+        is Declaration -> {
+            // fill fileToDecl
+            val setOfStatements = this.fileToDecl[file2.absolutePath]
+            if (setOfStatements != null) {
+                setOfStatements.add(st)
+            } else {
+                fileToDecl[file2.absolutePath] = mutableSetOf(st)
+            }
+            // add doc comments so u can ctrl click them
+            st.docComment?.let {
+                it.identifiers?.forEach { addStToMegaStore(it) }
+            }
+            // add types of the decl as IdentExpr
+            if (st is MessageDeclaration && st.returnType != null) {
+                val realSt = when (st) {
+                    is ConstructorDeclaration -> st.msgDeclaration
+                    else -> st
+                }
+
+                // forType
+                realSt.forType?.let {
+                    realSt.forTypeAst.toIdentifierExpr(it, true).also {
+                        // we prepend here because
+                        // `Sas kek = this | match deep |`
+                        // Sas is the last expression on the line, so it replace the whole line instead of
+                        // only `this`
+                        addStToMegaStore(it, prepend = true)
+                    }
+                }
+
+                val returnType = st.returnType
+                if (returnType != null) {
+                    realSt.returnTypeAST?.toIdentifierExpr(returnType, true)?.also {
+                        addStToMegaStore(it, prepend = true)
+                    }
+                }
+                // args
+                if (realSt is MessageDeclarationKeyword) {
+                    realSt.args.forEachIndexed { i, arg ->
+                        // for some reason arg types are null here, so I use typeDB
+                        val type =
+                            ((realSt.messageData ?: st.messageData) as? KeywordMsgMetaData)?.argTypes[i]?.type
+                        if (type != null) arg.typeAST?.toIdentifierExpr(type, true)?.also {
+                            addStToMegaStore(it)
+                        }
+                    }
+                }
+            }
+            // we dont need the msg declarations itself in mega store
+//                    addStToMegaStore(st)
+        }
+
+
+        else -> {}
+    }
+}
+
