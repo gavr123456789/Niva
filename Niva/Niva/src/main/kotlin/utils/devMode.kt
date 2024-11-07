@@ -8,8 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import main.OnCompletionException
-import main.Scope
+import main.languageServer.OnCompletionException
+import main.languageServer.Scope
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import java.io.BufferedReader

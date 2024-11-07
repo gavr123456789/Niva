@@ -15,15 +15,6 @@ import kotlin.time.TimeSource.Monotonic.markNow
 
 const val MAIN_PKG_NAME = "mainNiva"
 
-fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
-    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
-    val listType = this.typeDB.userTypes["List"]!!.first()
-    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
-    return mutableMapOf("args" to listOfString)
-
-}
-
-fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 
 private fun Resolver.fillFieldsWithResolvedTypes () {
     if (typeDB.unresolvedFields.isNotEmpty()) { // && i != 0
@@ -91,21 +82,13 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
 //    }
 //}
 
-fun Resolver.resolve(
-    mainFileContent: String,
+fun Resolver.resolveWithBackTracking(
+    mainAST: List<Statement>,
+    otherASTs: List<Pair<String, List<Statement>>>,
     mainFilePath: String,
     mainFileNameWithoutExtension: String,
     verbosePrinter: VerbosePrinter,
-    resolveOnlyOneFile: Boolean = false,
-    customMainSource: String? = null,
 ) {
-
-    fun getAst(source: String, file: File): List<Statement> {
-        val tokens = lex(source, file)
-        val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
-        val ast = parser.statements()
-        return ast
-    }
 
     verbosePrinter.print {
         "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFilePath}" +
@@ -115,18 +98,6 @@ fun Resolver.resolve(
 
 
     val beforeParserMark = markNow()
-
-    val mainAST = getAst(source = customMainSource ?: mainFileContent, file = File(mainFilePath))
-
-
-    // generate ast for others
-    // in lsp mode we change one file at a time
-    val otherASTs = if (!resolveOnlyOneFile)
-        otherFilesPaths.map {
-            val src = it.readText()
-            it.nameWithoutExtension to getAst(source = src, file = it)
-        }
-    else emptyList()
 
     verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
     /// resolve all declarations
@@ -174,7 +145,6 @@ fun Resolver.resolve(
                 unResolvedTypeDeclarations.values.flatten().joinToString("\n\t") { it.typeName }}"
         } else ""
     }
-    ///
 
     /// Resolving unresolved types N times, because in the worst scenario, each next can depend on previous
     val resolveUnresolvedTypes = {
@@ -291,4 +261,35 @@ fun Resolver.printInfoFromCode() {
             println(content)
         }
     }
+}
+
+fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+    val listType = this.typeDB.userTypes["List"]!!.first()
+    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
+    return mutableMapOf("args" to listOfString)
+}
+
+fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
+
+
+fun getAst(source: String, file: File): List<Statement> {
+    val tokens = lex(source, file)
+    val parser = Parser(file = file, tokens = tokens, source = "sas.niva")
+    val ast = parser.statements()
+    return ast
+}
+
+fun getAstFromFiles(mainFileContent:String, otherFileContents: List<File>, mainFilePath: String, resolveOnlyOneFile: Boolean): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
+    val mainAST = getAst(source = mainFileContent, file = File(mainFilePath))
+
+    // generate ast for others
+    // in lsp mode we change one file at a time
+    val otherASTs = if (!resolveOnlyOneFile)
+        otherFileContents.map {
+            val src = it.readText()
+            it.nameWithoutExtension to getAst(source = src, file = it)
+        }
+    else emptyList()
+    return Pair(mainAST, otherASTs)
 }
