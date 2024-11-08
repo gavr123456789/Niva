@@ -395,7 +395,8 @@ private fun Resolver.resolveStatement(
         }
 
         is MethodReference -> {
-            val forType = statement.forType.toType(typeDB, typeTable)
+            resolveSingle(statement.forIdentifier, (previousScope + currentScope).toMutableMap(), statement)
+            val forType = statement.forIdentifier.type ?: statement.forIdentifier.token.compileError("Bug, cant resolve type") //statement.forIdentifier.toType(typeDB, typeTable)
 
             when (statement) {
                 is MethodReference.Binary -> {
@@ -423,7 +424,7 @@ private fun Resolver.resolveStatement(
 
 
             val method = statement.method ?: statement.token.compileError("Can't find method $CYAN${statement.name}")
-            statement.type = method.toLambda(forType)
+            statement.type = method.toLambda(forType, statement.forIdentifier.isType)
         }
 
     }

@@ -13,33 +13,33 @@ sealed class Receiver(type: Type?, token: Token, var isPiped: Boolean = false, v
 // Pkg.Person.[+]
 // Pkg.Person.[sas]
 sealed class MethodReference(
-    val forType: TypeAST,
+    val forIdentifier: IdentifierExpr,
     val name: String,
     token: Token,
     type: Type? = null,
     var method: MessageMetadata? = null
 ) : Receiver(type, token) {
     class Unary(
-        forType: TypeAST,
+        forIdentifier: IdentifierExpr,
         name: String, // inc
         token: Token,
         type: Type? = null,
-    ) : MethodReference(forType, name, token, type)
+    ) : MethodReference(forIdentifier, name, token, type)
 
     class Binary(
-        forType: TypeAST,
+        forIdentifier: IdentifierExpr,
         name: String, // +
         token: Token,
         type: Type? = null,
-    ) : MethodReference(forType, name, token, type)
+    ) : MethodReference(forIdentifier, name, token, type)
 
     class Keyword(
         val keys: List<String>, // P.[from, to]
-        forType: TypeAST,
+        forIdentifier: IdentifierExpr,
         name: String, // fromTo
         token: Token,
         type: Type? = null,
-    ) : MethodReference(forType, name, token, type)
+    ) : MethodReference(forIdentifier, name, token, type)
 }
 
 // Message send is for pipe operations

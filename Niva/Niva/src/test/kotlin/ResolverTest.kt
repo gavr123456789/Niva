@@ -2212,7 +2212,29 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+    @Test
+    fun methodReferenceOfVariable() {
+        val source = """
+            type Person 
+              name: String
 
+            extend Person [
+              on sleep = "sleeeping" echo
+              on sayHello = "Hi! I'm name" echo
+            ]
+            p = Person name: "Alice"
+            methodReferenceForVar = &p sayHello
+            methodReferenceForType = &Person sayHello
+
+        """.trimIndent()
+
+        val (x) = resolveWithResolver(source)
+        assert(x.count() ==5)
+        val forVar = ((x[3] as VarDeclaration).value as MethodReference).type as Type.Lambda
+        val forType = ((x[4] as VarDeclaration).value as MethodReference).type as Type.Lambda
+        assert(forVar.args.count() == 0)
+        assert(forType.args.count() == 1 && forType.args[0].type.name == "Person")
+    }
 }
 
 

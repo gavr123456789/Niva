@@ -27,6 +27,7 @@ import main.frontend.parser.types.ast.MessageSend
 import main.frontend.parser.types.ast.MessageSendBinary
 import main.frontend.parser.types.ast.MessageSendKeyword
 import main.frontend.parser.types.ast.MessageSendUnary
+import main.frontend.parser.types.ast.MethodReference
 import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.SetCollection
 import main.frontend.parser.types.ast.Statement
@@ -1747,13 +1748,16 @@ class ParserTest {
     @Test
     fun methodReference2() {
         val source = """
-            x = &String x
-            x = &String +
-            x = &String x:y:
+            &String x
+            &String +
+            &String x:y:
         """.trimIndent()
 
         val ast = getAstTest(source)
         assert(ast.count() == 3)
+        assert(ast[0] is MethodReference.Unary)
+        assert(ast[1] is MethodReference.Binary)
+        assert(ast[2] is MethodReference.Keyword)
     }
 
 

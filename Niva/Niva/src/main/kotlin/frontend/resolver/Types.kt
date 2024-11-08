@@ -74,11 +74,11 @@ sealed class MessageMetadata(
         }
     }
 
-    fun toLambda(receiverType: Type): Type.Lambda {
+    fun toLambda(receiverType: Type, withReceiverAsFirstArg: Boolean): Type.Lambda {
         val extensionArg = KeywordArg("this", receiverType)
         val createLambda = { args: MutableList<KeywordArg> ->
             Type.Lambda(
-                args = args,
+                args = if (withReceiverAsFirstArg) args else mutableListOf(),
                 returnType = returnType,
                 pkg = pkg,
                 extensionOfType = receiverType
