@@ -239,7 +239,8 @@ private fun returnTypeAndBodyPart(
     val isControlFlowStatement by lazy {
         (firstBodyStatement is ControlFlow && (firstBodyStatement.kind == ControlFlowKind.Statement || firstBodyStatement.kind == ControlFlowKind.StatementTypeMatch))
     }
-    if (messageDeclaration.body.count() == 1 &&
+    if (//messageDeclaration.body.count() == 1 &&
+        messageDeclaration.isSingleExpression &&
         firstBodyStatement is Expression &&
         !isControlFlowStatement &&
         isNotSetter
