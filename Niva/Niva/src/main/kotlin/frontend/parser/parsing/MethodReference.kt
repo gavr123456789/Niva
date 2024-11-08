@@ -9,16 +9,17 @@ import main.frontend.parser.types.ast.MethodReference
 // &Pkg.String unary
 // &Pkg.String +
 // &Pkg.String from:to:
+// &person sleep
 fun Parser.methodReference(): MethodReference {
     val tok = peek(-1)
-    val forType = parseTypeAST()
-
+    val forIdentifier = dotSeparatedIdentifiers()
+    if (forIdentifier == null) tok.compileError("Expected identifier for method reference after &, for example '&String reverse'")
     // binary
     if (check(TokenType.BinarySymbol)) {
         val w = matchAssert(TokenType.BinarySymbol)
 
         return MethodReference.Binary(
-            forType = forType,
+            forIdentifier = forIdentifier,
             name = w.lexeme,
             token = tok,
         )
@@ -35,7 +36,7 @@ fun Parser.methodReference(): MethodReference {
         val name = list.joinToString(":") + ":"
         return MethodReference.Keyword(
             keys = list,
-            forType = forType,
+            forIdentifier = forIdentifier,
             name = name,
             token = tok,
         )
@@ -46,7 +47,7 @@ fun Parser.methodReference(): MethodReference {
         val w = matchAssert(TokenType.Identifier)
 
         return MethodReference.Unary(
-            forType = forType,
+            forIdentifier = forIdentifier,
             name = w.lexeme,
             token = tok,
         )

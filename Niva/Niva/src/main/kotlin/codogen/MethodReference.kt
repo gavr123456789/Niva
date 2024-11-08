@@ -1,11 +1,14 @@
 package main.codogen
 
+import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.MethodReference
 import main.utils.capitalizeFirstLetter
 
 fun MethodReference.generateMethodReference() = buildString {
-    val type = forType.generateType()
-    append("$type::")
+    val getType = { forIdentifier.type?.toKotlinString(true) ?: token.compileError("Bug method reference unresolved") }
+    val typeOrIdent = if(forIdentifier.isType) getType() else forIdentifier.name
+
+    append("$typeOrIdent::")
 
     // String::funcName
     when (this@generateMethodReference) {
