@@ -204,6 +204,19 @@ fun Resolver.resolveWithBackTracking(
     unResolvedMessageDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
+            // find out what exactly unresolved, receiver, one of the args, or return type
+            if (decl.forType == null) {
+                (decl.forTypeAst.token).compileError("Can't find the receiver type $YEL${decl.forTypeAst}$RESET of the method declaration: `${CYAN}${decl}${RESET}`")
+            }
+            if (decl.returnType == null) {
+                (decl.returnTypeAST?.token ?: decl.token).compileError("Can't find the return type $YEL${decl.returnTypeAST ?: ""}$RESET of the method declaration: `${CYAN}${decl}${RESET}`")
+            }
+            if (decl is MessageDeclarationKeyword) {
+                decl.args.find { it.type == null }?.also {
+                    it.tok.compileError("Can't find the arg's type $YEL${it.typeAST ?: ""}$RESET of the method declaration: `${CYAN}${decl}${RESET}`")
+                }
+            }
+
             decl.token.compileError("Method `${CYAN}${decl}${RESET}` for unresolved type: `${YEL}${decl.forTypeAst.name}${RESET}`")
         }
     }
