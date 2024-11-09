@@ -60,7 +60,7 @@ interpreter = Interpreter ast: astc
 fun main(args: Array<String>) {
 
 //    val args = arrayOf("-h")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva")
+//    val args = arrayOf("run", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva")

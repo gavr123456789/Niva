@@ -1733,7 +1733,6 @@ class ParserTest {
 
     @Test
     fun typedCall() {
-        // the bug is that inc has x as receiver, instead of x |> unpack, so null send error
         val source = """
             list::Int sas
             list::Int + 1
