@@ -40,7 +40,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1)
         || kind == TokenType.Mut
     ) {
-        val q = varDeclaration()
+        val q =  varDeclaration()
         if (q != null) return q
     }
 
