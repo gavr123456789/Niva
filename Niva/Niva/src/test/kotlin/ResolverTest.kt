@@ -2235,6 +2235,25 @@ class ResolverTest {
         assert(forVar.args.count() == 0)
         assert(forType.args.count() == 1 && forType.args[0].type.name == "Person")
     }
+
+    @Test
+    fun localMutableMatching() {
+        val source = """
+            union Color = Red data: Int | Blue data: String
+
+            type Wall c: Color
+
+            Wall paint = [
+                locC = c
+                | locC
+                | Red => locC data inc echo
+                | Blue => locC data + "!"
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_) = resolveWithResolver(source)
+        }
+    }
 }
 
 
