@@ -9,6 +9,7 @@ import main.frontend.parser.types.ast.*
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
+import main.utils.capitalizeFirstLetter
 import main.utils.warning
 import kotlin.collections.ArrayDeque
 
@@ -257,6 +258,29 @@ fun Resolver.resolveControlFlow(
                         ControlFlowKind.ExpressionTypeMatch
                     else
                         ControlFlowKind.StatementTypeMatch
+                // if the match exp is a field of some type(not in current scope) or mutable then error
+                val checkMutMatchError = { localName: String ->
+                    val isField = {
+                        // this in scope
+                        // this type has switch field
+                        val zis = previousAndCurrentScope["this"]
+                        zis != null && zis is Type.UserLike && zis.fields.find {it.name == localName} != null
+                    }()
+                    val mutable = statement.switch.type?.isMutable ?: false
+                    val name = localName.capitalizeFirstLetter()
+                    val name2 = localName
+                    if (isField || mutable) {
+                        statement.switch.token.compileError(
+                            "${statement.switch} is field or mut and can be mutated from another thread, match against a local copy like `local$name = $name2`"
+                        )
+                    }
+                }
+                if (statement.switch is IdentifierExpr) {
+                    checkMutMatchError(statement.switch.name)
+                } else if (statement.switch is UnaryMsg) {
+                    checkMutMatchError(statement.switch.selectorName)
+                }
+
             }
             // this is cheaper than every string comparison
             thisIsTypeMatching =

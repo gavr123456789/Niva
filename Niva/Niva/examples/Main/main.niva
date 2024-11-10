@@ -1,3 +1,10 @@
-x = [
-  ====
+union Color = Red data: Int | Blue data: String
+
+type Wall c: Color
+
+Wall paint = [
+//    locC = c
+    | c
+    | Red => c data inc echo
+    | Blue => c data + "!" |> echo
 ]
