@@ -1,9 +1,11 @@
 union Color = Red data: Int | Blue data: String
 
 type Wall c: Color
-constructor Wall sas -> String = [
-//    Wall c: (Red data: 2)
-    ^ 45
+Wall sas -> Unit = [
+    locC = c
+    | Color
+    | Red => []
+    | Blue => []
 ]
 
 Wall append::Int = 1 echo

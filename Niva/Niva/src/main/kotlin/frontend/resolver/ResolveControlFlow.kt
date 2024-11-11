@@ -199,11 +199,8 @@ fun Resolver.resolveControlFlow(
                 }
                 // check if this still can be an if expression
                 // if body and else types are the same, then change kind to expr
-
-                //
                 val elseReturnTypeName = elseReturnType.name
                 val firstReturnTypeName = firstBranchReturnType!!.name
-//                val areIfAndElseEqual = compare2Types(firstBranchReturnType, elseReturnType, lastExpr.token, compareParentsOfBothTypes = true)
                 val whatIsTheGeneralRoot = findGeneralRoot(firstBranchReturnType, elseReturnType)
                 if (whatIsTheGeneralRoot == null && !rootStatementIsMessageDeclAndItReturnsNullable() && statement.kind == ControlFlowKind.Expression) {
                     lastExpr.token.compileError("(${YEL}$firstReturnTypeName ${RESET}!= ${YEL}$elseReturnTypeName${RESET}) In if Expression return type of else branch and main branches are not the same")

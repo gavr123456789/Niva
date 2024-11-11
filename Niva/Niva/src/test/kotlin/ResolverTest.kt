@@ -2240,14 +2240,28 @@ class ResolverTest {
     fun localMutableMatching() {
         val source = """
             union Color = Red data: Int | Blue data: String
-
             type Wall c: Color
-
             Wall paint = [
                 locC = c
                 | locC
                 | Red => locC data inc echo
                 | Blue => locC data + "!"
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_) = resolveWithResolver(source)
+        }
+    }
+    @Test
+    fun matchTheTypeInsteadOfInstance() {
+        val source = """
+            union Color = Red data: Int | Blue data: String
+            type Wall c: Color
+            Wall sas -> Unit = [
+                locC = c
+                | Color
+                | Red => []
+                | Blue => []
             ]
         """.trimIndent()
         assertThrows<CompilerError> {
