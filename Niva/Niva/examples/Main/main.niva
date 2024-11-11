@@ -1,10 +1,17 @@
 union Color = Red data: Int | Blue data: String
 
 type Wall c: Color
-
-Wall paint = [
-//    locC = c
-    | c
-    | Red => c data inc echo
-    | Blue => c data + "!" |> echo
+constructor Wall sas -> String = [
+//    Wall c: (Red data: 2)
+    ^ 45
 ]
+
+Wall append::Int = 1 echo
+
+
+//Wall paint = [
+//    locC = c
+//    | locC
+//    | Red => locC data inc echo
+//    | Blue => locC data + "!" |> echo
+//]

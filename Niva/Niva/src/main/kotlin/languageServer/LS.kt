@@ -728,6 +728,8 @@ fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: B
         pair.also { it.second.addAll(set) }
     }
     val (mainFile, allFiles) = collectFiles()
+//    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
+
     info?.invoke("main file is $mainFile ") //all files is ${allFiles.joinToString(", ") { it.name }}
     allFiles.remove(mainFile)
     // Resolve
@@ -788,6 +790,8 @@ fun LS.fillNonIncrementalStore(
         val uri = file.absolutePath
         nonIncrementalStore[uri] = pair.second
     }
+//    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
+
 }
 
 
