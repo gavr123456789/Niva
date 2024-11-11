@@ -63,7 +63,7 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("run", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 //    val args = arrayOf("info", "/home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/fileTutorial/main.niva")
+//    val args = arrayOf("run", "/Users/gavr/eBF-in-Niva/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
 //
@@ -82,6 +82,7 @@ fun main(args: Array<String>) {
 
     if (help(args)) return
     run(args)
+//    generateMillInFolder("/Users/gavr/Documents/Fun/Niva/Niva/Niva/expersiment")
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
@@ -160,17 +161,21 @@ fun run(args2: Array<String>) {
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
 
     when (mainArg) {
-        MainArgument.BUIlD -> compiler.runCommand(dist = true, buildFatJar = true)
-        MainArgument.DISRT -> compiler.runCommand(dist = true)
+        MainArgument.BUIlD -> compiler.runGradleAmperBuildCommand(dist = true, buildFatJar = true)
+        MainArgument.DISRT -> compiler.runGradleAmperBuildCommand(dist = true)
         MainArgument.RUN ->
-            compiler.runCommand()
+            compiler.runGradleAmperBuildCommand()
+        MainArgument.RUN_MILL -> {
+
+            compiler.runMill()
+        }
 
         MainArgument.TEST -> {
-            compiler.runCommand(runTests = true)
+            compiler.runGradleAmperBuildCommand(runTests = true)
         }
 
             MainArgument.SINGLE_FILE_PATH -> {
-            compiler.runCommand(dist = am.compileOnly)
+            compiler.runGradleAmperBuildCommand(dist = am.compileOnly)
         }
 
         MainArgument.INFO_ONLY ->
@@ -180,7 +185,7 @@ fun run(args2: Array<String>) {
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
         MainArgument.RUN_FROM_IDEA -> {
-            compiler.runCommand(dist = false)
+            compiler.runGradleAmperBuildCommand(dist = false)
         }
 
         MainArgument.DAEMON -> {
@@ -188,7 +193,6 @@ fun run(args2: Array<String>) {
         }
 
         MainArgument.LSP -> TODO()
-
     }
 
     am.time(System.currentTimeMillis() - secondTime, true)

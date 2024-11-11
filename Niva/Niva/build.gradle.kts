@@ -46,7 +46,7 @@ graalvmNative {
     binaries.all {
 
         imageName.set("niva")
-        buildArgs.add("-O3")
+//        buildArgs.add("-O3")
 
         // temp solution
 //        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {

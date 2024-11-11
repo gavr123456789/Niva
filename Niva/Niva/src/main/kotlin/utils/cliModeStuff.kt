@@ -9,6 +9,7 @@ enum class MainArgument {
     BUIlD,
     DISRT,
     RUN,
+    RUN_MILL,
     SINGLE_FILE_PATH,
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
@@ -26,15 +27,25 @@ class ArgsManager(val args: MutableList<String>) {
         args.remove("--verbose")
         true
     } else false
+    val mill = if ("--mill" in args || args.isEmpty()) {
+        args.remove("--mill")
+        true
+    } else false
     val infoIndex = args.indexOf("-i")
 //    val infoOnly = infoIndex != -1
 //    val infoUserOnly = "-iu" in argsSet//argsSet.find { it == "-iu" } != null
-    val isShowTimeArg = "time" in args || verbose//argsSet.find { it == "time" } != null
+    val isShowTimeArg = verbose//argsSet.find { it == "time" } != null
 
     fun mainArg(): MainArgument {
         return if (args.isNotEmpty()) {
             when (val firstArg = args[0]) {
-                "run" -> MainArgument.RUN
+                "run" -> {
+                    if (mill)
+                    MainArgument.RUN_MILL
+                    else
+                        MainArgument.RUN
+
+                }
                 "build" -> MainArgument.BUIlD
                 "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
@@ -77,18 +88,21 @@ class PathManager(val pathToMainOrSingleFile: String, mainArg: MainArgument) {
 
 
     val pathToNivaMainFile: String = when (mainArg) {
+
+
         MainArgument.SINGLE_FILE_PATH,
-        MainArgument.LSP -> pathToMainOrSingleFile
-
-        MainArgument.RUN_FROM_IDEA -> pathToTheMainExample
-
+        MainArgument.LSP,
         MainArgument.RUN,
         MainArgument.INFO_ONLY,
         MainArgument.USER_DEFINED_INFO_ONLY,
         MainArgument.BUIlD,
         MainArgument.DISRT,
         MainArgument.DAEMON,
-        MainArgument.TEST-> pathToMainOrSingleFile
+        MainArgument.TEST,
+        MainArgument.RUN_MILL-> pathToMainOrSingleFile
+
+        MainArgument.RUN_FROM_IDEA -> pathToTheMainExample
+
     }
 
     val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()

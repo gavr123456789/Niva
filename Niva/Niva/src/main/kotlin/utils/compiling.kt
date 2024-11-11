@@ -130,18 +130,21 @@ class CompilerRunner(
                 CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
             }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
 
-
-    fun runCommand(
+    fun runMill() {
+        removeReplFile()
+        // create .niva
+    }
+    fun removeReplFile() {
+        if (inlineReplPath.exists()) {
+            inlineReplPath.delete()
+        }
+    }
+    fun runGradleAmperBuildCommand(
         dist: Boolean = false,
         buildFatJar: Boolean = false,
         runTests: Boolean = false
     ) {
         // remove repl log file since it will be recreated
-        val removeReplFile = {
-            if (inlineReplPath.exists()) {
-                inlineReplPath.delete()
-            }
-        }
         removeReplFile()
 
         val file = File(pathToProjectRoot)
