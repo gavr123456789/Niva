@@ -142,7 +142,8 @@ class CompilerRunner(
     fun runGradleAmperBuildCommand(
         dist: Boolean = false,
         buildFatJar: Boolean = false,
-        runTests: Boolean = false
+        runTests: Boolean = false,
+        outputRename: String? = null,
     ) {
         // remove repl log file since it will be recreated
         removeReplFile()
@@ -172,25 +173,28 @@ class CompilerRunner(
                 warning("inline repl currently supported only in jvm target")
             }
         }
+
+        val fileName = outputRename ?: mainNivaFileName
+
         if (dist || buildFatJar) {
             when (compilationTarget) {
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
+
                     if (buildFatJar) {
-                        val jarFile = File("./${mainNivaFileName}.jar")
+                        val jarFile = File("./${fileName}.jar")
                         val fromPath =
                             pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
                         File(fromPath).copyTo(jarFile, true)
                     } else {
-                        val zipName = File("./${mainNivaFileName}.zip")
+                        val zipName = File("./${fileName}.zip")
                         val pathToNativeExe =
                             pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
                         File(pathToNativeExe).copyTo(zipName, true)
                     }
-
                 }
 
                 CompilationTarget.linux -> {
-                    val execName = File("./$mainNivaFileName")
+                    val execName = File("./$fileName")
                     val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
                     File(pathToNativeExe).copyTo(execName, true)
                     execName.setExecutable(true)
