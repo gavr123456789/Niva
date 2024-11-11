@@ -276,6 +276,9 @@ fun Resolver.resolveControlFlow(
                     }
                 }
                 if (statement.switch is IdentifierExpr) {
+                    if (statement.switch.isType) {
+                        statement.switch.token.compileError("${statement.switch} is type name, replace it with instance of type")
+                    }
                     checkMutMatchError(statement.switch.name)
                 } else if (statement.switch is UnaryMsg) {
                     checkMutMatchError(statement.switch.selectorName)
