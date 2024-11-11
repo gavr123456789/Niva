@@ -20,6 +20,7 @@ enum class MainArgument {
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
 
 
+const val OUT_NAME_ARG = "--out-name="
 class ArgsManager(val args: MutableList<String>) {
 
     val compileOnly = "-c" in args // args.find { it == "-c" } != null
@@ -31,6 +32,13 @@ class ArgsManager(val args: MutableList<String>) {
         args.remove("--mill")
         true
     } else false
+    val outputRename = {
+        val outputRename = args.find { it.startsWith(OUT_NAME_ARG) }
+        if (outputRename != null) {
+            args.remove(outputRename)
+            outputRename.replaceFirst(OUT_NAME_ARG, "")
+        } else null
+    }()
     val infoIndex = args.indexOf("-i")
 //    val infoOnly = infoIndex != -1
 //    val infoUserOnly = "-iu" in argsSet//argsSet.find { it == "-iu" } != null
@@ -160,6 +168,7 @@ Usage:
     ${WHITE}run FILE$RESET — compile and run project from root file
     ${WHITE}run FILE -v$RESET or ${WHITE}-verbose$RESET — with verbose printing
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
+        to rename binary use `niva --out-name=NAME build`
     ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
     ${WHITE}distr$RESET — create easy to share jvm distribution
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
