@@ -1,5 +1,6 @@
 package main.utils
 
+import main.codogen.BuildSystem
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import java.io.File
@@ -10,6 +11,9 @@ enum class MainArgument {
     DISRT,
     RUN,
     RUN_MILL,
+    BUILD_MILL,
+    TEST_MILL,
+
     SINGLE_FILE_PATH,
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
@@ -24,14 +28,16 @@ const val OUT_NAME_ARG = "--out-name="
 class ArgsManager(val args: MutableList<String>) {
 
     val compileOnly = "-c" in args // args.find { it == "-c" } != null
-    val verbose = if ("--verbose" in args || args.isEmpty()) {
+    val verbose = if ("--verbose" in args) {
         args.remove("--verbose")
         true
     } else false
-    val mill = if ("--mill" in args || args.isEmpty()) {
+    val mill = if ("--mill" in args) {
         args.remove("--mill")
         true
     } else false
+    val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Amper
+
     val outputRename = {
         val outputRename = args.find { it.startsWith(OUT_NAME_ARG) }
         if (outputRename != null) {
@@ -40,26 +46,22 @@ class ArgsManager(val args: MutableList<String>) {
         } else null
     }()
     val infoIndex = args.indexOf("-i")
-//    val infoOnly = infoIndex != -1
-//    val infoUserOnly = "-iu" in argsSet//argsSet.find { it == "-iu" } != null
-    val isShowTimeArg = verbose//argsSet.find { it == "time" } != null
+    val isShowTimeArg = verbose
 
     fun mainArg(): MainArgument {
         return if (args.isNotEmpty()) {
             when (val firstArg = args[0]) {
-                "run" -> {
-                    if (mill)
-                    MainArgument.RUN_MILL
-                    else
-                        MainArgument.RUN
+                "run" -> if (mill) MainArgument.RUN_MILL
+                    else MainArgument.RUN
 
-                }
-                "build" -> MainArgument.BUIlD
+                "build" -> if (mill) MainArgument.BUILD_MILL
+                else MainArgument.BUIlD
                 "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 "dev" -> MainArgument.DAEMON
-                "test" -> MainArgument.TEST
+                "test" -> if (mill) MainArgument.TEST_MILL
+                else MainArgument.TEST
                 else -> {
                     if (!File(firstArg).exists()) {
                         println("There are no such command or File \"$firstArg\" is not exist, to run all files starting from main.niva run ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
@@ -82,22 +84,19 @@ fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
     }
 }
 
+fun MainArgument.mainArgIsMill() = when(this) {
+    MainArgument.RUN_MILL,
+    MainArgument.BUILD_MILL,
+    MainArgument.TEST_MILL -> true
+    else -> false
+}
 // TODO replace with function that return a class with all paths
-class PathManager(val pathToMainOrSingleFile: String, mainArg: MainArgument) {
-
-    val pathToInfroProject = System.getProperty("user.home") / ".niva" / "infroProject"
-    val pathWhereToGenerateKtAmper = pathToInfroProject // path before src or test
-    val pathToGradle = pathToInfroProject / "build.gradle.kts"
-    val pathToAmper = pathToInfroProject / "module.yaml"
-
-
+class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument) {
     val mainNivaFileWhileDevFromIdea = File("examples" / "Main" / "main.niva")
     private val pathToTheMainExample = mainNivaFileWhileDevFromIdea.absolutePath
 
 
     val pathToNivaMainFile: String = when (mainArg) {
-
-
         MainArgument.SINGLE_FILE_PATH,
         MainArgument.LSP,
         MainArgument.RUN,
@@ -107,19 +106,41 @@ class PathManager(val pathToMainOrSingleFile: String, mainArg: MainArgument) {
         MainArgument.DISRT,
         MainArgument.DAEMON,
         MainArgument.TEST,
-        MainArgument.RUN_MILL-> pathToMainOrSingleFile
+
+        MainArgument.RUN_MILL,
+        MainArgument.BUILD_MILL,
+        MainArgument.TEST_MILL
+            -> nivaMainOrSingleFile
 
         MainArgument.RUN_FROM_IDEA -> pathToTheMainExample
 
     }
-
+    // parent of main.niva
     val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()
 
+    val pathToInfroProject = if (mainArg == MainArgument.RUN_MILL || mainArg == MainArgument.BUILD_MILL || mainArg == MainArgument.TEST_MILL)
+        nivaRootFolder / ".nivaBuild"
+    else
+        System.getProperty("user.home") / ".niva" / "infroProject"
+
+    val pathWhereToGenerateKtAmper = pathToInfroProject // path before src or test
+    val pathToBuildFileGradle = pathToInfroProject / "build.gradle.kts"
+    val pathToBuildFileAmper = pathToInfroProject / "module.yaml"
+    val pathToBuildFileMill = pathToInfroProject / "build.mill"
 
     init {
-        if (!File(pathToInfroProject).exists()) {
-            createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
+        val codegenProjFolder = File(pathToInfroProject)
+        val isBuildFileExist = codegenProjFolder.exists()
+        val isMillBuild = mainArg.mainArgIsMill()
+        if (!isBuildFileExist) {
+            if (isMillBuild) {
+                codegenProjFolder.mkdirs()
+            }
+            else {
+                createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
+            }
         }
+
     }
 }
 

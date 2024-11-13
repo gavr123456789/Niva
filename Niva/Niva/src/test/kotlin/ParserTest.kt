@@ -2044,6 +2044,20 @@ class ParserTest {
 
         assertEquals(ast.count(), 1)
     }
+    @Test
+    fun builderWithBuilderWithReceiver() {
+        val source = """
+            (1 < 2) then [
+                "wow, that's true" echo
+            ] else [
+                "wow, that's false" echo
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        assertEquals(ast.count(), 1)
+    }
+
 
     @Test
     fun builderWithArgsWithReceiverCall() {

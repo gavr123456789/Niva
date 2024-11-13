@@ -60,10 +60,11 @@ interpreter = Interpreter ast: astc
 fun main(args: Array<String>) {
 
 //    val args = arrayOf("-h")
+//    val args = arrayOf("--mill")
 //    val args = arrayOf("build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 //    val args = arrayOf("build", "/Users/gavr/eBF-in-Niva/src/main.niva", "--out-name=sas")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
-//    val args = arrayOf("run", "/Users/gavr/eBF-in-Niva/main.niva")
+//    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 
 //    val qqq = "file:///home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
 //
@@ -82,43 +83,9 @@ fun main(args: Array<String>) {
 
     if (help(args)) return
     run(args)
-//    generateMillInFolder("/Users/gavr/Documents/Fun/Niva/Niva/Niva/expersiment")
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
-fun getPathToMainOrSingleFile(args: List<String>): String =
-    if (args.count() >= 2) {
-        // niva run/test/build "sas.niva"
-        val fileNameArg = args[1]
-        if (File(fileNameArg).exists()) {
-            fileNameArg
-        } else {
-            createFakeToken().compileError("File $fileNameArg doesn't exist")
-        }
-    } else if (args.count() == 1 && args[0].contains(".")) {
-        // Single arg "niva sas.niva"
-        args[0]
-    } else if (args.count() == 0) {
-        File("examples/Main/main.niva").absolutePath
-    }
-
-
-    else {
-        // niva run\test\build...
-        val mainNiva = "main.niva"
-        val mainScala = "main.scala"
-
-        if (File(mainNiva).exists())
-            mainNiva
-        else if (File(mainScala).exists())
-            mainScala
-        else {
-            println("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
-            exitProcess(-1)
-//                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
-        }
-    }
-
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
 
@@ -136,7 +103,14 @@ fun run(args2: Array<String>) {
 
     // resolve all files!
     val resolver = try {
-        compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH, tests = mainArg == MainArgument.TEST, verbose = am.verbose)
+        compileProjFromFile(
+            pm,
+            dontRunCodegen = false,
+            compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
+            tests = mainArg == MainArgument.TEST,
+            verbose = am.verbose,
+            buildSystem = am.buildSystem
+        )
     } catch (e: CompilerError) {
         if (!GlobalVariables.isLspMode)
             println(e.message)
@@ -144,7 +118,6 @@ fun run(args2: Array<String>) {
     }
     val secondTime = System.currentTimeMillis()
     am.time(secondTime - startTime, false)
-
 
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
@@ -157,7 +130,6 @@ fun run(args2: Array<String>) {
         resolver
     )
 
-
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)
 
     when (mainArg) {
@@ -165,18 +137,21 @@ fun run(args2: Array<String>) {
         MainArgument.DISRT -> compiler.runGradleAmperBuildCommand(dist = true)
         MainArgument.RUN ->
             compiler.runGradleAmperBuildCommand()
-        MainArgument.RUN_MILL -> {
+        MainArgument.RUN_MILL ->
+            compiler.runMill(Option.RUN, am.outputRename)
+        MainArgument.BUILD_MILL ->
+            compiler.runMill(Option.BUILD, am.outputRename)
+        MainArgument.TEST_MILL ->
+            compiler.runMill(Option.TEST, am.outputRename)
 
-            compiler.runMill()
-        }
 
         MainArgument.TEST -> {
             compiler.runGradleAmperBuildCommand(runTests = true)
         }
 
-            MainArgument.SINGLE_FILE_PATH -> {
+        MainArgument.SINGLE_FILE_PATH ->
             compiler.runGradleAmperBuildCommand(dist = am.compileOnly)
-        }
+
 
         MainArgument.INFO_ONLY ->
             compiler.infoPrint(false, specialPkgToInfoPrint)
@@ -184,13 +159,12 @@ fun run(args2: Array<String>) {
         MainArgument.USER_DEFINED_INFO_ONLY ->
             compiler.infoPrint(true, specialPkgToInfoPrint)
 
-        MainArgument.RUN_FROM_IDEA -> {
+        MainArgument.RUN_FROM_IDEA ->
             compiler.runGradleAmperBuildCommand(dist = false)
-        }
 
-        MainArgument.DAEMON -> {
+        MainArgument.DAEMON ->
             daemon(pm, mainArg)
-        }
+
 
         MainArgument.LSP -> TODO()
     }
@@ -198,3 +172,37 @@ fun run(args2: Array<String>) {
     am.time(System.currentTimeMillis() - secondTime, true)
 }
 
+enum class Option {
+    RUN, BUILD, TEST
+}
+
+fun getPathToMainOrSingleFile(args: List<String>): String =
+    if (args.count() >= 2) {
+        // niva run/test/build "sas.niva"
+        val fileNameArg = args[1]
+        if (File(fileNameArg).exists()) {
+            fileNameArg
+        } else {
+            createFakeToken().compileError("File $fileNameArg doesn't exist")
+        }
+    } else if (args.count() == 1 && args[0].contains(".")) {
+        // Single arg "niva sas.niva"
+        args[0]
+    } else if (args.count() == 0) {
+        File("examples/Main/main.niva").absolutePath
+    }
+    else {
+        // niva run\test\build...
+        val mainNiva = "main.niva"
+        val mainScala = "main.scala"
+
+        if (File(mainNiva).exists())
+            mainNiva
+        else if (File(mainScala).exists())
+            mainScala
+        else {
+            println("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+            exitProcess(-1)
+//                createFakeToken().compileError("Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`")
+        }
+    }

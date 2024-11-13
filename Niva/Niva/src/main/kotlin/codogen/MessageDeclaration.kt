@@ -7,6 +7,13 @@ import main.frontend.parser.types.ast.*
 import main.utils.appendnl
 import main.utils.isGeneric
 
+val kotlinKeywords = arrayOf( "if", "else", ) // "fun", "val", "var", "class"
+
+fun String.ifKtKeywordAddBackTicks(): String {
+    return if (kotlinKeywords.contains(this)) {
+         "`$this`"
+    } else this
+}
 
 val operators = hashMapOf(
     "+" to "plus",
@@ -110,7 +117,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     append(funGenerateReceiver(isStatic))
 
     // fun Int.sas^() {...}
-    append(".", name)
+    append(".", name.ifKtKeywordAddBackTicks())
 
     append("(")
     pragmas.addInvisibleArgsToMethodDeclaration(emptyList(), this)
@@ -157,7 +164,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     append(funGenerateReceiver(isStatic))
 
     // fun Person^.sas() {}
-    append(".", name, "(")
+    append(".", name.ifKtKeywordAddBackTicks(), "(")
 
     // Args
     val c = args.count() - 1
@@ -186,7 +193,7 @@ fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
     st.receiverType?.let {
         append(it.toKotlinString(true), ".")
     }
-    append(st.name, "(")
+    append(st.name.ifKtKeywordAddBackTicks(), "(")
 
     // Args
 
