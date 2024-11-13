@@ -3,6 +3,8 @@ package main.utils
 import main.codogen.generateKtProject
 import frontend.resolver.*
 import inlineReplSystem.inlineReplSystem
+import main.Option
+import main.codogen.BuildSystem
 import main.frontend.parser.types.ast.Statement
 import java.io.BufferedReader
 import java.io.File
@@ -49,6 +51,7 @@ object GlobalVariables {
 
 }
 
+// if we are running test we need to modify its output
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runTests: Boolean = false) {
     val p = ProcessBuilder(this.split(" "))
         .directory(workingDir)
@@ -117,7 +120,7 @@ class CompilerRunner(
     private val resolver: Resolver
 ) {
     // all false = run code, dist = zip, buildFatJar = single jar
-    private fun cmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
+    private fun gradleCmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
         (if (!dist)
             if (runTests)
                 "allTests"
@@ -130,9 +133,40 @@ class CompilerRunner(
                 CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
             }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
 
-    fun runMill() {
+
+    fun runMill(option: Option, outputRename: String?) {
         removeReplFile()
-        // create .niva
+
+
+        //2 check that code is generated
+        val dotNivaInsideProj = File(pathToProjectRoot)
+        if (!dotNivaInsideProj.exists()) {
+            throw Exception("Infro project doesn't exists, install niva from repo readme")
+        }
+        if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
+            warning("Release mode is useless with jvm target")
+        }
+
+        // 3 generate command and run it
+        val cmd = when(option) {
+            Option.RUN -> "niva.run"
+            Option.BUILD -> "niva.assembly"
+            Option.TEST -> "niva.test"
+        }
+        val defaultArgs = "--ticker false -s"
+        runFinalCommand("./mill","cmd.exe /c mill.bat",defaultArgs, cmd, dotNivaInsideProj, option == Option.TEST)
+        // 4 inline repl
+        inlineReplIfExists()
+
+        // 5 move jar if needed
+        if (option == Option.BUILD) {
+            val binName = outputRename ?: "main.jar"
+            val destination = dotNivaInsideProj.parentFile.resolve(binName)
+            val pathToJar = dotNivaInsideProj
+                .resolve("out/niva/assembly.dest/out.jar")
+            pathToJar.copyTo(destination, true)
+            println("jar created in $destination")
+        }
     }
     fun removeReplFile() {
         if (inlineReplPath.exists()) {
@@ -145,9 +179,10 @@ class CompilerRunner(
         runTests: Boolean = false,
         outputRename: String? = null,
     ) {
-        // remove repl log file since it will be recreated
+        // 1 remove repl log file since it will be recreated
         removeReplFile()
 
+        // 2 check that code is generated
         val file = File(pathToProjectRoot)
         if (!file.exists()) {
             throw Exception("Infro project doesn't exists, run compile script from niva repo")
@@ -156,15 +191,21 @@ class CompilerRunner(
         if (compilationMode == CompilationMode.release && compilationTarget == CompilationTarget.jvm) {
             warning("Release mode is useless with jvm target")
         }
-
-        val cmd = cmd(dist, buildFatJar, runTests)
+        // 3 generate command and run it
+        val cmd = gradleCmd(dist, buildFatJar, runTests)
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
-        (when (getOSType()) {
-            CurrentOS.WINDOWS -> "cmd.exe /c gradlew.bat $defaultArgs $cmd"
-            CurrentOS.LINUX, CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
-//            CurrentOS.MAC -> "./gradlew $defaultArgs $cmd"
-        }).runCommand(file, true, runTests)
+        runFinalCommand("./gradlew","cmd.exe /c gradlew.bat",defaultArgs, cmd, file, runTests)
+        // 4 inline repl
+        inlineReplIfExists()
 
+        val fileName = outputRename ?: mainNivaFileName
+        // 5 move jar if needed
+        if (dist || buildFatJar) {
+            buildJarOrDistGradle(buildFatJar, fileName)
+        }
+    }
+
+    private fun inlineReplIfExists() {
         if (inlineReplPath.exists()) {
             if (compilationTarget == CompilationTarget.jvm) {
                 inlineReplSystem(inlineReplPath)
@@ -173,35 +214,49 @@ class CompilerRunner(
                 warning("inline repl currently supported only in jvm target")
             }
         }
+    }
 
-        val fileName = outputRename ?: mainNivaFileName
 
-        if (dist || buildFatJar) {
-            when (compilationTarget) {
-                CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
+    private fun runFinalCommand(
+        commandForUnix: String,
+        commandForWindows: String,
+        defaultArgs: String,
+        cmd: String,
+        file: File,
+        runTests: Boolean
+    ) {
+        (when (getOSType()) {
+            CurrentOS.WINDOWS -> "$commandForWindows $defaultArgs $cmd"
+            CurrentOS.LINUX, CurrentOS.MAC -> "$commandForUnix $defaultArgs $cmd"
+        }).runCommand(file, true, runTests)
+    }
 
-                    if (buildFatJar) {
-                        val jarFile = File("./${fileName}.jar")
-                        val fromPath =
-                            pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
-                        File(fromPath).copyTo(jarFile, true)
-                    } else {
-                        val zipName = File("./${fileName}.zip")
-                        val pathToNativeExe =
-                            pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
-                        File(pathToNativeExe).copyTo(zipName, true)
-                    }
+    // move the build jar into current folder and rename it
+    fun buildJarOrDistGradle(buildFatJar: Boolean, fileName: String) {
+        when (compilationTarget) {
+            CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
+
+                if (buildFatJar) {
+                    val jarFile = File("./${fileName}.jar")
+                    val fromPath =
+                        pathToProjectRoot / "build" / "libs" / "$mainNivaFileName.niva.jar"
+                    File(fromPath).copyTo(jarFile, true)
+                } else {
+                    val zipName = File("./${fileName}.zip")
+                    val pathToNativeExe =
+                        pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                    File(pathToNativeExe).copyTo(zipName, true)
                 }
-
-                CompilationTarget.linux -> {
-                    val execName = File("./$fileName")
-                    val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
-                    File(pathToNativeExe).copyTo(execName, true)
-                    execName.setExecutable(true)
-                }
-
-                CompilationTarget.macos -> {}
             }
+
+            CompilationTarget.linux -> {
+                val execName = File("./$fileName")
+                val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
+                File(pathToNativeExe).copyTo(execName, true)
+                execName.setExecutable(true)
+            }
+
+            CompilationTarget.macos -> {}
         }
     }
 
@@ -243,27 +298,24 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String, ext2:
     return fileList
 }
 
+// refactor - separate full resolve and generating the code into 2 functions
 fun compileProjFromFile(
     pm: PathManager,
     compileOnlyOneFile: Boolean,
-    resolveOnlyNoBackend: Boolean = false,
+    dontRunCodegen: Boolean = false,
     tests: Boolean = false,
     verbose: Boolean = false,
     onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null,
-    customAst: Pair<List<Statement>, List<Pair<String, List<Statement>>>>? = null
+    customAst: Pair<List<Statement>, List<Pair<String, List<Statement>>>>? = null,
+    buildSystem: BuildSystem
 ): Resolver {
-    val pathToNivaMainFile = pm.pathToNivaMainFile
-    val pathWhereToGenerateKt = pm.pathWhereToGenerateKtAmper
-    val pathToGradle = pm.pathToGradle
-    val pathToAmper = pm.pathToAmper
     val verbosePrinter = VerbosePrinter(verbose)
 
-
-    val mainFile = File(pathToNivaMainFile)
+    val mainFile = File(pm.pathToNivaMainFile)
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
         if (!compileOnlyOneFile)
-            listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva", "kek","nivas").filter { it.name != mainFile.name }.sortedBy { file -> file.name } //  "scala",
+            listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva", "sas","nivas").filter { it.name != mainFile.name }.sortedBy { file -> file.name } //  "scala",
         else
             emptyList()
 
@@ -279,6 +331,8 @@ fun compileProjFromFile(
     // we need custom ast to fill file to ast table in LS(non incremental store)
     val (mainAst, otherAst) = {
         if (customAst == null) {
+            val beforeParserMark = markNow()
+
             val mainText = mainFile.readText()
             val w = getAstFromFiles(
                 mainFileContent = mainText,
@@ -286,6 +340,8 @@ fun compileProjFromFile(
                 mainFilePath = mainFile.absolutePath,
                 resolveOnlyOneFile = compileOnlyOneFile
             )
+            verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
+
             Pair(w.first, w.second)
         }
         else
@@ -300,19 +356,21 @@ fun compileProjFromFile(
         verbosePrinter
     )
 
-    if (!resolveOnlyNoBackend) {
+    if (!dontRunCodegen) {
         val defaultProject = resolver.projects["common"]!!
         val codegenMark = markNow()
         resolver.generator.generateKtProject(
-            pathWhereToGenerateKt,
-            pathToGradle,
-            pathToAmper,
+            pm.pathWhereToGenerateKtAmper,
+            pm.pathToBuildFileGradle,
+            pm.pathToBuildFileAmper,
+            pm.pathToBuildFileMill,
             defaultProject,
             resolver.topLevelStatements,
             resolver.compilationTarget,
             mainFileName = mainFile.name,
             pm.pathToInfroProject,
-            tests
+            tests,
+            buildSystem = buildSystem
         )
 
         verbosePrinter.print { "Codegen took: ${codegenMark.getMs()} ms" }
@@ -386,7 +444,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         
         inline fun <T : Any, R : Any> letIfAllNotNull(vararg arguments: T?, block: (List<T>) -> R): R? {
             return if (arguments.all { it != null }) {
-                block(arguments.toList() as List<T>)
+                block(arguments.filterNotNull())
             } else null
         }
 

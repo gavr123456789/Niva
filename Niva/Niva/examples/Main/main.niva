@@ -1,19 +1,20 @@
-union Color = Red data: Int | Blue data: String
-
-type Wall c: Color
-Wall sas -> Unit = [
-    locC = c
-    | Color
-    | Red => []
-    | Blue => []
+Boolean builder then -> Boolean = [
+  this => build this: this
+  ^ this
+]
+Boolean builder unless -> Boolean = [
+  this not => build this: this
+  ^ this not
 ]
 
-Wall append::Int = 1 echo
+Boolean builder else -> Boolean = [
+  this not => build this: this
+  ^ this not
+]
 
 
-//Wall paint = [
-//    locC = c
-//    | locC
-//    | Red => locC data inc echo
-//    | Blue => locC data + "!" |> echo
-//]
+(1 < 2) then [
+  "wow, thats true" echo
+] else [
+  "wow, thats false" echo
+]

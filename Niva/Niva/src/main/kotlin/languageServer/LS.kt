@@ -3,6 +3,7 @@
 package main.languageServer
 
 import frontend.resolver.*
+import main.codogen.BuildSystem
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -649,9 +650,10 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
             resolver = compileProjFromFile(
                 localpm,
                 compileOnlyOneFile = false,
-                resolveOnlyNoBackend = true,
+                dontRunCodegen = true,
                 onEachStatement = ::onEachStatementCall,
-                customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)) // astOfTheMain, Ast of everything
+                customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
+                buildSystem = BuildSystem.Amper// it doesnt matter, since we dont generate the code
             )
         } else throw Exception("Local pm == null")
     return resolver
@@ -751,10 +753,11 @@ fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: B
 
         this.resolver = compileProjFromFile(
             pm,
-            resolveOnlyNoBackend = true,
+            dontRunCodegen = true,
             compileOnlyOneFile = false,
             onEachStatement = ::onEachStatementCall,
-            customAst = Pair(customAst.first, customAst.second)
+            customAst = Pair(customAst.first, customAst.second),
+            buildSystem = BuildSystem.Amper // doesnt matter since we dont generate code
         )
         // not sure why reset this?
         this.completionFromScope = emptyMap()

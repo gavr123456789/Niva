@@ -78,7 +78,7 @@ class LexerTest {
 
     @Test
     fun string() {
-        checkWithEnd("\"sas\"", listOf(TokenType.String))
+        checkWithEnd("\"saqwf !!! ... pwf s\"", listOf(TokenType.String))
     }
 
     @Test

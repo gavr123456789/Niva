@@ -14,7 +14,12 @@ val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
     if (it.pragmas.isNotEmpty()) {
         val keyPragmas = mutableListOf<KeyPragma>()
         val singleWordPragmas = mutableListOf<SingleWordPragma>()
-        it.pragmas.forEach { if (it is KeyPragma) keyPragmas.add(it) else singleWordPragmas.add(it as SingleWordPragma) }
+        it.pragmas.forEach {
+            if (it is KeyPragma)
+                keyPragmas.add(it)
+            else
+                singleWordPragmas.add(it as SingleWordPragma)
+        }
 
         replaceNameFromPragma(it, keyPragmas)
         emitFromPragma(it, keyPragmas)
@@ -350,7 +355,7 @@ fun generateSingleKeyword(
             } else if (keywordMsg.isPiped) {
                 dotAppend(this, withNullChecks)
             }
-            append(keywordMsg.selectorName)
+            append(keywordMsg.selectorName.ifKtKeywordAddBackTicks())
 
             // Json::Person encode = Json.encode<Person>
             if (receiver is IdentifierExpr && receiver.typeAST != null) {
@@ -467,8 +472,8 @@ fun generateSingleUnary(
 
         val type = receiver.type!!
         if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
-            if (type.typeArgumentList.count() == 1) append("<", type.typeArgumentList[0].name + ">")
-
+            if (type.typeArgumentList.count() == 1)
+                append("<", type.typeArgumentList[0].name + ">")
         }
     }
 
@@ -489,7 +494,7 @@ fun generateSingleUnary(
 
             if (!isThatDefaultConstructor) {
                 if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
-                append(it.selectorName)
+                append(it.selectorName.ifKtKeywordAddBackTicks())
 
                 // Json::Person encode = Json.encode<Person>
                 if (receiver is IdentifierExpr && receiver.typeAST != null) {
@@ -511,7 +516,7 @@ fun generateSingleUnary(
 
         UnaryMsgKind.Getter -> {
             if (receiver !is DotReceiver) dotAppend(this, withNullChecks)
-            append(it.selectorName)
+            append(it.selectorName.ifKtKeywordAddBackTicks())
         }
 
         UnaryMsgKind.ForCodeBlock -> {
@@ -552,10 +557,10 @@ fun generateSingleBinary(
             append("this")
         }
 
-        append(" ${it.selectorName} ")
+        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
     } else {
-        append(" ${it.selectorName} ")
+        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
     }
 

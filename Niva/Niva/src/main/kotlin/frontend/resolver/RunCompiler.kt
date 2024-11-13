@@ -70,17 +70,6 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
         }
     }
 }
-//fun Resolver.resolveByUnresolvedFields(otherASTs: List<Pair<String, List<Statement>>>, fakeTok: Token) {
-//    fillFieldsWithResolvedTypes()
-//    otherASTs.forEachIndexed { i, it ->
-//        currentResolvingFileName = otherFilesPaths[i]
-//        // create package
-//        changePackage(it.first, fakeTok)
-//        statements = it.second.toMutableList()
-//        resolveDeclarationsOnly(it.second)
-//        fillFieldsWithResolvedTypes()
-//    }
-//}
 
 fun Resolver.resolveWithBackTracking(
     mainAST: List<Statement>,
@@ -95,11 +84,6 @@ fun Resolver.resolveWithBackTracking(
                 (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
                 otherFilesPaths.joinToString("\n\t") { it.path }
     }
-
-
-    val beforeParserMark = markNow()
-
-    verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
     /// resolve all declarations
     statements = mainAST.toMutableList()
 

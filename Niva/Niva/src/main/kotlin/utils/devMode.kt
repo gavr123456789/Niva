@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import main.codogen.BuildSystem
 import main.languageServer.OnCompletionException
 import main.languageServer.Scope
 import main.frontend.meta.CompilerError
@@ -56,7 +57,12 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
                         lock = false
                         runProcess("clear")
                         try {
-                            compileProjFromFile(pm, compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH)
+                            compileProjFromFile(
+                                pm,
+                                dontRunCodegen = true,
+                                compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
+                                buildSystem = BuildSystem.Amper,
+                            )
                         } catch (e: CompilerError) {
                             println(e.message)
                         } catch (e: OnCompletionException){

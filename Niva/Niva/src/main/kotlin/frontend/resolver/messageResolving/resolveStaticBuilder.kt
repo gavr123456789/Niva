@@ -34,7 +34,6 @@ fun Resolver.findBuilderInManyPkg(packages: List<Package>, name: String, errorTo
         }
         errorToken.compileError("Can't find builder $name")
     } else {
-        // 1
         return foundBuilders[0]
     }
 

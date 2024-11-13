@@ -12,7 +12,7 @@ fun generateBuilderCall(builder: StaticBuilder) = buildString {
     }
 
     // add name
-    append(st.name)
+    append(st.name.ifKtKeywordAddBackTicks())
 
     // args
     if (builder.args.isNotEmpty())
