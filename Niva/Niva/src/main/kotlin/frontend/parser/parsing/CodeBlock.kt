@@ -6,10 +6,10 @@ import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
-private fun Parser.statementsUntilCloseBracket(bracketType: TokenType): List<Statement> {
+private fun Parser.statementsUntilCloseBracket(bracketType: TokenType, parseMsgDecls: Boolean = true): List<Statement> {
     val result = mutableListOf<Statement>()
     do {
-        result.add(statementWithEndLine())
+        result.add(statementWithEndLine(parseMsgDecls))
     } while (!match(bracketType))
 
     return result
@@ -21,7 +21,6 @@ fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType):
     var defaultAction: CodeBlock? = null
     if (match(bracketType))
         return Pair(mutableListOf(), null)
-
     do {
         val q = statementWithEndLine()
         result.add(q)
@@ -101,7 +100,7 @@ fun Parser.codeBlock(): CodeBlock {
 fun Parser.bracketExpression(): ExpressionInBrackets {
     val openBracket = matchAssert(TokenType.OpenParen)
 
-    val statements = statementsUntilCloseBracket(TokenType.CloseParen)
+    val statements = statementsUntilCloseBracket(TokenType.CloseParen, false)
     if (statements.count() != 1) openBracket.compileError("Expected one expression in brackets but got ${statements.count()}")
     val expr = statements.first()
     if (expr !is Expression) openBracket.compileError("Expected expression, not a statement")
