@@ -471,7 +471,7 @@ fun Lexer.next() {
             parseIdentifier()
 
         // Doc comment
-        check("///") -> someComment(CommentType.Doc)
+        check("///") && peek(3) != "/" -> someComment(CommentType.Doc)
         // Comment
         check("//") -> someComment(CommentType.Usual)
 

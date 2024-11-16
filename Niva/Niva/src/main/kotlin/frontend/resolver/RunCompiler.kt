@@ -100,6 +100,14 @@ fun Resolver.resolveWithBackTracking(
     resolveDeclarationsOnly(statements)
 
     fillFieldsWithResolvedTypes()
+    if (otherASTs.count() != otherFilesPaths.count()) {
+        val set1 = otherASTs.map { it.first }.toSet()
+        val set2 = otherFilesPaths.toSet()
+        val set3 = if (set1.count() > set2.count())
+            set1 - set2 else set2 - set1
+
+        createFakeToken().compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
+    }
     otherASTs.forEachIndexed { i, it ->
         currentResolvingFileName = otherFilesPaths[i]
         // create package

@@ -61,7 +61,19 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
     if (kind == TokenType.ErrorDomain) {
         return errordomainDeclaration(pragmas)
     }
-
+    // inline repl
+    val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
+    val isInlineReplWithQuestion = kind == TokenType.InlineReplWithQuestion
+    if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
+        return inlineParsing(isInlineReplWithNum, tok, isInlineReplWithQuestion)
+    }
+    // msg decl
+    if (parseMsgDecls) {
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
+        if (isItMsgDeclaration != null) {
+            return messageDeclaration(isItMsgDeclaration, pragmas)
+        }
+    }
 
     if (kind == TokenType.Constructor) {
         if (check(TokenType.OpenBracket, 2)) {
@@ -98,29 +110,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
-    val isInlineReplWithNum = kind == TokenType.InlineReplWithNum
-    val isInlineReplWithQuestion = kind == TokenType.InlineReplWithQuestion
 
-    if (tok.lexeme == ">" || isInlineReplWithNum || isInlineReplWithQuestion) {
-        val inlineTok = step()
-        try {
-            val inlineExpr = expression()
-
-            inlineExpr.isInlineRepl = true
-            if (isInlineReplWithNum)
-                inlineExpr.inlineReplCounter = tok.lexeme.substring(1).toInt()
-            else if (isInlineReplWithQuestion) {
-                inlineExpr.isInfoRepl = true
-            }
-
-
-            return inlineExpr
-
-        } catch (_: Exception) {
-            inlineTok.compileError("> can only be used with expressions")
-        }
-
-    }
 
     if (kind == TokenType.Return) {
         val returnTok = step()
@@ -135,15 +125,34 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         tok.compileError("Nothing to compile :(")
     }
 
-    if (parseMsgDecls) {
-        val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
-        if (isItMsgDeclaration != null) {
-            return messageDeclaration(isItMsgDeclaration, pragmas)
-        }
-    }
+
 
     skipNewLinesAndComments()
     return expression(parseSingleIf = true, dot = true)
+}
+
+private fun Parser.inlineParsing(
+    isInlineReplWithNum: Boolean,
+    tok: Token,
+    isInlineReplWithQuestion: Boolean
+): Expression {
+    val inlineTok = step()
+    try {
+        val inlineExpr = expression()
+
+        inlineExpr.isInlineRepl = true
+        if (isInlineReplWithNum)
+            inlineExpr.inlineReplCounter = tok.lexeme.substring(1).toInt()
+        else if (isInlineReplWithQuestion) {
+            inlineExpr.isInfoRepl = true
+        }
+
+
+        return inlineExpr
+
+    } catch (_: Exception) {
+        inlineTok.compileError("> can only be used with expressions")
+    }
 }
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {

@@ -2343,6 +2343,18 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun manySlashes() {
+
+        val source = """
+            /// sas
+            /// sas
+            type Sas
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """
