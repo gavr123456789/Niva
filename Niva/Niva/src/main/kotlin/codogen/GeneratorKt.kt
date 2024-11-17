@@ -255,7 +255,7 @@ fun GeneratorKt.addStdAndPutInMain(
     pathToInfroProject: String
 ) =
     buildString {
-        append("@file:Suppress(\"NOTHING_TO_INLINE\")")
+        appendLine("@file:Suppress(\"NOTHING_TO_INLINE\")")
         append("package ${mainPkg.packageName}\n")
         val code1 =
             ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
