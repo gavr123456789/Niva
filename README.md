@@ -33,7 +33,12 @@ Learn language here: https://gavr123456789.github.io/niva-site
 - Smalltalk syntax(Iloveit)
 - Errors are effects, catching is pattern matching on possible errors of the call. You can ignore catching, but then you need to put them to return type signature `-> Int!IOError` or `-> Int!`
 - No NPE, nullability works the same as in Kotlin\Swift 
-  
+
+
+Errors as effects, 3 kind of msg to handle them  
+https://github.com/user-attachments/assets/08ce8d75-e5e7-478c-a5b6-54825d7a0a48
+
+
 ## Compile from sources 
 Tested on Linux Arch\Nix, Mac M1 and Window$, both compiler and LSP server.  
 Warning: the first compilation of "Hello world" niva program can take time because of gradle deps.  
