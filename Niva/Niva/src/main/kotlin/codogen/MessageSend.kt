@@ -470,11 +470,11 @@ fun generateSingleUnary(
         val receiverCode = receiver.generateExpression()
         append(receiverCode)
 
-        val type = receiver.type!!
-        if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
-            if (type.typeArgumentList.count() == 1)
-                append("<", type.typeArgumentList[0].name + ">")
-        }
+//        val type = receiver.type!!
+//        if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
+//            if (type.typeArgumentList.count() == 1)
+//                append("<", type.typeArgumentList[0].name + ">")
+//        }
     }
 
 

@@ -114,7 +114,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
 
     if (kind == TokenType.Return) {
         val returnTok = step()
-        val expression = if (checkEndOfLineOrFile()) null else expression(parseSingleIf = true)
+        val expression = if (checkEndOfLineOrFile()) null else expression(parseSingleIf = true, dot = true)
         return ReturnStatement(
             expression = expression,
             token = returnTok,

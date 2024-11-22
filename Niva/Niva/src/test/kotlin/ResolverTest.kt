@@ -2268,6 +2268,20 @@ class ResolverTest {
             val (_) = resolveWithResolver(source)
         }
     }
+
+    @Test
+    fun messageForTypeWithGeneric() {
+        val source = """
+            type Stack 
+              list: MutableList::T
+
+
+            extend Stack [
+              on push = 1
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+    }
 }
 
 
