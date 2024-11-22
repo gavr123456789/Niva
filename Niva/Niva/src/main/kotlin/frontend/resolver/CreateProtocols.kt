@@ -929,11 +929,19 @@ fun createListProtocols(
                 ),
                 unitType,
                 "like C arr[x] = y"
-            ).rename("set")
+            ).rename("set"),
+            createKeyword(
+                "atInsert",
+                listOf(
+                    KeywordArg("at", intType),
+                    KeywordArg("insert", itType)
+                ),
+                unitType,
+                "Inserts an element into the list at the specified index"
+            ).rename("add")
         )
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
     }
-
     return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
 
