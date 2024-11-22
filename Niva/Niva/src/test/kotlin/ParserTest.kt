@@ -2365,6 +2365,19 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun docCommentInsideBeforeOn() {
+
+        val source = """
+            extend Person [
+                /// kek
+                on kek = 2
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """

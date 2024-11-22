@@ -409,11 +409,13 @@ fun Parser.onMessageDeclList(
     do {
         val pragmas = if (check("@")) pragmas() else mutableListOf()
         pragmas.addAll(pragmasForExtend)
+        val docComment = parseDocComment()
         matchAssert(TokenType.On)
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false, on = true)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
 
         val msgDecl = messageDeclaration(isItMsgDeclaration, pragmas, forTypeAst)
+        msgDecl.docComment = docComment
         list.add(msgDecl)
 
         skipNewLinesAndComments()
