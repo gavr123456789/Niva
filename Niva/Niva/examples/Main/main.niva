@@ -1,17 +1,32 @@
-type Stack
-  list: MutableList::T
+type Person age: Int
 
-extend Stack [
-  on push::T = list add: push
-  on pop = [list <- ( list dropLast: 1) toMutableList]
-]
-constructor Stack::T empty = Stack list: {}
-intStack = Stack::Int empty
-intStack push: 3
-intStack list echo
+Person toStr = "Personnnn age: $age"
 
-intStack pop
-intStack list echo
+p = Person age: 33
+//p toStr echo
+
+x = {"a" "b" "c"}
+x at: 1 insert: "d"
+x echo
+//type Stack
+//  list: MutableList::T
+//
+//extend Stack [
+//  on push::T = list add: push
+//  on pop = [list <- (list dropLast: 1) toMutableList]
+//]
+//constructor Stack::T empty = Stack list: {}
+//intStack = Stack::Int empty
+//intStack push: 3
+//intStack list echo
+//
+//intStack pop
+//intStack list echo
+
+
+
+
+
 //Boolean builder then -> Boolean = [
 //  this => build this: this
 //  ^ this
