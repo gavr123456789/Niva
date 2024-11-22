@@ -16,20 +16,12 @@ import main.utils.YEL
 
 import main.utils.isGeneric
 
-data class MsgSend(
-    val pkg: String,
-    val selector: String,
-    val project: String,
-    val type: MessageDeclarationType
-)
-
 sealed class MessageMetadata(
     val name: String,
     var returnType: Type, // need to change in single expression case
     val pkg: String,
     val pragmas: MutableList<Pragma> = mutableListOf(),
-    @Suppress("unused")
-    val msgSends: List<MsgSend> = emptyList(),
+    val msgSends: MutableList<Message> = mutableListOf(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
     private var _errors: MutableSet<Type.Union>? = null,
     val declaration: MessageDeclaration?,
@@ -118,7 +110,7 @@ class UnaryMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = emptyList(),
+    msgSends: MutableList<Message> = mutableListOf(),
     val isGetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
@@ -134,7 +126,7 @@ class BinaryMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = emptyList(),
+    msgSends: MutableList<Message> = mutableListOf(),
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
 ) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
@@ -150,7 +142,7 @@ class KeywordMsgMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = emptyList(),
+    msgSends: MutableList<Message> = mutableListOf(),
     val isSetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
@@ -169,7 +161,7 @@ class BuilderMetaData(
     returnType: Type,
     pkg: String,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    msgSends: List<MsgSend> = emptyList(),
+    msgSends: MutableList<Message> = mutableListOf(),
     val isSetter: Boolean = false,
     val defaultAction: CodeBlock?,
     declaration: MessageDeclaration,
@@ -250,7 +242,8 @@ sealed class Type(
     var beforeGenericResolvedName: String? = null,
     var isMutable: Boolean = false,
     var errors: MutableSet<Union>? = null,
-    var isAlias: Boolean = false
+    var isAlias: Boolean = false,
+    var isCopy: Boolean = false
 ) {
 
     fun isCollection() = name in listOf("List", "MutableList", "Set", "MutableSet", "Map", "MutableMap")

@@ -2355,6 +2355,16 @@ class ParserTest {
         assert(ast.count() == 1)
     }
 
+    @Test
+    fun dotAfterReturn() {
+
+        val source = """
+            ^.readTok
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """

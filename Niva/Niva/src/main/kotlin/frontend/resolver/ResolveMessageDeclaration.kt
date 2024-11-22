@@ -58,9 +58,12 @@ fun Resolver.resolveMessageDeclaration(
     val checkThatTypeGenericsResolvable = {
         if (typeFromDB is Type.UserType &&
             typeFromDB.typeArgumentList.isNotEmpty() &&
-            statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
+            !typeFromDB.isCopy &&
+            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null &&
+            statement.forTypeAst is TypeAST.UserType &&
+            statement.forTypeAst.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
         ) {
-            typeFromDB.copyAnyType()
+            typeFromDB.copyAnyType().also {it.isCopy = true}
         } else
             typeFromDB
 

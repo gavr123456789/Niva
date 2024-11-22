@@ -1,20 +1,34 @@
-Boolean builder then -> Boolean = [
-  this => build this: this
-  ^ this
-]
-Boolean builder unless -> Boolean = [
-  this not => build this: this
-  ^ this not
-]
+type Stack
+  list: MutableList::T
 
-Boolean builder else -> Boolean = [
-  this not => build this: this
-  ^ this not
+extend Stack [
+  on push::T = list add: push
+  on pop = [list <- ( list dropLast: 1) toMutableList]
 ]
+constructor Stack::T empty = Stack list: {}
+intStack = Stack::Int empty
+intStack push: 3
+intStack list echo
 
-
-(1 < 2) then [
-  "wow, thats true" echo
-] else [
-  "wow, thats false" echo
-]
+intStack pop
+intStack list echo
+//Boolean builder then -> Boolean = [
+//  this => build this: this
+//  ^ this
+//]
+//Boolean builder unless -> Boolean = [
+//  this not => build this: this
+//  ^ this not
+//]
+//
+//Boolean builder else -> Boolean = [
+//  this not => build this: this
+//  ^ this not
+//]
+//
+//
+//(1 < 2) then [
+//  "wow, thats true" echo
+//] else [
+//  "wow, thats false" echo
+//]

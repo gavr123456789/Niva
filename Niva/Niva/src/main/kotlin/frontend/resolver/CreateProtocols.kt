@@ -685,7 +685,7 @@ fun createListProtocols(
     pairType: Type.UserType
 ): MutableMap<String, Protocol> {
 
-    val list = Type.UserType(
+    val immutableList = Type.UserType(
         name = "List",
         fields = listType.fields,
         typeArgumentList = listOf(Type.UnknownGenericType("T")),
@@ -702,7 +702,7 @@ fun createListProtocols(
     val listOfLists = Type.UserType(
         name = "List",
         fields = listType.fields,
-        typeArgumentList = listOf(list),
+        typeArgumentList = listOf(immutableList),
         pkg = "core",
         protocols = listType.protocols,
         typeDeclaration = null
@@ -729,7 +729,7 @@ fun createListProtocols(
             createUnary("firstOrNull", itTypeNullable),
             createUnary("lastOrNull", itTypeNullable),
 
-            createUnary("toList", list, "Immutable list, elemets will be shadow copied"),
+            createUnary("toList", immutableList, "Immutable list, elemets will be shadow copied"),
             createUnary("toMutableList", listType, "Mutable list, elemets will be shadow copied"),
 
             createUnary("shuffled", listType, "Like in Solitaire"),
@@ -737,7 +737,7 @@ fun createListProtocols(
             createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
-            createUnary("reversed", listType),
+            createUnary("reversed", immutableList),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
             ),
         binaryMsgs = mutableMapOf(),
@@ -760,8 +760,8 @@ fun createListProtocols(
             createKeyword(KeywordArg("atOrNull", intType), itTypeNullable, "safe version of at").rename("getOrNull"),
 
             createKeyword(KeywordArg("contains", itType), unitType, "{1 2 3} contains: 1 is true"),
-            createKeyword(KeywordArg("drop", intType), listType, "Returns a list containing all elements except first n elements"),
-            createKeyword(KeywordArg("dropLast", intType), listType, "Returns a list containing all elements except last n elements."),
+            createKeyword(KeywordArg("drop", intType), immutableList, "Returns a list containing all elements except first n elements"),
+            createKeyword(KeywordArg("dropLast", intType), immutableList, "Returns a list containing all elements except last n elements."),
             createKeyword(KeywordArg("chunked", intType), listOfLists, "Splits this collection into a list of lists each not exceeding the given size"),
             createKeyword(KeywordArg("joinWith", stringType), stringType, """{1 2 3} joinWith: ", " is 1, 2, 3""").rename("joinToString"),
             createKeyword(
@@ -806,7 +806,7 @@ fun createListProtocols(
                         differentGenericType
                     )
                 ),
-                listType,
+                immutableList,
                 """
                     For sorting collection of objects by one of their field
                     ```Scala

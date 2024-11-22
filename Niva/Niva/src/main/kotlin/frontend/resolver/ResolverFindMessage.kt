@@ -227,6 +227,16 @@ fun Resolver.findAnyMsgType(
     findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
         return it
     }
+    if (receiverType.protocols.isEmpty() && receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
+        typeDB.userTypes[receiverType.name]?.let {
+            it.find {it.pkg == receiverType.pkg}?.let {
+                findAnyMethod(it, selectorName, pkg, msgType)?.let {
+                    return it
+                }
+            }
+        }
+    }
+
 
     recursiveSearch(receiverType, selectorName, pkg, msgType)?.let {
         return it
