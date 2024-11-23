@@ -1,49 +1,18 @@
-type Person age: Int
-
-Person toStr = "Personnnn age: $age"
-
-p = Person age: 33
-//p toStr echo
-
-x = {"a" "b" "c"}
-x at: 1 insert: "d"
-x echo
-//type Stack
-//  list: MutableList::T
+//type Sas x: T
 //
-//extend Stack [
-//  on push::T = list add: push
-//  on pop = [list <- (list dropLast: 1) toMutableList]
-//]
-//constructor Stack::T empty = Stack list: {}
-//intStack = Stack::Int empty
-//intStack push: 3
-//intStack list echo
-//
-//intStack pop
-//intStack list echo
-
-
-
-
-
-//Boolean builder then -> Boolean = [
-//  this => build this: this
-//  ^ this
-//]
-//Boolean builder unless -> Boolean = [
-//  this not => build this: this
-//  ^ this not
+//extend Sas [
+//    on inc -> T = [
+//       Error throwWithMessage: "Index out of bounds!" |> orPANIC
+//       ^ x
+//    ]
+//    on kek -> Unit = [
+//        .inc
+//    ]
 //]
 //
-//Boolean builder else -> Boolean = [
-//  this not => build this: this
-//  ^ this not
-//]
+//1 echo
 //
-//
-//(1 < 2) then [
-//  "wow, thats true" echo
-//] else [
-//  "wow, thats false" echo
-//]
+
+x = {1 2 3}
+y::MutableList::Int = x reversed
+y echo

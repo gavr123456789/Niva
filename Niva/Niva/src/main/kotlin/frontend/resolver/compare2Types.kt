@@ -174,8 +174,9 @@ fun compare2Types(
                 val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)
                 if (!sameArgs) {
                     tokenForErrors.compileError("Generic argument of type: ${YEL}${type1OrChildOf2.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
-                } else
-                    return sameArgs // List::Int and List::T are the same
+                }
+                else
+                    return type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
             }
         }
 
