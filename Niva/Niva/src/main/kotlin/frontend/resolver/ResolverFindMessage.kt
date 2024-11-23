@@ -266,6 +266,7 @@ fun Resolver.findAnyMsgType(
                     val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)
+                        resolvingMsgDecl.messageData?.clearErrors(b.errors.toList())
                     }
                 }
             } else {
@@ -273,6 +274,7 @@ fun Resolver.findAnyMsgType(
                     val b = resolvingMsgDecl.stackOfPossibleErrors.find { it.msg == a }
                     if (b != null) {
                         resolvingMsgDecl.stackOfPossibleErrors.remove(b)
+                        resolvingMsgDecl.messageData?.clearErrors(b.errors.toList())
                     }
                 }
             }

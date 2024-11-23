@@ -2280,7 +2280,37 @@ class ResolverTest {
               on push = 1
             ]
         """.trimIndent()
-        val (x) = resolveWithResolver(source)
+        val (_) = resolveWithResolver(source)
+    }
+    @Test
+    fun str() {
+
+        val _source = """
+            type Sas x: T
+
+            extend Sas [
+                on inc -> T = [
+                   Error throwWithMessage: "Index out of bounds!" |> orPANIC
+                   ^ x
+                ]
+                on kek -> Unit = [
+                    .inc
+                ]
+            ]
+        """.trimIndent()
+//        val (x) = resolveWithResolver(source)
+    }
+
+    @Test
+    fun mutListnotEqualList() {
+
+        val source = """
+            x = {1 2 3}
+            y::MutableList::Int = x reversed
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_) = resolveWithResolver(source)
+        }
     }
 }
 
