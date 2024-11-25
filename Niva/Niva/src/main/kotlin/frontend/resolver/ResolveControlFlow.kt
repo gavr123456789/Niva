@@ -314,7 +314,9 @@ fun Resolver.resolveControlFlow(
             }
             /// resolving then, if() ^
             val scopeWithFields =
-                if (thisIsTypeMatching) (previousAndCurrentScope + scopeWithThisFields).toMutableMap() else previousAndCurrentScope
+                if (thisIsTypeMatching)
+                        (previousAndCurrentScope + scopeWithThisFields).toMutableMap()
+                else previousAndCurrentScope
             when (it) {
                 is IfBranch.IfBranchSingleExpr -> {
                     currentLevel++
@@ -409,6 +411,7 @@ fun Resolver.resolveControlFlow(
                     if (savedSwitchType.name == InternalTypes.Any.name) {
                         statement.token.compileError("When switching on Any else branch is required, add |=>, if its statement you can use |=> []")
                     }
+
                 }
 
                 else -> {
@@ -418,6 +421,24 @@ fun Resolver.resolveControlFlow(
             }
 
         } else {
+            // not a type matching
+            // no else branch
+            if (savedSwitchType.name == InternalTypes.Boolean.name) {
+                if (statement.ifBranches.count() > 2)
+                    statement.token.compileError("You matching against Boolean, check only for true and false")
+                var isTrue = false
+                var isFalse = false
+                statement.ifBranches.forEach { branch ->
+                    isTrue = branch.ifExpression.token.lexeme == "true"
+                    isFalse = branch.ifExpression.token.lexeme == "false"
+                }
+                if (isTrue && !isFalse) {
+                    statement.token.compileError("false is not checked")
+                } else if (!isTrue && isFalse) {
+                    statement.token.compileError("true is not checked")
+                }
+
+            }
             if (statement.type == null) {
                 statement.type =
                     findGeneralRootMany(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
@@ -425,7 +446,7 @@ fun Resolver.resolveControlFlow(
             }
         }
         // check for enum exhaustiveness
-        if (savedSwitchType is Type.EnumRootType && statement.kind == ControlFlowKind.Expression && statement.elseBranch == null) {
+        if (savedSwitchType is Type.EnumRootType && statement.elseBranch == null) {
             exhaustivenessEnumCheck(
                 savedSwitchType.branches,
                 statement.ifBranches.flatMap { listOf(it.ifExpression) + it.otherIfExpressions },

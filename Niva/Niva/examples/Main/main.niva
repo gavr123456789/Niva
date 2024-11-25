@@ -13,9 +13,16 @@
 //1 echo
 //
 
-type Sas x: Int
+enum Color = Red | Blue
 
-constructor Sas sus = [
-    ^ 1 + 1
-]
-Sas sus echo
+c::Color = Color.Red
+
+c echo
+| c
+| Color.Red => 1 echo
+
+//x = true
+//| x
+//| false => 1 echo
+//| false => 1 echo
+//| false => 1 echo
