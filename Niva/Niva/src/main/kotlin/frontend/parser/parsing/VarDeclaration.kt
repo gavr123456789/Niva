@@ -31,7 +31,7 @@ fun Parser.varDeclaration(): VarDeclaration? {
                     value = if (isNextReceiver)
                         simpleReceiver()
                     else
-                        expression(parseSingleIf = true)
+                        expression(parseSingleIf = true, dot = true)
                     valueType = null
 
 //                } catch (e: Exception) {

@@ -2377,7 +2377,15 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+    @Test
+    fun dotAfterVariableDecl() {
 
+        val source = """
+            x = .async: [ 1 + 1 ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun newUnionSyntax() {
 //        val source = """

@@ -454,6 +454,10 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
         }
+        
+        inline fun Int.repeat(action: (Int) -> Unit) {
+            for (element in 0..<this) action(element)
+        }
 
         // for cycle
         inline fun Int.toDo(to: Int, `do`: (Int) -> Unit) {

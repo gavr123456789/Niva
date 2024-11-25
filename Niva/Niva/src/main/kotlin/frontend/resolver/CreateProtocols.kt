@@ -70,6 +70,14 @@ fun createIntProtocols(
                 docComment = "1 to: 3 do: [it echo] // 1 2 3"
             ),
             createKeyword(
+                "repeat",
+                listOf(
+                    KeywordArg("repeat", Type.Lambda(mutableListOf(KeywordArg("it", intType)), anyType))
+                ),
+                unitType,
+                docComment = "`3 repeat: [it echo] // 0 1 2`"
+            ),
+            createKeyword(
                 "toByDo",
                 listOf(
                     KeywordArg("to", intType),
