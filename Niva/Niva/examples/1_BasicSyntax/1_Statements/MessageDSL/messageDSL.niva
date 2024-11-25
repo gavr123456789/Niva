@@ -1,0 +1,10 @@
+type Day v: Int
+type Date day: Int month: Int year: Int
+
+Int d = Day v: this
+
+Day / month::Int = Date day: v month: month year: 0
+Date / year::Int = Date day: day month: month year: year
+
+// Date day: 11 month: 8 year: 2007
+11d/8/2007
