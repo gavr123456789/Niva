@@ -2312,7 +2312,7 @@ class ResolverTest {
         }
     }
     @Test
-    fun constructorWithoudReturnType() {
+    fun constructorWithoutReturnType() {
         val source = """
            type Sas x: Int
 
@@ -2320,11 +2320,26 @@ class ResolverTest {
                1 + 1
            ]
         """.trimIndent()
-
         val (x) = resolveWithResolver(source)
         val q = x[1] as ConstructorDeclaration
         val w = q.returnType!!
         assert(w.name == "Unit")
+    }
+
+    @Test
+    fun exhaustivenessOfEnums() {
+        val source = """
+            enum Color = Red | Blue
+
+            c::Color = Color.Red
+
+            c echo
+            | c
+            | Color.Red => 1 echo
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_) = resolveWithResolver(source)
+        }
     }
 }
 
