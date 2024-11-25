@@ -13,13 +13,15 @@
 //1 echo
 //
 
-enum Color = Red | Blue
+//enum Color = Red | Blue
+//
+//c::Color = Color.Red
+//
+//c echo
+//| c
+//| Color.Red => 1 echo
 
-c::Color = Color.Red
-
-c echo
-| c
-| Color.Red => 1 echo
+3 repeat: [it echonnl]
 
 //x = true
 //| x
