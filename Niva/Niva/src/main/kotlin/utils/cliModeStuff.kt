@@ -134,7 +134,8 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument) {
         val isMillBuild = mainArg.mainArgIsMill()
         if (!isBuildFileExist) {
             if (isMillBuild) {
-                codegenProjFolder.mkdirs()
+                // we don't need to create dir here, because later we this is a trigger to generate .bat file
+//                codegenProjFolder.mkdirs()
             }
             else {
                 createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")

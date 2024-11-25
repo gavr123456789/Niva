@@ -22,27 +22,23 @@ fun generateMillProjectTemplateIfNotExist(pathToRootOfMain: String) {
     val srcDir = File(nivaDir, "src")
     val testDir = File(nivaDir, "test/src/foo")
 
-    // Создаем все необходимые каталоги
     srcDir.mkdirs()
     testDir.mkdirs()
 
-    // Создание и запись в файл build.mill
     val buildFile = File(rootDir, "build.mill")
-//    buildFile.writeText(MILL_BUILD)
+
     buildFile.writeText("") // we will regenerate it anyway
 
-    // Создание и запись в файл mill
-    val millFile = File(rootDir, "mill")
-    if (getOSType() == CurrentOS.WINDOWS)
+    val millFile: File
+    if (getOSType() == CurrentOS.WINDOWS) {
+        millFile = File(rootDir, "mill.bat")
         millFile.writeText(MILL_BAT)
-    else
+    }
+    else {
+        millFile = File(rootDir, "mill")
         millFile.writeText(MILL_SH)
-
-    millFile.setExecutable(true)  // Даем права на исполнение для shell-скрипта
-
-    // Создание пустых файлов Main.kt и FooTest.kt
-//    val mainKtFile = File(srcDir, "Main.kt")
-//    mainKtFile.writeText("")  // Оставляем пустым
+    }
+    millFile.setExecutable(true)
 
     val fooTestKtFile = File(testDir, "FooTest.kt")
     fooTestKtFile.writeText("")  // Оставляем пустым
@@ -163,7 +159,7 @@ rem but I don't think we need to support them in 2019
 setlocal enabledelayedexpansion
 
 if [!DEFAULT_MILL_VERSION!]==[] (
-    set "DEFAULT_MILL_VERSION=0.11.4"
+    set "DEFAULT_MILL_VERSION=0.12.2"
 )
 
 if [!GITHUB_RELEASE_CDN!]==[] (

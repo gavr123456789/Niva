@@ -165,7 +165,6 @@ fun GeneratorKt.addToGradleDependencies(dependenciesList: List<String>) {
 
 fun GeneratorKt.regenerateGradleForAmper(
     pathToGradle: String,
-    runCommandName: String,
     compilationTarget: CompilationTarget,
     jarName: String
 ) {
@@ -235,17 +234,27 @@ fun GeneratorKt.deleteAndRecreateFolder(path: File) {
 }
 
 fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): File {
-    val baseDir = path.toPath().resolve(fileName).toFile()
-    if (baseDir.exists()) {
-        println("File already exists: ${baseDir.absolutePath}")
+    fun createFileInDirectory(file: File): Boolean {
+        val parentDir = file.parentFile
+
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs()
+        }
+
+        return file.createNewFile()
+    }
+
+    val pathToNivaFile = path.toPath().resolve(fileName).toFile()
+    if (pathToNivaFile.exists()) {
+        println("File already exists: ${pathToNivaFile.absolutePath}")
     } else {
-        if (baseDir.createNewFile()) {
-            baseDir.writeText(code)
+        if (createFileInDirectory(pathToNivaFile)) {
+            pathToNivaFile.writeText(code)
         } else {
-            throw Error("Failed to create file: ${baseDir.absolutePath}")
+            throw Error("Failed to create file: ${pathToNivaFile.absolutePath}")
         }
     }
-    return baseDir
+    return pathToNivaFile
 }
 
 fun GeneratorKt.addStdAndPutInMain(
@@ -270,7 +279,7 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
 //    val builder = StringBuilder()
     val src = pathToSource / "src"
 
-    val pkgs1 = notBindedPackages//.filter { it.declarations.isNotEmpty() }
+    val pkgs1 = notBindedPackages.filter { it.declarations.isNotEmpty() }
 
     val testPackages = mutableMapOf<String, Package>()
 
@@ -427,7 +436,6 @@ fun GeneratorKt.generateKtProject(
                 // 4 regenerate amper's gradle
                 regenerateGradleForAmper(
                     pathToGradle,
-                    runCommandName = targetToRunCommand(compilationTarget),
                     compilationTarget,
                     mainFileName
                 )
