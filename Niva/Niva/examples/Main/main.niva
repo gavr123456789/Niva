@@ -13,6 +13,9 @@
 //1 echo
 //
 
-x = {1 2 3}
-y::MutableList::Int = x reversed
-y echo
+type Sas x: Int
+
+constructor Sas sus = [
+    ^ 1 + 1
+]
+Sas sus echo

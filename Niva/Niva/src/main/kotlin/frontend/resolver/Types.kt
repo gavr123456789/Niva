@@ -2,7 +2,6 @@
 
 package frontend.resolver
 
-import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.Pragma
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -1129,7 +1128,7 @@ fun MessageDeclaration.toAnyMessageData(
                 this.token.compileError("Can't create custom constructors for binding, that require companion object in Kotlin(wait for static extension feature)")
             }
             if (this.returnTypeAST == null) {
-                this.returnType = forType
+                this.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
             }
             resolver.addStaticDeclaration(this)
         }

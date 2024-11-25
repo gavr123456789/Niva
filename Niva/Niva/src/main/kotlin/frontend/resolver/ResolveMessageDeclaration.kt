@@ -96,7 +96,6 @@ fun Resolver.resolveMessageDeclaration(
 
 
     val bodyScope = mutableMapOf<String, Type>()
-
     val resolveBody = {
 
         val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
