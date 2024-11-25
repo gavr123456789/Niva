@@ -729,10 +729,19 @@ fun Resolver.addNewType(
     val pack = pkg ?: getCurrentPackage(statement?.token ?: createFakeToken())
     // 2 check type for unique
     val typeName = if (alias) (statement as TypeAliasDeclaration).typeName else type.name
-    if (!alreadyCheckedOnUnique && typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
-        val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
-        statement?.token?.compileError(err) ?: throw Exception(err)
+    if (!alreadyCheckedOnUnique) {
+        if (typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
+            val err =
+                "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
+            statement?.token?.compileError(err) ?: throw Exception(err)
+        }
+        // check for internal types
+        if (typeDB.internalTypes.keys.contains(typeName)) {
+            statement?.token?.compileError("Type $typeName is already registered as internal type")
+        }
     }
+
+
     // 3 add declaration to be generated
     if (statement != null) {
         pack.declarations.add(statement)
