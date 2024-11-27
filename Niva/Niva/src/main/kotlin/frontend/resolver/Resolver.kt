@@ -1093,7 +1093,8 @@ class Resolver(
     var statements: MutableList<Statement>,
     var currentResolvingFileName: File,
 
-    val otherFilesPaths: List<File> = emptyList(),
+    // the paths to files except main
+    val otherFilesPaths: MutableList<File> = mutableListOf(),
 
     val projects: MutableMap<String, Project> = mutableMapOf(),
 
@@ -1186,7 +1187,7 @@ class Resolver(
 
     companion object {
         fun empty(
-            otherFilesPaths: List<File>,
+            otherFilesPaths: MutableList<File>,
             onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)?,
             currentFile: File,
         ) = Resolver(

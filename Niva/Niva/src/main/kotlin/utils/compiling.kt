@@ -5,6 +5,7 @@ import frontend.resolver.*
 import inlineReplSystem.inlineReplSystem
 import main.Option
 import main.codogen.BuildSystem
+import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Statement
 import java.io.BufferedReader
 import java.io.File
@@ -282,16 +283,16 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
     }
 }
 
-fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String, ext2: String, ext3: String): List<File> {
+fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): MutableList<File> {
     val fileList = mutableListOf<File>()
     val filesAndDirs = directory.listFiles()
-    if (filesAndDirs == null) return emptyList()
+    if (filesAndDirs == null) return mutableListOf()
 
     for (file in filesAndDirs) {
-        if (file.isFile && (file.extension == ext || file.extension == ext2)) {
+        if (file.isFile && (file.extension == ext)) {
             fileList.add(file)
         } else if (file.isDirectory) {
-            fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext, ext2, ext3))
+            fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
         }
     }
 
@@ -307,17 +308,23 @@ fun compileProjFromFile(
     verbose: Boolean = false,
     onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null,
     customAst: Pair<List<Statement>, List<Pair<String, List<Statement>>>>? = null,
-    buildSystem: BuildSystem
+    buildSystem: BuildSystem,
+    previousFilePath: MutableList<File>? = null
 ): Resolver {
     val verbosePrinter = VerbosePrinter(verbose)
 
     val mainFile = File(pm.pathToNivaMainFile)
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
     val otherFilesPaths =
-        if (!compileOnlyOneFile)
-            listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva", "sas","nivas").filter { it.name != mainFile.name }.sortedBy { file -> file.name } //  "scala",
-        else
-            emptyList()
+        previousFilePath
+            ?: if (!compileOnlyOneFile)
+                listFilesDownUntilNivaIsFoundRecursively(nivaProjectFolder, "niva")
+                    .asSequence()
+                    .filter { it.name != mainFile.name }
+                    .sortedBy { file -> file.name }
+                    .toMutableList()
+            else
+                mutableListOf()
 
     // we have main file, and all other files, so we can create resolver now
     val resolver = Resolver(
@@ -334,7 +341,7 @@ fun compileProjFromFile(
             val beforeParserMark = markNow()
 
             val mainText = mainFile.readText()
-            val w = getAstFromFiles(
+            val w = parseFilesToAST(
                 mainFileContent = mainText,
                 otherFileContents = resolver.otherFilesPaths,
                 mainFilePath = mainFile.absolutePath,
@@ -348,6 +355,22 @@ fun compileProjFromFile(
             customAst
     }()
 
+
+    if (resolver.otherFilesPaths.count() != otherAst.count()) {
+        val set1 = otherAst.map { it.first }.toSet()
+        val set2 = resolver.otherFilesPaths.toSet()
+        val set3 = if (set1.count() > set2.count())
+            set1 - set2 else set2 - set1
+
+        val tok = mainAst.first().token
+        // okay workspace service doesn't work, so lets just replace our file instead
+//        set3.forEach { t ->
+//            resolver.otherFilesPaths.removeIf { it.path == t }
+//        }
+
+        tok.compileError("resolver.otherFilesPaths = ${resolver.otherFilesPaths}, otherAst = $otherAst, customAST = $customAst")
+        tok.compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
+    }
     resolver.resolveWithBackTracking(
         mainAst,
         otherAst,

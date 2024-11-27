@@ -415,7 +415,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     megaStore.data.remove(file.absolutePath)
     resolver.reset()
 
-    val (mainAst) = getAstFromFiles(
+    val (mainAst) = parseFilesToAST(
         mainFileContent = text,
         otherFileContents = resolver.otherFilesPaths,
         mainFilePath = file.absolutePath,
@@ -627,6 +627,7 @@ fun clearNonIncrementalStoreFromTypes(nonIncrementalStore: MutableMap<String, Li
             statement.clearFromType()
         }
     }
+
 }
 
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
@@ -634,59 +635,48 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     fileToDecl.clear()
 
     clearNonIncrementalStoreFromTypes(nonIncrementalStore)
-    //    0) clear from types
+    //    0) clear AST from types
     //    1) lex parse new changed file
     //    2) replace its ast in the NIS
     //    3) resolve everything again
 
+    val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
     val file = File(URI(uriOfChangedFile))
     val fileAbsolute = file.absolutePath
     val mainAst = getAst(source = source, file = file)
     nonIncrementalStore[fileAbsolute] = mainAst
     // resolve everything and return resolver
-//    val resolveFromNIS = { nonIncrementalStore: Map<String, List<Statement>> ->
         val localpm = pm
         if (localpm != null) {
+            // adding the current file, if its a new one
+            // would be a better solution to do this only on open file
+            val previousFilePath = if (isMainFileRecompiling)
+                resolver.otherFilesPaths
+            else (resolver.otherFilesPaths + file)
+                .distinctBy { it.absolutePath }
+                .toMutableList()
+
             resolver = compileProjFromFile(
                 localpm,
                 compileOnlyOneFile = false,
                 dontRunCodegen = true,
                 onEachStatement = ::onEachStatementCall,
                 customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
-                buildSystem = BuildSystem.Amper// it doesnt matter, since we dont generate the code
+                buildSystem = BuildSystem.Amper,// it doesnt matter, since we dont generate the code
+                previousFilePath = previousFilePath
             )
         } else throw Exception("Local pm == null")
     return resolver
-//    }
-//    resolveFromNIS(this.nonIncrementalStore)
-
-//
-//
-//    removeDecl2(file)
-//    megaStore.data.remove(file.absolutePath)
-//    resolver.reset()
-//
-//    val (mainAst) = getAstFromFiles(
-//        mainFileContent = text,
-//        otherFileContents = resolver.otherFilesPaths,
-//        mainFilePath = file.absolutePath,
-//        resolveOnlyOneFile = true
-//    )
-//
-//    // throws on
-//    resolver.resolveWithBackTracking(
-//        mainAst,
-//        emptyList(),
-//        file.absolutePath,
-//        file.nameWithoutExtension,
-//        VerbosePrinter(false),
-//    )
 }
 
 
 // first time, all files reading
 // if non-incremental, then we will fill the nonIncrementalStore store
-fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: Boolean = false): Resolver {
+fun LS.resolveAllFirstTime(
+    pathToChangedFile: String,
+    fillNonIncrementalStore: Boolean = false,
+    mainContent: String?
+): Resolver {
     GlobalVariables.enableLspMode()
     megaStore.data.clear()
 
@@ -726,23 +716,24 @@ fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: B
         // get main file
         val pair = findMainUpRecursively(file, mutableSetOf())
         // listFilesDownUntilNivaIsFoundRecursively from main to get all files
-        val set = listFilesDownUntilNivaIsFoundRecursively(pair.first.parentFile, "niva", "sas", "nivas")
+        val set = listFilesDownUntilNivaIsFoundRecursively(pair.first.parentFile, "niva")
         pair.also { it.second.addAll(set) }
     }
     val (mainFile, allFiles) = collectFiles()
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
 
-    info?.invoke("main file is $mainFile ") //all files is ${allFiles.joinToString(", ") { it.name }}
+    info?.invoke("allFiles is $allFiles ") //all files is ${allFiles.joinToString(", ") { it.name }}
+
     allFiles.remove(mainFile)
     // Resolve
-    val pm = PathManager(mainFile.path, MainArgument.LSP)
+    val pm = PathManager(mainFile.absolutePath, MainArgument.LSP)
     this.pm = pm
 
     try {
 
         // custom ast
-        val customAst = getAstFromFiles(
-            mainFileContent = mainFile.readText(),
+        val customAst = parseFilesToAST(
+            mainFileContent = mainContent ?: mainFile.readText(),
             otherFileContents = allFiles.toList(),
             mainFilePath = mainFile.absolutePath,
             resolveOnlyOneFile = false
@@ -759,12 +750,17 @@ fun LS.resolveAllFirstTime(pathToChangedFile: String, fillNonIncrementalStore: B
             customAst = Pair(customAst.first, customAst.second),
             buildSystem = BuildSystem.Amper // doesnt matter since we dont generate code
         )
+        info?.invoke("After first compilation resolver.otherFilesPaths = ${resolver.otherFilesPaths} ")
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
-    } catch (s: OnCompletionException) {
+    }
+    catch (s: OnCompletionException) {
+        if (s.token != null && s.errorMessage != null) {
+            s.token.compileError(s.errorMessage)
+        }
         val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles.toList(), ::onEachStatementCall, currentFile = mainFile)
+            Resolver.empty(otherFilesPaths = allFiles.toMutableList(), ::onEachStatementCall, currentFile = mainFile)
         this.resolver = emptyResolver
         this.completionFromScope = s.scope
 

@@ -28,33 +28,9 @@ fun lex(source: String, file: File): MutableList<Token> {
 
 
 const val fakeFileSourceGOOD = """
-testString::String = "++++ > < << >> /*some comment*/ DPND somefile.ebf foo % foo # bar\n@bar\r!#bar\tEND"
+//Int sas = 1
 
-("Test String: " + testString) echo
-
-lexer = Lexer input: testString 
-  
-  ast = AST empty
-[lexer ch != '\u0000'] whileTrue: [
-    tok = lexer nextToken
-    ast append: tok
-]
-
-ast print // debug
-
-astc = ASTC empty
-parser = Parser ast: ast
-[parser tok kind != TokenType.END] whileTrue: [
-    command = parser nextToken
-    astc append: command
-]
-
-astc print //debug
-
-interpreter = Interpreter ast: astc
-// run interpreter nextCommand until it returns EOP (End of Program) Result
-// if it returns an error, send Result to error handler and break loop
-
+1 sas 
 """
 
 fun main(args: Array<String>) {
@@ -66,8 +42,8 @@ fun main(args: Array<String>) {
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 
-//    val qqq = "file:///home/gavr/Documents/Projects/Fun/eBF-in-Niva/main.niva"
-//
+//    val qqq = "file:///Users/gavr/Documents/Fun/niva-code/bazar/Examples/experiment/main.niva"
+
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAllFirstTime(qqq, true)

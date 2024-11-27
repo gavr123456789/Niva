@@ -426,12 +426,9 @@ fun Resolver.resolveControlFlow(
             if (savedSwitchType.name == InternalTypes.Boolean.name) {
                 if (statement.ifBranches.count() > 2)
                     statement.token.compileError("You matching against Boolean, check only for true and false")
-                var isTrue = false
-                var isFalse = false
-                statement.ifBranches.forEach { branch ->
-                    isTrue = branch.ifExpression.token.lexeme == "true"
-                    isFalse = branch.ifExpression.token.lexeme == "false"
-                }
+                val isTrue = statement.ifBranches.find {it.ifExpression.token.lexeme == "true"} != null
+                val isFalse = statement.ifBranches.find {it.ifExpression.token.lexeme == "false"} != null
+
                 if (isTrue && !isFalse) {
                     statement.token.compileError("false is not checked")
                 } else if (!isTrue && isFalse) {
