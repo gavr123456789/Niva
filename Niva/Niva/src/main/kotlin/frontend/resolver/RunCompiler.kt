@@ -98,17 +98,8 @@ fun Resolver.resolveWithBackTracking(
     val resolveDeclarationsOnlyMark = markNow()
 
     resolveDeclarationsOnly(statements)
-
     fillFieldsWithResolvedTypes()
-    if (otherASTs.count() != otherFilesPaths.count()) {
-        val set1 = otherASTs.map { it.first }.toSet()
-        val set2 = otherFilesPaths.toSet()
-        val set3 = if (set1.count() > set2.count())
-            set1 - set2 else set2 - set1
 
-        val tok = otherASTs.first().second.first().token
-        tok.compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
-    }
     otherASTs.forEachIndexed { i, it ->
         currentResolvingFileName = otherFilesPaths[i]
         // create package
@@ -287,7 +278,7 @@ fun getAst(source: String, file: File): List<Statement> {
 }
 
 // third param is list of file paths
-fun getAstFromFiles(
+fun parseFilesToAST(
     mainFileContent: String,
     otherFileContents: List<File>,
     mainFilePath: String,
