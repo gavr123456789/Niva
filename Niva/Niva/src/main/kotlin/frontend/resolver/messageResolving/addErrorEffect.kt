@@ -18,7 +18,8 @@ import main.frontend.parser.types.ast.PairOfErrorAndMessage
 fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statement: Message): Type {
     val currentMsgDecl = resolvingMessageDeclaration
     val errors = msgFromDB.errors
-    if (errors == null && returnType.errors != null) {
+    // temp fix for ifTrue:ifFalse: that returns errors in each branch
+    if (errors == null && returnType.errors != null && msgFromDB.returnType.name != "T") {
         statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
     }
     if (errors != null && currentMsgDecl != null) {

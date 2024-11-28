@@ -18,7 +18,6 @@ import main.utils.addStd
 import main.utils.appendnl
 import main.utils.generateMillProjectTemplateIfNotExist
 import main.utils.putInMainKotlinCode
-import main.utils.targetToRunCommand
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.div
@@ -199,7 +198,7 @@ fun GeneratorKt.regenerateMill(pathToMill: String) {
             appendLine("def ivyDeps = Agg(")
             appendLine(
                 dependencies.joinToString(",\n") {
-                    "    ivy\"$it\""
+                    "    ivy$it"
                 }
             )
             appendLine(")")
@@ -420,7 +419,6 @@ fun GeneratorKt.generateKtProject(
         val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
         val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject)
         createCodeKtFile(pathToSrc, "Main.kt", mainCode)
-
         // 3 generate every package like folders with code
         generatePackages(pathToInfroProj, notBindPackages.toList(), isTestsRun)
         generateBuildFile()

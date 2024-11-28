@@ -2341,6 +2341,26 @@ class ResolverTest {
             val (_) = resolveWithResolver(source)
         }
     }
+    @Test
+    fun errorsFromIfTrueIfFalse() {
+        val source = """
+            errordomain MyError =
+            | Error1 text: String
+            | Error2 code: Int
+
+            type Person
+            Person foo -> Int!{Error1 Error2} = [
+              1 > 2 ifTrue: [
+                (Error1 text: "qwf") throw
+              ] ifFalse: [
+                (Error2 code: 404) throw
+              ]
+              ^ 42
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
 }
 
 
