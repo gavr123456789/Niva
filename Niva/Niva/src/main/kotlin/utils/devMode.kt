@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import main.codogen.BuildSystem
 import main.languageServer.OnCompletionException
 import main.languageServer.Scope
 import main.frontend.meta.CompilerError
@@ -19,12 +18,29 @@ import kotlin.collections.forEach
 import kotlin.collections.joinToString
 import kotlin.text.lowercase
 import kotlin.text.startsWith
+import kotlin.time.measureTime
 
 fun onCompletionExc(scope: Scope, errorMessage: String? = null, token: Token? = null): Nothing = throw (OnCompletionException(scope, errorMessage, token))
 
-fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
+fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlocking {
     GlobalVariables.enableDemonMode()
 
+
+    val compileWithErrorPrinting = {
+        try {
+            compileProjFromFile(
+                pm,
+                dontRunCodegen = false,
+                compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
+                tests = mainArg == MainArgument.TEST,
+                verbose = am.verbose,
+                buildSystem = am.buildSystem
+            )
+        }   catch (e: CompilerError) {
+            println(e.message)
+        }
+
+    }
 
     // read console commands
     suspend fun BufferedReader.readLineSuspending() =
@@ -33,10 +49,15 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
     launch{
         val q = BufferedReader(InputStreamReader(System.`in`))
         var w = ""
+
         while (w != "e") {
             w = q.readLineSuspending()
             if (w == "c") {
-                println("compiling")
+                val x = measureTime{
+                    compileWithErrorPrinting()
+                }
+
+                println("done in $x")
             } else {
                 println("unknown command")
             }
@@ -53,15 +74,17 @@ fun daemon(pm: PathManager, mainArg: MainArgument) = runBlocking {
         watcher.onEventFlow.collect { event ->
             withContext(Dispatchers.IO) {
                 if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify ) {
-                    if (lock && everySecond) {
+                    if (true) { //lock && everySecond
                         lock = false
                         runProcess("clear")
                         try {
                             compileProjFromFile(
                                 pm,
-                                dontRunCodegen = true,
+                                dontRunCodegen = false,
                                 compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
-                                buildSystem = BuildSystem.Amper,
+                                tests = mainArg == MainArgument.TEST,
+                                verbose = am.verbose,
+                                buildSystem = am.buildSystem
                             )
                         } catch (e: CompilerError) {
                             println(e.message)

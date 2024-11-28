@@ -60,7 +60,9 @@ fun main(args: Array<String>) {
     if (help(args)) return
     run(args)
 }
+fun resolveAndCodegen() {
 
+}
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
@@ -71,10 +73,10 @@ fun run(args2: Array<String>) {
 
     val am = ArgsManager(args)
     val mainArg = am.mainArg()
-    val pm = PathManager(getPathToMainOrSingleFile(args), mainArg)
+    val pm = PathManager(getPathToMainOrSingleFile(args), mainArg, am.buildSystem)
 
     if (mainArg == MainArgument.DAEMON) {
-        daemon(pm, mainArg)
+        daemon(pm, mainArg, am)
     }
 
     // resolve all files!
@@ -139,7 +141,7 @@ fun run(args2: Array<String>) {
             compiler.runGradleAmperBuildCommand(dist = false)
 
         MainArgument.DAEMON ->
-            daemon(pm, mainArg)
+            daemon(pm, mainArg, am)
 
 
         MainArgument.LSP -> TODO()

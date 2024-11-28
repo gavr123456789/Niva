@@ -726,7 +726,8 @@ fun LS.resolveAllFirstTime(
 
     allFiles.remove(mainFile)
     // Resolve
-    val pm = PathManager(mainFile.absolutePath, MainArgument.LSP)
+    // buildSystem doesn't matter here
+    val pm = PathManager(mainFile.absolutePath, MainArgument.LSP, null)
     this.pm = pm
 
     try {

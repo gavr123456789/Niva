@@ -91,7 +91,7 @@ fun MainArgument.mainArgIsMill() = when(this) {
     else -> false
 }
 // TODO replace with function that return a class with all paths
-class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument) {
+class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSystem: BuildSystem?) {
     val mainNivaFileWhileDevFromIdea = File("examples" / "Main" / "main.niva")
     private val pathToTheMainExample = mainNivaFileWhileDevFromIdea.absolutePath
 
@@ -118,7 +118,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument) {
     // parent of main.niva
     val nivaRootFolder = File(pathToNivaMainFile).toPath().toAbsolutePath().parent.toString()
 
-    val pathToInfroProject = if (mainArg == MainArgument.RUN_MILL || mainArg == MainArgument.BUILD_MILL || mainArg == MainArgument.TEST_MILL)
+    val pathToInfroProject = if (buildSystem == BuildSystem.Mill)
         nivaRootFolder / ".nivaBuild"
     else
         System.getProperty("user.home") / ".niva" / "infroProject"

@@ -339,7 +339,6 @@ fun compileProjFromFile(
     val (mainAst, otherAst) = {
         if (customAst == null) {
             val beforeParserMark = markNow()
-
             val mainText = mainFile.readText()
             val w = parseFilesToAST(
                 mainFileContent = mainText,
@@ -395,7 +394,8 @@ fun compileProjFromFile(
             tests,
             buildSystem = buildSystem
         )
-
+        verbosePrinter.print { "BuildSystem = $buildSystem" }
+        verbosePrinter.print { "Codegen to ${pm.pathWhereToGenerateKtAmper}" }
         verbosePrinter.print { "Codegen took: ${codegenMark.getMs()} ms" }
 
 
