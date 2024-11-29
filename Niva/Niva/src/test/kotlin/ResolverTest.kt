@@ -2361,6 +2361,18 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 3)
     }
+    @Test
+    fun nullWithGenerics(){
+        val source = """
+            String toNull -> String? = [
+              ^ null
+            ]
+
+            {"123" "456" "789"} map: [it toNull]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
 }
 
 

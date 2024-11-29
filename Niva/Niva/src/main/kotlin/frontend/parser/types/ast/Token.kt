@@ -126,7 +126,7 @@ fun String.removeColors() =
     this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
 
 fun Token.compileError(text: String): Nothing {
-    val fileLine = "(" + file.name + ":" + line + ")"
+    val fileLine = """(${file.name}:$line:${relPos.start})"""
     val errorText = "${RED}Error: $fileLine$RESET\n$text$RESET"
     throw CompilerError(errorText, this, text.removeColors())
 }
