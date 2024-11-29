@@ -37,7 +37,7 @@ fun main(args: Array<String>) {
 
 //    val args = arrayOf("-h")
 //    val args = arrayOf("--mill")
-//    val args = arrayOf("run", "/Users/gavr/Documents/Fun/niva-code/bazar/Examples/http4kserver/main.niva")
+//    val args = arrayOf("run", "/Users/gavr/SimpleStack/src/Niva/main.niva")
 //    val args = arrayOf("build", "/Users/gavr/Documents/Fun/niva-code/eBF-in-Niva/src/main.niva", "--out-name=sas")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")

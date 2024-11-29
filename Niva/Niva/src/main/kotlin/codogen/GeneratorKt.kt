@@ -347,7 +347,7 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
 }
 
 fun Package.generateImports() = buildString {
-    val collectAll = imports + importsFromUse
+    val collectAll = (imports + importsFromUse).filter { it != this@generateImports.packageName}
 
 
     collectAll.forEach {
@@ -456,7 +456,11 @@ fun GeneratorKt.generateKtProject(
 }
 
 fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null, forTest: Boolean = false): String = buildString {
-    if (statements.isEmpty()) return@buildString
+    if (statements.isEmpty()) {
+        if (pkg != null)
+            append("package ${pkg.packageName}\n\n")
+        return@buildString
+    }
 
     if (pkg != null) {
 
