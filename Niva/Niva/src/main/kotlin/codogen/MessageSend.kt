@@ -307,6 +307,8 @@ fun generateSingleKeyword(
                     dotAppend(this, withNullChecks)
                 }
             }
+
+
             append(
                 receiver.generateExpression()
             )
@@ -414,11 +416,14 @@ fun generateSingleKeyword(
             val isExtensionForLambda = receiverType2.alias != null
             // printingClient Request: request // here we dont need to generate .Request()
             // type Filter = [HttpHandler -> HttpHandler]
-            // we use "Request:" just because we don't have real name for arg, and it still can be alias
+            // we use "Request:" in niva just because we don't have real name for arg, and it still can be alias
             val firstArgIsSelectorName =
                 receiverType2.args.isNotEmpty() && receiverType2.args[0].name == keywordMsg.selectorName
+            // generate receiver for keyword if this is first msg in a row
             if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || (isExtensionForLambda && !firstArgIsSelectorName)) {
-                append(receiverCode(), ".", keywordMsg.selectorName)
+                if (i == 0)
+                    append(receiverCode())
+                append(".", keywordMsg.selectorName)
             } else {
                 if (i == 0) {
                     val receiverCode2 = receiverCode()

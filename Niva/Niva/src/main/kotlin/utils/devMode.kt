@@ -46,6 +46,10 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
     suspend fun BufferedReader.readLineSuspending() =
         withContext(Dispatchers.IO) { readLine() }
 
+
+    // нада короч во первых настройки
+    // 1 рекомпилить нон стоп или только по нажатию ентера
+    // 2 запускать ли полученный код или токо генерить котлин
     launch{
         val q = BufferedReader(InputStreamReader(System.`in`))
         var w = ""
