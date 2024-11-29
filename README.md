@@ -15,10 +15,9 @@ So far I've chosen niva because my 2 favorite static languages are nim and vala.
 https://github.com/user-attachments/assets/dfeef595-685f-4124-8eaf-9956919e07af
 
 ## Examples
-
-You can start from some fibonacci [here](https://github.com/gavr123456789/Niva/tree/main/Niva/Niva/examples/Algoritms)  
-And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva) repo you can find WIP implementation of interpreter from the book https://interpreterbook.com/
-Learn language here: https://gavr123456789.github.io/niva-site
+Learn language here: https://gavr123456789.github.io/niva-site  
+Examples folder is [here](https://github.com/gavr123456789/Niva/tree/main/Niva/Niva/examples/Algoritms)  
+And in [this](https://github.com/gavr123456789/writing-an-interpreter-in-niva)repo you can find WIP implementation of interpreter from the book https://interpreterbook.com/  
 
 ## Features
 - simplicity - its types, tagged unions and methods for them

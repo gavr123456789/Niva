@@ -925,7 +925,7 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    val type = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
+    val typeFromDB = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
         x.name, currentScope, previousScope, kw, x.token
     ) ?: if (!GlobalVariables.isLspMode)
         x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
@@ -934,13 +934,13 @@ fun Resolver.getTypeForIdentifier(
         coolErrorForLSP(x, currentScope, previousScope)
     }
 
-    if (type is Type.EnumRootType && x.names.count() > 1) {
+    if (typeFromDB is Type.EnumRootType && x.names.count() > 1) {
         // check that this Enum root has such
-        val name = type.branches.find { it.name == x.name }
+        val name = typeFromDB.branches.find { it.name == x.name }
         if (name == null) {
-            val startsWithSameWord = type.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
+            val startsWithSameWord = typeFromDB.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
             val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 2) {
-                val x = type.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
+                val x = typeFromDB.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
                 x.joinToString(", ") { it.name }
             } else
                 startsWithSameWord
@@ -951,18 +951,20 @@ fun Resolver.getTypeForIdentifier(
             x.token.compileError("Can't find enum $x, ${if (maybeUMeant.isNotEmpty()) "maybe $maybeUMeant?" else ""}")
         }
 
-        getCurrentPackage(x.token).addImport(type.pkg)
+        getCurrentPackage(x.token).addImport(typeFromDB.pkg)
     }
 
 
+    // replace the JSON::T with JSON::Person
     val typeWithGenericResolved =
-        if (x.typeAST != null && !x.typeAST.name.isGeneric() && type is Type.UserLike && type.typeArgumentList.count() == 1) {
+        if (x.typeAST != null && !x.typeAST.name.isGeneric() && typeFromDB is Type.UserLike && typeFromDB.typeArgumentList.count() == 1) {
             // replace Generic from typeAst with sas
-            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)!!
-            val copy = type.copy()
+            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token) ?:
+                x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
+            val copy = typeFromDB.copy()
             copy.typeArgumentList = listOf(e)
             copy
-        } else type
+        } else typeFromDB
 //    x.type = type
     return typeWithGenericResolved
 }
