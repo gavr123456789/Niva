@@ -1,3 +1,7 @@
+//String code -> Int = 5
+//x = {"q" "w" "f"}
+//x map: [ it split: "" |> map: &String code ]
+//
 
 //type Box x: T
 //
@@ -7,7 +11,7 @@
 //
 //q = Box x: {1 2 3}
 //q unzip
-
+///////////////
 MutableList::MutableList::T unzip = [
     first::MutableList::T = {}
     second::MutableList::T = {}
@@ -21,8 +25,26 @@ MutableList::MutableList::T unzip = [
 ]
 
 {({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
-
+/////////////////////
 
 
 //x::MutableList::MutableList::Int = { ({1}) ({2}) }
 //x echo
+
+//type Lazy v: T? init: [ -> T]
+//constructor Lazy init::[ -> T] = Lazy v: null init: init
+//
+//Lazy eval = [
+//  result = v unpackOrValue: init do
+//  v <- result
+//  ^ result
+//]
+//
+//x = Lazy init: [
+//  "computing!!!" echo
+//  1 + 1
+//]
+//
+//x eval echo
+//x eval echo
+//x eval echo

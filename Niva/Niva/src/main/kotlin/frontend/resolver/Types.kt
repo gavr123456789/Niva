@@ -1026,25 +1026,29 @@ fun SomeTypeDeclaration.toType(
         fields2: List<KeywordArg>,
         fields: List<TypeFieldAST>,
         setOfCheckedFields: MutableSet<Type>
-    ): MutableList<Type.UserLike> {
-        val result2 = mutableListOf<Type.UserLike>()
+    ): MutableList<Type> {
+        val result2 = mutableListOf<Type>()
 
         fields2.forEachIndexed { i, it ->
             val type = it.type
+            val nullUnpacked = type.unpackNull()
 
-            if (type is Type.UserLike) {
+            if (nullUnpacked is Type.UserLike ) {
                 val unknownGenericTypes = mutableListOf<Type.UserLike>()
-                type.typeArgumentList.forEach {
+                nullUnpacked.typeArgumentList.forEach {
                     if (it.name.isGeneric()) {
                         unknownGenericTypes.add(Type.UnknownGenericType(name = it.name))
                     }
                 }
 
+                if (nullUnpacked is Type.UnknownGenericType)
+                    result2.add(type)
+
                 result2.addAll(unknownGenericTypes)
 
-                if (type !in setOfCheckedFields && type.fields.isNotEmpty()) {
-                    setOfCheckedFields.add(type)
-                    result2.addAll(getAllGenericTypesFromFields(type.fields, fields, setOfCheckedFields))
+                if (nullUnpacked !in setOfCheckedFields && nullUnpacked.fields.isNotEmpty()) {
+                    setOfCheckedFields.add(nullUnpacked)
+                    result2.addAll(getAllGenericTypesFromFields(nullUnpacked.fields, fields, setOfCheckedFields))
                 }
             }
 
@@ -1104,7 +1108,7 @@ fun SomeTypeDeclaration.toType(
 
     result.typeArgumentList = genericTypeFields.distinctBy { it.name }
     result.fields = fieldsTyped
-
+//    result.protocols
     // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen
     // not class Box<List<T>>, but Box<T>
     fun copyTypeAndReplaceGenericListToReal(x: Type.UserLike): Type.UserLike {
@@ -1126,7 +1130,8 @@ fun MessageDeclaration.toAnyMessageData(
     pkg: Package,
     isGetter: Boolean = false,
     isSetter: Boolean = false,// only for bindings of fields, we cant add new field, it will break the constructor, so we add msgs
-    resolver: Resolver
+    resolver: Resolver,
+    receiverType: Type
 ): MessageMetadata {
     return when (this) {
         is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg, isSetter)
@@ -1140,11 +1145,11 @@ fun MessageDeclaration.toAnyMessageData(
             if (this.returnTypeAST == null) {
                 this.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
             }
-            resolver.addStaticDeclaration(this)
+            resolver.addStaticDeclaration(this, receiverType)
         }
 
         is StaticBuilderDeclaration -> {
-            toMessageData(typeDB, typeTable, pkg, forType!!)
+            toMessageData(typeDB, typeTable, pkg, receiverType)
         }
     }
 
