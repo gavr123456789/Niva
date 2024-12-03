@@ -1,30 +1,28 @@
-//type Sas x: T
+
+//type Box x: T
 //
-//extend Sas [
-//    on inc -> T = [
-//       Error throwWithMessage: "Index out of bounds!" |> orPANIC
-//       ^ x
-//    ]
-//    on kek -> Unit = [
-//        .inc
-//    ]
+//Box::Box::T unzip = [
+//    this echo
 //]
 //
-//1 echo
-//
+//q = Box x: {1 2 3}
+//q unzip
 
-//enum Color = Red | Blue
-//
-//c::Color = Color.Red
-//
-//c echo
-//| c
-//| Color.Red => 1 echo
+MutableList::MutableList::T unzip = [
+    first::MutableList::T = {}
+    second::MutableList::T = {}
 
-3 repeat: [it echonnl]
+    this forEach: [
+        first add: (it at: 0)
+        second add: (it at: 1)
+    ]
 
-//x = true
-//| x
-//| false => 1 echo
-//| false => 1 echo
-//| false => 1 echo
+    ^ { first second }
+]
+
+{({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
+
+
+
+//x::MutableList::MutableList::Int = { ({1}) ({2}) }
+//x echo

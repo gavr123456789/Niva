@@ -373,7 +373,7 @@ sealed class Type(
         is UserLike -> {
             val genericParam =
                 if (typeArgumentList.isNotEmpty()) {
-                    "<" + typeArgumentList.joinToString(", ") { it.toString() } + ">"
+                    "<" + typeArgumentList.joinToString(", ") { it.toKotlinString(needPkgName) } + ">"
                 } else ""
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
             "$needPkg$name$genericParam"
@@ -1105,7 +1105,17 @@ fun SomeTypeDeclaration.toType(
     result.typeArgumentList = genericTypeFields.distinctBy { it.name }
     result.fields = fieldsTyped
 
-    this.receiver = result
+    // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen
+    // not class Box<List<T>>, but Box<T>
+    fun copyTypeAndReplaceGenericListToReal(x: Type.UserLike): Type.UserLike {
+        if (x.typeArgumentList.isEmpty()) return x
+        if (x.typeArgumentList.first() is Type.UnknownGenericType) return x
+        val copy = x.copy()
+        copy.typeArgumentList = result.typeArgumentList
+        return copy
+    }
+
+    this.receiver = copyTypeAndReplaceGenericListToReal(result)
     return result
 }
 
