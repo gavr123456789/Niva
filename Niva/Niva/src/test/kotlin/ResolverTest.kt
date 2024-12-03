@@ -2282,6 +2282,26 @@ class ResolverTest {
         """.trimIndent()
         val (_) = resolveWithResolver(source)
     }
+
+    @Test
+    fun messageForTypeWithNestedGeneric() {
+        val source = """
+            MutableList::MutableList::T unzip = [
+                first::MutableList::T = {}
+                second::MutableList::T = {}
+            
+                this forEach: [
+                    first add: (it at: 0)
+                    second add: (it at: 1)
+                ]
+            
+                ^ { first second }
+            ]
+            
+            {({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
+        """.trimIndent()
+        val (_) = resolveWithResolver(source)
+    }
 //    @Test
 //    fun str() {
 

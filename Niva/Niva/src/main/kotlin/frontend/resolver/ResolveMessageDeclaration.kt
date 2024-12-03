@@ -24,7 +24,7 @@ fun Resolver.resolveMessageDeclaration(
 ): Boolean {
     val forTypeAst = statement.forTypeAst
 
-    val typeFromDB: Type? = statement.forType ?: if (forTypeAst is TypeAST.UserType) {
+    val typeFromDB: Type? = if (forTypeAst is TypeAST.UserType) { //statement.forType ?:
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
@@ -291,27 +291,27 @@ fun Resolver.resolveMessageDeclaration(
                 val typeOfSingleExpr = expr.type!!
                 val mdgData = when (statement) {
                     is ConstructorDeclaration -> findStaticMessageType(
-                        copyTypeIfGenerics,
+                        typeFromDB,
                         statement.name,
                         statement.token
                     ).first
 
                     is MessageDeclarationUnary -> findAnyMsgType(
-                        copyTypeIfGenerics,
+                        typeFromDB,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Unary
                     )
 
                     is MessageDeclarationBinary -> findAnyMsgType(
-                        copyTypeIfGenerics,
+                        typeFromDB,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Binary
                     )
 
                     is MessageDeclarationKeyword -> findAnyMsgType(
-                        copyTypeIfGenerics,
+                        typeFromDB,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Keyword
@@ -408,7 +408,10 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         try {
             val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
-
+//            if (statement.forType != typeFromDB) {
+//                statement.forType = typeFromDB
+            // or copy only protocols
+//            }
             val errors = statement.returnType?.errors
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)

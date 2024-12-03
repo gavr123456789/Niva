@@ -574,17 +574,16 @@ fun Resolver.getCurrentImports(errorToken: Token): Set<String> {
 }
 
 // TODO! make universal as toAnyMessageData
-fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMetadata {
-    val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
+fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration, receiverType: Type): MessageMetadata {
+//    val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
     // if return type is not declared then use receiver
-    val returnType = if (statement.returnTypeAST == null) typeOfReceiver
+    val returnType = if (statement.returnTypeAST == null) receiverType
     else statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
 
     val messageData = when (statement.msgDeclaration) {
         is MessageDeclarationUnary -> {
-            val type =
-                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
-            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
+//            val type = statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+            val (protocol, pkg) = getCurrentProtocol(receiverType, statement.token)
 
             val messageData = UnaryMsgMetaData(
                 name = statement.msgDeclaration.name,
@@ -603,10 +602,9 @@ fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration): MessageMet
         }
 
         is MessageDeclarationKeyword -> {
-            val type =
-                statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
+//            val type = statement.forType ?: statement.token.compileError("Compiler error, type for $statement not resolved")
 
-            val (protocol, pkg) = getCurrentProtocol(type, statement.token)
+            val (protocol, pkg) = getCurrentProtocol(receiverType, statement.token)
 
             val keywordArgs = statement.msgDeclaration.args.map {
                 KeywordArg(
@@ -647,7 +645,7 @@ fun Resolver.addNewAnyMessage(
         ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
     val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
-    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this)
+    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this, type)
 
 
     when (st) {
