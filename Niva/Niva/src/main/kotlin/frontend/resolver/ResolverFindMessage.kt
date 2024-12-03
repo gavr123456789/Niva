@@ -5,6 +5,7 @@ import frontend.resolver.*
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.ExpressionInBrackets
+import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.MessageSend
 import main.utils.CYAN
@@ -15,6 +16,7 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.utils.onCompletionExc
 import main.utils.findSimilar
+import main.utils.isGeneric
 
 fun lens(p: Protocol, selectorName: String, kind: MessageDeclarationType): MessageMetadata? {
     return when (kind) {
@@ -224,6 +226,37 @@ fun Resolver.findAnyMsgType(
 ): MessageMetadata {
 
     val pkg = getCurrentPackage(token)
+    // search for List::T instead of List::List::T
+    fun replaceInitializedGenericToUnInitialized(x: Type): Type {
+        if (x !is Type.UserLike) return x
+        if (x.typeArgumentList.isEmpty()) return x
+
+        // check that we deal with complex generic type like Box::Box::T, not Box::T
+        val first = x.typeArgumentList.first()
+        if (first is Type.UnknownGenericType || first.name.isGeneric()) return x
+        // now find the actual type in db
+        val errorText = "Unknown type ${receiverType.name}, its not declared anywhere"
+//        val unitializedType: MutableList<Type.UserLike> = this.typeDB.userTypes[receiverType.name] ?: token.compileError(errorText)
+
+        val typeName = receiverType.name
+        val names = listOf(typeName)
+        val ident = IdentifierExpr(
+            name = typeName,
+            names = names,
+            token = token
+        )
+        val unInitializedType = typeDB.getTypeOfIdentifierReceiver(
+            typeName,
+            ident,
+            getCurrentImports(token),
+            currentPackageName,
+            names = names
+        ) ?: token.compileError(errorText)
+
+        return unInitializedType
+    }
+    val receiverType = replaceInitializedGenericToUnInitialized(receiverType)
+
     findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
         return it
     }
@@ -242,10 +275,12 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
-
+    // there is a method for Any, like Any echo = [...]
     checkForAny(selectorName, pkg, msgType)?.let {
         return it
     }
+
+    // there is a method for T, like T echo = [...]
     checkForT(selectorName, pkg, msgType)?.let {
         it.forGeneric = true
         return it

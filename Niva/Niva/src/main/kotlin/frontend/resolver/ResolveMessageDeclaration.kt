@@ -58,10 +58,10 @@ fun Resolver.resolveMessageDeclaration(
     val checkThatTypeGenericsResolvable = {
         if (typeFromDB is Type.UserType &&
             typeFromDB.typeArgumentList.isNotEmpty() &&
-            !typeFromDB.isCopy &&
-            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null &&
-            statement.forTypeAst is TypeAST.UserType &&
-            statement.forTypeAst.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
+            !typeFromDB.isCopy //&&
+//            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null &&
+//            statement.forTypeAst is TypeAST.UserType &&
+//            statement.forTypeAst.typeArgumentList.find { it.name.isGeneric() } == null // if every param is generic, then we don't need to copy that type like copy of List::T is still List::T
         ) {
             typeFromDB.copyAnyType().also {it.isCopy = true}
         } else
@@ -75,7 +75,11 @@ fun Resolver.resolveMessageDeclaration(
         var alTypeArgsAreFound = true
         val newListOfTypeArgs = mutableListOf<Type>()
         statement.forTypeAst.typeArgumentList.forEach {
-            val type = if (it.name.isGeneric()) Type.UnknownGenericType(it.name) else typeTable[it.name] //testing
+            val type = if (it.name.isGeneric())
+                Type.UnknownGenericType(it.name)
+            else
+                typeTable[it.name]?.copyAnyType() //testing
+
             if (type != null) {
                 newListOfTypeArgs.add(type)
             } else {
