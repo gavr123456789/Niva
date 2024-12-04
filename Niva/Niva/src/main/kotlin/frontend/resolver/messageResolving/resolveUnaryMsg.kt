@@ -123,6 +123,16 @@ fun Resolver.resolveUnaryMsg(
             statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
             messageReturnType
         }
+        val compareThatReceiverIsTheSameGeneric = {
+            val forTypeDecl = msgFromDb.declaration?.forType
+            if (forTypeDecl != null) {
+                val x = compare2Types(forTypeDecl, receiverType, statement.token)
+                if (!x) {
+                    statement.token.compileError("Receiver is of type $receiverType, but message ${msgFromDb.name} declared for type ${msgFromDb.declaration.forType}")
+                }
+            }
+        }
+        compareThatReceiverIsTheSameGeneric()
         statement.declaration = msgFromDb.declaration
         statement.msgMetaData = msgFromDb
 

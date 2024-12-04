@@ -438,7 +438,6 @@ fun createCharProtocols(
         ),
     )
     result[arithmeticProtocol.name] = arithmeticProtocol
-    'q'..'a'
     return result
 }
 
@@ -797,6 +796,13 @@ fun createListProtocols(
                     Type.Lambda(mutableListOf(KeywordArg("indexOfFirst", itType)), boolType)
                 ),
                 intType
+            ),
+            createKeyword(
+                KeywordArg(
+                    "firstOrNull",
+                    Type.Lambda(mutableListOf(KeywordArg("firstOrNull", itType)), boolType)
+                ),
+                itTypeNullable
             ),
             createKeyword(
                 KeywordArg(

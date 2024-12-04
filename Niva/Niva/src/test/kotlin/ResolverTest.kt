@@ -2302,6 +2302,16 @@ class ResolverTest {
         """.trimIndent()
         val (_) = resolveWithResolver(source)
     }
+
+    @Test
+    fun firstOrNull() {
+        val source = """
+            x = {1 2 3 4}
+            y = x firstOrNull: [it == 3]
+            z = y unpackOrValue: -1
+        """.trimIndent()
+        val (_) = resolveWithResolver(source)
+    }
 //    @Test
 //    fun str() {
 
