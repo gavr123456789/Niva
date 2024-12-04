@@ -12,19 +12,19 @@
 //q = Box x: {1 2 3}
 //q unzip
 ///////////////
-MutableList::MutableList::T unzip = [
-    first::MutableList::T = {}
-    second::MutableList::T = {}
-
-    this forEach: [
-        first add: (it at: 0)
-        second add: (it at: 1)
-    ]
-
-    ^ { first second }
-]
-
-{({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
+//MutableList::MutableList::T unzip = [
+//    first::MutableList::T = {}
+//    second::MutableList::T = {}
+//
+//    this forEach: [
+//        first add: (it at: 0)
+//        second add: (it at: 1)
+//    ]
+//
+//    ^ { first second }
+//]
+//
+//{({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
 /////////////////////
 
 
@@ -48,3 +48,17 @@ MutableList::MutableList::T unzip = [
 //x eval echo
 //x eval echo
 //x eval echo
+
+/////////////////////
+//x = {1 2 3 4}
+//y = x firstOrNull: [it == 3]
+//z = y unpackOrValue: -1
+
+type Box x: T
+Box::Box::T sas = this echo
+
+//x = Box x: (Box x: 1)
+x = Box x: 1
+x sas
+
+

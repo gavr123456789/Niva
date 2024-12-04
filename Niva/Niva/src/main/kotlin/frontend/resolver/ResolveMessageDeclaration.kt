@@ -251,7 +251,7 @@ fun Resolver.resolveMessageDeclaration(
                     val singleOrManyErrors = if (allPossibleErrors.count() == 1)
                         allPossibleErrors[0].name
                     else "{$possibleErrorsJoined}"
-                    val returnTypeASTOrUnit = if (returnTypeAST == null) Resolver.defaultTypes[InternalTypes.Unit]!! else returnTypeAST
+                    val returnTypeASTOrUnit = returnTypeAST ?: Resolver.defaultTypes[InternalTypes.Unit]!!
                     val possibleSolutions =
                         "$WHITE-> $returnTypeASTOrUnit!$RESET or $WHITE-> $returnTypeASTOrUnit!$singleOrManyErrors$RESET"
 
@@ -408,10 +408,7 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         try {
             val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
-//            if (statement.forType != typeFromDB) {
-//                statement.forType = typeFromDB
-            // or copy only protocols
-//            }
+
             val errors = statement.returnType?.errors
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)
