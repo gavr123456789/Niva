@@ -53,12 +53,19 @@
 //x = {1 2 3 4}
 //y = x firstOrNull: [it == 3]
 //z = y unpackOrValue: -1
-
-type Box x: T
-Box::Box::T sas = this echo
-
-//x = Box x: (Box x: 1)
-x = Box x: 1
-x sas
-
+first::MutableList::T = {}
+q = first toList
+//List::List::T unzip -> List::List::T = [
+//    first::MutableList::T = {}
+//    second::MutableList::T = {}
+//
+//    this forEach: [
+//        first add: (it at: 0)
+//        second add: (it at: 1)
+//    ]
+//    q = first toList
+//    w = second toList
+////    ^ { (first toList), (second toList) } toList
+//    ^ { q w } toList
+//]
 

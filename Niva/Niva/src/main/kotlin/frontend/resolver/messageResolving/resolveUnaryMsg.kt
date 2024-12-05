@@ -96,13 +96,13 @@ fun Resolver.resolveUnaryMsg(
             compare2Types(msgForType, unaryReceiverType, statement.token, unpackNull = true)
         } else false
 
-
         if (resolvingMsgDecl?.name == statement.selectorName && sameTypes && !resolvingMsgDecl.isRecursive) {
             resolvingMsgDecl.isRecursive = true
             if (resolvingMsgDecl.isSingleExpression && resolvingMsgDecl.returnTypeAST == null) {
                 resolvingMsgDecl.token.compileError("Recursive single expression methods must describe its return type explicitly")
             }
         }
+
 
         val msgFromDb = if (!isStaticCall) {
             val msgType = findAnyMsgType(

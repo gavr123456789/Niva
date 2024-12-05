@@ -3,17 +3,12 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.Pragma
+import frontend.resolver.Type.UserLike
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
-import main.utils.CYAN
-import main.utils.RED
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
-
-import main.utils.isGeneric
+import main.utils.*
 
 sealed class MessageMetadata(
     val name: String,
@@ -38,6 +33,7 @@ sealed class MessageMetadata(
             }
         }
     }
+
     fun addErrors(errors: Set<Type.Union>) {
         assert(errors.isNotEmpty())
         val errs = this._errors
@@ -231,6 +227,47 @@ fun Type.unpackNull(): Type =
         this
 
 // when generic, we need to reassign it to AST's Type field, instead of type's typeField
+fun generateGenerics(x: Type, sb: StringBuilder): String {
+    val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
+        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
+            x.name
+        } else {
+//            x.toString()
+            x.name
+        }
+    }
+    if (x is UserLike) {
+
+        val str = if (x.typeArgumentList.count() == 1) {
+//        sb.append("::", toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg))
+            "::" + toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg)
+//                    generateGenerics(this, StringBuilder())
+
+        } else if (x.typeArgumentList.count() > 1) {
+            "(" + x.typeArgumentList.joinToString(", ") {
+                toStringWithRecursiveCheck(
+                    it,
+                    x.name,
+                    x.pkg
+                )
+            } + ")"
+        } else ""
+
+        sb.append(str)
+
+        if (x.typeArgumentList.isNotEmpty()) {
+//        x.typeArgumentList.forEach { generateGenerics(it, sb) }
+            val first = x.typeArgumentList[0]
+            if (first is UserLike && first.typeArgumentList.isNotEmpty()) {
+                generateGenerics(first, sb)
+            }
+        }
+
+        return sb.toString()
+    } else {
+        return "::$x"// toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg)
+    }
+}
 
 sealed class Type(
     val name: String,
@@ -321,38 +358,43 @@ sealed class Type(
             "!{" + errors.joinToString(",") + "}"
         }
     }
+
     // needed for comparison
-    fun toStringWithoutErrors() : String {
+    fun toStringWithoutErrors(): String {
         fun removeAfterExclamation(s: String): String {
             val index = s.indexOf('!')
             return if (index != -1) s.substring(0, index) else s
         }
         return removeAfterExclamation(this.toString())
     }
+
     override fun toString(): String = when (this) {
         is InternalLike -> name + possibleErrors()
         is NullableType -> "$realType?"
         is UnresolvedType -> "?unresolved type?"
         is UserLike -> {
-            val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
-                if (x.name == currentTypeName && x.pkg == currentTypePkg) {
-                    x.name
-                } else {
-                    x.toString()
-                }
-            }
-            val genericParam =
-                if (typeArgumentList.count() == 1) {
-                    "::" + toStringWithRecursiveCheck(typeArgumentList[0], this.name, this.pkg)
-                } else if (typeArgumentList.count() > 1) {
-                    "(" + typeArgumentList.joinToString(", ") {
-                        toStringWithRecursiveCheck(
-                            it,
-                            this.name,
-                            this.pkg
-                        )
-                    } + ")"
-                } else ""
+//            val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
+//                if (x.name == currentTypeName && x.pkg == currentTypePkg) {
+//                    x.name
+//                } else {
+//                    x.toString()
+//                }
+//            }
+
+            val genericParam = generateGenerics(this, StringBuilder())
+
+//                if (typeArgumentList.count() == 1) {
+//                    generateGenerics(this, StringBuilder())
+//                    "::" + toStringWithRecursiveCheck(typeArgumentList[0], this.name, this.pkg)
+//                } else if (typeArgumentList.count() > 1) {
+//                    "(" + typeArgumentList.joinToString(", ") {
+//                        toStringWithRecursiveCheck(
+//                            it,
+//                            this.name,
+//                            this.pkg
+//                        )
+//                    } + ")"
+//                } else ""
             val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
 
 
@@ -611,16 +653,18 @@ sealed class Type(
         fun allBranchesDeep(): Set<Union> {
             return branches.flatMap { it.unpackUnionToAllBranches(mutableSetOf(), null) }.toSet()
         }
+
         fun allBranchesTopLevel(): Set<Union> {
             return branches.toSet()
         }
-        fun stringAllBranches(ident: String, deep: Boolean, ): String {
-            val unions = if(deep) this.allBranchesDeep() else this.allBranchesTopLevel()
+
+        fun stringAllBranches(ident: String, deep: Boolean): String {
+            val unions = if (deep) this.allBranchesDeep() else this.allBranchesTopLevel()
             return buildString {
                 // | ident
                 append("| $ident\n")
                 unions.forEachIndexed { i, union ->
-                    append("| ",union.name, " => ", "[]")
+                    append("| ", union.name, " => ", "[]")
                     if (i != unions.count() - 1) append("\n")
                 }
             }
@@ -804,8 +848,7 @@ fun TypeAST.toType(
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
 
 
-                val typeFromDb = typeTable[name] ?:
-                    this.token.compileError("Can't find user type: ${YEL}$name")
+                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy(customPkg)
@@ -815,7 +858,8 @@ fun TypeAST.toType(
                         this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
-                        val typeOfArg = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration,
+                        val typeOfArg = it.toType(
+                            typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration,
                             realParentAstFromGeneric = realParentAstFromGeneric ?: this
                         )
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
@@ -847,7 +891,12 @@ fun TypeAST.toType(
 
                 typeDB.addUnresolvedField(
                     name,
-                    FieldNameAndParent(resolvingFieldName, parentType, typeDeclaration = typeDeclaration, ast = realParentAstFromGeneric ?: this)
+                    FieldNameAndParent(
+                        resolvingFieldName,
+                        parentType,
+                        typeDeclaration = typeDeclaration,
+                        ast = realParentAstFromGeneric ?: this
+                    )
                 )
                 return Type.UnresolvedType()
             }
@@ -1033,7 +1082,7 @@ fun SomeTypeDeclaration.toType(
             val type = it.type
             val nullUnpacked = type.unpackNull()
 
-            if (nullUnpacked is Type.UserLike ) {
+            if (nullUnpacked is Type.UserLike) {
                 val unknownGenericTypes = mutableListOf<Type.UserLike>()
                 nullUnpacked.typeArgumentList.forEach {
                     if (it.name.isGeneric()) {
@@ -1108,7 +1157,7 @@ fun SomeTypeDeclaration.toType(
 
     result.typeArgumentList = genericTypeFields.distinctBy { it.name }
     result.fields = fieldsTyped
-//    result.protocols
+    //    result.protocols
     // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen
     // not class Box<List<T>>, but Box<T>
     fun copyTypeAndReplaceGenericListToReal(x: Type.UserLike): Type.UserLike {
