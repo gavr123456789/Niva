@@ -36,7 +36,7 @@ fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike): MutableMa
     val result = mutableMapOf<String, Type>()
     type.typeArgumentList.forEachIndexed { i, it ->
         val k = genericLetters[i]
-        if (!it.name.isGeneric())
+        if (!it.name.isGeneric() ) //&& !(it is Type.UserLike && it.typeArgumentList.isNotEmpty())
             result[k] = it
     }
     return result

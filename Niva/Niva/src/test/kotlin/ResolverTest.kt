@@ -2403,6 +2403,43 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
     }
+    @Test
+    fun qwfqwfqwf(){
+        val source = """
+            q = {"1 2" "1 2" "1 2"}
+            w = {q}
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+        val q = (x[1] as VarDeclaration).value.type!!
+        val f = q.toKotlinString(false)
+        println(f)
+    }
+
+    @Test
+    fun fpgfpg(){
+        val source = """
+//            first::MutableList::T = {}
+//            q = first toList
+            List::List::T unzip -> List::List::T = [
+                first::MutableList::T = {}
+                q = first toList
+//                second::MutableList::T = {}
+                
+//                this forEach: [
+//                    first add: (it at: 0)
+//                    second add: (it at: 1)
+//                ]
+                ^ { (first toList) } toList
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 1)
+    }
+
+
+
+
 }
 
 
