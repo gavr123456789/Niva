@@ -38,10 +38,6 @@ fun Resolver.resolveUnaryMsg(
     // if this is message for type
     val isStaticCall = checkForStatic(receiver)
     val receiverType = receiver.type!!
-    val letterToTypeFromReceiver: MutableMap<String, Type> =
-        if (receiverType is Type.UserLike)
-            getTableOfLettersFrom_TypeArgumentListOfType(receiverType)
-        else mutableMapOf()
 
     if (receiverType is Type.Lambda) {
         if (statement.selectorName != "do") {
@@ -140,6 +136,15 @@ fun Resolver.resolveUnaryMsg(
         // add pragmas
         statement.pragmas = msgFromDb.pragmas
 
+        val letterToTypeFromReceiver: MutableMap<String, Type> = if (receiverType is Type.UserLike && returnTypeFromDb is Type.UserLike) {
+            val result2 = mutableMapOf<String, Type>()
+//            getTableOfLettersFrom_TypeArgumentListOfType(receiverType, returnTypeFromDb, result)
+            val unitializedType = (receiverType.replaceInitializedGenericToUnInitialized(this, statement.token)) as? Type.UserLike ?: statement.token.compileError("Bug, generics can be only inside userLike types")
+            getTableOfLettersFromType(receiverType, unitializedType, result2)
+            result2
+        }
+            else
+                mutableMapOf()
         // add receiver if its for any generic type like "T sas = [...]"
         if (returnTypeFromDb is Type.UnknownGenericType && msgFromDb.forGeneric) {
             letterToTypeFromReceiver["T"] = receiverType

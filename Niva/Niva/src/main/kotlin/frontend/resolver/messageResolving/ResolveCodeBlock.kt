@@ -65,7 +65,6 @@ fun Resolver.resolveCodeBlock(
     var metaDataFound: KeywordMsgMetaData? = null
     var itArgType: Type? = null
     // resolve generic args and just args, kinda
-    val genericLetterToTypes = mutableMapOf<String, Type>()
     val genericLetterToTypesOfReceiver = mutableMapOf<String, Type>()
     if (rootStatement is KeywordMsg &&
 //        rootStatement.kind != KeywordLikeType.CustomConstructor &&
@@ -164,7 +163,6 @@ fun Resolver.resolveCodeBlock(
                             typeField.type
                         } else {
                             val foundRealType = genericLetterToTypesOfReceiver[typeField.type.name]
-                                ?: genericLetterToTypes[typeField.type.name]
                                 ?: statement.token.compileError("Compiler error: Can't find resolved type ${typeField.type.name} while resolving codeblock, use receiver with some generic field")
                             foundRealType
                         }

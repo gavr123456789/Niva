@@ -12,7 +12,7 @@ fun VarDeclaration.generateVarDeclaration(): String {
     val valueType = value.type
     val pkgOfType = if (valueType is Type.UserLike && valueType.isBinding) (valueType.pkg + ".") else ""
     val type = if (valueTypeAst == null) "" else
-        ":$pkgOfType${valueTypeAst.generateType()}"
+        ":$pkgOfType${valueType!!.toKotlinString(false)}"
     //"\n//@ ", tok.file.name, ":::", tok.line, "\n"
     val debugIfNeeded = if (GlobalVariables.needStackTrace)
         "\n//@ ${token.file.name}:::${token.line}\n"

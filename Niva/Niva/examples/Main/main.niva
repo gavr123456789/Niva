@@ -50,22 +50,13 @@
 //x eval echo
 
 /////////////////////
-//x = {1 2 3 4}
-//y = x firstOrNull: [it == 3]
-//z = y unpackOrValue: -1
-first::MutableList::T = {}
-q = first toList
-//List::List::T unzip -> List::List::T = [
-//    first::MutableList::T = {}
-//    second::MutableList::T = {}
-//
-//    this forEach: [
-//        first add: (it at: 0)
-//        second add: (it at: 1)
-//    ]
-//    q = first toList
-//    w = second toList
-////    ^ { (first toList), (second toList) } toList
-//    ^ { q w } toList
-//]
+List::Int zipWith::List::Int = [
+    result::MutableList::MutableList::Int = {}
+
+    this forEachIndexed: [ index, it ->
+        result add: { it, (zipWith at: index) }
+    ]
+
+    ^ result
+]
 

@@ -26,21 +26,85 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     }
 }
 
-
-fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike): MutableMap<String, Type> {
-    if (type.typeArgumentList.count() > 2) {
-        throw Exception("Generics with more than 2 params are not supported yet")
+// goes like
+// |List::List::Int -> List::|List::Int
+// |List::T         -> List::|T
+// found that T is List::Int
+fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, result: MutableMap<String, Type>) {
+    fun addToResultIfItsGeneric(next1: Type, next2: Type) {
+        if (next1 is Type.UnknownGenericType) {
+            result[next1.name] = next2
+        }
+        if (next2 is Type.UnknownGenericType) {
+            result[next2.name] = next1
+        }
     }
-    val genericLetters = listOf("T", "G")
 
-    val result = mutableMapOf<String, Type>()
-    type.typeArgumentList.forEachIndexed { i, it ->
-        val k = genericLetters[i]
-        if (!it.name.isGeneric() ) //&& !(it is Type.UserLike && it.typeArgumentList.isNotEmpty())
-            result[k] = it
+    val type1Count = type.typeArgumentList.count()
+    val type2Count = typeFromDb.typeArgumentList.count()
+
+    if (type1Count == 1 && type2Count == 1) {
+        val x = type.typeArgumentList.first()
+        val y = typeFromDb.typeArgumentList.first()
+        if (x is Type.UserLike && y is Type.UserLike) {
+            getTableOfLettersFromType(x, y, result)
+        }
+        addToResultIfItsGeneric(x, y)
     }
-    return result
+
+    if (type1Count > 1 && type2Count > 1) {
+        // probably just collect every generics arguments, and real type from same place in type1
+        val iter1 = type.typeArgumentList.listIterator()
+        val iter2 =typeFromDb.typeArgumentList.listIterator()
+
+        while (iter2.hasNext()) {
+            val next1 = iter1.next()
+            val next2 = iter2.next()
+            if (next1 is Type.UserLike && next2 is Type.UserLike) {
+                getTableOfLettersFromType(next1, next2, result)
+            }
+            addToResultIfItsGeneric(next1, next2)
+        }
+    }
+    if (type1Count == 0) {
+        if (type is Type.UnknownGenericType) {
+            result[type.name] = typeFromDb
+        }
+    }
+    if (type2Count == 0) {
+        if (typeFromDb is Type.UnknownGenericType) {
+            result[typeFromDb.name] = type
+        }
+    }
 }
+
+// нужно идти по дженерикам обоих типов, и когда дженерико в типа type больеш не будет, взять оставшиеся у returnTypeFromDb
+//fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike, returnTypeFromDb: Type.UserLike, result: MutableMap<String, Type>) {
+//    if (type.typeArgumentList.count() > 3) {
+//        throw Exception("Generics with more than 3 params are not supported yet")
+//    }
+//    val genericLetters = listOf("T", "G", "J")
+//
+////    val iter = type.typeArgumentList.listIterator()
+////    val iter2 = returnTypeFromDb.typeArgumentList.listIterator()
+////
+////    while (iter.hasNext()) {
+////        val next1 = iter.next()
+////        val next2 = iter2.next()
+////        if (next1 is Type.UserLike && next2 is Type.UserLike) {
+////            getTableOfLettersFrom_TypeArgumentListOfType(next1, next2, result)
+////        }
+////    }
+//
+//    type.typeArgumentList.forEachIndexed { i, it ->
+//        val k = genericLetters[i]
+//        if (it is Type.UserLike) {
+//
+//        } else if (!it.name.isGeneric() ) //&& !(it is Type.UserLike && it.typeArgumentList.isNotEmpty())
+//            result[k] = it
+//    }
+//
+//}
 
 // 2!
 // 1) выделить отсюда код который рекурсивно собирает все дженерики из аргументов
