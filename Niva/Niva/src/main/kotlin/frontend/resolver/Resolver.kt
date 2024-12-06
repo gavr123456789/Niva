@@ -284,6 +284,19 @@ private fun Resolver.resolveStatement(
         is Assign -> {
             stack.push(statement)
 
+            val checkIfThisIsMut = {
+                val thiz = previousScope["this"]
+                val methodDecl = this.resolvingMessageDeclaration
+                if (methodDecl != null && thiz != null && thiz is Type.UserLike) {
+                    val fieldOfThis = thiz.fields.find { it.name == statement.name}
+                    if (fieldOfThis != null && !methodDecl.forTypeAst.mutable) {
+                        // check is this is mutable
+                        statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
+                    }
+                }
+            }
+            checkIfThisIsMut()
+
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             currentLevel++
             resolveSingle((statement.value), previousAndCurrentScope, statement)

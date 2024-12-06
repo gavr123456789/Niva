@@ -2386,15 +2386,30 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
-//    @Test
-//    fun newUnionSyntax() {
-//        val source = """
-//            type Sas = Sus x: Int | Sas y: String
-//        """.trimIndent()
-//        val ast = getAstTest(source)
-//        assert(ast.count() == 1)
-//    }
-//
+
+    @Test
+    fun mutableIdentifier() {
+        val source = """
+            mut Person birthday = [
+                age <- age inc
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun orderOfCascadedMessages() {
+        val source = """
+            person echo; birthday; echo
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val q = ast[0] as MessageSendUnary
+        assert(q.messages[0].selectorName == "echo")
+        assert(q.messages[1].selectorName == "birthday")
+        assert(q.messages[2].selectorName == "echo")
+    }
 //    @Test
 //    fun newUnionSynta2x() {
 //        val source = """

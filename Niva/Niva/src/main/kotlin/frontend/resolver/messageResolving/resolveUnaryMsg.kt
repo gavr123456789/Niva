@@ -119,6 +119,16 @@ fun Resolver.resolveUnaryMsg(
             statement.kind = if (isGetter2) UnaryMsgKind.Getter else UnaryMsgKind.Unary
             messageReturnType
         }
+
+        //check that it was mutable call for mutable type
+        if (msgFromDb.declaration != null &&
+            msgFromDb.declaration.forTypeAst.mutable && receiver is IdentifierExpr) {
+            val receiverFromScope = previousAndCurrentScope[receiver.name]
+            if (receiverFromScope != null && !receiverFromScope.isMutable) {
+                statement.token.compileError("receiver type $receiverType is not mutable, but ${msgFromDb.declaration} declared for mutable type, use `x::mut $receiverType = ...`")
+            }
+        }
+        //
         val compareThatReceiverIsTheSameGeneric = {
             val forTypeDecl = msgFromDb.declaration?.forType
             if (forTypeDecl != null) {
