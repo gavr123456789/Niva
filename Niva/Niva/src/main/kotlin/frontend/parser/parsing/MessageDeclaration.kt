@@ -343,6 +343,7 @@ fun Parser.checkTypeOfMessageDeclaration2(
     on: Boolean = false // to skip return value if we have on in the start
 ): MessageDeclarationType? {
     val savepoint = current
+    match(TokenType.Mut)
     val t = peek()
     // any message declaration starts with identifier or binary symbol when "on + x::sas"
     if (t.kind != TokenType.Identifier && t.kind != TokenType.NullableIdentifier && t.kind != TokenType.BinarySymbol)

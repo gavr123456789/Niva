@@ -36,6 +36,18 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
+    if (kind == TokenType.Mut && peek(2).kind != TokenType.Assign) {
+        if (parseMsgDecls) {
+            val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
+            if (isItMsgDeclaration != null) {
+                return messageDeclaration(isItMsgDeclaration, pragmas)
+            }
+            else {
+                peek().compileError("Parser bug, message declaration for mutable type expected")
+            }
+        }
+    }
+
     if (tok.isIdentifier() &&
         check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1)
         || kind == TokenType.Mut

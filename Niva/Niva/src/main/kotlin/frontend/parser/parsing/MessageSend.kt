@@ -219,7 +219,7 @@ fun Parser.unaryOrBinary(
     if (binaryMessages.isEmpty()) {
         return MessageSendUnary(
             firstReceiver,
-            messages = (pipedMsgs + cascadedMsgs + unaryMessages).toMutableList(),
+            messages = (unaryMessages + pipedMsgs + cascadedMsgs).toMutableList(),
             null,
             firstReceiver.token
         )
