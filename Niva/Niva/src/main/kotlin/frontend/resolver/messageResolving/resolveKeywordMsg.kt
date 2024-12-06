@@ -103,10 +103,6 @@ fun Resolver.resolveKeywordMsg(
 
     var kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
 
-    // collect generic from args
-    val letterToTypeFromReceiver = if (receiverType is Type.UserLike) {
-        getTableOfLettersFrom_TypeArgumentListOfType(receiverType)
-    } else mutableMapOf<String, Type>()
 
 
     // find this keyword in db
@@ -133,6 +129,14 @@ fun Resolver.resolveKeywordMsg(
 
         else -> null
     }
+    // collect generic from args
+    val letterToTypeFromReceiver = if (receiverType is Type.UserLike) {
+        val result = mutableMapOf<String, Type>()
+        val unitializedType = (receiverType.replaceInitializedGenericToUnInitialized(this, statement.token)) as? Type.UserLike ?: statement.token.compileError("Bug, generics can be only inside userLike types")
+
+        getTableOfLettersFromType(receiverType, unitializedType, result)
+        result
+    } else mutableMapOf<String, Type>()
 
     statement.declaration = kwFromDB?.declaration
     statement.msgMetaData = kwFromDB
@@ -536,7 +540,7 @@ fun Resolver.resolveKwArgs(
         if (arg.type == null) {
             currentLevel++
             currentArgumentNumber = args.indexOf(it)
-            resolveSingle((arg), previousAndCurrentScope, statement)
+            resolveSingle(arg, previousAndCurrentScope, statement)
             if (arg.type == null) arg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
             currentLevel--
         }
@@ -673,8 +677,8 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlac
 
 
 
-@Suppress("UnusedReceiverParameter")
-fun Resolver.resolveReturnTypeIfGeneric(
+
+fun resolveReturnTypeIfGeneric(
     returnTypeFromDb: Type, letterToRealType: MutableMap<String, Type>, receiverGenericsTable: MutableMap<String, Type>
 ): Type {
     ///

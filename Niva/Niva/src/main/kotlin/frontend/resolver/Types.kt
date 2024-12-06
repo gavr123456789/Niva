@@ -3,7 +3,7 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.Pragma
-import frontend.resolver.Type.UserLike
+
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
@@ -236,7 +236,7 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
             x.name
         }
     }
-    if (x is UserLike) {
+    if (x is Type.UserLike) {
 
         val str = if (x.typeArgumentList.count() == 1) {
 //        sb.append("::", toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg))
@@ -258,7 +258,7 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
         if (x.typeArgumentList.isNotEmpty()) {
 //        x.typeArgumentList.forEach { generateGenerics(it, sb) }
             val first = x.typeArgumentList[0]
-            if (first is UserLike && first.typeArgumentList.isNotEmpty()) {
+            if (first is Type.UserLike && first.typeArgumentList.isNotEmpty()) {
                 generateGenerics(first, sb)
             }
         }
@@ -439,6 +439,37 @@ sealed class Type(
 
             append(returnType.toKotlinString(needPkgName))
         }
+
+    }
+
+    /// replace List::List::Int to List::T
+    fun replaceInitializedGenericToUnInitialized(resolver: Resolver, token: Token): Type {
+        val x = this
+        if (x !is UserLike) return x
+        if (x.typeArgumentList.isEmpty()) return x
+
+        // check that we deal with complex generic type like Box::Box::T, not Box::T
+        val first = x.typeArgumentList.first()
+        if (first is UnknownGenericType || first.name.isGeneric()) return x
+        // now find the actual type in db
+        val errorText = "Unknown type ${x.name}, its not declared anywhere"
+
+        val typeName = x.name
+        val names = listOf(typeName)
+        val ident = IdentifierExpr(
+            name = typeName,
+            names = names,
+            token = token
+        )
+        val unInitializedType = resolver.typeDB.getTypeOfIdentifierReceiver(
+            typeName,
+            ident,
+            resolver.getCurrentImports(token),
+            resolver.currentPackageName,
+            names = names
+        ) ?: token.compileError(errorText)
+
+        return unInitializedType
 
     }
 
@@ -717,12 +748,6 @@ sealed class Type(
         typeDeclaration: TypeDeclaration?
     ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
 
-//    class KnownGenericType(
-//        name: String,
-//        typeArgumentList: List<Type>,
-//        pkg: String = "common",
-//    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null)
-
     class UnknownGenericType(
         name: String,
         typeArgumentList: List<Type> = emptyList(),
@@ -732,10 +757,6 @@ sealed class Type(
             return name
         }
     }
-
-//    object RecursiveType : UserLike("RecursiveType", emptyList(), mutableListOf(), false, "common", mutableMapOf())
-
-
 }
 
 data class Protocol(

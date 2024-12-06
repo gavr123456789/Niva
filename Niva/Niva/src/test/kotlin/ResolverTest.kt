@@ -1184,7 +1184,7 @@ class ResolverTest {
                 set
             ]
         """.trimIndent()
-        val statements = resolve(source)
+         val statements = resolve(source)
         assert(statements.count() == 4)
 
     }
@@ -2419,22 +2419,50 @@ class ResolverTest {
     @Test
     fun fpgfpg(){
         val source = """
-//            first::MutableList::T = {}
-//            q = first toList
             List::List::T unzip -> List::List::T = [
                 first::MutableList::T = {}
                 q = first toList
-//                second::MutableList::T = {}
-                
-//                this forEach: [
-//                    first add: (it at: 0)
-//                    second add: (it at: 1)
-//                ]
+              
                 ^ { (first toList) } toList
+            ]
+            q = {"1 2" "1 2" "1 2"} toList
+            lists = q map: [it  split: " " |> map: [it toInt]] |> unzip
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
+
+    @Test
+    fun bug1(){
+        val source = """
+            List::Int zipWith::List::Int = [
+                result::MutableList::MutableList::Int = {}
+            
+                this forEachIndexed: [ index, it ->
+                    result add: { it, (zipWith at: index) }
+                ]
+            
+                ^ result
             ]
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 1)
+        val q = x[0] as MessageDeclaration
+        val w = q.body[2] as ReturnStatement
+        assertEquals(w.expression!!.type!!.toString(), "MutableList::MutableList::Int")
+    }
+
+    @Test
+    fun bug2(){
+        val source = """
+           x::MutableList::MutableList::Int = {}
+            q = x first
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+        val q = x[1] as VarDeclaration
+        val f = q.value.type!!
+        assert(f.name == "MutableList")
     }
 
 
