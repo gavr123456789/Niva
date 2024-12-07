@@ -168,14 +168,17 @@ fun Resolver.findStaticMessageType(
         return result
     }
 
+    val returnResult = { result: MessageMetadata ->
+        val pkg = getCurrentPackage(token)
+        pkg.addImport(receiverType.pkg)
+        pkg.addImport(result.pkg)
+        Pair(result, false)
+    }
     var type: Type? = receiverType
     while (type != null) {
         val result = search(type)
         if (result != null) {
-            val pkg = getCurrentPackage(token)
-            pkg.addImport(receiverType.pkg)
-            pkg.addImport(result.pkg)
-            return Pair(result, false)
+            return returnResult(result)
         }
         type = type.parent
     }
@@ -208,6 +211,19 @@ fun Resolver.findStaticMessageType(
         if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
         return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
     }
+
+    // there is a constructor for Any or T, like Any echo = [...]
+    val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
+    search(anyType)?.let { result: MessageMetadata ->
+        return returnResult(result)
+    }
+
+    val unknownGenericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+    search(unknownGenericType)?.let { result: MessageMetadata ->
+        return returnResult(result)
+    }
+
+    // Not found
     if (GlobalVariables.isLspMode) {
         token.compileError("Message declaration in progress")
     } else {

@@ -36,7 +36,9 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
-    if (kind == TokenType.Mut && peek(2).kind != TokenType.Assign) {
+    // mut Person birthday = []
+    // not "mut x = 5" not "mut x::Int = 5"
+    if (kind == TokenType.Mut && peek(2).kind != TokenType.Assign  && peek(2).kind != TokenType.DoubleColon) {
         if (parseMsgDecls) {
             val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
             if (isItMsgDeclaration != null) {
