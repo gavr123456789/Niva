@@ -1139,7 +1139,7 @@ class ResolverTest {
 
         tape = Tape pos: 5
         
-        extend Tape [
+        extend mut Tape [
             on sas = [
                 list = {1 2 3}
                 [pos >= list count] whileTrue: [
@@ -2469,35 +2469,35 @@ class ResolverTest {
     @Test
     fun messageForMutableType() {
         // no errors all good
-//        val source0 = """
-//            type Person age: Int
-//            mut Person birthday = [
-//                age <- age inc
-//            ]
-//        """.trimIndent()
-//        val (x0) = resolveWithResolver(source0)
-//        assert(x0.count() == 2)
-//
-//        // should be an error, mutation of field for non mutable type
-//        val source = """
-//            type Person age: Int
-//            Person birthday = [
-//                age <- age inc
-//            ]
-//        """.trimIndent()
-//        assertThrows<CompilerError> {
-//            val (x) = resolveWithResolver(source)
-//        }
-//
-//        // all good we mutating not a field of this
-//        val source3 = """
-//            type Person age: Int
-//            Person birthday = [
-//                mut x = 234
-//                x <- x inc
-//            ]
-//        """.trimIndent()
-//        val (_) = resolveWithResolver(source3)
+        val source0 = """
+            type Person age: Int
+            mut Person birthday = [
+                age <- age inc
+            ]
+        """.trimIndent()
+        val (x0) = resolveWithResolver(source0)
+        assert(x0.count() == 2)
+
+        // should be an error, mutation of field for non mutable type
+        val source = """
+            type Person age: Int
+            Person birthday = [
+                age <- age inc
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            val (_) = resolveWithResolver(source)
+        }
+
+        // all good we mutating not a field of this
+        val source3 = """
+            type Person age: Int
+            Person birthday = [
+                mut x = 234
+                x <- x inc
+            ]
+        """.trimIndent()
+        val (_) = resolveWithResolver(source3)
 
         // should be an error, sending msg that was declared for mutable type to immutable
         val source2 = """
@@ -2514,11 +2514,32 @@ class ResolverTest {
 
     }
 
+    @Test
+    fun constructorForT(){
+        val source = """
+            constructor Any sas = 1 echo
+            Int sas 
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
 
+    @Test
+    fun unifyTheReturnTypeOfT(){
+        val source = """
+            union Color = Red | Green
 
+            q = 1 > 2 ifTrue: [
+              Red new 
+            ] ifFalse: [
+              Green new 
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+        val q = x[1] as VarDeclaration
+        assertTrue(q.value.type!!.name == "Color")
+    }
 
 
 }
-
-
-

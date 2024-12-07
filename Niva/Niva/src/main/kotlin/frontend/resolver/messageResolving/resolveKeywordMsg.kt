@@ -4,7 +4,6 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
 import main.frontend.meta.Token
 import main.utils.CYAN
-import main.utils.GREEN
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
@@ -129,12 +128,12 @@ fun Resolver.resolveKeywordMsg(
 
         else -> null
     }
-    // collect generic from args
+    // collect generic from type args
     val letterToTypeFromReceiver = if (receiverType is Type.UserLike) {
         val result = mutableMapOf<String, Type>()
-        val unitializedType = (receiverType.replaceInitializedGenericToUnInitialized(this, statement.token)) as? Type.UserLike ?: statement.token.compileError("Bug, generics can be only inside userLike types")
+        val uninitializedType = (receiverType.replaceInitializedGenericToUnInitialized(this, statement.token)) as? Type.UserLike ?: statement.token.compileError("Bug, generics can be only inside userLike types")
 
-        getTableOfLettersFromType(receiverType, unitializedType, result)
+        getTableOfLettersFromType(receiverType, uninitializedType, result)
         result
     } else mutableMapOf<String, Type>()
 
@@ -288,18 +287,6 @@ fun Resolver.resolveKeywordMsg(
         }
         val sameArgsInDbAndInStatement = argsTypesFromDb.count() == statement.args.count()
         statement.args.forEachIndexed { i, kwArg ->
-            val argType = kwArg.keywordArg.type
-            if (argType is Type.UserLike && argType.typeArgumentList.isNotEmpty()) {
-                argType.typeArgumentList.forEach {
-                    val beforeName = it.beforeGenericResolvedName
-                    if (beforeName != null) {
-                        val typeFromReceiver = receiverGenericsTable[beforeName]
-                        if (typeFromReceiver != null && !compare2Types(typeFromReceiver, it, statement.token)) {
-                            statement.token.compileError("Generic param of receiver: `$YEL${typeFromReceiver.name}${RESET}` is different from\n\targ: `$WHITE${kwArg.name}${RESET}: $YEL${kwArg.keywordArg.str}$GREEN::$YEL${it.name}${RESET}` but both must be $YEL$beforeName")
-                        }
-                    }
-                }
-            }
             // check that kw from db is the same as real arg type
             // like x = {1}, x add: "str" is error
             if (sameArgsInDbAndInStatement) {
@@ -660,15 +647,22 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlac
 
     if (alreadyAddedType != null) {
         val sameTypes = compare2Types(alreadyAddedType, type, errorTok, nullIsAny = true, compareParentsOfBothTypes = true, isOut = true)
-        // faster than compare2Types, and we don't need any fancy features here
-//        val sameTypes = type.pkg == alreadyAddedType.pkg && type.name == alreadyAddedType.name
-        // той же букве дали другой тип
+
+        // same letter gets different type
         if (!sameTypes) {
             val place = if (customPlaceInCode != null) {
                 " in $customPlaceInCode"
             } else ""
             if (!GlobalVariables.isLspMode)
                 errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
+        } else {
+            // T was already added, but maybe it's a different type from same union
+            // then replace added type to this union
+            // so x ifTrue: [Red] ifFalse: [Blue] will be resolved to Color
+            findGeneralRoot(alreadyAddedType, type)?.let { generalRoot ->
+                if (alreadyAddedType != generalRoot)
+                    this[str] = generalRoot
+            }
         }
     } else {
         this[str] = type

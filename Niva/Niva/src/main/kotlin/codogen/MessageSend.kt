@@ -158,7 +158,7 @@ enum class Pragmas(val v: String) {
 
 val setOfPragmaNames = setOf("rename", "emit", "arg")
 
-
+// adding invisible args like for Compiler getName:
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
 
     val ctPragmas = keyPragmas.filter { it.name == Pragmas.CT_NAME.v }

@@ -53,7 +53,7 @@ fun Parser.parseLambda(tok: Token, extensionTypeName: List<String>? = null): Typ
         isNullable = isNullable,
     )
 }
-// use only after ::
+// use only after :: is parsed
 fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     // {int} - list of int
     // #{int: string} - map
