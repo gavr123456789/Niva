@@ -94,6 +94,30 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
         TokenType.Char -> return TypeAST.InternalType(InternalTypes.Char, tok).also { it.mutable = mutableType }
         else -> {}
     }
+    val checkForErrors = {
+        val bang = match("!")
+        val errors = if (bang) {
+            val erTok = peek()
+            when (erTok.kind) {
+                TokenType.OpenBrace -> {
+                    val errorsList = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
+                    if (errorsList.isEmpty()) null else errorsList
+                }
+
+                TokenType.Identifier -> {
+                    listOf(step().lexeme)
+                }
+
+                else -> {
+                    listOf<String>()
+                }
+            }
+            // Int!{Error1, Error2} // multiple errors
+            // Int!Error // single error
+            // Int! // errors in empty list
+        } else null
+        errors
+    }
 
     fun parseGenericType(): TypeAST {
         // identifier ("(" | "::")
@@ -109,7 +133,9 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
-                return TypeAST.UserType(identifier.lexeme, mutableSetOf(parseGenericType()), isIdentifierNullable, identifier)
+                val recursiveGenerics = parseGenericType()
+                val errors = checkForErrors()
+                return TypeAST.UserType(identifier.lexeme, mutableSetOf(recursiveGenerics), isIdentifierNullable, identifier, errors = errors)
             }
             // Map(Int, String)
             if (match(TokenType.OpenParen)) {
@@ -131,7 +157,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     if (isIdentifier && (check(TokenType.DoubleColon, 1)) || check(TokenType.OpenParen, 1)) {
         // generic
         // x::List::Map::(int, string)
-        return parseGenericType().also { it.mutable = mutableType }
+        val result = parseGenericType().also { it.mutable = mutableType }
+        return result
     } else if (isIdentifier) {
         step() // skip tok ident
         // can be dot separated
@@ -145,25 +172,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
             path.add(matchAssert(TokenType.Identifier, "Identifier after dot expected").lexeme)
         }
 
-        val bang = match("!")
 
-        val errors = if (bang) {
-            val erTok = peek()
-            when (erTok.kind) {
-                TokenType.OpenBrace -> {
-                    val errorsList = (simpleReceiver() as ListCollection).initElements.map { it.token.lexeme }
-                    if (errorsList.isEmpty()) null else errorsList
-                }
-                TokenType.Identifier -> {
-                    listOf(step().lexeme)
-                }
-                else -> {listOf<String>()}
-            }
-            // Int!{Error1, Error2} // multiple errors
-            // Int!Error // single error
-            // Int! // errors in empty list
-        } else null
-
+        val errors = checkForErrors()
         // one identifier
         return TypeAST.UserType(
             name = path.last(),

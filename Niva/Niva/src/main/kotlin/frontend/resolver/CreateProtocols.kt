@@ -692,6 +692,7 @@ fun createListProtocols(
     pairType: Type.UserType
 ): MutableMap<String, Protocol> {
 
+    mutableListOf(1) + 1
     val immutableList = Type.UserType(
         name = "List",
         fields = listType.fields,
@@ -724,7 +725,6 @@ fun createListProtocols(
         typeDeclaration = null
     )
     val itTypeNullable = Type.NullableType(itType)
-
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
@@ -747,7 +747,10 @@ fun createListProtocols(
             createUnary("reversed", immutableList),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
             ),
-        binaryMsgs = mutableMapOf(),
+        binaryMsgs = mutableMapOf(
+            createBinary("+", listType, listType, "new list and all elements of the give"),
+            createBinary("-", listType, listType, "new list except the elements contained in the give"),
+        ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
             // mut
@@ -764,11 +767,12 @@ fun createListProtocols(
             createFilterKeyword(itType, boolType, listType),
 
             createKeyword(KeywordArg("at", intType), itType, "like list[x] in C, can panic").rename("get"),
+            createKeyword(KeywordArg("plusElement", itType), listType, "new collection with element added"),
             createKeyword(KeywordArg("atOrNull", intType), itTypeNullable, "safe version of at").rename("getOrNull"),
 
             createKeyword(KeywordArg("contains", itType), unitType, "{1 2 3} contains: 1 is true"),
-            createKeyword(KeywordArg("drop", intType), immutableList, "Returns a list containing all elements except first n elements"),
-            createKeyword(KeywordArg("dropLast", intType), immutableList, "Returns a list containing all elements except last n elements."),
+            createKeyword(KeywordArg("drop", intType), immutableList, "new list except first n elements"),
+            createKeyword(KeywordArg("dropLast", intType), immutableList, "new list except last n elements."),
             createKeyword(KeywordArg("chunked", intType), listOfLists, "Splits this collection into a list of lists each not exceeding the given size"),
             createKeyword(KeywordArg("joinWith", stringType), stringType, """{1 2 3} joinWith: ", " is 1, 2, 3""").rename("joinToString"),
             createKeyword(
@@ -1202,7 +1206,6 @@ fun createMapProtocols(
 
 
     val result = mutableMapOf<String, Protocol>()
-
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
@@ -1215,8 +1218,8 @@ fun createMapProtocols(
 
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", mapType, mapType),
-            createBinary("-", mapType, valueType)
+            createBinary("+", mapType, mapType, "new map containing keys and values of both maps"),
+            createBinary("-", valueType, mapType, "new map containing all entries of the original map except the entry with the given key")
         ),
         keywordMsgs = mutableMapOf(
             createKeyword(
