@@ -15,8 +15,16 @@ class CodeBlock(
     var isStatement: Boolean = false // means it's not lambda, just block like for if
 ) : Receiver(type, token) {
     override fun toString(): String {
-        return if (statements.isNotEmpty())
-            "[\n\t${statements.joinToString("\n\t")}\n]"
+        val generateParams = {
+            if (inputList.count() > 0)
+                "${inputList.joinToString(", ")} -> "
+            else ""
+        }
+
+        return if(statements.count() == 1) {
+            "[ ${generateParams()}${statements.first()} ]"
+        } else if (statements.isNotEmpty())
+            "[\n  ${generateParams()}${statements.joinToString("\n  ")}\n]"
         else
             "[]"
     }
