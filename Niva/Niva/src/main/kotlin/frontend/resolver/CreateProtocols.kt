@@ -1073,7 +1073,7 @@ fun createCompilerProtocols(
         keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
             createKeyword(KeywordArg("getName", intType), stringType),
-            createKeyword(KeywordArg("getType", intType), typeType),
+//            createKeyword(KeywordArg("getType", intType), typeType),
             )
     )
 
@@ -1189,16 +1189,15 @@ fun createEmitAtttribure(v: String) =
     createStringPragma("emit", v)
 
 fun createMapProtocols(
+    isMutable: Boolean,
     intType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
     mapType: Type.UserType,
-    mapTypeOfDifferentGeneric: Type.UserType,
     keyType: Type.UnknownGenericType,
     valueType: Type.UnknownGenericType,
     setType: Type.UserType,
     setTypeOfDifferentGeneric: Type.UserType,
-//    entryType: Type.UserType
 ): MutableMap<String, Protocol> {
 
 
@@ -1211,7 +1210,6 @@ fun createMapProtocols(
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
             createUnary("echo", unitType),
-            createUnary("clear", unitType),
             createUnary("keys", setType).emit("$0.keys"),
             createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
 
@@ -1275,9 +1273,27 @@ fun createMapProtocols(
                     )
                 ),
                 unitType,
-
                 ),
 
+
+
+            createKeyword(KeywordArg("at", keyType), Type.NullableType(valueType))
+                .rename("get"),
+
+
+            createKeyword(KeywordArg("containsKey", keyType), boolType),
+            createKeyword(KeywordArg("containsValue", valueType), boolType)
+        ),
+
+        )
+
+    if (isMutable) {
+        val unary = mutableMapOf(
+            createUnary("clear", unitType),
+        )
+        val mutKwMsgs = mutableMapOf(
+            createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
+            createKeyword(KeywordArg("putAll", mapType), unitType),
             createKeyword(
                 "atPut",
                 listOf(
@@ -1285,20 +1301,12 @@ fun createMapProtocols(
                     KeywordArg("put", valueType)
                 ),
                 unitType
-            )
-                .rename("set"),
-
-            createKeyword(KeywordArg("at", keyType), Type.NullableType(valueType))
-                .rename("get"),
-
-            createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
-            createKeyword(KeywordArg("putAll", mapType), unitType),
-            createKeyword(KeywordArg("containsKey", keyType), boolType),
-            createKeyword(KeywordArg("containsValue", valueType), boolType)
-        ),
-
+            ).rename("set"),
         )
+        collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
+        collectionProtocol.unaryMsgs.putAll(unary)
 
+    }
     result[collectionProtocol.name] = collectionProtocol
     return result
 }
