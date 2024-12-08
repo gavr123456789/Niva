@@ -2410,6 +2410,15 @@ class ParserTest {
         assert(q.messages[1].selectorName == "birthday")
         assert(q.messages[2].selectorName == "echo")
     }
+
+    @Test
+    fun returnTypeWithGenericAndError() {
+        val source = """
+            ResultSet getPersons -> MutableList::Person! = []
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun newUnionSynta2x() {
 //        val source = """
