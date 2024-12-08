@@ -10,6 +10,7 @@ import main.frontend.parser.types.ast.*
 import main.utils.*
 
 
+// second in pair is a list of invisible args
 val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
     if (it.pragmas.isNotEmpty()) {
         val keyPragmas = mutableListOf<KeyPragma>()
@@ -176,7 +177,7 @@ fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
                     expr.token.lexeme
                 } else {
                     //expr.str.removeDoubleQuotes()
-                    "'$expr"
+                    "$expr"
                 }
             }
             if (num > 0) {
@@ -189,9 +190,9 @@ fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
                     kwMsg.token.compileError("Compiler get: was used with $num, but $kwMsg has only ${kwMsg.args.count()} args")
                 }
 
-                listOfArgs.add(buildString { append('"', getStrFromArg(argN.keywordArg), '"') })
+                listOfArgs.add(buildString { append("\"\"\"", getStrFromArg(argN.keywordArg), "\"\"\"") })
             } else {
-                listOfArgs.add(buildString { append('"', getStrFromArg(msg.receiver), '"') })
+                listOfArgs.add(buildString { append("\"\"\"", getStrFromArg(msg.receiver), "\"\"\"") })
             }
 
         }
@@ -273,14 +274,14 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
 
 }
 
-
+// pragma "arg" Compiler "getName" "getName:"
 fun generateSingleKeyword(
     i: Int,
     receiver: Receiver,
     isConstructor: Boolean,
     keywordMsg: KeywordMsg,
     withNullChecks: Boolean = false,
-    invisibleArgs: List<String>? = null,
+    invisibleArgs: List<String>? = null, // "arg" "getName" "getName:"
 ) = buildString {
     // generate receiver
     val receiverIsDot = receiver is DotReceiver
@@ -316,9 +317,7 @@ fun generateSingleKeyword(
             if (receiver is IdentifierExpr && receiver.typeAST != null && receiver.typeAST.name.isGeneric()) {
                 append("<", receiver.typeAST.name, ">")
             }
-
             if (needBrackets) append(")")
-
         }
     }
     // end of receiver
@@ -332,14 +331,14 @@ fun generateSingleKeyword(
                     firstArg.keywordArg.token.compileError("Int argument expected for `getName`")
                 }
 
-                firstArg.keywordArg.token.lexeme.toInt()
+                firstArg.keywordArg.token.lexeme.toIntOrNull() ?: firstArg.keywordArg.token.compileError("Int argument expected for `getName`")
             }
             val arg = getArg()
             append("(__arg$arg)")
             return@buildString
         } else if (firstArg.name == "getType") {
-            TODO("getType not implemented yet")
-        } else throw Exception("unexpected Compiler arg: $CYAN${firstArg.name}")
+            firstArg.keywordArg.token.compileError("getType not implemented yet")
+        } else firstArg.keywordArg.token.compileError("unexpected Compiler arg: $CYAN${firstArg.name}")
     }
     // end of Compiler
 
@@ -450,6 +449,7 @@ fun generateSingleKeyword(
         if (i != keywordMsg.args.count() - 1) append(", ")
 
     }
+    // "arg" pragma,  Compiler "getName" "getName:"
     if (invisibleArgs != null) {
         if (keywordMsg.args.isNotEmpty()) append(", ")
         append(invisibleArgs.joinToString(", "))

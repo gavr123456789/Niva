@@ -1608,7 +1608,7 @@ class Resolver(
         mutSetTypeOfDifferentGeneric.protocols.putAll(mutableSetType.protocols)
 
         // mutable map
-        val mapType = Type.UserType(
+        val mapTypeMut = Type.UserType(
             name = "MutableMap",
             typeArgumentList = listOf(genericType, differentGenericType),
             fields = mutableListOf(),
@@ -1616,40 +1616,13 @@ class Resolver(
             typeDeclaration = null
 
         )
-        val mapTypeOfDifferentGeneric = Type.UserType(
-            name = "MutableMap",
-            typeArgumentList = listOf(differentGenericType),
-            fields = mutableListOf(),
-            pkg = "core",
-            typeDeclaration = null
-        )
-
-        /// MapEntry
-
-//        val mapEntryType = Type.UserType(
-//            name = "Entry",
-//            typeArgumentList = listOf(genericType, differentGenericType),
-//            fields = mutableListOf(
-//                KeywordArg("key", genericType),
-//                KeywordArg("value", differentGenericType)
-//            ),
-//            pkg = "Map",
-//        )
-//        mapEntryType.isBinding = true
-
-//        addCustomTypeToDb(
-//            mapEntryType, mutableMapOf()
-//        )
-
-
-
         addCustomTypeToDb(
-            mapType, createMapProtocols(
+            mapTypeMut, createMapProtocols(
+                isMutable = true,
                 intType = intType,
                 unitType = unitType,
                 boolType = boolType,
-                mapType = mapType,
-                mapTypeOfDifferentGeneric = listTypeOfDifferentGeneric,
+                mapType = mapTypeMut,
                 keyType = genericType,
                 valueType = differentGenericType,
                 setType = mutableSetType,
@@ -1657,7 +1630,31 @@ class Resolver(
             )
         )
 
-        mapTypeOfDifferentGeneric.protocols.putAll(mapType.protocols)
+
+        val mapType = Type.UserType(
+            name = "Map",
+            typeArgumentList = listOf(genericType, differentGenericType),
+            fields = mutableListOf(),
+            pkg = "core",
+            typeDeclaration = null
+
+        )
+
+
+        addCustomTypeToDb(
+            mapType, createMapProtocols(
+                isMutable = true,
+                intType = intType,
+                unitType = unitType,
+                boolType = boolType,
+                mapType = mapType,
+                keyType = genericType,
+                valueType = differentGenericType,
+                setType = mutableSetType,
+                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+            )
+        )
+
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)
@@ -1723,7 +1720,7 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
-        val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapType)
+        val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapTypeMut)
 
         // add fields
         typeType.fields = mutableListOf(
