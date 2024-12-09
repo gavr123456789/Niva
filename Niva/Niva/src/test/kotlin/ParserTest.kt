@@ -2419,6 +2419,15 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun returnTypeAfterCodeblockArgument() {
+        val source = """
+            Foo bar::[Int -> Int] -> [Int -> Int] = []
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun newUnionSynta2x() {
 //        val source = """

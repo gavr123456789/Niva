@@ -60,14 +60,22 @@
 //     ^ result
 // ]
 
-Bind package: "kotlin.reflect" content: [
-    @rename: "KClass"
-    type Class::T
 
-    @emit: "$0::class"
-    T class -> Class::T
-]
+Int x::[-> []] -> [] = x do
+1 x: [[1 inc echo]] |> do
 
-Class echo = this toString echo
 
-1 class echo
+
+
+
+//Bind package: "kotlin.reflect" content: [
+//    @rename: "KClass"
+//    type Class::T
+//
+//    @emit: "$0::class"
+//    T class -> Class::T
+//]
+//
+//Class echo = this toString echo
+//
+//1 class echo

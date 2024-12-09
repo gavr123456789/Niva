@@ -237,7 +237,10 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             resultString = resultString.replace(patternMatch, replacement)
         }
 
-        return resultString
+        return if (msg.isPiped || msg.isCascade)
+            ".$resultString"
+        else
+            resultString
     }
 
     when (value) {

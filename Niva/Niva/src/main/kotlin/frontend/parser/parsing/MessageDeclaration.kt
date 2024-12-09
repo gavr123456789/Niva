@@ -255,6 +255,7 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
     val returnArrow = match(TokenType.ReturnArrow)
     if (returnArrow) {
         isThereReturn = true
+        return true
         identifierMayBeTyped()
     }
     match(TokenType.Return) // (^)?
