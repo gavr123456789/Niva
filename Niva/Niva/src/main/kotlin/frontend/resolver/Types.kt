@@ -600,7 +600,13 @@ sealed class Type(
         // will get T from types like List::List::T
         fun collectGenericParamsRecursively(x: MutableSet<String>): Set<String> {
             typeArgumentList.forEach {
-                if (it.name.isGeneric()) x.add(it.name)
+                if (it.name.isGeneric()) {
+                    var name = it.name
+                    if (it !is NullableType) {
+                        name += ": Any" // help the Kotlin compiler
+                    }
+                    x.add(name)
+                }
                 if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
                     it.collectGenericParamsRecursively(x)
                 }

@@ -70,4 +70,4 @@ Bind package: "kotlin.reflect" content: [
 
 Class echo = this toString echo
 
-1 class
+1 class echo
