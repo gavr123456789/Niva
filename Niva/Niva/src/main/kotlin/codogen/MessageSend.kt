@@ -209,13 +209,8 @@ fun replaceNameFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
     }
 
     val value = renamePragmas[0].value
-    val replacedSelectorName = when (value) {
-        is LiteralExpression.StringExpr -> value.toString()
-
-        else -> null
-    }
-    if (replacedSelectorName != null) {
-        msg.selectorName = replacedSelectorName
+    if (value is LiteralExpression.StringExpr) {
+        msg.selectorName = value.toString()
     }
 }
 

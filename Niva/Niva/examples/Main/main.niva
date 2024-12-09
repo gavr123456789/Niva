@@ -49,14 +49,25 @@
 //x eval echo
 //x eval echo
 
-/////////////////////
-List::Int zipWith::List::Int = [
-    result::MutableList::MutableList::Int = {}
+// /////////////////////
+// List::Int zipWith::List::Int = [
+//     result::MutableList::MutableList::Int = {}
 
-    this forEachIndexed: [ index, it ->
-        result add: { it, (zipWith at: index) }
-    ]
+//     this forEachIndexed: [ index, it ->
+//         result add: { it, (zipWith at: index) }
+//     ]
 
-    ^ result
+//     ^ result
+// ]
+
+Bind package: "kotlin.reflect" content: [
+    @rename: "KClass"
+    type Class::T
+
+    @emit: "$0::class"
+    T class -> Class::T
 ]
 
+Class echo = this toString echo
+
+1 class echo

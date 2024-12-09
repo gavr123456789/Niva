@@ -88,7 +88,7 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
         append(">")
     }
 
-    append(forTypeAst.generateType(generateGeneric = false))
+    append(forTypeAst.generateType((forType as? Type.UserLike)?.emitName, generateGeneric = false))
 
     if (isStatic) {
         append(".Companion")
@@ -171,7 +171,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     args.forEachIndexed { i, arg ->
         append(arg.name())
         if (arg.typeAST != null) {
-            append(": ", arg.typeAST.generateType())
+            append(": ", arg.typeAST.generateType((arg.type as? Type.UserLike)?.emitName))
             if (i != c) {
                 append(", ")
             }
@@ -202,7 +202,7 @@ fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
     args.forEachIndexed { i, arg ->
         append(arg.name())
         if (arg.typeAST != null) {
-            append(": ", arg.typeAST.generateType())
+            append(": ", arg.typeAST.generateType((arg.type as? Type.UserLike)?.emitName))
             if (i != c) {
                 append(", ")
             }

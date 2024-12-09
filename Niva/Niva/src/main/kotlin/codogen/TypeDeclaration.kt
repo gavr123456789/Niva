@@ -21,7 +21,7 @@ fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
 
 fun TypeAliasDeclaration.generateTypeAlias() = buildString {
     append("typealias ", typeName, " = ")
-    val ktType = realTypeAST.generateType()
+    val ktType = realTypeAST.generateType((realType as? Type.UserLike)?.name)
     append(ktType)
 }
 
