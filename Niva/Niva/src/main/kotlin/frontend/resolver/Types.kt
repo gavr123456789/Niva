@@ -2,7 +2,9 @@
 
 package frontend.resolver
 
+import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
+import main.codogen.Pragmas
 
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -284,7 +286,6 @@ sealed class Type(
 
     fun isCollection() = name in listOf("List", "MutableList", "Set", "MutableSet", "Map", "MutableMap")
 
-
     fun copyAnyType(): Type =
         (when (this) {
             is UserLike -> {
@@ -418,7 +419,7 @@ sealed class Type(
                     "<" + typeArgumentList.joinToString(", ") { it.toKotlinString(needPkgName) } + ">"
                 } else ""
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
-            "$needPkg$name$genericParam"
+            "$needPkg$emitName$genericParam"
         }
 
         is Lambda -> buildString {
@@ -577,10 +578,35 @@ sealed class Type(
         val typeDeclaration: SomeTypeDeclaration? // for example List doesn't have type decl
     ) : Type(name, pkg, isPrivate, protocols) {
 
+        val emitName: String
+
+        init {
+            val decl = typeDeclaration
+            if (decl != null) {
+                val renamePragmas = decl.pragmas.filterIsInstance<KeyPragma>().filter { it.name == Pragmas.RENAME.v }
+                if (renamePragmas.isNotEmpty()) {
+                    if (renamePragmas.size > 1) decl.token.compileError("You can't have more than one rename pragma, its pointless")
+                    val value = renamePragmas.first().value
+                    emitName = (value as? LiteralExpression.StringExpr)?.toString()
+                        ?: decl.token.compileError("'rename' pragma value must be a string")
+                } else {
+                    emitName = name
+                }
+            } else {
+                emitName = name
+            }
+        }
+
         // will get T from types like List::List::T
         fun collectGenericParamsRecursively(x: MutableSet<String>): Set<String> {
             typeArgumentList.forEach {
-                if (it.name.isGeneric()) x.add(it.name)
+                if (it.name.isGeneric()) {
+                    var name = it.name
+                    if (it !is NullableType) {
+                        name += ": Any" // help the Kotlin compiler
+                    }
+                    x.add(name)
+                }
                 if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
                     it.collectGenericParamsRecursively(x)
                 }
