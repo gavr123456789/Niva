@@ -69,6 +69,9 @@ fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
         genericsFromReceiverAndReturnType.addAll(forTypeVal.collectGenericParamsRecursively(mutableSetOf()))
+        val q = genericsFromReceiverAndReturnType.reversed().distinctBy { string -> string.first() }
+        genericsFromReceiverAndReturnType.clear()
+        genericsFromReceiverAndReturnType.addAll(q)
     }
 
     return genericsFromReceiverAndReturnType

@@ -6,6 +6,7 @@ import frontend.resolver.Type
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.PairOfErrorAndMessage
+import main.utils.isGeneric
 
 
 // мне нужно 2 сообщения
@@ -19,7 +20,7 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statem
     val currentMsgDecl = resolvingMessageDeclaration
     val errors = msgFromDB.errors
     // temp fix for ifTrue:ifFalse: that returns errors in each branch
-    if (errors == null && returnType.errors != null && msgFromDB.returnType.name != "T") {
+    if (errors == null && returnType.errors != null && !msgFromDB.returnType.name.isGeneric()) {
         statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
     }
     if (errors != null) {

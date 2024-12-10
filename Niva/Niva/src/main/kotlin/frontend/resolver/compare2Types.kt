@@ -3,9 +3,6 @@ package frontend.resolver
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
-import main.utils.RESET
-import main.utils.WHITE
-import main.utils.YEL
 import kotlin.collections.count
 import kotlin.collections.drop
 import kotlin.collections.forEachIndexed
@@ -99,7 +96,9 @@ fun compare2Types(
     if (type1OrChildOf2.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
         return true
     }
-
+    if (type1OrChildOf2.name == InternalTypes.Nothing.name || type2.name == InternalTypes.Nothing.name) {
+        return true
+    }
 
     // if one of them null and second is nullable
     if ((typeIsNull(type1OrChildOf2) && type2 is Type.NullableType ||
@@ -236,5 +235,5 @@ fun compare2Types(
     // comparing with nothing is always true, its bottom type, subtype of all types,
     // so we can return nothing from switch expr branches, beside u cant do it with different types
 
-    return type1OrChildOf2.name == InternalTypes.Nothing.name || type2.name == InternalTypes.Nothing.name
+    return false
 }

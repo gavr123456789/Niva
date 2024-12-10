@@ -20,7 +20,31 @@ fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
 }
 
 fun TypeAliasDeclaration.generateTypeAlias() = buildString {
-    append("typealias ", typeName, " = ")
+    // typealias MatchBlock<I, R> = (I,) -> R
+    append("typealias ", typeName)
+    val realType = this@generateTypeAlias.realType!!
+    if (realType is Type.UserLike && realType.typeArgumentList.isNotEmpty()) {
+        append("<")
+        append(realType.typeArgumentList.joinToString(", ") { it.name })
+        append(">")
+    }
+    if (realType is Type.Lambda) {
+        val getAllGenerics = {
+            val result = realType.args.asSequence().map{it.type}.filterIsInstance<Type.UnknownGenericType>()
+            if (realType.returnType is Type.UnknownGenericType) {
+                result + realType.returnType
+            } else {
+                result
+            }
+        }
+        val genericsList = getAllGenerics()
+        if (genericsList.toList().isNotEmpty()) {
+            append("<")
+            append(genericsList.joinToString(", ") { it.name })
+            append(">")
+        }
+    }
+    append(" = ")
     val ktType = realTypeAST.generateType((realType as? Type.UserLike)?.name)
     append(ktType)
 }

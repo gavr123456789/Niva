@@ -756,7 +756,8 @@ fun Resolver.addNewType(
     // 3 add declaration to be generated
     if (statement != null) {
         pack.declarations.add(statement)
-        if (alias) statement.receiver = type
+        if (alias)
+            statement.receiver = type
     }
     // 4 is binding
     if (pack.isBinding && type is Type.UserLike) {
