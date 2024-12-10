@@ -28,14 +28,3 @@ Class::C matchWith::[C -> R] -> MatchBlock = ^[ input::I ->
     ]
 ]
 
-
-T match::List::MatchBlock -> R! = [
-
-    match forEach: [
-        result = it I: this
-        |> ifError: [
-            Error throwWithMessage: "continue"
-        ]
-        ^ result
-    ]
-]
