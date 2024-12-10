@@ -22,15 +22,21 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statem
     if (errors == null && returnType.errors != null && msgFromDB.returnType.name != "T") {
         statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
     }
-    if (errors != null && currentMsgDecl != null) {
-        val metadataOfCurrentDeclaration = currentMsgDecl.findMetadata(this)
-        metadataOfCurrentDeclaration.addErrors(errors)
+    if (errors != null) {
+        if (currentMsgDecl != null) {
+            (currentMsgDecl.messageData ?: currentMsgDecl.findMetadata(this)).addErrors(errors)
+        }
 
         val pairOfStAndErrorSet = PairOfErrorAndMessage(statement, errors)
         assert(errors.isNotEmpty())
 
-        currentMsgDecl.stackOfPossibleErrors.add(pairOfStAndErrorSet)
-        val returnTypeWithErrors = returnType.addErrors(errors)
+        // maybe we are on the top level, so no decl to add errors
+        currentMsgDecl?.stackOfPossibleErrors?.add(pairOfStAndErrorSet)
+        val returnTypeWithErrors =
+            if(statement.selectorName == "throwWithMessage" && errors == returnType.errors)
+                returnType
+            else
+                returnType.addErrors(errors)
 
         return returnTypeWithErrors
     }

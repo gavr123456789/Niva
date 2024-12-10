@@ -60,9 +60,12 @@
 //     ^ result
 // ]
 
+T sas -> T!Error = [
+    ^ this
+    Error throwWithMessage: "qfwars"
+]
 
-Int x::[-> []] -> [] = x do
-1 x: [[1 inc echo]] |> do
+1 sas orPANIC echo
 
 
 
