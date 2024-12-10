@@ -132,7 +132,8 @@ fun Resolver.resolveUnaryMsg(
         val compareThatReceiverIsTheSameGeneric = {
             val forTypeDecl = msgFromDb.declaration?.forType
             if (forTypeDecl != null) {
-                val x = compare2Types(forTypeDecl, receiverType, statement.token)
+                // find method declared for T?
+                val x = compare2Types(forTypeDecl, receiverType, statement.token, unpackNull = true)
                 if (!x) {
                     statement.token.compileError("Receiver is of type $receiverType, but message ${msgFromDb.name} declared for type ${msgFromDb.declaration.forType}")
                 }

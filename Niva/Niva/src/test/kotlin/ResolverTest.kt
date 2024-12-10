@@ -2541,5 +2541,19 @@ class ResolverTest {
         assertTrue(q.value.type!!.name == "Color")
     }
 
+    @Test
+    fun checkForErrorsWorksOnTopLevel(){
+        val source = """
+            T sas -> T!Error = [
+                ^ this
+                Error throwWithMessage: "qfwars"
+            ]
+            
+            1 sas orPANIC echo
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
 
 }

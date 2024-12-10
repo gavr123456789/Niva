@@ -336,6 +336,7 @@ sealed class Type(
     fun addErrors(errors2: Set<Union>): Type {
         // создать настоящее копирование для всех типов
         // копировать текущий тип и только потом добавлять к нему ерроры
+
         assert(this.errors == null)
 
         val typeCopy = this.copyAnyType()
