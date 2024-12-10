@@ -2505,13 +2505,27 @@ class ResolverTest {
             mut Person birthday = [
                 age <- age inc
             ]
-            person::mut Person = Person age : 24
+            person::Person = Person age : 24
             person birthday // ERROR
         """.trimIndent()
-//        assertThrows<CompilerError> {
+        assertThrows<CompilerError> {
             val (_) = resolveWithResolver(source2)
-//        }
+        }
+    }
 
+    @Test
+    fun mutableCheckForThis(){
+        val source0 = """
+            type Person age: Int
+            mut Person birthday = [
+                age <- age inc
+            ]
+            mut Person foo = [
+                this birthday
+            ]
+        """.trimIndent()
+        val (x0) = resolveWithResolver(source0)
+        assert(x0.count() == 3)
     }
 
     @Test

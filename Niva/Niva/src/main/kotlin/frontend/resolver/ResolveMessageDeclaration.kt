@@ -103,8 +103,13 @@ fun Resolver.resolveMessageDeclaration(
     val resolveBody = {
 
         val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
-        if (!isStaticBuilderWithoutReceiver && statement !is ConstructorDeclaration)
-            bodyScope["this"] = copyTypeIfGenerics
+        if (!isStaticBuilderWithoutReceiver && statement !is ConstructorDeclaration) {
+            if (statement.forTypeAst.mutable) {
+                bodyScope["this"] = copyTypeIfGenerics.copyAnyType().also {it.isMutable = true}
+            } else {
+                bodyScope["this"] = copyTypeIfGenerics
+            }
+        }
 
         // args from kw or constructor
         fun addArgsToBodyScope(st: MessageDeclarationKeyword) {
