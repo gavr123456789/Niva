@@ -1,84 +1,41 @@
-//String code -> Int = 5
-//x = {"q" "w" "f"}
-//x map: [ it split: "" |> map: &String code ]
-//
+Bind package: "kotlin.reflect" content: [
+    @rename: "KClass"
+    type Class::T
 
-//type Box x: T
-//
-//Box::Box::T unzip = [
-//    this echo
-//]
-//
-//q = Box x: {1 2 3}
-//q unzip
-///////////////
-//MutableList::MutableList::T unzip = [
-//    first::MutableList::T = {}
-//    second::MutableList::T = {}
-//
-//    this forEach: [
-//        first add: (it at: 0)
-//        second add: (it at: 1)
-//    ]
-//
-//    ^ { first second }
-//]
-//
-//{({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
-/////////////////////
+    @emit: "$0::class"
+    T class -> Class::T
 
+    Class::T cast::Any? -> T
 
-//x::MutableList::MutableList::Int = { ({1}) ({2}) }
-//x echo
+    Class::T isInstance::Any? -> Boolean
 
-//type Lazy v: T? init: [ -> T]
-//constructor Lazy init::[ -> T] = Lazy v: null init: init
-//
-//Lazy eval = [
-//  result = v unpackOrValue: init do
-//  v <- result
-//  ^ result
-//]
-//
-//x = Lazy init: [
-//  "computing!!!" echo
-//  1 + 1
-//]
-//
-//x eval echo
-//x eval echo
-//x eval echo
+    @emit: "$0::class"
+    constructor T class -> Class::T
 
-// /////////////////////
-// List::Int zipWith::List::Int = [
-//     result::MutableList::MutableList::Int = {}
-
-//     this forEachIndexed: [ index, it ->
-//         result add: { it, (zipWith at: index) }
-//     ]
-
-//     ^ result
-// ]
-
-T sas -> T!Error = [
-    ^ this
-    Error throwWithMessage: "qfwars"
+    @emit: "$0!!"
+    T? assertNotNull -> T
 ]
 
-1 sas orPANIC echo
+errordomain Match = | Unmatched
+
+type MatchBlock = [I -> R!Unmatched]
+
+Class::C matchWith::[C -> R] -> MatchBlock = ^[ input::I ->
+    (.isInstance: input) ifTrue: [
+        matchWith C: (.cast: input)
+    ] ifFalse: [
+        Unmatched throwWithMessage: "No match"
+    ]
+]
 
 
+T match::List::MatchBlock -> R! = [
 
-
-
-//Bind package: "kotlin.reflect" content: [
-//    @rename: "KClass"
-//    type Class::T
-//
-//    @emit: "$0::class"
-//    T class -> Class::T
-//]
-//
-//Class echo = this toString echo
-//
-//1 class echo
+    match forEach: [
+        result = it I: this
+        |> ifError: [
+            Error throwWithMessage: "continue"
+        ]
+        ^ result
+    ]
+]

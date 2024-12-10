@@ -321,21 +321,8 @@ sealed class Type(
             it.isAlias = isAlias
         }
 
-
-    fun addError(err: Union) {
-        assert(this.errors == null)
-        val typeCopy = this.copyAnyType()
-        val errs = typeCopy.errors
-
-        if (errs != null) {
-            errs.add(err)
-        } else
-            typeCopy.errors = mutableSetOf(err)
-    }
-
     fun addErrors(errors2: Set<Union>): Type {
-        // создать настоящее копирование для всех типов
-        // копировать текущий тип и только потом добавлять к нему ерроры
+        // copy current type, and add errors to it
 
         assert(this.errors == null)
 
@@ -884,11 +871,29 @@ fun TypeAST.toType(
 
         is TypeAST.UserType -> {
             if (name.isGeneric()) {
+//                val copyWithPossibleErrors
 
-                return if (!isNullable)
+                return (if (!isNullable)
                     Type.UnknownGenericType(name)
                 else
-                    Type.NullableType(Type.UnknownGenericType(name))
+                    Type.NullableType(Type.UnknownGenericType(name))).let {
+                        if (this.errors != null) {
+                            // 1) find the error in db
+                            val realTypes = this.errors.map { errorName ->
+                                val realType = typeTable[errorName]
+                                if (realType != null) {
+                                    if (realType !is Type.Union || !realType.isError) token.compileError("This is not error type, use only types from errordomain declaration")
+                                    realType
+                                } else {
+                                    token.compileError("Can't find error type $realType, sorry no forvard declaration for type alias with errors, because historical reasons, need resolver here, but it would be too big refactoring, hi Seggan ^_^")
+                                }
+                            }
+                            // 2) append it to type
+                            val typeWithErrors = it.addErrors(realTypes.toSet())
+                            typeWithErrors
+                        } else
+                            it
+                }
             }
 //            if (selfType != null && name == selfType.name) return selfType
 
