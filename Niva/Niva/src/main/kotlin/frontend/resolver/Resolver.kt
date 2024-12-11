@@ -14,7 +14,6 @@ import main.frontend.resolver.messageResolving.resolveStaticBuilder
 import main.frontend.typer.*
 import main.utils.*
 import java.io.File
-import java.util.Stack
 
 private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boolean) {
 //    infoTypesToPrint.add(type)
@@ -1145,7 +1144,7 @@ class Resolver(
 
     val infoTypesToPrint: MutableMap<Type, Boolean> = mutableMapOf(),
 
-    val stack: Stack<Statement> = Stack(),
+    val stack: ArrayDeque<Statement> = ArrayDeque(),
 
     // signal to remember top level expressions
     var resolvingMainFile: Boolean = false,
@@ -1753,3 +1752,5 @@ private fun Type.InternalType.copy(): Type.InternalType {
     )
 }
 
+fun <E> ArrayDeque<E>.pop(): E = this.removeLast()
+fun <E> ArrayDeque<E>.push(e: E) = this.add(e)

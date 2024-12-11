@@ -2514,7 +2514,7 @@ class ResolverTest {
     }
 
     @Test
-    fun mutableCheckForThis(){
+    fun mutableCheckForThis() {
         val source0 = """
             type Person age: Int
             mut Person birthday = [

@@ -454,182 +454,6 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
 }
 
 
-fun Statement.clearFromType() {
-    when (this) {
-        is VarDeclaration -> {
-            this.value.clearFromType()
-        }
-        is Assign -> this.value.clearFromType()
-
-        is ExtendDeclaration -> {
-            this.messageDeclarations.forEach { t ->
-                t.clearFromType()
-            }
-        }
-        is ManyConstructorDecl -> {
-            this.messageDeclarations.forEach { t ->
-                t.clearFromType()
-            }
-        }
-        is ConstructorDeclaration -> {
-            this.forType = null
-            this.returnType = null
-            this.messageData = null
-            this.stackOfPossibleErrors.clear()
-            this.body.forEach { it.clearFromType() }
-            this.msgDeclaration.clearFromType()
-        }
-        is MessageDeclaration -> {
-            this.forType = null
-            this.returnType = null
-            this.messageData = null
-            this.stackOfPossibleErrors.clear()
-            this.body.forEach { it.clearFromType() }
-        }
-        is EnumBranch -> {
-            this.receiver = null
-        }
-        is EnumDeclarationRoot -> {
-            this.receiver = null
-            this.branches.forEach { it.clearFromType() }
-        }
-        is ErrorDomainDeclaration -> {
-            this.unionDeclaration.clearFromType()
-            this.receiver = null
-        }
-
-        is TypeAliasDeclaration -> {
-            this.receiver = null
-            this.realType = null
-        }
-        is TypeDeclaration -> {
-            this.receiver = null
-        }
-        is UnionBranchDeclaration -> {
-            this.receiver = null
-        }
-        is UnionRootDeclaration -> {
-            this.receiver = null
-            this.branches.forEach { it.clearFromType() }
-        }
-
-        is DestructingAssign -> {
-            this.value.clearFromType()
-        }
-        is ControlFlow.If -> {
-            this.ifBranches.forEach {
-                it.ifExpression.clearFromType()
-                it.otherIfExpressions.forEach { it.clearFromType() }
-                when (it) {
-                    is IfBranch.IfBranchSingleExpr -> {
-                        it.thenDoExpression.clearFromType()
-                    }
-                    is IfBranch.IfBranchWithBody -> {
-                        it.body.clearFromType()
-                    }
-                }
-            }
-            this.elseBranch?.forEach { it.clearFromType() }
-            this.type = null
-        }
-        is ControlFlow.Switch -> {
-            this.ifBranches.forEach {
-                it.ifExpression.clearFromType()
-                it.otherIfExpressions.forEach { it.clearFromType() }
-                when (it) {
-                    is IfBranch.IfBranchSingleExpr -> {
-                        it.thenDoExpression.clearFromType()
-                    }
-                    is IfBranch.IfBranchWithBody -> {
-                        it.body.clearFromType()
-                    }
-                }
-            }
-            this.elseBranch?.forEach { it.clearFromType() }
-
-            this.type = null
-            this.switch.clearFromType()
-        }
-        is CodeBlock -> {
-            this.type = null
-            this.inputList.forEach { it.clearFromType() }
-            this.statements.forEach { it.clearFromType() }
-        }
-        is CollectionAst -> {
-            this.initElements.forEach { t -> t.clearFromType() }
-            this.type = null
-        }
-        is DotReceiver -> {
-            this.type = null
-        }
-        is ExpressionInBrackets -> {
-            this.type = null
-            this.expr.clearFromType()
-        }
-        is MapCollection -> {
-            this.type = null
-            this.initElements.forEach { it.first.clearFromType(); it.second.clearFromType() }
-        }
-        is BinaryMsg -> {
-            this.receiver.clearFromType()
-            this.type = null
-            this.argument.clearFromType()
-            this.unaryMsgsForArg.forEach { it.clearFromType() }
-            this.unaryMsgsForReceiver.forEach { it.clearFromType() }
-
-            this.msgMetaData = null
-            this.declaration = null
-
-        }
-        is KeywordMsg -> {
-            this.type = null
-            this.receiver.clearFromType()
-            this.msgMetaData = null
-            this.args.forEach { it.keywordArg.clearFromType() }
-        }
-        is StaticBuilder -> {
-            this.type = null
-            this.receiver.clearFromType()
-            this.msgMetaData = null
-        }
-        is UnaryMsg -> {
-            this.type = null
-            this.receiver.clearFromType()
-            this.msgMetaData = null
-        }
-        is MessageSend -> {
-            this.type = null
-            this.receiver.clearFromType()
-            this.messages.forEach { it.clearFromType() }
-        }
-        is MethodReference -> {
-            this.type = null
-            this.method = null
-        }
-        is IdentifierExpr -> this.type = null
-        is LiteralExpression -> {
-            this.type = null
-        }
-        is NeedInfo -> {
-            this.expression?.clearFromType()
-        }
-        is ReturnStatement -> this.expression?.clearFromType()
-        is TypeAST.InternalType -> {}
-        is TypeAST.Lambda -> {}
-        is TypeAST.UserType ->{}
-
-    }
-}
-
-fun clearNonIncrementalStoreFromTypes(nonIncrementalStore: MutableMap<String, List<Statement>>) {
-    nonIncrementalStore.values.forEach {
-        it.forEach { statement ->
-            statement.clearFromType()
-        }
-    }
-
-}
-
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
     megaStore.data.clear()
     fileToDecl.clear()
@@ -669,17 +493,8 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     return resolver
 }
 
-
-// first time, all files reading
-// if non-incremental, then we will fill the nonIncrementalStore store
-fun LS.resolveAllFirstTime(
-    pathToChangedFile: String,
-    fillNonIncrementalStore: Boolean = false,
-    mainContent: String?
-): Resolver {
-    GlobalVariables.enableLspMode()
-    megaStore.data.clear()
-
+// if we have changed content then replace the read from disc with it, to not to read the old one
+fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: String?): Pair<File, MutableSet<File>> {
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
         val directory = file.parentFile
         return if (directory.isDirectory) {
@@ -691,6 +506,8 @@ fun LS.resolveAllFirstTime(
             emptySet()
         }
     }
+
+
 
     // returns path to main.niva and set of all files
     // Doesn't search inside folders, only goes outside
@@ -709,22 +526,40 @@ fun LS.resolveAllFirstTime(
         }
     }
 
-    val file = File(URI(pathToChangedFile))
-    assert(file.exists())
-
     val collectFiles = {
         // get main file
         val pair = findMainUpRecursively(file, mutableSetOf())
         // listFilesDownUntilNivaIsFoundRecursively from main to get all files
         val set = listFilesDownUntilNivaIsFoundRecursively(pair.first.parentFile, "niva")
-        pair.also { it.second.addAll(set) }
+        pair.also {
+            it.second.addAll(set)
+            it.second.remove(it.first) // remove main from other files
+        }
     }
-    val (mainFile, allFiles) = collectFiles()
+    return collectFiles()
+}
+// first time, all files reading
+// if non-incremental, then we will fill the nonIncrementalStore store
+fun LS.resolveAllFirstTime(
+    pathToChangedFileURI: String,
+    fillNonIncrementalStore: Boolean = false,
+    changedFileContent: String? // is null when we re-resolve everything on file closed
+): Resolver {
+    GlobalVariables.enableLspMode()
+    megaStore.data.clear()
+//    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
+
+    val changedFile = File(URI(pathToChangedFileURI))
+    assert(changedFile.exists())
+
+
+    val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, pathToChangedFileURI, changedFileContent)
+
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
+    val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
+    info?.invoke("allFiles is ${allFiles.joinToString(", ") { it.name }} ") //all files is ${allFiles.joinToString(", ") { it.name }}
 
-    info?.invoke("allFiles is $allFiles ") //all files is ${allFiles.joinToString(", ") { it.name }}
 
-    allFiles.remove(mainFile)
     // Resolve
     // buildSystem doesn't matter here
     val pm = PathManager(mainFile.absolutePath, MainArgument.LSP, null)
@@ -734,10 +569,17 @@ fun LS.resolveAllFirstTime(
 
         // custom ast
         val customAst = parseFilesToAST(
-            mainFileContent = mainContent ?: mainFile.readText(),
+            mainFileContent = if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null) changedFileContent else {
+                info?.invoke("!!! main file reread $mainFile")
+//                info?.invoke("mainFile.toURI().toString() = ${mainFile.toURI()}")
+//                info?.invoke("changedFile.absolutePath = ${changedFile.absolutePath}")
+                mainFile.readText()
+            },
             otherFileContents = allFiles.toList(),
             mainFilePath = mainFile.absolutePath,
-            resolveOnlyOneFile = false
+            resolveOnlyOneFile = false,
+            pathToChangedFile = changedFile,
+            changedFileContent = changedFileContent
         )
 
         if (fillNonIncrementalStore)
@@ -761,7 +603,7 @@ fun LS.resolveAllFirstTime(
             s.token.compileError(s.errorMessage)
         }
         val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles.toMutableList(), ::onEachStatementCall, currentFile = mainFile)
+            Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
         this.resolver = emptyResolver
         this.completionFromScope = s.scope
 
