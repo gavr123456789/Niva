@@ -282,18 +282,27 @@ fun parseFilesToAST(
     mainFileContent: String,
     otherFileContents: List<File>,
     mainFilePath: String,
-    resolveOnlyOneFile: Boolean
+    resolveOnlyOneFile: Boolean,
+    pathToChangedFile: File? = null,
+    changedFileContent: String? = null,
 ): Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>> {
     val mainAST = getAst(source = mainFileContent, file = File(mainFilePath))
     val listOfPaths = mutableListOf<File>()
     // generate ast for others
     // in lsp mode we change one file at a time
-    val otherASTs = if (!resolveOnlyOneFile)
+
+    val otherASTs = if (!resolveOnlyOneFile) {
+
         otherFileContents.map {
-            val src = it.readText()
+            val src =
+                if (changedFileContent != null && pathToChangedFile != null && it.absolutePath == pathToChangedFile.absolutePath)
+                    changedFileContent
+                else
+                    it.readText()
             listOfPaths.add(it)
             it.nameWithoutExtension to getAst(source = src, file = it)
         }
+    }
     else emptyList()
     return Triple(mainAST, otherASTs, listOfPaths)
 }
