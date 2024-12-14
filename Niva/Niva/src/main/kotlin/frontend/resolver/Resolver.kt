@@ -500,6 +500,7 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
 
     if (type1 == type2) return type1
     if (type1.toString() == type2.toString()) return type1
+//    if (type1.name == type2.name && type1 is Type.UserLike && type2 is Type.UserLike && type) return type1
     val firstIsNothing = type1.name == "Nothing"
     val secondIsNothing = type2.name == "Nothing"
     @Suppress("KotlinConstantConditions")

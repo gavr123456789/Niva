@@ -2428,6 +2428,15 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun dotForBinary() {
+        val source = """
+            1 + .count
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
 //    @Test
 //    fun newUnionSynta2x() {
 //        val source = """

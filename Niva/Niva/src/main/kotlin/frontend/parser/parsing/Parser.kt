@@ -237,6 +237,7 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
 fun Parser.primary(typeAST: TypeAST? = null): Primary? {
     return when (peek().kind) {
         TokenType.Identifier, TokenType.NullableIdentifier -> identifierMayBeTyped(typeAST)
+        TokenType.Dot -> IdentifierExpr("this", listOf("this"), type = null, token = step(), isType = false)
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: TypeAST.InternalType(InternalTypes.Any, peek()), step())
@@ -245,6 +246,7 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? {
         TokenType.Double -> LiteralExpression.DoubleExpr(step())
         TokenType.String -> LiteralExpression.StringExpr(step())
         TokenType.Char -> LiteralExpression.CharExpr(step())
+
 
         else -> null
     }

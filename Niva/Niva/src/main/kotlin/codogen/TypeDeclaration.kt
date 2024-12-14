@@ -68,6 +68,15 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     if (isEnumRoot) append("enum ")
     append("class ")
     append(receiverType.toKotlinString(false))
+    val addGenericsFromParent = {
+        val parent = receiverType.parent
+        if (this.last() != '>' && parent is Type.UserLike && parent.typeArgumentList.isNotEmpty()) {
+            append("<")
+            append(parent.typeArgumentList.asSequence().map { it.toKotlinString(true) }.toSortedSet().joinToString(", "))
+            append(">")
+        }
+    }
+    addGenericsFromParent()
 
 //    if (genericFields.isNotEmpty()) {
 //        append("<")
@@ -170,7 +179,9 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         // replacing all missing generics of current branch, that root have, to Nothing
         rootGenericFields.forEach {
             if (!genericsOfTheBranch.contains(it)) {
-                realGenerics.add("Nothing")
+                // NOT REPLACING IT, since then we need to support out in params too
+//                realGenerics.add("Nothing")
+                realGenerics.add(it)
             } else
                 realGenerics.add(it)
         }
