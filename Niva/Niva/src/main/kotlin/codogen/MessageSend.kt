@@ -485,7 +485,8 @@ fun generateSingleUnary(
     when (it.kind) {
         UnaryMsgKind.Unary -> {
             fun isThatDefaultConstructor(): Boolean {
-                if (it.selectorName != "new") return false
+                if (it.selectorName != "new")
+                    return false
                 val w = it.receiver.type!!
                 if (w !is Type.UserLike) return false
                 // has new static method

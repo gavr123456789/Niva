@@ -21,7 +21,7 @@ fun compare2Types(
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type
     unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
-    compareParentsOfBothTypes: Boolean = false,
+    compareParentsOfBothTypes: Boolean = true,
     nullIsAny: Boolean = false // any branch of switch can return null
 ): Boolean {
     if (type1OrChildOf2 === type2) return true
@@ -175,8 +175,12 @@ fun compare2Types(
                     return false
 //                    tokenForErrors.compileError("Generic argument of type: ${YEL}${type1OrChildOf2.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")
                 }
-                else
-                    return type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
+//                if (sameArgs && )
+
+                else {
+                    val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
+                    return hasGeneralRoot_Or_itsListTAndListInt
+                } //type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
             }
         }
 
