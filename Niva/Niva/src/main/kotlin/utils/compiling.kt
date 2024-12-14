@@ -63,8 +63,9 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
 
-//    println("command: $this")
-
+//    if (GlobalVariables.isDemonMode) {
+//        println("running '$this' command inside $workingDir")
+//    }
     val process = p.start()
 
     val closeChildThread: Thread = object : Thread() {
@@ -82,8 +83,9 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 //        println(output)
 //    }
 
-
-    process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
+    // do not watch if its file watcher
+    if (!this.contains("-t"))
+        process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
     if (runTests) {
         val first = "> Task :jvmTest"
         val last = "> Task :allTests"
@@ -114,11 +116,12 @@ fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilation
 
 class CompilerRunner(
     private val pathToProjectRoot: String,
-    private val inlineReplPath: File,
+    private val inlineReplPath: File = File("inline_repl.txt").absoluteFile,
     private val compilationTarget: CompilationTarget,
     private val compilationMode: CompilationMode,
     private val mainNivaFileName: String,
-    private val resolver: Resolver
+    private val resolver: Resolver,
+    private val watch: Boolean = false,
 ) {
     // all false = run code, dist = zip, buildFatJar = single jar
     private fun gradleCmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
@@ -128,11 +131,12 @@ class CompilerRunner(
             else
                 targetToRunCommand(compilationTarget)
         else
+            // not run, but build or dist
             when (compilationTarget) {
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> if (buildFatJar) "fatJar" else "distZip"
                 CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
                 CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-            }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" // --configuration-cache
+            }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" + if (watch) " -t" else ""
 
 
     fun runMill(option: Option, outputRename: String?) {
@@ -195,7 +199,7 @@ class CompilerRunner(
         // 3 generate command and run it
         val cmd = gradleCmd(dist, buildFatJar, runTests)
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
-        runFinalCommand("./gradlew","cmd.exe /c gradlew.bat",defaultArgs, cmd, file, runTests)
+        runFinalCommand("./gradlew","cmd.exe /c gradlew.bat", defaultArgs, cmd, file, runTests)
         // 4 inline repl
         inlineReplIfExists()
 

@@ -38,7 +38,6 @@ fun Resolver.resolveKeywordMsg(
     val receiverType = statement.receiver.type
         ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
 
-
     // resolve kw kind
     var foundCustomConstructorDb: MessageMetadata? = null
 
@@ -137,6 +136,15 @@ fun Resolver.resolveKeywordMsg(
         result
     } else mutableMapOf<String, Type>()
 
+    val currentPkg = getCurrentPackage(statement.token)
+    // add every generic param from receiver to import
+    letterToTypeFromReceiver.values.asSequence()
+        .filterIsInstance<Type.UserLike>()
+        .filter { !it.name.isGeneric() }
+        .forEach {
+            currentPkg.addImport(it.pkg)
+        }
+
     statement.declaration = kwFromDB?.declaration
     statement.msgMetaData = kwFromDB
 
@@ -183,6 +191,7 @@ fun Resolver.resolveKeywordMsg(
             map
         }
 
+    val fromReceiverAndfromArgsTable = (letterToTypeFromReceiver + letterToTypeFromArgs).toMutableMap()
 
     // resolve args types
     resolveKwArgs(
@@ -191,11 +200,11 @@ fun Resolver.resolveKeywordMsg(
         previousAndCurrentScope,
         filterGenerics = false,
         argsTypesFromDb,
-        letterToTypeFromArgs + letterToTypeFromReceiver
+        fromReceiverAndfromArgsTable
     )
 
     // resolve generic args types
-    resolveKwArgsGenerics(statement, argsTypesFromDb, letterToTypeFromReceiver)
+    resolveKwArgsGenerics(statement, argsTypesFromDb, fromReceiverAndfromArgsTable)
 
     // if receiverType is lambda then we need to check does it have same argument names and types
     if (receiverType is Type.Lambda) {
@@ -293,7 +302,7 @@ fun Resolver.resolveKeywordMsg(
                 val kwArgFromDb = argsTypesFromDb[i]
                 val currentArgType = kwArg.keywordArg.type
                 if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDb is Type.UnknownGenericType) {
-                    val realTypeForKwFromDb = letterToTypeFromReceiver[kwArgFromDb.name]!!
+                    val realTypeForKwFromDb = fromReceiverAndfromArgsTable[kwArgFromDb.name]!!
                     val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType, statement.token)
                     if (!isResolvedGenericParamEqualRealParam) {
                         statement.token.compileError("Generic type error, type $YEL${kwArgFromDb.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
@@ -435,7 +444,7 @@ fun Resolver.resolveKeywordMsg(
 
             val returnTypeFromDb = msgTypeFromDB.returnType
             val returnType2 =
-                resolveReturnTypeIfGeneric(returnTypeFromDb, letterToTypeFromReceiver, receiverGenericsTable)
+                resolveReturnTypeIfGeneric(returnTypeFromDb, fromReceiverAndfromArgsTable, receiverGenericsTable)
 
             // if return type was unwrapped nullable, we need to wrap it again
             val returnType =
@@ -538,6 +547,8 @@ fun Resolver.resolveKwArgs(
 fun Resolver.resolveKwArgsGenerics(
     statement: KeywordMsg, argTypesFromDb: List<Type>, letterToRealType: MutableMap<String, Type>
 ) {
+    val currentPkg = getCurrentPackage(statement.token)
+
     val args = statement.args
     args.forEachIndexed { argNum, it ->
         // we need to check for generic args only if it is Keyword
@@ -566,6 +577,7 @@ fun Resolver.resolveKwArgsGenerics(
                 typeFromDBForThisArg.name,
                 argType,
                 statement.token,
+                currentPkg,
                 "receiver type: $receiverType"
             )
         }
@@ -581,6 +593,7 @@ fun Resolver.resolveKwArgsGenerics(
                             fromDb.name,
                             type,
                             statement.token,
+                            currentPkg,
                             "generic param №$i"
                         )
                     }
@@ -604,6 +617,7 @@ fun Resolver.resolveKwArgsGenerics(
                         typeField.type.name,
                         argType.args[i].type,
                         statement.token,
+                        currentPkg,
                         "codeblock argument №$i"
                     )
                 }
@@ -623,13 +637,14 @@ fun Resolver.resolveKwArgsGenerics(
 
             if (typeFromDBForThisArg.returnType.name.isGeneric()) {
 //                letterToRealType[typeFromDBForThisArg.returnType.name] = argType.returnType
-                letterToRealType.genericAdd(typeFromDBForThisArg.returnType.name, argType.returnType, statement.token, "return type")
+                letterToRealType.genericAdd(typeFromDBForThisArg.returnType.name, argType.returnType, statement.token, currentPkg, "return type")
             } else if (returnTypeBefore != null && returnTypeBefore.isGeneric()) {
 //                letterToRealType[returnTypeBefore] = argType.returnType
                 letterToRealType.genericAdd(
                     returnTypeBefore,
                     argType.returnType,
                     statement.token,
+                    currentPkg,
                     "return type"
                 )
 
@@ -642,7 +657,7 @@ fun Resolver.resolveKwArgsGenerics(
 
 typealias GenericTable = MutableMap<String, Type>
 
-fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlaceInCode: String?) {
+fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Package, customPlaceInCode: String?) {
     val alreadyAddedType = this[str]
 
     if (alreadyAddedType != null) {
@@ -660,12 +675,15 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, customPlac
             // then replace added type to this union
             // so x ifTrue: [Red] ifFalse: [Blue] will be resolved to Color
             findGeneralRoot(alreadyAddedType, type)?.let { generalRoot ->
-                if (alreadyAddedType != generalRoot)
+                if (alreadyAddedType != generalRoot) {
                     this[str] = generalRoot
+                }
+                pkg.addImport(generalRoot.pkg)
             }
         }
     } else {
         this[str] = type
+        pkg.addImport(type.pkg)
     }
 }
 
