@@ -96,6 +96,10 @@ private fun Resolver.resolveStatement(
                 statement.messageDeclarations.forEach {
                     resolveMsgDeclarationOnlyBody(it)
                 }
+            } else if (statement is ManyConstructorDecl) {
+                statement.messageDeclarations.forEach {
+                    resolveMsgDeclarationOnlyBody(it)
+                }
             }
         }
 

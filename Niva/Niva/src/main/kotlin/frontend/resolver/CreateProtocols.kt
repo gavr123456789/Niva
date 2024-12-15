@@ -718,7 +718,7 @@ fun createListProtocols(
     )
     val pairOf2ListsType = Type.UserType(
         name = "Pair",
-        fields = listType.fields,
+        fields = pairType.fields,
         typeArgumentList = listOf(sequenceType, sequenceType), // List<T>, List<G>
         pkg = "core",
         protocols = pairType.protocols,
