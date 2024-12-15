@@ -2568,6 +2568,42 @@ class ResolverTest {
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
     }
+    @Test
+    fun partition(){
+        val source = """
+            args = {"qar"}
+            x = args partition: [it startsWith: "-"]
+            x
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
 
+    @Test
+    fun extendConstructor(){
+        val source = """
+            type ArgParser
+            constructor ArgParser [
+              on parse: args::MutableList::String = [
+                1 echo
+              ]
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+    @Test
+    fun constructorReturnsUnitByDefault(){
+        val source = """
+            type ArgParser
+            constructor ArgParser [
+              on parse: args::MutableList::String = [
+                1 echo
+              ]
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
 
 }

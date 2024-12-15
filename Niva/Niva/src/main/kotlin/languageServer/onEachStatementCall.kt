@@ -6,6 +6,7 @@ import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.ManyConstructorDecl
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
@@ -40,13 +41,6 @@ fun LS.onEachStatementCall(
             }
         }
 
-        is DestructingAssign -> {
-            st.names.forEach {
-                addStToMegaStore(it)
-            }
-            addStToMegaStore(st.value)
-        }
-
         is Declaration -> {
             // fill fileToDecl
             val setOfStatements = this.fileToDecl[file2.absolutePath]
@@ -59,8 +53,8 @@ fun LS.onEachStatementCall(
             st.docComment?.let {
                 it.identifiers?.forEach { addStToMegaStore(it) }
             }
-            // add types of the decl as IdentExpr
-            if (st is MessageDeclaration && st.returnType != null) {
+
+            fun messageDecl(st: MessageDeclaration) {
                 val realSt = when (st) {
                     is ConstructorDeclaration -> st.msgDeclaration
                     else -> st
@@ -95,6 +89,22 @@ fun LS.onEachStatementCall(
                     }
                 }
             }
+            // add types of the decl as IdentExpr
+            if (st is MessageDeclaration && st.returnType != null) {
+                messageDecl(st)
+            }
+            if (st is ManyConstructorDecl) {
+                st.messageDeclarations.forEach {
+                    messageDecl(it)
+                }
+            }
+        }
+
+        is DestructingAssign -> {
+            st.names.forEach {
+                addStToMegaStore(it)
+            }
+            addStToMegaStore(st.value)
         }
 
 

@@ -1,6 +1,13 @@
-union MyList =
-| Nil
-| Cons head: T tail: MyList
+type ArgParser
 
-x = Cons head: 3 tail: (Cons head: 5 tail: (Cons head: 2 tail: Nil new))
-x echo
+constructor ArgParser [
+  on parse: args::MutableList::String = [
+    x = args partition: [it startsWith: "-"]
+  ]
+]
+
+
+//constructor ArgParser parse: args::MutableList::String = [
+//  args first echo
+//]
+ArgParser parse: {"qwf" "fpg"}
