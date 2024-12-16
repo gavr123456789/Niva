@@ -877,7 +877,7 @@ fun Resolver.changeTarget(target: String, token: Token) {
         "jvm" -> CompilationTarget.jvm
         "linux" -> CompilationTarget.linux
         "macos" -> CompilationTarget.macos
-        "compose" -> CompilationTarget.jvmCompose
+        "jvmCompose" -> CompilationTarget.jvmCompose
         "windows" -> token.compileError("Windows native target not supported yet")
         "js" -> token.compileError("js target not supported yet")
         else -> token.compileError("There is no such target as ${WHITE}$target${RESET}, supported targets are ${WHITE}${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")

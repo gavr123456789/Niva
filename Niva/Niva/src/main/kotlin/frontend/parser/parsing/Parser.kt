@@ -497,7 +497,7 @@ fun Parser.pragmas(): MutableList<Pragma> {
         else {
             // @Sas Sus
             do {
-                val name = step().lexeme
+                val name = dotSeparatedIdentifiers()?.names?.joinToString(".") ?: peek().compileError("after @ identifier expected")  //step().lexeme
                 pragmas.add(SingleWordPragma(name))
             } while (check(TokenType.Identifier))
         }

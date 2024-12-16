@@ -190,6 +190,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
 
 
 fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
+    appendPragmas(pragmas, this)
+
     val st = this@generateBuilderDeclaration
 
     append("inline fun " )
@@ -265,14 +267,15 @@ private fun returnTypeAndBodyPart(
 
 fun appendPragmas(pragmas: List<Pragma>, builder: StringBuilder) {
     pragmas.forEach {
-        if (!setOfPragmaNames.contains(it.name)) {
+        if (!builtInPragmas.contains(it.name)) {
             builder.appendnl("@${it.name}")
         }
     }
 }
 
-fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): String = buildString {
-    appendPragmas(pragmas, this)
+fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false, needPragmaGeneration: Boolean = true): String = buildString {
+    if (needPragmaGeneration)
+        appendPragmas(pragmas, this)
     val st = this@generateMessageDeclaration
     if (isInline) append("inline ")
     if (isSuspend) append("suspend ")
@@ -290,4 +293,4 @@ fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false): St
 }
 
 fun ConstructorDeclaration.generateConstructorDeclaration() =
-    this.msgDeclaration.generateMessageDeclaration(true)
+    this.msgDeclaration.generateMessageDeclaration(true, false)

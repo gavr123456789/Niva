@@ -9,7 +9,7 @@ import java.nio.file.StandardCopyOption
 plugins {
     kotlin("jvm") version "2.0.21"
     application
-    id("org.graalvm.buildtools.native") version "0.10.3"
+    id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
 }
 
@@ -55,7 +55,7 @@ graalvmNative {
 //        }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")
-        buildArgs.add("-march=native")
+//        buildArgs.add("-march=native") // temp until https://github.com/oracle/graal/pull/10050 gets upstream
         buildArgs.add("--initialize-at-build-time")
     }
 }
