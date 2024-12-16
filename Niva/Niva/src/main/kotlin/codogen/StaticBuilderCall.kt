@@ -16,7 +16,7 @@ fun generateBuilderCall(builder: StaticBuilder) = buildString {
 
     // args
     if (builder.args.isNotEmpty())
-        append("(",builder.args.joinToString(", ") { it.keywordArg.toString() }, ") ")
+        append("(",builder.args.joinToString(", ") { it.keywordArg.generateExpression() }, ") ")
     append("{")
     if (builder.defaultAction != null)
         append(" $defaultActionName ->\n")

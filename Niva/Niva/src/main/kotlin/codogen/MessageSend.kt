@@ -157,7 +157,7 @@ enum class Pragmas(val v: String) {
     RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg")
 }
 
-val setOfPragmaNames = setOf("rename", "emit", "arg")
+val builtInPragmas = setOf("rename", "emit", "arg")
 
 // adding invisible args like for Compiler getName:
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
@@ -237,7 +237,7 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             resultString = resultString.replace(patternMatch, replacement)
         }
 
-        return if (msg.isPiped || msg.isCascade)
+        return if (msg.isPiped || msg.isCascade) //msg.receiver is Message
             ".$resultString"
         else
             resultString
@@ -255,6 +255,9 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             else when (msg.receiver) {
                 is Message -> {
                     if (msg.receiver.isPiped) msg.receiver.generateExpression()
+                    else if (msg.receiver is Message) {
+                        msg.receiver.generateExpression()
+                    }
                     else "" // if there are messages already, then do not generate duplicates
                 }
 

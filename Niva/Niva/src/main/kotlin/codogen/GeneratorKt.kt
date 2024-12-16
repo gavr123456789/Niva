@@ -27,7 +27,7 @@ import kotlin.io.path.div
 // Can generate source files
 class GeneratorKt(
     val dependencies: MutableList<String> = mutableListOf(),
-    val plugins: MutableList<String> = mutableListOf()
+//    val plugins: MutableList<String> = mutableListOf()
 ) {
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
@@ -80,6 +80,7 @@ test-dependencies:
   - org.jetbrains.kotlin:kotlin-test:2.0.21
 
 settings:
+  compose: enabled
   kotlin:
     serialization:
       format: json
@@ -131,6 +132,7 @@ tasks.withType(JavaCompile::class.java) {
 
 tasks.withType(JavaExec::class.java) {
     jvmArgs(
+        "-Dsun.java2d.uiScale=2.0",
         "--enable-preview",
         "--enable-native-access=ALL-UNNAMED",
         "-Djava.library.path=/usr/lib64:/lib64:/lib:/usr/lib:/lib/x86_64-linux-gnu"
@@ -210,7 +212,7 @@ fun GeneratorKt.regenerateMill(pathToMill: String) {
 }
 fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) {
     val deps = dependencies.joinToString("\n") {
-        "  - $it"
+        "  - ${it.removeSurrounding("\"")}" // replace `- "qqqq"` with `- qqqq`
     }
     val newGradle = GeneratorKt.AMPER_TEMPLATE
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, deps)
