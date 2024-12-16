@@ -121,8 +121,11 @@ fun Resolver.resolveMap(
     }
     val (key, value) = statement.initElements[0]
     currentLevel++
-    resolveSingle((key), (currentScope + previousScope).toMutableMap(), statement)
-    resolveSingle((value), (currentScope + previousScope).toMutableMap(), statement)
+    statement.initElements.forEach { (key, value) ->
+        resolveSingle((key), (currentScope + previousScope).toMutableMap(), statement)
+        resolveSingle((value), (currentScope + previousScope).toMutableMap(), statement)
+
+    }
     currentLevel--
 
     val keyType = key.type ?: key.token.compileError("Can't resolve type of key: ${CYAN}${key.str}")
@@ -131,9 +134,18 @@ fun Resolver.resolveMap(
     val mapTypeFromDb =
         this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
 
+    val unifiedValueType = if (statement.initElements.count() > 1) {
+        val type1 = statement.initElements[0].second.type!!
+        val type2 = statement.initElements[1].second.type!!
+        val unified = findGeneralRoot(type1, type2)
+        unified ?:
+        Resolver.defaultTypes[InternalTypes.Any]!!
+    } else
+        valueType
+
     val mapType = Type.UserType(
         name = "MutableMap",
-        typeArgumentList = listOf(keyType, valueType),
+        typeArgumentList = listOf(keyType, unifiedValueType),
         fields = mutableListOf(),
         pkg = "core",
         protocols = mapTypeFromDb.protocols,
