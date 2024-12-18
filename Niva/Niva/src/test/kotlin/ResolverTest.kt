@@ -2613,6 +2613,9 @@ class ResolverTest {
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 1)
+        val q = (x[0] as VarDeclaration).value as MessageSendUnary
+        val w = q.receiver.type!! as Type.UserLike
+        assert(w.typeArgumentList.first().name == "Int")
     }
 
 

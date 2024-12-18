@@ -143,7 +143,7 @@ fun Parser.enumFields(): MutableList<EnumFieldAST> {
 fun Parser.typeFields(): MutableList<TypeFieldAST> {
     val fields = mutableListOf<TypeFieldAST>()
 
-    if (checkEndOfLineOrFile() || check(TokenType.If)) {
+    if (!(check(TokenType.Identifier) && check(TokenType.Colon, 1))) {
         skipNewLinesAndComments()
         return mutableListOf()
     }
@@ -323,6 +323,12 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed:
             // | Rectangle => width: int height: int
             val inlineBranch = match(TokenType.Return)
             val branchName = identifierMayBeTyped()//matchAssertAnyIdent("Name of the union branch expected")
+
+            // union Sas =
+            // | Sus
+            //   x: Int
+            skipNewLinesAndComments()
+
             val fields = typeFields()
 
             // save many names

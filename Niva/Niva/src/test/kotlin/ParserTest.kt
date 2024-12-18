@@ -2437,6 +2437,35 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
     }
+
+    @Test
+    fun unionBranchFieldsOnNewLines() {
+        val source = """
+            union Value = 
+            | Ast 
+              a: b 
+              c: d
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+    @Test
+    fun extendAfterUnionBranchWithoutFields() {
+        val source = """
+            union Value =
+            | IntT v: Int
+            | NullT
+            
+            extend Value [
+                on run = []
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+
+
+
 //    @Test
 //    fun newUnionSynta2x() {
 //        val source = """
