@@ -81,6 +81,13 @@ fun Resolver.resolveVarDeclaration(
         }
         copyType.typeArgumentList = newTypeArgList
         valueOfVarDecl.type = copyType
+
+        if (valueOfVarDecl is MessageSend) {
+            val tt = valueOfVarDecl.receiver.type
+            if (tt is Type.UserLike && tt.typeArgumentList.count() == newTypeArgList.count()) {
+                tt.typeArgumentList = newTypeArgList
+            }
+        }
     }
 
     // check that declared type == inferred type
