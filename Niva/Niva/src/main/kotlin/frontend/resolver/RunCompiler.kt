@@ -38,7 +38,7 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
                 if (resolvedFromDifferentFileType != null) {
                     val resolveAndRemoveField = { field2: FieldNameAndParent ->
                         val fieldToRemove = field2.parent.fields.first { it.name == field2.fieldName }
-                        val ast = field2.ast
+                        val ast = field2.parent.typeDeclaration!!.fields.first { it.name == fieldToRemove.name }.typeAST!!
                         val resolvedType = ast.toType(typeDB, typeTable)
 
                         // remove field with placeholder, and replace type to real type inside placeholder

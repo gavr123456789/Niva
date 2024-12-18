@@ -26,8 +26,7 @@ fun onCompletionExc(scope: Scope, errorMessage: String? = null, token: Token? = 
 
 
 const val DEV_MODE_INSTRUCTIONS = """
-First inside "home/.niva/infroProject" run "./gradlew run --quiet -t" command 
-c or 2 enters - compile
+c then 2 enters - compile
 w - compile on every file change
 e - exit
 """
