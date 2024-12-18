@@ -1,13 +1,1 @@
-type ArgParser
-
-constructor ArgParser [
-  on parse: args::MutableList::String = [
-    x = args partition: [it startsWith: "-"]
-  ]
-]
-
-
-//constructor ArgParser parse: args::MutableList::String = [
-//  args first echo
-//]
-ArgParser parse: {"qwf" "fpg"}
+x::List::Int = {} toList

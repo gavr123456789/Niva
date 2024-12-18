@@ -2,6 +2,7 @@ package main.codogen
 
 import frontend.resolver.Type
 import main.frontend.parser.types.ast.*
+import main.utils.isGeneric
 
 fun ControlFlow.If.generateIf(): String = buildString {
 
@@ -97,7 +98,16 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 }
 
 fun ListCollection.generateList() = buildString {
-    append("mutableListOf(")
+    append("mutableListOf")
+    val type = this@generateList.type
+    if (type is Type.UserLike && type.typeArgumentList.find { it.name.isGeneric() } == null ) {
+        append("<")
+        type.typeArgumentList.forEach {
+            append(it.toKotlinString(true))
+        }
+        append(">")
+    }
+    append("(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())

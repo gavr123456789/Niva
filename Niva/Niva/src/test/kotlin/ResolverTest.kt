@@ -2606,4 +2606,14 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+    @Test
+    fun emptyList(){
+        val source = """
+            x::List::Int = {} toList
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 1)
+    }
+
+
 }
