@@ -230,13 +230,15 @@ fun Type.unpackNull(): Type =
 
 // when generic, we need to reassign it to AST's Type field, instead of type's typeField
 fun generateGenerics(x: Type, sb: StringBuilder): String {
+    val isNullable = if (x is Type.NullableType) "?" else ""
     val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
-        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
-            x.name
-        } else {
+//        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
+//            x.name
+//        } else {
 //            x.toString()
-            x.name
-        }
+
+            x.name + isNullable
+//        }
     }
     if (x is Type.UserLike) {
 
@@ -258,7 +260,6 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
         sb.append(str)
 
         if (x.typeArgumentList.isNotEmpty()) {
-//        x.typeArgumentList.forEach { generateGenerics(it, sb) }
             val first = x.typeArgumentList[0]
             if (first is Type.UserLike && first.typeArgumentList.isNotEmpty()) {
                 generateGenerics(first, sb)
@@ -358,36 +359,12 @@ sealed class Type(
     }
 
     override fun toString(): String = when (this) {
-        is InternalLike -> name + possibleErrors()
+        is InternalType -> name + possibleErrors()
         is NullableType -> "$realType?"
         is UnresolvedType -> "?unresolved type?"
         is UserLike -> {
-//            val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
-//                if (x.name == currentTypeName && x.pkg == currentTypePkg) {
-//                    x.name
-//                } else {
-//                    x.toString()
-//                }
-//            }
-
             val genericParam = generateGenerics(this, StringBuilder())
-
-//                if (typeArgumentList.count() == 1) {
-//                    generateGenerics(this, StringBuilder())
-//                    "::" + toStringWithRecursiveCheck(typeArgumentList[0], this.name, this.pkg)
-//                } else if (typeArgumentList.count() > 1) {
-//                    "(" + typeArgumentList.joinToString(", ") {
-//                        toStringWithRecursiveCheck(
-//                            it,
-//                            this.name,
-//                            this.pkg
-//                        )
-//                    } + ")"
-//                } else ""
             val needPkg = if (pkg != "core" && pkg != "common") "$pkg." else ""
-
-
-
             "$needPkg$name$genericParam${possibleErrors()}"
         }
 
@@ -395,7 +372,7 @@ sealed class Type(
     }
 
     fun toKotlinString(needPkgName: Boolean): String = when (this) {
-        is InternalLike, is UnknownGenericType -> name
+        is InternalType, is UnknownGenericType -> name
         is NullableType -> "${realType.toKotlinString(needPkgName)}?"
         is UnresolvedType -> {
             throw Exception("Compiler bug, attempt to generate code for unresolved type")
@@ -493,8 +470,6 @@ sealed class Type(
         }
 
         append(")")
-
-
     }
 
     class NullableType(
@@ -511,11 +486,9 @@ sealed class Type(
             }
         }
 
-        fun getTypeOrNullType(): Type {
-            return realType
+        fun getTypeOrNullType(): Type =
+            realType
 
-//            return Resolver.defaultTypes[InternalTypes.Null]!!
-        }
     }
 
     class UnresolvedType(
@@ -539,21 +512,21 @@ sealed class Type(
         var specialFlagForLambdaWithDestruct: Boolean = false,
         val extensionOfType: Type? = null,
         var alias: String? = null
-    ) : Type("[${args.joinToString(", ") { it.type.name }} -> ${returnType.name}]", pkg, isPrivate)
+    ) : Type("[${args.joinToString(", ") { it.type.toString() }} -> ${returnType.name}]", pkg, isPrivate)
 
-    sealed class InternalLike(
-        typeName: InternalTypes,
-        pkg: String,
-        isPrivate: Boolean = false,
-        protocols: MutableMap<String, Protocol>
-    ) : Type(typeName.name, pkg, isPrivate, protocols)
+//    sealed class InternalLike(
+//        typeName: InternalTypes,
+//        pkg: String,
+//        isPrivate: Boolean = false,
+//        protocols: MutableMap<String, Protocol>
+//    ) : Type(typeName.name, pkg, isPrivate, protocols)
 
     class InternalType(
         typeName: InternalTypes,
         pkg: String,
         isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : InternalLike(typeName, pkg, isPrivate, protocols)
+    ) : Type(typeName.name, pkg, isPrivate, protocols) //: InternalLike(typeName, pkg, isPrivate, protocols)
 
     sealed class UserLike(
         name: String,

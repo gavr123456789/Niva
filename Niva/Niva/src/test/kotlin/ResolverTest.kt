@@ -2617,6 +2617,48 @@ class ResolverTest {
         val w = q.receiver.type!! as Type.UserLike
         assert(w.typeArgumentList.first().name == "Int")
     }
+    @Test
+    fun constructorNotReturningReceiverByDefault(){
+        val source = """
+            type Person name: String
+            constructor Person sas = [
+                1 echo
+            ]
+            Person sas
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
+
+    @Test
+    fun nullableTypeToStr(){
+        // the error was in comparing [ Int? -> Unit ] with [ T -> Unit ]
+        val source = """
+            q = {1 2 3} map: [it % 2 == 0 ifTrue: [null] ifFalse: [it + 1]]
+            q forEach: [it echo]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+//    @Test
+//    fun nullableFromOrValue(){
+//        val source = """
+//            Int sas -> Int! = [
+//              Error throwWithMessage: "Oh no!"
+//              ^ 3
+//            ]
+//
+//            x = {1 2 3} map: [
+//              1 sas orValue: null
+//            ]
+//            x forEach: [
+//              it // here it is just Int, and not Int? because orValue is fake generated msg, not T orValue: T -> T, to make unify between null and Receiver possible
+//            ]
+//        """.trimIndent()
+//        val (x) = resolveWithResolver(source)
+//        assert(x.count() == 3)
+//    }
 
 
 }

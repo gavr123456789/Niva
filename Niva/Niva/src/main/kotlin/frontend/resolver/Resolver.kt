@@ -594,7 +594,7 @@ fun Resolver.getCurrentImports(errorToken: Token): Set<String> {
 fun Resolver.addStaticDeclaration(statement: ConstructorDeclaration, receiverType: Type): MessageMetadata {
 //    val typeOfReceiver = typeTable[statement.forTypeAst.name]!!//testing
     // if return type is not declared then use receiver
-    val returnType = if (statement.returnTypeAST == null) receiverType
+    val returnType = if (statement.returnTypeAST == null) Resolver.defaultTypes[InternalTypes.Unit]!!
     else statement.returnType ?: statement.returnTypeAST.toType(typeDB, typeTable)
 
     val messageData = when (statement.msgDeclaration) {

@@ -141,7 +141,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
 
     appendnl("# package $packageName")
     if (!userOnly) {
-        val internalTypes = types.values.filterIsInstance<Type.InternalLike>()
+        val internalTypes = types.values.filterIsInstance<Type.InternalType>()
         internalTypes.forEach {
             append(it.generateInfoType())
         }
