@@ -156,7 +156,7 @@ fun Resolver.findStaticMessageType(
     msgType: MessageDeclarationType? = null
 ): Pair<MessageMetadata, Boolean> {
 
-    fun search(type: Type): MessageMetadata? {
+    fun searchInProtocols(type: Type): MessageMetadata? {
         var result: MessageMetadata? = null
 
         type.protocols.forEach { (_, v) ->
@@ -174,13 +174,14 @@ fun Resolver.findStaticMessageType(
         pkg.addImport(result.pkg)
         Pair(result, false)
     }
-    var type: Type? = receiverType
-    while (type != null) {
-        val result = search(type)
+
+    var receiverTypeIter: Type? = receiverType
+    while (receiverTypeIter != null) {
+        val result = searchInProtocols(receiverTypeIter)
         if (result != null) {
             return returnResult(result)
         }
-        type = type.parent
+        receiverTypeIter = receiverTypeIter.parent
     }
 
     // this is default new message if type doesn't have any fields
@@ -214,12 +215,12 @@ fun Resolver.findStaticMessageType(
 
     // there is a constructor for Any or T, like Any echo = [...]
     val anyType = Resolver.defaultTypes[InternalTypes.Any]!!
-    search(anyType)?.let { result: MessageMetadata ->
+    searchInProtocols(anyType)?.let { result: MessageMetadata ->
         return returnResult(result)
     }
 
     val unknownGenericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
-    search(unknownGenericType)?.let { result: MessageMetadata ->
+    searchInProtocols(unknownGenericType)?.let { result: MessageMetadata ->
         return returnResult(result)
     }
 
@@ -277,8 +278,10 @@ fun Resolver.findAnyMsgType(
 
         // remove error from method decl
         val resolvingMsgDecl = this.resolvingMessageDeclaration
-        val msg = if (stack.isNotEmpty()) this.stack.last() else null
-
+        val msg = if (stack.isNotEmpty())
+            this.stack.last()
+        else
+            null
         if (resolvingMsgDecl != null && msg is MessageSend) {
             val receiver = msg.receiver
             val unbranckedExpression = if (receiver is ExpressionInBrackets) receiver.expr else receiver

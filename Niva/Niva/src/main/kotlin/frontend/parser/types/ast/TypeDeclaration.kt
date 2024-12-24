@@ -44,7 +44,8 @@ sealed class TypeAST(
         errors: List<String>? = null
     ) : TypeAST(name, isNullable, token, isPrivate, pragmas, errors = errors) {
         override fun toString(): String {
-            return names.joinToString(".")
+            val isNullable = if (isNullable) "?" else ""
+            return names.joinToString(".") + isNullable
         }
     }
 

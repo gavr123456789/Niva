@@ -67,7 +67,17 @@ fun compare2Types(
 
         argsOf1.forEachIndexed { i, it ->
             val it2 = argsOf2[i]
-            val isEqual = compare2Types(it.type, it2.type, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes)
+            val isEqual = compare2Types(
+                it.type,
+                it2.type,
+                tokenForErrors,
+                unpackNullForFirst = unpackNullForFirst,
+                unpackNull = unpackNull,
+                isOut = isOut,
+                compareParentsOfBothTypes = compareParentsOfBothTypes,
+                nullIsAny = nullIsAny,
+
+            )
             if (!isEqual) {
 //                tokenForErrors.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
                 return false
@@ -210,7 +220,7 @@ fun compare2Types(
 
 
     // x::Int? = null
-    if (type1OrChildOf2 is Type.NullableType && type2 is Type.InternalType && type2.name == "Null") {
+    if (type1OrChildOf2 is Type.NullableType && typeIsNull(type2)) {
         return true
     }
 

@@ -123,7 +123,7 @@ fun Parser.enumFields(): MutableList<EnumFieldAST> {
         return mutableListOf()
     }
     do {
-        val name = matchAssertAnyIdent("Identifier expected, but found ${peek().lexeme}")
+        val name = matchAssertAnyIdent("name of the enum's field expected, but found ${peek().lexeme}")
         matchAssert(TokenType.Colon)
         val expr = simpleReceiver() //?: peek().compileError("Primary expected")
 //        skipOneEndOfLineOrFile()
@@ -150,7 +150,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
 
     do {
         val isGeneric = match(TokenType.Apostrophe)
-        val name = matchAssertAnyIdent("Identifier expected, but found ${peek().lexeme}")
+        val name = matchAssertAnyIdent("name of the field expected, but found ${peek().lexeme}")
         val type: TypeAST? = if (!isGeneric) {
             val isThereFields = match(TokenType.Colon)
             val isThereEndOfLine = skipOneEndOfLineOrComment()

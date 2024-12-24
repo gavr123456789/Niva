@@ -407,7 +407,7 @@ fun Resolver.resolveControlFlow(
                         )
                     }
                 }
-                is Type.InternalLike -> {
+                is Type.InternalType -> {
                     if (savedSwitchType.name == InternalTypes.Any.name) {
                         statement.token.compileError("When switching on Any else branch is required, add |=>, if its statement you can use |=> []")
                     }
