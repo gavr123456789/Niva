@@ -68,9 +68,10 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     }
 
     if (elseBranch != null) {
-        append("    else -> ")
+        append("    else -> {")
         val elseBranchCode = codegenKt(elseBranch, 0)
         append(elseBranchCode)
+        append("    }")
         if (elseBranchCode == "") append("{}\n")
         append("}\n")
     } else {

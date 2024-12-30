@@ -7,7 +7,7 @@ import main.frontend.parser.types.ast.*
 import main.utils.appendnl
 import main.utils.isGeneric
 
-val kotlinKeywords = arrayOf( "if", "else", ) // "fun", "val", "var", "class"
+val kotlinKeywords = arrayOf( "if", "else", "val") // "fun", "val", "var", "class"
 
 fun String.ifKtKeywordAddBackTicks(): String {
     return if (kotlinKeywords.contains(this)) {

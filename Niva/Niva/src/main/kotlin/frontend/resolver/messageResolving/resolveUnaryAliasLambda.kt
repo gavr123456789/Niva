@@ -25,12 +25,10 @@ fun Resolver.resolveUnaryAliasLambda(statement: UnaryMsg, receiverType: Type.Lam
         type?.errors = s.errors?.toMutableSet()
         pragmas = s.pragmas
         declaration = s.declaration
-        msgMetaData= s
+        msgMetaData = s
         kind = UnaryMsgKind.Unary
     }
 
-
     getCurrentPackage(errorTok).addImport(s.pkg)
-
     return s.returnType
 }
