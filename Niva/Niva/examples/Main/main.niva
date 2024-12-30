@@ -1,1 +1,1 @@
-x::List::Int = {} toList
+"abcd" slice: 0..<3 |> echo

@@ -748,8 +748,8 @@ fun createListProtocols(
             createUnary("sum", intType, "{1 2 3} sum == 6"),
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", listType, listType, "new list and all elements of the give"),
-            createBinary("-", listType, listType, "new list except the elements contained in the give"),
+            createBinary("+", listType, immutableList, "new list and all elements of the give"),
+            createBinary("-", listType, immutableList, "new list except the elements contained in the give"),
         ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
