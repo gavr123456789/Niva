@@ -447,6 +447,7 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
     // receiver is already T(on kotlin side)
     // so we need only one generic here
     val unitType = Resolver.defaultTypes[InternalTypes.Unit]!!
+    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
     val nothingType = Resolver.defaultTypes[InternalTypes.Nothing]!!
     val genericR = Type.UnknownGenericType("T")
 
@@ -488,6 +489,18 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
 
                 genericR,
                 "unpack and transform if not null, or default value\n`x unpack: [it toString] or: \"no value\"`"
+            ),
+
+            createKeyword(
+                "unpackOrMsg",
+                listOf(
+                    KeywordArg(
+                        "orMsg",
+                        stringType
+                    ),
+                ),
+                realTypeOrNothing,
+                "unpack or exit program with message"
             ),
 //            createKeyword(KeywordArg("unpackOrDo", realTypeOrNothing), realTypeOrNothing)
 //                .emitKw("$0 ?: $1"),

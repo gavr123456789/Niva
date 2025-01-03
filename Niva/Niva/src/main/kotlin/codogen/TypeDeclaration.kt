@@ -217,17 +217,19 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     /// Override toString
     if (enumRoot == null) {
         append("\toverride fun toString(): String {\n")
-        append("\t\treturn \"", typeName)
+        append("\t\treturn \"\"\"", typeName)
 
         if (fields.isNotEmpty()) {
             append(" ")
         }
 
-        val toStringFields = fields.joinToString(" ") {
-            it.name + ": " + "$" + it.name
-        }
+        val toStringFields = if (fields.count() <= 2)
+            fields.joinToString(" ") { it.name + ": " + "$" + it.name }
+        else
+            "\n" + fields.joinToString("\n") { "\t" + it.name + ": " + "$" + it.name }
 
-        append(toStringFields, "\"")
+
+        append(toStringFields, "\"\"\"")
         // for static methods like constructor
         append(
             """

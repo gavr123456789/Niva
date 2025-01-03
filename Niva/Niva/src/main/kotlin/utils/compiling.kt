@@ -442,8 +442,9 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val nivaStd = """
         // STD
         $jvmSpecific
-
+        
         fun throwWithMessage(message: String): Nothing {
+            //@ core.niva:::0
             throw kotlin.Exception(message)
         }
         
@@ -553,8 +554,13 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         inline fun Boolean.isTrue() = this
         
         fun <T> T?.unpackOrPANIC(): T {
+            //@ core.niva:::0
             return this!!
-        } 
+        }
+        fun <T> T?.unpackOrMsg(msg: String): T {
+            //@ core.niva:::0
+            return this ?: throw kotlin.Exception(msg)
+        }
         
         // because default iterator on map from kotlin needs unpacking Map.Entry with ()
         inline fun <K, V> Map<out K, V>.forEach(action: (x: K, y: V) -> Unit): Unit {

@@ -57,7 +57,6 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     // refactor to function and call it recursive for binary arguments
     this.messages.forEachIndexed { i, it ->
         var newInvisibleArgs: List<String>? = null
-
         var isThereEmitPragma = false
         // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
@@ -251,12 +250,17 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                     map[(i + 1).toString()] = it.keywordArg.generateExpression()
                 }
             }
+            val receiver = msg.receiver
             val receiverCode = if (msg.isCascade) "cascade_receiver"
-            else when (msg.receiver) {
+            else when (receiver) {
                 is Message -> {
-                    if (msg.receiver.isPiped) msg.receiver.generateExpression()
-                    else if (msg.receiver is Message) {
-                        msg.receiver.generateExpression()
+                    if (receiver.isPiped) msg.receiver.generateExpression()
+                    else if (receiver.receiver is Message) {
+                        // (1 inc) inc
+                        // (1 inc) is receiver
+                        // first inc already generated, so we dont need to do a copy of receivre
+//                        receiver.generateExpression()
+                        ""
                     }
                     else "" // if there are messages already, then do not generate duplicates
                 }
