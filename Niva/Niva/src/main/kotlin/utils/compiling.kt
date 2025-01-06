@@ -552,6 +552,16 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 
         inline fun Boolean.isFalse() = !this
         inline fun Boolean.isTrue() = this
+        inline fun Throwable.`throw`(): Nothing = throw this
+
+//        typealias CodeBlock<T> = () -> T
+//        inline fun <T>CodeBlock<T>.ifError(lambda: (Throwable) -> T): T {
+//            return try {
+//                this()
+//            } catch (it: Throwable) {
+//                lambda(it)
+//            }
+//        }
         
         fun <T> T?.unpackOrPANIC(): T {
             //@ core.niva:::0

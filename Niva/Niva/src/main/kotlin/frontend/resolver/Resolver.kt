@@ -1257,10 +1257,6 @@ class Resolver(
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
             val test = defaultTypes[InternalTypes.Test]!!
 
-
-//            val nullType = defaultTypes[InternalTypes.Null]!!
-//            val compiler = defaultTypes[InternalTypes.Compiler]!!
-
             val numProtocol = createIntProtocols(
                 intType = intType,
                 stringType = stringType,
@@ -1288,7 +1284,6 @@ class Resolver(
                 floatType = floatType,
             ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) })
 
-
             doubleType.protocols.putAll(createFloatProtocols(
                 intType = intType,
                 stringType = stringType,
@@ -1296,6 +1291,7 @@ class Resolver(
                 boolType = boolType,
                 floatType = doubleType,
             ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) })
+
 
             stringType.protocols.putAll(
                 createStringProtocols(
@@ -1438,6 +1434,39 @@ class Resolver(
             typeDB.addUserLike(type.name, type)
             corePackage.types[type.name] = type
         }
+        // CodeBlock, needed for whileTrue and ifError
+        // typealias CodeBlock<T> = () -> T
+//        val codeBlockTType = Type.Lambda(
+//            mutableListOf(), // KeywordArg("do", intType)
+//            genericType,
+//        ).also { it.isAlias = true }
+//
+//        val errorProtocol =  Protocol(
+//            name = "errorProtocol",
+//            unaryMsgs = mutableMapOf(
+//                createUnary("count", intType)),
+//            keywordMsgs = mutableMapOf(
+//                createKeyword(
+//                    "ifError",
+//                    listOf(
+//                        KeywordArg(
+//                            "ifError",
+//                            Type.Lambda(
+//                                mutableListOf(
+//                                    KeywordArg("it", intType), // ERROR TYPE
+//                                ),
+//                                unitType
+//                            )
+//                        )
+//                    ),
+//                    unitType,
+//                    "Catch errors"
+//                )
+//            )
+//        )
+//        codeBlockTType.protocols.put("errorProtocol", errorProtocol)
+//        typeDB.lambdaTypes["CodeBlock"] = codeBlockTType
+
 
         // Sequence
         val sequenceType = Type.UserType(

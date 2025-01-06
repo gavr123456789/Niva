@@ -7,13 +7,12 @@ import main.frontend.parser.types.ast.*
 import main.utils.appendnl
 import main.utils.isGeneric
 
-val kotlinKeywords = arrayOf( "if", "else", "val") // "fun", "val", "var", "class"
 
-fun String.ifKtKeywordAddBackTicks(): String {
-    return if (kotlinKeywords.contains(this)) {
-         "`$this`"
-    } else this
-}
+fun String.ifKtKeywordAddBackTicks(): String =
+    when (this) {
+        "do", "val", "var", "class", "in", "for", "throw" -> "`$this`"
+        else -> this
+    }
 
 val operators = hashMapOf(
     "+" to "plus",

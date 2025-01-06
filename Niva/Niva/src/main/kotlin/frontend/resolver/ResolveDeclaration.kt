@@ -172,16 +172,55 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     val gettersArg = msg.args.find { it.name == "getters" }
                     if (gettersArg != null) {
                         if (gettersArg.keywordArg !is CodeBlock)
-                            gettersArg.keywordArg.token.compileError("Getter argument must be a code block with type and method declarations")
+                            gettersArg.keywordArg.token.compileError("getters argument must be a code block with kw sends(they will become setters and getters on java side)")
                         val gettersDeclarations = gettersArg.keywordArg.statements
-                        gettersDeclarations.forEach { getter ->
-                            if (getter !is MessageDeclarationUnary) {
-                                getter.token.compileError("Unary declaration expected inside getters block")
-                            } else {
-                                resolveMessageDeclaration(getter, false, mutableMapOf())
-                            }
-                            addNewAnyMessage(getter, isGetter = true)
+                        gettersDeclarations.forEach { field ->
+                            when (field) {
+                                is MessageSendKeyword -> {
+                                    val kw = field.messages.first() as KeywordMsg
+                                    val receiver = field.receiver
+                                    if (receiver !is IdentifierExpr) {
+                                        field.token.compileError("receiver must be type")
+                                    }
+                                    kw.args.forEach {
+                                        val forTypeAST = TypeAST.UserType(receiver.name, token = receiver.token)
+                                        val forTypeReal = forTypeAST.toType(typeDB, typeTable)
 
+                                        val typeAstFromArg =
+                                            TypeAST.UserType(it.keywordArg.token.lexeme, token = it.keywordArg.token)
+                                        val realTypeArg = typeAstFromArg.toType(typeDB, typeTable)
+
+                                        // add getter and setter for each
+                                        val msgDeclGetter = MessageDeclarationUnary(
+                                            name = it.name,
+                                            forType = forTypeAST,
+                                            token = field.token,
+                                            isSingleExpression = false,
+                                            body = emptyList(),
+                                            returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
+                                            isInline = false,
+                                            isSuspend = false,
+                                        )
+
+                                        msgDeclGetter.forType = forTypeReal
+                                        msgDeclGetter.returnType = realTypeArg
+
+                                        addNewAnyMessage(msgDeclGetter, isGetter = true)
+
+                                        // lsp
+                                        val emptyScope: MutableMap<String, Type> = mutableMapOf()
+
+                                        onEachStatement?.invoke( // Bind getters
+                                            msgDeclGetter,
+                                            emptyScope,
+                                            emptyScope,
+                                            msgDeclGetter.token.file
+                                        )
+                                    }
+                                }
+
+                                else -> field.token.compileError("Use keyword msg send with fields, that fields will become getters and setters (${WHITE}Person name: String -> setName::String + getName -> String$RESET)")
+                            }
                         }
                     }
 

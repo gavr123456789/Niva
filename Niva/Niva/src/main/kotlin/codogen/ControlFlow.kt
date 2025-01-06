@@ -70,9 +70,9 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     if (elseBranch != null) {
         append("    else -> {")
         val elseBranchCode = codegenKt(elseBranch, 0)
-        append(elseBranchCode)
-        append("    }")
-        append("}\n")
+        appendLine(elseBranchCode)
+        appendLine("    }")
+        appendLine("}")
     } else {
         // if this is switch on errors, we need fix kotlins exhaustive, because its possible to check it only on niva side
         // (errors are effects, and set of them exist in current scope)
