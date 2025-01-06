@@ -3,12 +3,6 @@ package main.codogen
 import frontend.resolver.Type
 import main.frontend.parser.types.ast.*
 
-fun replaceKeywords(str: String) =
-    when (str) {
-        "do", "val", "var", "class", "in", "for" -> "`$str`"
-        else -> str
-    }
-
 fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks: Boolean = false, isArgument: Boolean = false): String = buildString {
 
     if (isInfoRepl) {
@@ -40,9 +34,9 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
                 generateMessageCall(withNullChecks)
             is IdentifierExpr ->
                 if (names.count() == 1) {
-                    replaceKeywords(replaceLiteral ?: name)
+                    (replaceLiteral ?: name).ifKtKeywordAddBackTicks()
                 } else
-                    names.dropLast(1).joinToString(".") + "." + replaceKeywords(replaceLiteral ?: name)
+                    names.dropLast(1).joinToString(".") + "." + (replaceLiteral ?: name).ifKtKeywordAddBackTicks()
 
 
             is LiteralExpression.FalseExpr -> "false"

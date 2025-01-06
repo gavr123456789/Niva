@@ -322,7 +322,7 @@ sealed class Type(
             it.isAlias = isAlias
         }
 
-    fun addErrors(errors2: Set<Union>): Type {
+    fun copyAndAddErrors(errors2: Set<Union>): Type {
         // copy current type, and add errors to it
 
         assert(this.errors == null)
@@ -862,7 +862,7 @@ fun TypeAST.toType(
                                 }
                             }
                             // 2) append it to type
-                            val typeWithErrors = it.addErrors(realTypes.toSet())
+                            val typeWithErrors = it.copyAndAddErrors(realTypes.toSet())
                             typeWithErrors
                         } else
                             it

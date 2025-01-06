@@ -201,6 +201,11 @@ fun Pair<String, KeywordMsgMetaData>.emitKw(str: String): Pair<String, KeywordMs
     return this
 }
 
+fun Pair<String, UnaryMsgMetaData>.renameUnary(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createRenameAtttribure(str))
+    return this
+}
+
 fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createRenameAtttribure(str))
     return this
@@ -311,7 +316,7 @@ fun createStringProtocols(
             createKeyword(KeywordArg("substringBeforeLast", stringType), stringType),
 
             createKeyword(
-                "fromTo",
+                "substringFromTo",
                 listOf(KeywordArg("substringFrom", intType), KeywordArg("to", intType)),
                 stringType,
                 "see substring:"
@@ -618,7 +623,7 @@ fun createExceptionForCustomErrors(
     val protocol = Protocol(
         name = "core",
         unaryMsgs = mutableMapOf(
-            createUnary("throw", nothingType, ERROR_THROW_COMMENT).emit("(throw $0)").also { it.second.addError(selfType) }
+            createUnary("throw", nothingType, ERROR_THROW_COMMENT).also { it.second.addError(selfType) } // .rename("throw")
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -704,20 +709,12 @@ fun createListProtocols(
     sequenceType: Type.UserType,
     pairType: Type.UserType
 ): MutableMap<String, Protocol> {
-
-    mutableListOf(1) + 1
     val immutableList = Type.UserType(
         name = "List",
         fields = listType.fields,
         typeArgumentList = listOf(Type.UnknownGenericType("T")),
         pkg = "core",
         protocols = listType.protocols,
-//            .toMutableMap().also {
-//            it.remove("add")
-//            it.remove("addAll")
-//            it.remove("remove")
-//            it.remove("removeAt")
-//        },
         typeDeclaration = null
     )
     val listOfLists = Type.UserType(

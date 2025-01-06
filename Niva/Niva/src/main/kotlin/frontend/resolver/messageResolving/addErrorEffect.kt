@@ -37,7 +37,7 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata, returnType: Type, statem
             if(statement.selectorName == "throwWithMessage" && errors == returnType.errors)
                 returnType
             else
-                returnType.addErrors(errors)
+                returnType.copyAndAddErrors(errors)
 
         return returnTypeWithErrors
     }

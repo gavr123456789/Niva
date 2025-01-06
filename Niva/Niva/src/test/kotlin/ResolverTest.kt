@@ -2641,6 +2641,24 @@ class ResolverTest {
         assert(x.count() == 2)
     }
 
+
+    @Test
+    fun noErrorInKeyword(){
+        val source = """
+            type Sas
+            Sas kek::Int -> Unit!Error = [
+              Error throwWithMessage: "qwf"
+              1 echo
+            ]
+            
+            Sas new kek: 2
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+        val q = x[2] as MessageSendKeyword
+        assert((q.type)!!.errors!!.count() == 1)
+    }
+
 //    @Test
 //    fun nullableFromOrValue(){
 //        val source = """

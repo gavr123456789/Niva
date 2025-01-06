@@ -58,7 +58,6 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
     this.messages.forEachIndexed { i, it ->
         var newInvisibleArgs: List<String>? = null
         var isThereEmitPragma = false
-        // TODO replace pragmas with unions and switch on them
         if (it.pragmas.isNotEmpty()) {
             val (isThereEmit, ctArgs) = evalPragmas(it)
             isThereEmitPragma = isThereEmit
@@ -254,13 +253,19 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             val receiverCode = if (msg.isCascade) "cascade_receiver"
             else when (receiver) {
                 is Message -> {
-                    if (receiver.isPiped) msg.receiver.generateExpression()
+                    if (receiver.isPiped) {
+                        val res = msg.receiver.generateExpression()
+                        res
+                    }
                     else if (receiver.receiver is Message) {
                         // (1 inc) inc
                         // (1 inc) is receiver
                         // first inc already generated, so we dont need to do a copy of receivre
 //                        receiver.generateExpression()
                         ""
+                    }
+                    else if (receiver.receiver is MessageSend) {
+                        msg.receiver.generateExpression()
                     }
                     else "" // if there are messages already, then do not generate duplicates
                 }
@@ -270,8 +275,8 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             }
 
             map["0"] = receiverCode
-
-            msg.selectorName = replacePatternsWithValues(value.toString(), map)
+            val result =  replacePatternsWithValues(value.toString(), map)
+            msg.selectorName = result
         }
 
         else -> msg.token.compileError("String literal expected for emit pragma")

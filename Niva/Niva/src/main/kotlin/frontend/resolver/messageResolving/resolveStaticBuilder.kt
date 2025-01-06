@@ -62,7 +62,6 @@ fun Resolver.resolveStaticBuilder(
 
         findBuilderInManyPkg(currentProject.packages.values.toList(), statement.name, statement.token)
     } else {
-        //pkg.types[statement.receiver.type!!.name]
         val proto = statement.receiverOfBuilder.type!!.protocols.values.find {
             it.builders.contains(statement.name)
         }
@@ -109,7 +108,7 @@ fun Resolver.resolveStaticBuilder(
         statement,
         statement.args,
         previousAndCurrentScope,
-        true,
+        false,
         builderFromDB.argTypes.map { it.type }
     )
 

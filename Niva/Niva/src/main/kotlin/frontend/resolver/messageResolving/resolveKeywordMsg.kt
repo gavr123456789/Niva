@@ -453,8 +453,7 @@ fun Resolver.resolveKeywordMsg(
                     realType = returnType2
                 ) else returnType2
 
-            statement.type = returnType
-            addErrorEffect(msgTypeFromDB, returnType, statement)
+            statement.type = addErrorEffect(msgTypeFromDB, returnType, statement)
         }
 
         KeywordLikeType.ForCodeBlock -> {
