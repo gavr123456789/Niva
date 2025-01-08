@@ -1,1 +1,4 @@
-"abcd" slice: 0..<3 |> echo
+Int from::Int = 0
+((1 from: 2) from: 3) from: 4 |> + 23 |> echo
+1 from: 2 |> from: 3 |> from: 4 |> + 54 |> echo
+//1 inc |> inc |> inc

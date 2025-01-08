@@ -184,7 +184,6 @@ fun Parser.unaryOrBinary(
         }
     }
 
-
     val cascadedMsgs = mutableListOf<Message>()
     // Cascade operator
     while (parseCascade && matchAfterSkip(TokenType.Cascade)) {
@@ -329,6 +328,56 @@ fun Parser.messageSend(
     return result
 }
 
+fun replacePipesWithBrackets(messages: MutableList<Message>): MessageSend {
+    assert(messages.isNotEmpty())
+    var newReceiver: ExpressionInBrackets? = null
+    var result: MessageSend? = null
+    messages.forEach { msg ->
+        when (msg) {
+            is KeywordMsg -> {
+                if (newReceiver == null) {
+                    newReceiver = ExpressionInBrackets(
+                        MessageSendKeyword(msg.receiver, listOf(msg), msg.type, msg.token),
+                        msg.type,
+                        msg.token
+                    )
+                } else {
+                    result = MessageSendKeyword(newReceiver, listOf(msg), msg.type, newReceiver.token)
+                    msg.receiver = newReceiver
+                    newReceiver = ExpressionInBrackets(result, result.type, result.token)
+                }
+            }
+            is BinaryMsg -> {
+                if (newReceiver == null) {
+                    newReceiver = ExpressionInBrackets(
+                        MessageSendBinary(msg.receiver, listOf(msg), msg.type, msg.token),
+                        msg.type,
+                        msg.token
+                    )
+                } else {
+                    result = MessageSendBinary(newReceiver, listOf(msg), msg.type, newReceiver.token)
+                    msg.receiver = newReceiver
+                    newReceiver = ExpressionInBrackets(result, result.type, result.token)
+                }
+            }
+            is UnaryMsg -> {
+                if (newReceiver == null) {
+                    newReceiver = ExpressionInBrackets(
+                        MessageSendUnary(msg.receiver, mutableListOf(msg), msg.type, msg.token),
+                        msg.type,
+                        msg.token
+                    )
+                } else {
+                    result = MessageSendUnary(newReceiver, mutableListOf(msg), msg.type, newReceiver.token)
+                    msg.receiver = newReceiver
+                    newReceiver = ExpressionInBrackets(result, result.type, result.token)
+                }
+            }
+            is StaticBuilder -> msg.token.compileError("Pipes with static builder not allowed yet")
+        }
+    }
+    return result!!
+}
 
 fun Parser.keyword(
     customReceiver: Receiver? = null,
@@ -402,6 +451,11 @@ fun Parser.keyword(
         }
 
     }
+    val isTherePipes = messages.find { it.isPiped } != null
+    if (isTherePipes) {
+        return replacePipesWithBrackets(messages)
+    }
+
 
 
     return MessageSendKeyword(

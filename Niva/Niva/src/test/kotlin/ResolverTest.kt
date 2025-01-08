@@ -2659,6 +2659,17 @@ class ResolverTest {
         assert((q.type)!!.errors!!.count() == 1)
     }
 
+    @Test
+    fun pipesAreNowBrackets(){
+        val source = """
+            Int from::Int = 0
+            ((1 from: 2) from: 3) from: 4
+            5 from: 6 |> from: 7 |> from: 8
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
+
 //    @Test
 //    fun nullableFromOrValue(){
 //        val source = """
