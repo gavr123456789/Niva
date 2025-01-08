@@ -861,8 +861,8 @@ class ParserTest {
         assert(ast.count() == 1)
         // all msgs except first must be in brackets, for correct codegen
         val q = (ast[0] as MessageSendKeyword).messages as List<KeywordMsg>
-        assert(q[1].isPiped)
-        assert(q[2].isPiped)
+        assert(q[0].receiver is ExpressionInBrackets) // now its not piped, just bracket expressions
+//        assert(q[1].isPiped)
     }
 
     @Test
@@ -1418,8 +1418,9 @@ class ParserTest {
 
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        val send = ast[0] as MessageSendKeyword
-        assert(send.messages.count() == 2)
+        val send = ast[0] as MessageSendUnary
+        assert(send.messages.count() == 1)
+        assert(send.messages[0].receiver is ExpressionInBrackets)
     }
 
     @Test
@@ -1624,9 +1625,9 @@ class ParserTest {
         val ast = getAstTest(source)
         assert(ast.count() == 1)
         val kw = ast[0] as MessageSendKeyword
-        val secondMsg = kw.messages[1] as KeywordMsg
-        val receiver = secondMsg.receiver
-        assert(receiver is KeywordMsg)
+        val splitMsg = kw.messages[0] as KeywordMsg
+        val receiver = splitMsg.receiver
+        assert(receiver is ExpressionInBrackets)
     }
 
     @Test
@@ -1712,10 +1713,9 @@ class ParserTest {
             assertTrue { last.receiver == first }
         }()
         val kw = {
-            val q = ast[1] as MessageSendKeyword
-            val second = q.messages[1] as UnaryMsg
-            val last = q.messages.last() as UnaryMsg
-            assertTrue { last.receiver == second }
+            val q = ast[1] as MessageSendUnary
+            assert(q.receiver is ExpressionInBrackets)
+            assert((q.receiver as ExpressionInBrackets).expr is MessageSendUnary)
         }()
     }
 
@@ -2462,6 +2462,18 @@ class ParserTest {
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 2)
+    }
+
+    @Test
+    fun pipesAreBracketsNow() {
+        val source = """
+            Int from::Int = 0
+            ((1 from: 2) from: 3) from: 4
+            1 from: 2 |> from: 3 |> from: 4
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 3)
     }
 
 

@@ -36,7 +36,7 @@ class ExpressionInBrackets(
     token: Token,
 ) : Receiver(type, token) {
     override fun toString(): String =
-        expr.toString()
+        "($expr)"
 
 }
 
