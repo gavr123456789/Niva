@@ -2476,6 +2476,19 @@ class ParserTest {
         assert(ast.count() == 3)
     }
 
+    @Test
+    fun pipesAreCommasNow() {
+        val source = """
+            Int from::Int = 0
+            ((1 from: 2) from: 3) from: 4
+            1 from: 2, from: 3, from: 4
+            1 from: 2 |> from: 3 |> from: 4
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 4)
+    }
+
 
 
 //    @Test

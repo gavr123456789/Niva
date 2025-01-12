@@ -128,7 +128,7 @@ fun Parser.unaryOrBinary(
     val pipedMsgs = mutableListOf<Message>()
     // x |> y
     // x must become a receiver for y
-    while (parsePipe && matchAfterSkip(TokenType.PipeOperator)) {
+    while (parsePipe && (matchAfterSkip(TokenType.PipeOperator) || matchAfterSkip(TokenType.Comma))) {
         wasPipe = true
         // 1 inc
         // |>       // matchAfterSkip skipped to this
@@ -208,7 +208,7 @@ fun Parser.unaryOrBinary(
                 cascadedMsgs.addAll(unary)
             }
         }
-        if (check(TokenType.PipeOperator)) {
+        if (check(TokenType.PipeOperator) || check(TokenType.Comma)) {
             peek().compileError("Don't use pipe with cascade operator, better create different variables")
         }
     }
@@ -393,9 +393,9 @@ fun Parser.keyword(
     val messages = mutableListOf<Message>(keyColonCycle())
 
     // checkForKeyword for `1 to: 2 |> kek ^ from: 4` situation
-    while (checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Cascade) || checkForKeyword()) {
+    while ((checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Comma)) || checkAfterSkip(TokenType.Cascade) || checkForKeyword()) {
         val tok = step() // |> or ;
-        val isPipe = tok.kind == TokenType.PipeOperator
+        val isPipe = tok.kind == TokenType.PipeOperator || tok.kind == TokenType.Comma
         val isCascade = tok.kind == TokenType.Cascade
         val isKeywordAfterUnary = tok.kind == TokenType.Identifier //
         if (isKeywordAfterUnary) step(-1) // we don't need to step on keyword beginning now, after checkForKeyword is added
