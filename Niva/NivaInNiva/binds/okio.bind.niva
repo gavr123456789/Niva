@@ -1,0 +1,74 @@
+Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
+
+Bind package: "okio"  imports: {"okio.Path.Companion.toPath" "okio.Path.*"}  content: [
+  type Path 
+    name: String 
+    parent: Path? 
+    root: Path? 
+    segments: List::String 
+    volumeLetter: Char?
+  
+  String toPath -> Path 
+  Path normalized -> Path
+  Path toString -> String
+  Path / x::String -> Path
+  Path == x::Path -> Boolean
+  Path != x::Path -> Boolean
+] 
+
+Bind package: "okio" content: [
+  type FileSystem
+  type FileMetadata 
+    isRegularFile: Boolean
+    isDirectory: Boolean
+    symlinkTarget: Path?
+    size: Int?
+    createdAtMillis: Int?
+    lastModifiedAtMillis: Int?
+    lastAccessedAtMillis: Int?
+
+
+  @emit: "okio.FileSystem.SYSTEM.read($1) { readUtf8() }"
+  constructor FileSystem read::Path -> String
+  @emit: "okio.FileSystem.SYSTEM.write($1) { writeUtf8($2) }"
+  constructor FileSystem write::Path content::String -> Unit
+
+  @emit: "okio.FileSystem.SYSTEM.metadata($1)"
+  constructor FileSystem metadata::Path -> FileMetadata
+ 
+  @emit: "okio.FileSystem.SYSTEM.exists($1)"
+  constructor FileSystem exists::Path -> Boolean
+  // list
+  @emit: "okio.FileSystem.SYSTEM.list($1)"
+  constructor FileSystem list::Path -> List::Path
+  // listRecursively
+  @emit: "okio.FileSystem.SYSTEM.listRecursively($1)"
+  constructor FileSystem listRecursively::Path -> List::Path
+
+  // delete
+  @emit: "okio.FileSystem.SYSTEM.delete($1)"
+  constructor FileSystem delete::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.deleteRecursively($1)"
+  constructor FileSystem deleteRecursively::Path -> Unit
+  
+  // fails if on of roots not exists
+  @emit: "okio.FileSystem.SYSTEM.createDirectory($1)"
+  constructor FileSystem createDirectory::Path -> Unit
+  // will create non-existent dirs
+  @emit: "okio.FileSystem.SYSTEM.createDirectories($1)"
+  constructor FileSystem createDirectories::Path -> Unit
+
+  // copy
+  @emit: "okio.FileSystem.SYSTEM.copy($1, $2)"
+  constructor FileSystem copyFrom::Path to::Path -> Unit
+
+  // atomicMove
+  @emit: "okio.FileSystem.SYSTEM.atomicMove($1, $2)"
+  constructor FileSystem moveFrom::Path to::Path -> Unit
+
+]
+
+
+Path renameTo::String = [
+  FileSystem moveFrom: this to: renameTo toPath
+]

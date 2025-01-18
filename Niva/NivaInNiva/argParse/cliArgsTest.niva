@@ -1,0 +1,14 @@
+Test cliArgs = [
+  args = {"run" "--verbose"} toList
+  result = ArgParser args: args
+  Assert that: (result option) equals: CompilerOption.Run
+  Assert that: (result verbose) equals: true
+]
+
+
+Test cliArgsHelp = [
+  args = {"--help"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Help
+]
+

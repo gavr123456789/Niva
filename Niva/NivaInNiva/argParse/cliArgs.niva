@@ -1,0 +1,71 @@
+type ArgParser 
+type ArgsParsed 
+  path: String? 
+  option: CompilerOption
+  // flags
+  verbose: Boolean
+  lsp: Boolean
+
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help verbose: false lsp: false
+
+/// prints help if its explicit
+/// if there a mistake in args, returns Help flag
+constructor ArgParser args::List::String -> ArgsParsed = [
+  help = """
+    Usage:
+      FILE — compile and run single file
+      run — compile and run project from "main" file
+      run FILE — compile and run project from root file
+      run FILE
+      build — compile only(creates jar binary in current folder)
+  """ trimIndent
+
+  args contains: "--help", ifTrue: [
+    ^ ArgsParsed help
+  ]
+
+  // separate flags from args
+  flags = {"--verbose" "--lsp"}
+  mut verbose = false
+  mut lsp = false
+  filteredArgs = args filter: [
+    it == "--verbose" ifTrue: [verbose <- true]
+    it == "--lsp" ifTrue: [lsp <- true]
+    (verbose || lsp) not
+  ]
+  
+//> [run, --verbose]
+  > args
+//> [run]
+  > filteredArgs
+//> false
+  > lsp 
+//> true
+  > verbose
+
+
+  getFirstArg = [
+    arg = args at: 0
+    | arg
+    | "run" => CompilerOption.Run
+    | "build" => CompilerOption.Build
+    | "info" => CompilerOption.Info
+    |=> [
+      "$arg arg is unknown" echo
+      CompilerOption.Help
+    ]
+  ]
+
+  ^ | args count
+    | 1 => 
+      ArgsParsed path: null option: getFirstArg do verbose: verbose lsp: lsp
+    | 2 => [
+      arg1 = getFirstArg do
+      arg2 = args at: 1
+      ArgsParsed path: arg2 option: arg1 verbose: verbose lsp: lsp
+    ]
+    |=> ArgsParsed help
+]
+
+enum CompilerOption = Run | Build | Daemon | RunTests | Info | Help
+enum AdditionalCompilerOption = Verbose | LSP

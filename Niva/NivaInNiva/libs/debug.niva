@@ -1,0 +1,6 @@
+/// `x debug` will print "x = 42"
+T debug -> T = [
+  receiver = Compiler getName: 0
+  "$receiver = $this" echo
+  ^ this
+]
