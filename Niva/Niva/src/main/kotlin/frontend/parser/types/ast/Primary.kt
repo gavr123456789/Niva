@@ -62,12 +62,13 @@ class IdentifierExpr(
 //        TypeAST.UserType(name = this.name, names = this.names, token = this.token)
 }
 
-sealed class CollectionAst(val initElements: List<Receiver>, type: Type?, token: Token) : Receiver(type, token)
+sealed class CollectionAst(val initElements: List<Receiver>, type: Type?, token: Token, val isMutable: Boolean) : Receiver(type, token)
 class ListCollection(
     initElements: List<Receiver>,
     type: Type?,
     token: Token,
-) : CollectionAst(initElements, type, token) {
+    isMutable: Boolean
+) : CollectionAst(initElements, type, token, isMutable) {
     override fun toString(): String {
         return "[${initElements.joinToString(", ")}]"
     }
@@ -77,7 +78,8 @@ class SetCollection(
     initElements: List<Receiver>,
     type: Type?,
     token: Token,
-) : CollectionAst(initElements, type, token) {
+    isMutable: Boolean
+) : CollectionAst(initElements, type, token, isMutable) {
     override fun toString(): String {
         return "#(${initElements.joinToString(", ")})"
     }
@@ -87,8 +89,9 @@ class MapCollection(
     val initElements: List<Pair<Receiver, Receiver>>,
     type: Type?,
     token: Token,
+    val isMutable: Boolean
 ) : Receiver(type, token) {
     override fun toString(): String {
-        return "#{${initElements.joinToString(", ") {"${it.first}: ${it.second}"}}"
+        return "#{${initElements.joinToString(", ") {"${it.first}: ${it.second}"}}}"
     }
 }

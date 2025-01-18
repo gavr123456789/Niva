@@ -98,7 +98,11 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 }
 
 fun ListCollection.generateList() = buildString {
-    append("mutableListOf")
+    if (!isMutable)
+        append("listOf")
+    else
+        append("mutableListOf")
+
     val type = this@generateList.type
     if (type is Type.UserLike && type.typeArgumentList.find { it.name.isGeneric() } == null ) {
         append("<")
@@ -117,7 +121,10 @@ fun ListCollection.generateList() = buildString {
 }
 
 fun MapCollection.generateMap() = buildString {
-    append("mutableMapOf(")
+    if (!isMutable)
+        append("mapOf(")
+    else
+        append("mutableMapOf(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {
         append(it.first.generateExpression(), " to ", it.second.generateExpression())
@@ -127,7 +134,10 @@ fun MapCollection.generateMap() = buildString {
 }
 
 fun SetCollection.generateSet() = buildString {
-    append("mutableSetOf(")
+    if (!isMutable)
+        append("setOf(")
+    else
+        append("mutableSetOf(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())

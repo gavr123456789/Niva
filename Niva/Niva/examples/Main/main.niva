@@ -1,4 +1,6 @@
-Int from::Int = 0
-((1 from: 2) from: 3) from: 4 |> + 23 |> echo
-1 from: 2 |> from: 3 |> from: 4 |> + 54 |> echo
-//1 inc |> inc |> inc
+Int x::MutableList::Int = x echo
+
+1 x: {}m
+x::MutableList::Int = {}m
+//y = #{1 2 3 4}
+//z = #(1 2 3)

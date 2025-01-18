@@ -2489,6 +2489,21 @@ class ParserTest {
         assert(ast.count() == 4)
     }
 
+    @Test
+    fun collectionsAstHasMutableField() {
+        val source = """
+            {1 2 3} m
+            #{0 1 2 3} m
+            #(1 2 3) m
+            
+            {1 2 3} 
+            #{0 1 2 3} 
+            #(1 2 3) 
+            
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 6)
+    }
 
 
 //    @Test

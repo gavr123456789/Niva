@@ -66,11 +66,6 @@ fun Resolver.resolveCollection(
         val type = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
     }
-    // empty collection assigned to keyword argument
-//    else if (rootStatement is KeywordMsg && currentArgumentNumber != -1) {
-//        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement)
-//
-//    }
     else {
         fillCollectionType(listOf(Type.UnknownGenericType("T")), statement, typeName)
     }
@@ -85,7 +80,9 @@ fun Resolver.resolveSet(
     statement: SetCollection,
     previousAndCurrentScope: MutableMap<String, Type>,
 ) {
-    resolveCollection(statement, "Set", previousAndCurrentScope)
+    val collectionName = if(!statement.isMutable) "Set" else "MutableSet"
+
+    resolveCollection(statement, collectionName, previousAndCurrentScope)
 
     for (i in 0 until statement.initElements.count() - 1) {
         for (j in i + 1 until statement.initElements.count()) {
@@ -115,9 +112,11 @@ fun Resolver.resolveMap(
         statement.type = type
         return
     }
-
+    val collectionName = if(!statement.isMutable) "Map" else "MutableMap"
     if (statement.initElements.isEmpty()) {
-        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "Map")
+
+
+        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
         return
     }
     val (key, value) = statement.initElements[0]
@@ -133,7 +132,7 @@ fun Resolver.resolveMap(
     val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${WHITE}${value.str}")
 
     val mapTypeFromDb =
-        this.projects["common"]!!.packages["core"]!!.types["Map"] as Type.UserType
+        this.projects["common"]!!.packages["core"]!!.types[collectionName] as Type.UserType
 
     val unifiedValueType = if (statement.initElements.count() > 1) {
         val type1 = statement.initElements[0].second.type!!
