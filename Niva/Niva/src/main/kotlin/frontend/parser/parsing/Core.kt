@@ -59,7 +59,7 @@ fun Parser.error(message: String): Nothing {
 //    if (realToken.kind == TokenType.EndOfFile) {
 //        realToken = peek(-1)
 //    }
-    throw Exception(message)
+    peek().compileError(message)
 }
 
 fun Parser.check(kind: TokenType, distance: Int = 0) =

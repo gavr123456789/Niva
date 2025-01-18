@@ -171,7 +171,7 @@ fun GeneratorKt.regenerateGradleForAmper(
 ) {
     val newGradle = buildString {
         append(GRADLE_IMPORTS)
-        if (compilationTarget == CompilationTarget.jvm) {
+        if (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose) {
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
 //        append(GRADLE_FOR_AMPER_TEMPLATE(File(".").absolutePath, runCommandName = runCommandName))

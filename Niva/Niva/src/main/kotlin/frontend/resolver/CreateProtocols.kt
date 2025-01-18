@@ -702,25 +702,20 @@ fun createListProtocols(
     stringType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
-    listType: Type.UserType,
+    currentType: Type.UserType,
     listTypeOfDifferentGeneric: Type.UserType,
     itType: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
     sequenceType: Type.UserType,
-    pairType: Type.UserType
-): MutableMap<String, Protocol> {
-    val immutableList = Type.UserType(
-        name = "List",
-        fields = listType.fields,
-        typeArgumentList = listOf(Type.UnknownGenericType("T")),
-        pkg = "core",
-        protocols = listType.protocols,
-        typeDeclaration = null
-    )
+    pairType: Type.UserType,
+    listType: Type.UserType,
+    mutListType: Type.UserType,
+
+    ): MutableMap<String, Protocol> {
     val listOfLists = Type.UserType(
         name = "List",
         fields = listType.fields,
-        typeArgumentList = listOf(immutableList),
+        typeArgumentList = listOf(listType),
         pkg = "core",
         protocols = listType.protocols,
         typeDeclaration = null
@@ -746,25 +741,26 @@ fun createListProtocols(
             createUnary("firstOrNull", itTypeNullable),
             createUnary("lastOrNull", itTypeNullable),
 
-            createUnary("toList", immutableList, "Immutable list, elemets will be shadow copied"),
-            createUnary("toMutableList", listType, "Mutable list, elemets will be shadow copied"),
+            createUnary("toList", listType, "Immutable list, elements will be shadow copied"),
+            createUnary("toMutableList", mutListType, "Mutable list, elements will be shadow copied"),
+            createUnary("m", mutListType, "Mutable list, elements will be shadow copied").renameUnary("toMutableList"),
 
             createUnary("shuffled", listType, "Like in Solitaire"),
 
             createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
-            createUnary("reversed", immutableList),
+            createUnary("reversed", listType),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", listType, immutableList, "new list and all elements of the give"),
-            createBinary("-", listType, immutableList, "new list except the elements contained in the give"),
+            createBinary("+", currentType, listType, "new list and all elements of the give"),
+            createBinary("-", currentType, listType, "new list except the elements contained in the give"),
         ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
             // mut
-            createOnEach(listType, itType, unitType),
+            createOnEach(currentType, itType, unitType),
 
 
             createForEachKeywordIndexed(intType, itType, unitType, """
@@ -774,15 +770,17 @@ fun createListProtocols(
             """.trimIndent()),
             createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),
             createMapKeywordIndexed(intType, itType, differentGenericType, listTypeOfDifferentGeneric),
-            createFilterKeyword(itType, boolType, listType),
+            createFilterKeyword(itType, boolType, currentType),
+            createKeyword(KeywordArg("plus", itType), listType, "Returns a new list with given element"),
+            createKeyword(KeywordArg("minus", itType), listType, "Returns a new list without given element"),
 
             createKeyword(KeywordArg("at", intType), itType, "like list[x] in C, can panic").rename("get"),
-            createKeyword(KeywordArg("plusElement", itType), listType, "new collection with element added"),
+            createKeyword(KeywordArg("plusElement", itType), currentType, "new collection with element added"),
             createKeyword(KeywordArg("atOrNull", intType), itTypeNullable, "safe version of at").rename("getOrNull"),
 
-            createKeyword(KeywordArg("contains", itType), unitType, "{1 2 3} contains: 1 is true"),
-            createKeyword(KeywordArg("drop", intType), immutableList, "new list except first n elements"),
-            createKeyword(KeywordArg("dropLast", intType), immutableList, "new list except last n elements."),
+            createKeyword(KeywordArg("contains", itType), boolType, "{1 2 3} contains: 1 is true"),
+            createKeyword(KeywordArg("drop", intType), listType, "new list except first n elements"),
+            createKeyword(KeywordArg("dropLast", intType), listType, "new list except last n elements."),
             createKeyword(KeywordArg("chunked", intType), listOfLists, "Splits this collection into a list of lists each not exceeding the given size"),
             createKeyword(KeywordArg("joinWith", stringType), stringType, """{1 2 3} joinWith: ", " is 1, 2, 3""").rename("joinToString"),
             createKeyword(
@@ -834,7 +832,7 @@ fun createListProtocols(
                         differentGenericType
                     )
                 ),
-                immutableList,
+                listType,
                 """
                     For sorting collection of objects by one of their field
                     ```Scala
@@ -930,7 +928,7 @@ fun createListProtocols(
             createKeyword(
                 "viewFromTo",
                 listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)),
-                listType,
+                currentType,
                 "Returns a view of the portion of this list between the specified fromIndex (inclusive) and toIndex (exclusive). The returned list is backed by this list, so non-structural changes in the returned list are reflected in this list, and vice-versa."
             ).rename("subList"),
 
@@ -946,7 +944,7 @@ fun createListProtocols(
         val mutKwMsgs = mutableMapOf(
             createKeyword(KeywordArg("add", itType), boolType),
             createKeyword(KeywordArg("addFirst", itType), unitType),
-            createKeyword(KeywordArg("addAll", listType), boolType, "Add all items from other collection"),
+            createKeyword(KeywordArg("addAll", currentType), boolType, "Add all items from other collection"),
             createKeyword(KeywordArg("removeAt", intType), unitType, "Remove element by index"),
             createKeyword(KeywordArg("remove", itType), unitType, "Remove element"),
             createKeyword(
@@ -1015,11 +1013,12 @@ fun createSetProtocols(
     intType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
-    setType: Type.UserType,
+    mutableSetType: Type.UserType,
     setTypeOfDifferentGeneric: Type.UserType,
     itType: Type.UnknownGenericType,
     differentGenericType: Type.UnknownGenericType,
-    listType: Type.UserType
+    listType: Type.UserType,
+    setType: Type.UserType,
 ): MutableMap<String, Protocol> {
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
@@ -1032,37 +1031,42 @@ fun createSetProtocols(
             createUnary("toList", listType),
             createUnary("toMutableList", listType),
 
+            createUnary("toMutableSet", mutableSetType),
+            createUnary("m", mutableSetType).renameUnary("toMutableSet"),
+            createUnary("toSet", setType),
+
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("==", setType, boolType),
-            createBinary("!=", setType, boolType),
-            createBinary("+", setType, setType),
-            createBinary("+", itType, setType),
-            createBinary("-", setType, setType),
-            createBinary("-", itType, setType),
+            createBinary("==", mutableSetType, boolType),
+            createBinary("!=", mutableSetType, boolType),
+            createBinary("+", mutableSetType, mutableSetType),
+            createBinary("+", itType, mutableSetType),
+            createBinary("-", mutableSetType, mutableSetType),
+            createBinary("-", itType, mutableSetType),
 
             ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
-            createOnEach(setType, itType, unitType),
+            createOnEach(mutableSetType, itType, unitType),
 
             createMapKeyword(itType, differentGenericType, setTypeOfDifferentGeneric),
             createMapKeywordIndexed(intType, itType, differentGenericType, setTypeOfDifferentGeneric),
 
 
-            createFilterKeyword(itType, boolType, setType),
+            createFilterKeyword(itType, boolType, mutableSetType),
 
-
-            createKeyword(KeywordArg("intersect", setType), setType),
+            createKeyword(KeywordArg("plus", itType), setType, "Returns a new set with given element"),
+            createKeyword(KeywordArg("minus", itType), setType, "Returns a new set without given element"),
+            createKeyword(KeywordArg("intersect", mutableSetType), mutableSetType),
             createKeyword(KeywordArg("contains", itType), boolType),
-            createKeyword(KeywordArg("containsAll", setType), boolType, "Checks if all elements in the specified collection are contained in this set"),
+            createKeyword(KeywordArg("containsAll", mutableSetType), boolType, "Checks if all elements in the specified collection are contained in this set"),
         )
     )
 
     if (isMutable) {
         val add = createKeyword(KeywordArg("add", itType), unitType)
         val remove = createKeyword(KeywordArg("remove", itType), boolType)
-        val addAll = createKeyword(KeywordArg("addAll", setType), boolType)
+        val addAll = createKeyword(KeywordArg("addAll", mutableSetType), boolType)
 
         collectionProtocol.keywordMsgs[add.first] = add.second
         collectionProtocol.keywordMsgs[remove.first] = remove.second
@@ -1207,13 +1211,14 @@ fun createMapProtocols(
     intType: Type.InternalType,
     unitType: Type.InternalType,
     boolType: Type.InternalType,
-    mapType: Type.UserType,
+    mutableMapType: Type.UserType,
     keyType: Type.UnknownGenericType,
     valueType: Type.UnknownGenericType,
     setType: Type.UserType,
     setTypeOfDifferentGeneric: Type.UserType,
-): MutableMap<String, Protocol> {
+    mapType: Type.UserType,
 
+    ): MutableMap<String, Protocol> {
 
     val result = mutableMapOf<String, Protocol>()
     val collectionProtocol = Protocol(
@@ -1225,11 +1230,13 @@ fun createMapProtocols(
             createUnary("echo", unitType),
             createUnary("keys", setType).emit("$0.keys"),
             createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
-
+            createUnary("toMap", mapType, "Mutable map, elements will be shadow copied"),
+            createUnary("toMutableMap", mutableMapType, "Mutable map, elements will be shadow copied"),
+            createUnary("m", mutableMapType, "Mutable map, elements will be shadow copied").renameUnary("toMutableMap")
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", mapType, mapType, "new map containing keys and values of both maps"),
-            createBinary("-", valueType, mapType, "new map containing all entries of the original map except the entry with the given key")
+            createBinary("+", mutableMapType, mutableMapType, "new map containing keys and values of both maps"),
+            createBinary("-", valueType, mutableMapType, "new map containing all entries of the original map except the entry with the given key")
         ),
         keywordMsgs = mutableMapOf(
             createKeyword(
@@ -1306,7 +1313,7 @@ fun createMapProtocols(
         )
         val mutKwMsgs = mutableMapOf(
             createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
-            createKeyword(KeywordArg("putAll", mapType), unitType),
+            createKeyword(KeywordArg("putAll", mutableMapType), unitType),
             createKeyword(
                 "atPut",
                 listOf(
