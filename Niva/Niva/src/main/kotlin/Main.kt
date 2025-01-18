@@ -36,12 +36,11 @@ const val fakeFileSourceGOOD = """
 fun main(args: Array<String>) {
 
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/compose/main.niva")
-//    val args = arrayOf("build", "/Users/gavr/Documents/Fun/niva-code/eBF-in-Niva/src/main.niva", "--out-name=sas")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/mosaic/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 
 //    val qqq = "file:///Users/gavr/Documents/Fun/niva-code/bazar/Examples/experiment/main.niva"
-
 //    try {
 //        val ls = LS()
 //        val resolver = ls.resolveAllFirstTime(qqq, true)

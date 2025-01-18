@@ -2683,27 +2683,27 @@ class ResolverTest {
     @Test
     fun collectionsLiteralsAreNowImmutableByDefault(){
         val source = """
-            x = {1 2 3}
-            y = #{1 2 3 4}
-            z = #(1 2 3)
-            a = {1 2 3}m
-            r = #{1 2 3 4}m
-            s = #(1 2 3)m
+            {1 2 3}
+            #{1 2 3 4}
+            #(1 2 3)
+            {1 2 3}m
+            #{1 2 3 4}m
+            #(1 2 3)m
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 6)
-        val q = (x[0] as VarDeclaration).value
-        val w = (x[1] as VarDeclaration).value
-        val f = (x[2] as VarDeclaration).value
-        assert((q as ListCollection).type!!.name =="List")
-        assert((w as MapCollection).type!!.name =="Map")
-        assert((f as SetCollection).type!!.name =="Set")
-        val a = (((x[3] as VarDeclaration).value) as MessageSendUnary).type!!
-        val r = (((x[4] as VarDeclaration).value) as MessageSendUnary).type!!
-        val s = (((x[5] as VarDeclaration).value) as MessageSendUnary).type!!
-        assert(a.name =="MutableList")
-        assert(r.name =="MutableMap")
-        assert(s.name =="MutableSet")
+        val q = (x[0] as ListCollection).type
+        val w = (x[1] as MapCollection).type
+        val f = (x[2] as SetCollection).type
+        assertEquals((q)!!.name, "List")
+        assertEquals((w)!!.name, "Map")
+        assertEquals((f)!!.name, "Set")
+        val a = (((x[3] as ListCollection))).type!!
+        val r = (((x[4] as MapCollection))).type!!
+        val s = (((x[5] as SetCollection))).type!!
+        assertEquals(a.name, "MutableList")
+        assertEquals(r.name, "MutableMap")
+        assertEquals(s.name, "MutableSet")
     }
 
 //    @Test

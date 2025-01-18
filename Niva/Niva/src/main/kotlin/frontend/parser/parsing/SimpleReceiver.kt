@@ -107,7 +107,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseBrace)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                val result =  ListCollection(initElements, type, token)
+                val result =  ListCollection(initElements, type, token, isMutable = match("m"))
                 this.lastListCollection = result
                 return result
             }
@@ -118,7 +118,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 skipNewLinesAndComments()
                 match(TokenType.CloseBrace)
 
-                return MapCollection(initElements, null, token)
+                return MapCollection(initElements, null, token, isMutable = match("m"))
             }
 
             TokenType.OpenParenHash -> {
@@ -128,7 +128,7 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
                 match(TokenType.CloseParen)
 
                 val type = if (initElements.isNotEmpty()) initElements[0].type else null
-                return SetCollection(initElements, type, token)
+                return SetCollection(initElements, type, token, isMutable = match("m"))
             }
 
 
