@@ -26,10 +26,9 @@ fun Resolver.resolveCollection(
     statement: CollectionAst,
     typeName: String,
     previousAndCurrentScope: MutableMap<String, Type>,
-    rootStatement: Statement?
 ) {
 
-
+    val nearVarDecl = findNearestVarDeclInStack()
     if (statement.initElements.isNotEmpty()) {
         // resolve args
         statement.initElements.forEach {
@@ -63,8 +62,8 @@ fun Resolver.resolveCollection(
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }
-    } else if (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null) {
-        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
+    } else if (nearVarDecl != null && nearVarDecl.valueTypeAst != null) {
+        val type = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)//fix
         statement.type = type
     }
     // empty collection assigned to keyword argument
@@ -78,13 +77,15 @@ fun Resolver.resolveCollection(
 
 }
 
+fun Resolver.findNearestVarDeclInStack(): VarDeclaration? =
+    stack.reversed().find { it is VarDeclaration } as VarDeclaration?
+
 
 fun Resolver.resolveSet(
     statement: SetCollection,
     previousAndCurrentScope: MutableMap<String, Type>,
-    rootStatement: Statement?,
 ) {
-    resolveCollection(statement, "MutableSet", previousAndCurrentScope, rootStatement)
+    resolveCollection(statement, "Set", previousAndCurrentScope)
 
     for (i in 0 until statement.initElements.count() - 1) {
         for (j in i + 1 until statement.initElements.count()) {
@@ -116,7 +117,7 @@ fun Resolver.resolveMap(
     }
 
     if (statement.initElements.isEmpty()) {
-        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "MutableMap")
+        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "Map")
         return
     }
     val (key, value) = statement.initElements[0]
@@ -132,7 +133,7 @@ fun Resolver.resolveMap(
     val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${WHITE}${value.str}")
 
     val mapTypeFromDb =
-        this.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
+        this.projects["common"]!!.packages["core"]!!.types["Map"] as Type.UserType
 
     val unifiedValueType = if (statement.initElements.count() > 1) {
         val type1 = statement.initElements[0].second.type!!
@@ -144,7 +145,7 @@ fun Resolver.resolveMap(
         valueType
 
     val mapType = Type.UserType(
-        name = "MutableMap",
+        name = mapTypeFromDb.name,
         typeArgumentList = listOf(keyType, unifiedValueType),
         fields = mutableListOf(),
         pkg = "core",

@@ -399,7 +399,7 @@ class ResolverTest {
         assert(statements.count() == 1)
         val listCollection = statements[0] as ListCollection
         assert(listCollection.type != null)
-        assertEquals("MutableList", listCollection.type?.name)
+        assertEquals("List", listCollection.type?.name)
         val type = listCollection.type as Type.UserType
         assertEquals("Int", type.typeArgumentList[0].name)
     }
@@ -718,7 +718,7 @@ class ResolverTest {
                
             ]
 
-            list = {9 8 7}
+            list = {9 8 7}m
             list bogosort
         """.trimIndent()
 
@@ -773,7 +773,7 @@ class ResolverTest {
     @Test
     fun cascade2() {
         val source = """
-            x = {1 2 3} add: 4; add: 5
+            x = {1 2 3}m add: 4; add: 5
             x add: 6
         """.trimIndent()
         val statements = resolve(source)
@@ -869,7 +869,7 @@ class ResolverTest {
            union JsonObj =
            | JsonArray arr: MutableList::JsonObj
 
-           arr = JsonArray arr: {}
+           arr = JsonArray arr: {}m
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -1069,7 +1069,7 @@ class ResolverTest {
     @Test
     fun mapNotOverride() {
         val source = """
-            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }m
             sas::MutableMap(Int,Int) = #{}
         """.trimIndent()
         val ast = getAstTest(source)
@@ -1174,12 +1174,12 @@ class ResolverTest {
         val source = """
             { 1 2 3 } inject: 0 into: [a, b -> a + b]
         
-            set::MutableSet::Int = #()
+            set::MutableSet::Int = #()m
             { 3 3 3 } inject: set into: [set, cur ->
                 set add: cur
                 set
             ]
-            { 3 3 3 } inject: #(1 2 3) into: [set, cur ->
+            { 3 3 3 } inject: #(1 2 3)m into: [set, cur ->
                 set add: cur
                 set
             ]
@@ -1800,7 +1800,7 @@ class ResolverTest {
 
         val source = """
             type Success captures: MutableMap(String, String)
-            Success captures: #{}
+            Success captures: #{}m
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 2)
@@ -1811,7 +1811,7 @@ class ResolverTest {
 
         val source = """
             type Success captures: MutableList::String
-            Success captures: {}
+            Success captures: {}m
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 2)
@@ -1825,7 +1825,7 @@ class ResolverTest {
             Sas to::MutableMap(Int, String) = 4
         
             sas = Sas new
-            sas to: #{}
+            sas to: #{}m
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 4)
@@ -2161,7 +2161,7 @@ class ResolverTest {
             enum Color = Red | Blue
             Int c::Color = [
               x = | c
-              | Color.Blue, Color.Red => 1 echo
+              | Color.Blue|Color.Red => 1 echo
             ]
         """.trimIndent()
 
@@ -2175,7 +2175,7 @@ class ResolverTest {
             union Color = Red | Blue
             Int c::Color = [
               x = | c
-              | Blue, Red => 1 echo
+              | Blue | Red => 1 echo
             ]
         """.trimIndent()
 
@@ -2298,7 +2298,7 @@ class ResolverTest {
                 ^ { first second }
             ]
             
-            {({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
+            {({1 2 3}m) ({4 5 6}m) ({7 8 9}m)}m unzip echo
         """.trimIndent()
         val (_) = resolveWithResolver(source)
     }
@@ -2432,14 +2432,24 @@ class ResolverTest {
         assert(x.count() == 3)
     }
 
+
+    @Test
+    fun bug0(){
+        val source = """
+            result::MutableList::MutableList::Int = {}m
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 1)
+        assertEquals((x[0] as VarDeclaration).value.type?.toString(), "MutableList::MutableList::Int")
+    }
     @Test
     fun bug1(){
         val source = """
             List::Int zipWith::List::Int = [
-                result::MutableList::MutableList::Int = {}
+                result::MutableList::MutableList::Int = {}m
             
                 this forEachIndexed: [ index, it ->
-                    result add: { it, (zipWith at: index) }
+                    result add: { it, (zipWith at: index) }m
                 ]
             
                 ^ result
@@ -2449,7 +2459,7 @@ class ResolverTest {
         assert(x.count() == 1)
         val q = x[0] as MessageDeclaration
         val w = q.body[2] as ReturnStatement
-        assertEquals(w.expression!!.type!!.toString(), "MutableList::MutableList::Int")
+        assertEquals("MutableList::MutableList::Int", w.expression!!.type!!.toString())
     }
 
     @Test
@@ -2668,6 +2678,32 @@ class ResolverTest {
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 3)
+    }
+
+    @Test
+    fun collectionsLiteralsAreNowImmutableByDefault(){
+        val source = """
+            x = {1 2 3}
+            y = #{1 2 3 4}
+            z = #(1 2 3)
+            a = {1 2 3}m
+            r = #{1 2 3 4}m
+            s = #(1 2 3)m
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 6)
+        val q = (x[0] as VarDeclaration).value
+        val w = (x[1] as VarDeclaration).value
+        val f = (x[2] as VarDeclaration).value
+        assert((q as ListCollection).type!!.name =="List")
+        assert((w as MapCollection).type!!.name =="Map")
+        assert((f as SetCollection).type!!.name =="Set")
+        val a = (((x[3] as VarDeclaration).value) as MessageSendUnary).type!!
+        val r = (((x[4] as VarDeclaration).value) as MessageSendUnary).type!!
+        val s = (((x[5] as VarDeclaration).value) as MessageSendUnary).type!!
+        assert(a.name =="MutableList")
+        assert(r.name =="MutableMap")
+        assert(s.name =="MutableSet")
     }
 
 //    @Test

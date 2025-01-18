@@ -318,7 +318,7 @@ fun Parser.commaSeparatedExpressions(): List<Expression> {
     val result = mutableListOf<Expression>()
     do {
         result.add(expression(parseSingleIf = false)) // will be an error here | 1,2,3 => do
-    } while (match(TokenType.Comma))
+    } while (match("|"))
     return result
 }
 

@@ -41,20 +41,13 @@ Node walk: init::Int -> Int = [
     ^ x
 ]
 
-
 type NodeList
     list: MutableList::Node
 
 builder NodeList node -> Int = [
     n = NodeList list: {}
-
     build this: n
-
     result = n list map: [it walk: 0]
-
-//> [20, 30]
-    > result
-
     ^ result inject: 0 into: [a, b -> a + b]
 ]
 
