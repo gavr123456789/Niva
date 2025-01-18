@@ -1,0 +1,4 @@
+type TO 
+
+constructor TO DO = Error throwWithMessage: "Not implemented!" |> orPANIC
+constructor TO DO::String = Error throwWithMessage: DO |> orPANIC

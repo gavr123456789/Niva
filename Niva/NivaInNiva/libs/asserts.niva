@@ -1,0 +1,18 @@
+type Assert
+
+/// prints both expressions and values
+constructor Assert that::Any equals::Any -> Unit = [
+  a = Compiler getName: 1
+  b = Compiler getName: 2
+
+  that != equals => [
+    Error throwWithMessage: "Assertion failed: $a' != $b' ($that != $equals)", orPANIC
+  ]
+]
+
+/// If thats false - ends the program with message
+Boolean assert: msg::String = [
+  x = Compiler getName: 0
+  this == false => 
+    Error throwWithMessage: x + "\n" + msg, orPANIC
+]
