@@ -1,0 +1,48 @@
+type Token
+union Statement token: Token =
+| ^Expr
+| ReturnStatement   value: Expr?
+| Declaration
+| VarDeclaration    name: String value: Expr 
+| Assign            name: String value: Expr
+| DestructingAssign names: List::String value: Expr // {name} = person
+
+
+
+type AstType
+type MessageDecl value: MessageSend returnType: AstType
+// Unary
+// Int inc -> Int
+// MessageDecl 
+//    value: (MessageSend r: Int args: {})
+
+
+union Expr token: Token = 
+| ^LiteralExpr
+| Identifier      name: String
+| ExprInBrackets value: Expr
+| MessageSend    r: Expr args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
+
+enum MessageKind = Unary | Binary | Keyword
+// 1 inc from: 2 to: 3
+// MessageSend 
+//   receiver: (MessagSend r: IntExpr(1) args: {name: "inc" expr: IntExpr(1)})
+//   args: {name: "from" value: 2, name: "to" value: 3}
+
+// Piping is just receiver wrap
+// 1 from: 2, to: 3
+// MessageSend
+//    r: (MessageSend arg: {name: "from" value: 2})
+//    args: {{to: 3}
+
+union LiteralExpr token: Token = 
+| CharExpr
+| IntExpr
+| StringExpr
+| FalseExpr
+| TrueExpr
+| NullExpr
+| FloatExpr
+| DoubleExpr
+
+type NameColonExpr name: String expr: Expr
