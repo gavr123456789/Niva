@@ -1,0 +1,79 @@
+enum TokenType = 
+  |EOF
+
+
+  // Literal types
+  |Integer
+  |String
+  |Char
+  |Float // 4.2f
+  |Double // 4.2
+  |Identifier| NullableIdentifier|IdentifierColon| IdentifierDoubleColon
+//    Binary| Octal| Hex|
+
+  // Keywords
+  |Type|Union|Constructor|Mut|ErrorDomain
+  |True|False|Null
+  |On // on for many messages declarations
+
+  |Return // ^
+  |ReturnArrow // -> for return types
+  |AssignArrow // <-
+
+
+  |If // |
+  |PipeOperator // |>
+
+
+  |Then // =>
+  |Switch // |
+  |Else // |=>
+
+  // brackets
+  |OpenParen|CloseParen // ()
+  |OpenBrace|CloseBrace // {}
+  |OpenBracket|CloseBracket // []
+  |OpenBraceHash // #{
+  |OpenParenHash // #(
+
+  // punctuation
+  |Dot| Cascade| Comma| Colon| Apostrophe// . ; | `
+  |DotOpenBracket // .[
+  |Ampersand // &
+
+  |EndOfFile
+  |NoMatch  // Used internally by the symbol table
+  |Comment   // Useful for documentation comments| pragmas| etc.
+  |DocComment   // Useful for documentation comments| pragmas| etc.
+  |BinarySymbol    // A generic symbol
+  |Assign // =
+  |DoubleColon
+  |EndOfLine // \n and next line starts not from the dot
+
+  |InlineReplWithNum // >Number| >3
+  |InlineReplWithQuestion // >?
+  |Underscore // _
+  |Enum // enum
+  |Builder // builder
+  |Bang // !!
+  |Invalid // used for identifiers
+
+type Token
+  kind: TokenType
+  lexeme: String
+  line: Int
+  start: Int end: Int // at line
+
+/// gets keyword name outputs token type, or identifier if its not kw
+constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
+| "type" => TokenType.Type
+| "mut" => TokenType.Mut
+| "union" => TokenType.Union
+| "constructor" => TokenType.Constructor
+| "errordomain" => TokenType.ErrorDomain
+| "on" => TokenType.On
+
+| "true" => TokenType.True
+| "false" => TokenType.False
+| "null" => TokenType.Null
+|=> TokenType.Identifier

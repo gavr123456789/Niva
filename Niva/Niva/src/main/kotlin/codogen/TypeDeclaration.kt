@@ -78,18 +78,18 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     }
     addGenericsFromParent()
 
-//    if (genericFields.isNotEmpty()) {
-//        append("<")
-//        genericFields.toSet().forEach({ append(", ") }) {
-//            append(it)
-//        }
-//        append(">")
-//    }
-
     append("(")
     // class Person (^ arg: Type
 
+
+    // when its a union included in other union, fields of the root and current type can overlap
+    val setOfAlreadyAddedArgs = mutableSetOf<String>()
     fun generateFieldArguments(it: TypeFieldAST, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+        if (it.name in setOfAlreadyAddedArgs)
+            return
+        else
+            setOfAlreadyAddedArgs.add(it.name)
+
         if (it.typeAST == null) {
             it.token.compileError("Arg $WHITE${it.name}$RED must have type")
         }
@@ -106,7 +106,10 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         }
     }
     fun generateFieldArgument2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
-
+        if (fieldName in setOfAlreadyAddedArgs)
+            return
+        else
+            setOfAlreadyAddedArgs.add(fieldName)
 
         if (!rootFields) {
             append("var ")
@@ -138,9 +141,17 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         }
     }
 
-    // default fields
-    fields.forEachIndexed { i, it ->
+    // filter fields from root fields
+    val root2 = receiverType.parent as? Type.UserLike
+    val (nonRootFields, overlappedRootFields) = if (root2 != null) {
+        val rootFields = root2.fields.map { it.name }.toSet()
+        fields.partition { it.name !in rootFields }
+    } else Pair(fields, emptyList())
+    nonRootFields.forEachIndexed { i, it ->
         generateFieldArguments(it, i, false, fields.count() - 1)
+    }
+    overlappedRootFields.forEachIndexed { i, it ->
+        generateFieldArguments(it, i, true, fields.count() - 1)
     }
     // class Person (var age: Int,
 
@@ -159,9 +170,8 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     // class Person (var age: Int, kek: String)^
 
     // add inheritance
-    if (receiverType.parent != null) {
+    if (root2 != null) {
         val currentType = receiverType as Type.UserLike
-        val root2 = receiverType.parent as Type.UserLike
         val rootGenericFields = root2.typeArgumentList.map { it.name }
         val genericsOfTheBranch = currentType.typeArgumentList.map { it.name }.toSet()
 
@@ -192,11 +202,12 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         if (isThereGenericsSomewhere)
             append(">")
 
+        // class Person (var age: Int, kek: String) : Human<...>^(kek)
         append("(")
         // this is Duplicate of generating fields from UserType
         val w = root2.fields.count() - 1
-        root2.fields.forEachIndexed { i, it ->
-            append(it.name)
+        root2.fields.map { it.name }.toSortedSet().forEachIndexed { i, it ->
+            append(it)
             if (w != i) {
                 append(", ")
             }

@@ -1,0 +1,191 @@
+type Lexer
+  input: String
+  pos: Int // updates when new token read
+  readPos: Int // updates every step
+  ch: Char
+  line: Int
+  posOnLine: Int
+
+constructor Lexer input::String = [
+  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0
+  l step 
+  ^l 
+] 
+
+extend mut Lexer [
+  on printState = [
+    "---" echo
+    input debug
+    readPos debug
+    ch debug
+    "---" echo
+  ]
+  on step = [
+    readPos >= input count => 
+      ch <- '\u0000' |=>  
+      ch <- input at: readPos
+
+    // pos <- readPos
+    readPos <- readPos inc
+    posOnLine <- posOnLine inc
+
+  ]
+
+  on peekChar = readPos >= input count 
+    ifTrue:  ['\u0000']
+    ifFalse: [input at: (.readPos)]
+  
+  on match: char::Char -> Boolean = 
+    .ch == char ifTrue: [
+      .step
+      true
+    ] ifFalse: [
+      // "'$ch' != '$char'" echo
+      false
+    ]
+  on stepMatch: char::Char -> Boolean = [
+    .step 
+    ^.match: char
+  ]
+
+  on createToken: kind::TokenType lexeme::String -> Token = [
+
+    tok = Token
+      kind: kind
+      lexeme: lexeme
+      line: line
+      start: posOnLine - lexeme count end: posOnLine//lexeme count
+    
+    // tok debug
+    pos <- readPos
+    ^ tok
+  ]
+
+  on nextToken -> Token! = [
+    .skipWhiteSpaces
+    l = ch toString
+
+    tok = | ch 
+    | '=' => [
+      .step
+      | ch 
+      | '=' => .createToken: TokenType.BinarySymbol lexeme: "=="
+      | '>' => .createToken: TokenType.BinarySymbol lexeme: "=>"
+      |=> .createToken: TokenType.Assign lexeme: "="
+    ]
+    | '!' => .stepMatch: '=', 
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
+      ifFalse: [.createToken: TokenType.Bang lexeme: "!"]
+
+    | '^' => .createToken: TokenType.Return   lexeme: l
+
+    // parens
+    | '(' => .createToken: TokenType.OpenParen   lexeme: l
+    | ')' => .createToken: TokenType.CloseParen  lexeme: l
+    | '{' => .createToken: TokenType.OpenBrace   lexeme: l
+    | '}' => .createToken: TokenType.CloseBrace  lexeme: l
+    | '#' => [
+      .step
+      | ch 
+      | '{' => .createToken: TokenType.OpenBraceHash lexeme: "#{"
+      | '(' => .createToken: TokenType.OpenParenHash lexeme: "#("
+      |=> Error throwWithMessage: "only { or ( can be after #"
+    ]
+
+    // binary symbols
+    |'<' => .stepMatch: '=', 
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="] 
+      ifFalse: [.createToken: TokenType.Bang lexeme: "<"]
+
+    |'>' => .stepMatch: '=', 
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="] 
+      ifFalse: [.createToken: TokenType.Bang lexeme: ">"]
+    |'-' => .stepMatch: '>', 
+      ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
+      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+    
+    | '+'|'/'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
+    // other staff
+    | ',' =>      .createToken: TokenType.Comma lexeme: l
+    | '\u0000' => .createToken: TokenType.EOF lexeme: l
+    
+    |=> [
+      // identifier
+      ch isLetter || (ch == '_') ifTrue: [
+        lit = this readIdentifier
+        tt = Token lookupKeyword: lit
+
+        // colon after identifier
+        ^.match: ':', // early return because we dont need another step
+          ifTrue:  [
+            .stepMatch: ':',
+              ifTrue: [.createToken: TokenType.IdentifierDoubleColon lexeme: lit + "::"]
+              ifFalse: [.createToken: TokenType.IdentifierColon lexeme: lit + ":"]
+          ] 
+          ifFalse: [.createToken: tt lexeme: lit ]
+      ]
+      // digit
+      ch isDigit ifTrue: [
+        lit = .readNumber
+        ^ .createToken: TokenType.Integer lexeme: lit
+      ]
+      
+      // fail
+      .createToken: TokenType.Invalid lexeme: l
+    ]
+
+    .step
+    ^ tok
+  ]
+
+  on parseNumber -> Token = [
+    lit = this readNumber
+    ^ .createToken: TokenType.Integer lexeme: lit
+  ]
+
+  on lex -> MutableList::Token! = [
+    mut newTok = .nextToken
+    mut tokens::MutableList::Token = {newTok}m
+    [newTok kind != TokenType.EOF] whileTrue: [
+      newTok <- .nextToken
+      tokens add: newTok
+    ]
+    ^ tokens
+  ]
+]
+
+
+
+mut Lexer readIdentifier -> String = [
+  localPos = pos
+  [ch isLetter] whileTrue: [
+    .step
+    ch 
+  ]
+
+  result = input slice: localPos..<readPos dec
+  ^result
+]
+
+mut Lexer readNumber -> String = [
+  localPos = pos 
+  [ch isDigit] whileTrue: [
+    .step
+  ]
+
+  result = input slice: localPos..<readPos dec
+  ^result
+]
+
+mut Lexer skipWhiteSpaces = [
+
+  [(ch == ' ') || (ch == '\t') || (ch == '\n') || (ch == '\r')] whileTrue: [
+    ch == '\n' ifTrue: [
+      line <- line inc
+      posOnLine <- 0
+
+    ]
+    .step
+  ]
+ 
+]
