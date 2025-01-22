@@ -1,4 +1,3 @@
-type Token
 union Statement token: Token =
 | ^Expr
 | ReturnStatement   value: Expr?
@@ -19,11 +18,18 @@ type MessageDecl value: MessageSend returnType: AstType
 
 union Expr token: Token = 
 | ^LiteralExpr
-| Identifier      name: String
+| Identifier     name: String
 | ExprInBrackets value: Expr
 | MessageSend    r: Expr args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
 
 enum MessageKind = Unary | Binary | Keyword
+// 1 inc dec
+// MS args: {(MS args: {name: inc arg: 1}), {name: dec arg: 2}}
+
+// 1 inc + 2 dec
+// {{1 inc}, {name: + args: {2 dec}}}
+
+
 // 1 inc from: 2 to: 3
 // MessageSend 
 //   receiver: (MessagSend r: IntExpr(1) args: {name: "inc" expr: IntExpr(1)})
