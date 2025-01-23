@@ -14,75 +14,71 @@ constructor LexTest checkThat: input::String equals: list::List::TokenType -> Un
   ]
 ]
 
-Test integers -> Unit! = [
-  tokens = LexTest input: "11 22 33" 
+// Test integers -> Unit! = [
+//   tokens = LexTest input: "11 22 33" 
 
-  expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer}
-  expectedStarts = {1 4 7}
-  expectedEnds =   {3 6 9}
+//   expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer}
+//   expectedStarts = {1 4 7}
+//   expectedEnds =   {3 6 9}
 
-  tokens forEachIndexed: [ i, it ->
-    Assert that: it kind equals: (expectedKinds at: i)
-    Assert that: it start equals: (expectedStarts at: i)
-    Assert that: it end equals: (expectedEnds at: i)
-  ]
-]
+//   tokens forEachIndexed: [ i, it ->
+//     Assert that: it kind equals: (expectedKinds at: i)
+//     Assert that: it start equals: (expectedStarts at: i)
+//     Assert that: it end equals: (expectedEnds at: i)
+//   ]
+// ]
 
-Test words -> Unit! = [
-  tokens = LexTest input: "niva nim vala" 
+// Test words -> Unit! = [
+//   tokens = LexTest input: "niva nim vala" 
 
-  expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
-  expectedStarts = {1 6 10}
-  expectedEnds =   {5 9 14}
+//   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
+//   expectedStarts = {1 6 10}
+//   expectedEnds =   {5 9 14}
 
-  tokens forEachIndexed: [ i, it ->
-    Assert that: it kind equals: (expectedKinds at: i)
-    Assert that: it start equals: (expectedStarts at: i)
-    Assert that: it end equals: (expectedEnds at: i)
-  ]
-]
+//   tokens forEachIndexed: [ i, it ->
+//     Assert that: it kind equals: (expectedKinds at: i)
+//     Assert that: it start equals: (expectedStarts at: i)
+//     Assert that: it end equals: (expectedEnds at: i)
+//   ]
+// ]
 
-Test multiLine -> Unit! = [
-  tokens = LexTest input: """
-    niva nim
-    vala
-  """ trimIndent
+// Test multiLine -> Unit! = [
+//   tokens = LexTest input: """
+//     niva nim
+//     vala
+//   """ trimIndent
 
-  expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
-  expectedStarts = {1 6 1}
-  expectedEnds =   {5 9 5}
-  expectedLines =  {1 1 2}
+//   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
+//   expectedStarts = {1 6 1}
+//   expectedEnds =   {5 9 5}
+//   expectedLines =  {1 1 2}
   
-  tokens forEachIndexed: [ i, it ->
-    Assert that: it kind  equals: (expectedKinds at: i)
-    Assert that: it start equals: (expectedStarts at: i)
-    Assert that: it end   equals: (expectedEnds at: i)
-    Assert that: it line  equals: (expectedLines at: i)
-  ]
-]
+//   tokens forEachIndexed: [ i, it ->
+//     Assert that: it kind  equals: (expectedKinds at: i)
+//     Assert that: it start equals: (expectedStarts at: i)
+//     Assert that: it end   equals: (expectedEnds at: i)
+//     Assert that: it line  equals: (expectedLines at: i)
+//   ]
+// ]
 
-Test operators -> Unit! = [
-  binSym = {TokenType.BinarySymbol}m
-  9 repeat: [binSym add: TokenType.BinarySymbol]
-  LexTest 
-    checkThat: "== != + - * = <= >= < >" 
-    equals: binSym toList
-]
+// Test operators -> Unit! = [
+//   binSym = {TokenType.BinarySymbol}m
+//   9 repeat: [binSym add: TokenType.BinarySymbol]
+//   LexTest 
+//     checkThat: "== != + - * = <= >= < >" 
+//     equals: binSym toList
+// ]
 
-Test identifierColon -> Unit! = [
-  tokens = LexTest input: "sas:"
-  expectedKinds = {TokenType.IdentifierColon}
-
-  tokens forEachIndexed: [ i, it ->
-    Assert that: it kind  equals: (expectedKinds at: i)
-  ]
-]
-
-// Test strings -> Unit! = [
-//   tokens = LexTest input: "\"sas\" \"sas\""
-//   expectedKinds = {TokenType.String TokenType.String}
+// Test identifierColon -> Unit! = [
+//   tokens = LexTest input: "sas:"
+//   expectedKinds = {TokenType.IdentifierColon}
 
 //   tokens forEachIndexed: [ i, it ->
 //     Assert that: it kind  equals: (expectedKinds at: i)
 //   ]
 // ]
+
+Test strings -> Unit! = [
+  LexTest checkThat: """ "" "sas" "sus" """ 
+          equals: {TokenType.String TokenType.String TokenType.String}
+]

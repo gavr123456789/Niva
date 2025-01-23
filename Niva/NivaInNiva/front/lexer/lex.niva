@@ -1,3 +1,9 @@
+
+/// abcd
+/// __^
+/// pos = 0, because it increases only when tok matched
+/// readPos = 3, because it one step ahead
+/// ch = 'c'
 type Lexer
   input: String
   pos: Int // updates when new token read
@@ -14,13 +20,14 @@ constructor Lexer input::String = [
 
 extend mut Lexer [
   on printState = [
-    "---" echo
+    "---" debug
     input debug
     readPos debug
     ch debug
-    "---" echo
+    "---" debug
   ]
   on step = [
+    // readPos always bigger than current read char pos
     readPos >= input count => 
       ch <- '\u0000' |=>  
       ch <- input at: readPos
@@ -28,23 +35,26 @@ extend mut Lexer [
     // pos <- readPos
     readPos <- readPos inc
     posOnLine <- posOnLine inc
-
   ]
 
-  on peekChar = readPos >= input count 
+  on peekChar = readPos == input count 
     ifTrue:  ['\u0000']
     ifFalse: [input at: (.readPos)]
   
   on match: char::Char -> Boolean = 
-    .ch == char ifTrue: [
-      .step
-      true
-    ] ifFalse: [
-      // "'$ch' != '$char'" echo
-      false
-    ]
+    .ch == char 
+      ifTrue: [
+        .step
+        true
+      ] ifFalse: [
+        false
+      ]
+  
   on stepMatch: char::Char -> Boolean = [
+    input count debug
+    .printState
     .step 
+    .printState
     ^.match: char
   ]
 
@@ -73,6 +83,12 @@ extend mut Lexer [
       | '>' => .createToken: TokenType.BinarySymbol lexeme: "=>"
       |=> .createToken: TokenType.Assign lexeme: "="
     ]
+
+    | '"' => [
+      result = .parseStringLike: '"'
+      ^ .createToken: TokenType.String lexeme: result
+    ]
+
     | '!' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
       ifFalse: [.createToken: TokenType.Bang lexeme: "!"]
@@ -126,7 +142,7 @@ extend mut Lexer [
       ]
       // digit
       ch isDigit ifTrue: [
-        lit = .readNumber
+        lit = .parseNumber
         ^ .createToken: TokenType.Integer lexeme: lit
       ]
       
@@ -136,11 +152,6 @@ extend mut Lexer [
 
     .step
     ^ tok
-  ]
-
-  on parseNumber -> Token = [
-    lit = this readNumber
-    ^ .createToken: TokenType.Integer lexeme: lit
   ]
 
   on lex -> MutableList::Token! = [
@@ -155,19 +166,35 @@ extend mut Lexer [
 ]
 
 
+enum StrMode = Single | Multi
+
+/// assume that delimiter was already eaten
+mut Lexer parseStringLike: delimiter::Char -> String = [
+  mut mode = StrMode.Single
+
+  .match: delimiter // eat the first "
+  localPos = pos
+  [ch != delimiter] whileTrue: [
+    ch == '\n' ifTrue: [mode <- StrMode.Multi]
+    .step
+  ]
+  .match: delimiter // eat the last "
+  
+  result = input slice: localPos..<readPos dec
+  ^result
+]
 
 mut Lexer readIdentifier -> String = [
   localPos = pos
   [ch isLetter] whileTrue: [
     .step
-    ch 
   ]
 
   result = input slice: localPos..<readPos dec
   ^result
 ]
 
-mut Lexer readNumber -> String = [
+mut Lexer parseNumber -> String = [
   localPos = pos 
   [ch isDigit] whileTrue: [
     .step
