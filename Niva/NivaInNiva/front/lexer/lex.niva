@@ -28,10 +28,14 @@ extend mut Lexer [
   ]
   on step = [
     // readPos always bigger than current read char pos
-    readPos >= input count => 
-      ch <- '\u0000' |=>  
-      ch <- input at: readPos
-
+    readPos >= input count 
+      ifTrue: [
+        ch <- '\u0000'
+      ] 
+      ifFalse: [ch <- input at: readPos] 
+      
+    inputCount = input count
+    readPos >= 75 => Error throwWithMessage: "readPos >= 75, $readPos, $inputCount", orPANIC
     // pos <- readPos
     readPos <- readPos inc
     posOnLine <- posOnLine inc
@@ -51,10 +55,8 @@ extend mut Lexer [
       ]
   
   on stepMatch: char::Char -> Boolean = [
-    input count debug
-    .printState
+    // input count debug
     .step 
-    .printState
     ^.match: char
   ]
 
@@ -76,6 +78,8 @@ extend mut Lexer [
     l = ch toString
 
     tok = | ch 
+    | '\u0000' => [
+      ^.createToken: TokenType.EOF lexeme: l]
     | '=' => [
       .step
       | ch 
@@ -88,6 +92,12 @@ extend mut Lexer [
       result = .parseStringLike: '"'
       ^ .createToken: TokenType.String lexeme: result
     ]
+    | '/' => .stepMatch: '/', 
+      ifTrue:  [
+        .skipCurrentLine
+        .createToken: TokenType.Comment lexeme: "//"
+      ] 
+      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
 
     | '!' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
@@ -120,10 +130,9 @@ extend mut Lexer [
       ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
       ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
     
-    | '+'|'/'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
+    |'+'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
     | ',' =>      .createToken: TokenType.Comma lexeme: l
-    | '\u0000' => .createToken: TokenType.EOF lexeme: l
     
     |=> [
       // identifier
@@ -162,6 +171,14 @@ extend mut Lexer [
       tokens add: newTok
     ]
     ^ tokens
+  ]
+  /// skips any symbol until "\n"
+  on skipCurrentLine = [
+    [(ch != '\n') && (ch != '\u0000')] whileTrue: [
+      // "'$ch'" echo
+      .step
+    ]
+    .match: '\n'
   ]
 ]
 

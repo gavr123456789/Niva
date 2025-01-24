@@ -8,11 +8,11 @@ enum TokenType =
   |Char
   |Float // 4.2f
   |Double // 4.2
-  |Identifier| NullableIdentifier|IdentifierColon| IdentifierDoubleColon
+  |Identifier|NullableIdentifier|IdentifierColon|IdentifierDoubleColon
 //    Binary| Octal| Hex|
 
   // Keywords
-  |Type|Union|Constructor|Mut|ErrorDomain
+  |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain
   |True|False|Null
   |On // on for many messages declarations
 
@@ -53,8 +53,6 @@ enum TokenType =
   |InlineReplWithNum // >Number| >3
   |InlineReplWithQuestion // >?
   |Underscore // _
-  |Enum // enum
-  |Builder // builder
   |Bang // !!
   |Invalid // used for identifiers
 
