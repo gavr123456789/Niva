@@ -84,12 +84,29 @@ extend mut Lexer [
       .step
       | ch 
       | '=' => .createToken: TokenType.BinarySymbol lexeme: "=="
-      | '>' => .createToken: TokenType.BinarySymbol lexeme: "=>"
+      | '>' => .createToken: TokenType.Then lexeme: "=>"
       |=> .createToken: TokenType.Assign lexeme: "="
+    ]
+
+    | '|' => [
+      .step
+      | ch 
+      | '=' => [
+        .step 
+        | ch
+        | '>' => .createToken: TokenType.Else lexeme: "|=>"
+        |=> Error throwWithMessage: "expected |=>"
+      ]
+      | '|' => .createToken: TokenType.BinarySymbol lexeme: "||"
+      |=> .createToken: TokenType.If lexeme: "|"
     ]
 
     | '"' => [
       result = .parseStringLike: '"'
+      ^ .createToken: TokenType.String lexeme: result
+    ]
+    | '\'' => [
+      result = .parseStringLike: '\'' 
       ^ .createToken: TokenType.String lexeme: result
     ]
     | '/' => .stepMatch: '/', 
@@ -102,8 +119,9 @@ extend mut Lexer [
     | '!' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
       ifFalse: [.createToken: TokenType.Bang lexeme: "!"]
-
-    | '^' => .createToken: TokenType.Return   lexeme: l
+    | '&' => .stepMatch: '&', 
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "&&"] 
+      ifFalse: [.createToken: TokenType.Ampersand lexeme: "&"]
 
     // parens
     | '(' => .createToken: TokenType.OpenParen   lexeme: l
@@ -119,6 +137,10 @@ extend mut Lexer [
     ]
 
     // binary symbols
+    |'-' => .stepMatch: '>', 
+      ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
+      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+
     |'<' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="] 
       ifFalse: [.createToken: TokenType.Bang lexeme: "<"]
@@ -126,13 +148,12 @@ extend mut Lexer [
     |'>' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="] 
       ifFalse: [.createToken: TokenType.Bang lexeme: ">"]
-    |'-' => .stepMatch: '>', 
-      ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
-      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+
     
     |'+'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
-    | ',' =>      .createToken: TokenType.Comma lexeme: l
+    | ',' =>     .createToken: TokenType.Comma lexeme: l
+    | '^' => .createToken: TokenType.Return  lexeme: l
     
     |=> [
       // identifier
