@@ -5,13 +5,20 @@ constructor LexTest input::String -> List::Token! = [
   ^ tokens
 ]
 
-constructor LexTest checkThat: input::String equals: list::List::TokenType -> Unit! = [
-  x = LexTest input: input, map: [it kind]
-  Assert that: x count equals: list count
-  list forEachIndexed: [i, it -> 
-    Assert that: it equals: (list at: i)
+constructor LexTest checkThat: input::String equals: list::List::TokenType -> List::Token! = [
+  y = LexTest input: input
+  x = y map: [it kind]
 
+  Assert 
+    that: x count 
+    equals: list count
+       
+  list forEachIndexed: [i, it -> 
+    Assert 
+      that: it 
+      equals: (list at: i)
   ]
+  ^ y
 ]
 
 Test integers -> Unit! = [
@@ -101,4 +108,18 @@ Test keywords -> Unit! = [
 Test comment -> Unit! = [
   LexTest checkThat: "// qwf ars \" qwf"
           equals: {TokenType.Comment}
+]
+
+
+Test controlFlow -> Unit! = [
+  LexTest checkThat: "| => |=> ^ -> <- . ," 
+          equals: {TokenType.If 
+                   TokenType.Then 
+                   TokenType.Else 
+                   TokenType.Return 
+                   TokenType.ReturnArrow 
+                   TokenType.AssignArrow 
+                   TokenType.Dot
+                   TokenType.Comma
+                  }
 ]
