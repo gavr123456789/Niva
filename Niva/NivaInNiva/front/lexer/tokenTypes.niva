@@ -61,6 +61,12 @@ type Token
   line: Int
   start: Int end: Int // at line
 
+constructor Token eof = Token 
+  kind: TokenType.EndOfFile 
+  lexeme: "" 
+  line: 1 
+  start: 0 end: 1
+
 /// gets keyword name outputs token type, or identifier if its not kw
 constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type

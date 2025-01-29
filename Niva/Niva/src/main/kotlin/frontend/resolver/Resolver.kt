@@ -668,8 +668,18 @@ fun Resolver.addNewAnyMessage(
 
     when (st) {
         is MessageDeclarationUnary -> protocol.unaryMsgs[st.name] = messageData as UnaryMsgMetaData
-        is MessageDeclarationBinary -> protocol.binaryMsgs[st.name] = messageData as BinaryMsgMetaData
-        is MessageDeclarationKeyword -> protocol.keywordMsgs[st.name] = messageData as KeywordMsgMetaData
+        is MessageDeclarationBinary -> {
+            val msgData = messageData as BinaryMsgMetaData
+            st.arg.type = msgData.argType
+            protocol.binaryMsgs[st.name] = msgData
+        }
+        is MessageDeclarationKeyword -> {
+            val msgData = messageData as KeywordMsgMetaData
+            st.args.forEachIndexed { i, it ->
+                it.type = msgData.argTypes[i].type
+            }
+            protocol.keywordMsgs[st.name] = msgData
+        }
         is ConstructorDeclaration -> {} // st.toAnyMessageData already adding static to db
 
         is StaticBuilderDeclaration -> {
@@ -956,7 +966,7 @@ fun Resolver.getTypeForIdentifier(
         val name = typeFromDB.branches.find { it.name == x.name }
         if (name == null) {
             val startsWithSameWord = typeFromDB.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
-            val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 2) {
+            val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 3) {
                 val x = typeFromDB.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
                 x.joinToString(", ") { it.name }
             } else

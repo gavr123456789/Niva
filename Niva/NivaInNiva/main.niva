@@ -3,3 +3,13 @@ type Program
   walkDir: [String -> List::String]
 // Program 
 
+
+  statements = TestParse withInput: """ "sas" """ expectedCount: 1
+
+  stringExpr = statements at: 0
+  | stringExpr 
+  | StringExpr => 
+    Assert 
+      that: stringExpr token lexeme
+      equals: "\"sas\""
+  |=> [TO DO: "It should be int, but it $stringExpr"]

@@ -413,7 +413,6 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         try {
             val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
-
             val errors = statement.returnType?.errors
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)

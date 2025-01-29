@@ -435,7 +435,7 @@ sealed class Type(
             names = names
         ) ?: token.compileError(errorText)
 
-        return unInitializedType
+        return unInitializedType.also { it.errors = x.errors }
 
     }
 

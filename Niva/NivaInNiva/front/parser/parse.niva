@@ -1,0 +1,66 @@
+type Parser
+  tokens: List::Token
+  current: Int 
+  statements: MutableList::Statement
+
+constructor Parser newParseTokens::List::Token = [
+  parser = Parser tokens: newParseTokens current: 0 statements: {}m
+  parser parse
+
+  ^ parser
+]
+
+extend Parser [
+  on parse -> Unit = [
+    tokens isEmpty ifTrue: [^Unit]
+
+    tok = .peek
+    | tok kind
+    | TokenType.Integer => [
+      // .step
+      num = tok lexeme toInt
+      statements add: (IntExpr num: num token: tok)
+      Unit
+    ]
+    | TokenType.String => [
+      // .step
+      statements add: (StringExpr token: tok)
+      Unit
+    ]
+
+    | TokenType.True|TokenType.False => [
+      // .step
+      statements add: (BooleanExpr token: tok)
+      Unit
+    ]
+    | TokenType.Char => [
+      // .step
+      statements add: (CharExpr token: tok)
+      Unit
+    ]
+    | TokenType.Float => [
+      // .step
+      statements add: (FloatExpr token: tok)
+      Unit
+    ]
+    | TokenType.Double => [
+      // .step
+      statements add: (DoubleExpr token: tok)
+      Unit
+    ]
+    | TokenType.Null => [
+      // .step
+      statements add: (NullExpr token: tok)
+      Unit
+    ]
+    |=> Unit
+  ]
+  on peek -> Token = [
+    current > tokens count
+      ifTrue: [^Token eof]
+    ^tokens at: current
+  ]
+  on peekAt: distance::Int = [
+
+  ]
+]

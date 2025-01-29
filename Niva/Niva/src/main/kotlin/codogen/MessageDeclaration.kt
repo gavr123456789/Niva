@@ -3,6 +3,8 @@ package main.codogen
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
+import main.frontend.meta.Token
+import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.utils.appendnl
 import main.utils.isGeneric
@@ -13,36 +15,6 @@ fun String.ifKtKeywordAddBackTicks(): String =
         "do", "val", "var", "class", "in", "for", "throw" -> "`$this`"
         else -> this
     }
-
-val operators = hashMapOf(
-    "+" to "plus",
-    "-" to "minus",
-    "*" to "times",
-    "/" to "div",
-    "%" to "rem",
-    ".." to "rangeTo",
-
-    "%" to "contains",
-
-    "+=" to "plusAssign",
-    "-=" to "minusAssign",
-    "*=" to "timesAssign",
-    "/=" to "divAssign",
-    "%=" to "remAssign",
-
-    "==" to "equals",
-    "!=" to "equals",
-
-    ">" to "compareTo",
-    "<" to "compareTo",
-    ">=" to "compareTo",
-    "<=" to "compareTo",
-
-    "<-=" to "getValue",
-    "=->" to "setValue",
-
-    "apply" to "invoke",
-)
 
 fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     // return type can be generic
@@ -128,9 +100,7 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
     returnTypeAndBodyPart(this@generateUnaryDeclaration, this)
 }
 
-fun operatorToString(x: String): String {
-    return operators[x]!!
-}
+
 
 fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false) = buildString {
 
@@ -138,7 +108,7 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
     append(funGenerateReceiver(isStatic))
 
     // receiver type end
-    val operatorName = operatorToString(name)
+    val operatorName = operatorToString(name, token)
     append(".", operatorName, "(", arg.name)
     // operator fun Int.plus^(x: Int) {}
 
@@ -173,7 +143,9 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     args.forEachIndexed { i, arg ->
         append(arg.name())
         if (arg.typeAST != null) {
-            append(": ", arg.typeAST.generateType((arg.type as? Type.UserLike)?.emitName))
+            val type = arg.type
+            val name = type?.toKotlinString(true) ?: arg.typeAST.generateType(null)
+            append(": ", name) // typeAST.generateType((arg.type as? Type.UserLike)?.emitName
             if (i != c) {
                 append(", ")
             }
@@ -293,3 +265,29 @@ fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false, nee
 
 fun ConstructorDeclaration.generateConstructorDeclaration() =
     this.msgDeclaration.generateMessageDeclaration(true, false)
+
+fun operatorToString(operator: String, token: Token): String {
+    return when (operator) {
+        "+" -> "plus"
+        "-" -> "minus"
+        "*" -> "times"
+        "/" -> "div"
+        "%" -> "rem"
+        ".." -> "rangeTo"
+        "+=" -> "plusAssign"
+        "-=" -> "minusAssign"
+        "*=" -> "timesAssign"
+        "/=" -> "divAssign"
+        "%=" -> "remAssign"
+        "==" -> "equals"
+        "!=" -> "equals"
+        ">" -> "compareTo"
+        "<" -> "compareTo"
+        ">=" -> "compareTo"
+        "<=" -> "compareTo"
+        "<-=" -> "getValue"
+        "=->" -> "setValue"
+        "apply" -> "invoke"
+        else -> token.compileError("Undefined operator: $operator")
+    }
+}

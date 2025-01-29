@@ -16,7 +16,7 @@ fun MethodReference.generateMethodReference() = buildString {
             append(name)
         }
         is MethodReference.Binary -> {
-            append(operatorToString(name))
+            append(operatorToString(name, token))
         }
         is MethodReference.Keyword -> {
             val methodName = keys.first() + keys.drop(1).joinToString("") { it.capitalizeFirstLetter() }

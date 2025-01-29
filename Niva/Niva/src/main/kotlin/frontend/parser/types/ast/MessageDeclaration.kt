@@ -125,7 +125,7 @@ class KeywordDeclarationArg(
     val tok: Token,
     val localName: String? = null,
     val typeAST: TypeAST? = null,
-    val type: Type? = null,
+    var type: Type? = null,
 
     ) {
     override fun toString(): String {

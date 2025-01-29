@@ -43,10 +43,11 @@ enum MessageKind = Unary | Binary | Keyword
 
 union LiteralExpr token: Token = 
 | CharExpr
-| IntExpr
+| IntExpr num: Int
+| FloatExpr
+| DoubleExpr
 | StringExpr
-| FalseExpr
-| TrueExpr
+| BooleanExpr
 | NullExpr
 | FloatExpr
 | DoubleExpr

@@ -35,6 +35,9 @@ tasks.test {
 kotlin {
     jvmToolchain(22)
 }
+//tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+//    compilerOptions.freeCompilerArgs.addAll(listOf("-Xcontext-receivers"))
+//}
 
 graalvmNative {
     binaries {
