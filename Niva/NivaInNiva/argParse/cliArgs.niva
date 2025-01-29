@@ -25,24 +25,17 @@ constructor ArgParser args::List::String -> ArgsParsed = [
   ]
 
   // separate flags from args
-  flags = {"--verbose" "--lsp"}
+  // flags = #{"--verbose" false 
+  //           "--lsp"     false}
+
   mut verbose = false
   mut lsp = false
   filteredArgs = args filter: [
+    // flags at: it put: true
     it == "--verbose" ifTrue: [verbose <- true]
     it == "--lsp" ifTrue: [lsp <- true]
     (verbose || lsp) not
   ]
-  
-//> [run, --verbose]
-  > args
-//> [run]
-  > filteredArgs
-//> false
-  > lsp 
-//> true
-  > verbose
-
 
   getFirstArg = [
     arg = args at: 0
@@ -68,4 +61,3 @@ constructor ArgParser args::List::String -> ArgsParsed = [
 ]
 
 enum CompilerOption = Run | Build | Daemon | RunTests | Info | Help
-enum AdditionalCompilerOption = Verbose | LSP

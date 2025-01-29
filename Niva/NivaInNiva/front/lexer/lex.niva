@@ -29,15 +29,13 @@ extend mut Lexer [
   on step = [
     // readPos always bigger than current read char pos
     readPos >= input count 
-      ifTrue: [
-        ch <- '\u0000'
-      ] 
+      ifTrue: [ch <- '\u0000'] 
       ifFalse: [ch <- input at: readPos] 
       
-    inputCount = input count
-    readPos >= 75 => Error throwWithMessage: "readPos >= 75, $readPos, $inputCount", orPANIC
-    // pos <- readPos
+    readPos >= 75 => Error throwWithMessage: "readPos >= 75, $readPos", orPANIC
+    pos <- readPos
     readPos <- readPos inc
+
     posOnLine <- posOnLine inc
   ]
 
@@ -187,6 +185,7 @@ extend mut Lexer [
   on lex -> MutableList::Token! = [
     mut newTok = .nextToken
     mut tokens::MutableList::Token = {newTok}m
+
     [newTok kind != TokenType.EOF] whileTrue: [
       newTok <- .nextToken
       tokens add: newTok
@@ -209,17 +208,16 @@ enum StrMode = Single | Multi
 /// assume that delimiter was already eaten
 mut Lexer parseStringLike: delimiter::Char -> String = [
   mut mode = StrMode.Single
+  localPos = pos
 
   .match: delimiter // eat the first "
-  localPos = pos
   [ch != delimiter] whileTrue: [
     ch == '\n' ifTrue: [mode <- StrMode.Multi]
     .step
   ]
   .match: delimiter // eat the last "
   
-  result = input slice: localPos..<readPos dec
-  ^result
+  ^ input slice: localPos..<pos
 ]
 
 mut Lexer readIdentifier -> String = [
@@ -228,7 +226,7 @@ mut Lexer readIdentifier -> String = [
     .step
   ]
 
-  result = input slice: localPos..<readPos dec
+  result = input slice: localPos..<pos //readPos dec
   ^result
 ]
 
@@ -238,18 +236,19 @@ mut Lexer parseNumber -> String = [
     .step
   ]
 
-  result = input slice: localPos..<readPos dec
+  result = input slice: localPos..<pos // readPos dec
   ^result
 ]
 
 mut Lexer skipWhiteSpaces = [
-
   [(ch == ' ') || (ch == '\t') || (ch == '\n') || (ch == '\r')] whileTrue: [
+
     ch == '\n' ifTrue: [
       line <- line inc
       posOnLine <- 0
-
     ]
+
+    
     .step
   ]
  

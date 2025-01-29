@@ -1,7 +1,7 @@
 type LexTest 
-constructor LexTest input::String -> List::Token! = [
+constructor LexTest input::String -> List::Token = [
   l = Lexer input: input
-  tokens = l lex dropLast: 1 // EOF
+  tokens = l lex orPANIC dropLast: 1  // drop EOF
   ^ tokens
 ]
 
@@ -21,7 +21,7 @@ constructor LexTest checkThat: input::String equals: list::List::TokenType -> Li
   ^ y
 ]
 
-Test integers -> Unit! = [
+Test integers = [
   tokens = LexTest input: "11 22 33" 
 
   expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer}
@@ -34,8 +34,22 @@ Test integers -> Unit! = [
     Assert that: it end equals: (expectedEnds at: i)
   ]
 ]
+// skiping spaces should append `pos` so tokens have correct start
+Test parseFromSpace = [
+  tokens = LexTest input: "   1  " 
 
-Test words -> Unit! = [
+  expectedKinds = {TokenType.Integer}
+  expectedStarts = {4}
+  expectedEnds =   {5}
+
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it start equals: (expectedStarts at: i)
+    Assert that: it end equals: (expectedEnds at: i)
+  ]
+]
+
+Test words = [
   tokens = LexTest input: "niva nim vala" 
 
   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
@@ -49,7 +63,7 @@ Test words -> Unit! = [
   ]
 ]
 
-Test multiLine -> Unit! = [
+Test multiLine = [
   tokens = LexTest input: """
     niva nim
     vala
@@ -59,7 +73,7 @@ Test multiLine -> Unit! = [
   expectedStarts = {1 6 1}
   expectedEnds =   {5 9 5}
   expectedLines =  {1 1 2}
-  
+
   tokens forEachIndexed: [ i, it ->
     Assert that: it kind  equals: (expectedKinds at: i)
     Assert that: it start equals: (expectedStarts at: i)
@@ -68,15 +82,15 @@ Test multiLine -> Unit! = [
   ]
 ]
 
-Test operators -> Unit! = [
+Test operators = [
   binSym = {TokenType.BinarySymbol}m
-  9 repeat: [binSym add: TokenType.BinarySymbol]
+  11 repeat: [binSym add: TokenType.BinarySymbol]
   LexTest 
-    checkThat: "== != + - * = <= >= < >" 
+    checkThat: "== != + - * = <= >= < > || &&" 
     equals: binSym toList
 ]
 
-Test identifierColon -> Unit! = [
+Test identifierColon = [
   tokens = LexTest input: "sas:"
   expectedKinds = {TokenType.IdentifierColon}
 
@@ -85,33 +99,39 @@ Test identifierColon -> Unit! = [
   ]
 ]
 
-Test strings -> Unit! = [
+Test strings = [
   LexTest checkThat: """ "" "sas" "sus" """ 
           equals: {TokenType.String TokenType.String TokenType.String}
 ]
 
-Test keywords -> Unit! = [
+Test keywords = [
   LexTest checkThat: "type union constructor enum builder mut errordomain true false null on"
           equals: {TokenType.Type 
-                  TokenType.Union 
-                  TokenType.Constructor 
-                  TokenType.Enum 
-                  TokenType.Builder 
-                  TokenType.Mut 
-                  TokenType.ErrorDomain 
-                  TokenType.True 
-                  TokenType.False 
-                  TokenType.Null 
-                  TokenType.On}
+                   TokenType.Union 
+                   TokenType.Constructor 
+                   TokenType.Enum 
+                   TokenType.Builder 
+                   TokenType.Mut 
+                   TokenType.ErrorDomain 
+                   TokenType.True 
+                   TokenType.False 
+                   TokenType.Null 
+                   TokenType.On}
+]
+Test singleNum = [
+  LexTest checkThat: "1"
+          equals: {TokenType.Integer}
 ]
 
-Test comment -> Unit! = [
+
+
+Test comment = [
   LexTest checkThat: "// qwf ars \" qwf"
           equals: {TokenType.Comment}
 ]
 
 
-Test controlFlow -> Unit! = [
+Test controlFlow = [
   LexTest checkThat: "| => |=> ^ -> <- . ," 
           equals: {TokenType.If 
                    TokenType.Then 

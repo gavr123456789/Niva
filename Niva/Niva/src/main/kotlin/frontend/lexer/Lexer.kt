@@ -176,18 +176,6 @@ fun String.set(index: Int, str: String): String {
     return substring(0, index) + str + substring(index)
 }
 
-//fun Lexer.parseEscape() {
-//    val q = peek()
-//
-//    source = when (q[0]) {
-//        'n' -> source.set(current, 'n')
-//        't' -> source.set(current, 't')
-//        '\'' -> source.set(current, '\'')
-//        '\\' -> source.set(current, '\\')
-//        else -> this.error("invalid escape sequence '\\${peek()}'")
-//    }
-//}
-
 enum class StrMode {
     Single,
     Raw,
@@ -261,18 +249,6 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
         createToken(TokenType.Char)
     }
 }
-
-//fun Lexer.getfirstAfterSpaces(): String {
-//    var x = 0
-//    while (true) {
-//        val symbol = peek(x)
-//        if (symbol == " ") {
-//            x += 1
-//        } else {
-//            return symbol
-//        }
-//    }
-//}
 
 fun Lexer.stepWhileDigit() {
     while (peek().isDigit() && !done()) {

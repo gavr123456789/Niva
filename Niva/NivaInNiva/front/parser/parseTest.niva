@@ -1,0 +1,31 @@
+type TestParse 
+constructor TestParse withInput::String expectedCount::Int -> MutableList::Statement = [
+  tokens = LexTest input: withInput
+  {statements} = Parser newParseTokens: tokens
+  Assert that: statements count equals: expectedCount
+  ^statements
+]
+
+Test parseNumber -> Unit! = [
+  statements = TestParse withInput: "1" expectedCount: 1
+
+  intExpr = statements at: 0
+  | intExpr 
+  | IntExpr => 
+    Assert 
+      that: intExpr num  
+      equals: 1 
+  |=> [TO DO: "It should be int, but it $intExpr"]
+]
+
+Test parseString -> Unit! = [
+  statements = TestParse withInput: """ "sas" """ expectedCount: 1
+
+  stringExpr = statements at: 0
+  | stringExpr 
+  | StringExpr => 
+    Assert 
+      that: stringExpr token lexeme
+      equals: "\"sas\""
+  |=> [TO DO: "It should be int, but it $stringExpr"]
+]
