@@ -1,5 +1,5 @@
 enum TokenType = 
-  |EOF
+  |EndOfFile
 
 
   // Literal types
@@ -40,7 +40,6 @@ enum TokenType =
   |DotOpenBracket // .[
   |Ampersand // &
 
-  |EndOfFile
   |NoMatch  // Used internally by the symbol table
   |Comment   // Useful for documentation comments| pragmas| etc.
   |DocComment   // Useful for documentation comments| pragmas| etc.

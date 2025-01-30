@@ -20,14 +20,44 @@ union Expr token: Token =
 | ^LiteralExpr
 | Identifier     name: String
 | ExprInBrackets value: Expr
-| MessageSend    r: Expr args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
+| MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
 
 enum MessageKind = Unary | Binary | Keyword
-// 1 inc dec
-// MS args: {(MS args: {name: inc arg: 1}), {name: dec arg: 2}}
+
+
+// 1 inc 
+// {name: "inc" expr: 1}
+constructor MessageSend unaryName::String receiver::Expr token::Token = [
+  result = 
+    MessageSend 
+      args: {(NameColonExpr name: unaryName expr: receiver)} 
+      token: token
+  ^ result
+]
+
+
+// 1 + 2
+// {{expr: 1 name: ""}, {name: "+" expr: 2 }}
+// if there is no name, then its simple receiver
+constructor MessageSend binaryName::String receiver::NameColonExpr arg::Expr token::Token = [
+  result = 
+    MessageSend 
+      args: {receiver, (NameColonExpr name: binaryName expr: arg)} 
+      token: token
+  ^ result
+]
+
 
 // 1 inc + 2 dec
-// {{1 inc}, {name: + args: {2 dec}}}
+// {{1 inc}, {name: "+" exrp: (MS expr: 2 name: "dec")}}
+
+
+// 1 inc dec
+// chain
+// {name: "dec" expr: MC{expr: 1 name: "inc"}}
+
+// 1 from: 2 to: 3
+// {name: "" expr: 1, name: "from" expr: 2, name: "to" expr: 3}
 
 
 // 1 inc from: 2 to: 3

@@ -1,6 +1,6 @@
 type TestParse 
 constructor TestParse withInput::String expectedCount::Int -> MutableList::Statement = [
-  tokens = LexTest input: withInput
+  tokens = Lexer newLex: withInput
   {statements} = Parser newParseTokens: tokens
   Assert that: statements count equals: expectedCount
   ^statements
@@ -18,6 +18,18 @@ Test parseNumber -> Unit! = [
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
 
+Test parseNumbers -> Unit! = [
+  statements = TestParse withInput: "1 2 3 4" expectedCount: 4
+
+  intExpr = statements at: 3
+  | intExpr 
+  | IntExpr => 
+    Assert 
+      that: intExpr num  
+      equals: 4
+  |=> [TO DO: "It should be int, but it $intExpr"]
+]
+
 Test parseString -> Unit! = [
   statements = TestParse withInput: """ "sas" """ expectedCount: 1
 
@@ -29,3 +41,25 @@ Test parseString -> Unit! = [
       equals: "\"sas\""
   |=> [TO DO: "It should be int, but it $stringExpr"]
 ]
+
+// Test parseUnary -> Unit! = [
+//   statements = TestParse withInput: "1 inc" expectedCount: 1
+
+//   1 inc
+//   MessageSend 
+//     args: {
+//       (NameColonExpr name: "inc" expr: Expr)
+//     } 
+//     token: tokenTypes.Token eof
+
+
+
+
+//   intExpr = statements at: 3
+//   | intExpr 
+//   | IntExpr => 
+//     Assert 
+//       that: intExpr num  
+//       equals: 4
+//   |=> [TO DO: "It should be int, but it $intExpr"]
+// ]

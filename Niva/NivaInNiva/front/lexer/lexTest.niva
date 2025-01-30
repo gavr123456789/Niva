@@ -66,12 +66,12 @@ Test words = [
 Test multiLine = [
   tokens = LexTest input: """
     niva nim
-    vala
+      vala
   """ trimIndent
 
   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
-  expectedStarts = {1 6 1}
-  expectedEnds =   {5 9 5}
+  expectedStarts = {1 6 3}
+  expectedEnds =   {5 9 7}
   expectedLines =  {1 1 2}
 
   tokens forEachIndexed: [ i, it ->
@@ -143,3 +143,17 @@ Test controlFlow = [
                    TokenType.Comma
                   }
 ]
+
+// Test enumDeclaration = [
+//   LexTest checkThat: "enum MessageKind = Unary | Binary | Keyword" 
+//           equals: {TokenType.Enum 
+//                    TokenType.Identifier 
+//                    TokenType.Assign 
+//                    TokenType.Identifier 
+//                    TokenType.PipeOperator 
+//                    TokenType.Identifier 
+//                    TokenType.PipeOperator
+//                    TokenType.Identifier
+//                   }
+// ]
+
