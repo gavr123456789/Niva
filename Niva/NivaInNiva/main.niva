@@ -4,12 +4,22 @@ type Program
 // Program 
 
 
-  statements = TestParse withInput: """ "sas" """ expectedCount: 1
+// TestParse withInput: "1 inc" expectedCount: 1
+// input = """
+// type Program 
+//   readFile: [String -> String]
+//   walkDir: [String -> List::String]
+// """ trimIndent
 
-  stringExpr = statements at: 0
-  | stringExpr 
-  | StringExpr => 
-    Assert 
-      that: stringExpr token lexeme
-      equals: "\"sas\""
-  |=> [TO DO: "It should be int, but it $stringExpr"]
+//   input = """
+//     type Program 
+//       readFile: [String -> String]
+//       walkDir: [String -> List::String]
+//   """ trimIndent
+
+// Lexer newLex: input, forEach: [
+//   it echo
+//   "---" echo
+// ]
+
+

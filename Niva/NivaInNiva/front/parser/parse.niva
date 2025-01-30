@@ -4,63 +4,110 @@ type Parser
   statements: MutableList::Statement
 
 constructor Parser newParseTokens::List::Token = [
-  parser = Parser tokens: newParseTokens current: 0 statements: {}m
-  parser parse
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}m error TODO
+  [ parser done not ] whileTrue: [
+    parser nextStatement 
+    // parser statements last echo
+  ]
 
   ^ parser
 ]
 
-extend Parser [
-  on parse -> Unit = [
-    tokens isEmpty ifTrue: [^Unit]
 
-    tok = .peek
+extend mut Parser [
+  /// if literal was added returns true
+  on literalExprFrom: tok::Token -> Boolean = [
+    mut isAdded = false
+    addLiteral = [ lit::LiteralExpr ->
+      .step
+      statements add: (lit)
+      isAdded <- true
+      Unit
+    ]
+
     | tok kind
     | TokenType.Integer => [
-      // .step
       num = tok lexeme toInt
-      statements add: (IntExpr num: num token: tok)
-      Unit
+      addLiteral lit: (IntExpr num: num token: tok)
     ]
-    | TokenType.String => [
-      // .step
-      statements add: (StringExpr token: tok)
-      Unit
-    ]
+    | TokenType.String => 
+      addLiteral lit: (StringExpr token: tok)
+    
+    | TokenType.True|TokenType.False => 
+      addLiteral lit: (BooleanExpr token: tok)
+    
+    | TokenType.Char => 
+      addLiteral lit: (CharExpr token: tok)
+    
+    | TokenType.Float => 
+      addLiteral lit: (FloatExpr token: tok)
+    
+    | TokenType.Double => 
+      addLiteral lit: (DoubleExpr token: tok)
+    
+    | TokenType.Null => 
+      addLiteral lit: (NullExpr token: tok)
+    
+    |=> []
+    ^isAdded
+  ]
 
-    | TokenType.True|TokenType.False => [
-      // .step
-      statements add: (BooleanExpr token: tok)
-      Unit
-    ]
-    | TokenType.Char => [
-      // .step
-      statements add: (CharExpr token: tok)
-      Unit
-    ]
-    | TokenType.Float => [
-      // .step
-      statements add: (FloatExpr token: tok)
-      Unit
-    ]
-    | TokenType.Double => [
-      // .step
-      statements add: (DoubleExpr token: tok)
-      Unit
-    ]
-    | TokenType.Null => [
-      // .step
-      statements add: (NullExpr token: tok)
+  on nextStatement -> Unit = [
+    // there always EndOfFile, so this never happen
+    tokens isEmpty ifTrue: [^Unit] 
+    tok = .peek
+
+    // simple literal
+    .literalExprFrom: tok, ifTrue: [^Unit]
+
+
+    | tok kind
+    | TokenType.Identifier => .identifierStart: tok
+
+    | TokenType.EndOfFile => [
+      TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
       Unit
     ]
     |=> Unit
+    .step // just to evade infinity loop
+  ]
+
+  /// x| probably not just identifier without anything
+  /// x = ...
+  /// x inc ...
+  /// X inc = []
+  /// x + ...
+  /// X + y::Int = []
+  /// x that: ...
+  /// X from::Int = []
+  /// X from y:Int = []
+  on identifierStart: tok::Token = [
+    ident = .step
+    next = .step
+    
+
+    
+  ]
+
+  on check: kind::TokenType = .peek kind == kind
+
+  on done = .check: TokenType.EndOfFile
+
+  on step -> Token = [
+    x = .peek
+    current <- current inc
+    ^ x
   ]
   on peek -> Token = [
-    current > tokens count
-      ifTrue: [^Token eof]
+    // current == tokens count
+    //   ifTrue: [^Token eof]
     ^tokens at: current
   ]
   on peekAt: distance::Int = [
-
+    realDistance = current + distance
+    // realDistance == tokens count
+    //   ifTrue: [^Token eof]
+    ^tokens at: realDistance
   ]
 ]
