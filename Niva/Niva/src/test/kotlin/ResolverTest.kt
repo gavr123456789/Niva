@@ -2638,6 +2638,8 @@ class ResolverTest {
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 3)
+        val q = x[1] as ConstructorDeclaration
+        assertTrue(q.returnType!!.name == "Unit")
     }
 
     @Test
@@ -2704,6 +2706,35 @@ class ResolverTest {
         assertEquals(a.name, "MutableList")
         assertEquals(r.name, "MutableMap")
         assertEquals(s.name, "MutableSet")
+    }
+
+    @Test
+    fun constructorReturnTypeInheritance(){
+        val source = """
+            type Person name: String
+            constructor Person sas = [
+                ^ Person name: "sas"
+            ]
+            Person sas
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
+    }
+    @Test
+    fun multiLineString() {
+        val source = "" +
+                "type Program " +
+                "input = \"\"\"\n" +
+                "  qwf\n" +
+                "\"\"\"\n" +
+                "\n" +
+                "input = \"\"\"\n" +
+                "type Program \n" +
+                "  readFile: [String -> String]\n" +
+                "  walkDir: [String -> List::String]\n" +
+                "\"\"\" trimIndent\n "
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 3)
     }
 
 //    @Test

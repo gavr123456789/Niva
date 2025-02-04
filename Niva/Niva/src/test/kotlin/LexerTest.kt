@@ -250,6 +250,24 @@ class LexerTest {
     }
 
     @Test
+    fun multilineString2() {
+        val multiline = "\"\"\" " +
+                "type Program " +
+                "input = \"\"\"\n" +
+                "  qwf\n" +
+                "\"\"\"\n" +
+                "\n" +
+                "\n" +
+                "\n" +
+                "input = \"\"\"\n" +
+                "type Program \n" +
+                "  readFile: [String -> String]\n" +
+                "  walkDir: [String -> List::String]\n" +
+                "\"\"\" trimIndent\n \"\"\""
+        checkWithEnd(multiline, listOf(TokenType.String))
+    }
+
+    @Test
     fun newLines() {
         val manyExpr = """
             start <- start

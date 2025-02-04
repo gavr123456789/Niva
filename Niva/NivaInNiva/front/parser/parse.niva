@@ -20,7 +20,7 @@ extend mut Parser [
   on literalExprFrom: tok::Token -> Boolean = [
     mut isAdded = false
     addLiteral = [ lit::LiteralExpr ->
-      .step
+      // .step
       statements add: (lit)
       isAdded <- true
       Unit
@@ -53,16 +53,24 @@ extend mut Parser [
     ^isAdded
   ]
 
+  on typeDeclaration: tok::Token = [
+    // type name (field1: astType)*
+    kek = TypeDecl 
+      name: "Person" 
+      fields: #{"name" (StringAstType new), "age" (IntAstType new)} 
+      token: tok
+  ]
   on nextStatement -> Unit = [
     // there always EndOfFile, so this never happen
     tokens isEmpty ifTrue: [^Unit] 
-    tok = .peek
+    tok = .step
 
     // simple literal
     .literalExprFrom: tok, ifTrue: [^Unit]
 
 
     | tok kind
+    | TokenType.Type => .typeDeclaration: tok
     | TokenType.Identifier => .identifierStart: tok
 
     | TokenType.EndOfFile => [

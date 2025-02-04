@@ -19,18 +19,17 @@ constructor Lexer input::String = [
 ] 
 
 constructor Lexer newLex: input::String -> List::Token = [
-  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0
-  l step 
-  res = l lex toList
-  ^ res
+  ^ Lexer input: input, lex toList
 ] 
 
 extend mut Lexer [
   on printState = [
     "---" debug
-    input debug
-    readPos debug
+    // input debug
+    // readPos debug
     ch debug
+    posOnLine debug
+    line debug
     "---" debug
   ]
   on step = [
@@ -65,7 +64,9 @@ extend mut Lexer [
   ]
 
   on createToken: kind::TokenType lexeme::String -> Token = [
-
+    // posOnLine - lexeme count, debug
+    // posOnLine debug
+    // line debug
     tok = Token
       kind: kind
       lexeme: lexeme
@@ -79,6 +80,7 @@ extend mut Lexer [
 
   on nextToken -> Token! = [
     .skipWhiteSpaces
+
     l = ch toString
 
     tok = | ch 
@@ -130,6 +132,8 @@ extend mut Lexer [
     // parens
     | '(' => .createToken: TokenType.OpenParen   lexeme: l
     | ')' => .createToken: TokenType.CloseParen  lexeme: l
+    | '[' => .createToken: TokenType.OpenBracket   lexeme: l
+    | ']' => .createToken: TokenType.CloseBracket  lexeme: l
     | '{' => .createToken: TokenType.OpenBrace   lexeme: l
     | '}' => .createToken: TokenType.CloseBrace  lexeme: l
     | '#' => [
@@ -162,13 +166,13 @@ extend mut Lexer [
     |=> [
       // identifier
       ch isLetter || (ch == '_') ifTrue: [
-        lit = this readIdentifier
+        lit = .readIdentifier
         tt = Token lookupKeyword: lit
 
         // colon after identifier
         ^.match: ':', // early return because we dont need another step
           ifTrue:  [
-            .stepMatch: ':',
+            .match: ':',
               ifTrue: [.createToken: TokenType.IdentifierDoubleColon lexeme: lit + "::"]
               ifFalse: [.createToken: TokenType.IdentifierColon lexeme: lit + ":"]
           ] 
@@ -251,11 +255,10 @@ mut Lexer skipWhiteSpaces = [
 
     ch == '\n' ifTrue: [
       line <- line inc
-      posOnLine <- 0
+      posOnLine <- 0 
     ]
-
-    
     .step
+    
   ]
  
 ]

@@ -168,14 +168,6 @@ fun Lexer.error(message: String): Nothing {
     this.tokens.last().compileError(msg)
 }
 
-fun String.set(index: Int, char: Char): String {
-    return substring(0, index) + char + substring(index)
-}
-
-fun String.set(index: Int, str: String): String {
-    return substring(0, index) + str + substring(index)
-}
-
 enum class StrMode {
     Single,
     Raw,
@@ -188,7 +180,7 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
     var slen = 0
     var wasUtfSymbol = false
     while (!this.check(delimiter) && !this.done()) {
-
+        val peek = peek()
         if (this.match("\n")) {
             if (mode == StrMode.Multi) {
                 this.incLine(false)// multi-string
@@ -196,8 +188,10 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
                 this.error("unexpected EOL while parsing string literal")
             }
         }
+        if (check("\"\"\""))
+            break
 
-        if (arrayOf(StrMode.Raw, StrMode.Multi).contains(mode)) {
+        if (mode == StrMode.Multi) { // || mode == StrMode.Raw
             this.step()
             continue
         } else {
@@ -224,6 +218,7 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
                 source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
             }
         }
+
         step()
         slen++
         if (slen > 1 && delimiter == "'" && !wasUtfSymbol) {
