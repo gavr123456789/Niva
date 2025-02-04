@@ -25,6 +25,11 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
+class FormFactor
+class Language
+class Kind
+class VertexShader
+
 
 
 const val fakeFileSourceGOOD = """
@@ -32,6 +37,22 @@ const val fakeFileSourceGOOD = """
 
 1 sas 
 """
+
+interface A {
+    fun foo()
+}
+
+interface B {
+    @Deprecated("Deprecated", level = DeprecationLevel.ERROR)
+    fun foo() { TODO() }
+}
+
+class C : A, B {
+    override fun foo() {
+        println("foo")
+    }
+}
+
 
 fun main(args: Array<String>) {
 

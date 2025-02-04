@@ -144,16 +144,16 @@ Test controlFlow = [
                   }
 ]
 
-// Test enumDeclaration = [
-//   LexTest checkThat: "enum MessageKind = Unary | Binary | Keyword" 
-//           equals: {TokenType.Enum 
-//                    TokenType.Identifier 
-//                    TokenType.Assign 
-//                    TokenType.Identifier 
-//                    TokenType.PipeOperator 
-//                    TokenType.Identifier 
-//                    TokenType.PipeOperator
-//                    TokenType.Identifier
-//                   }
-// ]
+Test enumDeclaration = [
+  LexTest checkThat: "enum MessageKind = Unary | Binary | Keyword" 
+          equals: {TokenType.Enum 
+                   TokenType.Identifier 
+                   TokenType.Assign 
+                   TokenType.Identifier 
+                   TokenType.PipeOperator 
+                   TokenType.Identifier 
+                   TokenType.PipeOperator
+                   TokenType.Identifier
+                  }
+]
 

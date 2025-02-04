@@ -1,20 +1,33 @@
 union Statement token: Token =
 | ^Expr
 | ReturnStatement   value: Expr?
-| Declaration
+| ^Declaration
 | VarDeclaration    name: String value: Expr 
 | Assign            name: String value: Expr
 | DestructingAssign names: List::String value: Expr // {name} = person
 
+union Declaration token: Token = 
+| TypeDecl name: String fields: Map(String, AstType)
+| EnumDecl 
+| UnionDecl
+
+| MessageDecl value: MessageSend returnType: AstType
 
 
-type AstType
-type MessageDecl value: MessageSend returnType: AstType
-// Unary
-// Int inc -> Int
-// MessageDecl 
-//    value: (MessageSend r: Int args: {})
+// Types
+// TODO add generics
+union AstType = 
+| UserType name: String fields: Map(String, String) // name to typeName
+| ^InternalType
 
+union InternalType = 
+| StringAstType
+| IntAstType
+| BooleanAstType
+| FloatAstType
+| DoubleAstType
+
+// Expressions
 
 union Expr token: Token = 
 | ^LiteralExpr
@@ -22,8 +35,8 @@ union Expr token: Token =
 | ExprInBrackets value: Expr
 | MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
 
+// Messages
 enum MessageKind = Unary | Binary | Keyword
-
 
 // 1 inc 
 // {name: "inc" expr: 1}

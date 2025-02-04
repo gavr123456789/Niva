@@ -1,25 +1,37 @@
 type Program 
   readFile: [String -> String]
   walkDir: [String -> List::String]
-// Program 
 
 
-// TestParse withInput: "1 inc" expectedCount: 1
-// input = """
-// type Program 
-//   readFile: [String -> String]
-//   walkDir: [String -> List::String]
-// """ trimIndent
 
-//   input = """
-//     type Program 
-//       readFile: [String -> String]
-//       walkDir: [String -> List::String]
-//   """ trimIndent
+testReal = [
+  input = """
+  type Program 
+    readFile: [String -> String]
+    walkDir: [String -> List::String]
+  """ trimIndent 
 
-// Lexer newLex: input, forEach: [
-//   it echo
-//   "---" echo
-// ]
+  Lexer newLex: input, forEach: [
+    it echo
+    "---" echo
+  ]
+]
 
+  tokens = LexTest input: """
+type Program 
+  readFile: [String -> String]
+  walkDir: [String -> List::String]
+  """ trimIndent 
+  // tokens = LexTest input: "   type nim\n" + "   keke:"
+  // expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
+  expectedStarts = {4 9 3}
+  expectedEnds =   {8 12 6}
+  expectedLines =  {1 1 2}
 
+  tokens forEachIndexed: [ i, it ->
+    it echo
+    "\n" echo
+    // Assert that: it start equals: (expectedStarts at: i) andSay: "$it"
+    // Assert that: it end   equals: (expectedEnds at: i)   andSay: "$it"
+    // Assert that: it line  equals: (expectedLines at: i)  andSay: "$it"
+  ]
