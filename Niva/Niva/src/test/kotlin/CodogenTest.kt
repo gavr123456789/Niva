@@ -3,6 +3,7 @@
 import frontend.resolver.Resolver
 import frontend.resolver.resolve
 import main.codogen.codegenKt
+import main.test.getAstTest
 import java.io.File
 
 fun generateKotlin(source: String): String {
@@ -485,5 +486,3 @@ class CodogenTest {
 //    }
 
 }
-
-

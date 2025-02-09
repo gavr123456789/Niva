@@ -573,10 +573,10 @@ fun generateSingleBinary(
             append("this")
         }
 
-        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
     } else {
-        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(" ${it.selectorName} ")
         append(generateUnarySends(it.argument, it.unaryMsgsForArg))
     }
 
