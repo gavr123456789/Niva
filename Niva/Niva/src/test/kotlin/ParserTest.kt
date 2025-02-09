@@ -2,7 +2,8 @@
 
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.keyword
-import frontend.parser.parsing.statements
+import main.test.getAstTest
+import main.lex
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.Assign
 import main.frontend.parser.types.ast.BinaryMsg
@@ -30,7 +31,6 @@ import main.frontend.parser.types.ast.MessageSendUnary
 import main.frontend.parser.types.ast.MethodReference
 import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.SetCollection
-import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.StaticBuilder
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
@@ -38,7 +38,6 @@ import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
-import main.lex
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -100,7 +99,7 @@ class ParserTest {
     fun collectionMapWithNewLines() {
         val source = """
             #{1 2
-             
+
              3 4}
         """.trimIndent()
         val ast = getAstTest(source)
@@ -1093,7 +1092,7 @@ class ParserTest {
             | x
             // | Circle => x radius echo
             | Rectangle => x width echo
-            
+
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
@@ -1270,10 +1269,10 @@ class ParserTest {
                 to::Int
             = []
             Ште from::Int to::String = []
-            
+
             Int + x::Int = []
             Int unary -> Int = []
-            
+
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -1284,7 +1283,7 @@ class ParserTest {
     fun dotAsThisInsideMethods() {
         val source = """
             Int from::Int = from
-            
+
             Int
                 from::Int
                 to::Int
@@ -1544,7 +1543,7 @@ class ParserTest {
         val source = """
             x = 1
             | x
-            | 1, 2, 3 => "sas" echo
+            | 1|2|3 => "sas" echo
             |=> "sus" echo
         """.trimIndent()
 
@@ -1588,11 +1587,11 @@ class ParserTest {
     @Test
     fun codeBlockFalseArgs() {
         val source = """
-           
+
           fillGroups = [
             words1::MutableMap(Int, String) = #{}
             words2::MutableMap(Int, String) = #{}
-            
+
             1 echo
           ]
         """.trimIndent()
@@ -1605,9 +1604,9 @@ class ParserTest {
     @Test
     fun manyCases() {
         val source = """
-           
+
           | 1
-          | 1,2,3 => 4
+          | 1|2|3 => 4
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -1865,7 +1864,7 @@ class ParserTest {
             {1 2} forEach: [
                 !!
             ]
-            
+
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
@@ -1924,13 +1923,13 @@ class ParserTest {
             ]
             // no receiver with no args            
             builder StringBuilder buildStr -> String = []
-            
+
             // receiver with args
             StringBuilder builder arg::Int -> String = []
-            
+
             // receiver with no args
             StringBuilder builder buildStr -> String = []
-            
+
         """.trimIndent()
 
         // is the same as when() {}, so it is if else if
@@ -1992,7 +1991,7 @@ class ParserTest {
             StringBuilder builder buildSomething -> String = [
                 1 echo
             ]
-            
+
         """.trimIndent()
 
 
@@ -2134,7 +2133,7 @@ class ParserTest {
         val source = """
             union CombinatorResult = 
             |
-             
+
         """.trimIndent()
         try {
             getAstTest(source)
@@ -2284,7 +2283,7 @@ class ParserTest {
               ] |=> Unit
 
             MutableList::T forEachBreak::[ -> T] -> Unit = [
-                  
+
             ]
         """.trimIndent()
         val ast = getAstTest(source)
@@ -2455,7 +2454,7 @@ class ParserTest {
             union Value =
             | IntT v: Int
             | NullT
-            
+
             extend Value [
                 on run = []
             ]
@@ -2470,7 +2469,7 @@ class ParserTest {
             Int from::Int = 0
             ((1 from: 2) from: 3) from: 4
             1 from: 2 |> from: 3 |> from: 4
-            
+
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 3)
@@ -2483,7 +2482,7 @@ class ParserTest {
             ((1 from: 2) from: 3) from: 4
             1 from: 2, from: 3, from: 4
             1 from: 2 |> from: 3 |> from: 4
-            
+
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 4)
@@ -2495,11 +2494,11 @@ class ParserTest {
             {1 2 3} m
             #{0 1 2 3} m
             #(1 2 3) m
-            
+
             {1 2 3} 
             #{0 1 2 3} 
             #(1 2 3) 
-            
+
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 6)
@@ -2542,11 +2541,4 @@ class ParserTest {
 //        assert(ast.count() == 1)
 //    }
 
-}
-
-fun getAstTest(source: String): List<Statement> {
-    val fakeFile = File("Niva.iml")
-    val tokens = lex(source, fakeFile)
-    val parser = Parser(file = fakeFile, tokens = tokens, source = source)
-    return parser.statements()
 }

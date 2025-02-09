@@ -3,6 +3,7 @@ import frontend.resolver.Type
 import frontend.resolver.resolve
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
+import main.test.getAstTest
 import org.junit.jupiter.api.assertThrows
 import java.io.File
 import kotlin.test.Test
