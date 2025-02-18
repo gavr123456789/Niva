@@ -3,35 +3,42 @@ type Program
   walkDir: [String -> List::String]
 
 
+// input = """
+//   type Person
+//     name: String
+//     age: Int
+// """ trimIndent
 
-testReal = [
+// statements = TestParse withInput: input expectedCount: 1
+// stringExpr = statements at: 0
+
   input = """
-  type Program 
-    readFile: [String -> String]
-    walkDir: [String -> List::String]
-  """ trimIndent 
+    type Person
+      name: String
+      age: Int
+  """ trimIndent
 
-  Lexer newLex: input, forEach: [
-    it echo
-    "---" echo
-  ]
-]
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
 
-  tokens = LexTest input: """
-type Program 
-  readFile: [String -> String]
-  walkDir: [String -> List::String]
-  """ trimIndent 
-  // tokens = LexTest input: "   type nim\n" + "   keke:"
-  // expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
-  expectedStarts = {4 9 3}
-  expectedEnds =   {8 12 6}
-  expectedLines =  {1 1 2}
+  | typeDecl 
+  | TypeDecl => [
+      Assert 
+        that: typeDecl name
+        equals: "Person"
+      Assert
+        that: typeDecl fields count
+        equals: 2
+      
+      name = typeDecl fields at: 0
+      age = typeDecl fields at: 1
+      
+      Assert that: name name equals: "name"
+      Assert that: age name  equals: "age"
 
-  tokens forEachIndexed: [ i, it ->
-    it echo
-    "\n" echo
-    // Assert that: it start equals: (expectedStarts at: i) andSay: "$it"
-    // Assert that: it end   equals: (expectedEnds at: i)   andSay: "$it"
-    // Assert that: it line  equals: (expectedLines at: i)  andSay: "$it"
-  ]
+      Assert that: name type_ name equals: "String"
+      Assert that: age type_ name  equals: "Int"
+      
+      Unit
+    ]
+  |=> [TO DO: "It should be int, but it " + typeDecl toString]
