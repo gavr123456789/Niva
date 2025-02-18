@@ -187,6 +187,7 @@ const val HELP = """
 Usage:
     ${WHITE}FILE$RESET — compile and run single file
     ${WHITE}run$RESET — compile and run project from "main" file
+    ${WHITE}dev$RESET — rerun on changed files or input, for faster iteration
     ${WHITE}run FILE$RESET — compile and run project from root file
     ${WHITE}run FILE -v$RESET or ${WHITE}-verbose$RESET — with verbose printing
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)

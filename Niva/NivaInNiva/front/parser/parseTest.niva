@@ -1,7 +1,9 @@
 type TestParse 
 constructor TestParse withInput::String expectedCount::Int -> MutableList::Statement = [
   tokens = Lexer newLex: withInput
+  // tokens debug
   {statements} = Parser newParseTokens: tokens
+  statements debug
   Assert that: statements count equals: expectedCount
   ^statements
 ]
@@ -39,7 +41,41 @@ Test parseString -> Unit! = [
     Assert 
       that: stringExpr token lexeme
       equals: "\"sas\""
-  |=> [TO DO: "It should be int, but it $stringExpr"]
+  |=> [TO DO: "It should be int, but it " + stringExpr toString]
+]
+
+
+Test parseType -> Unit! = [
+  input = """
+    type Person
+      name: String
+      age: Int
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
+
+  | typeDecl 
+  | TypeDecl => [
+      Assert 
+        that: typeDecl name
+        equals: "Person"
+      Assert
+        that: typeDecl fields count
+        equals: 2
+      
+      name = typeDecl fields at: 0
+      age = typeDecl fields at: 1
+      
+      Assert that: name name equals: "name"
+      Assert that: age name  equals: "age"
+
+      Assert that: name type_ name equals: "String"
+      Assert that: age type_ name  equals: "Int"
+
+      Unit
+    ]
+  |=> [TO DO: "It should be int, but it " + typeDecl toString]
 ]
 
 // Test parseUnary -> Unit! = [

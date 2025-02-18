@@ -7,17 +7,18 @@ union Statement token: Token =
 | DestructingAssign names: List::String value: Expr // {name} = person
 
 union Declaration token: Token = 
-| TypeDecl name: String fields: Map(String, AstType)
+| TypeDecl name: String fields: List::TypeField
 | EnumDecl 
 | UnionDecl
 
-| MessageDecl value: MessageSend returnType: AstType
+| MessageDecl value: MessageSend returnType: Type
 
 
 // Types
-// TODO add generics
-union AstType = 
-| UserType name: String fields: Map(String, String) // name to typeName
+type AstType name: String nullable: Boolean // TODO generics
+
+union Type = 
+| UserType name: String fields: Map(String, Type) // name to typeName
 | ^InternalType
 
 union InternalType = 

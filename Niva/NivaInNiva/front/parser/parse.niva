@@ -15,6 +15,8 @@ constructor Parser newParseTokens::List::Token = [
 ]
 
 
+type TypeField name: String type_: AstType
+
 extend mut Parser [
   /// if literal was added returns true
   on literalExprFrom: tok::Token -> Boolean = [
@@ -53,12 +55,52 @@ extend mut Parser [
     ^isAdded
   ]
 
+
+  on parseType -> AstType = [
+    // TODO generics
+    type_name = .step
+    type_name kind == TokenType.Identifier, assert: "Expected type name"
+    nullable = .matchString: "?"
+
+    ^AstType 
+      name: type_name lexeme 
+      nullable: nullable
+  ]
+
+  /// `name: String`
+  on typeFields -> List::TypeField = [
+    .peek kind == TokenType.IdentifierColon, assert: "Expected `field:`"
+    result::MutableList::TypeField = {}m
+
+    mut c = true
+    [c] whileTrue: [
+      tok = .peek
+      tok kind == TokenType.IdentifierColon ifTrue: [
+        .step // skip 
+
+        type_ = .parseType
+        type_field = TypeField name: (tok lexeme dropLast: 1) type_: type_
+        result add: (type_field)
+        // need continue?
+        c <- .peek kind == TokenType.IdentifierColon 
+      ] ifFalse: [
+        c <- false
+      ]
+    ]
+
+    ^ result toList
+  ]
+
+  /// type name (field1: astType)*
   on typeDeclaration: tok::Token = [
     // type name (field1: astType)*
-    kek = TypeDecl 
-      name: "Person" 
-      fields: #{"name" (StringAstType new), "age" (IntAstType new)} 
+
+    res = TypeDecl 
+      name: (.step lexeme)
+      fields: (.typeFields)
       token: tok
+    // res debug
+    .statements add: res
   ]
   on nextStatement -> Unit = [
     // there always EndOfFile, so this never happen
@@ -78,7 +120,10 @@ extend mut Parser [
       Unit
     ]
     |=> Unit
-    .step // just to evade infinity loop
+
+    .peek kind != TokenType.EndOfFile, ifTrue: [
+      .step // just to evade infinity loop
+    ]
   ]
 
   /// x| probably not just identifier without anything
@@ -91,11 +136,28 @@ extend mut Parser [
   /// X from::Int = []
   /// X from y:Int = []
   on identifierStart: tok::Token = [
+    TO DO: "identifierStart not impl"
     ident = .step
     next = .step
     
+  ]
 
-    
+
+  on match::TokenType -> Boolean = [
+    .peek kind == match, ifTrue: [
+      .step
+      ^ true
+    ]
+
+    ^ false
+  ]
+  on matchString::String -> Boolean = [
+    .peek lexeme == matchString, ifTrue: [
+      .step
+      ^ true
+    ]
+
+    ^ false
   ]
 
   on check: kind::TokenType = .peek kind == kind
@@ -108,14 +170,10 @@ extend mut Parser [
     ^ x
   ]
   on peek -> Token = [
-    // current == tokens count
-    //   ifTrue: [^Token eof]
     ^tokens at: current
   ]
-  on peekAt: distance::Int = [
+  on peekAt: distance::Int -> Token = [
     realDistance = current + distance
-    // realDistance == tokens count
-    //   ifTrue: [^Token eof]
     ^tokens at: realDistance
   ]
 ]
