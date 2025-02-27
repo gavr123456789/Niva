@@ -232,19 +232,14 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
                     KindOfTypeDecl.Binary
                 else
                     peek(1).compileError("parsing error of message declaration inside type declaration")
-
             }
 
             else -> KindOfTypeDecl.Nope
 //                    peek(2).compileError("parsing error of type declaration")
         }
-
-
     }
 
-
     val fakeTypeAst = TypeAST.UserType(typeName.lexeme, token = typeName)
-
 
     var q = checker()
     skipNewLinesAndComments()

@@ -212,12 +212,18 @@ class KeywordArgAst(
 //}
 
 
-fun MutableList<KeywordArg>.copy(): MutableList<KeywordArg> =
+fun MutableList<KeywordArg>.copy(thisType: Type): MutableList<KeywordArg> =
     this.map {
-        val type = it.type
+        val itType = it.type
         KeywordArg(
             name = it.name,
-            type = if (type is Type.UserLike) type.copy() else type
+            type = if (itType is Type.UserLike)
+                if (itType.typeArgumentList.contains(thisType))
+                    itType
+                else
+                    itType.copy()
+            else
+                itType
         )
     }.toMutableList()
 
@@ -581,8 +587,14 @@ sealed class Type(
             (when (this) {
                 is UserType -> UserType(
                     name = this.name,
-                    typeArgumentList = this.typeArgumentList.map { if (it is UserLike) it.copy() else it },
-                    fields = this.fields.copy(),
+                    typeArgumentList = this.typeArgumentList.map {
+                        if (it is UserLike) {
+                            it.copy()
+                        }
+                        else
+                            it
+                                                                 },
+                    fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
                     protocols = this.protocols.toMutableMap(),
@@ -592,7 +604,7 @@ sealed class Type(
                 is EnumRootType -> EnumRootType(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList.toList(),
-                    fields = this.fields.copy(),
+                    fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
@@ -603,7 +615,7 @@ sealed class Type(
                 is UnionRootType -> UnionRootType(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList.toList(),
-                    fields = this.fields.copy(),
+                    fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
@@ -616,7 +628,7 @@ sealed class Type(
                 is UnionBranchType -> UnionBranchType(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList.toList(),
-                    fields = this.fields.copy(),
+                    fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
                     root = this.root,
