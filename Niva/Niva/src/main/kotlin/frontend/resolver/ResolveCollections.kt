@@ -64,6 +64,12 @@ fun Resolver.resolveCollection(
         }
     } else if (nearVarDecl != null && nearVarDecl.valueTypeAst != null) {
         val type = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)//fix
+        if (type is Type.UserType) {
+            val pkg = getCurrentPackage(statement.token)
+            type.typeArgumentList.forEach {
+                pkg.addImport(it.pkg)
+            }
+        }
         statement.type = type
     }
     else {
