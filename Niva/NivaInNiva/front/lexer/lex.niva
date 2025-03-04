@@ -24,15 +24,32 @@ constructor Lexer newLex: input::String -> List::Token = [
 
 extend mut Lexer [
   on printState = [
-    "---" debug
+    "---" echo
     // input debug
     // readPos debug
     ch debug
     posOnLine debug
     line debug
-    "---" debug
+    "---" echo
   ]
+
+    on printFullState = [
+    "---" echo
+    // input debug
+    input echo
+    posOnLine repeat: [
+      " " echonnl
+    ]
+    "^" echo
+
+    ch debug
+    posOnLine debug
+    "---" echo
+  ]
+
+
   on step = [
+    // "STEP $ch" echo
     // readPos always bigger than current read char pos
     readPos >= input count 
       ifTrue: [ch <- '\u0000'] 
@@ -166,17 +183,44 @@ extend mut Lexer [
     |=> [
       // identifier
       ch isLetter || (ch == '_') ifTrue: [
+        pos == readPos ifTrue: [
+          pos <- pos dec
+        ]
         lit = .readIdentifier
         tt = Token lookupKeyword: lit
 
         // colon after identifier
-        ^.match: ':', // early return because we dont need another step
-          ifTrue:  [
-            .match: ':',
-              ifTrue: [.createToken: TokenType.IdentifierDoubleColon lexeme: lit + "::"]
-              ifFalse: [.createToken: TokenType.IdentifierColon lexeme: lit + ":"]
-          ] 
-          ifFalse: [.createToken: tt lexeme: lit ]
+
+        ^| ch 
+        | ':' => [
+          .step
+          | ch 
+          | ':' => [
+            .step
+            .createToken: TokenType.IdentifierDoubleColon lexeme: lit
+          ]
+          |=> .createToken: TokenType.IdentifierColon lexeme: lit 
+        ] 
+        |=> [
+          .createToken: tt lexeme: lit
+        ]
+
+
+        // ^.match: ':', 
+        //   ifTrue:  [
+        //     .printFullState
+
+        //     // .createToken: TokenType.IdentifierColon lexeme: lit + ":"
+        //     .match: ':',
+        //       ifTrue: [
+        //         .printFullState
+        //         x = .createToken: TokenType.IdentifierDoubleColon lexeme: lit
+        //         posOnLine debug
+        //         x
+        //       ]
+        //       ifFalse: [.createToken: TokenType.IdentifierColon lexeme: lit]
+        //   ] 
+        //   ifFalse: [.createToken: tt lexeme: lit ]
       ]
       // digit
       ch isDigit ifTrue: [
@@ -232,6 +276,7 @@ mut Lexer parseStringLike: delimiter::Char -> String = [
 
 mut Lexer readIdentifier -> String = [
   localPos = pos
+  
   [ch isLetter] whileTrue: [
     .step
   ]

@@ -66,6 +66,13 @@ constructor Token eof = Token
   line: 1 
   start: 0 end: 1
 
+extend Token [
+  on isIdentifier = 
+    (kind == TokenType.Identifier) ||
+    (kind == TokenType.NullableIdentifier) ||
+    (kind == TokenType.IdentifierDoubleColon) 
+]
+
 /// gets keyword name outputs token type, or identifier if its not kw
 constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type

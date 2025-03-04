@@ -3,7 +3,7 @@ constructor TestParse withInput::String expectedCount::Int -> MutableList::State
   tokens = Lexer newLex: withInput
   // tokens debug
   {statements} = Parser newParseTokens: tokens
-  statements debug
+  // statements debug
   Assert that: statements count equals: expectedCount
   ^statements
 ]
@@ -76,6 +76,21 @@ Test parseType -> Unit! = [
       Unit
     ]
   |=> [TO DO: "It should be int, but it " + typeDecl toString]
+]
+
+Test parseAstTypeWithGeneric -> Unit! = [
+  input = """
+    List::Int
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  // tokens debug
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  parser parseType
+  statements at: 1, debug
+  // TO DO
+  
 ]
 
 // Test parseUnary -> Unit! = [

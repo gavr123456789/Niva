@@ -15,7 +15,12 @@ union Declaration token: Token =
 
 
 // Types
-type AstType name: String nullable: Boolean // TODO generics
+type AstType 
+  name: String 
+  nullable: Boolean 
+  genericParams: List::AstType
+
+
 
 union Type = 
 | UserType name: String fields: Map(String, Type) // name to typeName

@@ -63,6 +63,22 @@ Test words = [
   ]
 ]
 
+// Test genericType = [
+//   tokens = LexTest input: "List::Int" 
+
+//   expectedKinds = {TokenType.IdentifierDoubleColon TokenType.Identifier}
+//   // expectedStarts = {1 6 10}
+//   // expectedEnds =   {5 9 14}
+//   expectedLexems = {"List::", "Int"}
+//   tokens forEachIndexed: [ i, it ->
+//     Assert that: it kind equals: (expectedKinds at: i)
+//     Assert that: it lexeme equals: (expectedLexems at: i)
+
+//     // Assert that: it start equals: (expectedStarts at: i)
+//     // Assert that: it end equals: (expectedEnds at: i)
+//   ]
+// ]
+
 Test multiLine = [
   tokens = LexTest input: """
     niva nim
