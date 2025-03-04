@@ -56,15 +56,60 @@ extend mut Parser [
   ]
 
 
+
+  on parseGenericPartOfType = [
+    // .peek echo
+    TO DO: "parseGenericPartOfType"
+  ]
+
   on parseType -> AstType = [
-    // TODO generics
+
+    .match: TokenType.Mut, ifTrue: [
+      TO DO: "add mutable modifier"
+    ]
+    .match: TokenType.OpenBracket, ifTrue: [
+      TO DO: "parseLambda"
+    ]
+
+    tok = .peek
+    isIdentifier = tok isIdentifier
+
     type_name = .step
-    type_name kind == TokenType.Identifier, assert: "Expected type name"
+    type_name isIdentifier, assert: "Expected type name"
     nullable = .matchString: "?"
 
+    
+    isThereMapLikeGenerics = .match: TokenType.OpenParen  
+    isThereGenerics = tok kind == TokenType.IdentifierDoubleColon
+
+    generics::MutableList::AstType = {}m
+
+    (isThereGenerics) ifTrue: [
+      mut c = true 
+      [c] whileTrue: [
+        // we already have first part - List::
+        // so now we need to 
+        q = .peek 
+        c <- q kind == TokenType.IdentifierDoubleColon
+
+        // q kind == TokenType.IdentifierDoubleColon, ifTrue: [
+        //   c <- true
+        // ] ifFalse: [
+        //   c <- false
+        // ]
+        TO DO
+
+        c <- false
+      ]
+
+      .parseGenericPartOfType
+    ]
+    // isThereMapLikeGenerics = .match: TokenType.Colon  
+    
     ^AstType 
       name: type_name lexeme 
       nullable: nullable
+      genericParams: {} 
   ]
 
   /// `name: String`
@@ -79,7 +124,7 @@ extend mut Parser [
         .step // skip 
 
         type_ = .parseType
-        type_field = TypeField name: (tok lexeme dropLast: 1) type_: type_
+        type_field = TypeField name: (tok lexeme) type_: type_ // dropLast: 1, ":"
         result add: (type_field)
         // need continue?
         c <- .peek kind == TokenType.IdentifierColon 

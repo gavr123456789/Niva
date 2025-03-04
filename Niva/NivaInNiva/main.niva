@@ -3,42 +3,37 @@ type Program
   walkDir: [String -> List::String]
 
 
-// input = """
-//   type Person
-//     name: String
-//     age: Int
-// """ trimIndent
+// [
+//   tokens = LexTest input: "aaa+bbb" 
 
-// statements = TestParse withInput: input expectedCount: 1
-// stringExpr = statements at: 0
+//   // expectedKinds = {TokenType.IdentifierColon TokenType.Identifier} // Double
+//   expectedLexems = {"aaa" "+" "bbb"}
+//   tokens forEachIndexed: [ i, it ->
+//     // Assert that: it kind equals: (expectedKinds at: i)
+//     Assert that: it lexeme equals: (expectedLexems at: i)
+//   ]
+// ] do
 
-  input = """
-    type Person
-      name: String
-      age: Int
-  """ trimIndent
+// "44444444444444444" echo
+  // tokens = LexTest input: "List::Int" 
+  // expectedLexems = {"List", "Int"}
+  // tokens forEachIndexed: [ i, it ->
+  //   Assert that: it lexeme equals: (expectedLexems at: i)
+  // ]
 
-  statements = TestParse withInput: input expectedCount: 1
-  typeDecl = statements at: 0
 
-  | typeDecl 
-  | TypeDecl => [
-      Assert 
-        that: typeDecl name
-        equals: "Person"
-      Assert
-        that: typeDecl fields count
-        equals: 2
-      
-      name = typeDecl fields at: 0
-      age = typeDecl fields at: 1
-      
-      Assert that: name name equals: "name"
-      Assert that: age name  equals: "age"
 
-      Assert that: name type_ name equals: "String"
-      Assert that: age type_ name  equals: "Int"
-      
-      Unit
-    ]
-  |=> [TO DO: "It should be int, but it " + typeDecl toString]
+  // input = """
+  //   List::Glist::Int
+  // """ trimIndent
+
+  // tokens = Lexer newLex: input
+  // // tokens debug
+  // statements::MutableList::Statement = {}m
+  // parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  // parser parseType
+  // statements at: 1, debug
+
+
+x = 1 > 2 ifTrue: [2 + 2] ifFalse: [1 + 1]
+x echo

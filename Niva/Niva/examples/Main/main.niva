@@ -1,21 +1,10 @@
-type LexTest
-constructor LexTest input::String -> List::Token! = [
-  tokens = {(Token new)} // drop EOF
-  Error throwWithMessage: "qwf"
-  ^ tokens
-]
-type TestParse
-constructor TestParse tokens::List::Token expectedCount::Int = [
-  tokens = LexTest input: "1", orPANIC
-//  {statements} = Parser newParseTokens: tokens
+type TypeField name: String type_: AstType
 
-//  Assert that: statements count equals: expectedCount
-]
-
-
-type Parser
-type Token
-
-Parser parse: tokens::List::Token -> Unit = [
-  
-]
+type AstType
+  name: String
+  nullable: Boolean // TODO generics
+  genericParams: List::AstType
+x = AstType
+          name: "qwf"
+          nullable: false
+          genericParams: {}
