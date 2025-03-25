@@ -1,6 +1,7 @@
 package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
+import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.*
 
 import main.utils.CYAN
@@ -165,11 +166,16 @@ fun Resolver.resolveUnaryMsg(
     }
 
     val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
-//         = typeForStatement
 
     val result = addErrorEffect(msgFromDb, typeForStatement, statement)
     statement.type = result
+
+    // Compiler
+    if (receiver.token.lexeme == "Compiler") {
+        previousAndCurrentScope.filter { it.key != "args" }.forEach {
+            statement.pragmas.add(SingleWordPragma(it.key))
+        }
+    }
+
     return result
-
-
 }

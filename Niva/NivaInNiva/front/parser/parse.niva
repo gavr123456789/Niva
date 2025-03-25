@@ -89,7 +89,7 @@ extend mut Parser [
       [c] whileTrue: [
         // we already have first part - List::
         // so now we need to 
-        q = .peek 
+        q = .peek
         c <- q kind == TokenType.IdentifierDoubleColon
 
         // q kind == TokenType.IdentifierDoubleColon, ifTrue: [
@@ -98,6 +98,7 @@ extend mut Parser [
         //   c <- false
         // ]
         TO DO
+        Compiler debug
 
         c <- false
       ]

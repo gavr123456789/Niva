@@ -277,6 +277,8 @@ fun createStringProtocols(
             createUnary("toInt", intType),
             createUnary("toFloat", floatType),
             createUnary("toDouble", doubleType),
+            createUnary("uppercase".uppercase(), stringType, "Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale."),
+            createUnary("lowercase".lowercase(), doubleType, "Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale."),
             createUnary("first", charType, "Returns the first character or panic"),
             createUnary("last", charType, "Returns the last character or panic"),
             createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`
@@ -1076,20 +1078,28 @@ fun createSetProtocols(
     return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
 
+
+enum class CompilerMessages(val str: String) {
+    GetName(str = "getName"),
+    Debug(str = "debug"),
+}
 fun createCompilerProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
     typeType: Type.UserType,
-    listOfString: Type.UserType
+    listOfString: Type.UserType,
+    unitType: Type.InternalType,
 ): MutableMap<String, Protocol> {
     val commonProtocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("getArgs", listOfString),
+//            createUnary("getArgs", listOfString),
+//            createUnary("debug", unitType),
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
+            createUnary("debug", unitType, "Prints every variable from current scope"),
             createKeyword(KeywordArg("getName", intType), stringType),
 //            createKeyword(KeywordArg("getType", intType), typeType),
             )

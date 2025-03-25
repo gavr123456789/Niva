@@ -3,37 +3,15 @@ type Program
   walkDir: [String -> List::String]
 
 
-// [
-//   tokens = LexTest input: "aaa+bbb" 
+  input = """
+    List::Int
+  """ trimIndent
 
-//   // expectedKinds = {TokenType.IdentifierColon TokenType.Identifier} // Double
-//   expectedLexems = {"aaa" "+" "bbb"}
-//   tokens forEachIndexed: [ i, it ->
-//     // Assert that: it kind equals: (expectedKinds at: i)
-//     Assert that: it lexeme equals: (expectedLexems at: i)
-//   ]
-// ] do
-
-// "44444444444444444" echo
-  // tokens = LexTest input: "List::Int" 
-  // expectedLexems = {"List", "Int"}
-  // tokens forEachIndexed: [ i, it ->
-  //   Assert that: it lexeme equals: (expectedLexems at: i)
-  // ]
-
-
-
-  // input = """
-  //   List::Glist::Int
-  // """ trimIndent
-
-  // tokens = Lexer newLex: input
-  // // tokens debug
-  // statements::MutableList::Statement = {}m
-  // parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
-  // parser parseType
-  // statements at: 1, debug
-
-
-x = 1 > 2 ifTrue: [2 + 2] ifFalse: [1 + 1]
-x echo
+  tokens = Lexer newLex: input
+  // tokens debug
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  parser parseType
+  statements at: 1, debug
+  // TO DO
+  

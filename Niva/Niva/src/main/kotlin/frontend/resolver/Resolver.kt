@@ -1821,7 +1821,8 @@ class Resolver(
         // Compiler
         compiler.protocols.putAll(
             createCompilerProtocols(
-                intType = intType, stringType = stringType, typeType = typeType, listOfString
+                intType = intType, stringType = stringType, typeType = typeType, listOfString,
+                unitType = unitType
             )
         )
 

@@ -38,33 +38,18 @@ const val fakeFileSourceGOOD = """
 1 sas 
 """
 
-interface A {
-    fun foo()
-}
-
-interface B {
-    @Deprecated("Deprecated", level = DeprecationLevel.ERROR)
-    fun foo() { TODO() }
-}
-
-class C : A, B {
-    override fun foo() {
-        println("foo")
-    }
-}
-
-
 fun main(args: Array<String>) {
 
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/compose/main.niva")
-//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/mosaic/main.niva")
+//    val args = arrayOf("run", "/home/gavr/checks/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
 
-//    val qqq = "file:///Users/gavr/Documents/Fun/niva-code/bazar/Examples/experiment/main.niva"
+//    val qqq = "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
 //    try {
 //        val ls = LS()
-//        val resolver = ls.resolveAllFirstTime(qqq, true)
+//        val resolver = ls.resolveAllFirstTime(qqq, true, null)
+//
 //        // 1 file to decl не содержит main
 //        val resolver3 =  ls.resolveNonIncremental(qqq, fakeFileSourceGOOD)
 ////        ls.resolveIncremental(qqq, fakeFileSourceGOOD)

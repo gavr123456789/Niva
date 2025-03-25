@@ -4,6 +4,7 @@ package main.codogen
 
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.SingleWordPragma
+import frontend.resolver.CompilerMessages
 import frontend.resolver.Type
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
@@ -50,8 +51,8 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver ->\n") // then generate function calls on this receiver
         IdentifierExpr(name = "cascade_receiver", token = token).also {
-                it.type = receiver.type
-            } // because next we will read type of receiver
+            it.type = receiver.type
+        } // because next we will read type of receiver
     } else null
 
     // refactor to function and call it recursive for binary arguments
@@ -256,18 +257,15 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
                     if (receiver.isPiped) {
                         val res = msg.receiver.generateExpression()
                         res
-                    }
-                    else if (receiver.receiver is Message) {
+                    } else if (receiver.receiver is Message) {
                         // (1 inc) inc
                         // (1 inc) is receiver
                         // first inc already generated, so we dont need to do a copy of receivre
 //                        receiver.generateExpression()
                         ""
-                    }
-                    else if (receiver.receiver is MessageSend) {
+                    } else if (receiver.receiver is MessageSend) {
                         msg.receiver.generateExpression()
-                    }
-                    else "" // if there are messages already, then do not generate duplicates
+                    } else "" // if there are messages already, then do not generate duplicates
                 }
 
                 !is LiteralExpression.StringExpr -> msg.receiver.generateExpression()
@@ -275,7 +273,7 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
             }
 
             map["0"] = receiverCode
-            val result =  replacePatternsWithValues(value.toString(), map)
+            val result = replacePatternsWithValues(value.toString(), map)
             msg.selectorName = result
         }
 
@@ -318,8 +316,6 @@ fun generateSingleKeyword(
                     dotAppend(this, withNullChecks)
                 }
             }
-
-
             append(
                 receiver.generateExpression()
             )
@@ -335,20 +331,24 @@ fun generateSingleKeyword(
     // if Compiler
     if (receiver.token.lexeme == "Compiler") {
         val firstArg = keywordMsg.args[0]
-        if (firstArg.name == "getName") {
-            val getArg = {
-                if (firstArg.keywordArg !is LiteralExpression.IntExpr) {
-                    firstArg.keywordArg.token.compileError("Int argument expected for `getName`")
-                }
+        when (firstArg.name) {
+            CompilerMessages.GetName.str -> {
+                val getArg = {
+                    if (firstArg.keywordArg !is LiteralExpression.IntExpr) {
+                        firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.GetName.name}`")
+                    }
 
-                firstArg.keywordArg.token.lexeme.toIntOrNull() ?: firstArg.keywordArg.token.compileError("Int argument expected for `getName`")
+                    firstArg.keywordArg.token.lexeme.toIntOrNull()
+                        ?: firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.GetName.name}`")
+                }
+                val arg = getArg()
+                append("(__arg$arg)")
+                return@buildString
             }
-            val arg = getArg()
-            append("(__arg$arg)")
-            return@buildString
-        } else if (firstArg.name == "getType") {
-            firstArg.keywordArg.token.compileError("getType not implemented yet")
-        } else firstArg.keywordArg.token.compileError("unexpected Compiler arg: $CYAN${firstArg.name}")
+            "getType" -> firstArg.keywordArg.token.compileError("getType not implemented yet")
+            else -> firstArg.keywordArg.token.compileError("unexpected Compiler arg: $CYAN${firstArg.name}")
+        }
+
     }
     // end of Compiler
 
@@ -445,7 +445,8 @@ fun generateSingleKeyword(
 
     // if single lambda, no brackets needed
     // but not needed for contructors call, there is no such things as builder constructors, I hope
-    val isNotSingleLambdaArg = !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock && !isConstructor)
+    val isNotSingleLambdaArg =
+        !(keywordMsg.args.count() == 1 && keywordMsg.args[0].keywordArg is CodeBlock && !isConstructor)
     if (isNotSingleLambdaArg) append("(")
 
     // generate args
@@ -481,10 +482,24 @@ fun generateSingleUnary(
     withNullChecks: Boolean = false,
     invisibleArgs: List<String>? = null,
 ) = buildString {
+
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
+        if (receiver.token.lexeme == "Compiler") {
+            if (it.selectorName == CompilerMessages.Debug.str) {
+                it.pragmas.forEach {
+                    when (it) {
+                        is SingleWordPragma -> {
+                            val q = it.name
+                            appendLine("println(\"$q = $$q\")")
+                        }
+                        is KeyPragma -> {}
+                    }
+                }
+                return@buildString
+            }
+        }
         append(receiverCode)
-
 //        val type = receiver.type!!
 //        if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
 //            if (type.typeArgumentList.count() == 1)
@@ -505,6 +520,7 @@ fun generateSingleUnary(
                 if (w.protocols.values.find { it.staticMsgs.containsKey("new") } != null) return false
                 return w.fields.isEmpty()
             }
+
             val isThatDefaultConstructor = isThatDefaultConstructor()
 
 

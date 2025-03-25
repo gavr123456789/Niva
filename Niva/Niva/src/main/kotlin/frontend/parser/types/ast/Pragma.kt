@@ -13,3 +13,5 @@ class KeyPragma(
 class SingleWordPragma(
     name: String,
 ) : Pragma(name)
+
+
