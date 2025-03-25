@@ -515,6 +515,7 @@ fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: Str
         val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
         listOfNivaFiles.addAll(filesFromTheUpperDir)
 
+        // actually there can be a folder with only folders and no niva files
         if (filesFromTheUpperDir.count() == 0) throw Exception("There is no main.niva file")
 
         // find if there is main.niva
