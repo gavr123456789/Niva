@@ -1,5 +1,6 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-import org.jetbrains.kotlin.cli.common.isWindows
+//import org.jetbrains.kotlin.cli.common.isWindows
+import org.gradle.internal.os.OperatingSystem
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -7,7 +8,7 @@ import java.nio.file.StandardCopyOption
 
 
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.1.20-RC3"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
@@ -158,8 +159,8 @@ fun buildInfroProject() {
         val javaVersionOutput = ByteArrayOutputStream()
         exec {
             this.workingDir = infroDir
-            val isWindows = isWindows
-            if (isWindows) {
+//            val isWindows = isWindows
+            if (OperatingSystem.current() == OperatingSystem.WINDOWS) {
                 commandLine("./gradlew.bat", "build")
             } else {
                 commandLine("./gradlew", "build")
