@@ -236,6 +236,8 @@ fun Resolver.resolveControlFlow(
 
         val typesAlreadyChecked = mutableSetOf<Type>()
         var thisIsTypeMatching = false // need to generate `is`
+        // | x | null => ... |=> ...
+        var thisIsNullMatching = false
         // resolve | (^) => ... part
         statement.ifBranches.forEachIndexed { i, it ->
             currentLevel++
@@ -248,6 +250,9 @@ fun Resolver.resolveControlFlow(
             currentLevel--
             val currentTypeName = it.ifExpression.type?.name
             val currentType = it.ifExpression.type!!
+
+            if (!thisIsNullMatching)
+                thisIsNullMatching = currentType.name == InternalTypes.Null.name
 
             if (i == 0 && it.ifExpression is IdentifierExpr && currentTypeName == it.ifExpression.name) {
                 statement.kind =
@@ -286,9 +291,21 @@ fun Resolver.resolveControlFlow(
             thisIsTypeMatching =
                 statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.StatementTypeMatch
 
+
             // new instance in every loop iteration to erase previous
             val scopeWithThisFields = mutableMapOf<String, Type>()
-
+            if (thisIsNullMatching && statement.switch is IdentifierExpr) {
+                val switchIsNullable = statement.switch.type is Type.NullableType
+                if (!switchIsNullable) {
+                    it.ifExpression.token.compileError("You can't match on null with non nullable type in switch (${statement.switch}::${statement.switch.type})")
+                }
+                if (currentType.name != InternalTypes.Null.name) {
+                    val unpackedNull = currentType.unpackNull()
+                    currentScope[statement.switch.name] = unpackedNull
+                    previousAndCurrentScope[statement.switch.name] = unpackedNull
+                    statement.switch.type = unpackedNull
+                }
+            }
             if (thisIsTypeMatching && statement.switch is IdentifierExpr) {
                 if (currentType is Type.UserLike) {
                     currentType.fields.forEach {
@@ -309,8 +326,8 @@ fun Resolver.resolveControlFlow(
             }
 
             val curTok = it.ifExpression.token
-            if (!compare2Types(currentType, statement.switch.type!!, curTok)) {
-                curTok.compileError("${WHITE}${it.ifExpression}${RESET} has type: ${YEL}$currentType${RESET} but you matching on\n       $WHITE${statement.switch}$RESET of type ${YEL}${statement.switch.type!!.name}")
+            if (!compare2Types(statement.switch.type!!, currentType, curTok, unpackNullForFirst = true)) {
+                curTok.compileError("${WHITE}${it.ifExpression}${RESET} has type: ${YEL}$currentType${RESET} but you matching on\n       $WHITE${statement.switch}$RESET of type ${YEL}${statement.switch.type!!}")
             }
             /// resolving then, if() ^
             val scopeWithFields =
@@ -368,7 +385,13 @@ fun Resolver.resolveControlFlow(
         }
         if (statement.elseBranch != null) {
             currentLevel++
+            if (thisIsNullMatching && statement.switch is IdentifierExpr) {
+                previousAndCurrentScope[statement.switch.name] = savedSwitchType.unpackNull()
+            }
             resolve(statement.elseBranch, previousAndCurrentScope, statement)
+            if (statement.switch is IdentifierExpr)
+                previousAndCurrentScope[statement.switch.name] = savedSwitchType
+
             currentLevel--
             if (statement.elseBranch.isNotEmpty()) {
                 val lastExpr = statement.elseBranch.last()

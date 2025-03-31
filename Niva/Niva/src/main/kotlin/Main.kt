@@ -25,12 +25,6 @@ fun lex(source: String, file: File): MutableList<Token> {
     return lexer.lex()
 }
 
-class FormFactor
-class Language
-class Kind
-class VertexShader
-
-
 
 const val fakeFileSourceGOOD = """
 //Int sas = 1
@@ -40,7 +34,7 @@ const val fakeFileSourceGOOD = """
 
 fun main(args: Array<String>) {
 
-//    val args = arrayOf("run", "/home/gavr/checks/main.niva")
+//    val args = arrayOf("run", "/home/gavr/Documents/Projects/bazar/Examples/GTK/AdwDela/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")
 //    val args = arrayOf("--verbose","build", "/home/gavr/Documents/Projects/bazar/Examples/turtle/main.niva")
 //    val args = arrayOf("--mill", "build", "/Users/gavr/Documents/Fun/niva-code/writing-an-interpreter-in-niva/niva/main.niva")
