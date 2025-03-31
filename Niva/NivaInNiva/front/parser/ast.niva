@@ -19,11 +19,43 @@ type AstType
   name: String 
   nullable: Boolean 
   genericParams: List::AstType
+  isMut: Boolean 
 
+constructor AstType name::String nullable::Boolean genericParams::List::AstType = AstType 
+  name: name 
+  nullable: nullable
+  genericParams: genericParams
+  isMut: false
 
+constructor AstType name::String = AstType 
+  name: name 
+  nullable: false
+  genericParams: {}
+  isMut: false
+
+extend mut AstType [
+  on setMutable::Boolean = isMut <- setMutable
+]
+
+// Map(Int, String)
+// name: Map
+// genericParams: {
+//   (name: Int ...),
+//   (name: String, ...)
+//}
+
+// List::Set::Int
+// name: List
+// genericParams: {
+//    (name: Set, 
+//     genericParams: {
+//       name: Int, ...
+//     }
+//    )
+//}
 
 union Type = 
-| UserType name: String fields: Map(String, Type) // name to typeName
+| UserType name: String fields: Map(String, Type)
 | ^InternalType
 
 union InternalType = 
@@ -40,6 +72,8 @@ union Expr token: Token =
 | Identifier     name: String
 | ExprInBrackets value: Expr
 | MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
+
+type NameColonExpr name: String expr: Expr
 
 // Messages
 enum MessageKind = Unary | Binary | Keyword
@@ -101,4 +135,3 @@ union LiteralExpr token: Token =
 | FloatExpr
 | DoubleExpr
 
-type NameColonExpr name: String expr: Expr

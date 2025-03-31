@@ -1,0 +1,10 @@
+type StackTrace
+@emit: """Thread.currentThread().getStackTrace().drop(1).joinToString(" -> ") { "${it.methodName}${if (it.moduleName != null) "(${it.moduleName})" else ""}" }"""
+constructor StackTrace get -> String = ""
+
+// type Foo
+// Foo bar = StackTrace get echo
+// Foo baz = .bar
+
+// Foo new bar
+// Foo new baz

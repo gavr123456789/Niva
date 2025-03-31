@@ -78,20 +78,41 @@ Test parseType -> Unit! = [
   |=> [TO DO: "It should be int, but it " + typeDecl toString]
 ]
 
-Test parseAstTypeWithGeneric -> Unit! = [
+Test parseAstTypeList -> Unit! = [
   input = """
-    List::Int
+    List::List::Int
   """ trimIndent
 
   tokens = Lexer newLex: input
   // tokens debug
   statements::MutableList::Statement = {}m
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
-  parser parseType
-  statements at: 1, debug
-  // TO DO
+  astType = parser parseType
+  
+  Assert that: astType genericParams count equals: 1
+  list = astType genericParams at: 0
+
+  Assert that: list name equals: "List"
   
 ]
+
+Test parseAstTypeMap -> Unit! = [
+  input = """
+    Map(Int, String)
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  // tokens debug
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  astType = parser parseType
+
+  Assert that: astType genericParams count equals: 2
+  int = astType genericParams at: 0
+  string = astType genericParams at: 1
+  Assert that: int name equals: "Int"
+  Assert that: string name equals: "String"
+] 
 
 // Test parseUnary -> Unit! = [
 //   statements = TestParse withInput: "1 inc" expectedCount: 1

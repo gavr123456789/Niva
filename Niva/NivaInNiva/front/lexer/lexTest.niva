@@ -5,7 +5,10 @@ constructor LexTest input::String -> List::Token = [
   ^ tokens
 ]
 
-constructor LexTest checkThat: input::String equals: list::List::TokenType -> List::Token! = [
+constructor LexTest 
+checkThat: input::String 
+equals: list::List::TokenType 
+-> List::Token! = [
   y = LexTest input: input
   x = y map: [it kind]
 
