@@ -8,7 +8,7 @@ import java.nio.file.StandardCopyOption
 
 
 plugins {
-    kotlin("jvm") version "2.1.20-RC3"
+    kotlin("jvm") version "2.1.20"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
