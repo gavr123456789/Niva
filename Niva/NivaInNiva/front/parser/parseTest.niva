@@ -78,6 +78,37 @@ Test parseType -> Unit! = [
   |=> [TO DO: "It should be int, but it " + typeDecl toString]
 ]
 
+Test parseUnaryDecl -> Unit! = [
+  input = """
+    Int inc -> Boolean = [ 
+      1
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  unaryDecl = statements at: 0
+
+  | unaryDecl 
+  | MessageDecl => [
+      Assert 
+        that: unaryDecl name
+        equals: "inc"
+      Assert
+        that: unaryDecl args count
+        equals: 0
+      
+      {receiver returnType} = unaryDecl
+      
+      Assert 
+        that: receiver name 
+        equals: "Int"
+      Assert 
+        that: returnType unpackOrPANIC name 
+        equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + unaryDecl toString]
+]
+
 Test parseAstTypeList -> Unit! = [
   input = """
     List::List::Int

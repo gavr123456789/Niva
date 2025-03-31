@@ -3,18 +3,10 @@ type Program
   walkDir: [String -> List::String]
 
   input = """
-    Map(Int, String)
+    Int inc -> Boolean = [ 
+      1
+    ]
   """ trimIndent
 
-  tokens = Lexer newLex: input
-  // tokens debug
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
-  astType = parser parseType
-
-  Assert that: astType genericParams count equals: 2
-  int = astType genericParams at: 0
-  string = astType genericParams at: 1
-  Assert that: int name equals: "Int"
-  Assert that: string name equals: "String"
-
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
