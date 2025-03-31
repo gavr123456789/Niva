@@ -11,8 +11,83 @@ union Declaration token: Token =
 | EnumDecl 
 | UnionDecl
 
-| MessageDecl value: MessageSend returnType: Type
+| MessageDecl 
+  receiver: AstType 
+  name: String 
+  args: List::NameAndType // 0 = unary, 1 = binary, 2+ = keyword
+  returnType: AstType?
+  body: List::Statement
 
+
+// | 
+// Int inc::Int = 56
+// {name: "inc" expr: 1}
+
+// MessageDecl value: 
+//   (MessageSend name: "inc")
+
+
+
+
+// Expressions
+
+union Expr token: Token = 
+| ^LiteralExpr
+| Identifier     name: String
+| ExprInBrackets value: Expr
+| MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
+
+type NameColonExpr name: String expr: Expr
+type NameAndType name: String astType: AstType
+
+// Messages
+enum MessageKind = Unary | Binary | Keyword
+
+// 1 inc 
+// {name: "inc" expr: 1}
+constructor MessageSend unaryName::String receiver::Expr token::Token = [
+  result = 
+    MessageSend 
+      args: {(NameColonExpr name: unaryName expr: receiver)} 
+      token: token
+  ^ result
+]
+
+
+// 1 + 2
+// {{expr: 1 name: ""}, {name: "+" expr: 2 }}
+// if there is no name, then its simple receiver
+constructor MessageSend binaryName::String receiver::NameColonExpr arg::Expr token::Token = [
+  result = 
+    MessageSend 
+      args: {receiver, (NameColonExpr name: binaryName expr: arg)} 
+      token: token
+  ^ result
+]
+
+
+// 1 inc + 2 dec
+// {{1 inc}, {name: "+" exrp: (MS expr: 2 name: "dec")}}
+
+
+// 1 inc dec
+// chain
+// {name: "dec" expr: MC{expr: 1 name: "inc"}}
+
+// 1 from: 2 to: 3
+// {name: "" expr: 1, name: "from" expr: 2, name: "to" expr: 3}
+
+
+// 1 inc from: 2 to: 3
+// MessageSend 
+//   receiver: (MessagSend r: IntExpr(1) args: {name: "inc" expr: IntExpr(1)})
+//   args: {name: "from" value: 2, name: "to" value: 3}
+
+// Piping is just receiver wrap
+// 1 from: 2, to: 3
+// MessageSend
+//    r: (MessageSend arg: {name: "from" value: 2})
+//    args: {{to: 3}
 
 // Types
 type AstType 
@@ -65,64 +140,6 @@ union InternalType =
 | FloatAstType
 | DoubleAstType
 
-// Expressions
-
-union Expr token: Token = 
-| ^LiteralExpr
-| Identifier     name: String
-| ExprInBrackets value: Expr
-| MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
-
-type NameColonExpr name: String expr: Expr
-
-// Messages
-enum MessageKind = Unary | Binary | Keyword
-
-// 1 inc 
-// {name: "inc" expr: 1}
-constructor MessageSend unaryName::String receiver::Expr token::Token = [
-  result = 
-    MessageSend 
-      args: {(NameColonExpr name: unaryName expr: receiver)} 
-      token: token
-  ^ result
-]
-
-
-// 1 + 2
-// {{expr: 1 name: ""}, {name: "+" expr: 2 }}
-// if there is no name, then its simple receiver
-constructor MessageSend binaryName::String receiver::NameColonExpr arg::Expr token::Token = [
-  result = 
-    MessageSend 
-      args: {receiver, (NameColonExpr name: binaryName expr: arg)} 
-      token: token
-  ^ result
-]
-
-
-// 1 inc + 2 dec
-// {{1 inc}, {name: "+" exrp: (MS expr: 2 name: "dec")}}
-
-
-// 1 inc dec
-// chain
-// {name: "dec" expr: MC{expr: 1 name: "inc"}}
-
-// 1 from: 2 to: 3
-// {name: "" expr: 1, name: "from" expr: 2, name: "to" expr: 3}
-
-
-// 1 inc from: 2 to: 3
-// MessageSend 
-//   receiver: (MessagSend r: IntExpr(1) args: {name: "inc" expr: IntExpr(1)})
-//   args: {name: "from" value: 2, name: "to" value: 3}
-
-// Piping is just receiver wrap
-// 1 from: 2, to: 3
-// MessageSend
-//    r: (MessageSend arg: {name: "from" value: 2})
-//    args: {{to: 3}
 
 union LiteralExpr token: Token = 
 | CharExpr

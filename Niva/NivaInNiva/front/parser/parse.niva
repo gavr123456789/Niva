@@ -144,6 +144,51 @@ extend mut Parser [
     // res debug
     .statements add: res
   ]
+
+  on parseBodyOrSingleExpr -> List::Statement = [
+    tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n", debug
+
+    body::MutableList::Statement = {}m
+
+    // TODO refactor so nextStatement will return Statement
+    getNextStatement = [
+      .nextStatement
+      
+      statement = statements last
+      statements <- statements dropLast: 1, m
+      statement
+    ]
+
+    .match: TokenType.OpenBracket, ifTrue: [
+      // parse body
+      mut c = true
+      [c] whileTrue: [
+        tok = .peek
+        tok kind == TokenType.CloseBracket ifTrue: [
+          .step // skip 
+          c <- false
+        ] ifFalse: [
+          // parse statement
+          statement = getNextStatement do
+          body add: statement
+          Unit
+        ]
+      ]
+    ] ifFalse: [
+      // single expression
+      statements count == 0 ifTrue: [
+        TO DO: "parseBodyOrSingleExpr: no statement"
+      ]
+
+      statement = getNextStatement do
+      body add: statement
+    ]
+
+    ^ body toList
+  ]
+
+
+
   on nextStatement -> Unit = [
     // there always EndOfFile, so this never happen
     tokens isEmpty ifTrue: [^Unit] 
@@ -155,13 +200,67 @@ extend mut Parser [
 
     | tok kind
     | TokenType.Type => .typeDeclaration: tok
-    | TokenType.Identifier => .identifierStart: tok
+    | TokenType.Identifier => [
+      getReturnType = [
+        .match: TokenType.ReturnArrow, ifTrue: [
+          .parseType
+        ] ifFalse: [null]
+      ]
+      // change current position back to parse type
+      .stepBack
+      receiverType = .parseType
+
+
+      // Int^ inc =
+      // Int^ a::Int b::Int =
+      // Int^ + a::Int =
+      tok2 = .step
+      | tok2 kind
+      | TokenType.Identifier => [
+        // Int inc^ ->? = []
+        
+        returnType = getReturnType do 
+        name = tok2 lexeme
+
+        receiverType debug
+        returnType echo
+        
+        .matchAssert: TokenType.Assign
+        // Int inc ->? = ^[]
+
+        body = .parseBodyOrSingleExpr
+
+        msgDecl = MessageDecl 
+          receiver: receiverType
+          name: name
+          args: {}
+          returnType: returnType
+          token: tok
+          body: body        
+
+        statements add: msgDecl
+        Unit
+      ]
+      | TokenType.IdentifierDoubleColon => [
+        // Int inc^::Int b::Int =
+
+      ]
+      | TokenType.BinarySymbol => [
+        // Int^ + a::Int =
+
+      ]
+      |=> []
+
+      Unit
+    ]
 
     | TokenType.EndOfFile => [
       TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
       Unit
     ]
-    |=> Unit
+    |=> []
+
+    
 
     .peek kind != TokenType.EndOfFile, ifTrue: [
       .step // just to evade infinity loop
@@ -229,6 +328,11 @@ extend mut Parser [
   on step -> Token = [
     x = .peek
     current <- current inc
+    ^ x
+  ]
+  on stepBack -> Token = [
+    x = .peekAt: -1
+    current <- current dec
     ^ x
   ]
   on peek -> Token = [
