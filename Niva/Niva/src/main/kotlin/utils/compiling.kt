@@ -651,15 +651,19 @@ fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, path
                 )
 //            val newElement = StackTraceElement(it.className, it.methodName, nivaLine.file, nivaLine.line)
                 println(kotlin.text.buildString {
-                    append("Method: ")
-                    append(it.methodName)
-                    append("\t\t")
-                    append("\u001B[37mFile: ")
-                    append(nivaLine.file)
-                    append("::")
-                    append(nivaLine.line)
-                    append("\u001B[0m")
-                })
+                val methodLabel = "Method: "
+                val fileLabel = "File: "
+                val padding = 30
+                
+                append(methodLabel)
+                append(it.methodName.padEnd(padding - methodLabel.length))
+                append("\u001B[37m")
+                append(fileLabel)
+                append(nivaLine.file)
+                append(":")
+                append(nivaLine.line)
+                append("\u001B[0m")
+            })
 //            replacedStack.add(newElement)
             }
 //        return replacedStack

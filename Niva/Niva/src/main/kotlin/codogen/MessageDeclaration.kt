@@ -12,7 +12,7 @@ import main.utils.isGeneric
 
 fun String.ifKtKeywordAddBackTicks(): String =
     when (this) {
-        "do", "val", "var", "class", "in", "for", "throw" -> "`$this`"
+        "do", "val", "var", "class", "in", "for", "throw", "continue" -> "`$this`"
         else -> this
     }
 
