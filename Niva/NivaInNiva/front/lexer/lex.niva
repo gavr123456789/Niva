@@ -49,8 +49,6 @@ extend mut Lexer [
 
 
   on step = [
-    // "STEP $ch" echo
-    // readPos always bigger than current read char pos
     readPos >= input count 
       ifTrue: [ch <- '\u0000'] 
       ifFalse: [ch <- input at: readPos] 

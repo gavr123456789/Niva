@@ -1,0 +1,14 @@
+parseType -> main
+result = 
+AstType 
+	name: Map
+	nullable: false
+	genericParams: [
+AstType 
+	name: Int
+	nullable: false
+	genericParams: [], 
+AstType 
+	name: String
+	nullable: false
+	genericParams: []]

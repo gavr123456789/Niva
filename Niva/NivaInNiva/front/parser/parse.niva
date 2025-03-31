@@ -8,7 +8,6 @@ constructor Parser newParseTokens::List::Token = [
   parser:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}m error TODO
   [ parser done not ] whileTrue: [
     parser nextStatement 
-    // parser statements last echo
   ]
 
   ^ parser
@@ -55,62 +54,59 @@ extend mut Parser [
     ^isAdded
   ]
 
+  // List::Set::Int
+  // Map(String, Int)
+  /// identifier ("(" | "::")
+  on parseGenericType -> AstType = [
 
+    identifier = .matchAssertAnyIdent: "in type declaration identifier expected"
+    isNullable = identifier kind == TokenType.NullableIdentifier
+    name = identifier lexeme
 
-  on parseGenericPartOfType = [
-    // .peek echo
-    TO DO: "parseGenericPartOfType"
-  ]
+    isListLike = identifier kind == TokenType.IdentifierDoubleColon
+    isMapLike = .match: TokenType.OpenParen
 
-  on parseType -> AstType = [
+    isListLike ifTrue: [
+      recursiveGenerics = .parseGenericType
+      // errors = .parseErrors
+      ^ AstType 
+        name: name 
+        nullable: isNullable
+        genericParams: {recursiveGenerics}
 
-    .match: TokenType.Mut, ifTrue: [
-      TO DO: "add mutable modifier"
     ]
-    .match: TokenType.OpenBracket, ifTrue: [
-      TO DO: "parseLambda"
-    ]
 
-    tok = .peek
-    isIdentifier = tok isIdentifier
+    isMapLike ifTrue: [
+      typeArgumentList::MutableList::AstType = {}m
 
-    type_name = .step
-    type_name isIdentifier, assert: "Expected type name"
-    nullable = .matchString: "?"
-
-    
-    isThereMapLikeGenerics = .match: TokenType.OpenParen  
-    isThereGenerics = tok kind == TokenType.IdentifierDoubleColon
-
-    generics::MutableList::AstType = {}m
-
-    (isThereGenerics) ifTrue: [
-      mut c = true 
-      [c] whileTrue: [
-        // we already have first part - List::
-        // so now we need to 
-        q = .peek
-        c <- q kind == TokenType.IdentifierDoubleColon
-
-        // q kind == TokenType.IdentifierDoubleColon, ifTrue: [
-        //   c <- true
-        // ] ifFalse: [
-        //   c <- false
-        // ]
-        TO DO
-        Compiler debug
-
-        c <- false
+      mut continue = true 
+      [continue] whileTrue: [
+        typeArgumentList add: .parseGenericType
+        continue <- .match: TokenType.Comma
       ]
 
-      .parseGenericPartOfType
+      .matchAssert: TokenType.CloseParen
+      ^ AstType 
+        name: name 
+        nullable: isNullable
+        genericParams: typeArgumentList toList
     ]
-    // isThereMapLikeGenerics = .match: TokenType.Colon  
-    
-    ^AstType 
-      name: type_name lexeme 
-      nullable: nullable
-      genericParams: {} 
+
+    // no Map() no List::
+    ^ AstType 
+      name: name 
+      nullable: isNullable
+      genericParams: {}
+  ]
+  on parseType -> AstType = [
+
+    isMut = .match: TokenType.Mut
+    itLambda = .match: TokenType.OpenBracket, ifTrue: [
+      TO DO: "parseLambda"
+    ]
+    result::mut AstType = .parseGenericType
+    result setMutable: isMut
+    ^ result
   ]
 
   /// `name: String`
@@ -197,6 +193,26 @@ extend mut Parser [
 
     ^ false
   ]
+
+  /// match Identifier|Nullable|Error
+  on matchAssertAnyIdent: error::String -> Token = [
+    tok = .peek
+
+    ^ tok isIdentifier ifTrue: [
+      .step
+      tok
+    ] ifFalse: [
+      TO DO: error
+    ]
+  ]
+
+  on matchAssert::TokenType -> Token = [
+    .peek kind == matchAssert, ifTrue: [
+      ^ .step
+    ]
+    TO DO: "$matchAssert expected"
+  ]
+
   on matchString::String -> Boolean = [
     .peek lexeme == matchString, ifTrue: [
       .step
