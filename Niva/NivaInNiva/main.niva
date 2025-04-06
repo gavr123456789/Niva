@@ -3,10 +3,21 @@ type Program
   walkDir: [String -> List::String]
 
   input = """
-    Int inc -> Boolean = [ 
+    Int + inc::String -> Boolean = [ 
       1
     ]
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  typeDecl = statements at: 0
+  "\n\n\n" echo
+  typeDecl = statements at: 0, debug
+
+
+// type Wallet money: Int id: String 
+// type Person 
+//     wallet: Wallet 
+//     name: String 
+//     age: Int
+
+// wallet = Wallet money: 100 id: "123" 
+// person = Person wallet: wallet name: "John" age: 30

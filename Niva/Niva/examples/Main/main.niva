@@ -1,10 +1,6 @@
-type TypeField name: String type_: AstType
+x::Int? = null
 
-type AstType
-  name: String
-  nullable: Boolean // TODO generics
-  genericParams: List::AstType
-x = AstType
-          name: "qwf"
-          nullable: false
-          genericParams: {}
+| x
+| null => x inc echo
+| 5 => x echo
+|=> x inc echo
