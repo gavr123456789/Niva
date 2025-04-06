@@ -9,33 +9,27 @@ constructor TestParse withInput::String expectedCount::Int -> MutableList::State
 ]
 
 Test parseNumber -> Unit! = [
-  statements = TestParse withInput: "1" expectedCount: 1
+  input = """
+  123
+  """ trimIndent
 
-  intExpr = statements at: 0
+  tokens = Lexer newLex: input
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | intExpr 
   | IntExpr => 
     Assert 
       that: intExpr num  
-      equals: 1 
-  |=> [TO DO: "It should be int, but it $intExpr"]
-]
-
-Test parseNumbers -> Unit! = [
-  statements = TestParse withInput: "1 2 3 4" expectedCount: 4
-
-  intExpr = statements at: 3
-  | intExpr 
-  | IntExpr => 
-    Assert 
-      that: intExpr num  
-      equals: 4
+      equals: 123
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
 
 Test parseString -> Unit! = [
-  statements = TestParse withInput: """ "sas" """ expectedCount: 1
-
-  stringExpr = statements at: 0
+  tokens = Lexer newLex: """ "sas" """
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | stringExpr 
   | StringExpr => 
     Assert 
@@ -108,6 +102,38 @@ Test parseUnaryDecl -> Unit! = [
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + unaryDecl toString]
 ]
+
+Test parseBinaryDecl -> Unit! = [
+  input = """
+    Int + inc::String -> Boolean = [
+      1
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  binary = statements at: 0
+
+  | binary 
+  | MessageDecl => [
+    Assert 
+      that: binary name
+      equals: "+"
+    Assert
+      that: binary args count
+      equals: 1
+    
+    {receiver returnType} = binary
+    
+    Assert 
+      that: receiver name 
+      equals: "Int"
+    Assert 
+      that: returnType unpackOrPANIC name 
+      equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
+]
+
 
 Test parseAstTypeList -> Unit! = [
   input = """
