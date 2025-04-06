@@ -1,12 +1,14 @@
 package main.codogen
 
 import frontend.resolver.Type
+import frontend.resolver.unpackNull
 import main.utils.RED
 import main.utils.WHITE
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionRootDeclaration
@@ -232,18 +234,44 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         val fewFields = fields.count() <= 2
 
         if (fewFields)
-            append(typeName)
+            append("(",typeName)
         else
-            append("\n$typeName")
+            append("$typeName")
 
         if (fields.isNotEmpty()) {
             append(" ")
         }
 
+
+        val addQuotes = { it: TypeFieldAST ->
+            if (it.type?.name == "String")
+                "\"$${it.name}\""
+            else "$${it.name}"
+        }
+        val generateSimpleField = { it: TypeFieldAST ->
+
+            it.name + ": " + addQuotes(it)
+        }
         val toStringFields = if (fewFields)
-            fields.joinToString(" ") { it.name + ": " + "$" + it.name }
-        else
-            "\n" + fields.joinToString("\n") { "\t" + it.name + ": " + "$" + it.name } + ""
+            fields.joinToString(" ") {
+                generateSimpleField(it)
+            } + ")"
+        else {
+            "\n" + fields.joinToString("\n") {
+                val type = it.type?.unpackNull()
+                if (type is Type.UserType && type.fields.count() > 2) {
+                    "    ${it.name}: (\n" +
+                            // we dont need before-spaces here since we already do prepend Indent for the whole string
+                    "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+                    "    )"
+                } else if (type is Type.Lambda) {
+                    "    " + it.name + ": " + it.type.toString()
+                }
+                else {
+                    "    " + generateSimpleField(it)
+                }
+            }
+        }
 
 
         append(toStringFields, "\"\"\"")
