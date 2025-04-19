@@ -1,6 +1,5 @@
 x::Int? = null
 
-| x
-| null => x inc echo
-| 5 => x echo
-|=> x inc echo
+type Sas x: Int
+
+Sas x: x

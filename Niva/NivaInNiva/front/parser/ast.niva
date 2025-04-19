@@ -35,9 +35,16 @@ union Expr token: Token =
 | ^LiteralExpr
 | Identifier     name: String
 | ExprInBrackets value: Expr
-| MessageSend    args: List::NameColonExpr // args count 1 = unary, 2 = binary >2 = kw
+| MessageSend    args: List::NameAndExpr // args count 1 = unary, 2 = binary >2 = kw
+| ^CollectionLiteral
+| ^MessageSend2
 
-type NameColonExpr name: String expr: Expr
+constructor Identifier fromToken::Token = 
+  Identifier name: (fromToken lexeme) token: fromToken
+  
+
+
+type NameAndExpr name: Identifier expr: Expr
 type NameAndType name: String astType: AstType
 
 // Messages
@@ -45,30 +52,90 @@ enum MessageKind = Unary | Binary | Keyword
 
 // 1 inc 
 // {name: "inc" expr: 1}
-constructor MessageSend unaryName::String receiver::Expr token::Token = [
+constructor MessageSend unaryName::Identifier receiver::Expr token::Token = [
   result = 
     MessageSend 
-      args: {(NameColonExpr name: unaryName expr: receiver)} 
+      args: {(NameAndExpr name: unaryName expr: receiver)} 
       token: token
   ^ result
 ]
 
 
-// 1 + 2
-// {{expr: 1 name: ""}, {name: "+" expr: 2 }}
+// receiver is primary with possible unary, all other messages are aditional arguments
+
+// 1 + 2 + 3 inc
+// { {expr: 1 name: ""}, {name: "+" expr: 2 }, {name: "+" expr: {expr: 3, name: "inc" }} }
 // if there is no name, then its simple receiver
-constructor MessageSend binaryName::String receiver::NameColonExpr arg::Expr token::Token = [
+constructor MessageSend binaryName::Identifier receiver::NameAndExpr arg::Expr token::Token = [
   result = 
     MessageSend 
-      args: {receiver, (NameColonExpr name: binaryName expr: arg)} 
+      args: {receiver, (NameAndExpr name: binaryName expr: arg)} 
       token: token
   ^ result
 ]
 
+// simple keyword
+// 1 from: 2 to: 3
+// {{name: "" expr: 1}, {name: "from" expr: 2}, {name: "to" expr: 3}}
 
+// simple binary
+// 1 + 2
+// {{name: "" expr: 1}, {name: "+" expr: 2}}
+
+// simple unary
+// 1 inc dec
+// {{name: "dec" expr: {name: "inc" expr: 1}}}
+
+union MessageSend2 receiver: Expr token: Token =
+| UnaryMsg 
+    args: List::Identifier
+| BinaryMsg
+    args: List::NameAndExpr // expr - Primary or UnaryMsg
+| KeywordMsg
+    args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
+
+// Simple Unary
+// 1 inc
+// UnaryMsg args: {"inc"} receiver: 1 token: TO DO
+// 1 inc dec
+// UnaryMsg args: {"inc", "dec"} receiver: 1 token: TO DO
+
+// Simple Binary
+// 1 + 2 + 3
+// BinaryMsg args: {{"+" 2}, {"+" 3}} receiver: 1 token: TO DO
+
+// 1 inc dec + 2 inc dec
+// unary1 = UnaryMsg args: {"inc", "dec"} receiver: 1
+// unary2 = UnaryMsg args: {"inc", "dec"} receiver: 2
+// BinaryMsg 
+//   receiver: unary1 
+//   args: {(name: "+" expr: unary2)} 
+
+// Simple Keyword
+// 1 from: 2 to: 3
+// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: 1 
+
+// 1 inc from: 2 to: 3
+// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: (UnaryMsg args: {"inc"} receiver: 1)
+
+// 1 inc + 2 dec from: 3 inc + 4 dec
+// unary3 = Unary receiver: 3 args: {"inc"}
+// unary4 = Unary receiver: 4 args: {"dec"}
+// KeywordMsg
+//   args: {{"from" unary3}, {"to" unary4}}
+//   receiver: BinaryMsg
+//     args: {{"+" 2}, {"+" 4}}
+//     receiver: UnaryMsg
+//       args: {"inc"}
+
+
+
+// OLD
 // 1 inc + 2 dec
 // {{1 inc}, {name: "+" exrp: (MS expr: 2 name: "dec")}}
-
+// MessageSend 
+//       args: {(NameAndExpr name: "inc" expr: (1))} 
+//       token: TO DO
 
 // 1 inc dec
 // chain
@@ -140,6 +207,10 @@ union InternalType =
 | FloatAstType
 | DoubleAstType
 
+union CollectionLiteral token: Token elements: List::Expr = 
+| ListLiteral 
+| SetLiteral
+| MapLiteral
 
 union LiteralExpr token: Token = 
 | CharExpr

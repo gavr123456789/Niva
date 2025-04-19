@@ -2,15 +2,11 @@ type Program
   readFile: [String -> String]
   walkDir: [String -> List::String]
 
-  input = """
-    Int + inc::String -> Boolean = [ 
-      1
-    ]
-  """ trimIndent
+  input = "1 inc + 2"
 
   statements = TestParse withInput: input expectedCount: 1
   "\n\n\n" echo
-  typeDecl = statements at: 0, debug
+  typeDecl = statements at: 0
 
 
 // type Wallet money: Int id: String 

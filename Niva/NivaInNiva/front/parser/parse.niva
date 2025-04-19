@@ -10,6 +10,8 @@ constructor Parser newParseTokens::List::Token = [
     parser nextStatement 
   ]
 
+  parser statements debug
+
   ^ parser
 ]
 
@@ -18,7 +20,7 @@ type TypeField name: String type_: AstType
 
 extend mut Parser [
   /// if literal was added returns true
-  on literalExprFrom: tok::Token -> Statement? = [
+  on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
     addLiteral = [ lit::LiteralExpr ->
       // .step
@@ -50,6 +52,57 @@ extend mut Parser [
       addLiteral lit: (NullExpr token: tok)
     
     |=> [null]
+  ]
+
+// TODO
+  on parseCollection -> CollectionLiteral? = [
+    ^ TO DO: "parseCollection"
+    // mut isAdded = false
+    // addLiteral = [ lit::LiteralExpr ->
+    //   // .step
+    //   // statements add: (lit)
+    //   lit
+    // ]
+
+    // ^| tok kind
+    // | TokenType.OpenBracket => [
+    //   // parse collection
+    //   mut c = true
+    //   [c] whileTrue: [
+    //     tok = .peek
+    //     tok kind == TokenType.CloseBracket ifTrue: [
+    //       .step // skip 
+    //       c <- false
+    //     ] ifFalse: [
+    //       // parse statement
+    //       statement = .nextExperssion: (.step)
+    //       body add: statement
+    //       Unit
+    //     ]
+    //   ]
+    // ]
+  ]
+
+
+  /// collection {} #{} #()
+  /// or identifier | nullableIdentifier 
+  /// simple literal 1 "" '' true false 1.1 1.1f
+  on primary::Token -> Expr? = [
+    .literalExprFrom: primary, unpack: [
+      ^it
+    ]
+
+    //collection 
+    // .parseCollection, unpack: [
+    //   ^it
+    // ]
+
+        // identifier 
+    .parseNullOrIdentifier, unpack: [
+      ^it
+    ]
+
+    ^ null
   ]
 
   // List::Set::Int
@@ -145,17 +198,9 @@ extend mut Parser [
   ]
 
   on parseBodyOrSingleExpr -> List::Statement = [
-    tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n", debug
+    // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
 
     body::MutableList::Statement = {}m
-
-    // getNextStatement = [
-    //   .nextStatement
-      
-    //   statement = statements last
-    //   statements <- statements dropLast: 1, m
-    //   statement
-    // ]
 
     .match: TokenType.OpenBracket, ifTrue: [
       // parse body
@@ -191,8 +236,6 @@ extend mut Parser [
     // there always EndOfFile, so this never happen
     tokens isEmpty ifTrue: [TO DO: "nextStatement: no tokens"] 
     tok = .step
-
-
 
 
     | tok kind
@@ -245,15 +288,11 @@ extend mut Parser [
         // Int +^ a::Int -> Int=
 
         arg = .matchAssert: TokenType.IdentifierDoubleColon
-        arg debug
         argType = .parseType
 
 
         returnType = getReturnType do 
         name = tok2 lexeme
-
-        receiverType debug
-        returnType debug
         
         .matchAssert: TokenType.Assign
         // Int inc ->? = ^[]
@@ -272,6 +311,8 @@ extend mut Parser [
         msgDecl
       ]
       |=> [TO DO: "222"]
+
+      result debug
       ^ result
       
     ]
@@ -280,7 +321,7 @@ extend mut Parser [
       TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
     ]
     |=> [
-      .nextExperssion: tok
+      ^ .nextExperssion: tok
     ]
 
     
@@ -295,28 +336,131 @@ extend mut Parser [
     ^ TO DO: "nextStatement: no statement"
   ]
 
-  on nextExperssion: tok::Token -> Statement = [
-    .literalExprFrom: tok, unpack: [^it]
+
+
+
+  on nextExperssion: tok::Token -> Expr = [
+
+
+    // experiment
+    // qx = NameAndExpr name: "345" expr: ast.Expr
+  
+
+    // .literalExprFrom: tok, unpack: [^it]
+    "nextExperssion: tok" echo
+    // .parseNullOrIdentifier: ""
+    maybePrimary = .primary: tok, unpackOrPANIC 
+
+    next = .peek 
+
+    | next kind
+    | TokenType.Identifier => [
+      // primary identifier
+
+      first = Identifier name: (next lexeme) token: next
+
+      // msg = MessageSend args: List::NameAndExpr token: next
+      // while there are identifiers - parse and save them, its a begining of unary     
+      tok = .peek
+
+      | tok kind 
+      | TokenType.Identifier => [
+        unaryIdentifiers = .parseManyIdent
+        unaryIdentifiers debug
+        unary = UnaryMsg 
+          args: unaryIdentifiers toList 
+          receiver: maybePrimary 
+          token: maybePrimary token
+        
+        .peek kind == TokenType.BinarySymbol, ifTrue: [
+          binaryList = .parseManyBinary
+          binary = BinaryMsg 
+            args: binaryList toList 
+            receiver: unary
+            token: maybePrimary token
+          statements add: binary
+          ^binary
+        ]
+        statements add: unary
+        "!!!!" echo
+        ^ unary
+        Unit
+      ]
+      | TokenType.BinarySymbol => [
+        binaryList = .parseManyBinary
+        binaryList debug 
+        
+        binary = BinaryMsg 
+          args: binaryList toList 
+          receiver: maybePrimary 
+          token: maybePrimary token
+        statements add: binary
+        ^ binary
+        Unit
+      ]
+      |=> [
+        Unit
+      ]
+      
+      // if while parsing unary got binary than continue binary parsing
+
+      // if while parsing unary got keyword than continue keyword parsing
+
+
+      TO DO: "parse unary"
+    ]
+    | TokenType.BinarySymbol => [
+      // primary binary
+      // 1 + 1 + 1
+      // 1 + 1 sas: 2
+
+
+      // 1 + ^2
+      // receiver = .primary: .step
+      // receiver debug
+      binaryList = .parseManyBinary
+      binaryList debug
+      
+      binary = BinaryMsg 
+        args: binaryList 
+        receiver: maybePrimary 
+        token: maybePrimary token
+      statements add: binary
+
+      .peek kind == TokenType.IdentifierColon, ifTrue: [
+        TO DO: "binary is a receiver for keyword"
+      ]
+
+      ^ binary
+      // kw possible
+    
+      // if while parsing binary got keyword than continue keyword parsing
+    ]
+    | TokenType.Colon => [
+      // primary keyword
+      // 1 inc: 2
+      // 1 inc: 2 inc: 3
+      // 1 inc: 2 inc: 3 that: 4
+      TO DO: "parse keyword"
+
+    ]
+    |=> []
+
     ^ TO DO: "nextExperssion: no statement"
   ]
 
 
 
-  /// x| probably not just identifier without anything
-  /// x = ...
-  /// x inc ...
-  /// X inc = []
-  /// x + ...
-  /// X + y::Int = []
-  /// x that: ...
-  /// X from::Int = []
-  /// X from y:Int = []
-  on identifierStart: tok::Token = [
-    TO DO: "identifierStart not impl"
-    ident = .step
-    next = .step
-    
-  ]
+  // / x| probably not just identifier without anything
+  // / x = ...
+  // / x inc ...
+  // / X inc = []
+  // / x + ...
+  // / X + y::Int = []
+  // / x that: ...
+  // / X from::Int = []
+  // / X from y:Int = []
+
 
 
   on match::TokenType -> Boolean = [
@@ -337,6 +481,17 @@ extend mut Parser [
       tok
     ] ifFalse: [
       TO DO: error
+    ]
+  ]
+
+  on parseNullOrIdentifier -> Identifier? = [
+    tok = .peek
+
+    ^ tok isNullOrIdentifier ifTrue: [
+      .step
+      Identifier name: tok lexeme token: tok
+    ] ifFalse: [
+      null
     ]
   ]
 

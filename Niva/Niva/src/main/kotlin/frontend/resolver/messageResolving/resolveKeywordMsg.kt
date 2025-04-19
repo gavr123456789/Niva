@@ -320,7 +320,7 @@ fun Resolver.resolveKeywordMsg(
             }
             val type = kwArg.keywordArg.type!!
             val unpackLambda = if (argFromDB.type !is Type.Lambda && type is Type.Lambda) type.returnType else type
-            if (!compare2Types(unpackLambda, argFromDB.type, kwArg.keywordArg.token, unpackNull = true)) {
+            if (!compare2Types(argFromDB.type, unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
             }
         }
