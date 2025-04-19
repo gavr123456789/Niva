@@ -177,7 +177,7 @@ Test parseAstTypeMap -> Unit! = [
 //   1 inc
 //   MessageSend 
 //     args: {
-//       (NameColonExpr name: "inc" expr: Expr)
+//       (NameAndExpr name: "inc" expr: Expr)
 //     } 
 //     token: tokenTypes.Token eof
 

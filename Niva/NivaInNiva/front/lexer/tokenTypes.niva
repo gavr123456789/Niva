@@ -71,6 +71,10 @@ extend Token [
     (kind == TokenType.Identifier) ||
     (kind == TokenType.NullableIdentifier) ||
     (kind == TokenType.IdentifierDoubleColon) 
+  on isNullOrIdentifier = 
+    (kind == TokenType.Identifier) ||
+    (kind == TokenType.NullableIdentifier)
+ 
 ]
 
 /// gets keyword name outputs token type, or identifier if its not kw
