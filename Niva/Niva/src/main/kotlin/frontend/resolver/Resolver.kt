@@ -11,7 +11,9 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
-import main.frontend.typer.*
+import main.frontend.typer.resolveDeclarations
+import main.frontend.typer.resolveDestruction
+import main.frontend.typer.resolveVarDeclaration
 import main.utils.*
 import java.io.File
 
@@ -208,7 +210,7 @@ private fun Resolver.resolveStatement(
         }
 
         is ListCollection -> {
-            val collectionName = if(!statement.isMutable) "List" else "MutableList"
+            val collectionName = if (!statement.isMutable) "List" else "MutableList"
             resolveCollection(statement, collectionName, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list
@@ -292,7 +294,7 @@ private fun Resolver.resolveStatement(
                 val thiz = previousScope["this"]
                 val methodDecl = this.resolvingMessageDeclaration
                 if (methodDecl != null && thiz != null && thiz is Type.UserLike) {
-                    val fieldOfThis = thiz.fields.find { it.name == statement.name}
+                    val fieldOfThis = thiz.fields.find { it.name == statement.name }
                     if (fieldOfThis != null && !methodDecl.forTypeAst.mutable) {
                         // check is this is mutable
                         statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
@@ -355,6 +357,7 @@ private fun Resolver.resolveStatement(
             if (root != null) {
                 val realReturn = wasThereReturn
                 val returnType = root.returnType
+
                 if (realReturn != null && returnType != null &&
                     !compare2Types(
                         returnType,
@@ -363,6 +366,8 @@ private fun Resolver.resolveStatement(
                         unpackNull = true,
                         isOut = true
                     )
+                    // тут надо заюзать поиск общих предков
+//                    findGeneralRootMany(listOf(returnType, realReturn), root.token) == null
                 ) {
                     statement.token.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
                 }
@@ -413,7 +418,8 @@ private fun Resolver.resolveStatement(
 
         is MethodReference -> {
             resolveSingle(statement.forIdentifier, (previousScope + currentScope).toMutableMap(), statement)
-            val forType = statement.forIdentifier.type ?: statement.forIdentifier.token.compileError("Bug, cant resolve type") //statement.forIdentifier.toType(typeDB, typeTable)
+            val forType = statement.forIdentifier.type
+                ?: statement.forIdentifier.token.compileError("Bug, cant resolve type") //statement.forIdentifier.toType(typeDB, typeTable)
 
             when (statement) {
                 is MethodReference.Binary -> {
@@ -510,8 +516,8 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
     val secondIsNothing = type2.name == "Nothing"
     @Suppress("KotlinConstantConditions")
     if (firstIsNothing && !secondIsNothing) return type2 else
-    if (!firstIsNothing && secondIsNothing) return type1 else
-    if (firstIsNothing && secondIsNothing) return type2
+        if (!firstIsNothing && secondIsNothing) return type1 else
+            if (firstIsNothing && secondIsNothing) return type2
 
 
     if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name) return type1
@@ -673,6 +679,7 @@ fun Resolver.addNewAnyMessage(
             st.arg.type = msgData.argType
             protocol.binaryMsgs[st.name] = msgData
         }
+
         is MessageDeclarationKeyword -> {
             val msgData = messageData as KeywordMsgMetaData
             st.args.forEachIndexed { i, it ->
@@ -680,6 +687,7 @@ fun Resolver.addNewAnyMessage(
             }
             protocol.keywordMsgs[st.name] = msgData
         }
+
         is ConstructorDeclaration -> {} // st.toAnyMessageData already adding static to db
 
         is StaticBuilderDeclaration -> {
@@ -952,20 +960,23 @@ fun Resolver.getTypeForIdentifier(
     kw: KeywordMsg? = null
 ): Type {
 
-    val typeFromDB = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token) ?: getAnyType(
-        x.name, currentScope, previousScope, kw, x.token
-    ) ?: if (!GlobalVariables.isLspMode)
-        x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
-    else {
-        // Search similar for lsp mode
-        coolErrorForLSP(x, currentScope, previousScope)
-    }
+    val typeFromDB = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token)
+        ?: getAnyType(
+            x.name, currentScope, previousScope, kw, x.token
+        ) ?: if (x.name.isGeneric()) Type.UnknownGenericType(x.name) else null
+            ?: if (!GlobalVariables.isLspMode)
+                x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
+            else {
+                // Search similar for lsp mode
+                coolErrorForLSP(x, currentScope, previousScope)
+            }
 
     if (typeFromDB is Type.EnumRootType && x.names.count() > 1) {
         // check that this Enum root has such
         val name = typeFromDB.branches.find { it.name == x.name }
         if (name == null) {
-            val startsWithSameWord = typeFromDB.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
+            val startsWithSameWord =
+                typeFromDB.branches.filter { it.name.startsWith(x.name) }.joinToString(", ") { it.name }
             val orStartsWithFirst2Letters = if (startsWithSameWord.isEmpty() && x.name.count() >= 3) {
                 val x = typeFromDB.branches.filter { it.name.startsWith(x.name.substring(0..2)) }
                 x.joinToString(", ") { it.name }
@@ -986,8 +997,8 @@ fun Resolver.getTypeForIdentifier(
     val typeWithGenericResolved =
         if (x.typeAST != null && !x.typeAST.name.isGeneric() && typeFromDB is Type.UserLike && typeFromDB.typeArgumentList.count() == 1) {
             // replace Generic from typeAst with sas
-            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token) ?:
-                x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
+            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)
+                ?: x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
             val copy = typeFromDB.copy()
             copy.typeArgumentList = listOf(e)
             copy
@@ -1106,7 +1117,8 @@ val createTypeListOfType = { name: String, internalType: Type.InternalType, list
 val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(key.copy().also { it.beforeGenericResolvedName = "T" },
+        typeArgumentList = listOf(
+            key.copy().also { it.beforeGenericResolvedName = "T" },
             value.copy().also { it.beforeGenericResolvedName = "G" }),
         fields = mutableListOf(),
         pkg = "core",
@@ -1193,6 +1205,7 @@ class Resolver(
             declaration = null
         )
     }
+
     fun inferErrorTypeFromASTReturnTYpe(errors: List<String>, db: TypeDB, errorTok: Token): MutableSet<Union> {
         assert(errors.isNotEmpty())
         val result = mutableSetOf<Union>()
@@ -1207,6 +1220,7 @@ class Resolver(
                     }
                     result.add(q.type)
                 }
+
                 is TypeDBResult.NotFound -> errorTok.compileError("Cant find error domain type: $it ")
             }
 
@@ -1287,21 +1301,23 @@ class Resolver(
                 numProtocol
             )
 
-            floatType.protocols.putAll(createFloatProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType,
-                floatType = floatType,
-            ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) })
+            floatType.protocols.putAll(
+                createFloatProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    floatType = floatType,
+                ).also { it["double"] = Protocol("double", mutableMapOf(createUnary("toDouble", doubleType))) })
 
-            doubleType.protocols.putAll(createFloatProtocols(
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType,
-                floatType = doubleType,
-            ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) })
+            doubleType.protocols.putAll(
+                createFloatProtocols(
+                    intType = intType,
+                    stringType = stringType,
+                    unitType = unitType,
+                    boolType = boolType,
+                    floatType = doubleType,
+                ).also { it["float"] = Protocol("float", mutableMapOf(createUnary("toFloat", floatType))) })
 
 
             stringType.protocols.putAll(
@@ -1316,7 +1332,7 @@ class Resolver(
                     doubleType = doubleType,
                     intRangeType = intRangeType,
 
-                )
+                    )
             )
 
             boolType.protocols.putAll(
@@ -1573,7 +1589,6 @@ class Resolver(
         )
 
 
-
         // List continue
         // now when we have list type with its protocols, we add split method for String, that returns List::String
         val listOfString = createTypeListOfType("List", stringType, listType)
@@ -1740,7 +1755,6 @@ class Resolver(
                 mapType = mapType
             )
         )
-
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)

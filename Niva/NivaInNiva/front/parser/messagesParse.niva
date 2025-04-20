@@ -22,6 +22,24 @@ extend mut Parser [
     ^result
   ]
 
+  // on parseUnaryMsgOrIdentifier -> Expr = [
+  //   result42 = .parseManyIdent
+
+  //   result42 count == 1, ifTrue: [
+  //     // inc inc
+  //     trueIdent = (Identifier name: (.peek lexeme) token: .peek)
+  //     identifier42 = result42 at: 0
+  //     ^identifier42
+  //   ] ifFalse: [
+  //     // inc inc + 2
+  //     receiver = (.primary: .step) unpackOrMsg: "Cant find primary"
+  //     unaryList = result42
+  //     unary = UnaryMsg args: unaryList toList receiver: receiver token: tok
+  //     ^unary
+  //   ]
+
+  // ]
+
   /// + 2 inc inc + 3 dec dec
   on parseManyBinary -> List::NameAndExpr = [
       result::MutableList::NameAndExpr = {}m
