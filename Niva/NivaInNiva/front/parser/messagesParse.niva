@@ -1,0 +1,68 @@
+extend mut Parser [
+
+  /// inc inc inc
+  on parseManyIdent -> MutableList::Identifier = [
+    result::MutableList::Identifier = {}m
+    
+    mut c = true
+    [c] whileTrue: [
+      tok = .peek
+
+      | tok kind 
+      | TokenType.Identifier => [
+        identifier = .step
+        // identifier debug
+        expr = (Identifier name: (tok lexeme) token: tok)
+        result add: expr
+      ]
+      |=> [
+        c <- false
+      ]
+    ]
+    ^result
+  ]
+
+  /// + 2 inc inc + 3 dec dec
+  on parseManyBinary -> List::NameAndExpr = [
+      result::MutableList::NameAndExpr = {}m
+      mut c = true
+      [c] whileTrue: [
+        tok = .peek
+        // tok lexeme echo
+        // this is double check for binary, we already did it on the call side
+        // ... but we still need it for "recursion" to get the next +
+        | tok kind 
+        | TokenType.BinarySymbol => [
+          binarySymbol = .step
+          // binarySymbol kind echo
+          // + ^1 inc inc + 2
+          .peek kind == TokenType.OpenBrace, ifTrue: [TO DO: "1 + (...) not implemented yet"]
+
+          receiver = (.primary: .step) unpackOrPANIC // TODO тут может быть не праймари, а унари, или в скобках что угодно
+          // receiver debug
+          // + 1^ inc inc + 2
+          unaryList = .parseManyIdent
+          // unaryList debug
+
+          unaryList isEmpty, ifTrue: [
+            // + 1 + 2
+            binSymbol = Identifier fromToken: tok
+            result add: (NameAndExpr name: (binSymbol) expr: receiver)
+          ] ifFalse: [
+            unary = UnaryMsg args: unaryList toList receiver: receiver token: tok
+            // + 1 inc inc + 2
+            binSymbol = Identifier fromToken: tok
+            result add: (NameAndExpr name: (binSymbol) expr: unary)
+          ]
+
+          Unit
+        ]
+        |=> [
+          c <- false
+          Unit
+        ]
+      ]
+      ^ result toList
+    ]
+]
+

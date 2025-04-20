@@ -3,10 +3,88 @@ constructor TestParse withInput::String expectedCount::Int -> MutableList::State
   tokens = Lexer newLex: withInput
   // tokens debug
   {statements} = Parser newParseTokens: tokens
-  // statements debug
   Assert that: statements count equals: expectedCount
   ^statements
 ]
+
+constructor TestParse expression::String -> Expr = [
+  expr = Parser newParseTokens: (Lexer newLex: expression), statements at: 0
+  
+  ^| expr
+  | Expr=> expr
+  |=> [TO DO: "It should be Expr, but it " + expr toString]
+]
+
+
+Test parseBinaryMsgWithUnary -> Unit! = [
+  msgSend = TestParse expression: "1 + 2 inc"
+
+  | msgSend 
+  | BinaryMsg => [
+    Assert 
+      that: msgSend args count
+      equals: 1
+    
+    first = msgSend args at: 0
+    Assert that: first name token lexeme equals: "+"
+    expr = first expr
+    | expr 
+    | UnaryMsg => [
+      Assert that: expr args count equals: 1
+      first = expr args at: 0
+      name = first token lexeme
+      Assert that: name equals: "inc"
+      receiver = expr receiver
+      | receiver
+      | IntExpr => Assert that: receiver num  equals: 2
+      |=> TO DO: "It should be IntExpr, but it " + expr toString
+    ]
+    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
+  ]
+  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+]
+
+Test parseBinaryMsgWithUnary2 -> Unit! = [
+  msgSend = TestParse expression: "1 inc + 2"
+
+  | msgSend 
+  | BinaryMsg => [
+    Assert 
+      that: msgSend args count
+      equals: 1
+    
+    first = msgSend args at: 0
+    Assert 
+      that: first name token lexeme 
+      equals: "+"
+
+    // "+ 2" arg
+    expr = first expr
+    | expr 
+    | IntExpr => [
+      Assert that: expr num  equals: 2
+    ]
+    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
+
+    // "1 inc" receiver 
+    receiver = msgSend receiver
+    | receiver
+    | UnaryMsg => [
+      Assert that: receiver args count equals: 1
+      first = receiver args at: 0
+      name = first token lexeme
+      Assert that: name equals: "inc"
+      receiver = receiver receiver
+      | receiver
+      | IntExpr => Assert that: receiver num  equals: 1
+      |=> TO DO: "It should be IntExpr, but it " + receiver toString
+    ]
+    |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
+    ]
+  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+]
+
+
 
 Test parseNumber -> Unit! = [
   input = """
