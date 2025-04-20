@@ -2,18 +2,41 @@ type Program
   readFile: [String -> String]
   walkDir: [String -> List::String]
 
-  input = "1 inc + 2"
+  // input = "1 + 2 inc"
+
+  // statements = TestParse withInput: input expectedCount: 1
+  // "\n\n\n" echo
+  // typeDecl = statements at: 0
+
+
+
+  input = """
+    Int + inc::String -> Boolean = [
+      1 inc
+    ]
+  """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  "\n\n\n" echo
-  typeDecl = statements at: 0
+  binary = statements at: 0
+  binary debug
 
 
-// type Wallet money: Int id: String 
-// type Person 
-//     wallet: Wallet 
-//     name: String 
-//     age: Int
-
-// wallet = Wallet money: 100 id: "123" 
-// person = Person wallet: wallet name: "John" age: 30
+  // | binary 
+  // | MessageDecl => [
+  //   Assert 
+  //     that: binary name
+  //     equals: "+"
+  //   Assert
+  //     that: binary args count
+  //     equals: 1
+    
+  //   {receiver returnType} = binary
+    
+  //   Assert 
+  //     that: receiver name 
+  //     equals: "Int"
+  //   Assert 
+  //     that: returnType unpackOrPANIC name 
+  //     equals: "Boolean"
+  //   ]
+  // |=> [TO DO: "It should be MessageDecl, but it " + binary toString]

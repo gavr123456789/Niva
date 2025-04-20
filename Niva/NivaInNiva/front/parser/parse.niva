@@ -6,11 +6,12 @@ type Parser
 constructor Parser newParseTokens::List::Token = [
   statements::MutableList::Statement = {}m
   parser:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}m error TODO
+  
   [ parser done not ] whileTrue: [
-    parser nextStatement 
+    parser statements add: parser nextStatement
   ]
 
-  parser statements debug
+  // parser statements debug
 
   ^ parser
 ]
@@ -193,7 +194,7 @@ extend mut Parser [
       fields: (.typeFields)
       token: tok
     // res debug
-    .statements add: res
+    // .statements add: res
     ^ res
   ]
 
@@ -212,7 +213,8 @@ extend mut Parser [
           c <- false
         ] ifFalse: [
           // parse statement
-          statement = .nextExperssion: (.step)
+          nextTok = .step 
+          statement = .nextExperssion: nextTok
           body add: statement
           Unit
         ]
@@ -277,7 +279,7 @@ extend mut Parser [
           token: tok
           body: body        
 
-        statements add: msgDecl
+        // statements add: msgDecl
         msgDecl
       ]
       | TokenType.IdentifierDoubleColon => [
@@ -307,12 +309,11 @@ extend mut Parser [
           token: tok
           body: body        
 
-        statements add: msgDecl
+        // statements add: msgDecl
         msgDecl
       ]
       |=> [TO DO: "222"]
 
-      result debug
       ^ result
       
     ]
@@ -337,27 +338,21 @@ extend mut Parser [
   ]
 
 
-
-
   on nextExperssion: tok::Token -> Expr = [
-
-
-    // experiment
-    // qx = NameAndExpr name: "345" expr: ast.Expr
-  
-
-    // .literalExprFrom: tok, unpack: [^it]
-    "nextExperssion: tok" echo
-    // .parseNullOrIdentifier: ""
     maybePrimary = .primary: tok, unpackOrPANIC 
 
-    next = .peek 
+    next = .peek
+    // single primary before new line
+    next line > tok line, ifTrue: [
+      ^ maybePrimary
+    ] 
+
+    // 1 ^
 
     | next kind
+    // 1 ^inc 
     | TokenType.Identifier => [
       // primary identifier
-
-      first = Identifier name: (next lexeme) token: next
 
       // msg = MessageSend args: List::NameAndExpr token: next
       // while there are identifiers - parse and save them, its a begining of unary     
@@ -366,22 +361,25 @@ extend mut Parser [
       | tok kind 
       | TokenType.Identifier => [
         unaryIdentifiers = .parseManyIdent
-        unaryIdentifiers debug
+        // 1 inc inc^
         unary = UnaryMsg 
           args: unaryIdentifiers toList 
           receiver: maybePrimary 
           token: maybePrimary token
         
         .peek kind == TokenType.BinarySymbol, ifTrue: [
+          // 1 inc inc^ + 2
           binaryList = .parseManyBinary
           binary = BinaryMsg 
             args: binaryList toList 
             receiver: unary
             token: maybePrimary token
-          statements add: binary
+          // statements add: binary
           ^binary
         ]
-        statements add: unary
+        // statements add: unary // TODO нужно добавлять стейтменты сверху, там где мы по ним идем, а не тут, иначе будут добавлятся те что внутри боди методов
+        // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
+        // или придумать какой то другой алгоритм
         "!!!!" echo
         ^ unary
         Unit
@@ -394,7 +392,8 @@ extend mut Parser [
           args: binaryList toList 
           receiver: maybePrimary 
           token: maybePrimary token
-        statements add: binary
+        // statements add: binary
+        // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
         ^ binary
         Unit
       ]
@@ -419,13 +418,12 @@ extend mut Parser [
       // receiver = .primary: .step
       // receiver debug
       binaryList = .parseManyBinary
-      binaryList debug
       
       binary = BinaryMsg 
         args: binaryList 
         receiver: maybePrimary 
         token: maybePrimary token
-      statements add: binary
+      // statements add: binary
 
       .peek kind == TokenType.IdentifierColon, ifTrue: [
         TO DO: "binary is a receiver for keyword"
@@ -446,7 +444,7 @@ extend mut Parser [
     ]
     |=> []
 
-    ^ TO DO: "nextExperssion: no statement"
+    ^ maybePrimary
   ]
 
 
