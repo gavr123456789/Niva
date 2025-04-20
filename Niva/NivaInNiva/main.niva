@@ -11,14 +11,12 @@ type Program
 
 
   input = """
-    Int + inc::String -> Boolean = [
-      1 inc
-    ]
+    a + b
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  binary = statements at: 0
-  binary debug
+  statement = statements at: 0
+  statement debug
 
 
   // | binary 

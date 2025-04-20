@@ -37,9 +37,7 @@ extend mut Parser [
           // binarySymbol kind echo
           // + ^1 inc inc + 2
           .peek kind == TokenType.OpenBrace, ifTrue: [TO DO: "1 + (...) not implemented yet"]
-
-          receiver = (.primary: .step) unpackOrPANIC // TODO тут может быть не праймари, а унари, или в скобках что угодно
-          // receiver debug
+          receiver = (.primary: .step) unpackOrMsg: "Cant find primary" // TODO тут может быть не праймари, а унари, или в скобках что угодно поэтому парсить нужно не праймари, не, надо просто добавить в парсинг праймари скобочных выражений
           // + 1^ inc inc + 2
           unaryList = .parseManyIdent
           // unaryList debug
