@@ -9,32 +9,30 @@ type Program
   // typeDecl = statements at: 0
 
 
-
-  input = """
-    a + b
-  """ trimIndent
-
-  statements = TestParse withInput: input expectedCount: 1
-  statement = statements at: 0
-  statement debug
-
-
-  // | binary 
-  // | MessageDecl => [
+msgSend = TestParse expression: "a + b"
+msgSend debug
+  // | msgSend 
+  // | BinaryMsg => [
   //   Assert 
-  //     that: binary name
-  //     equals: "+"
-  //   Assert
-  //     that: binary args count
+  //     that: msgSend args count
   //     equals: 1
     
-  //   {receiver returnType} = binary
-    
-  //   Assert 
-  //     that: receiver name 
-  //     equals: "Int"
-  //   Assert 
-  //     that: returnType unpackOrPANIC name 
-  //     equals: "Boolean"
+  //   first = msgSend args at: 0
+  //   Assert that: first name token lexeme equals: "+"
+  //   expr = first expr
+  //   | expr 
+  //   | Identifier => [
+  //     name = expr name
+  //     Assert that: name equals: "b"
   //   ]
-  // |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
+  //   |=> TO DO: "It should be UnaryMsg, but it " + expr toString
+
+  //   receiver = msgSend receiver
+  //   | receiver 
+  //   | Identifier => [
+  //     name = receiver name
+  //     Assert that: name equals: "a"
+  //   ]
+  //   |=> TO DO: "It should be Identifier, but it " + receiver toString
+  // ]
+  // |=> TO DO: "It should be MessageSend, but it " + msgSend toString

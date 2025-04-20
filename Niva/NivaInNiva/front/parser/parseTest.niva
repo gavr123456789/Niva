@@ -16,6 +16,37 @@ constructor TestParse expression::String -> Expr = [
 ]
 
 
+
+Test parseSimbleBinaryMsg -> Unit! = [
+  msgSend = TestParse expression: "a + b"
+
+  | msgSend 
+  | BinaryMsg => [
+    Assert 
+      that: msgSend args count
+      equals: 1
+    
+    first = msgSend args at: 0
+    Assert that: first name token lexeme equals: "+"
+    expr = first expr
+    | expr 
+    | Identifier => [
+      name = expr name
+      Assert that: name equals: "b"
+    ]
+    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
+
+    receiver = msgSend receiver
+    | receiver 
+    | Identifier => [
+      name = receiver name
+      Assert that: name equals: "a"
+    ]
+    |=> TO DO: "It should be Identifier, but it " + receiver toString
+  ]
+  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+]
+
 Test parseBinaryMsgWithUnary -> Unit! = [
   msgSend = TestParse expression: "1 + 2 inc"
 

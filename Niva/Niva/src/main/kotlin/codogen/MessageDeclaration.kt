@@ -58,7 +58,11 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
 
     if (genericsFromReceiverAndReturnType.isNotEmpty()) {
         append("<")
-        append(genericsFromReceiverAndReturnType.joinToString(", "))
+        if (isInline)
+            append("reified ",genericsFromReceiverAndReturnType.joinToString(", reified "))
+        else
+            append(genericsFromReceiverAndReturnType.joinToString(", "))
+
         append(">")
     }
 

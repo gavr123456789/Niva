@@ -11,6 +11,7 @@ import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
+import main.frontend.parser.types.ast.UnionBranchDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 
 fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
@@ -231,12 +232,14 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     if (enumRoot == null) {
         append("\toverride fun toString(): String {\n")
         append("\t\treturn \"\"\"")
+
+        val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
         val fewFields = fields.count() <= 2
 
-        if (fewFields)
+        if (false)
             append("(",typeName)
         else
-            append("$typeName")
+            append(typeName)
 
         if (fields.isNotEmpty()) {
             append(" ")
@@ -249,26 +252,34 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             else "$${it.name}"
         }
         val generateSimpleField = { it: TypeFieldAST ->
-
-            it.name + ": " + addQuotes(it)
+            "    " + it.name + ": " + addQuotes(it)
         }
-        val toStringFields = if (fewFields)
+        val generateComplexField = { it: TypeFieldAST ->
+            "    ${it.name}: (\n" +
+            // we dont need before-spaces here since we already do prepend Indent for the whole string
+            "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+            "    )"
+        }
+
+
+        val toStringFields = if (false) //
             fields.joinToString(" ") {
                 generateSimpleField(it)
             } + ")"
         else {
             "\n" + fields.joinToString("\n") {
                 val type = it.type?.unpackNull()
-                if (type is Type.UserType && type.fields.count() > 2) {
-                    "    ${it.name}: (\n" +
-                            // we dont need before-spaces here since we already do prepend Indent for the whole string
-                    "\${${it.name}.toString().prependIndent(\"        \")}\n" +
-                    "    )"
-                } else if (type is Type.Lambda) {
-                    "    " + it.name + ": " + it.type.toString()
-                }
-                else {
-                    "    " + generateSimpleField(it)
+                when(type) {
+                    is Type.EnumBranchType -> generateSimpleField(it)
+                    is Type.EnumRootType -> generateSimpleField(it)
+
+                    is Type.UserLike -> generateComplexField(it)
+                    is Type.InternalType -> generateSimpleField(it)
+
+                    is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
+                    is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(it)
+                    is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
+                    null -> it.token.compileError("type of $it is null")
                 }
             }
         }
@@ -284,6 +295,19 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     }
     append("\n}\n")
 
+}
+
+fun <T, G> T.ass(): G {
+    return this as G
+}
+
+private fun SomeTypeDeclaration.collectFields(): List<TypeFieldAST> {
+    val result: MutableList<TypeFieldAST> = mutableListOf()
+    if (this is UnionBranchDeclaration) {
+        result.addAll(this.root.collectFields())
+    }
+    result.addAll(fields)
+    return result.toList()
 }
 
 fun EnumDeclarationRoot.generateEnumDeclaration() = buildString {

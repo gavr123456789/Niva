@@ -128,7 +128,7 @@ extend mut Parser [
         TO DO: "parseBodyOrSingleExpr: no statement"
       ]
 
-      statement = .nextExperssion: (.step)
+      statement = .nextExperssion: .step
       body add: statement
     ]
 
@@ -190,7 +190,7 @@ extend mut Parser [
         // .matchAssert: TokenType.Assign
         .match: TokenType.Assign, ifFalse: [
           .restoreFrom: savePosition
-          ^ .nextExperssion: .peek
+          ^ .nextExperssion: .step
         ]
         // Int inc ->? = ^[]
 
@@ -218,7 +218,7 @@ extend mut Parser [
         arg = .step
         arg kind == TokenType.IdentifierDoubleColon, ifFalse: [
           .restoreFrom: savePosition
-          ^.nextExperssion: .peek
+          ^.nextExperssion: .step
         ]
         argType = .parseType
 
@@ -292,6 +292,8 @@ extend mut Parser [
       | TokenType.Identifier => [
         unaryIdentifiers = .parseManyIdent
         // 1 inc inc^
+        // maybePrimary debug
+        // unaryIdentifiers debug
         unary = UnaryMsg 
           args: unaryIdentifiers toList 
           receiver: maybePrimary 

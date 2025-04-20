@@ -668,8 +668,9 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
             val place = if (customPlaceInCode != null) {
                 " in $customPlaceInCode"
             } else ""
-            if (!GlobalVariables.isLspMode)
-                errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
+
+//            if (!GlobalVariables.isLspMode)
+            errorTok.compileError("(probably compiler bug)Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
         } else {
             // T was already added, but maybe it's a different type from same union
             // then replace added type to this union
@@ -704,7 +705,7 @@ fun resolveReturnTypeIfGeneric(
 //            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
         realTypeFromTable
     }
-    // если ретурн тип ту стринг есть среди параметров функции имеющих дженерики, или
+    // если ретурн тип ту стринг есть среди параметров функции имеющих дженерики
     else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
         // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
         // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так

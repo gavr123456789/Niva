@@ -176,7 +176,7 @@ fun replaceAllGenericsToRealTypeRecursive(
     type: Type.UserLike,
     letterToRealType: MutableMap<String, Type>,
     receiverGenericsTable: MutableMap<String, Type>
-): Type.UserType {
+): Type.UserLike {
     val newResolvedTypeArgs2 = mutableListOf<Type>()
 
     val copyType = type.copy()
@@ -193,10 +193,8 @@ fun replaceAllGenericsToRealTypeRecursive(
             } else {
                 // we need to know from here, is this generic need to be resolved or not
                 newResolvedTypeArgs2.add(typeArg)
-//                println("olala, looks like the $typeArg is Known generic")
-//                TODO()
             }
-        } else if (typeArg is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+        } else if (typeArg is Type.UserLike && typeArg.typeArgumentList.isNotEmpty()) {
             newResolvedTypeArgs2.add(
                 replaceAllGenericsToRealTypeRecursive(
                     typeArg,
@@ -208,14 +206,18 @@ fun replaceAllGenericsToRealTypeRecursive(
             newResolvedTypeArgs2.add(typeArg)
         }
     }
-
-    return Type.UserType(
-        name = copyType.name,
-        typeArgumentList = newResolvedTypeArgs2,
-        fields = copyType.fields,
-        isPrivate = copyType.isPrivate,
-        pkg = copyType.pkg,
-        protocols = copyType.protocols,
-        typeDeclaration = copyType.typeDeclaration
-    )
+    return copyType
+//    return Type.UserType(
+//        name = copyType.name,
+//        typeArgumentList = newResolvedTypeArgs2,
+//        fields = copyType.fields,
+//        isPrivate = copyType.isPrivate,
+//        pkg = copyType.pkg,
+//        protocols = copyType.protocols,
+//        typeDeclaration = copyType.typeDeclaration,
+//
+//    ).also {
+//        parent = copyType.parent
+//        errors = copyType.errors
+//    }
 }

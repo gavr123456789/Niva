@@ -108,7 +108,6 @@ fun Resolver.resolveVarDeclaration(
         }
 
     }
-
     currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
     addToTopLevelStatements(statement)
 }
