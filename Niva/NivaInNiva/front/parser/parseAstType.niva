@@ -1,0 +1,57 @@
+extend mut Parser [
+  /// List::Set::Int
+  /// Map(String, Int)
+  /// identifier ("(" | "::")
+  on parseGenericType -> AstType = [
+
+    identifier = .matchAssertAnyIdent: "in type declaration identifier expected"
+    isNullable = identifier kind == TokenType.NullableIdentifier
+    name = identifier lexeme
+
+    isListLike = identifier kind == TokenType.IdentifierDoubleColon
+    isMapLike = .match: TokenType.OpenParen
+
+    isListLike ifTrue: [
+      recursiveGenerics = .parseGenericType
+      // errors = .parseErrors
+      ^ AstType 
+        name: name 
+        nullable: isNullable
+        genericParams: {recursiveGenerics}
+
+    ]
+
+    isMapLike ifTrue: [
+      typeArgumentList::MutableList::AstType = {}m
+
+      mut continue = true 
+      [continue] whileTrue: [
+        typeArgumentList add: .parseGenericType
+        continue <- .match: TokenType.Comma
+      ]
+
+      .matchAssert: TokenType.CloseParen
+      ^ AstType 
+        name: name 
+        nullable: isNullable
+        genericParams: typeArgumentList toList
+    ]
+
+    // no Map() no List::
+    ^ AstType 
+      name: name 
+      nullable: isNullable
+      genericParams: {}
+  ]
+  
+  on parseType -> AstType = [
+
+    isMut = .match: TokenType.Mut
+    itLambda = .match: TokenType.OpenBracket, ifTrue: [
+      TO DO: "parseLambda"
+    ]
+    result::mut AstType = .parseGenericType
+    result setMutable: isMut
+    ^ result
+  ]
+]

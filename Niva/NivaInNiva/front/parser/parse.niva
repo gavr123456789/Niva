@@ -27,7 +27,7 @@ extend mut Parser [
       // .step
       // statements add: (lit)
       lit
-    ]
+    ] // TODO это теперь вообщзе не надо
 
     ^| tok kind
     | TokenType.Integer => [
@@ -89,113 +89,16 @@ extend mut Parser [
   /// or identifier | nullableIdentifier 
   /// simple literal 1 "" '' true false 1.1 1.1f
   on primary::Token -> Expr? = [
+    primary lexeme
     .literalExprFrom: primary, unpack: [
       ^it
     ]
 
-    //collection 
-    // .parseCollection, unpack: [
-    //   ^it
-    // ]
-
-        // identifier 
-    .parseNullOrIdentifier, unpack: [
-      ^it
+    primary isNullOrIdentifier ifTrue: [
+      ^ Identifier name: primary lexeme token: primary
     ]
 
     ^ null
-  ]
-
-  // List::Set::Int
-  // Map(String, Int)
-  /// identifier ("(" | "::")
-  on parseGenericType -> AstType = [
-
-    identifier = .matchAssertAnyIdent: "in type declaration identifier expected"
-    isNullable = identifier kind == TokenType.NullableIdentifier
-    name = identifier lexeme
-
-    isListLike = identifier kind == TokenType.IdentifierDoubleColon
-    isMapLike = .match: TokenType.OpenParen
-
-    isListLike ifTrue: [
-      recursiveGenerics = .parseGenericType
-      // errors = .parseErrors
-      ^ AstType 
-        name: name 
-        nullable: isNullable
-        genericParams: {recursiveGenerics}
-
-    ]
-
-    isMapLike ifTrue: [
-      typeArgumentList::MutableList::AstType = {}m
-
-      mut continue = true 
-      [continue] whileTrue: [
-        typeArgumentList add: .parseGenericType
-        continue <- .match: TokenType.Comma
-      ]
-
-      .matchAssert: TokenType.CloseParen
-      ^ AstType 
-        name: name 
-        nullable: isNullable
-        genericParams: typeArgumentList toList
-    ]
-
-    // no Map() no List::
-    ^ AstType 
-      name: name 
-      nullable: isNullable
-      genericParams: {}
-  ]
-  on parseType -> AstType = [
-
-    isMut = .match: TokenType.Mut
-    itLambda = .match: TokenType.OpenBracket, ifTrue: [
-      TO DO: "parseLambda"
-    ]
-    result::mut AstType = .parseGenericType
-    result setMutable: isMut
-    ^ result
-  ]
-
-  /// `name: String`
-  on typeFields -> List::TypeField = [
-    .peek kind == TokenType.IdentifierColon, assert: "Expected `field:`"
-    result::MutableList::TypeField = {}m
-
-    mut c = true
-    [c] whileTrue: [
-      tok = .peek
-      tok kind == TokenType.IdentifierColon ifTrue: [
-        .step // skip 
-
-        type_ = .parseType
-        type_field = TypeField name: (tok lexeme) type_: type_ // dropLast: 1, ":"
-        result add: (type_field)
-        // need continue?
-        c <- .peek kind == TokenType.IdentifierColon 
-      ] ifFalse: [
-        c <- false
-      ]
-    ]
-
-    ^ result toList
-  ]
-
-  /// type name (field1: astType)*
-  on typeDeclaration: tok::Token -> Statement = [
-    // type name (field1: astType)*
-
-    res = TypeDecl 
-      name: (.step lexeme)
-      fields: (.typeFields)
-      token: tok
-    // res debug
-    // .statements add: res
-    ^ res
   ]
 
   on parseBodyOrSingleExpr -> List::Statement = [
@@ -232,13 +135,18 @@ extend mut Parser [
     ^ body toList
   ]
 
-
+  on restoreFrom: position::Int = [
+    current <- position
+  ]
 
   on nextStatement -> Statement = [
+    savePosition = current
+
     // there always EndOfFile, so this never happen
-    tokens isEmpty ifTrue: [TO DO: "nextStatement: no tokens"] 
+    tokens isEmpty ifTrue: [TO DO: "no tokens, file is empty"] 
     tok = .step
 
+    // tok kind debug
 
     | tok kind
     | TokenType.Type => [^ .typeDeclaration: tok]
@@ -250,13 +158,26 @@ extend mut Parser [
       ]
 
 
-      // change current position back to parse type
+      // change current position back to parse receiver
       .stepBack
       receiverType = .parseType
+
+      // check all possible message declarations starters
+      // peek at: 1 == "=" thats unary
+      // peek at 0 == IdentifierDoubleColon thats Keyword
+      // peek at: 0 IdentifierColon and peek at: 1 IdentifierDoubleColon thats Keyword with local
+      // peek at: 0 == BinarySymbol and peek at: 1 IdentifierDoubleColon thats Binary
+      // if one of that, then just go to saved position and run nextExpression
+
+      peek0 = .peekAt: 0
+      peek1 = .peekAt: 1
+      // peek0 debug
+      // peek1 debug
 
 
       // Int^ inc =
       // Int^ a::Int b::Int =
+      // Int^ a: q::Int b::Int =
       // Int^ + a::Int =
       tok2 = .step
       result = | tok2 kind
@@ -266,7 +187,11 @@ extend mut Parser [
         returnType = getReturnType do 
         name = tok2 lexeme
 
-        .matchAssert: TokenType.Assign
+        // .matchAssert: TokenType.Assign
+        .match: TokenType.Assign, ifFalse: [
+          .restoreFrom: savePosition
+          ^ .nextExperssion: .peek
+        ]
         // Int inc ->? = ^[]
 
         body = .parseBodyOrSingleExpr
@@ -289,7 +214,12 @@ extend mut Parser [
       | TokenType.BinarySymbol => [
         // Int +^ a::Int -> Int=
 
-        arg = .matchAssert: TokenType.IdentifierDoubleColon
+        // if its not binary declaration then parse expression
+        arg = .step
+        arg kind == TokenType.IdentifierDoubleColon, ifFalse: [
+          .restoreFrom: savePosition
+          ^.nextExperssion: .peek
+        ]
         argType = .parseType
 
 
@@ -339,7 +269,7 @@ extend mut Parser [
 
 
   on nextExperssion: tok::Token -> Expr = [
-    maybePrimary = .primary: tok, unpackOrPANIC 
+    maybePrimary = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
 
     next = .peek
     // single primary before new line
@@ -386,7 +316,6 @@ extend mut Parser [
       ]
       | TokenType.BinarySymbol => [
         binaryList = .parseManyBinary
-        binaryList debug 
         
         binary = BinaryMsg 
           args: binaryList toList 
@@ -396,6 +325,13 @@ extend mut Parser [
         // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
         ^ binary
         Unit
+      ]
+      | TokenType.IdentifierColon => [
+        // primary keyword
+        // 1 inc: 2
+        // 1 inc: 2 inc: 3
+        // 1 inc: 2 inc: 3 that: 4
+        TO DO: "parse keyword"
       ]
       |=> [
         Unit
@@ -415,8 +351,6 @@ extend mut Parser [
 
 
       // 1 + ^2
-      // receiver = .primary: .step
-      // receiver debug
       binaryList = .parseManyBinary
       
       binary = BinaryMsg 
@@ -484,7 +418,6 @@ extend mut Parser [
 
   on parseNullOrIdentifier -> Identifier? = [
     tok = .peek
-
     ^ tok isNullOrIdentifier ifTrue: [
       .step
       Identifier name: tok lexeme token: tok
@@ -523,7 +456,14 @@ extend mut Parser [
     current <- current dec
     ^ x
   ]
+
+  /// if current is out of bounds returns EOF
+  /// otherwise returns token at current position
   on peek -> Token = [
+    // current >= tokens count, ifTrue: [
+    //   ^ Token eof
+    // ]
+
     ^tokens at: current
   ]
   on peekAt: distance::Int -> Token = [
