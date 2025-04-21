@@ -399,7 +399,7 @@ fun Resolver.resolveControlFlow(
                 val elseReturnType = when (lastExpr) {
                     is Expression -> lastExpr.type!!
                     is ReturnStatement -> lastExpr.expression?.type ?: Resolver.defaultTypes[InternalTypes.Unit]!!
-                    is Assign -> lastExpr.value.type!!
+                    is Assign -> Resolver.defaultTypes[InternalTypes.Unit]!! //lastExpr.value.type!!
                     else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                 }
                 val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
