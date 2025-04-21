@@ -10,35 +10,24 @@ extend mut Parser [
 
       | tok kind 
       | TokenType.Identifier => [
-        identifier = .step
-        // identifier debug
-        expr = (Identifier name: (tok lexeme) token: tok)
-        result add: expr
+        // stop if new unary on new line
+        result isNotEmpty && (tok line > result last token line), ifTrue: [
+          c <- false
+        ] ifFalse: [
+          identifier = .step
+          // identifier debug
+          expr = (Identifier name: (tok lexeme) token: tok)
+          result add: expr
+          Unit
+        ]
       ]
       |=> [
         c <- false
       ]
     ]
+    // "parseManyIdent $result" echo
     ^result
   ]
-
-  // on parseUnaryMsgOrIdentifier -> Expr = [
-  //   result42 = .parseManyIdent
-
-  //   result42 count == 1, ifTrue: [
-  //     // inc inc
-  //     trueIdent = (Identifier name: (.peek lexeme) token: .peek)
-  //     identifier42 = result42 at: 0
-  //     ^identifier42
-  //   ] ifFalse: [
-  //     // inc inc + 2
-  //     receiver = (.primary: .step) unpackOrMsg: "Cant find primary"
-  //     unaryList = result42
-  //     unary = UnaryMsg args: unaryList toList receiver: receiver token: tok
-  //     ^unary
-  //   ]
-
-  // ]
 
   /// + 2 inc inc + 3 dec dec
   on parseManyBinary -> List::NameAndExpr = [
@@ -57,8 +46,10 @@ extend mut Parser [
           .peek kind == TokenType.OpenBrace, ifTrue: [TO DO: "1 + (...) not implemented yet"]
           receiver = (.primary: .step) unpackOrMsg: "Cant find primary" // TODO тут может быть не праймари, а унари, или в скобках что угодно поэтому парсить нужно не праймари, не, надо просто добавить в парсинг праймари скобочных выражений
           // + 1^ inc inc + 2
-          unaryList = .parseManyIdent
-          // unaryList debug
+          unaryList = .peek line == receiver token line, ifTrue: [
+            .parseManyIdent
+          ] ifFalse: [{}m]
+
 
           unaryList isEmpty, ifTrue: [
             // + 1 + 2

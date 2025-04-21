@@ -60,6 +60,8 @@ type Token
   line: Int
   start: Int end: Int // at line
 
+Token toString = "$kind"
+
 constructor Token eof = Token 
   kind: TokenType.EndOfFile 
   lexeme: "" 

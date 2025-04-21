@@ -8,31 +8,11 @@ type Program
   // "\n\n\n" echo
   // typeDecl = statements at: 0
 
+  input = """
+    a + d
+    a + b
+  """ trimIndent
 
-msgSend = TestParse expression: "a + b"
-msgSend debug
-  // | msgSend 
-  // | BinaryMsg => [
-  //   Assert 
-  //     that: msgSend args count
-  //     equals: 1
-    
-  //   first = msgSend args at: 0
-  //   Assert that: first name token lexeme equals: "+"
-  //   expr = first expr
-  //   | expr 
-  //   | Identifier => [
-  //     name = expr name
-  //     Assert that: name equals: "b"
-  //   ]
-  //   |=> TO DO: "It should be UnaryMsg, but it " + expr toString
-
-  //   receiver = msgSend receiver
-  //   | receiver 
-  //   | Identifier => [
-  //     name = receiver name
-  //     Assert that: name equals: "a"
-  //   ]
-  //   |=> TO DO: "It should be Identifier, but it " + receiver toString
-  // ]
-  // |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+  statements = TestParse withInput: input expectedCount: 2
+  statements at: 0, debug
+  statements at: 1, debug

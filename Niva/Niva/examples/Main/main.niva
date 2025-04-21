@@ -1,23 +1,12 @@
 
-type Token lexeme: String
+type Person name: String age: Int
+type Person2 name: String age: Int
 
-union Expr token: Token =
-| Identifier name: String
+p = Person name: "Alice" age: 123
 
-
-
-
-
-T toTypeOrThrow -> G!Error ^=
-    | this
-    | G => this
-    |=> Error throwWithMessage: "cant cast"
-
-x = Identifier name: "qwf" token: (Token lexeme: "1233123")
-
-Int sas::Expr -> Unit! = [
-    ident = sas toTypeOrThrow
-    ident echo
+Person toString = [
+  ^"Person: $name"
 ]
 
-1 sas: x
+p echo
+
