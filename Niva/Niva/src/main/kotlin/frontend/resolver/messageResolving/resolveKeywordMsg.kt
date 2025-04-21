@@ -670,7 +670,7 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
             } else ""
 
 //            if (!GlobalVariables.isLspMode)
-            errorTok.compileError("(probably compiler bug)Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
+            errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
         } else {
             // T was already added, but maybe it's a different type from same union
             // then replace added type to this union

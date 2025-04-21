@@ -1,5 +1,7 @@
 package main.codogen
 
+import frontend.parser.parsing.MessageDeclarationType
+import frontend.resolver.Package
 import frontend.resolver.Type
 import frontend.resolver.unpackNull
 import main.utils.RED
@@ -13,6 +15,10 @@ import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionBranchDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
+import main.frontend.resolver.findAnyMethod
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.YEL
 
 fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
     val genericsOfBranches = mutableSetOf<String>()
@@ -230,68 +236,89 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
     /// Override toString
     if (enumRoot == null) {
-        append("\toverride fun toString(): String {\n")
-        append("\t\treturn \"\"\"")
+        append("\toverride fun toString(): String")
 
-        val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
-        val fewFields = fields.count() <= 2
+        val qwf = findAnyMethod(receiverType, "toString", Package(receiverType.pkg), MessageDeclarationType.Unary)
+        if (qwf != null && qwf.declaration != null && qwf.declaration.body.isNotEmpty()) {
+            val returnTypeName = qwf.declaration.returnType?.name
+            if (returnTypeName != "String") {
+                qwf.declaration.token.compileError("${CYAN}toString$RESET methods should return ${YEL}String$RESET but it returns ${CYAN}$returnTypeName$RESET")
+            }
+            // generate body
+            qwf.declaration.body
+            val sb = StringBuilder()
+            generateBody(qwf.declaration, sb)
 
-        if (false)
-            append("(",typeName)
-        else
-            append(typeName)
+            append(sb)
+            appendLine("\n    companion object")
+        } else {
+            // toString() : String" {"
+            append(" {\n")
 
-        if (fields.isNotEmpty()) {
-            append(" ")
-        }
+            append("\t\treturn \"\"\"")
 
+            val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
+            val fewFields = fields.count() <= 2
 
-        val addQuotes = { it: TypeFieldAST ->
-            if (it.type?.name == "String")
-                "\"$${it.name}\""
-            else "$${it.name}"
-        }
-        val generateSimpleField = { it: TypeFieldAST ->
-            "    " + it.name + ": " + addQuotes(it)
-        }
-        val generateComplexField = { it: TypeFieldAST ->
-            "    ${it.name}: (\n" +
-            // we dont need before-spaces here since we already do prepend Indent for the whole string
-            "\${${it.name}.toString().prependIndent(\"        \")}\n" +
-            "    )"
-        }
+            if (false)
+                append("(",typeName)
+            else
+                append(typeName)
+
+            if (fields.isNotEmpty()) {
+                append(" ")
+            }
 
 
-        val toStringFields = if (false) //
-            fields.joinToString(" ") {
-                generateSimpleField(it)
-            } + ")"
-        else {
-            "\n" + fields.joinToString("\n") {
-                val type = it.type?.unpackNull()
-                when(type) {
-                    is Type.EnumBranchType -> generateSimpleField(it)
-                    is Type.EnumRootType -> generateSimpleField(it)
+            val addQuotes = { it: TypeFieldAST ->
+                if (it.type?.name == "String")
+                    "\"$${it.name}\""
+                else "$${it.name}"
+            }
+            val generateSimpleField = { it: TypeFieldAST ->
+                "    " + it.name + ": " + addQuotes(it)
+            }
+            val generateComplexField = { it: TypeFieldAST ->
+                "    ${it.name}: (\n" +
+                        // we dont need before-spaces here since we already do prepend Indent for the whole string
+                        "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+                        "    )"
+            }
 
-                    is Type.UserLike -> generateComplexField(it)
-                    is Type.InternalType -> generateSimpleField(it)
 
-                    is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
-                    is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(it)
-                    is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
-                    null -> it.token.compileError("type of $it is null")
+            val toStringFields = if (false) //
+                fields.joinToString(" ") {
+                    generateSimpleField(it)
+                } + ")"
+            else {
+                "\n" + fields.joinToString("\n") {
+                    val type = it.type?.unpackNull()
+                    when(type) {
+                        is Type.EnumBranchType -> generateSimpleField(it)
+                        is Type.EnumRootType -> generateSimpleField(it)
+
+                        is Type.UserLike -> generateComplexField(it)
+                        is Type.InternalType -> generateSimpleField(it)
+
+                        is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
+                        is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(it)
+                        is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
+                        null -> it.token.compileError("type of $it is null")
+                    }
                 }
             }
+
+
+            append(toStringFields, "\"\"\"")
+            // for static methods like constructor
+            append(
+                """
+    }
+    companion object"""
+            )
         }
 
 
-        append(toStringFields, "\"\"\"")
-        // for static methods like constructor
-        append(
-            """
-    }
-    companion object"""
-        )
     }
     append("\n}\n")
 

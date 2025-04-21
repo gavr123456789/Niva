@@ -214,6 +214,14 @@ private fun returnTypeAndBodyPart(
         // experimental infer return type
         stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
     }
+
+    generateBody(messageDeclaration, stringBuilder)
+}
+
+fun generateBody(
+    messageDeclaration: MessageDeclaration,
+    stringBuilder: StringBuilder
+) {
     if (messageDeclaration.body.isEmpty()) {
         stringBuilder.append(" { }\n")
         return
@@ -226,6 +234,7 @@ private fun returnTypeAndBodyPart(
     val isControlFlowStatement by lazy {
         (firstBodyStatement is ControlFlow && (firstBodyStatement.kind == ControlFlowKind.Statement || firstBodyStatement.kind == ControlFlowKind.StatementTypeMatch))
     }
+
     if (//messageDeclaration.body.count() == 1 &&
         messageDeclaration.isSingleExpression &&
         firstBodyStatement is Expression &&
