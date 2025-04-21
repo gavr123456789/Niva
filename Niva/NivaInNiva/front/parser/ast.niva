@@ -38,6 +38,8 @@ union Expr token: Token =
 | ^CollectionLiteral
 | ^MessageSend2
 
+Identifier toString = "$name"
+
 constructor Identifier fromToken::Token = 
   Identifier name: (fromToken lexeme) token: fromToken
   
@@ -71,6 +73,16 @@ union MessageSend2 receiver: Expr token: Token =
 | KeywordMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
 
+UnaryMsg toString = [
+  realArgs = args joinWith: " " transform: [it name]
+  ^ "$receiver $realArgs"
+]
+BinaryMsg toString = [
+  realArgs = args joinWith: " " transform: [
+    it name name + " " + it expr toString
+  ]
+  ^ "$receiver $realArgs"
+]
 // Simple Unary
 // 1 inc
 // UnaryMsg args: {"inc"} receiver: 1 token: TO DO
@@ -173,3 +185,4 @@ union LiteralExpr token: Token =
 | FloatExpr
 | DoubleExpr
 
+IntExpr toString = "$num"

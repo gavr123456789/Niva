@@ -15,7 +15,30 @@ constructor TestParse expression::String -> Expr = [
   |=> [TO DO: "It should be Expr, but it " + expr toString]
 ]
 
+Test someExpressions -> Unit! = [
+  input = """
+    1 + 2
+    1 inc
+    1 inc + 2
+    1 + 2 inc
+    a + b
+    a + b inc
+    a + b inc + c
+    a + b inc + c dec
+    a + b inc + c dec * d
+    a + b inc + c dec * d / e
+  """ trimIndent
 
+  statements = TestParse withInput: input expectedCount: 10
+
+  // statements debug
+
+  // Assert that: statements at: 0 is BinaryMsg equals: true
+  // Assert that: statements at: 1 is UnaryMsg equals: true
+  // Assert that: statements at: 2 is BinaryMsg equals: true
+  // Assert that: statements at: 3 is BinaryMsg equals: true
+  // Assert that: statements at: 4 is BinaryMsg equals: true
+]
 
 Test parseSimbleBinaryMsg -> Unit! = [
   msgSend = TestParse expression: "a + b"

@@ -157,7 +157,6 @@ extend mut Parser [
         ] ifFalse: [null]
       ]
 
-
       // change current position back to parse receiver
       .stepBack
       receiverType = .parseType
@@ -168,12 +167,6 @@ extend mut Parser [
       // peek at: 0 IdentifierColon and peek at: 1 IdentifierDoubleColon thats Keyword with local
       // peek at: 0 == BinarySymbol and peek at: 1 IdentifierDoubleColon thats Binary
       // if one of that, then just go to saved position and run nextExpression
-
-      peek0 = .peekAt: 0
-      peek1 = .peekAt: 1
-      // peek0 debug
-      // peek1 debug
-
 
       // Int^ inc =
       // Int^ a::Int b::Int =
@@ -242,7 +235,10 @@ extend mut Parser [
         // statements add: msgDecl
         msgDecl
       ]
-      |=> [TO DO: "222"]
+      |=> [
+        statements echo
+        TO DO: "222 $tok2"
+      ]
 
       ^ result
       
@@ -292,8 +288,6 @@ extend mut Parser [
       | TokenType.Identifier => [
         unaryIdentifiers = .parseManyIdent
         // 1 inc inc^
-        // maybePrimary debug
-        // unaryIdentifiers debug
         unary = UnaryMsg 
           args: unaryIdentifiers toList 
           receiver: maybePrimary 
@@ -312,7 +306,6 @@ extend mut Parser [
         // statements add: unary // TODO нужно добавлять стейтменты сверху, там где мы по ним идем, а не тут, иначе будут добавлятся те что внутри боди методов
         // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
         // или придумать какой то другой алгоритм
-        "!!!!" echo
         ^ unary
         Unit
       ]
