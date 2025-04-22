@@ -33,7 +33,7 @@ extend mut Lexer [
     "---" echo
   ]
 
-    on printFullState = [
+  on printFullState = [
     "---" echo
     // input debug
     input echo
