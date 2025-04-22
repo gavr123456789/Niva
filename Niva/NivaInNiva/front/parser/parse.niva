@@ -236,12 +236,13 @@ extend mut Parser [
         msgDecl
       ]
       |=> [
-        statements echo
-        TO DO: "222 $tok2"
+        .restoreFrom: savePosition
+        ^.nextExperssion: .step
+        // statements echo
+        // TO DO: "222 $tok2"
       ]
 
       ^ result
-      
     ]
 
     | TokenType.EndOfFile => [
@@ -265,16 +266,57 @@ extend mut Parser [
 
 
   on nextExperssion: tok::Token -> Expr = [
+    primaryUnaryBinary = .parseUnaryOrBinary: tok
+
+    ^| .peek kind
+    | TokenType.IdentifierColon => [
+
+      result::MutableList::NameAndExpr = {}m
+      mut c = true
+      // parse keyword
+      [c] whileTrue: [
+        colon = .peek
+        | colon kind
+        | TokenType.IdentifierColon => [
+
+          result add: 
+            (NameAndExpr 
+              name: (Identifier fromToken: .step) 
+              expr: (.parseUnaryOrBinary: .step))
+          Unit
+  
+        ]
+        |=> [
+          "IdentifierColon exit" echo
+          c <- false
+        ]
+      ]
+      current debug
+      
+      KeywordMsg 
+        args: result toList
+        receiver: primaryUnaryBinary
+        token: tok
+    ]
+    |=> primaryUnaryBinary
+  ]
+
+
+  // returns
+  // Primary
+  // UnaryMsg
+  // BinaryMsg
+  on parseUnaryOrBinary: tok::Token -> Expr = [
     maybePrimary = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
 
     next = .peek
     // single primary before new line
     next line > tok line, ifTrue: [
       ^ maybePrimary
-    ] 
+    ]
 
     // 1 ^
-
+    
     | next kind
     // 1 ^inc 
     | TokenType.Identifier => [
@@ -283,7 +325,6 @@ extend mut Parser [
       // msg = MessageSend args: List::NameAndExpr token: next
       // while there are identifiers - parse and save them, its a begining of unary     
       tok = .peek
-
       | tok kind 
       | TokenType.Identifier => [
         unaryIdentifiers = .parseManyIdent
@@ -300,12 +341,17 @@ extend mut Parser [
             args: binaryList toList 
             receiver: unary
             token: maybePrimary token
-          // statements add: binary
+          .peek kind == TokenType.IdentifierColon, ifTrue: [
+            // 1 inc from: 2
+            TO DO: "parse keyword after binary2"
+          ]
           ^binary
         ]
-        // statements add: unary // TODO нужно добавлять стейтменты сверху, там где мы по ним идем, а не тут, иначе будут добавлятся те что внутри боди методов
-        // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
-        // или придумать какой то другой алгоритм
+
+        // .peek kind == TokenType.IdentifierColon, ifTrue: [
+        //   // 1 inc from: 2
+        //   TO DO: "parse keyword after unary"
+        // ]
         ^ unary
         Unit
       ]
@@ -318,25 +364,17 @@ extend mut Parser [
           token: maybePrimary token
         // statements add: binary
         // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
+        // .peek kind == TokenType.IdentifierColon, ifTrue: [
+        //   // 1 inc from: 2
+        //   TO DO: "parse keyword after binary1"
+        // ]
         ^ binary
         Unit
-      ]
-      | TokenType.IdentifierColon => [
-        // primary keyword
-        // 1 inc: 2
-        // 1 inc: 2 inc: 3
-        // 1 inc: 2 inc: 3 that: 4
-        TO DO: "parse keyword"
       ]
       |=> [
         Unit
       ]
       
-      // if while parsing unary got binary than continue binary parsing
-
-      // if while parsing unary got keyword than continue keyword parsing
-
-
       TO DO: "parse unary"
     ]
     | TokenType.BinarySymbol => [
@@ -354,23 +392,24 @@ extend mut Parser [
         token: maybePrimary token
       // statements add: binary
 
-      .peek kind == TokenType.IdentifierColon, ifTrue: [
-        TO DO: "binary is a receiver for keyword"
-      ]
+      // .peek kind == TokenType.IdentifierColon, ifTrue: [
+      //   TO DO: "binary is a receiver for keyword"
+      // ]
 
       ^ binary
       // kw possible
     
       // if while parsing binary got keyword than continue keyword parsing
     ]
-    | TokenType.Colon => [
-      // primary keyword
-      // 1 inc: 2
-      // 1 inc: 2 inc: 3
-      // 1 inc: 2 inc: 3 that: 4
-      TO DO: "parse keyword"
-
-    ]
+    // | TokenType.IdentifierColon => [
+    //   // primary keyword
+    //   // 1 from: 2
+    //   // 1 inc from: 2      
+    //   // 1 + 1 from: 2
+    //   // binaryList = .parseManyBinary
+    //   // binaryList debug
+    //   TO DO: "parse simple keyword1"
+    // ]
     |=> []
 
     ^ maybePrimary
@@ -443,6 +482,9 @@ extend mut Parser [
 
   on step -> Token = [
     x = .peek
+    x kind == TokenType.EndOfFile, ifTrue: [
+      TO DO: "step: EOF"
+    ]
     current <- current inc
     ^ x
   ]

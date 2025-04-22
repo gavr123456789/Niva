@@ -9,10 +9,8 @@ type Program
   // typeDecl = statements at: 0
 
   input = """
-    a + d
-    a + b
+    a b
   """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: 2
+  statements = TestParse withInput: input expectedCount: 1
   statements at: 0, debug
-  statements at: 1, debug

@@ -60,7 +60,7 @@ type Token
   line: Int
   start: Int end: Int // at line
 
-Token toString = "$kind"
+Token toString = "$kind($lexeme)"
 
 constructor Token eof = Token 
   kind: TokenType.EndOfFile 
