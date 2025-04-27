@@ -1,12 +1,10 @@
+type Wallet money: Int
+type Person name: String age: Int wallet: Wallet list: List::Int
 
-type Person name: String age: Int
-type Person2 name: String age: Int
+p = Person name: "Alice" age: 123 wallet: (Wallet money: 42) list: {1 2 3}
 
-p = Person name: "Alice" age: 123
+dynamicPerson = Person toDynamic: p
+dynamicPerson echo
 
-Person toString = [
-  ^"Person: $name"
-]
-
-p echo
-
+p2 = Person fromDynamic: dynamicPerson
+p2 echo

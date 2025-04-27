@@ -10,7 +10,6 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.SomeTypeDeclaration
-import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.UnionBranchDeclaration
@@ -258,7 +257,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append("\t\treturn \"\"\"")
 
             val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
-            val fewFields = fields.count() <= 2
+//            val fewFields = fields.count() <= 2
 
             if (false)
                 append("(",typeName)
@@ -317,15 +316,92 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     companion object"""
             )
         }
-
-
+        //////
     }
     append("\n}\n")
 
-}
+    /// Generate Dynamic converters
+    val generateDynamicConverters = {
+        val checkForCollections = { type: Type.UserType ->
+            when (type.name) {
+                "List", "MutableList" -> false
+                "Map", "MutableMap" -> false
+                "Set", "MutableSet" -> false
+                else -> true
+            }
+        }
+        val isComplex:(Type?) -> Boolean = { type: Type? ->
+            when (type) {
+                is Type.UserType -> {
+                    checkForCollections(type)
+                }
+                is Type.NullableType -> {
+                    val unpack = type.unpackNull()
+                    if (unpack is Type.UserType) {
+                        checkForCollections(unpack)
+                    } else false
+                }
+                is Type.InternalType -> false
+                else -> false
+            }
+        }
 
-fun <T, G> T.ass(): G {
-    return this as G
+
+        // toDynamic
+        appendLine("\nfun $typeName.Companion.toDynamic(instance: $typeName): Dynamic {")
+        appendLine("    val values = mapOf<String, Any?>(")
+
+        val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
+
+
+
+        fields.forEachIndexed { index, field ->
+            val fieldName = field.name
+            val type = field.type?.unpackNull()
+            val isComplex: Boolean = isComplex(type)
+
+            val line = if (isComplex) {
+                "        \"$fieldName\" to ${field.type?.name}.toDynamic(instance.$fieldName)"
+            } else {
+                "        \"$fieldName\" to instance.$fieldName"
+            }
+
+            appendLine(line + if (index != fields.lastIndex) "," else "")
+        }
+
+        appendLine("    )")
+        appendLine("    return Dynamic(\"$typeName\", values)")
+        appendLine("}")
+
+        // fromDynamic
+        appendLine("\nfun $typeName.Companion.fromDynamic(value: Dynamic): $typeName {")
+        appendLine("    val fields = value.fields")
+        appendLine("    return $typeName(")
+
+        fields.forEachIndexed { index, field ->
+            val fieldName = field.name
+            val type = field.type?.unpackNull()
+            val isComplex = isComplex(type)
+
+            val line = if (isComplex) {
+                "${field.type?.name}.fromDynamic(fields[\"$fieldName\"] as Dynamic)"
+            } else {
+                "fields[\"$fieldName\"] as ${field.type?.toKotlinString(true)}"
+            }
+
+            appendLine("        $line" + if (index != fields.lastIndex) "," else "")
+        }
+
+        appendLine("    )")
+        appendLine("}")
+
+    }
+
+    if (receiverType is Type.UserType) {
+        generateDynamicConverters()
+    }
+    //////
+
 }
 
 private fun SomeTypeDeclaration.collectFields(): List<TypeFieldAST> {
