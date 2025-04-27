@@ -443,6 +443,19 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         // STD
         $jvmSpecific
         
+       class Dynamic(val name: String, val fields: Map<String, Any?>) {
+            override fun toString(): String {
+                val fields = fields.map { (k, v) ->
+                    val w = if (v is Dynamic) {
+                        "    ${"$"}k: \n" + v.toString().prependIndent("        ")
+                    } else "    ${"$"}k: ${"$"}v"
+                    w
+                }.joinToString("\n")
+                return "Dynamic${"$"}name\n" +
+                        "${"$"}fields"
+            }
+        }
+        
         fun throwWithMessage(message: String): Nothing {
             //@ core.niva:::0
             throw kotlin.Exception(message)

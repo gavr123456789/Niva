@@ -6,12 +6,9 @@ import frontend.parser.types.ast.KeyPragma
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
-import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.DocComment
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.LiteralExpression
-import main.frontend.parser.types.ast.MessageDeclarationUnary
-import main.frontend.parser.types.ast.TypeAST
 import java.io.File
 
 
@@ -210,43 +207,6 @@ fun Pair<String, KeywordMsgMetaData>.rename(str: String): Pair<String, KeywordMs
     this.second.pragmas.add(createRenameAtttribure(str))
     return this
 }
-
-
-private class FakeType() {
-    companion object { val fakeType = Type.InternalType(
-            typeName = InternalTypes.Unit,
-            pkg = "common")
-    }
-}
-
-fun createFakeType(): Type = FakeType.fakeType
-
-
-private class FakeASTType() {
-    companion object {
-        val fakeASTType = TypeAST.InternalType(InternalTypes.String, createFakeToken())
-    }
-}
-fun createFakeASTType(): TypeAST = FakeASTType.fakeASTType
-
-
-
-private class FakeDeclaration {
-    companion object {
-        val fakeType = createFakeType()
-        val fakeDeclaration = MessageDeclarationUnary(
-            name = "fakeDeclaration",
-            forType = createFakeASTType(),
-            token = createFakeToken(),
-            body = listOf(),
-            returnType = null,
-            isSingleExpression = false,
-            isInline = false,
-            isSuspend = false
-        )
-    }
-}
-fun createFakeDeclaration(): MessageDeclarationUnary = FakeDeclaration.fakeDeclaration
 
 fun createStringProtocols(
     intType: Type.InternalType,
@@ -514,6 +474,17 @@ fun createNullableAnyProtocols(realType: Type?): MutableMap<String, Protocol> {
         ),
     )
     return mutableMapOf(protocol.name to protocol)
+}
+
+fun createDynamicProtocol(currentType: Type, dynamicType: Type): Protocol {
+    val protocol = Protocol(
+        name = "common",
+        staticMsgs = mutableMapOf(
+            createKeyword(KeywordArg("toDynamic", currentType), dynamicType, "Creates Dynamic from current type"),
+            createKeyword(KeywordArg("fromDynamic", dynamicType), currentType, "Creates Dynamic from current type")
+        )
+    )
+    return protocol
 }
 
 fun createAnyProtocols(

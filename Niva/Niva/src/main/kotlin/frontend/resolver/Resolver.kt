@@ -1461,40 +1461,6 @@ class Resolver(
             typeDB.addUserLike(type.name, type)
             corePackage.types[type.name] = type
         }
-        // CodeBlock, needed for whileTrue and ifError
-        // typealias CodeBlock<T> = () -> T
-//        val codeBlockTType = Type.Lambda(
-//            mutableListOf(), // KeywordArg("do", intType)
-//            genericType,
-//        ).also { it.isAlias = true }
-//
-//        val errorProtocol =  Protocol(
-//            name = "errorProtocol",
-//            unaryMsgs = mutableMapOf(
-//                createUnary("count", intType)),
-//            keywordMsgs = mutableMapOf(
-//                createKeyword(
-//                    "ifError",
-//                    listOf(
-//                        KeywordArg(
-//                            "ifError",
-//                            Type.Lambda(
-//                                mutableListOf(
-//                                    KeywordArg("it", intType), // ERROR TYPE
-//                                ),
-//                                unitType
-//                            )
-//                        )
-//                    ),
-//                    unitType,
-//                    "Catch errors"
-//                )
-//            )
-//        )
-//        codeBlockTType.protocols.put("errorProtocol", errorProtocol)
-//        typeDB.lambdaTypes["CodeBlock"] = codeBlockTType
-
-
         // Sequence
         val sequenceType = Type.UserType(
             name = "Sequence",
@@ -1737,24 +1703,41 @@ class Resolver(
             )
         )
 
-
-
-
-
-        addCustomTypeToDb(
-            mapType, createMapProtocols(
-                isMutable = true,
-                intType = intType,
-                unitType = unitType,
-                boolType = boolType,
-                mutableMapType = mapTypeMut,
-                keyType = genericType,
-                valueType = differentGenericType,
-                setType = mutableSetType,
-                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-                mapType = mapType
-            )
+        val mapProtocols = createMapProtocols(
+            isMutable = false,
+            intType = intType,
+            unitType = unitType,
+            boolType = boolType,
+            mutableMapType = mapTypeMut,
+            keyType = genericType,
+            valueType = differentGenericType,
+            setType = mutableSetType,
+            setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+            mapType = mapType
         )
+        addCustomTypeToDb(
+            mapType, mapProtocols
+        )
+
+        // Dynamic
+        val dynamicType = Type.UserType(
+            name = "Dynamic",
+            fields = mutableListOf(KeywordArg("name", stringType)),
+            pkg = "core",
+            typeDeclaration = null
+        )
+        val mutableMapOfFields = Type.UserType(
+            name = "Map",
+            typeArgumentList = listOf(anyType, dynamicType),
+            fields = mutableListOf(),
+            pkg = "core",
+            typeDeclaration = null,
+            protocols = mapProtocols
+        )
+        dynamicType.fields.add(KeywordArg("fields", mutableMapOfFields))
+
+        addCustomTypeToDb(dynamicType, mutableMapOf())
+
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)

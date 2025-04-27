@@ -32,7 +32,87 @@ const val fakeFileSourceGOOD = """
 1 sas 
 """
 
+
+//class Dynamic(val name: String, val fields: Map<String, Any>) {
+//    override fun toString(): String {
+//
+//        val fields = fields.map { (k, v) ->
+//            val w = if (v is Dynamic) {
+//                v.toString().prependIndent("    ")
+//            } else v.toString()
+//            "    $k: $w"
+//        }.joinToString("\n")
+//        return "Dynamic" +
+//                "$name($fields)"
+//    }
+//}
+//
+//class Wallet(val money: Int) {
+//
+//    companion object {
+//        fun toDynamic(wallet: Wallet): Dynamic {
+//            val values = mapOf(
+//                "money" to wallet.money
+//            )
+//            return Dynamic("Wallet", values)
+//        }
+//        fun fromDynamic(value: Dynamic): Wallet {
+//            val value = value.fields
+//            return Wallet(value["money"] as Int)
+//        }
+//    }
+//
+//}
+//class Person(val name: String, val age: Int, val money: Wallet, val list: List<Int>) {
+//    companion object {
+//        fun toDynamic(person: Person): Dynamic {
+//            val values = mapOf(
+//                "name" to person.name,
+//                "age" to person.age,
+//                "money" to Wallet.toDynamic(person.money),
+//                "list" to person.list
+//            )
+//            return Dynamic("Person", values)
+//        }
+//
+//        fun fromDynamic(person: Dynamic): Person {
+//            val person = person.fields
+//            return Person(
+//                person["name"] as String,
+//                person["age"] as Int,
+//                Wallet.fromDynamic(person["money"] as Dynamic),
+//                person["list"] as List<Int>
+//            )
+//        }
+//
+//    }
+//}
+//
+//
+//fun dynamicToFile(d: Dynamic): String = buildString {
+//    val fields = d.fields
+//    appendLine(d.name)
+//    fields.forEach { (key, value) ->
+//        when (value) {
+//            is Dynamic -> appendLine(dynamicToFile(value).padStart(4, '-'))
+//            else -> appendLine("    $key: $value")
+//        }
+//    }
+//
+//}
+
 fun main(args: Array<String>) {
+//    val testDynamicLocal = {
+//        val p = Person(name = "qwf", age = 1132, money = Wallet(123), list = listOf(1, 2, 3))
+//        val dynamicPerson = Person.toDynamic(p)
+//        val w = dynamicToFile(dynamicPerson)
+//        println(w)
+//
+//        val f = Person.fromDynamic(dynamicPerson)
+//        println(f)
+//    }
+
+
 
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")
 //    val args = arrayOf("run", "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")

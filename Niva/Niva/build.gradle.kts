@@ -8,7 +8,7 @@ import java.nio.file.StandardCopyOption
 
 
 plugins {
-    kotlin("jvm") version "2.1.20"
+    kotlin("jvm") version "2.2.0-Beta1"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
@@ -34,7 +34,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(22)
+    jvmToolchain(21)
 }
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
 //    compilerOptions.freeCompilerArgs.addAll(listOf("-Xcontext-receivers"))

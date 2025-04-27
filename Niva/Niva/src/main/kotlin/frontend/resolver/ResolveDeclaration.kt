@@ -21,6 +21,12 @@ fun Resolver.resolveDeclarations(
     when (statement) {
         is TypeDeclaration -> {
             val newType = statement.toType(currentPackageName, typeTable, typeDB)// fixed
+            if (newType is Type.UserType) {
+                val dynamicType = this.getAnyType("Dynamic", mutableMapOf(), mutableMapOf(), null, statement.token) ?: statement.token.compileError("Failed to find dynamic type(its internal type, always presented)")
+                val dynamicProtocol = createDynamicProtocol(newType, dynamicType = dynamicType)
+                newType.protocols["dynamic"] = dynamicProtocol
+            }
+
             addNewType(newType, statement)
         }
 
