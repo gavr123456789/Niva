@@ -243,7 +243,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             generateBody(qwf.declaration, sb)
 
             append(sb)
-            appendLine("\n    companion object")
+            appendLine("\n    companion object {")
         } else {
             // toString() : String" {"
             append(" {\n")
@@ -310,14 +310,14 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             append(
                 """
     }
-    companion object"""
+    companion object {
+"""
             )
         }
         //////
     }
-    append("\n}\n")
     val generateDynamicConverters5 = {
-        val checkForCollections = { type: Type.UserType ->
+        val checkForCollections = { type: Type.UserLike ->
             when (type.name) {
                 "List", "MutableList" -> false
                 "Map", "MutableMap" -> false
@@ -328,13 +328,13 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
         val isComplex: (Type?) -> Boolean = { type: Type? ->
             when (type) {
-                is Type.UserType -> checkForCollections(type)
+                is Type.EnumRootType, is Type.EnumBranchType, is Type.Lambda, is Type.UnresolvedType, null -> false
+                is Type.UserLike -> checkForCollections(type)
                 is Type.NullableType -> {
                     val unpack = type.unpackNull()
                     if (unpack is Type.UserType) checkForCollections(unpack) else false
                 }
                 is Type.InternalType -> false
-                else -> false
             }
         }
 
@@ -349,11 +349,11 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
 
         // toDynamic
-        appendLine("\nfun $typeName.Companion.toDynamic(instance: $typeName): DynamicObj {")
-        appendLine("    val map = mutableMapOf<String, Dynamic>()")
-        val generateLocalFields = { fields: List<TypeFieldAST> ->
-            fields.forEach { field ->
-                appendLine("    val ${field.name} = instance.${field.name}")
+        appendLine("        fun toDynamic(instance: $typeName): DynamicObj {")
+        appendLine("            val map = mutableMapOf<String, Dynamic>()")
+        val generateLocalFields = { fields2: List<TypeFieldAST> ->
+            fields2.forEach { field ->
+                appendLine("            val ${field.name} = instance.${field.name}")
             }
         }
         generateLocalFields(fields)
@@ -380,7 +380,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                             "Boolean" -> "map { DynamicBoolean(it) }"
                             else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                         }
-                        is Type.UserType -> "map { ${unpackedElem.name}.toDynamic(it) }"
+                        is Type.UserType, is Type.Union -> "map { ${unpackedElem.pkg}.${unpackedElem.name}.toDynamic(it) }"
                         else -> "/* unsupported unpacked null list $unpackedElem */ TODO()"
                     }
 
@@ -401,19 +401,19 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             }
 
             if (isNullable) {
-                appendLine("    if ($fieldName != null) map[\"$fieldName\"] = $expr")
+                appendLine("            if ($fieldName != null) map[\"$fieldName\"] = $expr")
             } else {
-                appendLine("    map[\"$fieldName\"] = $expr")
+                appendLine("            map[\"$fieldName\"] = $expr")
             }
         }
 
-        appendLine("    return DynamicObj(map)")
-        appendLine("}")
+        appendLine("            return DynamicObj(map)")
+        appendLine("        }")
 
         // fromDynamic
-        appendLine("\nfun $typeName.Companion.fromDynamic(dyn: DynamicObj): $typeName {")
-        appendLine("    val fields = dyn.value")
-        appendLine("    return $typeName(")
+        appendLine("\n        fun fromDynamic(dyn: DynamicObj): $typeName {")
+        appendLine("            val fields = dyn.value")
+        appendLine("            return $typeName(")
 
         fields.forEachIndexed { index, field ->
             val fieldName = field.name
@@ -428,26 +428,24 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                     val elemType = listElementType(listType)
                     val unpackedElem = elemType?.unpackNull()
                     val elemIsNullable = elemType is Type.NullableType
-                    println("elemIsNullable = $elemIsNullable")
                     val base = when (unpackedElem) {
                         is Type.InternalType -> when (unpackedElem.name) {
-                            "String" -> "(it as DynamicString).value"
+                            "String" -> "(it as DynamicStr).value"
                             "Int" -> "(it as DynamicInt).value"
                             "Double" -> "(it as DynamicDouble).value"
                             "Float" -> "(it as DynamicDouble).value.toFloat()"
                             "Boolean" -> "(it as DynamicBoolean).value"
                             else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                         }
-                        is Type.UserType -> "${unpackedElem.name}.fromDynamic(it as DynamicObj)"
+                        is Type.UserType, is Type.Union  -> "${unpackedElem.pkg}.${unpackedElem.name}.fromDynamic(it as DynamicObj)"
                         else -> "/* unsupported list unpack $unpackedElem */ TODO()"
                     }
                     val nullableBase = when (unpackedElem) {
                         is Type.InternalType -> when (unpackedElem.name) {
                             //(it as? DynamicInt).value
-                            "String" -> "(it as? DynamicString)?.value"
+                            "String" -> "(it as? DynamicStr)?.value"
                             "Int" -> "(it as? DynamicInt)?.value"
-                            "Double" -> "(it as? DynamicDouble)?.value"
-                            "Float" -> "(it as? DynamicDouble)?.value?.toFloat()"
+                            "Double" -> "(it as? DynamicDouble)?.value?.toFloat()"
                             "Boolean" -> "(it as? DynamicBoolean)?.value"
                             else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                         }
@@ -459,13 +457,13 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                         if (isNullable) "(fields[\"$fieldName\"] as? DynamicList)?.value"
                         else  "(fields[\"$fieldName\"] as DynamicList).value"
 
-                    "$listRead${if (isNullable) "?" else ""}.map { ${if (elemIsNullable) "if (it == null) null else $nullableBase" else base} }"
+                    "$fieldName = $listRead${if (isNullable) "?" else ""}.map { ${if (elemIsNullable) "if (it == null) null else $nullableBase" else base} }.toMutableList()"
                 }
 
                 complex -> {
-                    val valueAccess =  "fields[\"$fieldName\"] as? DynamicObj"
-                    if (isNullable) "$valueAccess?.let { ${field.type?.name}.fromDynamic(it) }"
-                    else "${field.type?.name}.fromDynamic(fields[\"$fieldName\"]!! as DynamicObj)"
+                    val valueAccess =  "(fields[\"$fieldName\"] as? DynamicObj)"
+                    if (isNullable) "$fieldName = $valueAccess?.let { ${field.type?.name}.fromDynamic(it) }"
+                    else "$fieldName = ${field.type?.name}.fromDynamic(fields[\"$fieldName\"]!! as DynamicObj)"
                 }
 
                 type is Type.InternalType -> {
@@ -477,26 +475,63 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                         "Boolean" -> "(it as DynamicBoolean).value"
                         else -> "/* unsupported primitive ${type.name} */ TODO()"
                     }
-                    if (isNullable) "(fields[\"$fieldName\"])?.let { $base }" else "fields[\"$fieldName\"]!!.let { $base }"
+                    if (isNullable) "$fieldName = (fields[\"$fieldName\"])?.let { $base }" else "$fieldName = fields[\"$fieldName\"]!!.let { $base }"
                 }
 
                 else -> "/* unknown type */ TODO()"
             }
 
-            appendLine("        $line" + if (index != fields.lastIndex) "," else "")
+            appendLine("            $line" + if (index != fields.lastIndex) "," else "")
         }
 
-        appendLine("    )")
-        appendLine("}")
+        appendLine("        )")
+        appendLine("    }")
     }
 
 
+    val generateDynamicForUnionRoot = { receiverType: Type.UnionRootType ->
+        val typeName = receiverType.name
+        val branches = receiverType.branches
 
+        // toDynamic
+        appendLine("\n        fun toDynamic(instance: $typeName): DynamicObj {")
+        appendLine("            return when (instance) {")
 
+        for (branch in branches) {
+            val branchName = branch.name
+            appendLine("                is $branchName -> $branchName.toDynamic(instance).also { it.value[\"_unionKind\"] = DynamicStr(\"$branchName\") }")
+        }
 
-    if (receiverType is Type.UserType) {
-        generateDynamicConverters5()
+        appendLine("            }")
+        appendLine("        }")
+
+        // fromDynamic
+        appendLine("\n        fun fromDynamic(dyn: DynamicObj): $typeName {")
+        appendLine("            val kind = (dyn.value[\"_unionKind\"] as? DynamicStr)?.value")
+        appendLine("            return when (kind) {")
+
+        for (branch in branches) {
+            val branchName = branch.name
+            appendLine("                \"$branchName\" -> $branchName.fromDynamic(dyn)")
+        }
+
+        appendLine("                else -> error(\"Unknown _unionKind: \$kind\")")
+        appendLine("            }")
+        appendLine("        }")
     }
+
+
+    if (receiverType is Type.UserLike && receiverType !is Type.EnumRootType && receiverType !is Type.EnumBranchType) {
+        if (receiverType !is Type.UnionRootType)
+            generateDynamicConverters5()
+        else {
+            generateDynamicForUnionRoot(receiverType)
+        }
+    }
+    if (receiverType !is Type.EnumRootType) {
+        appendLine("    }")
+    }
+    append("\n}\n")
     //////
 
 }
