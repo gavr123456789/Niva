@@ -18,14 +18,15 @@ fun Resolver.resolveDeclarations(
     resolveBody: Boolean = true,
 ): Boolean {
     currentLevel += 1
+    val dynamicType = this.getAnyType("Dynamic", mutableMapOf(), mutableMapOf(), null, statement.token) ?: statement.token.compileError("Failed to find dynamic type(its internal type, always presented)")
+
     when (statement) {
         is TypeDeclaration -> {
             val newType = statement.toType(currentPackageName, typeTable, typeDB)// fixed
-            if (newType is Type.UserType) {
-                val dynamicType = this.getAnyType("Dynamic", mutableMapOf(), mutableMapOf(), null, statement.token) ?: statement.token.compileError("Failed to find dynamic type(its internal type, always presented)")
+//            if (newType is Type.UserLike) {
                 val dynamicProtocol = createDynamicProtocol(newType, dynamicType = dynamicType)
                 newType.protocols["dynamic"] = dynamicProtocol
-            }
+//            }
 
             addNewType(newType, statement)
         }
@@ -66,7 +67,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is UnionRootDeclaration -> {
-            resolveUnionDeclaration(statement, isError = false)
+            resolveUnionDeclaration(statement, isError = false, dynamicType)
         }
 
         is EnumDeclarationRoot -> {
@@ -80,7 +81,7 @@ fun Resolver.resolveDeclarations(
         }
 
         is ErrorDomainDeclaration -> {
-            resolveUnionDeclaration(statement.unionDeclaration, true)
+            resolveUnionDeclaration(statement.unionDeclaration, true, dynamicType)
             statement.receiver = statement.unionDeclaration.receiver
         }
 

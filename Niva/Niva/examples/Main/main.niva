@@ -9,30 +9,28 @@
 //
 //
 
-type Person name: String
-type Wallet
-    i: Int?
-    s: String
-    d: Double
-    b: Boolean list: List::Int
-//    nullableList: List::Int?
-    listOfObjects: List::Person
-
-//list::List::Int? = {1 null 2}
-w = Wallet i: null s: "qwf" d: 1.1 b: true list: {1 2 3} listOfObjects: {(Person name: "Alice")}
-dw = Wallet toDynamic: w
-
-
-rw = Wallet fromDynamic: dw
-rw echo
-
-
-//type Person name: String ages: List::Wallet
-
-//p = Person name: "Alice" ages: {(Wallet money: 123)}
+//type Person name: String
+//type Wallet
+//    i: Int?
+//    s: String
+//    d: Double
+//    b: Boolean list: List::Int
+//    listOfObjects: List::Person
 //
-//dynamicPerson = Person toDynamic: p
-//dynamicPerson echo
+//w = Wallet i: null s: "qwf" d: 1.1 b: true list: {1 2 3} listOfObjects: {(Person name: "Alice")}
+//dw = Wallet toDynamic: w
 //
-//p2 = Person fromDynamic: dynamicPerson
-//p2 echo
+//
+//rw = Wallet fromDynamic: dw
+//rw echo
+
+enum Color = Red | Blue
+
+union Shape = Circle r: Int | Square side: Int
+type Sas u: List::Shape
+
+с = Circle r: 4
+dc = Circle toDynamic: с
+dc echo
+c2 = Circle fromDynamic: dc
+c2 echo

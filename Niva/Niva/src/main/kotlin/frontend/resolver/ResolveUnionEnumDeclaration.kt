@@ -11,7 +11,7 @@ import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.util.childContainSameFieldsAsParent
 import main.frontend.util.setDiff
 
-fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean) {
+fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: Boolean, dynamicType: Type) {
     val rootType2 =
         statement.toType(
             currentPackageName,
@@ -29,7 +29,10 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     } else null
 
     val rootType = realType ?: rootType2
-
+    val addToFromDynamic = { currentType: Type ->
+        val dynamicProtocol = createDynamicProtocol(currentType, dynamicType = dynamicType)
+        currentType.protocols["dynamic"] = dynamicProtocol
+    }
 
     val branches = mutableListOf<Type.Union>()
     val genericsOfBranches = mutableSetOf<Type>()
@@ -66,20 +69,24 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
             if (alreadyRegisteredType == null)
                 addNewType(branchType, it, alreadyCheckedOnUnique = false)
+
+
             branchType
         }.also { it.parent = rootType }
 
 
         branchType.fields += rootType.fields
+
+        addToFromDynamic(branchType)
         branches.add(branchType)
         genericsOfBranches.addAll(branchType.typeArgumentList)
     }
 
+    addToFromDynamic(rootType)
     addNewType(rootType, statement)
 
     rootType.branches = branches
     rootType.typeArgumentList += genericsOfBranches
-
 
     /// generics
     // add generics from branches
