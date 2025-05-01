@@ -4,20 +4,10 @@ import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.Package
 import frontend.resolver.Type
 import frontend.resolver.unpackNull
-import main.utils.RED
-import main.utils.WHITE
 import main.frontend.meta.compileError
-import main.frontend.parser.types.ast.DestructingAssign
-import main.frontend.parser.types.ast.EnumDeclarationRoot
-import main.frontend.parser.types.ast.SomeTypeDeclaration
-import main.frontend.parser.types.ast.TypeAliasDeclaration
-import main.frontend.parser.types.ast.TypeFieldAST
-import main.frontend.parser.types.ast.UnionBranchDeclaration
-import main.frontend.parser.types.ast.UnionRootDeclaration
+import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMethod
-import main.utils.CYAN
-import main.utils.RESET
-import main.utils.YEL
+import main.utils.*
 
 fun UnionRootDeclaration.collectAllGenericsFromBranches(): Set<String> {
     val genericsOfBranches = mutableSetOf<String>()
@@ -38,7 +28,7 @@ fun TypeAliasDeclaration.generateTypeAlias() = buildString {
     }
     if (realType is Type.Lambda) {
         val getAllGenerics = {
-            val result = realType.args.asSequence().map{it.type}.filterIsInstance<Type.UnknownGenericType>()
+            val result = realType.args.asSequence().map { it.type }.filterIsInstance<Type.UnknownGenericType>()
             if (realType.returnType is Type.UnknownGenericType) {
                 result + realType.returnType
             } else {
@@ -80,7 +70,9 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         val parent = receiverType.parent
         if (this.last() != '>' && parent is Type.UserLike && parent.typeArgumentList.isNotEmpty()) {
             append("<")
-            append(parent.typeArgumentList.asSequence().map { it.toKotlinString(true) }.toSortedSet().joinToString(", "))
+            append(
+                parent.typeArgumentList.asSequence().map { it.toKotlinString(true) }.toSortedSet().joinToString(", ")
+            )
             append(">")
         }
     }
@@ -107,12 +99,14 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         }
 
         // shit, better make unresolved type a different kind of types
-        val typeName =  it.type!!.toKotlinString(true) //if (it.type!!.name == InternalTypes.NotResolved.toString()) it.typeAST.generateType() else it.type!!.toKotlinString(true)
+        val typeName =
+            it.type!!.toKotlinString(true) //if (it.type!!.name == InternalTypes.NotResolved.toString()) it.typeAST.generateType() else it.type!!.toKotlinString(true)
         append(it.name, ": ", typeName)
         if (fieldsCountMinus1 != i) {
             append(", ")
         }
     }
+
     fun generateFieldArgument2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
         if (fieldName in setOfAlreadyAddedArgs)
             return
@@ -260,7 +254,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 //            val fewFields = fields.count() <= 2
 
             if (false)
-                append("(",typeName)
+                append("(", typeName)
             else
                 append(typeName)
 
@@ -292,7 +286,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             else {
                 "\n" + fields.joinToString("\n") {
                     val type = it.type?.unpackNull()
-                    when(type) {
+                    when (type) {
                         is Type.EnumBranchType -> generateSimpleField(it)
                         is Type.EnumRootType -> generateSimpleField(it)
 
@@ -300,7 +294,10 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                         is Type.InternalType -> generateSimpleField(it)
 
                         is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
-                        is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(it)
+                        is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(
+                            it
+                        )
+
                         is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
                         null -> it.token.compileError("type of $it is null")
                     }
@@ -319,9 +316,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         //////
     }
     append("\n}\n")
-
-    /// Generate Dynamic converters
-    val generateDynamicConverters = {
+    val generateDynamicConverters5 = {
         val checkForCollections = { type: Type.UserType ->
             when (type.name) {
                 "List", "MutableList" -> false
@@ -330,63 +325,162 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
                 else -> true
             }
         }
-        val isComplex:(Type?) -> Boolean = { type: Type? ->
+
+        val isComplex: (Type?) -> Boolean = { type: Type? ->
             when (type) {
-                is Type.UserType -> {
-                    checkForCollections(type)
-                }
+                is Type.UserType -> checkForCollections(type)
                 is Type.NullableType -> {
                     val unpack = type.unpackNull()
-                    if (unpack is Type.UserType) {
-                        checkForCollections(unpack)
-                    } else false
+                    if (unpack is Type.UserType) checkForCollections(unpack) else false
                 }
                 is Type.InternalType -> false
                 else -> false
             }
         }
 
+        val isList: (Type?) -> Boolean = { type: Type? ->
+            type is Type.UserType && (type.name == "List" || type.name == "MutableList")
+        }
 
-        // toDynamic
-        appendLine("\nfun $typeName.Companion.toDynamic(instance: $typeName): Dynamic {")
-        appendLine("    val values = mapOf<String, Any?>(")
+        val listElementType: (Type.UserType) -> Type? = { type: Type.UserType ->
+            if (type.typeArgumentList.isNotEmpty()) type.typeArgumentList[0] else null
+        }
 
         val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
 
-
-
-        fields.forEachIndexed { index, field ->
+        // toDynamic
+        appendLine("\nfun $typeName.Companion.toDynamic(instance: $typeName): DynamicObj {")
+        appendLine("    val map = mutableMapOf<String, Dynamic>()")
+        val generateLocalFields = { fields: List<TypeFieldAST> ->
+            fields.forEach { field ->
+                appendLine("    val ${field.name} = instance.${field.name}")
+            }
+        }
+        generateLocalFields(fields)
+        for (field in fields) {
             val fieldName = field.name
-            val type = field.type?.unpackNull()
-            val isComplex: Boolean = isComplex(type)
+            val originalType = field.type
+            val type = originalType?.unpackNull()
+            val isNullable = originalType is Type.NullableType
+            val complex = isComplex(type)
 
-            val line = if (isComplex) {
-                "        \"$fieldName\" to ${field.type?.name}.toDynamic(instance.$fieldName)"
-            } else {
-                "        \"$fieldName\" to instance.$fieldName"
+            val expr = when {
+                isList(type) -> {
+                    val listType = type as Type.UserType
+                    val elemType = listElementType(listType)
+                    val unpackedElem = elemType?.unpackNull()
+                    val elemIsNullable = elemType is Type.NullableType
+
+                    val baseExpr = when (unpackedElem) {
+                        is Type.InternalType -> when (unpackedElem.name) {
+                            "String" -> "map { DynamicStr(it) }"
+                            "Int" -> "map { DynamicInt(it) }"
+                            "Double" -> "map { DynamicDouble(it) }"
+                            "Float" -> "map { DynamicDouble(it.toDouble()) }"
+                            "Boolean" -> "map { DynamicBoolean(it) }"
+                            else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
+                        }
+                        is Type.UserType -> "map { ${unpackedElem.name}.toDynamic(it) }"
+                        else -> "/* unsupported unpacked null list $unpackedElem */ TODO()"
+                    }
+
+                    val listExpr = if (elemIsNullable) "$fieldName.filterNotNull().$baseExpr" else "$fieldName.$baseExpr"
+                    "DynamicList($listExpr)"
+                }
+
+                complex -> "${field.type?.name}.toDynamic($fieldName)"
+                type is Type.InternalType -> when (type.name) {
+                    "String" -> "DynamicStr($fieldName)"
+                    "Int" -> "DynamicInt($fieldName)"
+                    "Double" -> "DynamicDouble($fieldName)"
+                    "Float" -> "DynamicDouble($fieldName.toDouble())"
+                    "Boolean" -> "DynamicBoolean($fieldName)"
+                    else -> "/* unsupported primitive ${type.name} */ TODO()"
+                }
+                else -> "/* unknown type */ TODO()"
             }
 
-            appendLine(line + if (index != fields.lastIndex) "," else "")
+            if (isNullable) {
+                appendLine("    if ($fieldName != null) map[\"$fieldName\"] = $expr")
+            } else {
+                appendLine("    map[\"$fieldName\"] = $expr")
+            }
         }
 
-        appendLine("    )")
-        appendLine("    return Dynamic(\"$typeName\", values)")
+        appendLine("    return DynamicObj(map)")
         appendLine("}")
 
         // fromDynamic
-        appendLine("\nfun $typeName.Companion.fromDynamic(value: Dynamic): $typeName {")
-        appendLine("    val fields = value.fields")
+        appendLine("\nfun $typeName.Companion.fromDynamic(dyn: DynamicObj): $typeName {")
+        appendLine("    val fields = dyn.value")
         appendLine("    return $typeName(")
 
         fields.forEachIndexed { index, field ->
             val fieldName = field.name
-            val type = field.type?.unpackNull()
-            val isComplex = isComplex(type)
+            val originalType = field.type
+            val type = originalType?.unpackNull()
+            val isNullable = originalType is Type.NullableType
+            val complex = isComplex(type)
 
-            val line = if (isComplex) {
-                "${field.type?.name}.fromDynamic(fields[\"$fieldName\"] as Dynamic)"
-            } else {
-                "fields[\"$fieldName\"] as ${field.type?.toKotlinString(true)}"
+            val line = when {
+                isList(type) -> {
+                    val listType = type as Type.UserType
+                    val elemType = listElementType(listType)
+                    val unpackedElem = elemType?.unpackNull()
+                    val elemIsNullable = elemType is Type.NullableType
+                    println("elemIsNullable = $elemIsNullable")
+                    val base = when (unpackedElem) {
+                        is Type.InternalType -> when (unpackedElem.name) {
+                            "String" -> "(it as DynamicString).value"
+                            "Int" -> "(it as DynamicInt).value"
+                            "Double" -> "(it as DynamicDouble).value"
+                            "Float" -> "(it as DynamicDouble).value.toFloat()"
+                            "Boolean" -> "(it as DynamicBoolean).value"
+                            else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
+                        }
+                        is Type.UserType -> "${unpackedElem.name}.fromDynamic(it as DynamicObj)"
+                        else -> "/* unsupported list unpack $unpackedElem */ TODO()"
+                    }
+                    val nullableBase = when (unpackedElem) {
+                        is Type.InternalType -> when (unpackedElem.name) {
+                            //(it as? DynamicInt).value
+                            "String" -> "(it as? DynamicString)?.value"
+                            "Int" -> "(it as? DynamicInt)?.value"
+                            "Double" -> "(it as? DynamicDouble)?.value"
+                            "Float" -> "(it as? DynamicDouble)?.value?.toFloat()"
+                            "Boolean" -> "(it as? DynamicBoolean)?.value"
+                            else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
+                        }
+                        is Type.UserType -> "${unpackedElem.name}.fromDynamic(it as DynamicObj)"
+                        else -> "/* unsupported list $unpackedElem */ TODO()"
+                    }
+
+                    val listRead =
+                        if (isNullable) "(fields[\"$fieldName\"] as? DynamicList)?.value"
+                        else  "(fields[\"$fieldName\"] as DynamicList).value"
+
+                    "$listRead${if (isNullable) "?" else ""}.map { ${if (elemIsNullable) "if (it == null) null else $nullableBase" else base} }"
+                }
+
+                complex -> {
+                    val valueAccess =  "fields[\"$fieldName\"] as? DynamicObj"
+                    if (isNullable) "$valueAccess?.let { ${field.type?.name}.fromDynamic(it) }"
+                    else "${field.type?.name}.fromDynamic(fields[\"$fieldName\"]!! as DynamicObj)"
+                }
+
+                type is Type.InternalType -> {
+                    val base = when (type.name) {
+                        "String" -> "(it as DynamicStr).value"
+                        "Int" -> "(it as DynamicInt).value"
+                        "Double" -> "(it as DynamicDouble).value"
+                        "Float" -> "(it as DynamicDouble).value.toFloat()"
+                        "Boolean" -> "(it as DynamicBoolean).value"
+                        else -> "/* unsupported primitive ${type.name} */ TODO()"
+                    }
+                    if (isNullable) "(fields[\"$fieldName\"])?.let { $base }" else "fields[\"$fieldName\"]!!.let { $base }"
+                }
+
+                else -> "/* unknown type */ TODO()"
             }
 
             appendLine("        $line" + if (index != fields.lastIndex) "," else "")
@@ -394,15 +488,38 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
         appendLine("    )")
         appendLine("}")
-
     }
 
+
+
+
+
     if (receiverType is Type.UserType) {
-        generateDynamicConverters()
+        generateDynamicConverters5()
     }
     //////
 
 }
+//fun internalToDynamic(type: Type.InternalType): String = when (type.name) {
+//    "String" -> "DynamicStr"
+//    "Int" -> "DynamicInt"
+//    "Double" -> "DynamicDouble"
+//    "Float" -> "DynamicDouble"
+//    "Boolean" -> "DynamicBoolean"
+//    else -> "TODO(\"unsupported primitive ${type}\")"
+//}
+
+//fun typeToDynamicConstructor(type: Type): String {
+//
+//}
+//fun internalToDynamicConstructor(type: Type.InternalType, str: String): String = when (type.name) {
+//    "String" -> "DynamicStr($str)"
+//    "Int" -> "DynamicInt($str)"
+//    "Double" -> "DynamicDouble($str)"
+//    "Float" -> "DynamicDouble($str.toDouble())"
+//    "Boolean" -> "DynamicBoolean($str)"
+//    else -> "TODO(\"unsupported primitive ${type}\")"
+//}
 
 private fun SomeTypeDeclaration.collectFields(): List<TypeFieldAST> {
     val result: MutableList<TypeFieldAST> = mutableListOf()
