@@ -366,7 +366,7 @@ private fun Resolver.resolveStatement(
                         unpackNull = true,
                         isOut = true
                     )
-                    // тут надо заюзать поиск общих предков
+                // тут надо заюзать поиск общих предков
 //                    findGeneralRootMany(listOf(returnType, realReturn), root.token) == null
                 ) {
                     statement.token.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
@@ -1103,17 +1103,29 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
-val createTypeListOfType = { name: String, internalType: Type.InternalType, listType: Type.UserType ->
-    assert(listType.protocols.isNotEmpty())
+val createTypeListOfUserLikeType = { name: String, internalType: Type.UserLike, listTypeProtocolDonor: Type.UserType ->
+    assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
         typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
         fields = mutableListOf(),
         pkg = "core",
-        protocols = listType.protocols,
-        typeDeclaration = listType.typeDeclaration
+        protocols = listTypeProtocolDonor.protocols,
+        typeDeclaration = listTypeProtocolDonor.typeDeclaration
     )
 }
+val createTypeListOfType = { name: String, internalType: Type.InternalType, listTypeProtocolDonor: Type.UserType ->
+    assert(listTypeProtocolDonor.protocols.isNotEmpty())
+    Type.UserType(
+        name = name,
+        typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+        fields = mutableListOf(),
+        pkg = "core",
+        protocols = listTypeProtocolDonor.protocols,
+        typeDeclaration = listTypeProtocolDonor.typeDeclaration
+    )
+}
+
 val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
     Type.UserType(
         name = name,
@@ -1392,6 +1404,7 @@ class Resolver(
         val charType = defaultTypes[InternalTypes.Char]!!
 //        val floatType = defaultTypes[InternalTypes.Float]!!
         val boolType = defaultTypes[InternalTypes.Boolean]!!
+        val doubleType = defaultTypes[InternalTypes.Double]!!
         val unitType = defaultTypes[InternalTypes.Unit]!!
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!
         val charRangeType = defaultTypes[InternalTypes.CharRange]!!
@@ -1720,12 +1733,48 @@ class Resolver(
         )
 
         // Dynamic
-        val dynamicType = Type.UserType(
+
+
+        val dynamicType = Type.UnionRootType(
             name = "Dynamic",
             fields = mutableListOf(KeywordArg("name", stringType)),
             pkg = "core",
-            typeDeclaration = null
+            typeDeclaration = null,
+            branches = mutableListOf(
+
+            ),
+            isError = false,
+            typeArgumentList = listOf()
         )
+
+        val createDynamicBranchType = { root: Type.UnionRootType, name: String, fieldValueType: Type? ->
+            Type.UnionBranchType(
+                name = name,
+                root = dynamicType,
+                fields = if (fieldValueType == null) mutableListOf() else mutableListOf(KeywordArg("value", fieldValueType)),
+                pkg = "core",
+                typeDeclaration = null,
+
+                ).also { it.parent = dynamicType }
+        }
+        val str = createDynamicBranchType(dynamicType, "DynamicStr", stringType)
+        val int = createDynamicBranchType(dynamicType, "DynamicInt", intType)
+        val bool = createDynamicBranchType(dynamicType, "DynamicBoolean", boolType)
+//        val dNull = createDynamicBranchType(dynamicType, "DynamicNull", boolType)
+        val double = createDynamicBranchType(dynamicType, "DynamicDouble", doubleType)
+        val list = createDynamicBranchType(dynamicType, "DynamicList", createTypeListOfUserLikeType("List", dynamicType, listType))
+        val obj = createDynamicBranchType(dynamicType, "DynamicObj", createTypeMapOfType("MutableMap", stringType, dynamicType, mapTypeMut))
+        addCustomTypeToDb(str, mutableMapOf())
+        addCustomTypeToDb(int, mutableMapOf())
+        addCustomTypeToDb(bool, mutableMapOf())
+//        addCustomTypeToDb(dNull, mutableMapOf())
+        addCustomTypeToDb(double, mutableMapOf())
+        addCustomTypeToDb(list, mutableMapOf())
+        addCustomTypeToDb(obj, mutableMapOf())
+
+        dynamicType.branches = mutableListOf(str, int, bool, double, list, obj)
+
+
         val mutableMapOfFields = Type.UserType(
             name = "Map",
             typeArgumentList = listOf(anyType, dynamicType),
@@ -1737,7 +1786,6 @@ class Resolver(
         dynamicType.fields.add(KeywordArg("fields", mutableMapOfFields))
 
         addCustomTypeToDb(dynamicType, mutableMapOf())
-
 
 
 //        val kotlinPkg = Package("kotlin", isBinding = true)

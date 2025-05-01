@@ -329,7 +329,7 @@ sealed class Type(
         }
 
     fun copyAndAddErrors(errors2: Set<Union>): Type {
-        // copy current type, and add errors to it
+        // copy the current type and add errors to it
 
         assert(this.errors == null)
 
@@ -704,13 +704,13 @@ sealed class Type(
     class UnionBranchType(
         val root: UnionRootType,
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: List<Type> = listOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
-        isError: Boolean,
-        typeDeclaration: SomeTypeDeclaration?
+        isError: Boolean = false,
+        typeDeclaration: SomeTypeDeclaration? = null
     ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration)
 
 
@@ -1169,7 +1169,8 @@ fun SomeTypeDeclaration.toType(
     }
     // add generics params to astTypes of fields
     fields.asSequence()
-        .filterIsInstance<TypeAST.UserType>() // get recursive
+        .map { it.typeAST }
+        .filterIsInstance<TypeAST.UserType>()
         .filter { it.names.first() == this.typeName }
         .forEach { field ->
             field.typeArgumentList.addAll(

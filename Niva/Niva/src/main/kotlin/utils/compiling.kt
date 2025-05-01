@@ -360,10 +360,10 @@ fun compileProjFromFile(
 
 
     if (resolver.otherFilesPaths.count() != otherAst.count()) {
-        val set1 = otherAst.map { it.first }.toSet()
-        val set2 = resolver.otherFilesPaths.toSet()
-        val set3 = if (set1.count() > set2.count())
-            set1 - set2 else set2 - set1
+//        val set1 = otherAst.map { it.first }.toSet()
+//        val set2 = resolver.otherFilesPaths.toSet()
+//        val set3 = if (set1.count() > set2.count())
+//            set1 - set2 else set2 - set1
 
         val tok = mainAst.first().token
         // okay workspace service doesn't work, so lets just replace our file instead
@@ -372,7 +372,7 @@ fun compileProjFromFile(
 //        }
 
         tok.compileError("resolver.otherFilesPaths = ${resolver.otherFilesPaths}, otherAst = $otherAst, customAST = $customAst")
-        tok.compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
+//        tok.compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
     }
     resolver.resolveWithBackTracking(
         mainAst,
@@ -443,18 +443,28 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         // STD
         $jvmSpecific
         
-       class Dynamic(val name: String, val fields: Map<String, Any?>) {
-            override fun toString(): String {
-                val fields = fields.map { (k, v) ->
-                    val w = if (v is Dynamic) {
-                        "    ${"$"}k: \n" + v.toString().prependIndent("        ")
-                    } else "    ${"$"}k: ${"$"}v"
-                    w
-                }.joinToString("\n")
-                return "Dynamic${"$"}name\n" +
-                        "${"$"}fields"
-            }
-        }
+        sealed class Dynamic()
+
+        class DynamicStr(val value: String): Dynamic()
+        class DynamicInt(val value: Int): Dynamic()
+        class DynamicDouble(val value: Double): Dynamic()
+        class DynamicBoolean(val value: Boolean): Dynamic()
+        class DynamicNull(): Dynamic()
+        class DynamicList(val value: List<Dynamic>): Dynamic()
+        class DynamicObj(val value: MutableMap<String, Dynamic>): Dynamic()
+
+       //class Dynamic(val name: String, val fields: Map<String, Any?>) {
+//            override fun toString(): String {
+//                val fields = fields.map { (k, v) ->
+//                    val w = if (v is Dynamic) {
+//                        "    ${"$"}k: \n" + v.toString().prependIndent("        ")
+//                    } else "    ${"$"}k: ${"$"}v"
+//                    w
+//                }.joinToString("\n")
+//                return "Dynamic${"$"}name\n" +
+//                        "${"$"}fields"
+//            }
+//        }
         
         fun throwWithMessage(message: String): Nothing {
             //@ core.niva:::0

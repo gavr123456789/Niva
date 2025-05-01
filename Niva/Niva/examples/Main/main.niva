@@ -1,10 +1,38 @@
-type Wallet money: Int
-type Person name: String age: Int wallet: Wallet list: List::Int
 
-p = Person name: "Alice" age: 123 wallet: (Wallet money: 42) list: {1 2 3}
+//union Dynamic =
+//| DynamicStr value: String
+//| DynamicInt value: Int
+//| DynamicDouble value: Double
+//| DynamicBoolean value: Double
+//| DynamicList value: List::Dynamic
+//| DynamicObject value: MutableMap(String, Dynamic)
+//
+//
 
-dynamicPerson = Person toDynamic: p
-dynamicPerson echo
+type Person name: String
+type Wallet
+    i: Int?
+    s: String
+    d: Double
+    b: Boolean list: List::Int
+//    nullableList: List::Int?
+    listOfObjects: List::Person
 
-p2 = Person fromDynamic: dynamicPerson
-p2 echo
+//list::List::Int? = {1 null 2}
+w = Wallet i: null s: "qwf" d: 1.1 b: true list: {1 2 3} listOfObjects: {(Person name: "Alice")}
+dw = Wallet toDynamic: w
+
+
+rw = Wallet fromDynamic: dw
+rw echo
+
+
+//type Person name: String ages: List::Wallet
+
+//p = Person name: "Alice" ages: {(Wallet money: 123)}
+//
+//dynamicPerson = Person toDynamic: p
+//dynamicPerson echo
+//
+//p2 = Person fromDynamic: dynamicPerson
+//p2 echo
