@@ -11,7 +11,7 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
     append(
         when (statement) {
             is Expression -> statement.generateExpression()
-            is VarDeclaration -> statement.generateVarDeclaration()
+            is VarDeclaration -> statement.generateVarStatement()
 
             is MessageDeclaration -> statement.generateMessageDeclaration()
 //            is StaticBuilderDeclaration -> TODO()

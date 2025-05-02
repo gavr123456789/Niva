@@ -31,7 +31,9 @@ const val fakeFileSourceGOOD = """
 
 1 sas 
 """
-
+enum class Color {
+    RED, GREEN, BLUE
+}
 
 fun main(args: Array<String>) {
 
