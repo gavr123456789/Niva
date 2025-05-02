@@ -449,7 +449,6 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         class DynamicInt(val value: Int): Dynamic()
         class DynamicDouble(val value: Double): Dynamic()
         class DynamicBoolean(val value: Boolean): Dynamic()
-        class DynamicNull(): Dynamic()
         class DynamicList(val value: List<Dynamic>): Dynamic()
         class DynamicObj(val value: MutableMap<String, Dynamic>): Dynamic()
 

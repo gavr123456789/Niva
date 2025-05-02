@@ -25,12 +25,20 @@
 //rw echo
 
 enum Color = Red | Blue
+type Fish color: Color name: String
 
-union Shape = Circle r: Int | Square side: Int
-type Sas u: List::Shape
+fish = Fish color: Color.Red name: "ОСЕТР"
 
-с = Circle r: 4
-dc = Circle toDynamic: с
-dc echo
-c2 = Circle fromDynamic: dc
-c2 echo
+df = Fish toDynamic: fish
+
+sf = Fish fromDynamic: df
+sf echo
+
+//union Shape = Circle r: Int | Square side: Int
+//type Sas u: List::Shape
+//
+//с = Circle r: 4
+//dc = Circle toDynamic: с
+//dc echo
+//c2 = Circle fromDynamic: dc
+//c2 echo
