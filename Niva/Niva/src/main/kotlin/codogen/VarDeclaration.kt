@@ -4,7 +4,7 @@ import frontend.resolver.Type
 import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.GlobalVariables
 
-fun VarDeclaration.generateVarDeclaration(): String {
+fun VarDeclaration.generateVarStatement(): String {
     val valueCode = value.generateExpression()
 
     val valOrVar = if (!this.mutable) "val" else "var"
