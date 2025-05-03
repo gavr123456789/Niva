@@ -24,15 +24,12 @@
 //rw = Wallet fromDynamic: dw
 //rw echo
 
-enum Color = Red | Blue
-type Fish color: Color name: String
+String from::[Int, Int -> Int] = [
+    a = from q: 1 b: 2
+    a echo
+]
 
-fish = Fish color: Color.Red name: "ОСЕТР"
-
-df = Fish toDynamic: fish
-
-sf = Fish fromDynamic: df
-sf echo
+"sas" from: [x, y -> x + y]
 
 //union Shape = Circle r: Int | Square side: Int
 //type Sas u: List::Shape
