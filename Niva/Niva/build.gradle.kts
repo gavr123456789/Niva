@@ -252,27 +252,3 @@ fun copyRecursively(source: Path, target: Path) {
         }
     }
 }
-
-//////OLD
-//plugins {
-//    id("org.graalvm.buildtools.native") version "0.10.1"
-//}
-//
-//
-//
-//graalvmNative {
-//    binaries {
-//        named("main") {
-//            mainClass.set("main.MainKt")
-//        }
-//    }
-//    binaries.all {
-//
-//        imageName.set("niva")
-//        buildArgs.add("-O4")
-//        buildArgs.add("--static")
-//        buildArgs.add("--no-fallback")
-//        buildArgs.add("-march=native")
-//        buildArgs.add("--initialize-at-build-time")
-//    }
-//}

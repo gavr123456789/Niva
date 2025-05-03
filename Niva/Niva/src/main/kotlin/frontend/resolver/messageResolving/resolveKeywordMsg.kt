@@ -262,11 +262,12 @@ fun Resolver.resolveKeywordMsg(
         }
         statement.args.forEachIndexed { ii, it ->
             // name check
-            if (it.keywordArg.type !is Type.Lambda && it.name != realArgs[ii].name) {
-                statement.token.compileError(
-                    "$YEL${it.name}${RESET} is not valid arguments for codeblock $WHITE${statement.receiver.str}$RESET, the valid arguments are: $YEL${receiverType.args.map { it.name }}"
-                )
-            }
+            // now any name is valid #349
+//            if (it.keywordArg.type !is Type.Lambda && it.name != realArgs[ii].name) {
+//                statement.token.compileError(
+//                    "$YEL${it.name}${RESET} is not valid arguments for codeblock $WHITE${statement.receiver.str}$RESET, the valid arguments are: $YEL${receiverType.args.map { it.name }}"
+//                )
+//            }
             // type check
             val isTypesEqual = compare2Types(realArgs[ii].type, it.keywordArg.type!!, it.keywordArg.token)
             if (!isTypesEqual) {
