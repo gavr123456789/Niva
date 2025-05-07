@@ -10,8 +10,7 @@ class TextElement(val text: String) : Element {
     }
 }
 
-@DslMarker
-annotation class HtmlTagMarker
+@DslMarker annotation class HtmlTagMarker
 
 @HtmlTagMarker
 abstract class Tag(val name: String) : Element {
@@ -76,8 +75,11 @@ abstract class BodyTag(name: String) : TagWithText(name) {
 }
 
 class Body : BodyTag("body")
+
 class B : BodyTag("b")
+
 class P : BodyTag("p")
+
 class H1 : BodyTag("h1")
 
 class A : BodyTag("a") {
@@ -94,11 +96,6 @@ fun html(init: HTML.() -> Unit): HTML {
     return html
 }
 
-
 fun sas() {
-    html {
-        head {
-            title { +"XML encoding with Kotlin" }
-        }
-    }
+    html { head { title { +"XML encoding with Kotlin" } } }
 }
