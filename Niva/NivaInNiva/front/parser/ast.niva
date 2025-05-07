@@ -10,7 +10,6 @@ union Declaration token: Token =
 | TypeDecl name: String fields: List::TypeField
 | EnumDecl 
 | UnionDecl
-
 | MessageDecl 
   receiver: AstType 
   name: String 
@@ -47,6 +46,9 @@ constructor Identifier fromToken::Token =
 
 type NameAndExpr name: Identifier expr: Expr
 type NameAndType name: String astType: AstType
+NameAndType toString = [
+  ^ "$name::$astType"
+]
 
 // Messages
 enum MessageKind = Unary | Binary | Keyword
@@ -124,6 +126,11 @@ type AstType
   nullable: Boolean 
   genericParams: List::AstType
   isMut: Boolean 
+
+AstType toString = [
+  genericParamsStr = genericParams joinWith: "::" transform: [it toString]
+  ^ "$name$genericParamsStr"
+]
 
 constructor AstType name::String nullable::Boolean genericParams::List::AstType = AstType 
   name: name 
