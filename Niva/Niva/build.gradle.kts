@@ -1,11 +1,10 @@
-import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-//import org.jetbrains.kotlin.cli.common.isWindows
-import org.gradle.internal.os.OperatingSystem
+// import org.jetbrains.kotlin.cli.common.isWindows
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-
+import org.gradle.internal.os.OperatingSystem
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
     kotlin("jvm") version "2.2.0-Beta1"
@@ -15,30 +14,24 @@ plugins {
 }
 
 group = "org.example"
+
 version = "1.0-SNAPSHOT"
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
-//    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
+    //    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
     testImplementation(kotlin("test"))
 }
 
+tasks.test { useJUnitPlatform() }
 
-tasks.test {
-    useJUnitPlatform()
-}
-
-kotlin {
-    jvmToolchain(21)
-}
-//tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+kotlin { jvmToolchain(21) }
+// tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
 //    compilerOptions.freeCompilerArgs.addAll(listOf("-Xcontext-receivers"))
-//}
+// }
 
 graalvmNative {
     binaries {
@@ -48,26 +41,23 @@ graalvmNative {
         }
     }
     binaries.all {
-
         imageName.set("niva")
-//        buildArgs.add("-O3")
+        //        buildArgs.add("-O3")
 
         // temp solution
-//        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
-//            buildArgs.add("--static")
-//            buildArgs.add("--libc=musl")
-//        }
+        //        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
+        //            buildArgs.add("--static")
+        //            buildArgs.add("--libc=musl")
+        //        }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")
-//        buildArgs.add("-march=native") // temp until https://github.com/oracle/graal/pull/10050 gets upstream
+        //        buildArgs.add("-march=native") // temp until
+        // https://github.com/oracle/graal/pull/10050 gets upstream
         buildArgs.add("--initialize-at-build-time")
     }
 }
 
-application {
-    mainClass = "main.MainKt"
-}
-
+application { mainClass = "main.MainKt" }
 
 val checkAndBuildNativeTask = "checkAndBuildNative"
 val buildNativeNiva = "buildNativeNiva"
@@ -88,24 +78,24 @@ tasks.register(checkGraalVMTask) {
         }
         val output = javaVersionOutput.toString()
         if (!output.contains("GraalVM")) {
-            throw GradleException("\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
-                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
-                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
-                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
-                    "\tThen set it with: \n" +
-                    "\t\tJAVA_HOME=value in bash-like shell \n" +
-                    "\t\tset JAVA_HOME value in fish shell\n" +
-                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
-                    "\tand run `./gradlew buildNativeNiva` again")
+            throw GradleException(
+                    "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
+                            "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
+                            "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
+                            "\tOn mac its probably here: $javaHomeMayBeHere\n" +
+                            "\tThen set it with: \n" +
+                            "\t\tJAVA_HOME=value in bash-like shell \n" +
+                            "\t\tset JAVA_HOME value in fish shell\n" +
+                            "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
+                            "\tand run `./gradlew buildNativeNiva` again"
+            )
         } else {
             println("GraalVM is found")
         }
     }
 }
 
-tasks.register(checkAndBuildNativeTask) {
-    dependsOn(checkGraalVMTask, "nativeCompile")
-}
+tasks.register(checkAndBuildNativeTask) { dependsOn(checkGraalVMTask, "nativeCompile") }
 
 tasks.register(buildJvmNiva) {
     dependsOn("installDist", "publishToMavenLocal")
@@ -130,9 +120,10 @@ tasks.register(buildJvmNiva) {
 
 val green = "\u001B[32m"
 val purple = "\u001B[35m"
+
 fun printNivaWelcome(targetDir: Path, path: String) {
     println(
-        """
+            """
         $green
         niva binary has been installed in $targetDir, you can add it to PATH
         
@@ -145,10 +136,10 @@ fun printNivaWelcome(targetDir: Path, path: String) {
         Adding to PATH: 
         
     """.trimIndent() +
-                "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
-                "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
-                "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc" +
-                "\twindows: setx PATH \"%PATH%;$path\""
+                    "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
+                    "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
+                    "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc" +
+                    "\twindows: setx PATH \"%PATH%;$path\""
     )
 }
 
@@ -159,7 +150,7 @@ fun buildInfroProject() {
         val javaVersionOutput = ByteArrayOutputStream()
         exec {
             this.workingDir = infroDir
-//            val isWindows = isWindows
+            //            val isWindows = isWindows
             if (OperatingSystem.current() == OperatingSystem.WINDOWS) {
                 commandLine("./gradlew.bat", "build")
             } else {
@@ -199,16 +190,12 @@ tasks.register(buildNativeNiva) {
     }
 }
 
-
-
 fun moveInfroDir() {
     val userHome = System.getProperty("user.home")
 
     val sourceDir = file("${layout.projectDirectory}/../infroProject")
     val targetDir = file("$userHome/.niva/infroProject")
     val nivaDir = file("$userHome/.niva")
-
-
 
     if (sourceDir.exists()) {
         if (nivaDir.exists()) {
@@ -220,12 +207,13 @@ fun moveInfroDir() {
         copyRecursively(sourceDir.toPath(), targetDir.toPath())
         println("$userHome/.niva created")
     } else {
-        println("Can't find: $sourceDir, please run $buildNativeNiva from Niva/Niva/Niva dir of the repo")
+        println(
+                "Can't find: $sourceDir, please run $buildNativeNiva from Niva/Niva/Niva dir of the repo"
+        )
     }
 }
 
 /////////
-
 
 publishing {
     publications {
@@ -239,7 +227,6 @@ publishing {
     }
 }
 
-
 fun copyRecursively(source: Path, target: Path) {
     Files.walk(source).forEach { path ->
         val targetPath = target.resolve(source.relativize(path).toString())
@@ -252,3 +239,27 @@ fun copyRecursively(source: Path, target: Path) {
         }
     }
 }
+
+////// OLD
+// plugins {
+//    id("org.graalvm.buildtools.native") version "0.10.1"
+// }
+//
+//
+//
+// graalvmNative {
+//    binaries {
+//        named("main") {
+//            mainClass.set("main.MainKt")
+//        }
+//    }
+//    binaries.all {
+//
+//        imageName.set("niva")
+//        buildArgs.add("-O4")
+//        buildArgs.add("--static")
+//        buildArgs.add("--no-fallback")
+//        buildArgs.add("-march=native")
+//        buildArgs.add("--initialize-at-build-time")
+//    }
+// }
