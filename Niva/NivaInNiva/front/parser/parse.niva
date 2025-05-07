@@ -55,7 +55,6 @@ extend mut Parser [
     |=> [null]
   ]
 
-// TODO
   on parseCollection -> CollectionLiteral? = [
     ^ TO DO: "parseCollection"
     // mut isAdded = false
@@ -124,10 +123,6 @@ extend mut Parser [
       ]
     ] ifFalse: [
       // single expression
-      statements count == 0 ifTrue: [
-        TO DO: "parseBodyOrSingleExpr: no statement"
-      ]
-
       statement = .nextExperssion: .step
       body add: statement
     ]
@@ -202,7 +197,38 @@ extend mut Parser [
       ]
       | TokenType.IdentifierDoubleColon => [
         // Int inc^::Int b::Int =
-        TO DO: "111"
+        
+        firstArg = NameAndType name: tok2 lexeme astType: .parseType
+        kwArgs = {firstArg}m
+
+        mut c = true 
+        [c] whileTrue: [
+          tok = .peek
+          tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+            arg = NameAndType name: .step lexeme astType: .parseType
+            kwArgs add: arg
+            Unit
+          ] ifFalse: [
+            c <- false
+          ]
+        ]
+
+        returnType = getReturnType do 
+        name = tok2 lexeme
+        
+        .matchAssert: TokenType.Assign
+        // Int a::Int b::Int ->? = ^[]
+
+        body = .parseBodyOrSingleExpr
+
+        msgDecl = MessageDecl 
+          receiver: receiverType
+          name: name
+          args: kwArgs toList//{(NameAndType name: arg lexeme astType: argType)}
+          returnType: returnType
+          token: tok
+          body: body 
+        msgDecl
       ]
       | TokenType.BinarySymbol => [
         // Int +^ a::Int -> Int=

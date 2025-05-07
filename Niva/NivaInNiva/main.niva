@@ -2,15 +2,16 @@ type Program
   readFile: [String -> String]
   walkDir: [String -> List::String]
 
-  // input = "1 + 2 inc"
 
-  // statements = TestParse withInput: input expectedCount: 1
-  // "\n\n\n" echo
-  // typeDecl = statements at: 0
+
+
 
   input = """
-    a b
+    Int inc::Int b::Int = a + b
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
+  statements = TestParse withInput: input expectedCount: 1
   statements at: 0, debug
+  // statements at: 1, debug
+  

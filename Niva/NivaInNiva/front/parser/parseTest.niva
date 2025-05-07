@@ -266,6 +266,37 @@ Test parseBinaryDecl -> Unit! = [
   |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
 ]
 
+Test parseKeywordDecl -> Unit! = [
+  input = """
+    Int from::Int to::Int -> Boolean = [
+      true
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  keyword = statements at: 0
+
+  | keyword 
+  | MessageDecl => [
+    Assert 
+      that: keyword name
+      equals: "from"
+    Assert
+      that: keyword args count
+      equals: 2
+    
+    {receiver returnType} = keyword
+    
+    Assert 
+      that: receiver name 
+      equals: "Int"
+    Assert 
+      that: returnType unpackOrPANIC name 
+      equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + keyword toString]
+]
+
 
 Test parseAstTypeList -> Unit! = [
   input = """
