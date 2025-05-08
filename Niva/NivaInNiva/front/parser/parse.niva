@@ -292,7 +292,19 @@ extend mut Parser [
 
 
   on nextExperssion: tok::Token -> Expr = [
-    primaryUnaryBinary = .parseUnaryOrBinary: tok
+    primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
+    firstExpr = .nextExperssion2: tok receiver: primaryReceiver
+
+    ^ .peek kind == TokenType.Comma, 
+      ifTrue: [
+        .step // skip comma
+        .nextExperssion2: tok receiver: (ExprInBrackets value: firstExpr token: tok)
+      ]
+      ifFalse: [firstExpr]
+  ]
+
+  on nextExperssion2: tok::Token receiver::Expr? -> Expr = [
+    primaryUnaryBinary = .parsePrimaryOrUnaryOrBinary: tok receiver: receiver
 
     ^| .peek kind
     | TokenType.IdentifierColon => [
@@ -308,16 +320,15 @@ extend mut Parser [
           result add: 
             (NameAndExpr 
               name: (Identifier fromToken: .step) 
-              expr: (.parseUnaryOrBinary: .step))
+              expr: (.parsePrimaryOrUnaryOrBinary: .step))
           Unit
   
         ]
         |=> [
-          "IdentifierColon exit" echo
           c <- false
         ]
       ]
-      current debug
+      // current debug
       
       KeywordMsg 
         args: result toList
@@ -332,8 +343,11 @@ extend mut Parser [
   // Primary
   // UnaryMsg
   // BinaryMsg
-  on parseUnaryOrBinary: tok::Token -> Expr = [
-    maybePrimary = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
+  on parsePrimaryOrUnaryOrBinary: tok::Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
+  on parsePrimaryOrUnaryOrBinary: tok::Token receiver::Expr? -> Expr = [
+    maybePrimary = | receiver 
+    | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary"
+    |=> receiver
 
     next = .peek
     // single primary before new line
