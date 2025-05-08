@@ -42,6 +42,7 @@ Identifier toString = "$name"
 constructor Identifier fromToken::Token = 
   Identifier name: (fromToken lexeme) token: fromToken
   
+ExprInBrackets toString = "($value)"
 
 
 type NameAndExpr name: Identifier expr: Expr
@@ -85,6 +86,17 @@ BinaryMsg toString = [
   ]
   ^ "$receiver $realArgs"
 ]
+KeywordMsg toString = [
+  realArgs = args joinWith: " " transform: [
+    it name toString + ": " + it expr toString
+  ]
+  ^ "$receiver $realArgs"
+]
+
+// Pipes
+// 1 from: 2, inc
+// UnaryMsg args: {"inc"} receiver: (KeywordMsg) token: TO DO
+
 // Simple Unary
 // 1 inc
 // UnaryMsg args: {"inc"} receiver: 1 token: TO DO

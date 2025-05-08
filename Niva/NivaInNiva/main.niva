@@ -7,11 +7,9 @@ type Program
 
 
   input = """
-    Int inc::Int b::Int = a + b
+    1 to: 2, inc echo
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  statements = TestParse withInput: input expectedCount: 1
   statements at: 0, debug
-  // statements at: 1, debug
-  
+ 

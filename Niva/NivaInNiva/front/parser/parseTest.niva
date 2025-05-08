@@ -15,6 +15,55 @@ constructor TestParse expression::String -> Expr = [
   |=> [TO DO: "It should be Expr, but it " + expr toString]
 ]
 
+Test pipes = [
+  input = """
+    1 to: 2, inc echo
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  statements at: 0
+  first = statements at: 0
+  | first
+  | UnaryMsg => [
+    receiver = first receiver
+    | receiver
+    | ExprInBrackets => [
+      expr = receiver value
+      | expr
+      | KeywordMsg => [
+        Assert that: expr args count equals: 1
+        first = expr args at: 0
+        Assert that: first name token lexeme equals: "to"
+        Assert that: first expr toString equals: "2"
+      ]
+      |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
+    ]
+    |=> [TO DO: "It should be ExprInBrackets, but it " + receiver toString]
+
+    Assert
+      that: first args count
+      equals: 2
+
+  ]
+  |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
+
+]
+
+Test pipesMany -> Unit! = [
+  input = """
+    1 to: 2, inc echo
+    1 to: 2, inc + 3
+    1 to: 2, inc + 3 dec
+    1 to: 2, inc + 3 dec * 4
+
+    1 inc, dec
+    1 inc, + 2
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 6
+
+]
+
 Test someExpressions -> Unit! = [
   input = """
     1 + 2
