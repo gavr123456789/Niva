@@ -1,0 +1,140 @@
+Test parseType -> Unit! = [
+  input = """
+    type Person
+      name: String
+      age: Int
+      intList: List::Int
+      nullableInt: Int?
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
+
+  | typeDecl 
+  | TypeDecl => [
+      Assert 
+        that: typeDecl name
+        equals: "Person"
+      Assert
+        that: typeDecl fields count
+        equals: 4
+      
+      name = typeDecl fields at: 0
+      age = typeDecl fields at: 1
+      intList = typeDecl fields at: 2
+      nullableInt = typeDecl fields at: 3
+      
+      Assert that: name name equals: "name"
+      Assert that: age name  equals: "age"
+      Assert that: intList name  equals: "intList"
+      Assert that: nullableInt name  equals: "nullableInt"
+
+      Assert that: name type_ name equals: "String"
+      Assert that: age type_ name  equals: "Int"
+      Assert that: intList type_ name  equals: "List"
+      genericListParam = intList type_ genericParams at: 0
+      | genericListParam
+      | AstType => Assert that: genericListParam name equals: "Int"
+      |=> TO DO: "int expected"
+      // 
+
+      Assert that: nullableInt type_ name  equals: "Int"
+      Assert that: nullableInt type_  nullable equals: true
+
+      Unit
+    ]
+  |=> [TO DO: "It should be int, but it " + typeDecl toString]
+]
+
+Test parseUnaryDecl -> Unit! = [
+  input = """
+    Int inc -> Boolean = [ 
+      1
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  unaryDecl = statements at: 0
+
+  | unaryDecl 
+  | MessageDecl => [
+      Assert 
+        that: unaryDecl name
+        equals: "inc"
+      Assert
+        that: unaryDecl args count
+        equals: 0
+      
+      {receiver returnType} = unaryDecl
+      
+      Assert 
+        that: receiver name 
+        equals: "Int"
+      Assert 
+        that: returnType unpackOrPANIC name 
+        equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + unaryDecl toString]
+]
+
+Test parseBinaryDecl -> Unit! = [
+  input = """
+    Int + inc::String -> Boolean = [
+      1
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  binary = statements at: 0
+
+  | binary 
+  | MessageDecl => [
+    Assert 
+      that: binary name
+      equals: "+"
+    Assert
+      that: binary args count
+      equals: 1
+    
+    {receiver returnType} = binary
+    
+    Assert 
+      that: receiver name 
+      equals: "Int"
+    Assert 
+      that: returnType unpackOrPANIC name 
+      equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
+]
+
+Test parseKeywordDecl -> Unit! = [
+  input = """
+    Int from::Int to::Int -> Boolean = [
+      true
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  keyword = statements at: 0
+
+  | keyword 
+  | MessageDecl => [
+    Assert 
+      that: keyword name
+      equals: "from"
+    Assert
+      that: keyword args count
+      equals: 2
+    
+    {receiver returnType} = keyword
+    
+    Assert 
+      that: receiver name 
+      equals: "Int"
+    Assert 
+      that: returnType unpackOrPANIC name 
+      equals: "Boolean"
+    ]
+  |=> [TO DO: "It should be MessageDecl, but it " + keyword toString]
+]

@@ -1,3 +1,5 @@
+
+
 union Statement token: Token =
 | ^Expr
 | ReturnStatement   value: Expr?
@@ -25,31 +27,6 @@ union Declaration token: Token =
 // MessageDecl value: 
 //   (MessageSend name: "inc")
 
-
-
-
-// Expressions
-
-union Expr token: Token = 
-| ^LiteralExpr
-| Identifier     name: String
-| ExprInBrackets value: Expr
-| ^CollectionLiteral
-| ^MessageSend2
-
-Identifier toString = "$name"
-
-constructor Identifier fromToken::Token = 
-  Identifier name: (fromToken lexeme) token: fromToken
-  
-ExprInBrackets toString = "($value)"
-
-
-type NameAndExpr name: Identifier expr: Expr
-type NameAndType name: String astType: AstType
-NameAndType toString = [
-  ^ "$name::$astType"
-]
 
 // Messages
 enum MessageKind = Unary | Binary | Keyword
@@ -93,51 +70,42 @@ KeywordMsg toString = [
   ^ "$receiver $realArgs"
 ]
 
-// Pipes
-// 1 from: 2, inc
-// UnaryMsg args: {"inc"} receiver: (KeywordMsg) token: TO DO
 
-// Simple Unary
-// 1 inc
-// UnaryMsg args: {"inc"} receiver: 1 token: TO DO
-// 1 inc dec
-// UnaryMsg args: {"inc", "dec"} receiver: 1 token: TO DO
 
-// Simple Binary
-// 1 + 2 + 3
-// BinaryMsg args: {{"+" 2}, {"+" 3}} receiver: 1 token: TO DO
+// Expressions
 
-// 1 inc dec + 2 inc dec
-// unary1 = UnaryMsg args: {"inc", "dec"} receiver: 1
-// unary2 = UnaryMsg args: {"inc", "dec"} receiver: 2
-// BinaryMsg 
-//   receiver: unary1 
-//   args: {(name: "+" expr: unary2)} 
+union Expr token: Token = 
+| ^LiteralExpr 
+| Identifier     name: String
+| ExprInBrackets value: Expr
+| ^CollectionLiteral
+| ^MessageSend2
 
-// Simple Keyword
-// 1 from: 2 to: 3
-// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: 1 
+Identifier toString = "$name"
 
-// 1 inc from: 2 to: 3
-// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: (UnaryMsg args: {"inc"} receiver: 1)
+constructor Identifier fromToken::Token = 
+  Identifier name: (fromToken lexeme) token: fromToken
+  
+ExprInBrackets toString = "($value)"
 
-// 1 inc + 2 dec from: 3 inc + 4 dec
-// unary3 = Unary receiver: 3 args: {"inc"}
-// unary4 = Unary receiver: 4 args: {"dec"}
-// KeywordMsg
-//   args: {{"from" unary3}, {"to" unary4}}
-//   receiver: BinaryMsg
-//     args: {{"+" 2}, {"+" 4}}
-//     receiver: UnaryMsg
-//       args: {"inc"}
 
+type NameAndExpr name: Identifier expr: Expr
+
+type NameAndType name: String astType: AstType
+NameAndType toString = [
+  ^ "$name::$astType"
+]
 
 // Types
-type AstType 
+union AstType2 = 
+| AstType 
   name: String 
   nullable: Boolean 
-  genericParams: List::AstType
+  genericParams: List::AstType2
   isMut: Boolean 
+| AstLambdaType 
+  args: List::NameAndType
+  returnType: AstType2
 
 AstType toString = [
   genericParamsStr = genericParams joinWith: "::" transform: [it toString]
@@ -177,16 +145,16 @@ extend mut AstType [
 //    )
 //}
 
-union Type = 
-| UserType name: String fields: Map(String, Type)
-| ^InternalType
+// union Type = 
+// | UserType name: String fields: Map(String, Type)
+// | ^InternalType
 
-union InternalType = 
-| StringAstType
-| IntAstType
-| BooleanAstType
-| FloatAstType
-| DoubleAstType
+// union InternalType = 
+// | StringAstType
+// | IntAstType
+// | BooleanAstType
+// | FloatAstType
+// | DoubleAstType
 
 union CollectionLiteral token: Token elements: List::Expr = 
 | ListLiteral 
@@ -205,3 +173,46 @@ union LiteralExpr token: Token =
 | DoubleExpr
 
 IntExpr toString = "$num"
+
+
+
+
+
+// Pipes
+// 1 from: 2, inc
+// UnaryMsg args: {"inc"} receiver: (KeywordMsg) token: TO DO
+
+// Simple Unary
+// 1 inc
+// UnaryMsg args: {"inc"} receiver: 1 token: TO DO
+// 1 inc dec
+// UnaryMsg args: {"inc", "dec"} receiver: 1 token: TO DO
+
+// Simple Binary
+// 1 + 2 + 3
+// BinaryMsg args: {{"+" 2}, {"+" 3}} receiver: 1 token: TO DO
+
+// 1 inc dec + 2 inc dec
+// unary1 = UnaryMsg args: {"inc", "dec"} receiver: 1
+// unary2 = UnaryMsg args: {"inc", "dec"} receiver: 2
+// BinaryMsg 
+//   receiver: unary1 
+//   args: {(name: "+" expr: unary2)} 
+
+// Simple Keyword
+// 1 from: 2 to: 3
+// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: 1 
+
+// 1 inc from: 2 to: 3
+// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: (UnaryMsg args: {"inc"} receiver: 1)
+
+// 1 inc + 2 dec from: 3 inc + 4 dec
+// unary3 = Unary receiver: 3 args: {"inc"}
+// unary4 = Unary receiver: 4 args: {"dec"}
+// KeywordMsg
+//   args: {{"from" unary3}, {"to" unary4}}
+//   receiver: BinaryMsg
+//     args: {{"+" 2}, {"+" 4}}
+//     receiver: UnaryMsg
+//       args: {"inc"}
+

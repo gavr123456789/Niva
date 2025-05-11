@@ -15,7 +15,6 @@ extend mut Parser [
           c <- false
         ] ifFalse: [
           identifier = .step
-          // identifier debug
           expr = (Identifier name: (tok lexeme) token: tok)
           result add: expr
           Unit

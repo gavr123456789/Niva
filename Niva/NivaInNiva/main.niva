@@ -4,12 +4,15 @@ type Program
 
 
 
-
-
   input = """
-    1 to: 2, inc echo
+    type Person
+      nullableInt: Int?
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  statements at: 0, debug
+  typeDecl = statements at: 0
+
+
+  statements at: 0
  
+

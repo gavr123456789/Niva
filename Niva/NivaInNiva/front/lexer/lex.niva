@@ -199,6 +199,10 @@ extend mut Lexer [
           ]
           |=> .createToken: TokenType.IdentifierColon lexeme: lit 
         ] 
+        | '?' => [
+          .step
+          .createToken: TokenType.NullableIdentifier lexeme: lit
+        ]
         |=> [
           .createToken: tt lexeme: lit
         ]
