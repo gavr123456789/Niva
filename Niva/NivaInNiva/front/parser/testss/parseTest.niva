@@ -1,0 +1,98 @@
+type TestParse 
+constructor TestParse withInput::String expectedCount::Int -> MutableList::Statement = [
+  tokens = Lexer newLex: withInput
+  // tokens debug
+  {statements} = Parser newParseTokens: tokens
+  Assert that: statements count equals: expectedCount
+  ^statements
+]
+
+constructor TestParse expression::String -> Expr = [
+  expr = Parser newParseTokens: (Lexer newLex: expression), statements at: 0
+  
+  ^| expr
+  | Expr=> expr
+  |=> [TO DO: "It should be Expr, but it " + expr toString]
+]
+
+
+
+
+
+
+Test parseNumber -> Unit! = [
+  input = """
+  123
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  | intExpr 
+  | IntExpr => 
+    Assert 
+      that: intExpr num  
+      equals: 123
+  |=> [TO DO: "It should be int, but it $intExpr"]
+]
+
+Test parseString -> Unit! = [
+  tokens = Lexer newLex: """ "sas" """
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  | stringExpr 
+  | StringExpr => 
+    Assert 
+      that: stringExpr token lexeme
+      equals: "\"sas\""
+  |=> [TO DO: "It should be int, but it " + stringExpr toString]
+]
+
+
+
+
+
+Test parseAstTypeList -> Unit! = [
+  input = """
+    List::List::Int
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  // tokens debug
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  astType = parser parseType
+  
+  Assert that: astType genericParams count equals: 1
+  list = astType genericParams at: 0
+  | list
+  | AstType => Assert that: list name equals: "List"
+  |=> TO DO: "Wrong type"
+]
+
+Test parseAstTypeMap -> Unit! = [
+  input = """
+    Map(Int, String)
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  // tokens debug
+  statements::MutableList::Statement = {}m
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  astType = parser parseType
+
+  Assert that: astType genericParams count equals: 2
+  int = astType genericParams at: 0
+  | int
+  | AstType => Assert that: int name equals: "Int"
+  |=> TO DO: "Wrong type"
+
+  string = astType genericParams at: 1
+  | string
+  | AstType => Assert that: string name equals: "String"
+  |=> TO DO: "Wrong type"
+ 
+  
+] 

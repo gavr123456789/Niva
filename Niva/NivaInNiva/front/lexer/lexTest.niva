@@ -127,6 +127,15 @@ Test identifierDoubleColon = [
   ]
 ]
 
+Test identifierNullable = [
+  tokens = LexTest input: "sas::Int?"
+  expectedKinds = {TokenType.IdentifierDoubleColon TokenType.NullableIdentifier}
+
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind  equals: (expectedKinds at: i)
+  ]
+]
+
 Test strings = [
   LexTest checkThat: """ "" "sas" "sus" """ 
           equals: {TokenType.String TokenType.String TokenType.String}
