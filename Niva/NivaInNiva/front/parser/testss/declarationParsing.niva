@@ -5,6 +5,7 @@ Test parseType -> Unit! = [
       age: Int
       intList: List::Int
       nullableInt: Int?
+      lambdaType: [Int -> Int]
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
@@ -17,29 +18,58 @@ Test parseType -> Unit! = [
         equals: "Person"
       Assert
         that: typeDecl fields count
-        equals: 4
+        equals: 5
       
       name = typeDecl fields at: 0
       age = typeDecl fields at: 1
       intList = typeDecl fields at: 2
       nullableInt = typeDecl fields at: 3
+      lambda = typeDecl fields at: 4
       
       Assert that: name name equals: "name"
       Assert that: age name  equals: "age"
       Assert that: intList name  equals: "intList"
       Assert that: nullableInt name  equals: "nullableInt"
 
-      Assert that: name type_ name equals: "String"
-      Assert that: age type_ name  equals: "Int"
-      Assert that: intList type_ name  equals: "List"
-      genericListParam = intList type_ genericParams at: 0
-      | genericListParam
-      | AstType => Assert that: genericListParam name equals: "Int"
-      |=> TO DO: "int expected"
-      // 
+      type1 = name type_
+      | type1
+      | AstType => 
+        Assert that: type1 name equals: "String"
+      |=> TO DO: "It should be AstType, but it " + type1 toString
 
-      Assert that: nullableInt type_ name  equals: "Int"
-      Assert that: nullableInt type_  nullable equals: true
+      type2 = age type_
+      | type2
+      | AstType => 
+        Assert that: type2 name equals: "Int"
+      |=> TO DO: "It should be AstType, but it " + type2 toString
+
+      type3 = intList type_
+      | type3
+      | AstType => [
+        Assert that: type3 name equals: "List"
+        Assert that: type3 genericParams count equals: 1
+        Assert that: type3 nullable equals: false
+        genericListParam = type3 genericParams at: 0
+        | genericListParam
+        | AstType => Assert that: genericListParam name equals: "Int"
+        |=> TO DO: "int expected"
+        ]
+      |=> TO DO: "It should be AstType, but it " + type3 toString
+      
+      type4 = nullableInt type_
+      | type4
+      | AstType => [
+        Assert that: type4 name equals: "Int"
+        Assert that: type4 nullable equals: true
+      ]
+      |=> [TO DO: "It should be AstType, but it " + type4 toString]
+
+      type5 = lambda type_
+      | type5
+      | AstLambdaType => [
+        Assert that: true equals: true
+      ]
+      |=> [TO DO: "It should be AstType, but it " + type4 toString]
 
       Unit
     ]
@@ -66,13 +96,18 @@ Test parseUnaryDecl -> Unit! = [
         equals: 0
       
       {receiver returnType} = unaryDecl
-      
-      Assert 
-        that: receiver name 
-        equals: "Int"
-      Assert 
-        that: returnType unpackOrPANIC name 
-        equals: "Boolean"
+      | receiver
+      | AstType => [
+        Assert 
+          that: receiver name 
+          equals: "Int"
+
+        Assert 
+          that: returnType toString
+          equals: "Boolean"
+
+      ]
+      |=> TO DO: "It should be AstType, but it " + receiver toString
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + unaryDecl toString]
 ]
@@ -97,13 +132,18 @@ Test parseBinaryDecl -> Unit! = [
       equals: 1
     
     {receiver returnType} = binary
-    
-    Assert 
-      that: receiver name 
-      equals: "Int"
-    Assert 
-      that: returnType unpackOrPANIC name 
-      equals: "Boolean"
+    | receiver
+    | AstType => [
+      Assert 
+        that: receiver name 
+        equals: "Int"
+
+      Assert 
+        that: returnType toString
+        equals: "Boolean"
+    ]
+    |=> TO DO: "It should be AstType, but it " + receiver toString
+  
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
 ]
@@ -128,13 +168,17 @@ Test parseKeywordDecl -> Unit! = [
       equals: 2
     
     {receiver returnType} = keyword
-    
-    Assert 
-      that: receiver name 
-      equals: "Int"
-    Assert 
-      that: returnType unpackOrPANIC name 
-      equals: "Boolean"
+      | receiver
+      | AstType => [
+        Assert 
+          that: receiver name 
+          equals: "Int"
+
+        Assert 
+          that: returnType toString
+          equals: "Boolean"
+      ]
+      |=> TO DO: "It should be AstType, but it " + receiver toString
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + keyword toString]
 ]

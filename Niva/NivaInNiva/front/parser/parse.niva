@@ -17,7 +17,7 @@ constructor Parser newParseTokens::List::Token = [
 ]
 
 
-type TypeField name: String type_: AstType
+type TypeField name: String type_: AstType2
 
 extend mut Parser [
   /// if literal was added returns true
@@ -501,10 +501,12 @@ extend mut Parser [
   ]
 
   on matchAssert::TokenType -> Token = [
-    .peek kind == matchAssert, ifTrue: [
+    peek = .peek
+    peek kind == matchAssert, ifTrue: [
       ^ .step
     ]
-    TO DO: "$matchAssert expected"
+    kind = peek kind
+    TO DO: "$matchAssert expected but got $peek"
   ]
 
   on matchString::String -> Boolean = [

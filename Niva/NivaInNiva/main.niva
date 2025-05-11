@@ -6,7 +6,7 @@ type Program
 
   input = """
     type Person
-      nullableInt: Int?
+      lambdaType: [Int -> Int]
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1

@@ -1,7 +1,7 @@
 type Assert
 
 /// prints both expressions and values
-constructor Assert that::Any equals::Any -> Unit = [
+constructor Assert that::Any? equals::Any? -> Unit = [
   a = Compiler getName: 1
   b = Compiler getName: 2
 
@@ -10,7 +10,7 @@ constructor Assert that::Any equals::Any -> Unit = [
   ]
 ]
 
-constructor Assert that::Any equals::Any andSay::String -> Unit = [
+constructor Assert that::Any? equals::Any? andSay::String -> Unit = [
   a = Compiler getName: 1
   b = Compiler getName: 2
 
