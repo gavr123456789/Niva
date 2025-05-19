@@ -7,6 +7,7 @@ import main.Option
 import main.codogen.BuildSystem
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Statement
+import main.languageServer.DEV_MODE_FILE_NAME
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -390,13 +391,14 @@ fun compileProjFromFile(
             pm.pathToBuildFileGradle,
             pm.pathToBuildFileAmper,
             pm.pathToBuildFileMill,
+            pm.nivaRootFolder,
             defaultProject,
             resolver.topLevelStatements,
             resolver.compilationTarget,
             mainFileName = mainFile.name,
             pm.pathToInfroProject,
             tests,
-            buildSystem = buildSystem
+            buildSystem = buildSystem,
         )
         verbosePrinter.print { "BuildSystem = $buildSystem" }
         verbosePrinter.print { "Codegen to ${pm.pathWhereToGenerateKtAmper}" }
@@ -413,13 +415,13 @@ fun compileProjFromFile(
 
 fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     val inlineReplPath = File("inline_repl.txt").absolutePath
-
     val quote = "\"\"\""
 
     val jvmSpecific = if (compilationTarget == CompilationTarget.jvm)
         """import java.io.BufferedWriter
         import java.io.FileWriter
         import java.io.IOException
+        import java.util.SortedMap
 
         fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
             val q = x.toString()
@@ -440,9 +442,122 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     """.trimIndent() else "fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int) {}"
 
     val nivaStd = """
+        import kotlinx.serialization.json.JsonArray
+        import kotlinx.serialization.json.JsonObject
+        import kotlinx.serialization.json.JsonPrimitive
+        import kotlinx.serialization.json.buildJsonObject
+        import kotlinx.serialization.json.int
+        import kotlinx.serialization.json.jsonArray
+        import kotlinx.serialization.json.jsonObject
+        import kotlinx.serialization.json.jsonPrimitive
+        import kotlinx.serialization.json.put
         // STD
         $jvmSpecific
         
+        // Live Dev Mode
+class DevLiveData (
+    val name: String,
+    val start: Int, var end: Int,
+    val values: MutableList<String>,
+    val stackTraces: MutableList<String>
+) {
+    fun toJson(): JsonObject {
+        return buildJsonObject {
+            put("name", name)
+            put("start", start)
+            put("end", end)
+            put("values", JsonArray(values.map { JsonPrimitive(it) }))
+            put("stackTraces", JsonArray(stackTraces.map { JsonPrimitive(it) }))
+        }
+    }
+
+    companion object {
+        fun fromJson(json: JsonObject): DevLiveData {
+            val name = json["name"]?.jsonPrimitive?.content ?: ""
+            val start = json["start"]?.jsonPrimitive?.int ?: 0
+            val end = json["end"]?.jsonPrimitive?.int ?: 0
+            val values = json["values"]?.jsonArray?.map { it.jsonPrimitive.content }?.toMutableList() ?: mutableListOf()
+            val stackTraces = json["stackTraces"]?.jsonArray?.map { it.jsonPrimitive.content }?.toMutableList() ?: mutableListOf()
+
+            return DevLiveData(name, start, end, values, stackTraces)
+        }
+    }
+}
+
+class DevModeStore(
+    val data: MutableMap<String, SortedMap<Int, MutableList<DevLiveData>>> = mutableMapOf()
+) {
+    fun <T> add(
+        x: T,
+        filePath: String,
+        name: String,
+        line: Int,
+        start: Int,
+        end: Int,
+    ): T {
+        NivaDevModeDB.wasDevModeUsed = true
+        val stackTrace = (Thread.currentThread().stackTrace.drop(2).joinToString(" <- ") { it.methodName.toString() + if (it.moduleName != null) "(" + it.moduleName + ")" else "" })
+        val value = x.toString()
+        val lines = data.getOrPut(filePath) { sortedMapOf() }
+        val list = lines.getOrPut(line) { mutableListOf() }
+
+        val existing = list.find { it.name == name && it.start == start && it.end == end }
+        if (existing != null) {
+            existing.values.add(value)
+            existing.stackTraces.add(stackTrace)
+        } else {
+            val devLiveData = DevLiveData(name, start, end, mutableListOf(value), mutableListOf(stackTrace))
+            list.add(devLiveData)
+        }
+        return x
+    }
+
+    fun toJson(): JsonObject {
+        return buildJsonObject {
+            put("data", buildJsonObject {
+                for ((key, sortedMap) in data) {
+                    put(key, buildJsonObject {
+                        for ((intKey, list) in sortedMap) {
+                            put(intKey.toString(), JsonArray(list.map { it.toJson() }))
+                        }
+                    })
+                }
+            })
+        }
+    }
+
+    companion object {
+        fun fromJson(json: JsonObject): DevModeStore {
+            val dataJson = json["data"]?.jsonObject ?: JsonObject(emptyMap())
+            val data = mutableMapOf<String, SortedMap<Int, MutableList<DevLiveData>>>()
+
+            for ((key, nested) in dataJson) {
+                val innerMap = sortedMapOf<Int, MutableList<DevLiveData>>()
+                val nestedObject = nested.jsonObject
+                for ((intKeyStr, listJson) in nestedObject) {
+                    val intKey = intKeyStr.toIntOrNull() ?: continue
+                    val liveDataList = listJson.jsonArray.map {
+                        DevLiveData.fromJson(it.jsonObject)
+                    }.toMutableList()
+                    innerMap[intKey] = liveDataList
+                }
+                data[key] = innerMap
+            }
+
+            return DevModeStore(data)
+        }
+    }
+}
+
+
+object NivaDevModeDB {
+    val db = DevModeStore()
+    var wasDevModeUsed = false
+}
+
+        
+        
+        // Dynamic
         sealed class Dynamic()
 
         class DynamicStr(val value: String): Dynamic()
@@ -610,11 +725,19 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
 }
 
 
-fun putInMainKotlinCode(code: String, compilationTarget: CompilationTarget, pathToInfroProject: String) = buildString {
+fun putInMainKotlinCode(
+    code: String,
+    compilationTarget: CompilationTarget,
+    pathToInfroProject: String,
+    pathToMainNivaFileFolder: String
+) = buildString {
+    val devDataJsonPath = pathToMainNivaFileFolder / DEV_MODE_FILE_NAME
+
     append("fun main(args: Array<String>) {\n")
     append("try {\n")
 
-    append(code, "\n")
+    appendLine(code)
+    appendLine("if (NivaDevModeDB.wasDevModeUsed) java.io.File(\"$devDataJsonPath\").writeText(NivaDevModeDB.db.toJson().toString())")
 
     val catchExpressions = if (compilationTarget != CompilationTarget.jvm) """
         } catch (e: Throwable) {

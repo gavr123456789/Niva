@@ -42,11 +42,6 @@ sealed class MethodReference(
     ) : MethodReference(forIdentifier, name, token, type)
 }
 
-// Message send is for pipe operations
-// a to: 2 |> sas: 6 == (a to: 2) sas: 6
-// 4 + 5 |> + 6 == useless
-// x sas |> sus == useless
-// a to: 2 |> + 2 == add 2 to result of to:
 sealed class MessageSend(
     val receiver: Receiver,
     open val messages: List<Message>,

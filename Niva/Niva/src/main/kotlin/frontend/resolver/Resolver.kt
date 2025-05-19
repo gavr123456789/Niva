@@ -5,6 +5,7 @@ package frontend.resolver
 import frontend.parser.types.ast.KeyPragma
 import frontend.resolver.Type.Union
 import frontend.resolver.messageResolving.resolveCodeBlock
+import languageServer.devModeSetInlineRepl
 import main.codogen.GeneratorKt
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
@@ -155,16 +156,14 @@ private fun Resolver.resolveStatement(
 
             resolveTypeForMessageSend(statement)
             addToTopLevelStatements(statement)
+            devModeSetInlineRepl(statement, resolvingMessageDeclaration)
+
             stack.pop()
         }
 
 
         is IdentifierExpr -> {
-            val kw = if (rootStatement is KeywordMsg) {
-                rootStatement
-            } else null
-
-
+            val kw = rootStatement as? KeywordMsg
 
             statement.type = getTypeForIdentifier(
                 statement, previousScope, currentScope, kw
@@ -182,9 +181,10 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // identifier
             }
+
+            devModeSetInlineRepl(statement, resolvingMessageDeclaration)
 
             addToTopLevelStatements(statement)
         }

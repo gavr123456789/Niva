@@ -9,6 +9,7 @@ package main
 // import main.languageServer.resolveNonIncremental
 import frontend.Lexer
 import frontend.lex
+
 import java.io.File
 import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
@@ -27,14 +28,60 @@ const val fakeFileSourceGOOD = """
 
 1 sas
 """
-enum class Color {
-    RED, GREEN, BLUE
-}
+
+
+
 
 fun main(args: Array<String>) {
 
-    //    val args = arrayOf("run",
-    // "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")
+    // test
+//    val x = DevLiveData(
+//        name = "x",
+//        start = 0,
+//        end = 1,
+//        values = mutableListOf("25")
+//    )
+//    val itt = DevLiveData(
+//        name = "it",
+//        start = 2,
+//        end = 4,
+//        values = mutableListOf("1", "1","1","1","5",)
+//    )
+//
+//    val db = DevModeStore(
+//        data = mutableMapOf("main.niva" to sortedMapOf(
+//            1 to mutableListOf(x),
+//            4 to mutableListOf(itt),
+//        ))
+//    )
+
+//    db.add(1, "filePath", "x", 11, 1, 2)
+
+//    if (NivaDevModeDB.wasDevModeUsed) File("devModeData.json").writeText(NivaDevModeDB.db.toJson().toString())
+
+
+
+//    val ls = LS { println("Niva LS: $it") }
+//    val fromJson = readFromJson("devModeData.json")
+//
+//    fromJson.data.forEach { (fileName, value) ->
+//        val file = File(fileName)
+//        value.forEach { (lineNum, values) ->
+//            values.forEach {
+//                val w = it.toIdentifierExpr(file, lineNum)
+//                ls.megaStore.addNew(
+//                    s = w,
+//                    scope = mapOf(),
+//                    prepend = false
+//                )
+//            }
+//        }
+//    }
+
+//    println(fromJson)
+///////////////////////
+
+//        val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Niva/Example/main.niva")
     //    val args = arrayOf("run",
     // "/home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/main.niva")
     //    val args = arrayOf("--verbose","build",
@@ -75,7 +122,7 @@ fun run(args2: Array<String>) {
     val mainArg = am.mainArg()
     val pm = PathManager(getPathToMainOrSingleFile(args), mainArg, am.buildSystem)
 
-    if (mainArg == MainArgument.DAEMON) {
+    if (mainArg == MainArgument.DEV_MODE) {
         daemon(pm, mainArg, am)
     }
 
@@ -130,7 +177,7 @@ fun run(args2: Array<String>) {
         MainArgument.INFO_ONLY -> compiler.infoPrint(false, specialPkgToInfoPrint)
         MainArgument.USER_DEFINED_INFO_ONLY -> compiler.infoPrint(true, specialPkgToInfoPrint)
         MainArgument.RUN_FROM_IDEA -> compiler.runGradleAmperBuildCommand(dist = false)
-        MainArgument.DAEMON -> daemon(pm, mainArg, am)
+        MainArgument.DEV_MODE -> daemon(pm, mainArg, am)
         MainArgument.LSP -> TODO()
     }
 

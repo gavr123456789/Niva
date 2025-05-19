@@ -18,5 +18,7 @@ fun VarDeclaration.generateVarStatement(): String {
         "\n//@ ${token.file.name}:::${token.line}\n"
     else ""
 
+
+
     return "$debugIfNeeded$valOrVar ${name.ifKtKeywordAddBackTicks()}$type = $valueCode"
 }

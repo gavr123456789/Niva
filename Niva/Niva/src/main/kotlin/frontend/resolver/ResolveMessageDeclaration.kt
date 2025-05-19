@@ -279,7 +279,6 @@ fun Resolver.resolveMessageDeclaration(
             }
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
                 errorsMismatchCompileError()
-//                statement.token.compileError("There is no possible errors but you declared ${possibleErrors.joinToString(", ")}")
             }
 
         }

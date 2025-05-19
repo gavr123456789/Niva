@@ -1,6 +1,7 @@
-type Program 
+type Program
   readFile: [String -> String]
   walkDir: [String -> List::String]
+
 
 
 
@@ -14,5 +15,3 @@ type Program
 
 
   statements at: 0
- 
-

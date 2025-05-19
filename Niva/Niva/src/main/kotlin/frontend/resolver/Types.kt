@@ -823,6 +823,24 @@ class Project(
 //}
 
 
+/// find the error types in db
+fun TypeAST.getRealErrorsTypes(typeTable: Map<TypeName, Type>): Set<Type.Union> {
+    if (this.errors != null) {
+        val realTypes = this.errors.map { errorName ->
+            val realType = typeTable[errorName]
+            if (realType != null) {
+                if (realType !is Type.Union || !realType.isError) token.compileError("This is not error type, use only types from errordomain declaration")
+                realType
+            } else {
+                token.compileError("Can't find error type $realType, sorry no forvard declaration for type alias with errors, because historical reasons, need resolver here, but it would be too big refactoring, hi Seggan ^_^")
+            }
+        }
+
+        return realTypes.toSet()
+    }
+    return emptySet()
+}
+
 // if parentType not null, then we are resolving its field
 fun TypeAST.toType(
     typeDB: TypeDB,
@@ -834,11 +852,14 @@ fun TypeAST.toType(
     customPkg: String? = null
 ): Type {
 
-    val replaceToNullableIfNeeded = { type: Type ->
+    val replaceToNullableAndAddErrorsIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
 
         if (isNullable) {
             Type.NullableType(realType = type)
+        } else if (errors != null) {
+            val realTypes = this.getRealErrorsTypes(typeTable)
+            type.copyAndAddErrors(realTypes)
         } else {
             type
         }
@@ -849,42 +870,28 @@ fun TypeAST.toType(
             val type = Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
                 this.token.compileError("Can't find default type: ${YEL}$name")
             }
-
-            return replaceToNullableIfNeeded(type)
+            return if (this.errors != null)
+                replaceToNullableAndAddErrorsIfNeeded(type).copyAndAddErrors(getRealErrorsTypes(typeTable))
+            else
+                replaceToNullableAndAddErrorsIfNeeded(type)
         }
 
 
         is TypeAST.UserType -> {
             if (name.isGeneric()) {
-//                val copyWithPossibleErrors
-
                 return (if (!isNullable)
                     Type.UnknownGenericType(name)
                 else
                     Type.NullableType(Type.UnknownGenericType(name))).let {
                         if (this.errors != null) {
-                            // 1) find the error in db
-                            val realTypes = this.errors.map { errorName ->
-                                val realType = typeTable[errorName]
-                                if (realType != null) {
-                                    if (realType !is Type.Union || !realType.isError) token.compileError("This is not error type, use only types from errordomain declaration")
-                                    realType
-                                } else {
-                                    token.compileError("Can't find error type $realType, sorry no forvard declaration for type alias with errors, because historical reasons, need resolver here, but it would be too big refactoring, hi Seggan ^_^")
-                                }
-                            }
-                            // 2) append it to type
-                            val typeWithErrors = it.copyAndAddErrors(realTypes.toSet())
-                            typeWithErrors
+                            it.copyAndAddErrors(getRealErrorsTypes(typeTable))
                         } else
                             it
                 }
             }
-//            if (selfType != null && name == selfType.name) return selfType
 
             if (this.typeArgumentList.isNotEmpty()) {
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
-
 
                 val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
@@ -943,7 +950,7 @@ fun TypeAST.toType(
                 (type as Type.UserLike).copy().also { it.isMutable = true }
             } else type
 
-            return replaceToNullableIfNeeded(type2)
+            return replaceToNullableAndAddErrorsIfNeeded(type2)
         }
 
         is TypeAST.Lambda -> {
@@ -989,7 +996,7 @@ fun TypeAST.toType(
                 pkg = customPkg ?: "common"
             )
 
-            return replaceToNullableIfNeeded(lambdaType)
+            return replaceToNullableAndAddErrorsIfNeeded(lambdaType)
         }
 
 
