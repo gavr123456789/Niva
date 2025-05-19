@@ -1,41 +1,8 @@
-
-//union Dynamic =
-//| DynamicStr value: String
-//| DynamicInt value: Int
-//| DynamicDouble value: Double
-//| DynamicBoolean value: Double
-//| DynamicList value: List::Dynamic
-//| DynamicObject value: MutableMap(String, Dynamic)
-//
-//
-
-//type Person name: String
-//type Wallet
-//    i: Int?
-//    s: String
-//    d: Double
-//    b: Boolean list: List::Int
-//    listOfObjects: List::Person
-//
-//w = Wallet i: null s: "qwf" d: 1.1 b: true list: {1 2 3} listOfObjects: {(Person name: "Alice")}
-//dw = Wallet toDynamic: w
-//
-//
-//rw = Wallet fromDynamic: dw
-//rw echo
-
-String from::[Int, Int -> Int] = [
-    a = from q: 1 b: 2
-    a echo
+@debug
+Int sas = [
+    sas = 42
+    sus = sas + 42
+    sus echo
 ]
 
-"sas" from: [x, y -> x + y]
-
-//union Shape = Circle r: Int | Square side: Int
-//type Sas u: List::Shape
-//
-//с = Circle r: 4
-//dc = Circle toDynamic: с
-//dc echo
-//c2 = Circle fromDynamic: dc
-//c2 echo
+1 sas

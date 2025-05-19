@@ -11,7 +11,7 @@ import main.utils.isGeneric
 
 
 // x = {} // ERROR need x::List::Int = {}
-fun checkThatCollectionIsTyped(statement: VarDeclaration, type: Type) {
+fun checkThatCollectionIsTyped(statement: VarDeclaration) {
     if (statement.valueTypeAst != null) return
     val value = statement.value
     val emptyMap = value is MapCollection && value.initElements.isEmpty()
@@ -36,7 +36,7 @@ fun Resolver.resolveVarDeclaration(
     var typeOfValueInVarDecl = valueOfVarDecl.type
         ?: statement.token.compileError("Compiler BUG: In var declaration $WHITE${statement.name}$RED value doesn't got type")
     // check that collection is typed
-    checkThatCollectionIsTyped(statement, typeOfValueInVarDecl)
+    checkThatCollectionIsTyped(statement)
     val definedASTType = statement.valueTypeAst
 
     if (valueOfVarDecl is MessageSendKeyword) {
@@ -109,6 +109,11 @@ fun Resolver.resolveVarDeclaration(
 
     }
     currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
+
+    // DevMode
+//    devModeSetInlineRepl(valueOfVarDecl, resolvingMessageDeclaration)
+
+
     addToTopLevelStatements(statement)
 }
 

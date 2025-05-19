@@ -18,7 +18,7 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DAEMON, TEST, LSP
+    DEV_MODE, TEST, LSP
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -59,7 +59,7 @@ class ArgsManager(val args: MutableList<String>) {
                 "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
-                "dev" -> MainArgument.DAEMON
+                "dev" -> MainArgument.DEV_MODE
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
                 else -> {
@@ -104,7 +104,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         MainArgument.USER_DEFINED_INFO_ONLY,
         MainArgument.BUIlD,
         MainArgument.DISRT,
-        MainArgument.DAEMON,
+        MainArgument.DEV_MODE,
         MainArgument.TEST,
 
         MainArgument.RUN_MILL,

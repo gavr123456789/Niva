@@ -156,7 +156,7 @@ enum class Pragmas(val v: String) {
     RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg")
 }
 
-val builtInPragmas = setOf("rename", "emit", "arg")
+val builtInPragmas = setOf("rename", "emit", "arg", "debug")
 
 // adding invisible args like for Compiler getName:
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {

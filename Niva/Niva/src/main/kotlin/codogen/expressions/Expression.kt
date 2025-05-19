@@ -1,6 +1,7 @@
 package main.codogen
 
 import frontend.resolver.Type
+import languageServer.generateAddDevDataFunCall
 import main.frontend.parser.types.ast.*
 
 fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks: Boolean = false, isArgument: Boolean = false): String = buildString {
@@ -10,7 +11,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
     }
 
     if (isInlineRepl) {
-        append("inlineRepl(")
+//        append("inlineRepl(")
+        append("NivaDevModeDB.db.add((")
     }
 
     val keywordGenerate = { kw: KeywordMsg ->
@@ -79,10 +81,13 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is MethodReference -> generateMethodReference()
         }
     )
-
+    // OLD
+//    if (isInlineRepl) {
+//        val fileAndLine = token.file.absolutePath + ":::" + token.line
+//        append(", \"\"\"$fileAndLine\"\"\", $inlineReplCounter)")
+//    }
     if (isInlineRepl) {
-        val fileAndLine = token.file.absolutePath + ":::" + token.line
-        append(", \"\"\"$fileAndLine\"\"\", $inlineReplCounter)")
+        generateAddDevDataFunCall(this)
     }
 
 }

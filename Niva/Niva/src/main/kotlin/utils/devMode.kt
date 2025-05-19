@@ -40,55 +40,47 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
         val watcher = KfsDirectoryWatcher(scope, dispatcher = Dispatchers.IO)
         watcher.add(pm.nivaRootFolder)
         println("watching " + pm.nivaRootFolder)
-        var everySecond = false
         launch {
-            var lock = true
             watcher.onEventFlow.collect { event ->
                 withContext(Dispatchers.IO) {
                     if (event.path.endsWith(".niva") && event.event == KfsEvent.Modify) {
-                        if (true) { //lock && everySecond
-                            lock = false
-                            try {
-                                runProcess("clear")
-                                val resolver = compileProjFromFile(
-                                    pm,
-                                    dontRunCodegen = false,
-                                    compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
-                                    tests = mainArg == MainArgument.TEST,
-                                    verbose = am.verbose,
-                                    buildSystem = am.buildSystem
+                        try {
+                            runProcess("clear")
+                            val resolver = compileProjFromFile(
+                                pm,
+                                dontRunCodegen = false,
+                                compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
+                                tests = mainArg == MainArgument.TEST,
+                                verbose = am.verbose,
+                                buildSystem = am.buildSystem
+                            )
+
+                            if (!gradleWatcherIsAlreadyRunning) {
+                                val compiler = CompilerRunner(
+                                    pm.pathToInfroProject,
+                                    File("inline_repl.txt").absoluteFile,
+                                    resolver.compilationTarget,
+                                    resolver.compilationMode,
+                                    pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
+                                    resolver,
+                                    watch = true
                                 )
-                                
-                                if (gradleWatcherIsAlreadyRunning == false) {
-                                    val compiler = CompilerRunner(
-                                        pm.pathToInfroProject,
-                                        File("inline_repl.txt").absoluteFile,
-                                        resolver.compilationTarget,
-                                        resolver.compilationMode,
-                                        pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
-                                        resolver,
-                                        watch = true
-                                    )
-                                    launch {
-                                        compiler.runGradleAmperBuildCommand()
+                                launch {
+                                    compiler.runGradleAmperBuildCommand()
 //                                        println("WONT SEE THIS printAfter runGradleAmperBuildCommand")
-                                    }
-                                    gradleWatcherIsAlreadyRunning = true
                                 }
-                            } catch (e: CompilerError) {
-                                println(e.message)
-                            } catch (e: OnCompletionException) {
-                                println(e.scope)
-//                            throw e
-                            } catch (e: Exception) {
-                                if (e.message?.startsWith("end of search") == false) {
-                                    println("Exception: ${e.message}")
-                                    throw e
-                                }
+                                gradleWatcherIsAlreadyRunning = true
                             }
-                            lock = true
+                        } catch (e: CompilerError) {
+                            println(e.message)
+                        } catch (e: OnCompletionException) {
+                            println(e.scope)
+                        } catch (e: Exception) {
+                            if (e.message?.startsWith("end of search") == false) {
+                                println("Exception: ${e.message}")
+                                throw e
+                            }
                         }
-                        everySecond = !everySecond //!localEverySecond
                     }
                 }
             }

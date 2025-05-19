@@ -183,7 +183,7 @@ fun Resolver.findStaticMessageType(
         receiverTypeIter = receiverTypeIter.parent
     }
 
-    // this is default new message if type doesn't have any fields
+    // this is a default new message if type doesn't have any fields
     if (selectorName == "new" && receiverType is Type.UserLike) {
         if (receiverType.fields.isEmpty()) {
             // u cant instantiate Root union
@@ -208,7 +208,7 @@ fun Resolver.findStaticMessageType(
 
     // if this is binding, then getters are static, calls without ()
     if (msgType != null && findPackageOrError(receiverType.pkg, token).isBinding) {
-        if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol whatudoing")
+        if (msgType == MessageDeclarationType.Binary) token.compileError("Binary constructors won't supported! lol wrongdoing")
         return Pair(findAnyMsgType(receiverType, selectorName, token, msgType), true)
     }
 
@@ -310,7 +310,7 @@ fun Resolver.findAnyMsgType(
         findSimilar(to = selectorName, forType = receiverType)
         onCompletionExc(mapOf())
     } else if (GlobalVariables.isLspMode) {
-        // IDK, send find similar as array?
+        // IDK, send find similar to an array?
         val (list, _) = findSimilar(to = selectorName, forType = receiverType)
 
         if (list.count() == 1)

@@ -21,8 +21,8 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     if (branchReturnTypes.isEmpty()) throw Exception("Compiler bug: 0 branches in ControlFlow")
     if (branchReturnTypes.count() == 1) return branchReturnTypes.first()
 
-    // find general root
-    // simplest variant, all the same
+    // find the general root
+    // the simplest variant, all the same
     var currentGeneralRoot:Type? = null
     var resultIsNullabel = false
 

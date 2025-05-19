@@ -14,6 +14,15 @@ import java.io.File
 import java.net.URI
 import java.util.*
 
+import io.github.irgaly.kfswatch.KfsDirectoryWatcher
+import io.github.irgaly.kfswatch.KfsEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import languageServer.readFromJson
+import languageServer.toIdentifierExpr
+
+
 fun Statement.unpackMessage() = if (this is VarDeclaration) {
     val value = this.value
     if (value is MessageSend) {
@@ -39,6 +48,26 @@ fun <T> MutableList<T>.addFirst(element: T) {
 
 //class FoundResult(val statement: Statement, scope: Scope, needBraceWrap: Boolean)
 
+fun LS.readDevDataFromFile(path: String, info: ((String) -> Unit)?) {
+    val fromJson = readFromJson(path)
+
+    fromJson.data.forEach { (fileName, value) ->
+        val file = File(fileName)
+        value.forEach { (lineNum, values) ->
+            values.forEach {
+                val ident = it.toIdentifierExpr(file, lineNum)
+                megaStore.addNew(
+                    s = ident,
+                    scope = mapOf(),
+                    prepend = true
+                )
+            }
+        }
+    }
+}
+
+const val DEV_MODE_FILE_NAME = "devModeData.json"
+
 class LS(val info: ((String) -> Unit)? = null) {
     lateinit var resolver: Resolver
 
@@ -46,7 +75,34 @@ class LS(val info: ((String) -> Unit)? = null) {
     val megaStore: MegaStore = MegaStore(info)
     var pm: PathManager? = null
 
-    //
+    fun runDevModeWatching(scope: CoroutineScope, info: ((String) -> Unit)?) {
+        val pm = pm ?: return
+        val watchDirPath = pm.nivaRootFolder
+        val jsonDevFilePath = watchDirPath / DEV_MODE_FILE_NAME
+        val file = File(jsonDevFilePath)
+        if (!file.exists()) return
+        readDevDataFromFile(jsonDevFilePath, info)
+
+        info?.invoke("11111111111111111 $watchDirPath")
+
+        scope.launch(Dispatchers.IO) {
+
+            val watcher = KfsDirectoryWatcher(this, dispatcher = Dispatchers.IO)
+
+            watcher.add(watchDirPath)
+            info?.invoke("здеся")
+
+            watcher.onEventFlow.collect { event ->
+
+                info?.invoke("2222222222222222222222 ${event.event.name}")
+                if (event.path.endsWith("json") && event.event == KfsEvent.Modify) {
+                    readDevDataFromFile(jsonDevFilePath, info)
+                    info?.invoke("33333333333333333333")
+                }
+            }
+        }
+    }
+
     val nonIncrementalStore = mutableMapOf<String, List<Statement>>() // URI from LSP to AST
 
     var completionFromScope: Scope = emptyMap()

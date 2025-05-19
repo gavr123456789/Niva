@@ -262,14 +262,16 @@ fun GeneratorKt.addStdAndPutInMain(
     ktCode: String,
     mainPkg: Package,
     compilationTarget: CompilationTarget,
-    pathToInfroProject: String
+    pathToInfroProject: String,
+    pathToMainNivaFileFolder: String
 ) =
     buildString {
         appendLine("@file:Suppress(\"NOTHING_TO_INLINE\")")
         append("package ${mainPkg.packageName}\n")
         val code1 =
             ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
-        val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject)
+
+        val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject, pathToMainNivaFileFolder)
         val code3 = addStd(mainCode, compilationTarget)
         append(mainPkg.generateImports(), "\n")
         append(code3, "\n")
@@ -371,6 +373,7 @@ fun GeneratorKt.generateKtProject(
     pathToGradle: String,
     pathToAmper: String,
     pathToMill: String,
+    pathToMainNivaFileFolder: String,
     mainProject: Project,
     topLevelStatements: List<Statement>,
     compilationTarget: CompilationTarget,
@@ -410,7 +413,7 @@ fun GeneratorKt.generateKtProject(
     }
     addImpordsToEachPackage()
 
-    fun generateProj(pathToInfroProj: Path, generateBuildFile: () -> Unit) {
+    fun generateProj(pathToInfroProj: Path, pathToMainNivaFileFolder: String, generateBuildFile: () -> Unit) {
         val pathToDotNivaFolder = pathToInfroProj
         val pathToSrc = File("$pathToDotNivaFolder/src")
         val pathToTests = File("$pathToDotNivaFolder/test")
@@ -419,7 +422,8 @@ fun GeneratorKt.generateKtProject(
         deleteAndRecreateFolder(pathToTests)
         // 2 generate Main.kt
         val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
-        val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject)
+
+        val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject, pathToMainNivaFileFolder)
         createCodeKtFile(pathToSrc, "Main.kt", mainCode)
         // 3 generate every package like folders with code
         generatePackages(pathToInfroProj, notBindPackages.toList(), isTestsRun)
@@ -430,7 +434,8 @@ fun GeneratorKt.generateKtProject(
         // Amper using home/.niva/infroProject to generate code
         BuildSystem.Amper -> {
             val path = File(pathToDotNivaFolder)
-            generateProj(path.toPath()) {
+
+            generateProj(path.toPath(), pathToMainNivaFileFolder) {
                 // 4 regenerate amper
                 regenerateAmper(pathToAmper, compilationTarget)
                 // 4 regenerate amper's gradle
@@ -446,7 +451,7 @@ fun GeneratorKt.generateKtProject(
             generateMillProjectTemplateIfNotExist(pathToInfroProject)
 
             val path = File(pathToDotNivaFolder)
-            generateProj(path.toPath() / "niva") {
+            generateProj(path.toPath() / "niva", pathToMainNivaFileFolder) {
                 // 4 regenerate mill
                 regenerateMill(pathToMill)
             }
