@@ -206,7 +206,7 @@ fun replaceAllGenericsToRealTypeRecursive(
             newResolvedTypeArgs2.add(typeArg)
         }
     }
-    return copyType
+    return copyType.also { it.typeArgumentList = newResolvedTypeArgs2 }
 //    return Type.UserType(
 //        name = copyType.name,
 //        typeArgumentList = newResolvedTypeArgs2,
@@ -217,7 +217,7 @@ fun replaceAllGenericsToRealTypeRecursive(
 //        typeDeclaration = copyType.typeDeclaration,
 //
 //    ).also {
-//        parent = copyType.parent
-//        errors = copyType.errors
+//        it.parent = copyType.parent
+//        it.errors = copyType.errors
 //    }
 }
