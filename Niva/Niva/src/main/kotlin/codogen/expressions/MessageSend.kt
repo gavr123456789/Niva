@@ -407,7 +407,8 @@ fun generateSingleKeyword(
             }
 
             val typeConstructor = receiverType.toKotlinString(true)
-            val newValueAssign = ", ${valueArg.name} = ${valueArg.keywordArg.generateExpression()}"
+            // we don't need comma for 0 or 1 args Person(sas)
+            val newValueAssign = "${if (receiverType.fields.count() > 1) "," else ""} ${valueArg.name} = ${valueArg.keywordArg.generateExpression()}"
 
             // all args except the changing one
             val args = receiverType.fields.asSequence().filter { it.name != valueArg.name }
