@@ -1,8 +1,3 @@
-@debug
-Int sas = [
-    sas = 42
-    sus = sas + 42
-    sus echo
-]
-
-1 sas
+type Person name: String 
+p = Person name: "John"
+j = p name: "Jane"
