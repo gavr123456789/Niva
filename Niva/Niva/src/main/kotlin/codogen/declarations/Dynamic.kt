@@ -9,7 +9,9 @@ import kotlin.collections.forEach
 
 
 fun generateDynamicForUnionRoot(b: StringBuilder, receiverType: Type.UnionRootType) {
-    val typeName = receiverType.name
+    if (receiverType.typeArgumentList.isNotEmpty()) return
+
+    val typeName = receiverType.toKotlinString(true)
     val branches = receiverType.branches
 
     // toDynamic
@@ -17,7 +19,7 @@ fun generateDynamicForUnionRoot(b: StringBuilder, receiverType: Type.UnionRootTy
     b.appendLine("            return when (instance) {")
 
     for (branch in branches) {
-        val branchName = branch.name
+        val branchName = branch.toKotlinString(true)
         b.appendLine("                is $branchName -> $branchName.toDynamic(instance).also { it.value[\"_unionKind\"] = DynamicStr(\"$branchName\") }")
     }
 
@@ -40,7 +42,13 @@ fun generateDynamicForUnionRoot(b: StringBuilder, receiverType: Type.UnionRootTy
 }
 
 fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
+    if (genericFields.isNotEmpty()) return
 
+    // lazy generation, if to\from Dynami never called, do not generate it
+    val x = receiver
+    if (x is Type.UserLike && !x.needGenerateDynamic) {
+        return
+    }
     val checkForCollections = { type: Type.UserLike ->
         when (type.name) {
             "List", "MutableList" -> false
@@ -72,9 +80,8 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
     }
 
     val fields: List<TypeFieldAST> = this.collectFields()
-
     // toDynamic
-    b.appendLine("        fun toDynamic(instance: $typeName): DynamicObj {")
+    b.appendLine("        fun toDynamic (instance: ${receiver!!.toKotlinString(true)}): DynamicObj {")
     b.appendLine("            val map = mutableMapOf<String, Dynamic>()")
     val generateLocalFields = { fields2: List<TypeFieldAST> ->
         fields2.forEach { field ->

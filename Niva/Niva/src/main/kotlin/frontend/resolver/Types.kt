@@ -542,7 +542,9 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false,
-        val typeDeclaration: SomeTypeDeclaration? // for example List doesn't have type decl
+        val typeDeclaration: SomeTypeDeclaration?, // for example List doesn't have type decl
+
+        var needGenerateDynamic: Boolean = false // for backend, need to generate
     ) : Type(name, pkg, isPrivate, protocols) {
 
         val emitName: String

@@ -148,7 +148,7 @@ fun Resolver.resolveMessageDeclaration(
             is MessageDeclarationBinary -> {
                 val arg = statement.arg
                 val argType = arg.typeAST?.toType(typeDB, typeTable)
-                    ?: statement.token.compileError("Cant infer type of argument: `${YEL}${arg.name}${RED}` for binary message declaration `${YEL}${statement.forTypeAst.name} ${CYAN}${statement.name}`")
+                    ?: statement.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `${YEL}${statement.forTypeAst.name} ${CYAN}${statement.name}`")
                 bodyScope[arg.name] = argType
             }
 

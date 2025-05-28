@@ -22,7 +22,6 @@ fun Resolver.resolveKeywordMsg(
     statement: KeywordMsg, previousScope: MutableMap<String, Type>, currentScope: MutableMap<String, Type>
 
 ) {
-
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     // resolve just non-generic types of args
@@ -455,6 +454,11 @@ fun Resolver.resolveKeywordMsg(
                 ) else returnType2
 
             statement.type = addErrorEffect(msgTypeFromDB, returnType, statement)
+
+            // Generate dynamic or not
+            if ((statement.selectorName == "toDynamic" || statement.selectorName == "fromDynamic") && receiverType is Type.UserLike) {
+                receiverType.needGenerateDynamic = true
+            }
         }
 
         KeywordLikeType.ForCodeBlock -> {
@@ -462,6 +466,9 @@ fun Resolver.resolveKeywordMsg(
         }
 
     }
+
+
+
 
 }
 

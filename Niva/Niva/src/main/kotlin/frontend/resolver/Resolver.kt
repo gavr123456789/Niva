@@ -487,6 +487,8 @@ fun Resolver.resolve(
     }
 
     // we need to filter this things, only ifcurrent level is 0
+    // Yesterday, I go to the store and buy some milk
+
     topLevelStatements = topLevelStatements.filter {
         !(it is MessageSendKeyword && (it.receiver.str == "Project" || it.receiver.str == "Bind" || it.receiver.str == "Compiler"))
     }.toMutableList()
@@ -765,9 +767,8 @@ fun Resolver.addNewType(
     val typeName = if (alias) (statement as TypeAliasDeclaration).typeName else type.name
     if (!alreadyCheckedOnUnique) {
         if (typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
-            val err =
-                "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
-            statement?.token?.compileError(err) ?: throw Exception(err)
+            val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
+            statement?.token?.compileError(err)
         }
         // check for internal types
         if (typeDB.internalTypes.keys.contains(typeName)) {
@@ -865,7 +866,7 @@ fun Resolver.changePackage(
         )
 
         currentProject.packages[newCurrentPackage] = pack
-        // top level statements and default definitions located in different pkgs
+        // top level statements and default definitions located in different pkgs,
         // so to add access from top level statements(mainNiva) to this definitions
         // we need to always import it
         if (isMainFile) {
@@ -963,7 +964,7 @@ fun Resolver.getTypeForIdentifier(
     val typeFromDB = getAnyType(x.names.first(), currentScope, previousScope, kw, x.token)
         ?: getAnyType(
             x.name, currentScope, previousScope, kw, x.token
-        ) ?: if (x.name.isGeneric()) Type.UnknownGenericType(x.name) else null
+        ) ?: (if (x.name.isGeneric()) Type.UnknownGenericType(x.name) else null)
             ?: if (!GlobalVariables.isLspMode)
                 x.token.compileError("Unresolved reference: ${WHITE}${x.str}")
             else {
@@ -1151,7 +1152,7 @@ class Resolver(
 
     val projects: MutableMap<String, Project> = mutableMapOf(),
 
-    // reload when package changed
+    // reload when the package changed
     val typeTable: MutableMap<TypeName, Type> = mutableMapOf(),
     val typeDB: TypeDB = TypeDB(),
 
@@ -1167,7 +1168,7 @@ class Resolver(
 
     // for recursive types
     val unResolvedMessageDeclarations: PkgToUnresolvedDecl<MessageDeclaration> = mutableMapOf(),
-    val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<Pair<String, MessageDeclaration>> = mutableMapOf(), // String in pair is protocol
+    val unResolvedSingleExprMessageDeclarations: PkgToUnresolvedDecl<Pair<String, MessageDeclaration>> = mutableMapOf(), // String in a pair is protocol
     val unResolvedTypeDeclarations: PkgToUnresolvedDecl<SomeTypeDeclaration> = mutableMapOf(),
     val unresolvedDocComments: MutableSet<IdentifierExpr> = mutableSetOf(),
     var allDeclarationResolvedAlready: Boolean = false,
