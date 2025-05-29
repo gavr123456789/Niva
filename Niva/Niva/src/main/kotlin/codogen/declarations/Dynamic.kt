@@ -9,7 +9,13 @@ import kotlin.collections.forEach
 
 
 fun generateDynamicForUnionRoot(b: StringBuilder, receiverType: Type.UnionRootType) {
+    // cant make T.fromDynamic() call
     if (receiverType.typeArgumentList.isNotEmpty()) return
+    // lazy generation
+    val x = receiverType
+    if (!x.needGenerateDynamic) {
+        return
+    }
 
     val typeName = receiverType.toKotlinString(true)
     val branches = receiverType.branches

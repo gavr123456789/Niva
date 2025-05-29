@@ -4,6 +4,7 @@ import frontend.parser.parsing.MessageDeclarationType
 import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.frontend.resolver.findAnyMethod
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
 import main.utils.CYAN
@@ -410,6 +411,16 @@ fun Resolver.resolveMessageDeclaration(
     val currentReturnType = statement.returnType
     // addToDb
     if (addToDb) {
+        // check that message is unique for type
+        val declType = statement.getDeclType()
+        if (statement !is ConstructorDeclaration) {
+            findAnyMethod(typeFromDB, statement.name, Package(typeFromDB.pkg), declType, false)?.let {
+                if (it.declaration?.getDeclType() == declType) {
+                    statement.token.compileError("Method ${it.name} for type $typeFromDB already exists in pkg: ${it.pkg} in file: ${it.declaration.token.file} on line ${it.declaration.token.line}")
+                }
+            }
+        }
+
         try {
             val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
             val errors = statement.returnType?.errors
