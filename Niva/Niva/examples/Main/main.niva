@@ -1,3 +1,8 @@
-type Person name: String 
-p = Person name: "John"
-j = p name: "Jane"
+type Person name: String
+Person sas = 1
+
+
+type TO
+
+constructor TO DO = Error throwWithMessage: "Not implemented!" |> orPANIC
+//constructor TO DO::String = Error throwWithMessage: DO |> orPANIC
