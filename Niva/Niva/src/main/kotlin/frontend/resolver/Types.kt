@@ -374,7 +374,7 @@ sealed class Type(
             "$needPkg$name$genericParam${possibleErrors()}"
         }
 
-        is Lambda -> name
+        is Lambda -> "[${args.joinToString(", ") { it.type.toString() }} -> ${returnType}]"//name
     }
 
     fun toKotlinString(needPkgName: Boolean): String = when (this) {
@@ -512,13 +512,13 @@ sealed class Type(
 
     class Lambda(
         val args: MutableList<KeywordArg>,
-        val returnType: Type,
+        var returnType: Type,
         pkg: String = "common",
         isPrivate: Boolean = false,
         var specialFlagForLambdaWithDestruct: Boolean = false,
         val extensionOfType: Type? = null,
         var alias: String? = null
-    ) : Type("[${args.joinToString(", ") { it.type.toString() }} -> ${returnType}]", pkg, isPrivate)
+    ) : Type("[${args.joinToString(", ") { it.type.toString() }} -> $returnType]", pkg, isPrivate)
 
 //    sealed class InternalLike(
 //        typeName: InternalTypes,

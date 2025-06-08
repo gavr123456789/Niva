@@ -15,11 +15,12 @@ import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnaryMsgKind
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
+import kotlin.Pair
 
 fun Resolver.resolveUnaryMsg(
     statement: UnaryMsg,
     previousAndCurrentScope: MutableMap<String, Type>,
-): Type {
+): Pair<Type, MessageMetadata?> {
     // if a type already has a field with the same name, then this is getter, not unary send
     val receiver = statement.receiver
 
@@ -44,14 +45,14 @@ fun Resolver.resolveUnaryMsg(
         if (statement.selectorName != "do") {
             // try to find such message for type, maybe its aliased
             if (receiverType.alias != null) {
-                return resolveUnaryAliasLambda(statement, receiverType, receiver.token)
+                return Pair(resolveUnaryAliasLambda(statement, receiverType, receiver.token), null)
             }
             // try to find same signature in the lambdaTypes
             val w = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType, statement.token) }
             if (w != null) {
                 statement.type = w
                 statement.kind = UnaryMsgKind.Unary
-                return w
+                return Pair(w, null)
             }
 
             if (receiverType.args.isNotEmpty())
@@ -65,7 +66,7 @@ fun Resolver.resolveUnaryMsg(
 
         statement.type = receiverType.returnType
         statement.kind = UnaryMsgKind.ForCodeBlock
-        return receiverType.returnType
+        return Pair(receiverType.returnType, null)
     }
 
 
@@ -81,7 +82,7 @@ fun Resolver.resolveUnaryMsg(
         statement.kind = UnaryMsgKind.Getter
         val result = field!!.type
         statement.type = result
-        return result
+        return Pair(result, null)
     }
     // usual message or static message
 
@@ -168,7 +169,7 @@ fun Resolver.resolveUnaryMsg(
 
     val typeForStatement = resolveReturnTypeIfGeneric(returnTypeFromDb, mutableMapOf(), letterToTypeFromReceiver)
 
-    val result = addErrorEffect(msgFromDb, typeForStatement, statement)
+    val result = typeForStatement
     statement.type = result
 
     // Compiler
@@ -178,5 +179,5 @@ fun Resolver.resolveUnaryMsg(
         }
     }
 
-    return result
+    return Pair(result, msgFromDb)
 }

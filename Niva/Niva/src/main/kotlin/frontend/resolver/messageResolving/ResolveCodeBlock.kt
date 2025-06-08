@@ -221,7 +221,12 @@ fun Resolver.resolveCodeBlock(
         pkg = currentPackageName
     )
 
-    statement.type = type
+    // if there were any errors, change return type of the lambda
+    statement.type = if (statement.errors.isNotEmpty()) {
+        type.returnType = type.returnType.copyAndAddErrors(statement.errors)
+        type
+    } else
+        type
 
 
     // add whileTrue argument of lambda type
@@ -246,6 +251,7 @@ fun Resolver.resolveCodeBlock(
     }
 
     // if we are resolving codeblock with error as first arg, then its error
+    // that's for error matching
     if (type.args.isNotEmpty()) {
         val firstArg = type.args.first().type
         if (firstArg is Type.UnionRootType && firstArg.isError) {

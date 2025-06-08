@@ -398,8 +398,7 @@ fun Parser.expression(
                         CodeBlock(
                             inputList = emptyList(),
                             statements = listOf(singleExpr),
-                            type = null,
-                            token = singleExpr.token
+                            token = singleExpr.token,
                         )
                     } else {
                         codeBlock!!

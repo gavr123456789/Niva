@@ -1,8 +1,10 @@
-type Person name: String
-Person sas = 1
 
-
-type TO
-
-constructor TO DO = Error throwWithMessage: "Not implemented!" |> orPANIC
-//constructor TO DO::String = Error throwWithMessage: DO |> orPANIC
+Int sas -> Int = [
+    x = [
+        Error throwWithMessage: "sas"
+        24
+    ]
+//    x do
+    ^ 42
+]
+1 sas echo

@@ -107,16 +107,16 @@ private fun Resolver.resolveStatement(
         }
 
         is VarDeclaration -> {
-            stack.push(statement)
+//            stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
             if (GlobalVariables.isLspMode) {
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
             }
-            stack.pop()
+//            stack.pop()
         }
 
         is DestructingAssign -> {
-            stack.push(statement)
+//            stack.push(statement)
             currentLevel++
             resolveDestruction(statement, currentScope, previousScope)
             currentLevel--
@@ -126,7 +126,7 @@ private fun Resolver.resolveStatement(
             }
 
             addToTopLevelStatements(statement)
-            stack.pop()
+//            stack.pop()
         }
 
         is StaticBuilder -> {

@@ -44,7 +44,7 @@ fun Resolver.resolveStaticBuilder(
     statement: StaticBuilder,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>
-) {
+): Pair<Type, MessageMetadata?> {
     stack.push(statement)
     currentLevel++
     val previousAndCurrentScope = (currentScope + previousScope).toMutableMap()
@@ -57,7 +57,7 @@ fun Resolver.resolveStaticBuilder(
 
     // find in DB
     val pkg = getCurrentPackage(statement.token)
-    val builderFromDB = if (statement.receiverOfBuilder == null) {
+    val msgFromDb = if (statement.receiverOfBuilder == null) {
         val currentProject = projects[currentProjectName]!!
 
         findBuilderInManyPkg(currentProject.packages.values.toList(), statement.name, statement.token)
@@ -71,23 +71,23 @@ fun Resolver.resolveStaticBuilder(
         proto.builders[statement.name]!!
     }
 
-    pkg.addImport(builderFromDB.pkg)
+    pkg.addImport(msgFromDb.pkg)
 
-    statement.declaration = builderFromDB.declaration
-    statement.msgMetaData = builderFromDB
-    statement.type = builderFromDB.returnType
+    statement.declaration = msgFromDb.declaration
+    statement.msgMetaData = msgFromDb
+    statement.type = msgFromDb.returnType
 
 
     // default action
-    val defaultAction = builderFromDB.defaultAction
+    val defaultAction = msgFromDb.defaultAction
     if (defaultAction != null) {
         statement.defaultAction = defaultAction
     }
     // add this
     // there are always some this inside builder
-    previousAndCurrentScope["this"] = builderFromDB.forType
+    previousAndCurrentScope["this"] = msgFromDb.forType
     // add args of receiver
-    val receiverType = builderFromDB.forType
+    val receiverType = msgFromDb.forType
     if (receiverType is Type.UserLike && receiverType.fields.isNotEmpty()) {
         receiverType.fields.forEach {
             previousAndCurrentScope[it.name] = it.type
@@ -100,8 +100,8 @@ fun Resolver.resolveStaticBuilder(
     statement.collectExpressionsForDefaultAction()
 
     // check the args, because builder always have keyword msg, but it can be unary msg actually
-    if (builderFromDB.argTypes.count() != statement.args.count()) {
-        statement.token.compileError("You calling builder $statement with ${statement.args.count()} args, but it have ${builderFromDB.argTypes.count()} args at the declaration")
+    if (msgFromDb.argTypes.count() != statement.args.count()) {
+        statement.token.compileError("You calling builder $statement with ${statement.args.count()} args, but it have ${msgFromDb.argTypes.count()} args at the declaration")
     }
     // resolve arguments
     resolveKwArgs(
@@ -109,7 +109,7 @@ fun Resolver.resolveStaticBuilder(
         statement.args,
         previousAndCurrentScope,
         false,
-        builderFromDB.argTypes.map { it.type }
+        msgFromDb.argTypes.map { it.type }
     )
 
 
@@ -117,4 +117,6 @@ fun Resolver.resolveStaticBuilder(
     currentLevel--
     addToTopLevelStatements(statement)
     stack.pop()
+
+    return Pair(msgFromDb.returnType, msgFromDb)
 }
