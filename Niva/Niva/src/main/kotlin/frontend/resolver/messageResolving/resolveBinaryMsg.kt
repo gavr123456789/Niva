@@ -13,7 +13,7 @@ import main.utils.YEL
 fun Resolver.resolveBinaryMsg(
     statement: BinaryMsg,
     previousAndCurrentScope: MutableMap<String, Type>,
-) {
+): Pair<Type, MessageMetadata?> {
     val receiver = statement.receiver
 
     if (receiver.type == null) {
@@ -70,5 +70,6 @@ fun Resolver.resolveBinaryMsg(
     statement.type = msgFromDb.returnType
     statement.pragmas = msgFromDb.pragmas
 
-    addErrorEffect(msgFromDb, msgFromDb.returnType, statement)
+//    addErrorEffect(msgFromDb, msgFromDb.returnType, statement)
+    return Pair(msgFromDb.returnType, msgFromDb)
 }

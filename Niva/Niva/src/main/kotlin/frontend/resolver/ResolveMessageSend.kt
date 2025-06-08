@@ -5,6 +5,7 @@ package frontend.resolver
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.frontend.resolver.messageResolving.addErrorEffect
 import main.frontend.resolver.messageResolving.resolveBinaryMsg
 import main.frontend.resolver.messageResolving.resolveKeywordMsg
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
@@ -157,14 +158,15 @@ fun Resolver.resolveMessage(
 ) {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
-    when (statement) {
-        is KeywordMsg -> {
-            resolveKeywordMsg(statement, previousScope, currentScope)
-        }
+    val (returnType, msgFromDb) = when (statement) {
+        is KeywordMsg -> resolveKeywordMsg(statement, previousScope, currentScope)
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
+//    if (msgFromDb != null) {
+        statement.type = addErrorEffect(msgFromDb, returnType, statement)
+//    }
 
     if (GlobalVariables.isLspMode) {
         onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // message

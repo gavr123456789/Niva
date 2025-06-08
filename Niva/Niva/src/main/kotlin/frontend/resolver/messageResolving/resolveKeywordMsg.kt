@@ -21,7 +21,7 @@ import kotlin.collections.mutableMapOf
 fun Resolver.resolveKeywordMsg(
     statement: KeywordMsg, previousScope: MutableMap<String, Type>, currentScope: MutableMap<String, Type>
 
-) {
+): Pair<Type, MessageMetadata?> {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     // resolve just non-generic types of args
@@ -280,9 +280,10 @@ fun Resolver.resolveKeywordMsg(
         }
 
         // if this is a message for lambda then type of statement is return type of that message
-        statement.type = if (kw != null) kw.returnType else receiverType.returnType
+        val result = kw?.returnType ?: receiverType.returnType
+        statement.type = result
         statement.kind = KeywordLikeType.ForCodeBlock
-        return
+        return Pair(result, kwFromDB!!)
     }
 
     val receiverGenericsTable = mutableMapOf<String, Type>()
@@ -337,7 +338,7 @@ fun Resolver.resolveKeywordMsg(
 
         KeywordLikeType.Constructor -> {
 
-            statement.type = if (receiverType is Type.UserLike) {
+            val result = if (receiverType is Type.UserLike) {
                 // collect all fields from parents
                 val listOfAllParentsFields = mutableListOf<KeywordArg>()
                 var parent = receiverType.parent
@@ -373,6 +374,8 @@ fun Resolver.resolveKeywordMsg(
                 resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
             } else receiverType
+            statement.type = result
+            return Pair(result, kwFromDB)
         }
 
         KeywordLikeType.Setter -> {
@@ -384,8 +387,10 @@ fun Resolver.resolveKeywordMsg(
                 if (!compare2Types(argFromDb, arg.keywordArg.type!!, statement.token)) {
                     statement.token.compileError("In the setter $WHITE'${statement.receiver} $statement' $YEL$argFromDb$RESET expected but got $YEL${arg.keywordArg.type}")
                 }
-                statement.type = Resolver.defaultTypes[InternalTypes.Unit]
-            }
+                val result = Resolver.defaultTypes[InternalTypes.Unit]!!
+                statement.type = result
+                return Pair(result, kwFromDB)
+            } else return Pair(statement.type!!, kwFromDB)
         }
 
         KeywordLikeType.SetterImmutableCopy -> {
@@ -417,11 +422,12 @@ fun Resolver.resolveKeywordMsg(
                     else -> printIfNoLSP(errorText)
                 }
             } else printIfNoLSP(errorText)
+            return Pair(statement.type!!, kwFromDB)
         }
 
         // Custom constructor has no difference from Keyword message
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
-            if (statement.type != null) return
+            if (statement.type != null) return Pair(statement.type!!, kwFromDB)
 
             val msgTypeFromDB = foundCustomConstructorDb ?: findAnyMsgType(
                 receiverType, statement.selectorName, statement.token, MessageDeclarationType.Keyword
@@ -453,12 +459,13 @@ fun Resolver.resolveKeywordMsg(
                     realType = returnType2
                 ) else returnType2
 
-            statement.type = addErrorEffect(msgTypeFromDB, returnType, statement)
+            statement.type = returnType//= addErrorEffect(msgTypeFromDB, returnType, statement)
 
             // Generate dynamic or not
             if ((statement.selectorName == "toDynamic" || statement.selectorName == "fromDynamic") && receiverType is Type.UserLike) {
                 receiverType.needGenerateDynamic = true
             }
+            return Pair(statement.type!!, kwFromDB)
         }
 
         KeywordLikeType.ForCodeBlock -> {
@@ -466,9 +473,6 @@ fun Resolver.resolveKeywordMsg(
         }
 
     }
-
-
-
 
 }
 

@@ -32,7 +32,7 @@ fun Parser.ifBranches(): List<IfBranch> {
             } else {
                 IfBranch.IfBranchWithBody(
                     ifExpression = ifExpression,
-                    body = CodeBlock(emptyList(), body, token = ifExpression.token),
+                    body = CodeBlock(emptyList(), body, token = ifExpression.token,),
                     otherIfExpressions = otherIfExpressions
                 )
             }

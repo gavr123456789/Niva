@@ -12,7 +12,8 @@ class CodeBlock(
     var isSingle: Boolean = false,
     type: Type? = null,
     token: Token,
-    var isStatement: Boolean = false // means it's not lambda, just block like for if
+    var isStatement: Boolean = false, // means it's not lambda, just block like for if
+    var errors: Set<Type.Union> = emptySet(),
 ) : Receiver(type, token) {
     override fun toString(): String {
         val generateParams = {

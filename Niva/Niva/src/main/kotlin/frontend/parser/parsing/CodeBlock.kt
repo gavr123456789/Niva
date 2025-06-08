@@ -90,8 +90,7 @@ fun Parser.codeBlock(): CodeBlock {
     val result = CodeBlock(
         inputList = beforeStatementsPart,
         statements = statements,
-        type = null,
-        token = openBracket
+        token = openBracket,
     )
 
     return result
