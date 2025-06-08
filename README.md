@@ -19,22 +19,6 @@
 
 Niva is a simple language that takes a lot of inspiration from Smalltalk.
 But leaning towards the functional side and static types. Everything is still an object, but instead of classes, interfaces, inheritance, and abstract classes, we have tagged unions, which is the only way to achieve polymorphism.
-If you are not familiar with Smalltalk, its like lisp - everything is an expression(ifs, cicles etc) but not S-expressions, a different one without parentheses.
-
-For example, everything except the declaration is sending messages to objects(receivers).
-`1 + 2` is not a `+` operator, but a `+ Int` message for `Int` receiver. (there are no extra costs for that)
-
-Java-like: `1.inc().echo()`
-C-like: `echo(inc(1))`
-Lisp: `(echo (inc 1))`
-Niva: `1 inc echo`
-
-with args:
-Swift\Kotlin:
-`person fooBar(foo = 1, bar = 2)`
-Niva:
-`person foo: 1 bar: 2`
-Names of the args and method signature are the same thing.
 
 In essence, niva is highly minimalistic, since its ancestor is Smalltalk.
 It introduces types, unions, and associated methods. Yes there are no functions.
@@ -51,6 +35,73 @@ but in niva there are 3 types of expressions:
 42 factorial // unary - 1 args(receiver)
 "foo-bar" split: "-" // keywoard - n args
 ```
+
+<details>
+    <summary>Backend</summary>
+
+Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich. A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
+</details>
+
+<details>
+    <summary>About syntax</summary>
+
+If you are not familiar with Smalltalk, its like lisp - everything is an expression(ifs, cicles etc) but not S-expressions, a different one without parentheses.
+
+For example, everything except the declaration is sending messages to objects(receivers).
+`1 + 2` is not a `+` operator, but a `+ Int` message for `Int` receiver.
+
+Java-like: `1.inc().echo()`
+C-like: `echo(inc(1))`
+Lisp: `(echo (inc 1))`
+Niva: `1 inc echo`
+
+with args:
+Swift\Kotlin:
+`person fooBar(foo = 1, bar = 2)`
+Niva:
+`person foo: 1 bar: 2`
+So names of the args and method signature are the same thing.
+
+```Scala
+// declare type with 2 fields
+type Person name: String age: Int
+person = Person name: "Alice" age: 24 // instantiate
+
+person name echo // get name and print it
+personWithNewName = person name: "new name"
+
+// unary method declaration
+Person hi = "Hi! my name is $name" echo
+person hi // unary call
+
+// method with args
+Person foo::Int bar::Int = [
+  age + foo + bar, echo // same as
+  (age + foo + bar) echo
+]
+person foo: 1 bar: 2 // 27 printed
+
+union Shape =
+| Rectangle width: Int height: Int
+| Circle    radius: Int
+
+constructor Float PI = 3.14
+Float PI // constructor call
+
+// fields can be placed on new lines
+type Point
+  x: Int
+  y: Int
+
+constructor Point new = Point
+  x: 0
+  y: 0
+
+p = Point new
+
+```
+
+</details>
 
 ## Code Examples
 
@@ -85,16 +136,18 @@ p greet echo
 <summary><b>Some Strings methods</b></summary>
 
 ```Scala
+// unary
 "foo-bar" count
 "drawer" reversed
 "BAOBAB" lowercase
-
+// binary
 "ee" == "ee"
 "foo" + "bar"
-
+// keyword
 "foo-bar" split: "-"
 "abcdef" forEach: [char -> char echo]
-"baobab" filter: [it == 'b']
+"baobab" filter: [it == 'b'] // it - implicit param
+"foo-bar-baz" replace: "-" with: " "
 "chocolate" contains: "late"
 ```
 [String STD](https://gavr123456789.github.io/niva-site/stringtype.html)
@@ -192,6 +245,7 @@ result = add2nums a: 21 b: 21 // 42
 - JVM\Kotlin compatibility, easy lib [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
 - Easy serialize any obj via Dynamic type, no Docs yet, but its like json for JS or EDN for Clojure
 - Docgen and unit tests included
+- Smalltalk syntax is great for creating DSLs without any complicated macros or AST manipulations: `1d/12m/2028y`, in Java-like: `(1.d()) / (12.m()) / (2028.y())`
 
 ## Project examples
 - [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer + parser)
@@ -228,19 +282,65 @@ Other commands:
 `niva info > info.md` to output all types and their methods
 `niva --help` for more
 
-### Method declaration
+### Project with 2 files
+Try to create new file and put the foo:bar: method in it:
+```Scala
+//foobar.niva
+type FooBar
+FooBar foo::Int bar::Int = [
+  foo echo
+  bar echo
+  ^ foo + bar
+]
+```
+in main.niva
+```Scala
+// to create type without fields send `new`
+fb = FooBar new
+result = fb foo: 19 bar: 23
+result echo
+```
+now lets rewrite it into single expr, just for fun
 
 ```Scala
-// Method with name `sas` for type `Int`
-Int sas = 42
+FooBar new foo: 19 bar: 23, echo
+````
+What that comma means?
+In niva there is only one precedence order: unary > binary > keyword
+Here a complicated (scary) example:
+```Scala
+1 inc inc > 2 dec dec // 3 > 0 -> true
+// adding keyword call
+1 inc inc > 2 dec dec or: 3 dec < 4 inc
 
-1 sas echo
-```
-This is same as `echo(sas(1))` in C syntax or `1.sas().echo()` in Java-like.
-You may notice some consistency between the declaration and the method call.
-```
-Type signature = expr
-obj signature
+// lets apply () to see the order more clearly
+((1 inc inc) > (2 dec dec)) or: ((3 dec) < (4 inc))
+
+// another example
+1 inc inc > 2 dec dec ifTrue: ["yay!!!" echo]
+((1 inc inc) > (2 dec dec)) ifTrue: ["yay!!!" echo]
+
+
+// but what if we want to send some unary message to result of a keyword
+"foo-bar-baz" replace: "-" with: " " echo
+// Here we made a mistake, echo will be sent to " ", not to result of `replace:with:`
+// to fix that we can wrap the whole thing:
+("foo-bar-baz" replace: "-" with: " ") echo
+// or just put a comma
+"foo-bar-baz" replace: "-" with: " ", echo
+
+// same situation when we want to chain many keyword messages
+"aabbcc"
+  replace: "a" with: "d",
+  replace: "b" with: "e",
+  replace: "d" with: "f"
+
+// list chain
+1..10,
+  toList
+  filter: [it % 2 == 0],
+  map: [it toString + "!"],
+  forEach: [it echo]
 ```
 
 ### Method with body
@@ -266,14 +366,14 @@ Person greet
 
 
 
-## Simple compile time reflection
+### Simple compile time reflection
 
 ```Scala
 Assert
 TODO
 ```
 
-## Test included
+### Test included
 Create a message for Test type anywhere to create test.
 Here you can find some lexer tests examples of NIN impl.
 https://github.com/gavr123456789/Niva/blob/main/Niva/NivaInNiva/front/lexer/lexTest.niva#L27
@@ -290,8 +390,7 @@ Boolean assert =
 ```
 `niva test` outputs: `main > arithmetic ✅`
 
-----
-## Union
+### Union
 https://gavr123456789.github.io/niva-site/unions.html
 
 ```Scala
@@ -317,7 +416,7 @@ Shape getArea -> Double = | this
 // ERROR: Not all possible variants have been checked (Circle)
 ```
 
-## Bind Java std and read the file
+### Bind Java std and read the file
 Create `io.simple.bind.niva` in the same folder
 ```Scala
 // very simple text read write
@@ -335,3 +434,9 @@ Bind package: "java.io" content: [
 File path: "main.niva", readText
 File path: "newFile.txt", writeText: "Hello from niva!"
 ```
+
+# Name
+So far I've chosen niva because my 2 favorite static languages are nim and vala.
+
+# Backend
+Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich. A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
