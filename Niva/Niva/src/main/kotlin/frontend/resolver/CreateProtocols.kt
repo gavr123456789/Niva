@@ -231,7 +231,6 @@ fun createStringProtocols(
             createUnary("trimIndent", stringType, "Detects a common minimal indent of all the input lines, removes it from every line"),
             createUnary("isBlank", boolType, "true if this char sequence is empty or consists solely of whitespace characters"),
             createUnary("isEmpty", boolType, "Only the \"\" is true"),
-            createUnary("isAlphaNumeric", boolType, "True if its only digits and characters like \"abc123\""),
             createUnary("isNotBlank", boolType, "Opposite to isBlank"),
             createUnary("isNotEmpty", boolType, "Opposite to isEmpty"),
             createUnary("toInt", intType),
