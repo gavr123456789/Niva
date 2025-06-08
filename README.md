@@ -18,13 +18,33 @@
 </p>
 
 Niva is a simple language that takes a lot of inspiration from Smalltalk.
-But leaning towards the functional side and static typed. Everything is still an object, but instead of classes, interfaces, inheritance, and abstract classes, we have tagged unions, which is the only way to achieve polymorphism.
+But leaning towards the functional side and static types. Everything is still an object, but instead of classes, interfaces, inheritance, and abstract classes, we have tagged unions, which is the only way to achieve polymorphism.
 If you are not familiar with Smalltalk, its like lisp - everything is an expression(ifs, cicles etc) but not S-expressions, a different one without parentheses.
-  
 
-Everything in niva is a message for some receiver  
-kinda like eveything is an S-Expression in Lisp `(+ 1 2)`  
-but in niva there are 3 types of expressions:  
+For example, everything except the declaration is sending messages to objects(receivers).
+`1 + 2` is not a `+` operator, but a `+ Int` message for `Int` receiver. (there are no extra costs for that)
+
+Java-like: `1.inc().echo()`
+C-like: `echo(inc(1))`
+Lisp: `(echo (inc 1))`
+Niva: `1 inc echo`
+
+with args:
+Swift\Kotlin:
+`person fooBar(foo = 1, bar = 2)`
+Niva:
+`person foo: 1 bar: 2`
+Names of the args and method signature are the same thing.
+
+In essence, niva is highly minimalistic, since its ancestor is Smalltalk.
+It introduces types, unions, and associated methods. Yes there are no functions.
+
+On an imaginary complexity graph I would place the field here:
+Go < Niva < Java < Kotlin < Scala
+
+Everything in niva is a message for some receiver
+kinda like eveything is an S-Expression in Lisp `(+ 1 2)`
+but in niva there are 3 types of expressions:
 
 ```Scala
 1 + 2 // binary - 2 args
@@ -46,11 +66,11 @@ but in niva there are 3 types of expressions:
 <summary><b>Methods</b></summary>
 
 ```Scala
-type Person 
+type Person
   name: String
   age: Int
 
-Person greet = "Hello, my name is " + name  
+Person greet = "Hello, my name is " + name
 
 // create person obj
 p = Person name: "Alice" age: 24
@@ -119,11 +139,11 @@ Int fib -> Int = |this
 </details>
 
 
-<details> 
-  <summary><b>Bottles of beer</b></summary>  
+<details>
+  <summary><b>Bottles of beer</b></summary>
 
 ```Scala
-Int bottles = | this 
+Int bottles = | this
 | 0 => "no more bottles"
 | 1 => "1 bottle"
 |=> "$this bottles"
@@ -139,10 +159,59 @@ onTheWall = " of beer on the wall, "
 </details>
 
 
+<details>
+  <summary><b>Code blocks</b></summary>
+
+```Scala
+// A code block is a collection of statements that returns last expr
+[
+  x = 1
+  y = 2
+  x + y
+]
+// to run block send `do` message
+x = [1 + 2]
+x do echo // 3
+
+[x * 2] // capture
+
+// to run block with args send their names
+add2nums = [a::Int, b::Int -> a + b]
+result = add2nums a: 21 b: 21 // 42
+```
+</details>
+
+## Features
+- Simple expression based syntax inspired by Smalltalk
+- No imports until full type name + fields clash. Since every modern IDE adds imports for you I decided to make the same on the compiler level
+- Smalltalk like hierarchy: projects -> packages -> protocols -> methods
+- Simple semantics - the whole lang is essentially types(type\enum\union) and methods for them.
+- IDE support - LSP with plugins for [VSC](https://github.com/gavr123456789/niva-vscode-bundle) and [Zed](https://github.com/gavr123456789/zed-niva) (check some demos [here](https://github.com/gavr123456789/niva-vscode-bundle?tab=readme-ov-file#features-include))
+- No NPE, nullability works the same as in Kotlin\Swift\TS
+- Errors are between values and exceptions(Nim\Roc-like effects), all possible errors of the scope is union that can be exhaustively matched. [Error docs](https://gavr123456789.github.io/niva-site/error-handling.html)
+- JVM\Kotlin compatibility, easy lib [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
+- Easy serialize any obj via Dynamic type, no Docs yet, but its like json for JS or EDN for Clojure
+- Docgen and unit tests included
+
+## Project examples
+- [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer + parser)
+- [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
+- [tons of small stupid things](https://github.com/gavr123456789/bazar/tree/main/Examples)
+
+## Learn
+- [main site](https://gavr123456789.github.io/niva-site/reference.html)
+- [learn x in y minutes](https://learnxinyminutes.com/niva/)
+
 ## Install
-`cd Niva/Niva`  
-`./gradlew buildJvmNiva` (takes one min)  
-More in [Installation](./INSTALL.md)  
+
+```
+git clone https://github.com/gavr123456789/Niva.git
+cd Niva/Niva
+./gradlew buildJvmNiva # takes one min for the first time :(
+# LSP here https://github.com/gavr123456789/niva-vscode-bundle
+```
+
+More in [Installation](./INSTALL.md)
 
 ## First program
 ```Scala
@@ -152,12 +221,12 @@ More in [Installation](./INSTALL.md)
 `niva run`
 Default entry point is always `main.niva` file.
 
-Other commands:  
-`niva filename.niva` to run file  
-`niva run` to run all files in the folder recursivelly starting from main.niva  
-`niva build` to output jar\binary file  
-`niva info > info.md` to output all types and their methods  
-`niva --help` for more  
+Other commands:
+`niva filename.niva` to run file
+`niva run` to run all files in the folder recursivelly starting from main.niva
+`niva build` to output jar\binary file
+`niva info > info.md` to output all types and their methods
+`niva --help` for more
 
 ### Method declaration
 
@@ -167,7 +236,7 @@ Int sas = 42
 
 1 sas echo
 ```
-This is same as `echo(sas(1))` in C syntax or `1.sas().echo()` in Java-like.  
+This is same as `echo(sas(1))` in C syntax or `1.sas().echo()` in Java-like.
 You may notice some consistency between the declaration and the method call.
 ```
 Type signature = expr
@@ -185,7 +254,15 @@ Int add4 = [
 1 add4 echo
 ```
 
+### Method with args(keyword)
 
+```Scala
+type Person name: String
+p = Person name: "Alice"
+// the constructor call is a keyword message for the type itself
+
+Person greet
+```
 
 
 
@@ -197,22 +274,25 @@ TODO
 ```
 
 ## Test included
-Create a message for Test type anywhere to create test.  
-Here you can find some lexer tests examples of NIN impl. 
-https://github.com/gavr123456789/Niva/blob/main/Niva/NivaInNiva/front/lexer/lexTest.niva#L27  
+Create a message for Test type anywhere to create test.
+Here you can find some lexer tests examples of NIN impl.
+https://github.com/gavr123456789/Niva/blob/main/Niva/NivaInNiva/front/lexer/lexTest.niva#L27
 
 ```Scala
-Test simple = [
+Test arithmetic = [
   actual = 2 + 2
   expected = 4
-  actual != expected ifTrue: [
-
-  ]
+  (actual == expected) assert
 ]
+// very simple assert implementation
+Boolean assert =
+  this == false ifTrue: [Error throwWithMessage: "assert failed", orPANIC]
 ```
+`niva test` outputs: `main > arithmetic ✅`
 
 ----
 ## Union
+https://gavr123456789.github.io/niva-site/unions.html
 
 ```Scala
 // branches can have fields
@@ -237,7 +317,7 @@ Shape getArea -> Double = | this
 // ERROR: Not all possible variants have been checked (Circle)
 ```
 
-## Read file
+## Bind Java std and read the file
 Create `io.simple.bind.niva` in the same folder
 ```Scala
 // very simple text read write
@@ -252,7 +332,6 @@ Bind package: "java.io" content: [
 `main.niva`
 ```Scala
 // read all text from the file to String
-File path: "main.niva" |> readText
-// write text to file, if this file exists, it becomes overwritten
-File path: "newFile.txt" |> writeText
+File path: "main.niva", readText
+File path: "newFile.txt", writeText: "Hello from niva!"
 ```
