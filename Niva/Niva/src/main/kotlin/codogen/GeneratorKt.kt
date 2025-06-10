@@ -183,17 +183,6 @@ fun GeneratorKt.regenerateGradleForAmper(
     gradleFile.writeText(newGradle)
 }
 
-//@Suppress("unused")
-//fun GeneratorKt.regenerateGradleOld(pathToGradle: String) {
-//    val implementations = dependencies.joinToString("\n") {
-//        "implementation($it)"
-//    }
-//    val newGradle = GeneratorKt.GRADLE_TEMPLATE.replace(GeneratorKt.DEPENDENCIES_TEMPLATE, implementations)
-//
-//    val gradleFile = File(pathToGradle)
-//    gradleFile.writeText(newGradle)
-//}
-
 fun GeneratorKt.regenerateMill(pathToMill: String) {
     val deps = buildString {
         if (dependencies.isNotEmpty()) {

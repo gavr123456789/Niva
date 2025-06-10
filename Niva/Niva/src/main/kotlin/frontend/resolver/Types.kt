@@ -278,6 +278,13 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
     }
 }
 
+fun isCollection(name: String) = when (name) {
+    "List", "MutableList" -> false
+    "Map", "MutableMap" -> false
+    "Set", "MutableSet" -> false
+    else -> true
+}
+
 sealed class Type(
     val name: String,
     val pkg: String,
@@ -291,7 +298,6 @@ sealed class Type(
     var isCopy: Boolean = false
 ) {
 
-    fun isCollection() = name in listOf("List", "MutableList", "Set", "MutableSet", "Map", "MutableMap")
 
     fun copyAnyType(): Type =
         (when (this) {
