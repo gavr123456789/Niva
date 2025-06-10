@@ -1,6 +1,7 @@
 package codogen.declarations
 
 import frontend.resolver.Type
+import frontend.resolver.isCollection
 import frontend.resolver.unpackNull
 import main.codogen.collectFields
 import main.frontend.parser.types.ast.SomeTypeDeclaration
@@ -55,22 +56,15 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
     if (x is Type.UserLike && !x.needGenerateDynamic) {
         return
     }
-    val checkForCollections = { type: Type.UserLike ->
-        when (type.name) {
-            "List", "MutableList" -> false
-            "Map", "MutableMap" -> false
-            "Set", "MutableSet" -> false
-            else -> true
-        }
-    }
+
 
     val isComplex: (Type?) -> Boolean = { type: Type? ->
         when (type) {
             is Type.EnumRootType, is Type.EnumBranchType, is Type.Lambda, is Type.UnresolvedType, null -> false
-            is Type.UserLike -> checkForCollections(type)
+            is Type.UserLike -> isCollection(type.name)
             is Type.NullableType -> {
                 val unpack = type.unpackNull()
-                if (unpack is Type.UserType) checkForCollections(unpack) else false
+                if (unpack is Type.UserType) isCollection(unpack.name) else false
             }
 
             is Type.InternalType -> false

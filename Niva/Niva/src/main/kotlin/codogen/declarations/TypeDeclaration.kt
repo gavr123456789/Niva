@@ -9,8 +9,9 @@ import frontend.resolver.unpackNull
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.findAnyMethod
-import main.utils.*
-import kotlin.text.appendLine
+import main.utils.CYAN
+import main.utils.RESET
+import main.utils.YEL
 
 
 fun SomeTypeDeclaration.generateTypeDeclaration(
@@ -192,14 +193,14 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             val sb = StringBuilder()
             generateBody(toStringMethod.declaration, sb)
 
+
             append(sb)
             appendLine("\n    companion object {")
         } else {
             // toString() : String" {"
             append(" {\n")
 
-            append("\t\treturn \"\"\"")
-
+            append("\t\treturn \"\"\"\n")
             val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
 //            val fewFields = fields.count() <= 2
 
@@ -221,37 +222,22 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             val generateSimpleField = { it: TypeFieldAST ->
                 "    " + it.name + ": " + addQuotes(it)
             }
+
             val generateComplexField = { it: TypeFieldAST ->
                 "    ${it.name}: (\n" +
-                        // we dont need before-spaces here since we already do prepend Indent for the whole string
-                        "\${${it.name}.toString().prependIndent(\"        \")}\n" +
-                        "    )"
+                // we don't need before-spaces here since we already do prepend Indent for the whole string
+                "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+                "    )"
             }
 
+            val toStringFields = if (false)  //
+//                fields.joinToString(" ") {
+//                    generateSimpleField(it)
+//                } + ")"
 
-            val toStringFields = if (false) //
-                fields.joinToString(" ") {
-                    generateSimpleField(it)
-                } + ")"
+                ""
             else {
-                "\n" + fields.joinToString("\n") {
-                    val type = it.type?.unpackNull()
-                    when (type) {
-                        is Type.EnumBranchType -> generateSimpleField(it)
-                        is Type.EnumRootType -> generateSimpleField(it)
-
-                        is Type.UserLike -> generateComplexField(it)
-                        is Type.InternalType -> generateSimpleField(it)
-
-                        is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
-                        is Type.NullableType -> if (type.unpackNull() is Type.InternalType) generateSimpleField(it) else generateComplexField(
-                            it
-                        )
-
-                        is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
-                        null -> it.token.compileError("type of $it is null")
-                    }
-                }
+                generateFields(fields, generateSimpleField, generateComplexField)
             }
 
 
@@ -280,6 +266,32 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         appendLine("    }")
     }
     append("\n}\n")
+}
+
+
+private fun generateFields(
+    fields: List<TypeFieldAST>,
+    generateSimpleField: (TypeFieldAST) -> String,
+    generateComplexField: (TypeFieldAST) -> String
+): String = "\n" + fields.joinToString("\n") {
+    val type = it.type?.unpackNull()
+    when (type) {
+        is Type.EnumBranchType -> generateSimpleField(it)
+        is Type.EnumRootType -> generateSimpleField(it)
+
+        is Type.UserLike -> generateComplexField(it)
+        is Type.InternalType -> generateSimpleField(it)
+
+        is Type.Lambda -> "    " + it.name + ": " + it.type.toString()
+
+        is Type.NullableType -> if (type.unpackNull() is Type.InternalType)
+            generateSimpleField(it)
+        else
+            generateComplexField(it)
+
+        is Type.UnresolvedType -> it.token.compileError("Unresolved type $type of $it")
+        null -> it.token.compileError("type of $it is null")
+    }
 }
 
 
