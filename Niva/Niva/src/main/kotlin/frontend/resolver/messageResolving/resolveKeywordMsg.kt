@@ -283,7 +283,7 @@ fun Resolver.resolveKeywordMsg(
         val result = kw?.returnType ?: receiverType.returnType
         statement.type = result
         statement.kind = KeywordLikeType.ForCodeBlock
-        return Pair(result, kwFromDB!!)
+        return Pair(result, kwFromDB)
     }
 
     val receiverGenericsTable = mutableMapOf<String, Type>()
