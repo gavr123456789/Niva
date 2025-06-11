@@ -124,7 +124,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         System.getProperty("user.home") / ".niva" / "infroProject"
 
     val pathWhereToGenerateKtAmper = pathToInfroProject // path before src or test
-    val pathToBuildFileGradle = pathToInfroProject / "build.gradle.kts"
+    val pathToBuildFileGradle = pathToInfroProject / "build.gradle" // "build.gradle.kts"
     val pathToBuildFileAmper = pathToInfroProject / "module.yaml"
     val pathToBuildFileMill = pathToInfroProject / "build.mill"
 
