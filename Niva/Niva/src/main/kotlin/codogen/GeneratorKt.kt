@@ -1,4 +1,4 @@
-@file:Suppress("UnusedReceiverParameter")
+@file:Suppress("UnusedReceiverParameter", "unused")
 
 package main.codogen
 
@@ -93,6 +93,33 @@ settings:
 
     fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """
 kotlin {
+    jvm()
+}
+
+tasks.register('fatJar', Jar) {
+    group = 'application'
+    manifest {
+        attributes 'Main-Class': 'mainNiva.MainKt'
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveBaseName.set('$jarName')
+    archiveVersion.set('')
+
+    def mainCompilation = kotlin.targets.jvm.compilations.main
+    from(mainCompilation.output.classesDirs)
+
+    dependsOn configurations.runtimeClasspath
+
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+    }
+
+    with tasks.named('jar').get() as CopySpec
+}
+    """
+
+    fun GRADLE_FAT_JAR_TEMPLATE_KT(jarName: String) = """
+kotlin {
     jvm {
         compilations {
             val main = getByName("main")
@@ -121,6 +148,41 @@ kotlin {
 }
 """
     fun GRADLE_OPTIONS(workingDir: String) = """
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs = ['--enable-preview']
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs = [
+        '-Dsun.java2d.uiScale=2.0',
+        '--enable-preview',
+        '--enable-native-access=ALL-UNNAMED',
+        '-Djava.library.path=/usr/lib64:/lib64:/lib:/usr/lib:/lib/x86_64-linux-gnu'
+    ]
+    setProperty('workingDir', ""${'"'}$workingDir""${'"'})
+    //standardInput = System.in // its 2x times faster without System.in !!!
+}
+
+allprojects {
+    tasks.withType(Test).configureEach {
+        testLogging {
+            exceptionFormat = 'full'
+            showCauses = true
+            showExceptions = true
+            showStackTraces = false
+            showStandardStreams = true
+            events 'passed', 'skipped', 'failed', 'standard_out', 'standard_error'
+        }
+    }
+}
+
+"""
+    @Suppress("unused")
+    fun GRADLE_OPTIONS_KTS(workingDir: String) = """
 repositories {
     maven(url = "https://jitpack.io")
 }
