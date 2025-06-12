@@ -164,9 +164,29 @@ fun Resolver.resolveMessage(
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
+
+
+    // if we see the method with possible errors but not resolved body
+    // that means it was declared after currently resolving method
+    val decl = statement.declaration
+    if (statement.selectorName == "lex") {
+        1 + 1
+    }
+    if (msgFromDb != null && decl?.returnTypeAST?.errors?.isEmpty() == true && decl.stackOfPossibleErrors.isEmpty()) {
+        // this means the errors were not resolved yet
+        this.resolvingMessageDeclaration = decl
+        resolveMessageDeclaration(decl, true, previousScope, false)
+    }
+
+    if (statement.selectorName == "lex") {
+        1 + 1
+    }
+
 //    if (msgFromDb != null) {
         statement.type = addErrorEffect(msgFromDb, returnType, statement)
 //    }
+
+
 
     if (GlobalVariables.isLspMode) {
         onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // message

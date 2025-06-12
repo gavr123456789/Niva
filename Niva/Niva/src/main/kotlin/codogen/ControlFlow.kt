@@ -2,7 +2,6 @@ package main.codogen
 
 import frontend.resolver.Type
 import main.frontend.parser.types.ast.*
-import main.utils.isGeneric
 
 fun ControlFlow.If.generateIf(): String = buildString {
 
@@ -103,14 +102,16 @@ fun ListCollection.generateList() = buildString {
     else
         append("mutableListOf")
 
-    val type = this@generateList.type
-    if (type is Type.UserLike && type.typeArgumentList.find { it.name.isGeneric() } == null ) {
-        append("<")
-        type.typeArgumentList.forEach {
-            append(it.toKotlinString(true))
-        }
-        append(">")
-    }
+    // when we have some alias to that, there is an error since it inputs the real type, not aliased, and Kotlin say error no such function, since alias expected(http4k)
+
+//    val type = this@generateList.type
+//    if (type is Type.UserLike && type.typeArgumentList.find { it.name.isGeneric() } == null ) {
+//        append("<")
+//        type.typeArgumentList.forEach {
+//            append(it.toKotlinString(true))
+//        }
+//        append(">")
+//    }
     append("(")
 
     initElements.forEach(exceptLastDo = { append(", ") }) {

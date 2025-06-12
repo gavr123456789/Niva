@@ -55,6 +55,9 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
             else
                 returnType.copyAndAddErrors(errors)
 
+        if (statement.selectorName == "lex") {
+            1
+        }
         return returnTypeWithErrors
     }
 
