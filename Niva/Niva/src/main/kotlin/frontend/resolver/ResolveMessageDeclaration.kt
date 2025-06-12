@@ -281,9 +281,13 @@ fun Resolver.resolveMessageDeclaration(
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
                 errorsMismatchCompileError()
             }
-
+            if (statement.name == "lex") {
+                1 + 1
+            }
         }
         validateErrorsDeclarated()
+
+
 
         if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
             statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
