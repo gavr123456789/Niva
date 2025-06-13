@@ -506,11 +506,6 @@ fun Resolver.resolveKwArgs(
             codeBlocks.add(it)
             genericArgs.add(it.keywordArg)
         }
-//        else if (it.keywordArg is CollectionAst && it.keywordArg.initElements.isEmpty() ||
-//                   it.keywordArg is MapCollection && it.keywordArg.initElements.isEmpty())
-//        {
-//            genericArgs.add(it.keywordArg)
-//        }
         else
             usualArgs.add(it)
     }

@@ -185,7 +185,7 @@ fun Parser.typeFields(): MutableList<TypeFieldAST> {
 
 class TypeFieldsAndMessageDecl(val a: MutableList<TypeFieldAST>, val b: MutableList<MessageDeclaration>)
 enum class KindOfTypeDecl {
-    Field, Unary, Binary, Keyword, Nope
+    MutField, Field, Unary, Binary, Keyword, Nope
 }
 
 fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
@@ -197,13 +197,23 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
         return TypeFieldsAndMessageDecl(mutableListOf(), mutableListOf())
     }
 
-    val checker = {
+    val checker: () -> KindOfTypeDecl = {
+        // 0 qq: mut Q -> Field
         // 1 qq: Q -> Field
         // 4 qq::    -> Kw
         // 5 qq: q:: -> Kw
         // 2 aa -> = -> Unary
         // 3 + -> Binary
         when {
+            checkMany(TokenType.Identifier, TokenType.Colon, TokenType.Mut) -> {
+                // 0
+                if (checkIdentifier(3) || check(TokenType.OpenBracket, 3))
+                    KindOfTypeDecl.MutField
+                else
+                    peek(2).compileError("parsing error, field declaration expected(Identifier after :)")
+
+            }
+
             checkMany(TokenType.Identifier, TokenType.Colon) -> {
                 // 1
                 if (checkIdentifier(2) || check(TokenType.OpenBracket, 2))
@@ -226,12 +236,14 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
                     else if (check(TokenType.Assign, 2) || check(TokenType.ReturnArrow, 2))
                         KindOfTypeDecl.Unary
                     else
-                        peek(2).also { it.compileError("Parsing error of kw or unary message declaration inside type declaration, but found $it") }
+                        peek(2).compileError("Parsing error of kw or unary message declaration inside type declaration, but found ${peek(2)}")
+
                 } // 3
                 else if (check(TokenType.BinarySymbol, 1))
                     KindOfTypeDecl.Binary
                 else
                     peek(1).compileError("parsing error of message declaration inside type declaration")
+
             }
 
             else -> KindOfTypeDecl.Nope
@@ -247,6 +259,20 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
     while (q != KindOfTypeDecl.Nope) {
         when (q) {
             KindOfTypeDecl.Field -> {
+                val name = step()
+                step() // colon
+                val type = parseTypeAST()
+                fields.add(
+                    TypeFieldAST(
+                        name = name.lexeme,
+                        typeAST = type,
+                        token = name,
+                        type = null
+                    )
+                )
+            }
+            KindOfTypeDecl.MutField -> {
+                // sas: mut String
                 val name = step()
                 step() // colon
                 val type = parseTypeAST()
@@ -278,7 +304,7 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
                 messageDeclarations.add(k)
             }
 
-//            KindOfTypeDecl.Nope -> TODO()
+            KindOfTypeDecl.Nope -> peek().compileError("parsing error, KindOfTypeDecl=Nope")
         }
         skipNewLinesAndComments()
 

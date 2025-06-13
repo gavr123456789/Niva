@@ -1,10 +1,30 @@
 
-Int sas -> Int = [
-    x = [
-        Error throwWithMessage: "sas"
-        24
-    ]
-//    x do
-    ^ 42
+
+
+//////////////
+type Wallet money: Int
+type Person name: String wallet: Wallet
+
+mut Wallet addMoney::mut Int = [
+  money <- money + addMoney
 ]
-1 sas echo
+
+Person sus::mut Wallet = [
+    1 echo
+]
+
+p = Person name: "Alice" wallet: (Wallet money: 123)
+w = [p name: "sas"]
+//p sus: w
+///////
+//Person sas = [
+//  // name <- "rst"
+//  // must be forbiden since w is not mutable and addMoney only for mutable type
+//  w addMoney: 23
+//]
+
+//mut Person sas2 = [
+//  // name <- "rst"
+//  // can be used even if w isnt mutable since this is a method for mut Person, mmmaaaybe, not sure
+//  w addMoney: 23
+//]

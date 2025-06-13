@@ -3,6 +3,8 @@ package frontend.resolver
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.InternalTypes
+import main.utils.WHITE
+import main.utils.YEL
 import kotlin.collections.count
 import kotlin.collections.drop
 import kotlin.collections.forEachIndexed
@@ -13,7 +15,7 @@ val typeIsNull = { type: Type ->
 }
 
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
-// type from db must be always first, because Ins -> arg::Number, but not the other way around
+// type from db must be always first, because Int -> arg::Number, but not the other way around
 fun compare2Types(
     type1OrChildOf2: Type,
     type2: Type,
@@ -22,10 +24,13 @@ fun compare2Types(
     isOut: Boolean = false, // checking for return type
     unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
     compareParentsOfBothTypes: Boolean = true,
-    nullIsAny: Boolean = false // any branch of switch can return null
+    nullIsAny: Boolean = false, // any branch of switch can return null
+    compareMutability: Boolean = true,
 ): Boolean {
     if (type1OrChildOf2 === type2) return true
 
+    if (compareMutability && type1OrChildOf2.isMutable && !type2.isMutable)
+        tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()}$WHITE::mut $YEL$type1OrChildOf2$WHITE = ...")
 
     if (type1OrChildOf2 is Type.Lambda && type2 is Type.Lambda) {
 

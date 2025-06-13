@@ -119,7 +119,10 @@ fun Resolver.resolveMessageDeclaration(
                     st.token.compileError("Can't parse type for argument ${WHITE}${it.name}")
                 }
                 val astType = it.typeAST
-                val typeFromAst = astType.toType(typeDB, typeTable)//fix
+                val typeFromAst = astType.toType(typeDB, typeTable)
+                if (typeFromAst is Type.InternalType && typeFromAst.isMutable) {
+                    astType.token.compileError("Can't make internal type mutable: ${RED}mut ${YEL}$typeFromAst")
+                }
 
                 bodyScope[it.localName ?: it.name] = typeFromAst
 
@@ -280,9 +283,6 @@ fun Resolver.resolveMessageDeclaration(
             }
             if (returnTypeAST == null && possibleErrors.isNotEmpty()) {
                 errorsMismatchCompileError()
-            }
-            if (statement.name == "lex") {
-                1 + 1
             }
         }
         validateErrorsDeclarated()

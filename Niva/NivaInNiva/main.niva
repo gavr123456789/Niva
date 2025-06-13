@@ -6,12 +6,16 @@ type Program
 
 
   input = """
-    type Person
-      lambdaType: [Int -> Int]
+
+    type Person name: String age: Int
+    Person greet = "Hello Im" + name
+    Person sleep -> Int = [
+      1 echo
+    ]
+
   """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: 1
-  typeDecl = statements at: 0
+  statements = TestParse withInput: input expectedCount: 3
+  keyword = statements at: 0
+  statements echo
 
-
-  statements at: 0

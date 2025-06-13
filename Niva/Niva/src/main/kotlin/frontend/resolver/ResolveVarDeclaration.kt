@@ -94,10 +94,37 @@ fun Resolver.resolveVarDeclaration(
     if (definedASTType != null) {
         val statementDeclared = definedASTType.toType(typeDB, typeTable)
         val rightPartType = typeOfValueInVarDecl
-        if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = true)) {
+        if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = true, compareMutability = false)) {
             val text = "$definedASTType != $rightPartType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }
+
+        // check that its making mutable something that already exist and immutable
+        if (statementDeclared.isMutable && !rightPartType.isMutable
+            && valueOfVarDecl is MessageSend && valueOfVarDecl.messages.isNotEmpty())
+        {
+            val f = valueOfVarDecl.messages.first()
+            val errorText = "Cant create mutable from already existing value, please use the constructor or immutable copy"
+            when (f) {
+                is KeywordMsg -> {
+                    if (f.kind != KeywordLikeType.Constructor &&
+                        f.kind != KeywordLikeType.CustomConstructor &&
+                        f.kind != KeywordLikeType.SetterImmutableCopy)
+                    {
+                        statement.token.compileError(errorText)
+                    }
+                }
+                is UnaryMsg -> {
+                    if (f.kind == UnaryMsgKind.Getter) {
+                        statement.token.compileError(errorText)
+                    }
+
+                }
+                else -> {}
+            }
+
+        }
+
         typeOfValueInVarDecl = statementDeclared
 
         // if x::Int? = 42 then we need to wrap type to Nullable
