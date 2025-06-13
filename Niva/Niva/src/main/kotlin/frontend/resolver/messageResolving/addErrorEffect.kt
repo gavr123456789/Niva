@@ -3,8 +3,8 @@ package main.frontend.resolver.messageResolving
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
 import frontend.resolver.Type
+import frontend.resolver.findNearestCodeBlockInStack
 import main.frontend.meta.compileError
-import main.frontend.parser.types.ast.CodeBlock
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.PairOfErrorAndMessage
 import main.utils.isGeneric
@@ -26,8 +26,8 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
     }
 
     // if its a codeblock then add errors to it and exit, do not add error effects to currentMsgDecl
-    val codeBlock = stack.firstOrNull()
-    if (codeBlock != null && codeBlock is CodeBlock) {
+    val codeBlock = findNearestCodeBlockInStack()
+    if (codeBlock != null) {
         if (errors?.isNotEmpty() == true)
             codeBlock.errors += errors
         return returnType
@@ -55,9 +55,6 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
             else
                 returnType.copyAndAddErrors(errors)
 
-        if (statement.selectorName == "lex") {
-            1
-        }
         return returnTypeWithErrors
     }
 

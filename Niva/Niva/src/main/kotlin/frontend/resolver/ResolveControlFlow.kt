@@ -321,8 +321,8 @@ fun Resolver.resolveControlFlow(
                 statement.switch.type = currentType
                 typesAlreadyChecked += currentType
                 // add import of the type (if it's an errordomain it used only one time in matching)
-                val currentPackage = getCurrentPackage(statement.token)
-                currentPackage.addImport(currentType.pkg)
+                getCurrentPackage(statement.token)
+                    .addImport(currentType.pkg)
             }
 
             val curTok = it.ifExpression.token
@@ -344,7 +344,7 @@ fun Resolver.resolveControlFlow(
                 is IfBranch.IfBranchWithBody -> {
                     if (it.body.statements.isNotEmpty()) {
                         currentLevel++
-                        resolveCodeBlockAsBody(it.body, previousScope, currentScope, statement)
+                        resolveCodeBlockAsBody(it.body, scopeWithFields, currentScope, statement)
                         currentLevel--
 
                         val lastExpr = it.body.statements.last()
@@ -576,7 +576,4 @@ fun recursiveCheckThatEveryBranchChecked(
     }
 
 }
-
-fun Type.getRoot(): Type =
-    parent?.getRoot() ?: this
 

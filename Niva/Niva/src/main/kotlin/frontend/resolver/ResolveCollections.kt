@@ -81,6 +81,8 @@ fun Resolver.resolveCollection(
 fun Resolver.findNearestVarDeclInStack(): VarDeclaration? =
     stack.reversed().find { it is VarDeclaration } as VarDeclaration?
 
+fun Resolver.findNearestCodeBlockInStack(): CodeBlock? =
+    stack.reversed().find { it is CodeBlock } as CodeBlock?
 
 fun Resolver.resolveSet(
     statement: SetCollection,

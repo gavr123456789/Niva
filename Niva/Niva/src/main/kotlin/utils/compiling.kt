@@ -421,7 +421,6 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         """import java.io.BufferedWriter
         import java.io.FileWriter
         import java.io.IOException
-        import java.util.SortedMap
 
         fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int): T {
             val q = x.toString()
@@ -451,6 +450,8 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         import kotlinx.serialization.json.jsonObject
         import kotlinx.serialization.json.jsonPrimitive
         import kotlinx.serialization.json.put
+        import java.util.SortedMap // works on desktop target, but not on native!!!
+        
         // STD
         $jvmSpecific
         

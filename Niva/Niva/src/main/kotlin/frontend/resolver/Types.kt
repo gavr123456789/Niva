@@ -859,7 +859,6 @@ fun TypeAST.toType(
     realParentAstFromGeneric: TypeAST? = null,
     customPkg: String? = null
 ): Type {
-
     val replaceToNullableAndAddErrorsIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
 
@@ -876,8 +875,9 @@ fun TypeAST.toType(
     when (this) {
         is TypeAST.InternalType -> {
             val type = Resolver.defaultTypes.getOrElse(InternalTypes.valueOf(name)) {
-                this.token.compileError("Can't find default type: ${YEL}$name")
+                token.compileError("Can't find default type: ${YEL}$name")
             }
+
             return if (this.errors != null)
                 replaceToNullableAndAddErrorsIfNeeded(type).copyAndAddErrors(getRealErrorsTypes(typeTable))
             else
@@ -954,8 +954,8 @@ fun TypeAST.toType(
                 return Type.UnresolvedType()
             }
 
-            val type2 = if (mutable) {
-                (type as Type.UserLike).copy().also { it.isMutable = true }
+            val type2 = if (this.mutable) {
+                (type).copyAnyType().also { it.isMutable = true }
             } else type
 
             return replaceToNullableAndAddErrorsIfNeeded(type2)

@@ -182,3 +182,16 @@ Test parseKeywordDecl -> Unit! = [
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + keyword toString]
 ]
+
+Test parseRealWorldExample -> Unit! = [
+  input = """
+
+    type Person name: String age: Int
+    Person sleep = "hii" echo 
+
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 2
+  keyword = statements at: 0
+  statements echo
+]
