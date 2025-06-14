@@ -37,6 +37,7 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
 
                 if (resolvedFromDifferentFileType != null) {
                     val resolveAndRemoveField = { field2: FieldNameAndParent ->
+
                         val fieldToRemove = field2.parent.fields.first { it.name == field2.fieldName }
                         val ast = field2.parent.typeDeclaration!!.fields.first { it.name == fieldToRemove.name }.typeAST!!
                         val resolvedType = ast.toType(typeDB, typeTable)
@@ -263,7 +264,7 @@ fun Resolver.printInfoFromCode() {
 fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
     val stringType = Resolver.defaultTypes[InternalTypes.String]!!
     val listType = this.typeDB.userTypes["List"]!!.first()
-    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType)
+    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType, "List")
     return mutableMapOf("args" to listOfString)
 }
 

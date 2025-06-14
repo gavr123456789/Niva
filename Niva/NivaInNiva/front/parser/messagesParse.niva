@@ -1,8 +1,8 @@
 extend mut Parser [
 
   /// inc inc inc
-  on parseManyIdent -> MutableList::Identifier = [
-    result::MutableList::Identifier = {}m
+  on parseManyIdent -> mut List::Identifier = [
+    result::mut List::Identifier = {}!
     
     mut c = true
     [c] whileTrue: [
@@ -30,7 +30,7 @@ extend mut Parser [
 
   /// + 2 inc inc + 3 dec dec
   on parseManyBinary -> List::NameAndExpr = [
-      result::MutableList::NameAndExpr = {}m
+      result::mut List::NameAndExpr = {}!
       mut c = true
       [c] whileTrue: [
         tok = .peek
@@ -47,7 +47,7 @@ extend mut Parser [
           // + 1^ inc inc + 2
           unaryList = .peek line == receiver token line, ifTrue: [
             .parseManyIdent
-          ] ifFalse: [{}m]
+          ] ifFalse: [{}!]
 
 
           unaryList isEmpty, ifTrue: [

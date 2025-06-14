@@ -2,7 +2,7 @@ extend mut Parser [
   /// `name: String`
   on typeFields -> List::TypeField = [
     .peek kind == TokenType.IdentifierColon, assert: "Expected `field:`"
-    result::MutableList::TypeField = {}m
+    result::mut List::TypeField = {}!
 
     mut c = true
     [c] whileTrue: [

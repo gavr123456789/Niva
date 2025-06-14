@@ -91,7 +91,8 @@ fun Resolver.resolveUnaryMsg(
     val msgForType = resolvingMsgDecl?.forType
     val unaryReceiverType = statement.receiver.type
     val sameTypes = if (msgForType != null && unaryReceiverType != null) {
-        compare2Types(msgForType, unaryReceiverType, statement.token, unpackNull = true)
+        msgForType.name == unaryReceiverType.name && msgForType.pkg == unaryReceiverType.pkg
+//        compare2Types(msgForType, unaryReceiverType, statement.token, unpackNull = true)
     } else false
 
     if (resolvingMsgDecl?.name == statement.selectorName && sameTypes && !resolvingMsgDecl.isRecursive) {
@@ -122,16 +123,6 @@ fun Resolver.resolveUnaryMsg(
         messageReturnType
     }
 
-    //check that it was mutable call for mutable type
-    if (msgFromDb.declaration != null &&
-        msgFromDb.declaration.forTypeAst.mutable && receiver is IdentifierExpr
-    ) {
-        val receiverFromScope = previousAndCurrentScope[receiver.name]
-        if (receiverFromScope != null && !receiverFromScope.isMutable) {
-            statement.token.compileError("receiver type $receiverType is not mutable, but ${msgFromDb.declaration} declared for mutable type, use `x::mut $receiverType = ...`")
-        }
-    }
-    //
     val compareThatReceiverIsTheSameGeneric = {
         val forTypeDecl = msgFromDb.declaration?.forType
         if (forTypeDecl != null) {

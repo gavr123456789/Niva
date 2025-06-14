@@ -4,6 +4,8 @@ import frontend.resolver.Type
 import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.GlobalVariables
 
+
+
 fun VarDeclaration.generateVarStatement(): String {
     val valueCode = value.generateExpression()
 

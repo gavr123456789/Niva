@@ -1,8 +1,10 @@
 type TestParse 
-constructor TestParse withInput::String expectedCount::Int -> MutableList::Statement = [
+constructor TestParse withInput::String expectedCount::Int -> mut List::Statement = [
   tokens = Lexer newLex: withInput
   // tokens debug
-  {statements} = Parser newParseTokens: tokens
+  // {statements} = Parser newParseTokens: tokens
+  parser = Parser newParseTokens: tokens
+  statements::mut List::Statement = parser statements //::mut List::Statement
   Assert that: statements count equals: expectedCount
   ^statements
 ]
@@ -26,8 +28,8 @@ Test parseNumber -> Unit! = [
   """ trimIndent
 
   tokens = Lexer newLex: input
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | intExpr 
   | IntExpr => 
@@ -39,8 +41,8 @@ Test parseNumber -> Unit! = [
 
 Test parseString -> Unit! = [
   tokens = Lexer newLex: """ "sas" """
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | stringExpr 
   | StringExpr => 
@@ -61,8 +63,8 @@ Test parseAstTypeList -> Unit! = [
 
   tokens = Lexer newLex: input
   // tokens debug
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   astType = parser parseType
   | astType
   | AstType => [
@@ -83,8 +85,8 @@ Test parseAstTypeMap -> Unit! = [
 
   tokens = Lexer newLex: input
   // tokens debug
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}m error TODO
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   astType = parser parseType
 
   | astType

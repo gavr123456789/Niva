@@ -2,20 +2,40 @@
 
 
 //////////////
-type Wallet money: Int
-type Person name: String wallet: Wallet
+//type Wallet money: Int
+//type Person name: String wallet: Wallet
+//
+//mut Wallet addMoney::Int = [
+//  money <- money + addMoney
+//]
+//extend mut Wallet [
+//    on sas = [
+//        money inc
+//    ]
+//]
+//
+//Person sus::mut Wallet = [
+//    1 echo
+//]
+//p = Person name: "Alice" wallet: (Wallet money: 123)
 
-mut Wallet addMoney::mut Int = [
-  money <- money + addMoney
+////
+type Person x: List::Kek
+constructor Person empty = [
+    p = Person x: {}!
+    ^ p
 ]
+person = Person empty
+list:: mut List::Kek = person x
+list add: (Kek x: 1)
+list echo
+type Kek x: Int
 
-Person sus::mut Wallet = [
-    1 echo
-]
+//mList::mut List::Int = {1 2 3}
+//mList add: 4
+//
+//mList echo
 
-p = Person name: "Alice" wallet: (Wallet money: 123)
-w = [p name: "sas"]
-//p sus: w
 ///////
 //Person sas = [
 //  // name <- "rst"

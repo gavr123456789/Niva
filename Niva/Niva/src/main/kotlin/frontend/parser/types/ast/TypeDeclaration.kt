@@ -11,7 +11,7 @@ sealed class TypeAST(
     token: Token,
     isPrivate: Boolean,
     pragmas: MutableList<Pragma>,
-    var mutable: Boolean = false,
+    var isMutable: Boolean = false,
     val errors: List<String>? = null
 ) : Statement(token, isPrivate, pragmas) {
 

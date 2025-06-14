@@ -62,7 +62,7 @@ class IdentifierExpr(
 //        TypeAST.UserType(name = this.name, names = this.names, token = this.token)
 }
 
-sealed class CollectionAst(val initElements: List<Receiver>, type: Type?, token: Token, val isMutable: Boolean) : Receiver(type, token)
+sealed class CollectionAst(val initElements: List<Receiver>, type: Type?, token: Token, var isMutableCollection: Boolean) : Receiver(type, token)
 class ListCollection(
     initElements: List<Receiver>,
     type: Type?,
@@ -89,7 +89,7 @@ class MapCollection(
     val initElements: List<Pair<Receiver, Receiver>>,
     type: Type?,
     token: Token,
-    val isMutable: Boolean
+    var isMutable: Boolean
 ) : Receiver(type, token) {
     override fun toString(): String {
         return "#{${initElements.joinToString(", ") {"${it.first}: ${it.second}"}}}"

@@ -172,21 +172,20 @@ fun createFloatProtocols(
 fun String.createDocComment(): DocComment =
     DocComment(this)
 
-fun createUnary(name: String, returnType: Type, docComment: String? = null): Pair<String, UnaryMsgMetaData> {
-    return name to UnaryMsgMetaData(name, returnType, "core", declaration = null, docComment = docComment?.createDocComment())
-}
-fun createBinary(name: String, argType: Type, returnType: Type, docComment: String? = null): Pair<String, BinaryMsgMetaData> {
-    return name to BinaryMsgMetaData(name, argType, returnType, "core", declaration = null,
-        docComment = docComment?.createDocComment())
-}
-fun createKeyword(name: String, args: List<KeywordArg>, returnType: Type, docComment: String? = null) =
-    name to KeywordMsgMetaData(name, args, returnType, "core", declaration = null,
-        docComment = docComment?.createDocComment())
+fun createUnary(name: String, returnType: Type, docComment: String? = null, forMutable: Boolean = false): Pair<String, UnaryMsgMetaData> =
+    name to UnaryMsgMetaData(name, returnType, "core", declaration = null, docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
 
-fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null): Pair<String, KeywordMsgMetaData> {
-    return arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null,
-        docComment = docComment?.createDocComment())
-}
+fun createBinary(name: String, argType: Type, returnType: Type, docComment: String? = null, forMutable: Boolean = false): Pair<String, BinaryMsgMetaData> =
+    name to BinaryMsgMetaData(name, argType, returnType, "core", declaration = null, docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
+
+fun createKeyword(name: String, args: List<KeywordArg>, returnType: Type, docComment: String? = null, forMutable: Boolean = false) =
+    name to KeywordMsgMetaData(name, args, returnType, "core", declaration = null,
+        docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
+
+fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null, forMutable: Boolean = false): Pair<String, KeywordMsgMetaData> =
+    arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null,
+        docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
+
 
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
@@ -716,7 +715,7 @@ fun createListProtocols(
 
             createUnary("toList", listType, "Immutable list, elements will be shadow copied"),
             createUnary("toMutableList", mutListType, "Mutable list, elements will be shadow copied"),
-            createUnary("m", mutListType, "Mutable list, elements will be shadow copied").renameUnary("toMutableList"),
+//            createUnary("m", mutListType, "Mutable list, elements will be shadow copied").renameUnary("toMutableList"),
 
             createUnary("shuffled", listType, "Like in Solitaire"),
 
@@ -909,17 +908,18 @@ fun createListProtocols(
         )
     )
 
-    if (isMutable) {
+    // this check is not needed since we are getting it from "forMutable" parameter
+//    if (isMutable || true) {
         // unary
-        val clear = createUnary("clear", unitType)
+        val clear = createUnary("clear", unitType, forMutable = true)
         collectionProtocol.unaryMsgs[clear.first] = clear.second
         // kw
         val mutKwMsgs = mutableMapOf(
-            createKeyword(KeywordArg("add", itType), boolType),
-            createKeyword(KeywordArg("addFirst", itType), unitType),
-            createKeyword(KeywordArg("addAll", currentType), boolType, "Add all items from other collection"),
-            createKeyword(KeywordArg("removeAt", intType), unitType, "Remove element by index"),
-            createKeyword(KeywordArg("remove", itType), unitType, "Remove element"),
+            createKeyword(KeywordArg("add", itType), boolType, forMutable = true),
+            createKeyword(KeywordArg("addFirst", itType), unitType, forMutable = true),
+            createKeyword(KeywordArg("addAll", currentType), boolType, "Add all items from other collection", forMutable = true),
+            createKeyword(KeywordArg("removeAt", intType), unitType, "Remove element by index", forMutable = true),
+            createKeyword(KeywordArg("remove", itType), unitType, "Remove element", forMutable = true),
             createKeyword(
                 "atPut",
                 listOf(
@@ -927,7 +927,8 @@ fun createListProtocols(
                     KeywordArg("put", itType)
                 ),
                 unitType,
-                "like C arr[x] = y"
+                "like C arr[x] = y",
+                forMutable = true
             ).rename("set"),
             createKeyword(
                 "atInsert",
@@ -936,11 +937,12 @@ fun createListProtocols(
                     KeywordArg("insert", itType)
                 ),
                 unitType,
-                "Inserts an element into the list at the specified index"
+                "Inserts an element into the list at the specified index",
+                forMutable = true
             ).rename("add")
         )
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
-    }
+//    }
     return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
 
@@ -1005,7 +1007,7 @@ fun createSetProtocols(
             createUnary("toMutableList", listType),
 
             createUnary("toMutableSet", mutableSetType),
-            createUnary("m", mutableSetType).renameUnary("toMutableSet"),
+//            createUnary("m", mutableSetType).renameUnary("toMutableSet"),
             createUnary("toSet", setType),
 
             ),
@@ -1036,15 +1038,16 @@ fun createSetProtocols(
         )
     )
 
-    if (isMutable) {
-        val add = createKeyword(KeywordArg("add", itType), unitType)
-        val remove = createKeyword(KeywordArg("remove", itType), boolType)
-        val addAll = createKeyword(KeywordArg("addAll", mutableSetType), boolType)
+    // this check is not needed since we are getting it from "forMutable" parameter
+//    if (isMutable || true) {
+        val add = createKeyword(KeywordArg("add", itType), unitType, forMutable = true)
+        val remove = createKeyword(KeywordArg("remove", itType), boolType, forMutable = true)
+        val addAll = createKeyword(KeywordArg("addAll", mutableSetType), boolType, forMutable = true)
 
         collectionProtocol.keywordMsgs[add.first] = add.second
         collectionProtocol.keywordMsgs[remove.first] = remove.second
         collectionProtocol.keywordMsgs[addAll.first] = addAll.second
-    }
+//    }
 
     return mutableMapOf(collectionProtocol.name to collectionProtocol)
 }
@@ -1213,7 +1216,7 @@ fun createMapProtocols(
             createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
             createUnary("toMap", mapType, "Mutable map, elements will be shadow copied"),
             createUnary("toMutableMap", mutableMapType, "Mutable map, elements will be shadow copied"),
-            createUnary("m", mutableMapType, "Mutable map, elements will be shadow copied").renameUnary("toMutableMap")
+//            createUnary("m", mutableMapType, "Mutable map, elements will be shadow copied").renameUnary("toMutableMap")
             ),
         binaryMsgs = mutableMapOf(
             createBinary("+", mutableMapType, mutableMapType, "new map containing keys and values of both maps"),
@@ -1288,26 +1291,28 @@ fun createMapProtocols(
 
         )
 
-    if (isMutable) {
+    // this check is not needed since we are getting it from "forMutable" parameter
+//    if (isMutable || true) {
         val unary = mutableMapOf(
-            createUnary("clear", unitType),
+            createUnary("clear", unitType, forMutable = true),
         )
         val mutKwMsgs = mutableMapOf(
-            createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType)),
-            createKeyword(KeywordArg("putAll", mutableMapType), unitType),
+            createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType), forMutable = true),
+            createKeyword(KeywordArg("putAll", mutableMapType), unitType, forMutable = true),
             createKeyword(
                 "atPut",
                 listOf(
                     KeywordArg("at", keyType),
                     KeywordArg("put", valueType)
                 ),
-                unitType
+                unitType,
+                forMutable = true
             ).rename("set"),
         )
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
         collectionProtocol.unaryMsgs.putAll(unary)
 
-    }
+//    }
     result[collectionProtocol.name] = collectionProtocol
     return result
 }

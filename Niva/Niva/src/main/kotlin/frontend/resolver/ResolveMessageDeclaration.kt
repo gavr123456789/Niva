@@ -102,10 +102,9 @@ fun Resolver.resolveMessageDeclaration(
 
     val bodyScope = mutableMapOf<String, Type>()
     val resolveBody = {
-
         val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
         if (!isStaticBuilderWithoutReceiver && statement !is ConstructorDeclaration) {
-            if (statement.forTypeAst.mutable) {
+            if (statement.forTypeAst.isMutable) {
                 bodyScope["this"] = copyTypeIfGenerics.copyAnyType().also {it.isMutable = true}
             } else {
                 bodyScope["this"] = copyTypeIfGenerics
@@ -119,7 +118,8 @@ fun Resolver.resolveMessageDeclaration(
                     st.token.compileError("Can't parse type for argument ${WHITE}${it.name}")
                 }
                 val astType = it.typeAST
-                val typeFromAst = astType.toType(typeDB, typeTable)
+
+                val typeFromAst = astType.toType(typeDB, typeTable, resolver = this)
                 if (typeFromAst is Type.InternalType && typeFromAst.isMutable) {
                     astType.token.compileError("Can't make internal type mutable: ${RED}mut ${YEL}$typeFromAst")
                 }
@@ -360,7 +360,6 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
-
         if (GlobalVariables.isLspMode) {
             onEachStatement!!(statement, previousScope, previousScope, statement.token.file) // message decl
         }
@@ -379,7 +378,7 @@ fun Resolver.resolveMessageDeclaration(
     if (statement.returnTypeAST != null && statement.returnType == null) {
         try {
             val returnType = statement.returnTypeAST.toType(typeDB, typeTable)
-            // we cant infer error effects from bidings, because they have no body
+            // we cant infer error effects from bindings, because they have no body
             // so we need to infer errors from ASTReturnType
             val isThisABinding = statement.body.isEmpty()
             statement.returnType =

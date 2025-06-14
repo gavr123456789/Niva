@@ -17,8 +17,15 @@ fun checkThatCollectionIsTyped(statement: VarDeclaration) {
     val emptyMap = value is MapCollection && value.initElements.isEmpty()
     val emptyList = value is CollectionAst && value.initElements.isEmpty()
     if (emptyMap || emptyList) {
-        statement.token.compileError("(x::MutableList::Int = {})\nCan't infer type of empty collection, please specify it like x::MutableList::Int = {}")
+        statement.token.compileError("(x::mut List::Int = {})\nCan't infer type of empty collection, please specify it like x::MutableList::Int = {}")
     }
+}
+
+fun replaceCollectionWithMutable(name: String) = when(name) {
+    "List" -> "MutableList"
+    "Set" -> "MutableSet"
+    "Map" -> "MutableMap"
+    else -> name
 }
 
 fun Resolver.resolveVarDeclaration(
@@ -46,7 +53,7 @@ fun Resolver.resolveVarDeclaration(
         }
     }
 
-    // generics in right part, but real type in left, x::List::Int = List
+    // generics in right part, but real type in left, x::List::Int = List::T
     var copyType: Type? = null
     if (
         definedASTType is TypeAST.UserType && definedASTType.typeArgumentList.find { it.name.isGeneric() } == null &&
@@ -134,6 +141,25 @@ fun Resolver.resolveVarDeclaration(
             typeOfValueInVarDecl = nullableType
         }
 
+        // if value is a collection then assign correct mutability to it
+        if (definedASTType.isMutable) {
+
+            if (valueOfVarDecl is CollectionAst) {
+                valueOfVarDecl.isMutableCollection = true
+            } else if (valueOfVarDecl is MapCollection) {
+                valueOfVarDecl.isMutable = true
+            }
+            if (typeOfValueInVarDecl is Type.UserLike) {
+                typeOfValueInVarDecl = typeOfValueInVarDecl.copy()
+                typeOfValueInVarDecl.emitName = replaceCollectionWithMutable(typeOfValueInVarDecl.emitName)
+                typeOfValueInVarDecl.isMutable = true
+                if (copyType != null && copyType is Type.UserLike) {
+                    copyType.isMutable = true
+                    copyType.emitName = typeOfValueInVarDecl.emitName
+                }
+            }
+        }
+
     }
     currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
 
@@ -145,7 +171,6 @@ fun Resolver.resolveVarDeclaration(
 }
 
 
-@Suppress("UnusedVariable")
 fun Resolver.resolveDestruction(
     statement: DestructingAssign,
     currentScope: MutableMap<String, Type>,
@@ -154,13 +179,13 @@ fun Resolver.resolveDestruction(
     // check that value has this fields
     // {name age} = person
 
-    @Suppress("unused")
     val resolveValue = {
         currentLevel++
         val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
         resolveSingle((statement.value), previousAndCurrentScope, statement)
         currentLevel--
     }()
+
 
 
     val type = statement.value.type

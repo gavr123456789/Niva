@@ -10,6 +10,7 @@ import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.*
 
 sealed class MessageMetadata(
@@ -21,7 +22,8 @@ sealed class MessageMetadata(
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
     private var _errors: MutableSet<Type.Union>? = null,
     val declaration: MessageDeclaration?,
-    var docComment: DocComment? = null
+    var docComment: DocComment? = null,
+    var forMutableType: Boolean = false,
 ) {
     val errors: Set<Type.Union>?
         get() = _errors?.toSet()
@@ -279,10 +281,10 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
 }
 
 fun isCollection(name: String) = when (name) {
-    "List", "MutableList" -> false
-    "Map", "MutableMap" -> false
-    "Set", "MutableSet" -> false
-    else -> true
+    "List", "MutableList" -> true
+    "Map", "MutableMap" -> true
+    "Set", "MutableSet" -> true
+    else -> false
 }
 
 sealed class Type(
@@ -292,12 +294,16 @@ sealed class Type(
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
-    var isMutable: Boolean = false,
+    isMutable: Boolean = false,
     var errors: MutableSet<Union>? = null,
     var isAlias: Boolean = false,
     var isCopy: Boolean = false
 ) {
 
+    var isMutable: Boolean = isMutable
+        set(value) {
+            field = value
+        }
 
     fun copyAnyType(): Type =
         (when (this) {
@@ -396,7 +402,10 @@ sealed class Type(
                     "<" + typeArgumentList.joinToString(", ") { it.toKotlinString(needPkgName) } + ">"
                 } else ""
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
-            "$needPkg$emitName$genericParam"
+
+            val realEmit = if (isMutable) replaceCollectionWithMutable(emitName) else emitName
+
+            "$needPkg$realEmit$genericParam"
         }
 
         is Lambda -> buildString {
@@ -553,7 +562,7 @@ sealed class Type(
         var needGenerateDynamic: Boolean = false // for backend, need to generate
     ) : Type(name, pkg, isPrivate, protocols) {
 
-        val emitName: String
+        var emitName: String
 
         init {
             val decl = typeDeclaration
@@ -593,21 +602,22 @@ sealed class Type(
 
         fun copy(withDifferentPkg: String? = null): UserLike =
             (when (this) {
-                is UserType -> UserType(
-                    name = this.name,
-                    typeArgumentList = this.typeArgumentList.map {
-                        if (it is UserLike) {
-                            it.copy()
-                        }
-                        else
-                            it
-                                                                 },
-                    fields = this.fields.copy(this),
-                    isPrivate = this.isPrivate,
-                    pkg = withDifferentPkg ?: this.pkg,
-                    protocols = this.protocols.toMutableMap(),
-                    typeDeclaration = this.typeDeclaration
-                )
+                is UserType -> {
+                    UserType(
+                        name = this.name,
+                        typeArgumentList = this.typeArgumentList.map {
+                            if (it is UserLike) {
+                                it.copy()
+                            } else
+                                it
+                        },
+                        fields = this.fields.copy(this),
+                        isPrivate = this.isPrivate,
+                        pkg = withDifferentPkg ?: this.pkg,
+                        protocols = this.protocols.toMutableMap(),
+                        typeDeclaration = this.typeDeclaration,
+                    )
+                }
 
                 is EnumRootType -> EnumRootType(
                     name = this.name,
@@ -650,6 +660,8 @@ sealed class Type(
                 it.isBinding = this.isBinding
                 it.parent = this.parent
                 it.errors = this.errors?.toMutableSet()
+                it.emitName = this.emitName
+                it.isMutable = isMutable
             }
     }
 
@@ -857,7 +869,8 @@ fun TypeAST.toType(
     resolvingFieldName: String? = null,
     typeDeclaration: SomeTypeDeclaration? = null,
     realParentAstFromGeneric: TypeAST? = null,
-    customPkg: String? = null
+    customPkg: String? = null,
+    resolver: Resolver? = null
 ): Type {
     val replaceToNullableAndAddErrorsIfNeeded = { type: Type ->
         val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
@@ -900,8 +913,12 @@ fun TypeAST.toType(
 
             if (this.typeArgumentList.isNotEmpty()) {
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
+                val typeFromDb =
+                    if (resolver != null)
+                        resolver.getAnyType(name,mutableMapOf(), mutableMapOf(), null, this.token )
+                    else
+                        typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
 
-                val typeFromDb = typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy(customPkg)
@@ -928,7 +945,10 @@ fun TypeAST.toType(
                             field.type = fieldType
                         }
                     }
-                    return copy
+                    return copy.also {
+
+                        if (isMutable) it.isMutable = true
+                    }
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
@@ -954,7 +974,7 @@ fun TypeAST.toType(
                 return Type.UnresolvedType()
             }
 
-            val type2 = if (this.mutable) {
+            val type2 = if (this.isMutable) {
                 (type).copyAnyType().also { it.isMutable = true }
             } else type
 
@@ -1027,7 +1047,10 @@ fun TypeFieldAST.toTypeField(
             parentType,
             resolvingFieldName = name,
             typeDeclaration = typeDeclaration
-        )
+        ).also {
+            if (typeAST.isMutable)
+                it.isMutable = true // может тут надо копировать
+        }
     )
     return result
 }
@@ -1236,7 +1259,7 @@ fun MessageDeclaration.toAnyMessageData(
     resolver: Resolver,
     receiverType: Type
 ): MessageMetadata {
-    return when (this) {
+    val result = when (this) {
         is MessageDeclarationKeyword -> toMessageData(typeDB, typeTable, pkg, isSetter)
         is MessageDeclarationUnary -> toMessageData(typeDB, typeTable, pkg, isGetter)
         is MessageDeclarationBinary -> toMessageData(typeDB, typeTable, pkg)
@@ -1256,6 +1279,9 @@ fun MessageDeclaration.toAnyMessageData(
         }
     }
 
+    result.forMutableType = forTypeAst.isMutable
+
+    return result
 }
 
 fun MessageDeclarationUnary.toMessageData(

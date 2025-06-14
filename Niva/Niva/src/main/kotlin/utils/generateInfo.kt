@@ -147,7 +147,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
         }
     }
 
-    val defaultUserTypeNames = setOf("Error", "List", "MutableList", "MutableMap", "MutableSet")
+    val defaultUserTypeNames = setOf("Error", "List", "Set", "Map", "MutableList", "MutableMap", "MutableSet")
 
     val userLikeTypes = if (userOnly)
         types.values.filterIsInstance<Type.UserType>().filter { !defaultUserTypeNames.contains(it.name) }
