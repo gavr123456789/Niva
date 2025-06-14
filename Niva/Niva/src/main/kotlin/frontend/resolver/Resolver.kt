@@ -210,7 +210,7 @@ private fun Resolver.resolveStatement(
         }
 
         is ListCollection -> {
-            val collectionName = if (!statement.isMutable) "List" else "MutableList"
+            val collectionName = "List" //if (!statement.isMutable) "List" else "MutableList"
             resolveCollection(statement, collectionName, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list
@@ -290,12 +290,13 @@ private fun Resolver.resolveStatement(
         is Assign -> {
             stack.push(statement)
 
+            // change field inside method for non mut type
             val checkIfThisIsMut = {
                 val thiz = previousScope["this"]
                 val methodDecl = this.resolvingMessageDeclaration
                 if (methodDecl != null && thiz != null && thiz is Type.UserLike) {
                     val fieldOfThis = thiz.fields.find { it.name == statement.name }
-                    if (fieldOfThis != null && !methodDecl.forTypeAst.mutable) {
+                    if (fieldOfThis != null && !methodDecl.forTypeAst.isMutable) {
                         // check is this is mutable
                         statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
                     }
@@ -325,7 +326,6 @@ private fun Resolver.resolveStatement(
 
         is ReturnStatement -> {
             stack.push(statement)
-
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             val expr = statement.expression
             if (expr != null) {
@@ -665,13 +665,13 @@ fun Resolver.addNewAnyMessage(
         findPackageOrError(st.forTypeAst.names.dropLast(1).joinToString("."), st.token)
     } else null
 
-    val type = if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+    val receiverType = if (forType is Type.UnknownGenericType) Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
     else forType
         ?: st.forType
         ?: st.token.compileError("Compiler error, receiver type of $WHITE$st$RESET declaration not resolved")
 
-    val (protocol, pkg) = getCurrentProtocol(type, st.token, customPkg)
-    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this, type)
+    val (protocol, pkg) = getCurrentProtocol(receiverType, st.token, customPkg)
+    val messageData = st.toAnyMessageData(typeDB, typeTable, pkg, isGetter, isSetter, this, receiverType)
 
 
     when (st) {
@@ -794,7 +794,7 @@ fun Resolver.addNewType(
     // 5 put type to all type sources
     pack.types[typeName] = type
     typeTable[typeName] = type //fix
-    typeDB.add(type, token = statement?.token ?: createFakeToken(), customNameAlias = typeName)
+    typeDB.add(type, customNameAlias = typeName)
 
 //    typeDB.unresolvedFields.remove(typeName)
 
@@ -1104,30 +1104,36 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
-val createTypeListOfUserLikeType = { name: String, internalType: Type.UserLike, listTypeProtocolDonor: Type.UserType ->
+val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, listTypeProtocolDonor: Type.UserType ->
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = listOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
         typeDeclaration = listTypeProtocolDonor.typeDeclaration
-    )
+    ).also {
+        it.isMutable = listTypeProtocolDonor.isMutable
+        it.emitName = listTypeProtocolDonor.emitName
+    }
 }
-val createTypeListOfType = { name: String, internalType: Type.InternalType, listTypeProtocolDonor: Type.UserType ->
+val createTypeListOfType = { name: String, elementType: Type.InternalType, listTypeProtocolDonor: Type.UserType, emitName: String ->
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(internalType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = listOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
         typeDeclaration = listTypeProtocolDonor.typeDeclaration
-    )
+    ).also {
+        it.isMutable = listTypeProtocolDonor.isMutable
+        it.emitName = emitName
+    }
 }
 
-val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType ->
+val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType, emitName: String ->
     Type.UserType(
         name = name,
         typeArgumentList = listOf(
@@ -1137,7 +1143,10 @@ val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.Us
         pkg = "core",
         protocols = mapType.protocols,
         typeDeclaration = mapType.typeDeclaration
-    )
+    ).also {
+        it.isMutable = mapType.isMutable
+        it.emitName = emitName
+    }
 }
 
 
@@ -1471,9 +1480,12 @@ class Resolver(
                 protocols
             )
 
-            typeTable[type.name] = type// fixed
             typeDB.addUserLike(type.name, type)
-            corePackage.types[type.name] = type
+
+            if (typeTable[type.name]?.isMutable != true) {
+                typeTable[type.name] = type
+                corePackage.types[type.name] = type
+            }
         }
         // Sequence
         val sequenceType = Type.UserType(
@@ -1490,16 +1502,22 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
+
         val mutableListType = Type.UserType(
-            name = "MutableList",
+            name = "List",
             typeArgumentList = listOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
-            typeDeclaration = null
-        )
+            typeDeclaration = null,
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableList"
+        }
+
         // also adds protocol to sequence
         addCustomTypeToDb(
-            sequenceType, createListProtocols(
+            sequenceType,
+            createListProtocols(
                 isMutable = false,
                 intType = intType,
                 stringType = stringType,
@@ -1518,7 +1536,8 @@ class Resolver(
 
         // List
         addCustomTypeToDb(
-            listType, createListProtocols(
+            listType,
+            createListProtocols(
                 isMutable = false,
                 intType = intType,
                 stringType = stringType,
@@ -1543,10 +1562,10 @@ class Resolver(
         sequenceTypeOfDifferentGeneric.protocols.putAll(sequenceType.protocols)
 
         // Ranges
-        val listOfChar = createTypeListOfType("List", charType, listType)
-        val listOfInt = createTypeListOfType("List", intType, listType)
-        val seqOfChar = createTypeListOfType("Sequence", charType, sequenceType)
-        val seqOfInt = createTypeListOfType("Sequence", intType, sequenceType)
+        val listOfChar = createTypeListOfType("List", charType, listType, "List")
+        val listOfInt = createTypeListOfType("List", intType, listType, "List")
+        val seqOfChar = createTypeListOfType("Sequence", charType, sequenceType, "Sequence")
+        val seqOfInt = createTypeListOfType("Sequence", intType, sequenceType, "Sequence")
         intRangeType.protocols.putAll(
             createRangeProtocols(
                 rangeType = intRangeType,
@@ -1571,7 +1590,7 @@ class Resolver(
 
         // List continue
         // now when we have list type with its protocols, we add split method for String, that returns List::String
-        val listOfString = createTypeListOfType("List", stringType, listType)
+        val listOfString = createTypeListOfType("List", stringType, listType, "List")
         stringType.protocols["common"]!!.keywordMsgs.putAll(
             listOf(
                 createKeyword(
@@ -1581,8 +1600,8 @@ class Resolver(
         )
 
         // add toList to IntRange
-        val listOfInts = createTypeListOfType("List", intType, listType)
-        val mutListOfInts = createTypeListOfType("MutableList", intType, listType)
+        val listOfInts = createTypeListOfType("List", intType, listType, "List")
+        val mutListOfInts = createTypeListOfType("List", intType, mutableListType, "MutableList")
         val intRangeProto = intRangeType.protocols["common"]!!
         val toListForIntProtocol = createUnary("toList", listOfInts)
         val toMutListForIntProtocol = createUnary("toMutableList", mutListOfInts)
@@ -1594,49 +1613,60 @@ class Resolver(
             it.protocols["collectionProtocol"]!!.unaryMsgs["toMutableList"]!!.returnType = mutableListType
         }
         val mutListTypeOfDifferentGeneric = Type.UserType(
-            name = "MutableList",
+            name = "List",
             typeArgumentList = listOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
-            typeDeclaration = null
-        )
+            typeDeclaration = null,
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableList"
+        }
 
-        addCustomTypeToDb(
-            mutableListType, createListProtocols(
-                isMutable = true,
-                intType = intType,
-                stringType = stringType,
-                unitType = unitType,
-                boolType = boolType,
-                currentType = mutableListType,
-                listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
-                itType = genericType,
-                differentGenericType = differentGenericType,
-                sequenceType = sequenceType,
-                pairType = pairType,
-                listType = listType,
-                mutListType = mutableListType
-            )
-        )
+//        addCustomTypeToDb(
+//            mutableListType, createListProtocols(
+//                isMutable = true,
+//                intType = intType,
+//                stringType = stringType,
+//                unitType = unitType,
+//                boolType = boolType,
+//                currentType = mutableListType,
+//                listTypeOfDifferentGeneric = mutListTypeOfDifferentGeneric,
+//                itType = genericType,
+//                differentGenericType = differentGenericType,
+//                sequenceType = sequenceType,
+//                pairType = pairType,
+//                listType = listType,
+//                mutListType = mutableListType
+//            )
+//        )
 
         mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
 
 
         // mutable set
         val mutableSetType = Type.UserType(
-            name = "MutableSet",
+            name = "Set",
             typeArgumentList = listOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-        )
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableSet"
+        }
+
         val mutSetTypeOfDifferentGeneric = Type.UserType(
-            name = "MutableSet",
+            name = "Set",
             typeArgumentList = listOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-        )
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableSet"
+        }
+
         val setType = Type.UserType(
             name = "Set",
             typeArgumentList = listOf(genericType),
@@ -1645,20 +1675,20 @@ class Resolver(
             typeDeclaration = null
         )
 
-        addCustomTypeToDb(
-            mutableSetType, createSetProtocols(
-                isMutable = true,
-                intType = intType,
-                unitType = unitType,
-                boolType = boolType,
-                mutableSetType = mutableSetType,
-                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-                itType = genericType,
-                differentGenericType = differentGenericType,
-                listType = listType,
-                setType = setType
-            )
-        )
+//        addCustomTypeToDb(
+//            mutableSetType, createSetProtocols(
+//                isMutable = true,
+//                intType = intType,
+//                unitType = unitType,
+//                boolType = boolType,
+//                mutableSetType = mutableSetType,
+//                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+//                itType = genericType,
+//                differentGenericType = differentGenericType,
+//                listType = listType,
+//                setType = setType
+//            )
+//        )
 
         // immutable Set
 
@@ -1689,12 +1719,16 @@ class Resolver(
 
         // mutable map
         val mapTypeMut = Type.UserType(
-            name = "MutableMap",
+            name = "Map",
             typeArgumentList = listOf(genericType, differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-        )
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableMap"
+        }
+
         val mapType = Type.UserType(
             name = "Map",
             typeArgumentList = listOf(genericType, differentGenericType),
@@ -1702,20 +1736,20 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
-        addCustomTypeToDb(
-            mapTypeMut, createMapProtocols(
-                isMutable = true,
-                intType = intType,
-                unitType = unitType,
-                boolType = boolType,
-                mutableMapType = mapTypeMut,
-                keyType = genericType,
-                valueType = differentGenericType,
-                setType = mutableSetType,
-                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-                mapType = mapType,
-            )
-        )
+//        addCustomTypeToDb(
+//            mapTypeMut, createMapProtocols(
+//                isMutable = true,
+//                intType = intType,
+//                unitType = unitType,
+//                boolType = boolType,
+//                mutableMapType = mapTypeMut,
+//                keyType = genericType,
+//                valueType = differentGenericType,
+//                setType = mutableSetType,
+//                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
+//                mapType = mapType,
+//            )
+//        )
 
         val mapProtocols = createMapProtocols(
             isMutable = false,
@@ -1764,7 +1798,7 @@ class Resolver(
 //        val dNull = createDynamicBranchType(dynamicType, "DynamicNull", boolType)
         val double = createDynamicBranchType(dynamicType, "DynamicDouble", doubleType)
         val list = createDynamicBranchType(dynamicType, "DynamicList", createTypeListOfUserLikeType("List", dynamicType, listType))
-        val obj = createDynamicBranchType(dynamicType, "DynamicObj", createTypeMapOfType("MutableMap", stringType, dynamicType, mapTypeMut))
+        val obj = createDynamicBranchType(dynamicType, "DynamicObj", createTypeMapOfType("Map", stringType, dynamicType, mapTypeMut, "MutableMap"))
         addCustomTypeToDb(str, mutableMapOf())
         addCustomTypeToDb(int, mutableMapOf())
         addCustomTypeToDb(bool, mutableMapOf())
@@ -1783,7 +1817,10 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null,
             protocols = mapProtocols
-        )
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableMap"
+        }
         dynamicType.fields.add(KeywordArg("fields", mutableMapOfFields))
 
         addCustomTypeToDb(dynamicType, mutableMapOf())
@@ -1852,7 +1889,7 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
-        val fieldsMap = createTypeMapOfType("MutableMap", stringType, typeType, mapTypeMut)
+        val fieldsMap = createTypeMapOfType("Map", stringType, typeType, mapTypeMut, "MutableMap")
 
         // add fields
         typeType.fields = mutableListOf(

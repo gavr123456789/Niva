@@ -97,7 +97,7 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 }
 
 fun ListCollection.generateList() = buildString {
-    if (!isMutable)
+    if (!isMutableCollection)
         append("listOf")
     else
         append("mutableListOf")
@@ -135,7 +135,7 @@ fun MapCollection.generateMap() = buildString {
 }
 
 fun SetCollection.generateSet() = buildString {
-    if (!isMutable)
+    if (!isMutableCollection)
         append("setOf(")
     else
         append("mutableSetOf(")

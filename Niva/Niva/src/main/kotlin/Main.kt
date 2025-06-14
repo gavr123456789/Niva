@@ -83,7 +83,6 @@ fun main(args: Array<String>) {
 
 //        val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Niva/bazar/Programs/http-crud/main.niva")
         val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/main.niva")
-
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {

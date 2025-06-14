@@ -166,16 +166,34 @@ fun Resolver.resolveMessage(
     }
 
 
+
+
     // if we see the method with possible errors but not resolved body
     // that means it was declared after currently resolving method
-    val decl = statement.declaration
-    if (msgFromDb != null && decl?.returnTypeAST?.errors?.isEmpty() == true && decl.stackOfPossibleErrors.isEmpty()) {
-        // this means the errors were not resolved yet
-        this.resolvingMessageDeclaration = decl
-        resolveMessageDeclaration(decl, true, previousScope, false)
+    if (msgFromDb != null) {
+        val decl = statement.declaration
+        val receiver = statement.receiver
+        val receiverType = receiver.type!!
+
+        //check that it was mutable call for mutable type
+        if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
+            val receiverFromScope = previousAndCurrentScope[receiver.name]
+            if (receiverFromScope != null && !receiverFromScope.isMutable) {
+                statement.token.compileError("receiver type $receiverType is not mutable, but ${msgFromDb.declaration} declared for mutable type, use `x::mut $receiverType = ...`")
+            }
+        }
+        //
+
+
+
+        if (decl?.returnTypeAST?.errors?.isEmpty() == true && decl.stackOfPossibleErrors.isEmpty()) {
+            // this means the errors were not resolved yet
+            this.resolvingMessageDeclaration = decl
+            resolveMessageDeclaration(decl, true, previousScope, false)
+        }
     }
 
-        statement.type = addErrorEffect(msgFromDb, returnType, statement)
+    statement.type = addErrorEffect(msgFromDb, returnType, statement)
 
 
     if (GlobalVariables.isLspMode) {

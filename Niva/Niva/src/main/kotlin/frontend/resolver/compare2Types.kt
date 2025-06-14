@@ -204,7 +204,7 @@ fun compare2Types(
         if (compareParentsOfBothTypes) {
             var parent1: Type? = type1OrChildOf2.parent
             while (parent1 != null) {
-                if (compare2Types(type2, parent1, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+                if (compare2Types(type2, parent1, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false)) {
                     return true
                 }
                 parent1 = parent1.parent

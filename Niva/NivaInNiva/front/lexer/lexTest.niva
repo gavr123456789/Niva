@@ -102,7 +102,7 @@ Test multiLine = [
 ]
 
 Test operators = [
-  binSym = {TokenType.BinarySymbol}m
+  binSym = {TokenType.BinarySymbol}!
   11 repeat: [binSym add: TokenType.BinarySymbol]
   LexTest 
     checkThat: "== != + - * = <= >= < > || &&" 

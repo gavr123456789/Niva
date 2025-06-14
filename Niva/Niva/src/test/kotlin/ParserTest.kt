@@ -1822,7 +1822,7 @@ class ParserTest {
         val w = ast[0] as VarDeclaration
         val e = w.valueTypeAst!!
 
-        assertTrue { e.mutable }
+        assertTrue { e.isMutable }
     }
 
     @Test

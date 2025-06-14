@@ -7,7 +7,7 @@ import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
-fun Resolver.fillCollectionType(typeArgumentList: List<Type>, statement2: Receiver, collectionTypeName: String) {
+fun Resolver.fillCollectionType(typeArgumentList: List<Type>, statement2: Receiver, collectionTypeName: String): Type.UserType {
     val listType =
         this.projects[currentProjectName]!!.packages["core"]!!.types[collectionTypeName] as Type.UserType
 
@@ -18,8 +18,14 @@ fun Resolver.fillCollectionType(typeArgumentList: List<Type>, statement2: Receiv
         pkg = "core",
         protocols = listType.protocols,
         typeDeclaration = null
-    )
+    ).also {
+        if (statement2 is CollectionAst && statement2.isMutableCollection)
+            it.isMutable = true
+        else if (statement2 is MapCollection && statement2.isMutable)
+            it.isMutable = true
+    }
     statement2.type = collectionType
+    return collectionType
 }
 
 fun Resolver.resolveCollection(
@@ -88,7 +94,7 @@ fun Resolver.resolveSet(
     statement: SetCollection,
     previousAndCurrentScope: MutableMap<String, Type>,
 ) {
-    val collectionName = if(!statement.isMutable) "Set" else "MutableSet"
+    val collectionName = "Set"//if(!statement.isMutable) "Set" else "MutableSet"
 
     resolveCollection(statement, collectionName, previousAndCurrentScope)
 
@@ -106,26 +112,34 @@ fun Resolver.resolveSet(
 
 }
 
-
 fun Resolver.resolveMap(
     statement: MapCollection,
     rootStatement: Statement?,
     previousScope: MutableMap<String, Type>,
     currentScope: MutableMap<String, Type>
-) {
+): Type {
+    val type = resolveMap2(statement, rootStatement, previousScope, currentScope)
+    val realType = if (statement.isMutable) type.copyAnyType().also { it.isMutable = true } else type
+
+    statement.type = realType
+    return realType
+}
+
+fun Resolver.resolveMap2(
+    statement: MapCollection,
+    rootStatement: Statement?,
+    previousScope: MutableMap<String, Type>,
+    currentScope: MutableMap<String, Type>
+): Type {
     // get type of the first key
     // get type of the first value
     if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
-        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)//fix
-        statement.type = type
-        return
+        val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)
+        return type
     }
-    val collectionName = if(!statement.isMutable) "Map" else "MutableMap"
+    val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"
     if (statement.initElements.isEmpty()) {
-
-
-        fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
-        return
+        return fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
     }
     val (key, value) = statement.initElements[0]
     currentLevel++
@@ -159,5 +173,6 @@ fun Resolver.resolveMap(
         protocols = mapTypeFromDb.protocols,
         typeDeclaration = null
     )
-    statement.type = mapType
+
+    return mapType
 }

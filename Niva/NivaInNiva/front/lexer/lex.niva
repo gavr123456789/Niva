@@ -238,9 +238,9 @@ extend mut Lexer [
     ^ tok
   ]
 
-  on lex -> MutableList::Token! = [
+  on lex -> mut List::Token! = [
     mut newTok = .nextToken
-    mut tokens::MutableList::Token = {newTok}m
+    mut tokens::mut List::Token = {newTok}!
 
     [newTok kind != TokenType.EndOfFile] whileTrue: [
       newTok <- .nextToken

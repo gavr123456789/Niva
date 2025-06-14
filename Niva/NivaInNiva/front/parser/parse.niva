@@ -1,19 +1,21 @@
 type Parser
   tokens: List::Token
   current: Int 
-  statements: MutableList::Statement
+  statements: mut List::Statement
 
 constructor Parser newParseTokens::List::Token = [
-  statements::MutableList::Statement = {}m
-  parser:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}m error TODO
+  statements::mut List::Statement = {}!
+  parser2:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
   
-  [ parser done not ] whileTrue: [
-    parser statements add: parser nextStatement
+  keker2 = 1
+
+  [ parser2 done not ] whileTrue: [
+    parser2 statements add: parser2 nextStatement
   ]
 
   // parser statements debug
 
-  ^ parser
+  ^ parser2
 ]
 
 
@@ -30,10 +32,9 @@ extend mut Parser [
     ] // TODO это теперь вообщзе не надо
 
     ^| tok kind
-    | TokenType.Integer => [
-      num = tok lexeme toInt
-      addLiteral lit: (IntExpr num: num token: tok)
-    ]
+    | TokenType.Integer => 
+      addLiteral lit: (IntExpr num: tok lexeme toInt token: tok)
+    
     | TokenType.String => 
       addLiteral lit: (StringExpr token: tok)
     
@@ -103,7 +104,7 @@ extend mut Parser [
   on parseBodyOrSingleExpr -> List::Statement = [
     // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
 
-    body::MutableList::Statement = {}m
+    body::mut List::Statement = {}!
 
     .match: TokenType.OpenBracket, ifTrue: [
       // parse body
@@ -199,7 +200,7 @@ extend mut Parser [
         // Int inc^::Int b::Int =
         
         firstArg = NameAndType name: tok2 lexeme astType: .parseType
-        kwArgs = {firstArg}m
+        kwArgs = {firstArg}!
 
         mut c = true 
         [c] whileTrue: [
@@ -309,7 +310,7 @@ extend mut Parser [
     ^| .peek kind
     | TokenType.IdentifierColon => [
 
-      result::MutableList::NameAndExpr = {}m
+      result::mut List::NameAndExpr = {}!
       mut c = true
       // parse keyword
       [c] whileTrue: [

@@ -42,21 +42,7 @@ sealed class Expression(
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
     var isInfoRepl: Boolean = false,
-) : Statement(token, isPrivate, pragmas) {
-
-//    private var _type: Type? = null
-//
-//    var type: Type?
-//        set(value) {
-//            if (_type != null) throw Exception("Compiler bug, type for $this already set")
-//            _type = value
-//        }
-//        get() = _type
-
-//    init {
-//        this.type = type
-//    }
-}
+) : Statement(token, isPrivate, pragmas)
 
 
 class NeedInfo(

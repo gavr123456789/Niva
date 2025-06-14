@@ -23,7 +23,7 @@ extend mut Parser [
     ]
 
     isMapLike ifTrue: [
-      typeArgumentList::MutableList::AstType = {}m
+      typeArgumentList::mut List::AstType = {}!
 
       mut continue = true 
       [continue] whileTrue: [
@@ -53,7 +53,7 @@ extend mut Parser [
       // [ -> ]
       
       mut c = true 
-      mut args::MutableList::AstType2 = {}m
+      mut args::mut List::AstType2 = {}!
       [c] whileTrue: [
         argType = .parseGenericType
         args add: argType

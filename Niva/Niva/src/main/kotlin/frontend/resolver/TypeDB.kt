@@ -82,7 +82,7 @@ fun TypeDB.getType(
                     }
                 }
                 return TypeDBResult.FoundMoreThanOne(
-                    userTypesFromDifferentPkgs.map { it.pkg to it }.toMap()
+                    userTypesFromDifferentPkgs.associateBy { it.pkg }
                 )
             }
 
@@ -140,7 +140,7 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 
 // region adding
 
-fun TypeDB.add(type: Type, token: Token, customNameAlias: String? = null) {
+fun TypeDB.add(type: Type, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
 //        is Type.ErrorType -> addErrorDomain(realName, type, token)
@@ -188,7 +188,7 @@ fun resolveTypeIfSameNamesFromConstructor(
     result: TypeDBResult.FoundMoreThanOne,
     kwConstructor: KeywordMsg?,
     imports2: Set<String>,
-    currentPkgName: String,
+    currentPkgName: String?,
     tokenForError: Token
 ): Type {
 
@@ -200,7 +200,7 @@ fun resolveTypeIfSameNamesFromConstructor(
         return typeDeclaredInTheCurrentPkg
     }
 
-    val imports = imports2 + currentPkgName
+    val imports = imports2 + (currentPkgName ?: "")
 
     if (kwConstructor == null) {
         // check if we have such import, so its like "Application", without constructor call
@@ -271,7 +271,7 @@ fun resolveTypeIfSameNamesFromConstructor(
 
 
 fun TypeDBResult.getTypeFromTypeDBResultConstructor(
-    statement: KeywordMsg?, imports: Set<String>, curPkg: String, tokenForError: Token
+    statement: KeywordMsg?, imports: Set<String>, curPkg: String?, tokenForError: Token
 ): Type? {
     return when (this) {
         is TypeDBResult.FoundMoreThanOne -> {
