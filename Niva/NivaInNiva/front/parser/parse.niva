@@ -7,8 +7,6 @@ constructor Parser newParseTokens::List::Token = [
   statements::mut List::Statement = {}!
   parser2:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
   
-  keker2 = 1
-
   [ parser2 done not ] whileTrue: [
     parser2 statements add: parser2 nextStatement
   ]
@@ -20,6 +18,7 @@ constructor Parser newParseTokens::List::Token = [
 
 
 type TypeField name: String type_: AstType2
+TypeField toString -> String =  "$name: $type_"
 
 extend mut Parser [
   /// if literal was added returns true
@@ -146,6 +145,7 @@ extend mut Parser [
 
     | tok kind
     | TokenType.Type => [^ .typeDeclaration: tok]
+    | TokenType.Union => [^ .unionTypeDeclaration: tok]
     | TokenType.Identifier => [
       getReturnType = [
         .match: TokenType.ReturnArrow, ifTrue: [

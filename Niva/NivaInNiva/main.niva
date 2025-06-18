@@ -6,16 +6,15 @@ type Program
 
 
   input = """
+    union Color = Red | Blue | Green
 
-    type Person name: String age: Int
-    Person greet = "Hello Im" + name
-    Person sleep -> Int = [
-      1 echo
-    ]
+    union Figure size: Int = 
+    | Circle r: Int
+    | Rectangle width: Int heigth: Int
+    
 
   """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: 3
+  statements = TestParse withInput: input expectedCount: 2
   keyword = statements at: 0
   statements echo
-
