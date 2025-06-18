@@ -8,10 +8,12 @@ union Statement token: Token =
 | Assign            name: String value: Expr
 | DestructingAssign names: List::String value: Expr // {name} = person
 
+
+
 union Declaration token: Token = 
 | TypeDecl name: String fields: List::TypeField
 | EnumDecl 
-| UnionDecl
+| UnionDecl name: String generalFields: List::TypeField branches: List::TypeDecl
 | MessageDecl 
   receiver: AstType2
   name: String 
@@ -20,18 +22,13 @@ union Declaration token: Token =
   body: List::Statement
 
 
-// | 
-// Int inc::Int = 56
-// {name: "inc" expr: 1}
-
-// MessageDecl value: 
-//   (MessageSend name: "inc")
-
-
 // Messages
 enum MessageKind = Unary | Binary | Keyword
 
-
+TypeDecl toString -> String = [
+  fields = fields joinWith: " "
+  ^ "type " + name + (fields isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields
+]
 
 // simple keyword
 // 1 from: 2 to: 3
@@ -128,6 +125,27 @@ extend mut AstType [
   on setMutable::Boolean = isMut <- setMutable
 ]
 
+
+
+union CollectionLiteral token: Token elements: List::Expr = 
+| ListLiteral 
+| SetLiteral
+| MapLiteral
+
+union LiteralExpr token: Token = 
+| CharExpr
+| IntExpr num: Int
+| FloatExpr
+| DoubleExpr
+| StringExpr
+| BooleanExpr
+| NullExpr
+| FloatExpr
+| DoubleExpr
+
+IntExpr toString = "$num"
+
+
 // Map(Int, String)
 // name: Map
 // genericParams: {
@@ -156,23 +174,7 @@ extend mut AstType [
 // | FloatAstType
 // | DoubleAstType
 
-union CollectionLiteral token: Token elements: List::Expr = 
-| ListLiteral 
-| SetLiteral
-| MapLiteral
 
-union LiteralExpr token: Token = 
-| CharExpr
-| IntExpr num: Int
-| FloatExpr
-| DoubleExpr
-| StringExpr
-| BooleanExpr
-| NullExpr
-| FloatExpr
-| DoubleExpr
-
-IntExpr toString = "$num"
 
 
 

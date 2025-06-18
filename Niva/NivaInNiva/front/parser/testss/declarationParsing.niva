@@ -76,6 +76,43 @@ Test parseType -> Unit! = [
   |=> [TO DO: "It should be int, but it " + typeDecl toString]
 ]
 
+Test parseTypeWithNoFields -> Unit! = [
+  input = """
+    type Person
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
+
+  | typeDecl 
+  | TypeDecl => [
+      Assert 
+        that: typeDecl name
+        equals: "Person"
+      Assert
+        that: typeDecl fields count
+        equals: 0
+  ]
+  |=> []
+]
+
+Test parseUnion -> Unit! = [
+  input = """
+    union Color = Red | Blue | Green
+
+    union Figure size: Int = 
+    | Circle r: Int
+    | Rectangle width: Int heigth: Int
+    
+
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 2
+  keyword = statements at: 0
+
+]
+
+
 Test parseUnaryDecl -> Unit! = [
   input = """
     Int inc -> Boolean = [ 
@@ -193,5 +230,4 @@ Test parseRealWorldExample -> Unit! = [
 
   statements = TestParse withInput: input expectedCount: 2
   keyword = statements at: 0
-  statements echo
 ]

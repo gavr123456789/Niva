@@ -187,6 +187,12 @@ extend mut Lexer [
         lit = .readIdentifier
         tt = Token lookupKeyword: lit
 
+        // digit after identifier "sas42"
+        ch isDigit ifTrue: [
+          litDigit = .parseNumber
+          ^ .createToken: TokenType.Identifier lexeme: lit + litDigit
+        ]
+
         // colon after identifier
 
         ^| ch 
@@ -206,23 +212,6 @@ extend mut Lexer [
         |=> [
           .createToken: tt lexeme: lit
         ]
-
-
-        // ^.match: ':', 
-        //   ifTrue:  [
-        //     .printFullState
-
-        //     // .createToken: TokenType.IdentifierColon lexeme: lit + ":"
-        //     .match: ':',
-        //       ifTrue: [
-        //         .printFullState
-        //         x = .createToken: TokenType.IdentifierDoubleColon lexeme: lit
-        //         posOnLine debug
-        //         x
-        //       ]
-        //       ifFalse: [.createToken: TokenType.IdentifierColon lexeme: lit]
-        //   ] 
-        //   ifFalse: [.createToken: tt lexeme: lit ]
       ]
       // digit
       ch isDigit ifTrue: [

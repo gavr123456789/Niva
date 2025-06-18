@@ -53,11 +53,11 @@ Test parseFromSpace = [
 ]
 
 Test words = [
-  tokens = LexTest input: "niva nim vala" 
+  tokens = LexTest input: "niva nim vala42" 
 
   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
   expectedStarts = {1 6 10}
-  expectedEnds =   {5 9 14}
+  expectedEnds =   {5 9 16}
 
   tokens forEachIndexed: [ i, it ->
     Assert that: it kind equals: (expectedKinds at: i)

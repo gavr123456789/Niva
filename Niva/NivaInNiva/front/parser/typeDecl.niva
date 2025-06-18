@@ -1,7 +1,8 @@
 extend mut Parser [
   /// `name: String`
   on typeFields -> List::TypeField = [
-    .peek kind == TokenType.IdentifierColon, assert: "Expected `field:`"
+    // type can have no fields
+    .peek kind == TokenType.IdentifierColon ifFalse: [^ {}]
     result::mut List::TypeField = {}!
 
     mut c = true
@@ -23,9 +24,8 @@ extend mut Parser [
     ^ result toList
   ]
 
-  /// type name (field1: astType)*
-  on typeDeclaration: tok::Token -> Statement = [
-    // type name (field1: astType)*
+  /// type ^name (field1: astType)*
+  on typeDeclaration: tok::Token -> TypeDecl = [
 
     res = TypeDecl 
       name: (.step lexeme)
@@ -33,6 +33,35 @@ extend mut Parser [
       token: tok
     // res debug
     // .statements add: res
+    ^ res
+  ]
+  /// union name = (| (field1: astType)*)*
+  /// union Color = Red | Blue | Green
+  /// union Car genericField = Foo field1: Int | Bar field2: Int
+  on unionTypeDeclaration: tok::Token -> UnionDecl = [
+    name = .step lexeme
+    generalFields = .typeFields
+
+    .matchAssert: TokenType.Assign
+    .matchString: "|" // first optional pipe
+
+    branches:: mut List::TypeDecl = {}
+    branchesParse = [
+      mut c = true
+      [c] whileTrue: [
+        .peek kind == TokenType.Identifier ifTrue: [
+          branches add: (.typeDeclaration: .peek)
+          c <- .match: TokenType.If
+          Unit
+        ] ifFalse: [
+          c <- false
+        ]
+      ]
+
+    ] do
+
+    res = UnionDecl name: name generalFields: generalFields branches: branches token: tok 
+
     ^ res
   ]
 
