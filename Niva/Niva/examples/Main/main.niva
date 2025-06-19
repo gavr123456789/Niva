@@ -1,50 +1,16 @@
 
+Int sasss::String -> Int = 5
+Int sasss2::Int -> Int = 5
+
+@debug
+Int sas -> Int = [
+    1 + 23
+
+    x = 1 sasss2: (2 sasss: "hhdn")
+    x echo
+    ^ 1 > 2 ifTrue: [5] ifFalse: [6]
 
 
-//////////////
-//type Wallet money: Int
-//type Person name: String wallet: Wallet
-//
-//mut Wallet addMoney::Int = [
-//  money <- money + addMoney
-//]
-//extend mut Wallet [
-//    on sas = [
-//        money inc
-//    ]
-//]
-//
-//Person sus::mut Wallet = [
-//    1 echo
-//]
-//p = Person name: "Alice" wallet: (Wallet money: 123)
-
-////
-type Person x: List::Kek
-constructor Person empty = [
-    p = Person x: {}!
-    ^ p
 ]
-person = Person empty
-list:: mut List::Kek = person x
-list add: (Kek x: 1)
-list echo
-type Kek x: Int
 
-//mList::mut List::Int = {1 2 3}
-//mList add: 4
-//
-//mList echo
-
-///////
-//Person sas = [
-//  // name <- "rst"
-//  // must be forbiden since w is not mutable and addMoney only for mutable type
-//  w addMoney: 23
-//]
-
-//mut Person sas2 = [
-//  // name <- "rst"
-//  // can be used even if w isnt mutable since this is a method for mut Person, mmmaaaybe, not sure
-//  w addMoney: 23
-//]
+1 sas echo

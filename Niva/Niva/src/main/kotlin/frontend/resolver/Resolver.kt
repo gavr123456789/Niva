@@ -184,7 +184,8 @@ private fun Resolver.resolveStatement(
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // identifier
             }
 
-            devModeSetInlineRepl(statement, resolvingMessageDeclaration)
+            if (!statement.isType)
+                devModeSetInlineRepl(statement, resolvingMessageDeclaration)
 
             addToTopLevelStatements(statement)
         }

@@ -25,14 +25,16 @@ equals: list::List::TokenType
 ]
 
 Test integers = [
-  tokens = LexTest input: "11 22 33" 
+  tokens = LexTest input: "11 22 33 -44" 
 
-  expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer}
-  expectedStarts = {1 4 7}
-  expectedEnds =   {3 6 9}
+  expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer, TokenType.Integer}
+  expectedStarts = {1 4 7 10}
+  expectedEnds =   {3 6 9 13}
+  expectedNums = {11 22 33 -44}
 
   tokens forEachIndexed: [ i, it ->
     Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme toInt equals: (expectedNums at: i)
     Assert that: it start equals: (expectedStarts at: i)
     Assert that: it end equals: (expectedEnds at: i)
   ]

@@ -291,11 +291,11 @@ extend mut Parser [
     ^ TO DO: "nextStatement: no statement"
   ]
 
-
+  @debug
   on nextExperssion: tok::Token -> Expr = [
     primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
     firstExpr = .nextExperssion2: tok receiver: primaryReceiver
-
+    
     ^ .peek kind == TokenType.Comma, 
       ifTrue: [
         .step // skip comma

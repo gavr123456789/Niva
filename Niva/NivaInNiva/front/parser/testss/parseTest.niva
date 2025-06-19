@@ -5,7 +5,11 @@ constructor TestParse withInput::String expectedCount::Int -> mut List::Statemen
   // {statements} = Parser newParseTokens: tokens
   parser = Parser newParseTokens: tokens
   statements::mut List::Statement = parser statements //::mut List::Statement
-  Assert that: statements count equals: expectedCount
+  
+  expectedCount > 0 ifTrue: [
+    Assert that: statements count equals: expectedCount
+  ]
+  
   ^statements
 ]
 

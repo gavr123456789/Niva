@@ -28,7 +28,7 @@ import kotlin.collections.iterator
 fun Expression.generateAddDevDataFunCall(b: StringBuilder) {
     if (isInlineRepl) {
         val filePath = "\"${token.file.absolutePath}\""
-        val exprName = "\"$this\""
+        val exprName = "\"\"\"$this\"\"\""
 //        val getStackTrace = "(Thread.currentThread().stackTrace.drop(1).joinToString(\" <- \") { \"\${it.methodName}\${if (it.moduleName != null) \"(\${it.moduleName})\" else \"\"}\" })"
         val tokenLine = token.line
         val tokenStart = token.relPos.start

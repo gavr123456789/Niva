@@ -159,10 +159,17 @@ extend mut Lexer [
       |=> Error throwWithMessage: "only { or ( can be after #"
     ]
 
-    // binary symbols
-    |'-' => .stepMatch: '>', 
-      ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
-      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+
+      // binary symbols and negative digits
+    | '-' => ^ .peekChar isDigit ifTrue: [
+      .step // skip minus
+      lit = "-" + .parseNumber
+      .createToken: TokenType.Integer lexeme: lit
+    ] ifFalse: [
+      .stepMatch: '>', 
+        ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
+        ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+    ]
 
     |'<' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="] 
