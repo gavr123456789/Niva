@@ -5,16 +5,22 @@ type Program
 
 
 
-  input = """
+  input2 = """
     union Color = Red | Blue | Green
 
     union Figure size: Int = 
     | Circle r: Int
     | Rectangle width: Int heigth: Int
-    
-
   """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: 2
-  keyword = statements at: 0
-  statements echo
+  input = """
+    1 inc inc inc
+    2 + 2 + 3
+    3 from: 2 to: 3
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: -1
+  // keyword = statements at: 0
+  // statements echo
+  
+  PrintingVisitor new run: statements

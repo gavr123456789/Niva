@@ -46,21 +46,22 @@ extend mut Parser [
     .matchString: "|" // first optional pipe
 
     branches:: mut List::TypeDecl = {}
-    branchesParse = [
-      mut c = true
-      [c] whileTrue: [
-        .peek kind == TokenType.Identifier ifTrue: [
-          branches add: (.typeDeclaration: .peek)
-          c <- .match: TokenType.If
-          Unit
-        ] ifFalse: [
-          c <- false
-        ]
+    // branchesParse 
+    mut c = true
+    [c] whileTrue: [
+      .peek kind == TokenType.Identifier ifTrue: [
+        branches add: (.typeDeclaration: .peek)
+        c <- .match: TokenType.If
+        Unit
+      ] ifFalse: [
+        c <- false
       ]
+    ]
 
-    ] do
+
 
     res = UnionDecl name: name generalFields: generalFields branches: branches token: tok 
+
 
     ^ res
   ]
