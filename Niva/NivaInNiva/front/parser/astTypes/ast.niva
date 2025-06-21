@@ -2,7 +2,6 @@
 
 union Statement token: Token =
 | ^Expr
-| ReturnStatement   value: Expr?
 | ^Declaration
 | VarDeclaration    name: String value: Expr 
 | Assign            name: String value: Expr
@@ -77,6 +76,7 @@ union Expr token: Token =
 | ExprInBrackets value: Expr
 | ^CollectionLiteral
 | ^MessageSend2
+| ReturnStatement value: Expr?
 
 Identifier toString = "$name"
 

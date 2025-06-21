@@ -21,6 +21,33 @@ type TypeField name: String type_: AstType2
 TypeField toString -> String =  "$name: $type_"
 
 extend mut Parser [
+
+  on isLiteralExpr: tok::Token -> Boolean = [ 
+   ^| tok kind
+    | TokenType.Integer
+    | TokenType.String 
+    | TokenType.True|TokenType.False
+    | TokenType.Char 
+    | TokenType.Float 
+    | TokenType.Double
+    | TokenType.Null => true
+    |=> false
+  ]
+
+  on parseReturnExpr: tok::Token -> ReturnStatement = [
+    tok kind == TokenType.Return ifFalse: [TO DO: "^ expected"]
+
+    // is that `^ value` or just `^`
+    savePosition = current
+    isThereAValue = (.primary: .peek) != null
+    .restoreFrom: savePosition
+
+    value = isThereAValue ifTrue: [.nextExperssion: .step] ifFalse: [null]
+
+    result = ReturnStatement value: value token: tok
+    ^ result
+  ]
+
   /// if literal was added returns true
   on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
@@ -83,12 +110,12 @@ extend mut Parser [
     // ]
   ]
 
-
+  
   /// collection {} #{} #()
   /// or identifier | nullableIdentifier 
   /// simple literal 1 "" '' true false 1.1 1.1f
   on primary::Token -> Expr? = [
-    primary lexeme
+    
     .literalExprFrom: primary, unpack: [
       ^it
     ]
@@ -141,7 +168,10 @@ extend mut Parser [
     tokens isEmpty ifTrue: [TO DO: "no tokens, file is empty"] 
     tok = .step
 
-    // tok kind debug
+    // optimization for expr that starts from 1 | ""
+    .isLiteralExpr: tok, ifTrue: [
+      ^ .nextExperssion: tok
+    ]
 
     | tok kind
     | TokenType.Type => [^ .typeDeclaration: tok]
@@ -156,13 +186,6 @@ extend mut Parser [
       // change current position back to parse receiver
       .stepBack
       receiverType = .parseType
-
-      // check all possible message declarations starters
-      // peek at: 1 == "=" thats unary
-      // peek at 0 == IdentifierDoubleColon thats Keyword
-      // peek at: 0 IdentifierColon and peek at: 1 IdentifierDoubleColon thats Keyword with local
-      // peek at: 0 == BinarySymbol and peek at: 1 IdentifierDoubleColon thats Binary
-      // if one of that, then just go to saved position and run nextExpression
 
       // Int^ inc =
       // Int^ a::Int b::Int =
@@ -265,17 +288,18 @@ extend mut Parser [
       |=> [
         .restoreFrom: savePosition
         ^.nextExperssion: .step
-        // statements echo
-        // TO DO: "222 $tok2"
       ]
 
       ^ result
     ]
-
+    | TokenType.Return => [
+      .parseReturnExpr: tok
+    ]
     | TokenType.EndOfFile => [
       TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
     ]
     |=> [
+      "Warning: Parser: fallback to expr parsing with tok: $tok" echo
       ^ .nextExperssion: tok
     ]
 
@@ -284,27 +308,37 @@ extend mut Parser [
     .peek kind != TokenType.EndOfFile, ifTrue: [
       .step // just to evade infinity loop
     ]
-    ///// Expressions
-    // simple literal
+
     
 
-    ^ TO DO: "nextStatement: no statement"
+    ^ TO DO: "top level $tok is not allowed"
   ]
 
-  @debug
+  /// `^ expr` | `expr`
   on nextExperssion: tok::Token -> Expr = [
-    primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary"
-    firstExpr = .nextExperssion2: tok receiver: primaryReceiver
-    
-    ^ .peek kind == TokenType.Comma, 
-      ifTrue: [
+    // return expr
+   ^| tok kind 
+    | TokenType.Return => .parseReturnExpr: tok
+    |=> [
+      // message expr
+      primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+      firstExpr = .nextExperssion2: tok receiver: primaryReceiver
+      
+     ^| .peek kind
+      | TokenType.Comma => [
         .step // skip comma
         .nextExperssion2: tok receiver: (ExprInBrackets value: firstExpr token: tok)
       ]
-      ifFalse: [firstExpr]
+      |=> firstExpr
+    ]
   ]
 
   on nextExperssion2: tok::Token receiver::Expr? -> Expr = [
+    // return expr
+    tok kind == TokenType.Return ifTrue: [
+      ^ .parseReturnExpr: tok
+    ]
+    // message expr
     primaryUnaryBinary = .parsePrimaryOrUnaryOrBinary: tok receiver: receiver
 
     ^| .peek kind
@@ -347,7 +381,7 @@ extend mut Parser [
   on parsePrimaryOrUnaryOrBinary: tok::Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
   on parsePrimaryOrUnaryOrBinary: tok::Token receiver::Expr? -> Expr = [
     maybePrimary = | receiver 
-    | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary"
+    | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
     |=> receiver
 
     next = .peek

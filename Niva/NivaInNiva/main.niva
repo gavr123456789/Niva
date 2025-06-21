@@ -4,8 +4,8 @@ type Program
 
 
 
-
-  input2 = """
+astWalker = [
+  unions = """
     union Color = Red | Blue | Green
 
     union Figure size: Int = 
@@ -13,14 +13,41 @@ type Program
     | Rectangle width: Int heigth: Int
   """ trimIndent
 
-  input = """
+  expressions = """
     1 inc inc inc
     2 + 2 + 3
     3 from: 2 to: 3
   """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: -1
+  visitorTest = """
+    
+    Money make::Int -> Int = [^1]
+
+    
+    type Person name: String age: Int wallet: Wallet
+    type Wallet money: Int
+
+  """
+
+
+  statements = TestParse withInput: visitorTest expectedCount: -1
   // keyword = statements at: 0
   // statements echo
   
-  PrintingVisitor new run: statements
+  // PrintingVisitor new run: statements
+  TypeDeclVisitor db: (TyperDB new), 
+    visitAllTypesThanTypesAndMethods: statements
+
+] 
+
+
+
+returnTest = [
+  input = """
+    [
+      ^ 1 + 2
+      ^ result
+    ]
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+]do
