@@ -5,6 +5,7 @@ import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
+import main.frontend.meta.prettyCodePlace
 import main.frontend.parser.types.ast.*
 import main.utils.RESET
 import main.utils.WHITE
@@ -530,15 +531,16 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
                     return path
                 }
                 val path = findSas(this, ArrayDeque())
-                val strPath = path.joinToString("$RESET -> $YEL") { "$YEL${it.name}" }
+                val strPath = path.joinToString("$RESET <- $YEL") { "$YEL${it.name}" }
                 if(typeToToken != null) {
                     val tokFromMap = {
                         val e = path.find { typeToToken[it] != null }
                         typeToToken[e]
                     }()
-                    val onLine = if (tokFromMap != null) "on line ${tokFromMap.line}" else ""
+                    val onLine = if (tokFromMap != null) "on line ${tokFromMap.prettyCodePlace()}" else ""
                     // TODO make warning mechanism in LSP
-                    warning("curLineText $this was already checked $onLine ($strPath$RESET)")
+
+                    warning("in matching $this was already checked $onLine ($strPath$RESET)")
                 }
             }
             x.add(this)

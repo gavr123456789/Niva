@@ -25,7 +25,6 @@ constructor TestParse expression::String -> Expr = [
 
 
 
-
 Test parseNumber -> Unit! = [
   input = """
   123

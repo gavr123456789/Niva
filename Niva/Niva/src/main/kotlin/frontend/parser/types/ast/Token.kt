@@ -135,8 +135,10 @@ class CompilerError(text: String, val token: Token, val noColorsMsg: String) : E
 fun String.removeColors() =
     this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
 
+fun Token.prettyCodePlace() = """(${file.name}:$line:${relPos.start})"""
+
 fun Token.compileError(text: String): Nothing {
-    val fileLine = """(${file.name}:$line:${relPos.start})"""
+    val fileLine = this.prettyCodePlace()
     val errorText = "${RED}Error: $fileLine$RESET\n$text$RESET"
     throw CompilerError(errorText, this, text.removeColors())
 }

@@ -50,9 +50,14 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
             append(it.ifExpression.generateExpression())
-            append(", " + it.otherIfExpressions.joinToString(", ") {x -> x.generateExpression() })
+            if (it.otherIfExpressions.isNotEmpty()) {
+                append(", " + it.otherIfExpressions.joinToString(", ") {x -> x.generateExpression() })
+            }
         } else {
             append("is ", it.ifExpression.generateExpression())
+            if (it.otherIfExpressions.isNotEmpty()) {
+                append(", is " + it.otherIfExpressions.joinToString(", is ") {x -> x.generateExpression() })
+            }
         }
 
         append(" -> ")
