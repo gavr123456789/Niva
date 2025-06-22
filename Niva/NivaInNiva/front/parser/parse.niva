@@ -21,7 +21,7 @@ type TypeField name: String type_: AstType2
 TypeField toString -> String =  "$name: $type_"
 
 extend mut Parser [
-
+  // maybe collections are missing
   on isLiteralExpr: tok::Token -> Boolean = [ 
    ^| tok kind
     | TokenType.Integer
@@ -48,120 +48,219 @@ extend mut Parser [
     ^ result
   ]
 
-  /// if literal was added returns true
+  /// "", 1, 1.1, true, []
   on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
-    addLiteral = [ lit::LiteralExpr ->
-      // .step
-      // statements add: (lit)
-      lit
-    ] // TODO это теперь вообщзе не надо
 
-    ^| tok kind
+   ^| tok kind
     | TokenType.Integer => 
-      addLiteral lit: (IntExpr num: tok lexeme toInt token: tok)
+      IntExpr num: tok lexeme toInt token: tok
     
     | TokenType.String => 
-      addLiteral lit: (StringExpr token: tok)
+      StringExpr token: tok
     
     | TokenType.True|TokenType.False => 
-      addLiteral lit: (BooleanExpr token: tok)
+      BooleanExpr token: tok
     
     | TokenType.Char => 
-      addLiteral lit: (CharExpr token: tok)
+      CharExpr token: tok
     
     | TokenType.Float => 
-      addLiteral lit: (FloatExpr token: tok)
+      FloatExpr token: tok
     
     | TokenType.Double => 
-      addLiteral lit: (DoubleExpr token: tok)
+      DoubleExpr token: tok
     
     | TokenType.Null => 
-      addLiteral lit: (NullExpr token: tok)
+      NullExpr token: tok
     
     |=> [null]
   ]
 
-  on parseCollection -> CollectionLiteral? = [
-    ^ TO DO: "parseCollection"
-    // mut isAdded = false
-    // addLiteral = [ lit::LiteralExpr ->
-    //   // .step
-    //   // statements add: (lit)
-    //   lit
-    // ]
+  /// if starts from { #{ #(, then return collection
+  /// tok already eaten outside
+  on parseCollection: tok::Token -> CollectionLiteral? = [
 
-    // ^| tok kind
-    // | TokenType.OpenBracket => [
-    //   // parse collection
-    //   mut c = true
-    //   [c] whileTrue: [
-    //     tok = .peek
-    //     tok kind == TokenType.CloseBracket ifTrue: [
-    //       .step // skip 
-    //       c <- false
-    //     ] ifFalse: [
-    //       // parse statement
-    //       statement = .nextExperssion: (.step)
-    //       body add: statement
-    //       Unit
-    //     ]
-    //   ]
-    // ]
+    manyPrimary = [
+      body::mut List::Expr = {}!
+
+      mut c = true
+      [c] whileTrue: [
+        tok2 = .step
+        pr = .primary: tok2
+        | pr
+        | null => [
+          c <- false
+        ]
+        |=> [
+          body add: pr
+          .match: TokenType.Comma
+          Unit
+        ]
+      ]
+      body
+    ]
+
+   ^| tok kind
+    | TokenType.OpenBrace => [
+      body = manyPrimary do
+      .match: TokenType.CloseBrace
+      ListLiteral token: tok elements: body
+    ]
+    | TokenType.OpenBraceHash => [
+      body = manyPrimary do
+      .match: TokenType.CloseBrace
+
+      body count % 2 != 0 ifTrue: [
+        TO DO: "elements count in Map should be even"
+      ]
+
+      MapLiteral token: tok elements: body
+    ]
+    | TokenType.OpenParenHash => [
+      body = manyPrimary do
+      .match: TokenType.CloseParen
+      SetLiteral token: tok elements: body
+    ]
+    |=> null 
   ]
 
   
   /// collection {} #{} #()
+  /// lambda
   /// or identifier | nullableIdentifier 
   /// simple literal 1 "" '' true false 1.1 1.1f
-  on primary::Token -> Expr? = [
+  on primary: tok::Token -> Expr? = [
     
-    .literalExprFrom: primary, unpack: [
+    .literalExprFrom: tok, unpack: [
       ^it
     ]
 
-    primary isNullOrIdentifier ifTrue: [
-      ^ Identifier name: primary lexeme token: primary
+    tok isNullOrIdentifier ifTrue: [
+      ^ Identifier name: tok lexeme token: tok
+    ]
+
+    .parseCollection: tok, unpack: [
+      ^it
+    ]
+
+    tok kind == TokenType.OpenBracket ifTrue: [
+      ^ .parseCodeBlock: tok
     ]
 
     ^ null
   ]
 
-  on parseBodyOrSingleExpr -> List::Statement = [
-    // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
+  // `[` already eaten
+  on parseCodeBlock: tok::Token -> CodeBlock = [
+    mut args:: List::NameAndAstType = {}   // [a::Int -> a inc]
+    mut untypedArgs:: List::Identifier = {} // [a, b -> a + b]
 
-    body::mut List::Statement = {}!
+    savePoint = current
 
-    .match: TokenType.OpenBracket, ifTrue: [
-      // parse body
-      mut c = true
-      [c] whileTrue: [
-        tok = .peek
-        tok kind == TokenType.CloseBracket ifTrue: [
-          .step // skip 
-          c <- false
-        ] ifFalse: [
-          // parse statement
-          nextTok = .step 
-          statement = .nextExperssion: nextTok
-          body add: statement
-          Unit
-        ]
-      ]
-    ] ifFalse: [
-      // single expression
-      statement = .nextExperssion: .step
-      body add: statement
+    | .peek kind
+    | TokenType.IdentifierDoubleColon => [
+      identsWithAst = .parseNameDoubleColonAstTypePair: .step separatedBy: TokenType.Comma
+      args <- identsWithAst
+    ] 
+    | TokenType.Identifier => [
+      idents = .parseManyIdentSeparated: TokenType.Comma
+      untypedArgs <- idents
+    ]
+    |=> [] 
+
+    wasArrow = .match: TokenType.ReturnArrow
+
+    wasArrow not && untypedArgs isNotEmpty ifTrue: [
+      // what if [a + b]
+      // a is in untyped args, and body failing with + b
+      // so restore
+      .restoreFrom: savePoint
+      untypedArgs <- {}
     ]
 
-    ^ body toList
+    // wait, just check if there was an arrow, if not, then restore from tok
+    mut body = .parseManyExprUntilTok: TokenType.CloseBracket
+
+    result = CodeBlock 
+      args: args 
+      untypedArgs: untypedArgs
+      body: body 
+      token: tok
+    
+    ^ result
+  ]
+
+
+  on parseManyExprUntilTok: until::TokenType -> List::Expr = [
+    body::mut List::Expr = {}!
+
+    mut c = true
+    [c] whileTrue: [
+      tok = .peek
+      tok kind == until ifTrue: [
+        .step // skip 
+        c <- false
+      ] ifFalse: [
+        // parse statement
+        nextTok = .step 
+        statement = .nextExperssion: nextTok
+        body add: statement
+        Unit
+      ]
+    ]
+
+    ^ body
+  ]
+
+  on parseBodyOrSingleExpr -> List::Expr = [
+    // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
+    ^ .match: TokenType.OpenBracket, ifTrue: [
+      // parse body
+      .parseManyExprUntilTok: TokenType.CloseBracket
+    ] ifFalse: [
+      // single expression
+      {(.nextExperssion: .step)}
+    ]
+  ]
+
+  /// a::Int (sep)? b::String
+  on parseNameDoubleColonAstTypePair: tok::Token separatedBy: sep::TokenType? -> List::NameAndAstType = [
+    
+    firstArg = NameAndAstType name: tok lexeme astType: .parseType
+    sep unpack: [.match: it]
+
+    kwArgs = {firstArg}!
+
+    mut c = true 
+    [c] whileTrue: [
+      tok = .peek
+      tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+        arg = NameAndAstType name: .step lexeme astType: .parseType
+        sep unpack: [.match: it]
+
+        kwArgs add: arg
+        Unit
+      ] ifFalse: [
+        c <- false
+      ]
+    ]
+      
+    ^ kwArgs
   ]
 
   on restoreFrom: position::Int = [
     current <- position
   ]
 
+  on skipComments = [
+    [.peek kind == TokenType.Comment] whileTrue: [
+      .step
+    ]
+  ]
+
   on nextStatement -> Statement = [
+    // .skipComments
     savePosition = current
 
     // there always EndOfFile, so this never happen
@@ -222,20 +321,7 @@ extend mut Parser [
       | TokenType.IdentifierDoubleColon => [
         // Int inc^::Int b::Int =
         
-        firstArg = NameAndType name: tok2 lexeme astType: .parseType
-        kwArgs = {firstArg}!
-
-        mut c = true 
-        [c] whileTrue: [
-          tok = .peek
-          tok kind == TokenType.IdentifierDoubleColon ifTrue: [
-            arg = NameAndType name: .step lexeme astType: .parseType
-            kwArgs add: arg
-            Unit
-          ] ifFalse: [
-            c <- false
-          ]
-        ]
+        kwArgs = .parseNameDoubleColonAstTypePair: tok2 separatedBy: null
 
         returnType = getReturnType do 
         name = tok2 lexeme
@@ -248,7 +334,7 @@ extend mut Parser [
         msgDecl = MessageDecl 
           receiver: receiverType
           name: name
-          args: kwArgs toList//{(NameAndType name: arg lexeme astType: argType)}
+          args: kwArgs toList//{(NameAndAstType name: arg lexeme astType: argType)}
           returnType: returnType
           token: tok
           body: body 
@@ -277,7 +363,7 @@ extend mut Parser [
         msgDecl = MessageDecl 
           receiver: receiverType
           name: name
-          args: {(NameAndType name: arg lexeme astType: argType)}
+          args: {(NameAndAstType name: arg lexeme astType: argType)}
           returnType: returnType
           token: tok
           body: body        
@@ -295,9 +381,21 @@ extend mut Parser [
     | TokenType.Return => [
       .parseReturnExpr: tok
     ]
+    // commented since expression after is possible
+    // | TokenType .OpenBracket => [
+    //   ^.parseCodeBlock: tok
+    // ]
     | TokenType.EndOfFile => [
       TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
     ]
+    | TokenType.Invalid => [
+      prev = .peekAt: -2
+      prevPrev = .peekAt: -1
+      cur = .peek
+      TO DO: "Got invalid token after $prev $prevPrev $cur"
+
+    ]
+
     |=> [
       "Warning: Parser: fallback to expr parsing with tok: $tok" echo
       ^ .nextExperssion: tok
@@ -323,7 +421,7 @@ extend mut Parser [
       // message expr
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
       firstExpr = .nextExperssion2: tok receiver: primaryReceiver
-      
+
      ^| .peek kind
       | TokenType.Comma => [
         .step // skip comma
@@ -386,6 +484,7 @@ extend mut Parser [
 
     next = .peek
     // single primary before new line
+    // or in other words just `42`
     next line > tok line, ifTrue: [
       ^ maybePrimary
     ]
@@ -402,7 +501,7 @@ extend mut Parser [
       tok = .peek
       | tok kind 
       | TokenType.Identifier => [
-        unaryIdentifiers = .parseManyIdent
+        unaryIdentifiers = .parseManyIdentSeparated: null
         // 1 inc inc^
         unary = UnaryMsg 
           args: unaryIdentifiers toList 

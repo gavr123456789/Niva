@@ -16,7 +16,7 @@ union Declaration token: Token =
 | MessageDecl 
   receiver: AstType2
   name: String 
-  args: List::NameAndType // 0 = unary, 1 = binary, 2+ = keyword
+  args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
   body: List::Statement
 
@@ -77,6 +77,8 @@ union Expr token: Token =
 | ^CollectionLiteral
 | ^MessageSend2
 | ReturnStatement value: Expr?
+// only one of the lists can be non empty
+| CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: List::Expr
 
 Identifier toString = "$name"
 
@@ -88,8 +90,8 @@ ExprInBrackets toString = "($value)"
 
 type NameAndExpr name: Identifier expr: Expr
 
-type NameAndType name: String astType: AstType2
-NameAndType toString = [
+type NameAndAstType name: String astType: AstType2
+NameAndAstType toString = [
   ^ "$name::$astType"
 ]
 
@@ -128,7 +130,7 @@ extend mut AstType [
 
 
 union CollectionLiteral token: Token elements: List::Expr = 
-| ListLiteral 
+| ListLiteral
 | SetLiteral
 | MapLiteral
 

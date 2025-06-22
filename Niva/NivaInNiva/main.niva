@@ -40,14 +40,84 @@ astWalker = [
 
 ] 
 
+collectionsTest = [
+  input = """
+    1 + 2
+    1 inc
+    1 inc + 2
+    1 + 2 inc
+    a + b
+    a + b inc
+    a + b inc + c
+    a + b inc + c dec
+    a + b inc + c dec * d
+    a + b inc + c dec * d / 5
+
+    {1 2 3} inc
+    #{1 2 3 4} from: 5
+    #(1 2 3) + #(3 4 5)
+
+    [a b c] do
+    [a b c] from: 1 to: 2
+    [a b c] + 3
+
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: -1
+  statements echo
+  statements count echo
+] 
 
 
 returnTest = [
   input = """
-    [
-      ^ 1 + 2
-      ^ result
+    [a + b]
+
+    // typed args with comma
+    [ a::Int, b::Int ->
+      1 inc
     ]
+
+    // typed args no comma
+    [ a::Int b::Int ->
+      1 inc
+    ]
+
+    // untyped args with comma
+    [ a, b ->
+      1 inc
+    ]
+
+    // untyped args no comma
+    [ a b ->
+      1 inc
+    ]
+
+    // empty
+    []
+
+    // no args
+    [a b inc]
+
+    // unary after
+    ["sas"] do
+
+    // call with args
+    [x::Int, y::Int -> x + y] x: 1 y: 2
   """ trimIndent
-  statements = TestParse withInput: input expectedCount: 1
-]do
+
+  input2 = """
+  [a b] do
+  """
+
+  statements = TestParse withInput: input expectedCount: 7
+  statements echo
+] 
+
+opTest = [
+  LexTest checkThat: ". . ." 
+          equals: {
+                   TokenType.Dot
+                   TokenType.Dot
+                   TokenType.Dot
+                  }
+] do

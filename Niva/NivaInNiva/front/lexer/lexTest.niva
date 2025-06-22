@@ -6,9 +6,10 @@ constructor LexTest input::String -> List::Token = [
 ]
 
 constructor LexTest 
-checkThat: input::String 
-equals: list::List::TokenType 
--> List::Token! = [
+  checkThat: input::String 
+  equals: list::List::TokenType 
+  -> List::Token! = [
+
   y = LexTest input: input
   x = y map: [it kind]
 
@@ -16,7 +17,7 @@ equals: list::List::TokenType
     that: x count 
     equals: list count
        
-  list forEachIndexed: [i, it -> 
+  x forEachIndexed: [i, it -> 
     Assert 
       that: it 
       equals: (list at: i)
@@ -103,11 +104,18 @@ Test multiLine = [
   ]
 ]
 
+Test delOp = [
+  expectedKinds = {TokenType.Integer TokenType.BinarySymbol TokenType.Integer}
+  LexTest 
+    checkThat: "11 / 20" 
+    equals: expectedKinds
+]
+
 Test operators = [
   binSym = {TokenType.BinarySymbol}!
   11 repeat: [binSym add: TokenType.BinarySymbol]
   LexTest 
-    checkThat: "== != + - * = <= >= < > || &&" 
+    checkThat: "== <= && || != + - * / >= < >" 
     equals: binSym toList
 ]
 
@@ -163,11 +171,11 @@ Test singleNum = [
 ]
 
 
-
-Test comment = [
-  LexTest checkThat: "// qwf ars \" qwf"
-          equals: {TokenType.Comment}
-]
+// comments are skipped now
+// Test comment = [
+//   LexTest checkThat: "// qwf ars \" qwf"
+//           equals: {TokenType.Comment}
+// ]
 
 
 Test controlFlow = [
@@ -189,9 +197,9 @@ Test enumDeclaration = [
                    TokenType.Identifier 
                    TokenType.Assign 
                    TokenType.Identifier 
-                   TokenType.PipeOperator 
+                   TokenType.If 
                    TokenType.Identifier 
-                   TokenType.PipeOperator
+                   TokenType.If
                    TokenType.Identifier
                   }
 ]
