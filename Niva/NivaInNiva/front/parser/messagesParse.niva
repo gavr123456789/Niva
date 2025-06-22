@@ -1,7 +1,7 @@
 extend mut Parser [
 
   /// inc inc inc
-  on parseManyIdent -> mut List::Identifier = [
+  on parseManyIdentSeparated: sep::TokenType? -> mut List::Identifier = [
     result::mut List::Identifier = {}!
     
     mut c = true
@@ -17,6 +17,7 @@ extend mut Parser [
           identifier = .step
           expr = (Identifier name: (tok lexeme) token: tok)
           result add: expr
+          sep unpack: [.match: it]
           Unit
         ]
       ]
@@ -42,11 +43,10 @@ extend mut Parser [
           binarySymbol = .step
           // binarySymbol kind echo
           // + ^1 inc inc + 2
-          .peek kind == TokenType.OpenBrace, ifTrue: [TO DO: "1 + (...) not implemented yet"]
           receiver = (.primary: .step) unpackOrMsg: "Cant find primary" // TODO тут может быть не праймари, а унари, или в скобках что угодно поэтому парсить нужно не праймари, не, надо просто добавить в парсинг праймари скобочных выражений
           // + 1^ inc inc + 2
           unaryList = .peek line == receiver token line, ifTrue: [
-            .parseManyIdent
+            .parseManyIdentSeparated: null
           ] ifFalse: [{}!]
 
 

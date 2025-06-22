@@ -53,7 +53,7 @@ extend mut Lexer [
       ifTrue: [ch <- '\u0000'] 
       ifFalse: [ch <- input at: readPos] 
       
-    readPos >= 200 => Error throwWithMessage: "readPos >= 200, $readPos", orPANIC
+    readPos >= 1000 => Error throwWithMessage: "readPos >= 1000, $readPos", orPANIC
     pos       <- readPos
     readPos   <- readPos inc
     posOnLine <- posOnLine inc // resets to 0 on \n
@@ -95,8 +95,21 @@ extend mut Lexer [
 
   on nextToken -> Token! = [
     .skipWhiteSpaces
+    // .skipComments
+
+    |ch
+    | '/' => .stepMatch: '/', 
+    ifTrue:  [
+      .skipCurrentLine
+    ] 
+    ifFalse: [
+      ^.createToken: TokenType.BinarySymbol lexeme: "/"
+      Unit
+    ]
+
 
     l = ch toString
+
 
     tok = | ch 
     | '\u0000' => [
@@ -130,12 +143,12 @@ extend mut Lexer [
       result = .parseStringLike: '\'' 
       ^ .createToken: TokenType.String lexeme: result
     ]
-    | '/' => .stepMatch: '/', 
-      ifTrue:  [
-        .skipCurrentLine
-        .createToken: TokenType.Comment lexeme: "//"
-      ] 
-      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
+    // | '/' => .stepMatch: '/', 
+    //   ifTrue:  [
+    //     .skipCurrentLine
+    //     .createToken: TokenType.Comment lexeme: "//"
+    //   ] 
+    //   ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
 
     | '!' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
@@ -173,16 +186,23 @@ extend mut Lexer [
 
     |'<' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="] 
-      ifFalse: [.createToken: TokenType.Bang lexeme: "<"]
+      ifFalse: [
+        .match: '-', 
+          ifTrue:  [.createToken: TokenType.AssignArrow lexeme: "<-"] 
+          ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "<"]
+
+      
+      ]
 
     |'>' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="] 
-      ifFalse: [.createToken: TokenType.Bang lexeme: ">"]
+      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: ">"]
 
     
     |'+'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
+    | '.' =>     .createToken: TokenType.Dot lexeme: l
     | '^' => .createToken: TokenType.Return  lexeme: l
     
     |=> [
@@ -304,4 +324,16 @@ mut Lexer skipWhiteSpaces = [
     
   ]
  
+]
+
+mut Lexer skipComments = [
+  |ch
+  | '/' => .stepMatch: '/', 
+  ifTrue:  [
+    .skipCurrentLine
+  ] 
+  ifFalse: [
+    .createToken: TokenType.BinarySymbol lexeme: "/"
+    Unit
+  ]
 ]

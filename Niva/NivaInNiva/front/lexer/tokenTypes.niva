@@ -51,7 +51,7 @@ enum TokenType =
   |InlineReplWithNum // >Number| >3
   |InlineReplWithQuestion // >?
   |Underscore // _
-  |Bang // !!
+  |Bang // !
   |Invalid // used for identifiers
 
 type Token
@@ -84,6 +84,8 @@ constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type
 | "mut" => TokenType.Mut
 | "union" => TokenType.Union
+| "enum" => TokenType.Enum
+| "builder" => TokenType.Builder
 | "constructor" => TokenType.Constructor
 | "errordomain" => TokenType.ErrorDomain
 | "on" => TokenType.On
