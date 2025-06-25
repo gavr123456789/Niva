@@ -96,7 +96,7 @@ NameAndAstType toString = [
 ]
 
 // Types
-union AstType2 = 
+union AstType2 tok: Token = 
 | AstType 
   name: String 
   nullable: Boolean 
@@ -111,17 +111,19 @@ AstType toString = [
   ^ "$name$genericParamsStr"
 ]
 
-constructor AstType name::String nullable::Boolean genericParams::List::AstType = AstType 
+constructor AstType name::String nullable::Boolean genericParams::List::AstType tok::Token = AstType 
   name: name 
   nullable: nullable
   genericParams: genericParams
   isMut: false
+  tok: tok
 
-constructor AstType name::String = AstType 
+constructor AstType name::String tok::Token = AstType 
   name: name 
   nullable: false
   genericParams: {}
   isMut: false
+  tok: tok
 
 extend mut AstType [
   on setMutable::Boolean = isMut <- setMutable

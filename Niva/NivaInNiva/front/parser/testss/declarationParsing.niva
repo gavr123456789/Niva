@@ -31,19 +31,19 @@ Test parseType -> Unit! = [
       Assert that: intList name  equals: "intList"
       Assert that: nullableInt name  equals: "nullableInt"
 
-      type1 = name type_
+      type1 = name astType
       | type1
       | AstType => 
         Assert that: type1 name equals: "String"
       |=> TO DO: "It should be AstType, but it " + type1 toString
 
-      type2 = age type_
+      type2 = age astType
       | type2
       | AstType => 
         Assert that: type2 name equals: "Int"
       |=> TO DO: "It should be AstType, but it " + type2 toString
 
-      type3 = intList type_
+      type3 = intList astType
       | type3
       | AstType => [
         Assert that: type3 name equals: "List"
@@ -56,7 +56,7 @@ Test parseType -> Unit! = [
         ]
       |=> TO DO: "It should be AstType, but it " + type3 toString
       
-      type4 = nullableInt type_
+      type4 = nullableInt astType
       | type4
       | AstType => [
         Assert that: type4 name equals: "Int"
@@ -64,7 +64,7 @@ Test parseType -> Unit! = [
       ]
       |=> [TO DO: "It should be AstType, but it " + type4 toString]
 
-      type5 = lambda type_
+      type5 = lambda astType
       | type5
       | AstLambdaType => [
         Assert that: true equals: true

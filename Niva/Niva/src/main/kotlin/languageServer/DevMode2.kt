@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import main.frontend.meta.Token
 import main.frontend.meta.createFakeToken2
 import main.frontend.parser.types.ast.CollectionAst
 import main.frontend.parser.types.ast.Expression
@@ -25,16 +26,16 @@ import kotlin.collections.component2
 import kotlin.collections.iterator
 
 
-fun Expression.generateAddDevDataFunCall(b: StringBuilder) {
-    if (isInlineRepl) {
-        val filePath = "\"${token.file.absolutePath}\""
-        val exprName = "\"\"\"$this\"\"\""
+fun generateAddDevDataFunCall(b: StringBuilder, tok: Token) {
+//    if (isInlineRepl) {
+        val filePath = "\"${tok.file.absolutePath}\""
+        val exprName = "\"\"" //"\"\"\"$this\"\"\""
 //        val getStackTrace = "(Thread.currentThread().stackTrace.drop(1).joinToString(\" <- \") { \"\${it.methodName}\${if (it.moduleName != null) \"(\${it.moduleName})\" else \"\"}\" })"
-        val tokenLine = token.line
-        val tokenStart = token.relPos.start
-        val tokenEnd = token.relPos.end
+        val tokenLine = tok.line
+        val tokenStart = tok.relPos.start
+        val tokenEnd = tok.relPos.end
         b.append("), $filePath, $exprName, $tokenLine, $tokenStart, $tokenEnd)")
-    }
+//    }
 }
 
 

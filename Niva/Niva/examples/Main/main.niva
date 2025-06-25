@@ -9,8 +9,9 @@ Int sas -> Int = [
     x = 1 sasss2: (2 sasss: "hhdn")
     x echo
     ^ 1 > 2 ifTrue: [5] ifFalse: [6]
-
-
 ]
+
+@debug
+Int sas2 -> Unit = []
 
 1 sas echo

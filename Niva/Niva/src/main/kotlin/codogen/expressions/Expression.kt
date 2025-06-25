@@ -11,7 +11,6 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
     }
 
     if (isInlineRepl) {
-//        append("inlineRepl(")
         append("NivaDevModeDB.db.add((")
     }
 
@@ -87,7 +86,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
 //        append(", \"\"\"$fileAndLine\"\"\", $inlineReplCounter)")
 //    }
     if (isInlineRepl) {
-        generateAddDevDataFunCall(this)
+        generateAddDevDataFunCall(this, token)
     }
 
 }

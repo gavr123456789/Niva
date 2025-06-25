@@ -203,7 +203,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body = emptyList(),
+                                            body = mutableListOf(),
                                             returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
                                             isInline = false,
                                             isSuspend = false,
@@ -261,7 +261,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body = emptyList(),
+                                            body = mutableListOf(),
                                             returnType = typeAstFromArg, // "Person name: String" // return type of getter is arg
                                             isInline = false,
                                             isSuspend = false,
@@ -275,7 +275,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                             forType = forTypeAST,
                                             token = field.token,
                                             isSingleExpression = false,
-                                            body = emptyList(),
+                                            body = mutableListOf(),
                                             returnType = null,
                                             args = listOf(
                                                 KeywordDeclarationArg(

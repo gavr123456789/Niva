@@ -83,19 +83,11 @@ class LS(val info: ((String) -> Unit)? = null) {
         if (!file.exists()) return
         readDevDataFromFile(jsonDevFilePath, info)
 
-        info?.invoke("11111111111111111 $watchDirPath")
-
         scope.launch(Dispatchers.IO) {
-
             val watcher = KfsDirectoryWatcher(this, dispatcher = Dispatchers.IO)
-
             watcher.add(watchDirPath)
-            info?.invoke("здеся")
-
             watcher.onEventFlow.collect { event ->
-
-                info?.invoke("2222222222222222222222 ${event.event.name}")
-                if (event.path.endsWith("json") && event.event == KfsEvent.Modify) {
+                if (event.path.endsWith("json") && (event.event == KfsEvent.Modify || event.event == KfsEvent.Create)) {
                     readDevDataFromFile(jsonDevFilePath, info)
                     info?.invoke("33333333333333333333")
                 }

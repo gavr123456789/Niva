@@ -11,8 +11,8 @@ extend mut Parser [
       tok kind == TokenType.IdentifierColon ifTrue: [
         .step // skip 
 
-        type_ = .parseType
-        type_field = TypeField name: (tok lexeme) type_: type_ 
+        astType = .parseType
+        type_field = TypeField name: (tok lexeme) astType: astType 
         result add: (type_field)
         // need continue?
         c <- .peek kind == TokenType.IdentifierColon 

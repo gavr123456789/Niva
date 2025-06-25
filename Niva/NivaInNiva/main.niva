@@ -21,11 +21,13 @@ astWalker = [
 
   visitorTest = """
     
+    type Person name: String age: Int wallet: Wallet
+    type Wallet money: Int
+
     Money make::Int -> Int = [^1]
 
     
-    type Person name: String age: Int wallet: Wallet
-    type Wallet money: Int
+
 
   """
 
@@ -38,34 +40,8 @@ astWalker = [
   TypeDeclVisitor db: (TyperDB new), 
     visitAllTypesThanTypesAndMethods: statements
 
-] 
+] do
 
-collectionsTest = [
-  input = """
-    1 + 2
-    1 inc
-    1 inc + 2
-    1 + 2 inc
-    a + b
-    a + b inc
-    a + b inc + c
-    a + b inc + c dec
-    a + b inc + c dec * d
-    a + b inc + c dec * d / 5
-
-    {1 2 3} inc
-    #{1 2 3 4} from: 5
-    #(1 2 3) + #(3 4 5)
-
-    [a b c] do
-    [a b c] from: 1 to: 2
-    [a b c] + 3
-
-  """ trimIndent
-  statements = TestParse withInput: input expectedCount: -1
-  statements echo
-  statements count echo
-] 
 
 
 returnTest = [
@@ -120,4 +96,4 @@ opTest = [
                    TokenType.Dot
                    TokenType.Dot
                   }
-] do
+]
