@@ -216,15 +216,19 @@ fun Parser.unaryOrBinary(
 
     // if there is no binary message, that's mean there is only unary
     if (binaryMessages.isEmpty()) {
+        val messages = (unaryMessages + pipedMsgs + cascadedMsgs).toMutableList()
+        val token = if (messages.isNotEmpty()) messages.last().token else firstReceiver.token
         return MessageSendUnary(
             firstReceiver,
-            messages = (unaryMessages + pipedMsgs + cascadedMsgs).toMutableList(),
+            messages = messages,
             null,
-            firstReceiver.token
+            token
         )
     }
     // its binary msg
-    return MessageSendBinary(firstReceiver, binaryMessages + cascadedMsgs + pipedMsgs, null, firstReceiver.token)
+    val messages = binaryMessages + cascadedMsgs + pipedMsgs
+    val tok = if (messages.isNotEmpty()) messages.last().token else firstReceiver.token
+    return MessageSendBinary(firstReceiver, messages, null, tok)
 }
 
 // Receiver ^ from: to:
@@ -342,7 +346,7 @@ fun replacePipesWithBrackets(messages: MutableList<Message>): MessageSend {
                         msg.token
                     )
                 } else {
-                    result = MessageSendKeyword(newReceiver, listOf(msg), msg.type, newReceiver.token)
+                    result = MessageSendKeyword(newReceiver, listOf(msg), msg.type, msg.token)
                     msg.receiver = newReceiver
                     newReceiver = ExpressionInBrackets(result, result.type, result.token)
                 }
@@ -355,7 +359,7 @@ fun replacePipesWithBrackets(messages: MutableList<Message>): MessageSend {
                         msg.token
                     )
                 } else {
-                    result = MessageSendBinary(newReceiver, listOf(msg), msg.type, newReceiver.token)
+                    result = MessageSendBinary(newReceiver, listOf(msg), msg.type, msg.token)
                     msg.receiver = newReceiver
                     newReceiver = ExpressionInBrackets(result, result.type, result.token)
                 }
@@ -368,7 +372,7 @@ fun replacePipesWithBrackets(messages: MutableList<Message>): MessageSend {
                         msg.token
                     )
                 } else {
-                    result = MessageSendUnary(newReceiver, mutableListOf(msg), msg.type, newReceiver.token)
+                    result = MessageSendUnary(newReceiver, mutableListOf(msg), msg.type, msg.token)
                     msg.receiver = newReceiver
                     newReceiver = ExpressionInBrackets(result, result.type, result.token)
                 }
@@ -403,18 +407,16 @@ fun Parser.keyword(
         val nextIsIdent = check(TokenType.Identifier)
         // any msg
         if (nextIsIdent && check(TokenType.Colon, 1)) {
-            var last = messages.last()
+            val last = messages.last()
             // keyword pipe
             messages.add(keyColonCycle().also {
                 if (isPipe) {
                     it.isPiped = true
                     it.receiver = last
-                    last = it
                 } else if (isCascade) {
                     it.isCascade = true
                 } else if (isKeywordAfterUnary) {
                     it.receiver = last
-                    last = it
                 }
             })
         } else if (nextIsIdent) {
@@ -457,12 +459,12 @@ fun Parser.keyword(
     }
 
 
-
+    val tok = if (messages.isNotEmpty()) messages.last().token else receiver.token
     return MessageSendKeyword(
         receiver,
         messages,
         null,
-        receiver.token
+        tok
     )
 }
 

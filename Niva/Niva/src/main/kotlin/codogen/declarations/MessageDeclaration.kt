@@ -76,12 +76,6 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
     val forType2 = forType
     if (forType2 is Type.UserLike && forType2.typeArgumentList.isNotEmpty() && !isStatic) {
         append("<")
-//        val typeArgs = mutableListOf<String>()
-//        typeArgs.addAll(forType2.typeArgumentList.map { it.name }.toSet())
-
-//        forType2.typeArgumentList.forEach {
-//            append(it.name)
-//        }
         append(
             forType2.typeArgumentList.joinToString(", ") {
                 it.toKotlinString(true)
@@ -205,25 +199,42 @@ fun StaticBuilderDeclaration.generateBuilderDeclaration() = buildString {
 }
 
 private fun returnTypeAndBodyPart(
-    messageDeclaration: MessageDeclaration,
+    msgDecl: MessageDeclaration,
     stringBuilder: StringBuilder
 ) {
-    if (messageDeclaration.returnTypeAST != null) {
-        stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
+    if (msgDecl.returnTypeAST != null) {
+        stringBuilder.append(": ", msgDecl.returnType!!.toKotlinString(true))
     } else {
         // experimental infer return type
-        stringBuilder.append(": ", messageDeclaration.returnType!!.toKotlinString(true))
+        stringBuilder.append(": ", msgDecl.returnType!!.toKotlinString(true))
     }
 
-    generateBody(messageDeclaration, stringBuilder)
+    val debug = msgDecl.pragmas.find { it.name == "debug" }
+    // add each arg as identifier for devmode 2
+    if (debug != null && msgDecl !is ConstructorDeclaration) {
+        if (msgDecl is MessageDeclarationKeyword) {
+            msgDecl.args.forEach { arg ->
+                val thisExpr = IdentifierExpr(arg.name, token = arg.tok).also {
+                    it.isInlineRepl = true
+                }
+                msgDecl.body.addFirst(thisExpr)
+            }
+        }
+        // add receiver as this identifier for devmode 2
+        val thisExpr = IdentifierExpr("this", token = msgDecl.forTypeAst.token).also {
+            it.isInlineRepl = true
+        }
+        msgDecl.body.addFirst(thisExpr)
+    }
+    generateBody(msgDecl, stringBuilder)
 }
 
 fun generateBody(
     messageDeclaration: MessageDeclaration,
-    stringBuilder: StringBuilder
+    sb: StringBuilder
 ) {
     if (messageDeclaration.body.isEmpty()) {
-        stringBuilder.append(" { }\n")
+        sb.append(" { }\n")
         return
     }
 
@@ -241,11 +252,11 @@ fun generateBody(
         !isControlFlowStatement &&
         isNotSetter
     ) {
-        stringBuilder.append(" = ", codegenKt(messageDeclaration.body, 0))
+        sb.append(" = ", codegenKt(messageDeclaration.body, 0))
     } else {
-        stringBuilder.append(" {\n")
-        stringBuilder.append(codegenKt(messageDeclaration.body, 1))
-        stringBuilder.append("}\n")
+        sb.append(" {\n")
+        sb.append(codegenKt(messageDeclaration.body, 1))
+        sb.append("}\n")
     }
 }
 

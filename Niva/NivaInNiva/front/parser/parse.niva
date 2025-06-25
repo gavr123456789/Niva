@@ -17,8 +17,8 @@ constructor Parser newParseTokens::List::Token = [
 ]
 
 
-type TypeField name: String type_: AstType2
-TypeField toString -> String =  "$name: $type_"
+type TypeField name: String astType: AstType2
+TypeField toString -> String =  "$name: $astType"
 
 extend mut Parser [
   // maybe collections are missing

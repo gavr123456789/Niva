@@ -19,6 +19,8 @@ extend mut Parser [
         name: name 
         nullable: isNullable
         genericParams: {recursiveGenerics}
+        tok: identifier
+
 
     ]
 
@@ -36,6 +38,7 @@ extend mut Parser [
         name: name 
         nullable: isNullable
         genericParams: typeArgumentList toList
+        tok: identifier
     ]
 
     // no Map() no List::
@@ -43,6 +46,7 @@ extend mut Parser [
       name: name 
       nullable: isNullable
       genericParams: {}
+      tok: identifier
   ]
   
   on parseType -> AstType2 = [
@@ -65,8 +69,8 @@ extend mut Parser [
       returnType = .parseType
 
 
-      .matchAssert: TokenType.CloseBracket
-      ^ AstLambdaType args: args toList returnType: returnType
+      lastBracketTok = .matchAssert: TokenType.CloseBracket
+      ^ AstLambdaType args: args toList returnType: returnType tok: lastBracketTok
     ]
     result::mut AstType = .parseGenericType
     result setMutable: isMut
