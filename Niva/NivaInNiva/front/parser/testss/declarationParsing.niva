@@ -115,7 +115,7 @@ Test parseUnion -> Unit! = [
 
 Test parseUnaryDecl -> Unit! = [
   input = """
-    Int inc -> Boolean = [ 
+    Int inc -> Bool = [ 
       1
     ]
   """ trimIndent
@@ -141,7 +141,7 @@ Test parseUnaryDecl -> Unit! = [
 
         Assert 
           that: returnType toString
-          equals: "Boolean"
+          equals: "Bool"
 
       ]
       |=> TO DO: "It should be AstType, but it " + receiver toString
@@ -151,7 +151,7 @@ Test parseUnaryDecl -> Unit! = [
 
 Test parseBinaryDecl -> Unit! = [
   input = """
-    Int + inc::String -> Boolean = [
+    Int + inc::String -> Bool = [
       1
     ]
   """ trimIndent
@@ -177,7 +177,7 @@ Test parseBinaryDecl -> Unit! = [
 
       Assert 
         that: returnType toString
-        equals: "Boolean"
+        equals: "Bool"
     ]
     |=> TO DO: "It should be AstType, but it " + receiver toString
   
@@ -187,7 +187,7 @@ Test parseBinaryDecl -> Unit! = [
 
 Test parseKeywordDecl -> Unit! = [
   input = """
-    Int from::Int to::Int -> Boolean = [
+    Int from::Int to::Int -> Bool = [
       true
     ]
   """ trimIndent
@@ -213,7 +213,7 @@ Test parseKeywordDecl -> Unit! = [
 
         Assert 
           that: returnType toString
-          equals: "Boolean"
+          equals: "Bool"
       ]
       |=> TO DO: "It should be AstType, but it " + receiver toString
     ]

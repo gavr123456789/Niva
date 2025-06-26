@@ -373,10 +373,10 @@ sealed class Type(
             val index = s.indexOf('!')
             return if (index != -1) s.substring(0, index) else s
         }
-        return removeAfterExclamation(this.toString())
+        return removeAfterExclamation(this.toString().replace("mut ", ""))
     }
 
-    override fun toString(): String = when (this) {
+    override fun toString(): String = (if(isMutable) "mut " else "") + when (this) {
         is InternalType -> name + possibleErrors()
         is NullableType -> "$realType?"
         is UnresolvedType -> "?unresolved type?"

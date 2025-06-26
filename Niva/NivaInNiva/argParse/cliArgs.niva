@@ -3,8 +3,8 @@ type ArgsParsed
   path: String? 
   option: CompilerOption
   // flags
-  verbose: Boolean
-  lsp: Boolean
+  verbose: Bool
+  lsp: Bool
 
 constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help verbose: false lsp: false
 

@@ -63,7 +63,7 @@ extend mut Lexer [
     ifTrue:  ['\u0000']
     ifFalse: [input at: (.readPos)]
   
-  on match: char::Char -> Boolean = 
+  on match: char::Char -> Bool = 
     .ch == char 
       ifTrue: [
         .step
@@ -72,7 +72,7 @@ extend mut Lexer [
         false
       ]
   
-  on stepMatch: char::Char -> Boolean = [
+  on stepMatch: char::Char -> Bool = [
     // input count debug
     .step 
     ^.match: char
@@ -255,7 +255,7 @@ extend mut Lexer [
   ]
 
   on lex -> mut List::Token! = [
-    mut newTok = .nextToken
+    mut newTok = .nextToken orPANIC
     mut tokens::mut List::Token = {newTok}!
 
     [newTok kind != TokenType.EndOfFile] whileTrue: [

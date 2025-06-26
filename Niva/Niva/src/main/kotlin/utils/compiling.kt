@@ -455,6 +455,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         // STD
         $jvmSpecific
         
+        typealias Bool = Boolean
         // Live Dev Mode
 class DevLiveData (
     val name: String,

@@ -84,7 +84,7 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
 
     // check for basic type
     when (tok.kind) {
-        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Boolean, tok).also { it.isMutable = mutableType }
+        TokenType.True, TokenType.False -> return TypeAST.InternalType(InternalTypes.Bool, tok).also { it.isMutable = mutableType }
         TokenType.Null -> return TypeAST.InternalType(InternalTypes.Null, tok).also { it.isMutable = mutableType }
 
         TokenType.Float -> return TypeAST.InternalType(InternalTypes.Float, tok).also { it.isMutable = mutableType }
