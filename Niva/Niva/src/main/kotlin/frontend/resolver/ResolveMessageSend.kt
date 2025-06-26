@@ -166,7 +166,7 @@ fun Resolver.resolveMessage(
     }
 
 
-
+    // check errors and mutability
 
     // if we see the method with possible errors but not resolved body
     // that means it was declared after currently resolving method
@@ -179,7 +179,8 @@ fun Resolver.resolveMessage(
         if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
             val receiverFromScope = previousAndCurrentScope[receiver.name]
             if (receiverFromScope != null && !receiverFromScope.isMutable) {
-                statement.token.compileError("receiver type $receiverType is not mutable, but ${msgFromDb.declaration} declared for mutable type, use `x::mut $receiverType = ...`")
+                val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
+                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
             }
         }
         //
@@ -193,7 +194,28 @@ fun Resolver.resolveMessage(
         }
     }
 
-    statement.type = addErrorEffect(msgFromDb, returnType, statement)
+    val type = addErrorEffect(msgFromDb, returnType, statement)
+    statement.type = type
+
+    val receiverType = statement.receiver.type
+    if (receiverType?.errors?.isNotEmpty() == true &&
+        statement.selectorName != "orPANIC" &&
+        statement.selectorName != "orValue" &&
+        statement.selectorName != "ifError") {
+        statement.receiver.token.compileError("Can't send message to ${statement.receiver.type} that can contain error, use orValue: | orPANIC | ifError: [it]")
+//        val type2 = addErrorEffect(null, receiverType, statement)
+//        // and also add error effects from type
+//        val errorsFromMessageReturn = type.errors
+//        val errorsFromReceiver = type2.errors
+//
+//        if (errorsFromReceiver?.isNotEmpty() == true && errorsFromMessageReturn?.isNotEmpty() == true) {
+//            type2.errors?.addAll(errorsFromMessageReturn)
+//            statement.type = type2
+//        } else
+//            statement.type = type2
+
+    }
+
 
 
     if (GlobalVariables.isLspMode) {

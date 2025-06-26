@@ -109,7 +109,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                         "Int" -> "map { DynamicInt(it) }"
                         "Double" -> "map { DynamicDouble(it) }"
                         "Float" -> "map { DynamicDouble(it.toDouble()) }"
-                        "Boolean" -> "map { DynamicBoolean(it) }"
+                        "Bool" -> "map { DynamicBoolean(it) }"
                         else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                     }
 
@@ -128,7 +128,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                 "Int" -> "DynamicInt($fieldName)"
                 "Double" -> "DynamicDouble($fieldName)"
                 "Float" -> "DynamicDouble($fieldName.toDouble())"
-                "Boolean" -> "DynamicBoolean($fieldName)"
+                "Bool" -> "DynamicBoolean($fieldName)"
                 else -> "/* unsupported primitive ${type.name} */ TODO()"
             }
 
@@ -173,7 +173,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                         "Int" -> "(it as DynamicInt).value"
                         "Double" -> "(it as DynamicDouble).value"
                         "Float" -> "(it as DynamicDouble).value.toFloat()"
-                        "Boolean" -> "(it as DynamicBoolean).value"
+                        "Bool" -> "(it as DynamicBoolean).value"
                         else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                     }
 
@@ -191,7 +191,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                         "Int" -> "(it as? DynamicInt)?.value"
                         "Double" -> "(it as? DynamicDouble)?.value"
                         "Float" -> "(it as? DynamicDouble)?.value?.toFloat()"
-                        "Boolean" -> "(it as? DynamicBoolean)?.value"
+                        "Bool" -> "(it as? DynamicBoolean)?.value"
                         else -> "/* unsupported primitive list ${unpackedElem.name} */ TODO()"
                     }
                     is Type.UserType -> "${unpackedElem.name}.fromDynamic(it as DynamicObj)"
@@ -221,7 +221,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                     "Int" -> "(it as DynamicInt).value"
                     "Double" -> "(it as DynamicDouble).value"
                     "Float" -> "(it as DynamicDouble).value.toFloat()"
-                    "Boolean" -> "(it as DynamicBoolean).value"
+                    "Bool" -> "(it as DynamicBoolean).value"
                     else -> "/* unsupported primitive ${type.name} */ TODO()"
                 }
                 if (isNullable) "$fieldName = (fields[\"$fieldName\"])?.let { $base }" else "$fieldName = fields[\"$fieldName\"]!!.let { $base }"

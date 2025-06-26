@@ -20,7 +20,7 @@ constructor Assert that::Any? equals::Any? andSay::String -> Unit = [
 ]
 
 /// If thats false - ends the program with message
-Boolean assert: msg::String = [
+Bool assert: msg::String = [
   x = Compiler getName: 0
   this == false => 
     Error throwWithMessage: x + "\n" + msg, orPANIC

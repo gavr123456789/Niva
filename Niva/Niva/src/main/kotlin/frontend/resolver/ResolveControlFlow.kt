@@ -129,7 +129,7 @@ fun Resolver.resolveControlFlow(
             val ifExpr = it.ifExpression
             if (isStatement) {
                 val ifType = ifExpr.type!!
-                if (ifType !is Type.NullableType && ifType != Resolver.defaultTypes[InternalTypes.Boolean] && ifType != Resolver.defaultTypes[InternalTypes.Nothing]) {
+                if (ifType !is Type.NullableType && ifType != Resolver.defaultTypes[InternalTypes.Bool] && ifType != Resolver.defaultTypes[InternalTypes.Nothing]) {
                     ifExpr.token.compileError("if branch ${WHITE}${ifExpr}$RESET must be of the ${YEL}Boolean$RESET or nullable type, but found ${YEL}$ifType")
                 }
             }
@@ -447,7 +447,7 @@ fun Resolver.resolveControlFlow(
         } else {
             // not a type matching
             // no else branch
-            if (savedSwitchType.name == InternalTypes.Boolean.name) {
+            if (savedSwitchType.name == InternalTypes.Bool.name) {
                 if (statement.ifBranches.count() > 2)
                     statement.token.compileError("You matching against Boolean, check only for true and false")
                 val isTrue = statement.ifBranches.find {it.ifExpression.token.lexeme == "true"} != null

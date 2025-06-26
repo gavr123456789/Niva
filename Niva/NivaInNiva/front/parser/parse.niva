@@ -22,7 +22,7 @@ TypeField toString -> String =  "$name: $astType"
 
 extend mut Parser [
   // maybe collections are missing
-  on isLiteralExpr: tok::Token -> Boolean = [ 
+  on isLiteralExpr: tok::Token -> Bool = [ 
    ^| tok kind
     | TokenType.Integer
     | TokenType.String 
@@ -603,7 +603,7 @@ extend mut Parser [
 
 
 
-  on match::TokenType -> Boolean = [
+  on match::TokenType -> Bool = [
     .peek kind == match, ifTrue: [
       .step
       ^ true
@@ -643,7 +643,7 @@ extend mut Parser [
     TO DO: "$matchAssert expected but got $peek"
   ]
 
-  on matchString::String -> Boolean = [
+  on matchString::String -> Bool = [
     .peek lexeme == matchString, ifTrue: [
       .step
       ^ true

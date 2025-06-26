@@ -248,7 +248,7 @@ private fun Resolver.resolveStatement(
 
                 is LiteralExpression.CharExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Char]
 
-                is LiteralExpression.TrueExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.TrueExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Bool]
 
                 is LiteralExpression.NullExpr -> {
                     if (rootStatement is VarDeclaration) {
@@ -262,7 +262,7 @@ private fun Resolver.resolveStatement(
                     }
                 }
 
-                is LiteralExpression.FalseExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Boolean]
+                is LiteralExpression.FalseExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Bool]
             }
 
             if (GlobalVariables.isLspMode) {
@@ -1272,7 +1272,7 @@ class Resolver(
             createDefaultType(InternalTypes.Float),
             createDefaultType(InternalTypes.Long),
             createDefaultType(InternalTypes.Double),
-            createDefaultType(InternalTypes.Boolean),
+            createDefaultType(InternalTypes.Bool),
             createDefaultType(InternalTypes.Unit),
 
             createDefaultType(InternalTypes.Project),
@@ -1297,7 +1297,8 @@ class Resolver(
 
             val floatType = defaultTypes[InternalTypes.Float]!!
             val doubleType = defaultTypes[InternalTypes.Double]!!
-            val boolType = defaultTypes[InternalTypes.Boolean]!!
+            val boolType = defaultTypes[InternalTypes.Bool]!!
+
             val unitType = defaultTypes[InternalTypes.Unit]!!
             val intRangeType = defaultTypes[InternalTypes.IntRange]!!
             val charRangeType = defaultTypes[InternalTypes.CharRange]!!
@@ -1414,7 +1415,7 @@ class Resolver(
         val stringType = defaultTypes[InternalTypes.String]!!
         val charType = defaultTypes[InternalTypes.Char]!!
 //        val floatType = defaultTypes[InternalTypes.Float]!!
-        val boolType = defaultTypes[InternalTypes.Boolean]!!
+        val boolType = defaultTypes[InternalTypes.Bool]!!
         val doubleType = defaultTypes[InternalTypes.Double]!!
         val unitType = defaultTypes[InternalTypes.Unit]!!
         val intRangeType = defaultTypes[InternalTypes.IntRange]!!

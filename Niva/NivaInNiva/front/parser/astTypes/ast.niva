@@ -99,9 +99,9 @@ NameAndAstType toString = [
 union AstType2 tok: Token = 
 | AstType 
   name: String 
-  nullable: Boolean 
+  nullable: Bool 
   genericParams: List::AstType2
-  isMut: Boolean 
+  isMut: Bool 
 | AstLambdaType 
   args: List::AstType2
   returnType: AstType2
@@ -111,7 +111,7 @@ AstType toString = [
   ^ "$name$genericParamsStr"
 ]
 
-constructor AstType name::String nullable::Boolean genericParams::List::AstType tok::Token = AstType 
+constructor AstType name::String nullable::Bool genericParams::List::AstType tok::Token = AstType 
   name: name 
   nullable: nullable
   genericParams: genericParams
@@ -126,7 +126,7 @@ constructor AstType name::String tok::Token = AstType
   tok: tok
 
 extend mut AstType [
-  on setMutable::Boolean = isMut <- setMutable
+  on setMutable::Bool = isMut <- setMutable
 ]
 
 
@@ -181,6 +181,13 @@ IntExpr toString = "$num"
 
 
 
+// Int ses -> Int = [
+//   Error throwWithMessage: "rst"
+//   ^ 5
+// ]
+
+// y = 1 ses inc
+// y 
 
 
 

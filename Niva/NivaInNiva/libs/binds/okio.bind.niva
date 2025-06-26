@@ -12,15 +12,15 @@ Bind package: "okio"  imports: {"okio.Path.Companion.toPath" "okio.Path.*"}  con
   Path normalized -> Path
   Path toString -> String
   Path / x::String -> Path
-  Path == x::Path -> Boolean
-  Path != x::Path -> Boolean
+  Path == x::Path -> Bool
+  Path != x::Path -> Bool
 ] 
 
 Bind package: "okio" content: [
   type FileSystem
   type FileMetadata 
-    isRegularFile: Boolean
-    isDirectory: Boolean
+    isRegularFile: Bool
+    isDirectory: Bool
     symlinkTarget: Path?
     size: Int?
     createdAtMillis: Int?
@@ -37,7 +37,7 @@ Bind package: "okio" content: [
   constructor FileSystem metadata::Path -> FileMetadata
  
   @emit: "okio.FileSystem.SYSTEM.exists($1)"
-  constructor FileSystem exists::Path -> Boolean
+  constructor FileSystem exists::Path -> Bool
   // list
   @emit: "okio.FileSystem.SYSTEM.list($1)"
   constructor FileSystem list::Path -> List::Path

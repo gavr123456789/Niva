@@ -170,7 +170,7 @@ class ResolverTest {
         assert(e["Int"] != null)
         assert(e["String"] != null)
         assert(e["Float"] != null)
-        assert(e["Boolean"] != null)
+        assert(e["Bool"] != null)
         assert(e["Unit"] != null)
         assert(e["Project"] != null)
         assert(e["Bind"] != null)

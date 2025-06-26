@@ -32,10 +32,10 @@ sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(type
     }
 
     class FalseExpr(literal: Token) :
-        LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, literal), literal)
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Bool, literal), literal)
 
     class TrueExpr(literal: Token) :
-        LiteralExpression(TypeAST.InternalType(InternalTypes.Boolean, literal), literal)
+        LiteralExpression(TypeAST.InternalType(InternalTypes.Bool, literal), literal)
 
     class NullExpr(typeAST: TypeAST, literal: Token) :
         LiteralExpression(typeAST, literal)
