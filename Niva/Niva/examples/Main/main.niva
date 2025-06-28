@@ -1,17 +1,12 @@
 
-union Figure =
-| Circle r: Int
-| Rectangle s: Int
+enum Color = Red | Blue
 
+Int sas -> Color? = [
+   x = Color.Red
+   y = | x
+   | Color.Red => Color.Red
+   | Color.Blue => Color.Red
+   |=> null
 
-Int circle::Circle = [
-    circle echo
+   ^ y
 ]
-
-
-r = Rectangle s: 2
-
-1 circle: r
-
-
-//x::Int? = null

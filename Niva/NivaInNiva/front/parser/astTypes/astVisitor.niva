@@ -18,60 +18,76 @@ PrintingVisitor visit: st::Statement = [
 ]
 
 
-TypeDeclVisitor visitAllTypesThenTypesAndMethods: statements::List::Statement pkgName::String = [
-  // create pkg if its not exist yet
-  db packages at: pkgName put: (NivaPkg name: pkgName)
+TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)= [
 
-  noFieldsTypes::mut Map(String, TypeT) = #{}!
+
   typeDecls::mut List::TypeDecl = {}!
   msgDecls::mut List::MessageDecl = {}!
+  noFieldsTypes::mut Map(String, TypeT) = #{}!
 
-  // save all types (without fields), and msg decls
-  statements forEach: [
-    | it
-    | TypeDecl => [
-      noFieldsType = TypeT noFieldsWithName: it name
-      noFieldsTypes at: it name put: noFieldsType
-      typeDecls add: it
+
+  // first iteration, fill the lists of statements, create pkgs
+  fileToStatements forEach: [file, statements -> 
+    pkgName = file
+
+    db addNewPkgIfNotExists: pkgName
+
+    // save all types (without fields), and msg decls
+    statements forEach: [
+      | it
+      | TypeDecl => [
+        noFieldsType = TypeT noFieldsWithName: it name
+        noFieldsTypes at: it name put: noFieldsType
+        typeDecls add: it
+      ]
+      | MessageDecl => msgDecls add: it
+      | UnionDecl => TO DO: "UnionDecl"
+      | EnumDecl => TO DO: "EnumDecl"
+      |=> []
     ]
-    | MessageDecl => msgDecls add: it
-    | UnionDecl => TO DO: "UnionDecl"
-    | EnumDecl => TO DO: "EnumDecl"
-    |=> []
   ]
 
-  typeDecls forEach: [
-    readyToAddToDBType = .fillFields: it knownTypeNames: noFieldsTypes
-    readyToAddToDBType unpack: [
-      db addNewType: it inPkg: pkgName
-      it name + " type added to db", echo
+  fileToStatements forEach: [pkgName, statements ->
+    typeDecls forEach: [
+      readyToAddToDBType = .fillFields: it knownTypeNames: noFieldsTypes
+      readyToAddToDBType unpack: [
+        db addNewType: it inPkg: pkgName
+        it name + " type added to db", echo
+      ]
     ]
-  ]
-
-  // TODO unions, enums, aliases
-
-  // msg decls resolving
-  // here we should have all the types resolved
-  msgDecls forEach: [
-    // it debug 
-    // get real type for receiver
     
-    receiverType = db findByTypeName: it receiver name inPkg: pkgName
-    "found receiver $receiverType" echo
-    // get real type for each arg
 
-    TO DO
-    // get real type for return type, if presented
+  
 
+      
+    // TODO unions, enums, aliases
 
-    TO DO
+    // msg decls resolving
+    // here we should have all the types resolved
+    msgDecls forEach: [
+      // it debug 
+      // get real type for receiver
+      
+    
+      receiverType = db findByTypeName: it receiver name inPkg: null // we cant know the concrete pkg here
+      "found receiver $receiverType" echo
+      // get real type for each arg
+
+      TO DO
+      // get real type for return type, if presented
+    ]
+  
   ]
+
+
   
 ]
 
 
 
 /// returns a type with fields filled with real types, ready to add to db
+/// returns null if such type was not found in knownTypeNames or db
+/// and adds that as error to listOfErrors
 TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) -> TypeT? = [
 
   typeStub = knownTypeNames at: st name

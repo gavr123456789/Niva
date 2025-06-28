@@ -123,19 +123,25 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
         // identifier ("(" | "::")
 
         // x::List::Map(int, string)
+        val isMutableGenericParam = match(TokenType.Mut)
+
         val identifier = matchAssertAnyIdent("in type declaration identifier expected, but found ${peek().lexeme}")
         val isIdentifierNullable = identifier.kind == TokenType.NullableIdentifier
         val simpleTypeMaybe = identifier.lexeme.isSimpleTypes()
         // if there is simple type, there cant be any other types like int:: is impossible
         return if (simpleTypeMaybe != null) {
             // int string float or bool
-            TypeAST.InternalType(simpleTypeMaybe, identifier, isIdentifierNullable)
+            TypeAST.InternalType(simpleTypeMaybe, identifier, isIdentifierNullable).also {
+                it.isMutable = isMutableGenericParam
+            }
         } else {
             if (match(TokenType.DoubleColon)) {
 //                    need recursion
                 val recursiveGenerics = parseGenericType()
                 val errors = checkForErrors()
-                return TypeAST.UserType(identifier.lexeme, mutableSetOf(recursiveGenerics), isIdentifierNullable, identifier, errors = errors)
+                return TypeAST.UserType(identifier.lexeme, mutableSetOf(recursiveGenerics), isIdentifierNullable, identifier, errors = errors).also {
+                    it.isMutable = isMutableGenericParam
+                }
             }
             // Map(Int, String)
             if (match(TokenType.OpenParen)) {
@@ -148,7 +154,9 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
                 return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
             }
             // ::Person
-            TypeAST.UserType(identifier.lexeme, mutableSetOf(), isIdentifierNullable, identifier)
+            TypeAST.UserType(identifier.lexeme, mutableSetOf(), isIdentifierNullable, identifier).also {
+                it.isMutable = isMutableGenericParam
+            }
         }
 
     }
