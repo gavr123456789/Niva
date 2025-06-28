@@ -20,18 +20,16 @@ resolver = [
   """
 
 
-
-  listOfFilesContents = {fileMain fileMoney} 
-
-
-  statements = TestParse withInput: fileMain expectedCount: -1
+  statements  = TestParse withInput: fileMain expectedCount: -1
+  statements2 = TestParse withInput: fileMoney expectedCount: -1
+  listOfFilesContents = #{"main.niva" statements "money.niva" statements2} 
   db = TyperDB new
 
   // эта штука должна принимать мапу строка к списку стейтментов файла
   TypeDeclVisitor db: db, 
-    visitAllTypesThenTypesAndMethods: statements pkgName: "main"
+    visitAllTypesThenTypesAndMethods: listOfFilesContents
 
-] 
+] do
 
 failingComment = [
   input = """
@@ -42,7 +40,8 @@ failingComment = [
   """
   statements = TestParse withInput: input expectedCount: 2
 
-] do
+]
+
 
 
 

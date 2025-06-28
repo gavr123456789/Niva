@@ -19,24 +19,36 @@ fun Statement.isNotExpression(): Boolean =
     this !is Expression && this !is ReturnStatement && this !is Assign
 
 fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
+
     if (branchReturnTypes.isEmpty()) throw Exception("Compiler bug: 0 branches in ControlFlow")
-    if (branchReturnTypes.count() == 1) return branchReturnTypes.first()
+    var resultIsNullable = false
+    val branchesWithoutNull = branchReturnTypes.filter {
+        if (typeIsNull(it)) {
+            resultIsNullable = true
+            false
+        } else true
+    }
+    if (branchesWithoutNull.count() == 1) {
+        val result = branchesWithoutNull.first()
+        return if (resultIsNullable) {
+            Type.NullableType(result)
+        } else
+            result
+    }
 
     // find the general root
     // the simplest variant, all the same
     var currentGeneralRoot:Type? = null
-    var resultIsNullabel = false
 
-    (1..<branchReturnTypes.count()).forEach {
-        val cur = branchReturnTypes[it]
-        val prev = branchReturnTypes[it - 1]
+    (1..<branchesWithoutNull.count()).forEach {
+        val cur = branchesWithoutNull[it]
+        val prev = branchesWithoutNull[it - 1]
 
         val realType1 = cur.unpackNull()
         val realType2 = prev.unpackNull()
-        if (!resultIsNullabel && realType1 != cur) resultIsNullabel = true
+        if (!resultIsNullable && realType1 != cur) resultIsNullable = true
         if (typeIsNull(prev)) {
-            resultIsNullabel = true
-//            oneOfReturnTypesIsActualNull = true
+            resultIsNullable = true
         }
 
         val generalRoot = findGeneralRoot(realType1, realType2)
@@ -49,13 +61,13 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     // all types same reference
     val cgr = currentGeneralRoot
     if (cgr != null) {
-        if (resultIsNullabel && cgr !is Type.NullableType) {
+        if (resultIsNullable && cgr !is Type.NullableType) {
             return Type.NullableType(cgr)
         }
         return cgr
     }
 
-    tok.compileError("Cant find general root between $YEL$branchReturnTypes$RESET")
+    tok.compileError("Cant find general root between $YEL$branchesWithoutNull$RESET")
 
 }
 
@@ -416,9 +428,16 @@ fun Resolver.resolveControlFlow(
             if (elseReturnTypeMaybe != null) {
                 branchesReturnTypes.add(elseReturnTypeMaybe)
             }
+            val result = findGeneralRootMany(branchesReturnTypes, statement.token)
+            if (result is Type.NullableType) {
+                val unpacked = result.unpackNull()
+                if (unpacked.name == "NullExpr") {
+                    1
+                }
+            }
+            statement.type = result
 
-            statement.type =
-                findGeneralRootMany(branchesReturnTypes, statement.token)
+
         } else if (thisIsTypeMatching) {
             when (savedSwitchType) {
                 is Type.UnionRootType -> {

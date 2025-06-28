@@ -52,7 +52,7 @@ extend mut Parser [
   on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
 
-   ^| tok kind
+    x = | tok kind
     | TokenType.Integer => 
       IntExpr num: tok lexeme toInt token: tok
     
@@ -75,6 +75,7 @@ extend mut Parser [
       NullExpr token: tok
     
     |=> [null]
+    ^ x
   ]
 
   /// if starts from { #{ #(, then return collection

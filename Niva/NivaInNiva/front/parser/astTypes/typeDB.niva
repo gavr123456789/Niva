@@ -7,7 +7,7 @@ type TyperDB
 
   // caches
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
-  typesWithSameNames: mut Map(String, Set::NivaType)
+  typesWithSameNames: mut Map(String, mut Set::NivaType)
 
 
 constructor TyperDB new -> TyperDB = [
@@ -26,7 +26,11 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 
-
+TyperDB addNewPkgIfNotExists: pkgName::String = [
+  packages containsKey: pkgName, ifFalse: [
+    packages at: pkgName put: (NivaPkg name: pkgName)
+  ]
+]
 
 TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
   // 1 add to pkg
@@ -39,6 +43,26 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
     Unit
   ]
 
+  t echo
+  "------" echo
+  typesWithSameNames echo 
+
+  setMaybe = typesWithSameNames at: t name
+
+  | setMaybe
+  | null => [
+    // create set
+    newSet::mut Set::NivaType = #()!
+    newSet add: t
+    typesWithSameNames at: t name put: newSet
+  ]
+  |=> [
+    // add type to set
+    setMaybe add: t
+  ]
+
+
+  // TO DO: "eh"
   // 2 add to typesWithSameNames cache
 
       // add to typeswithsaenames
@@ -72,15 +96,14 @@ TyperDB
 
   // its not core type
   // so use typesWithSameNames
-
-
   
   | pkgName
   | null => [
 // we dont know the pkg, so search type in every pkg
     sameNameType = typesWithSameNames at: typeName
+    knownNames = typesWithSameNames keys
     | sameNameType
-    | null => TO DO: "Bug: Cant find type $typeName in typesWithSameNames"
+    | null => TO DO: "Bug: Cant find type $typeName in typesWithSameNames, known: $knownNames"
     |=> [
       | sameNameType count == 1
       | true => [
