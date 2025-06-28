@@ -394,6 +394,7 @@ fun Resolver.resolveControlFlow(
                 previousAndCurrentScope[statement.switch.name] = savedSwitchType
 
             currentLevel--
+            var elseReturnTypeMaybe: Type? = null
             if (statement.elseBranch.isNotEmpty()) {
                 val lastExpr = statement.elseBranch.last()
 
@@ -403,14 +404,21 @@ fun Resolver.resolveControlFlow(
                     is Assign -> Resolver.defaultTypes[InternalTypes.Unit]!! //lastExpr.value.type!!
                     else -> lastExpr.token.compileError("In switch expression body last statement must be an expression")
                 }
+                elseReturnTypeMaybe = elseReturnType
+
                 val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
                 if (generalRoot == null) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
                 }
             }
 
+            val branchesReturnTypes = statement.ifBranches.map { it.getReturnTypeOrThrow() }.toMutableList()
+            if (elseReturnTypeMaybe != null) {
+                branchesReturnTypes.add(elseReturnTypeMaybe)
+            }
+
             statement.type =
-                findGeneralRootMany(statement.ifBranches.map { it.getReturnTypeOrThrow() }, statement.token)
+                findGeneralRootMany(branchesReturnTypes, statement.token)
         } else if (thisIsTypeMatching) {
             when (savedSwitchType) {
                 is Type.UnionRootType -> {
