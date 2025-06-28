@@ -2,43 +2,45 @@ type Program
   readFile: [String -> String]
   walkDir: [String -> List::String]
 
-
-
-astWalker = [
-  unions = """
-    union Color = Red | Blue | Green
-
-    union Figure size: Int = 
-    | Circle r: Int
-    | Rectangle width: Int heigth: Int
-  """ trimIndent
-
-  expressions = """
-    1 inc inc inc
-    2 + 2 + 3
-    3 from: 2 to: 3
-  """ trimIndent
-
-  visitorTest = """
+resolver = [
+  fileMain = """
     
     type Person name: String age: Int wallet: Wallet
     type Wallet money: Int
 
+
+    // no such type Money
     Money make::Int -> Int = [^1]
+ 
+  """
 
-    
+  fileMoney = """
 
-
+    type Money ofPerson: Person
   """
 
 
-  statements = TestParse withInput: visitorTest expectedCount: -1
-  // keyword = statements at: 0
-  // statements echo
-  
-  // PrintingVisitor new run: statements
-  TypeDeclVisitor db: (TyperDB new), 
-    visitAllTypesThanTypesAndMethods: statements
+
+  listOfFilesContents = {fileMain fileMoney} 
+
+
+  statements = TestParse withInput: fileMain expectedCount: -1
+  db = TyperDB new
+
+  // эта штука должна принимать мапу строка к списку стейтментов файла
+  TypeDeclVisitor db: db, 
+    visitAllTypesThenTypesAndMethods: statements pkgName: "main"
+
+] 
+
+failingComment = [
+  input = """
+    1 + 2
+    //sas
+    // uu
+    3 / 4
+  """
+  statements = TestParse withInput: input expectedCount: 2
 
 ] do
 
@@ -97,3 +99,11 @@ opTest = [
                    TokenType.Dot
                   }
 ]
+
+  unions = """
+    union Color = Red | Blue | Green
+
+    union Figure size: Int = 
+    | Circle r: Int
+    | Rectangle width: Int heigth: Int
+  """ trimIndent

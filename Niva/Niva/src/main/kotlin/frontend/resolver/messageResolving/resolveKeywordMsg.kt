@@ -440,7 +440,14 @@ fun Resolver.resolveKeywordMsg(
                 val typeOfArgFromDb = argsTypesFromDb[i]
                 val typeOfArgFromDeclaration = argAndItsMessages.keywordArg.type!!
 
-                val sameTypes = compare2Types(typeOfArgFromDb, typeOfArgFromDeclaration, argAndItsMessages.keywordArg.token, unpackNull = true, nullIsAny = true)
+                val sameTypes = compare2Types(
+                    typeOfArgFromDb,
+                    typeOfArgFromDeclaration,
+                    argAndItsMessages.keywordArg.token,
+                    unpackNull = true,
+                    nullIsAny = true,
+                    compareParentsOfBothTypes = false
+                )
                 if (!sameTypes) {
                     argAndItsMessages.keywordArg.token.compileError(
                         "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
