@@ -1,0 +1,112 @@
+type TyperDB 
+  // setOfTypeNames: mut Set::String
+  listOfErrors: mut List::ResolveErrors
+  listOfDeclaredTypes: mut List::TypeT
+
+  packages: mut Map(String, NivaPkg)
+
+  // caches
+  internalTypesCache: mut Map(String, NivaType) // types from Core pkg
+  typesWithSameNames: mut Map(String, Set::NivaType)
+
+
+constructor TyperDB new -> TyperDB = [
+  // for now I wont add core types to typesWithSameNames db
+  // just inside search method check if its name from core, then return from core cache
+
+  corePkg = NivaPkg core
+  ^TyperDB 
+    // setOfTypeNames: #()! 
+    listOfErrors: {}!
+    listOfDeclaredTypes: {}!
+    packages: #{}!
+    internalTypesCache: corePkg nivaTypes
+    typesWithSameNames: #{}!
+    
+]
+
+
+
+
+TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
+  // 1 add to pkg
+  // find the pkg
+  pkg = packages at: pkgName
+  | pkg
+  | null => TO DO: "Compiler bug: cant find pkg $pkgName"
+  |=> [
+    pkg nivaTypes at: "name" put: t
+    Unit
+  ]
+
+  // 2 add to typesWithSameNames cache
+
+      // add to typeswithsaenames
+    // listOfTypesWithThatName = typesWithSameNames at: pkgName
+    // | listOfTypesWithThatName
+    // | null => [
+    //   // create a list
+    //   newList = {t}
+    //   typesWithSameNames at: t name put: G
+    // ]
+    // |=> [
+    //   // add to that list
+
+    // ]
+]
+
+
+
+TyperDB 
+  findByTypeName: typeName::String 
+  inPkg: pkgName::String? -> NivaType = [
+
+  // if core return from cache 
+  typeName isCoreType ifTrue: [
+    result = internalTypesCache at: typeName
+
+   ^| result
+    | null => TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
+    |=> result
+  ] 
+
+  // its not core type
+  // so use typesWithSameNames
+
+
+  
+  | pkgName
+  | null => [
+// we dont know the pkg, so search type in every pkg
+    sameNameType = typesWithSameNames at: typeName
+    | sameNameType
+    | null => TO DO: "Bug: Cant find type $typeName in typesWithSameNames"
+    |=> [
+      | sameNameType count == 1
+      | true => [
+        // found only one type in the pkg
+        ^ sameNameType first
+      ]
+      | false => TO DO: "There are many types with the same name: $sameNameType, please specify pkg like pkg.type"
+    ]
+  ]
+  |=> [
+// we know the pkg, so search for type in it
+    pkg = packages at: pkgName
+    | pkg
+    | null => [TO DO: "No such package as $pkgName, known pkgs: $packages"]
+    |=> [
+      foundType = pkg nivaTypes at: typeName
+      | foundType
+      | null => [TO DO: "No such type: $typeName in $pkgName"]
+      |=> [
+        foundType
+      ]
+    ]
+    
+    
+  ]
+
+  ^ TO DO: "fix #363, and ther assign the previous switch to result and return it here"
+]
+

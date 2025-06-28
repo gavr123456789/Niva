@@ -1,0 +1,82 @@
+
+Test listLiterals -> Unit! = [
+  input = """
+    {1 2 3}
+    #{1 2 3 4}
+    #(1 2 3)
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 3
+  list = statements at: 0
+  map = statements at: 1
+  set = statements at: 2
+
+  | list 
+  | ListLiteral => [Assert that: list elements count equals: 3]
+  |=> [TO DO: "$list is not list literal"]
+
+  | map 
+  | MapLiteral => [Assert that: map elements count equals: 4]
+  |=> [TO DO: "$list is not map literal"]
+
+  | set 
+  | SetLiteral => [Assert that: set elements count equals: 3]
+  |=> [TO DO: "$list is not set literal"]
+
+
+]
+
+Test returnStatement -> Unit! = [
+  input = """
+    [
+      ^ 1 + 2
+      ^ result
+    ]
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+]
+
+Test codeBlockStatement -> Unit! = [
+  input = """
+  
+    [
+      sas
+    ]
+
+    // typed args
+    [ x::Int, y::String -> 
+      x + y
+    ]
+
+    // no args
+    [x + y]
+
+    // args
+    [a, b -> a + b]
+
+    // empty
+    []
+
+    // call expr
+    ["sas"] do
+
+    // call with args
+    [x::Int, y::Int -> x + y] x: 1 y: 2
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 7
+]
+
+
+Test failingComment = [
+  input = """
+    type Person name: String age: Int wallet: Wallet
+    type Wallet money: Int
+
+
+    // no such type Money
+    Money make::Int -> Int = [^1]
+  """
+  statements = TestParse withInput: input expectedCount: 3
+
+
+]
+

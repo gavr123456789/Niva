@@ -1,0 +1,132 @@
+union NivaType = 
+| UnitT
+| IntegerT
+| FloatT
+| DoubleT
+| BoolT
+| StringT
+| AnyT
+| NothingT
+// complex
+| TypeT name: String fields: mut List::TypeTField genericArgs: mut List::NivaType
+| UnionT branches: List::UnionTBranch
+| FuntionT fields: List::TypeTField // method or lambda
+// collections
+| ListT t: NivaType
+| SetT t: NivaType
+| MapT k: NivaType v: NivaType
+// utility
+| UnresolvedGenericT name: String
+
+type TypeTField name: String typeT: NivaType
+type UnionTBranch name: String typeT: NivaType
+
+constructor TypeT noFieldsWithName: name::String = TypeT name: name fields: {}! genericArgs: {}!
+
+
+type NivaMethod 
+  name: String 
+  args: List::TypeTField
+  returnType: NivaType
+
+type NivaProtocol 
+  name: String 
+  methods: mut Map(String, NivaMethod)
+  mutableMethods: mut Map(String, NivaMethod)
+
+type NivaTypeWithProtocols 
+  nivaType: NivaType 
+  protocols: mut Map(String, NivaProtocol)
+
+type NivaPkg 
+  name: String 
+  nivaTypes: mut Map(String, NivaType)
+  protocols: mut Map(NivaType, NivaProtocol)
+
+constructor NivaPkg name::String = NivaPkg name: name nivaTypes: #{}! protocols: #{}!
+constructor NivaMethod name::String returnType::NivaType= NivaMethod name: name args: {}! returnType: returnType
+constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}! mutableMethods: #{}!
+
+
+NivaProtocol addMethod::NivaMethod forMut::Bool = [
+  forMut ifTrue: [
+    methods at: addMethod name put: addMethod
+  ] ifFalse: [
+      mutableMethods at: addMethod name put: addMethod
+  ]
+]
+/// for immutable
+NivaProtocol addMethod::NivaMethod = .addMethod: addMethod forMut: false
+
+
+
+constructor NivaProtocol intArithmetics: int::IntegerT bool::BoolT -> NivaProtocol = [
+  intProtocol = NivaProtocol name: "arithmetic" 
+
+  // unary
+  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int)
+  // binary
+  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int)
+
+  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool)
+  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool)
+
+  ^intProtocol
+]
+
+constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
+
+/// create basic types like String Int List
+constructor NivaPkg core -> NivaPkg = [
+  // create all primitive types
+  bool = BoolT new
+  unit = UnitT new 
+  str = StringT new
+  int = IntegerT new
+  float = FloatT new
+  double = DoubleT new
+  // T
+  t = UnresolvedGenericT name: "T"
+  // create collections
+  list = ListT t: t
+  map = MapT k: t v: t
+  set = SetT t: t
+  // create Int Protocol
+  intProtocol = NivaProtocol intArithmetics: int bool: bool
+
+
+  corePkg = NivaPkg name: "core" nivaTypes: #{
+    "Bool" bool
+    "Unit" unit 
+    "String" str
+    "Int" int 
+    "Float" float 
+    "Dobule" double
+
+    "List" list 
+    "Set" set 
+    "Map" map 
+  }! protocols: #{
+    int intProtocol
+  }!
+
+  ^ corePkg
+]
+
+
+
+
+// -----
+
+type ExprType 
+  nivaType: NivaType
+  isMutable: Bool
+constructor ExprType nivaType::NivaType = ExprType 
+  nivaType: nivaType
+  isMutable: false
+

@@ -1,0 +1,204 @@
+union ResolveErrors =
+| ErrorNoSuchType tok: Token
+
+
+union AstVisitor =
+| PrintingVisitor //sb: StringBuilder
+| TypeDeclVisitor db: TyperDB 
+
+AstVisitor run: statements::List::Statement= [
+  statements forEach: [
+    this visit: it
+  ]
+]
+
+PrintingVisitor visit: st::Statement = [
+  st echo
+  "--------------" echo
+]
+
+
+TypeDeclVisitor visitAllTypesThenTypesAndMethods: statements::List::Statement pkgName::String = [
+  // create pkg if its not exist yet
+  db packages at: pkgName put: (NivaPkg name: pkgName)
+
+  noFieldsTypes::mut Map(String, TypeT) = #{}!
+  typeDecls::mut List::TypeDecl = {}!
+  msgDecls::mut List::MessageDecl = {}!
+
+  // save all types (without fields), and msg decls
+  statements forEach: [
+    | it
+    | TypeDecl => [
+      noFieldsType = TypeT noFieldsWithName: it name
+      noFieldsTypes at: it name put: noFieldsType
+      typeDecls add: it
+    ]
+    | MessageDecl => msgDecls add: it
+    | UnionDecl => TO DO: "UnionDecl"
+    | EnumDecl => TO DO: "EnumDecl"
+    |=> []
+  ]
+
+  typeDecls forEach: [
+    readyToAddToDBType = .fillFields: it knownTypeNames: noFieldsTypes
+    readyToAddToDBType unpack: [
+      db addNewType: it inPkg: pkgName
+      it name + " type added to db", echo
+    ]
+  ]
+
+  // TODO unions, enums, aliases
+
+  // msg decls resolving
+  // here we should have all the types resolved
+  msgDecls forEach: [
+    // it debug 
+    // get real type for receiver
+    
+    receiverType = db findByTypeName: it receiver name inPkg: pkgName
+    "found receiver $receiverType" echo
+    // get real type for each arg
+
+    TO DO
+    // get real type for return type, if presented
+
+
+    TO DO
+  ]
+  
+]
+
+
+
+/// returns a type with fields filled with real types, ready to add to db
+TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) -> TypeT? = [
+
+  typeStub = knownTypeNames at: st name
+
+
+  | typeStub
+  | null => [
+    db listOfErrors add: (ErrorNoSuchType tok: st token)
+    ^ null
+  ]
+  |=> [
+    fields = st fields forEach: [
+      fieldName = it astType name
+      knownNames = knownTypeNames keys
+      // search in known types, if not found search in db, db always has core types, 
+      // known types contains every type from AST decls
+      maybeFieldType = knownTypeNames at: fieldName
+      fieldType = | maybeFieldType
+      | null => db findByTypeName: fieldName inPkg: null
+      |=> maybeFieldType
+
+
+      field = TypeTField name: it name typeT: fieldType
+      typeStub fields add: field
+    ]
+
+    ^ typeStub
+  ]
+]
+
+
+/// if it is, we can get type from catche(core pkg)
+String isCoreType -> Bool = 
+  | this
+  | "String" 
+  | "Int" 
+  | "Bool"
+
+  | "Double" 
+  | "Float"
+
+  | "Unit"
+
+  | "List"
+  | "Map"
+  | "Set" => true
+  |=> false
+
+
+
+
+TypeDeclVisitor visit: st::Statement = [
+  TO DO
+]
+
+
+AstVisitor visit: st::Statement = | this
+| PrintingVisitor => this visit: st
+| TypeDeclVisitor => [
+  | st
+  | TypeDecl => this visit: st
+  |=>[]
+    Unit
+]
+
+
+// todo go deep to call visitor on each child note
+Statement accept: visitor::AstVisitor = 
+| this
+| Expr => [
+  visitor visit: this
+  this exprAccept: visitor
+]
+| Declaration => this declAccept: visitor
+| VarDeclaration => [
+  visitor visit: this
+  this value exprAccept: visitor
+]
+| Assign => [
+  visitor visit: this
+  this value exprAccept: visitor
+]
+| DestructingAssign => [
+  visitor visit: this
+  this value exprAccept: visitor
+]
+
+
+Expr exprAccept: visitor::AstVisitor -> Unit = 
+| this
+| LiteralExpr | Identifier | ReturnStatement => [visitor visit: this]
+| ExprInBrackets => [
+  this value exprAccept: visitor
+]
+| CollectionLiteral => [
+  this elements forEach: [it exprAccept: visitor]
+]
+| MessageSend2 => [
+  | this
+  | UnaryMsg => [
+    visitor visit: this
+  ]
+  | BinaryMsg => [
+    this args forEach: [it expr exprAccept: visitor]
+    visitor visit: this
+  ]
+  | KeywordMsg => [
+    this args forEach: [it expr exprAccept: visitor]
+    visitor visit: this
+  ]
+
+]
+| CodeBlock => [
+  TO DO
+]
+
+
+
+
+Declaration declAccept: visitor::AstVisitor -> Unit = 
+| this
+| TypeDecl =>  visitor visit: this
+
+| EnumDecl => visitor visit: this
+| UnionDecl => visitor visit: this
+| MessageDecl => [
+  // Cant visit receiver type and return types since they are not declarations
+  visitor visit: this
+  this body forEach: [it accept: visitor]
+]

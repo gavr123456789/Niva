@@ -1,0 +1,44 @@
+// union ExpressionVisitor =
+// | PrintingVisitor sb: StringBuilder
+
+// constructor PrintingVisitor default =
+//   PrintingVisitor sb: StringBuilder new
+
+
+// ExpressionVisitor visit: e::Expression = | this
+// | PrintingVisitor => this visit: e
+
+// PrintingVisitor visit: e::Expression = | e
+// | IntExpression => sb append: e value toString
+// | AdditionExpression => [
+//     sb append: "("
+//     e left accept: this
+//     sb append: "+"
+//     e right accept: this
+//     sb append: ")"
+// ]
+
+// PrintingVisitor print = sb toString
+
+
+// union Expression =
+// | IntExpression value: Int
+// | AdditionExpression left: Expression right: Expression
+
+// Expression accept: visitor::ExpressionVisitor = [
+//     | this
+//     | IntExpression => visitor visit: this
+//     | AdditionExpression => visitor visit: this
+// ]
+
+// // main
+// expression = AdditionExpression
+//     left: (IntExpression value: 1)
+//     right: (AdditionExpression
+//             left: (IntExpression value: 2)
+//             right: (IntExpression value: 3))
+
+// printingVisitor = PrintingVisitor default
+// printingVisitor visit: expression
+// printingVisitor print echo
+1
