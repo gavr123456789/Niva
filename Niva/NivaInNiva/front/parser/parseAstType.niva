@@ -70,7 +70,7 @@ extend mut Parser [
 
 
       lastBracketTok = .matchAssert: TokenType.CloseBracket
-      ^ AstLambdaType args: args toList returnType: returnType tok: lastBracketTok
+      ^ AstLambdaType args: args toList returnType: returnType tok: lastBracketTok name: "[$args -> ]"
     ]
     result::mut AstType = .parseGenericType
     result setMutable: isMut

@@ -1,7 +1,7 @@
 type LexTest 
 constructor LexTest input::String -> List::Token = [
   l = Lexer input: input
-  tokens = l lex orPANIC dropLast: 1  // drop EOF
+  tokens = l lex dropLast: 1  // drop EOF
   ^ tokens
 ]
 

@@ -96,9 +96,8 @@ NameAndAstType toString = [
 ]
 
 // Types
-union AstType2 tok: Token = 
+union AstType2 tok: Token name: String = 
 | AstType 
-  name: String 
   nullable: Bool 
   genericParams: List::AstType2
   isMut: Bool 

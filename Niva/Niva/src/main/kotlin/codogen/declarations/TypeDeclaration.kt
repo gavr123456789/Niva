@@ -156,10 +156,10 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
         // class Person (var age: Int, kek: String) : Human<...>^(kek)
         append("(")
-        // this is Duplicate of generating fields from UserType
+        // this is Duplicate of generating fields from UserTypeУ
         val w = root2.fields.count() - 1
-        root2.fields.map { it.name }.toSortedSet().forEachIndexed { i, it ->
-            append(it)
+        root2.fields.map { it.name }.toSet().forEachIndexed { i, it ->
+            append("$it = $it")
             if (w != i) {
                 append(", ")
             }

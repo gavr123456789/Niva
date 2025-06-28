@@ -95,17 +95,19 @@ extend mut Lexer [
 
   on nextToken -> Token! = [
     .skipWhiteSpaces
-    // .skipComments
+    .skipComments
 
-    |ch
-    | '/' => .stepMatch: '/', 
-    ifTrue:  [
-      .skipCurrentLine
-    ] 
-    ifFalse: [
-      ^.createToken: TokenType.BinarySymbol lexeme: "/"
-      Unit
-    ]
+
+    // |ch
+    // | '/' => .stepMatch: '/', 
+    //   ifTrue:  [
+    //     "skipped line $line" echo
+    //     .skipCurrentLine
+    //   ] 
+    //   ifFalse: [
+    //     ^.createToken: TokenType.BinarySymbol lexeme: "/"
+    //     Unit
+    //   ]
 
 
     l = ch toString
@@ -149,6 +151,9 @@ extend mut Lexer [
     //     .createToken: TokenType.Comment lexeme: "//"
     //   ] 
     //   ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
+
+    | '/' => .createToken: TokenType.BinarySymbol lexeme: l
+
 
     | '!' => .stepMatch: '=', 
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
@@ -270,7 +275,10 @@ extend mut Lexer [
       // "'$ch'" echo
       .step
     ]
-    .match: '\n'
+    .match: '\n', ifTrue: [
+      line <- line inc
+      posOnLine <- 0 
+    ]
   ]
 ]
 
@@ -327,13 +335,25 @@ mut Lexer skipWhiteSpaces = [
 ]
 
 mut Lexer skipComments = [
-  |ch
-  | '/' => .stepMatch: '/', 
-  ifTrue:  [
-    .skipCurrentLine
-  ] 
-  ifFalse: [
-    .createToken: TokenType.BinarySymbol lexeme: "/"
-    Unit
+  mut c = true
+  
+  [c] whileTrue: [
+    .skipWhiteSpaces
+
+    savePoint = readPos
+    |ch
+    | '/' => [
+      .peekChar == '/',
+        ifTrue: [
+          .skipCurrentLine
+        ] 
+        ifFalse: [
+          c <- false
+        ]
+    ]
+    |=> [
+      c <- false
+    ]
   ]
 ]
+

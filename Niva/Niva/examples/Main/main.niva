@@ -1,7 +1,17 @@
-type Person name: String
 
-mut Person sas = 25
+union Figure =
+| Circle r: Int
+| Rectangle s: Int
 
-p::mut Person = Person name: "sas"
 
-p sas
+Int circle::Circle = [
+    circle echo
+]
+
+
+r = Rectangle s: 2
+
+1 circle: r
+
+
+//x::Int? = null

@@ -364,7 +364,7 @@ private fun Resolver.resolveStatement(
                         returnType,
                         realReturn,
                         root.returnTypeAST?.token ?: statement.token,
-                        unpackNull = true,
+                        unpackNullForFirst = true,
                         isOut = true
                     )
                 // тут надо заюзать поиск общих предков
