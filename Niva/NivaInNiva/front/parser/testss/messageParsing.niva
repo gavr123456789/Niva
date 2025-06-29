@@ -45,7 +45,7 @@ Test pipes = [
         Assert that: expr args count equals: 1
         first = expr args at: 0
         Assert that: first name token lexeme equals: "to"
-        Assert that: first expr toString equals: "2"
+        Assert that: first expr token lexeme equals: "2"
       ]
       |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
     ]

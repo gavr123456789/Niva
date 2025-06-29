@@ -151,7 +151,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
                 } while (match(TokenType.Comma))
                 matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
-                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable, identifier)
+                val isNullable = match("?")
+                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable || isNullable, identifier)
             }
             // ::Person
             TypeAST.UserType(identifier.lexeme, mutableSetOf(), isIdentifierNullable, identifier).also {

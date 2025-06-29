@@ -103,21 +103,6 @@ fun TypeDB.getType(
     return TypeDBResult.NotFound(name)
 }
 
-//fun TypeDB.findLambdaType(name: String): TypeDBResult? {
-//    val foundInLambda = lambdaTypes[name]
-//    if (foundInLambda != null) {
-//        if (foundInLambda.count() == 1) {
-//            return TypeDBResult.FoundOne(foundInLambda[0])
-//        } else if (foundInLambda.count() > 1) {
-//             TypeDBResult.FoundMoreThanOne(
-//                foundInLambda.map { it.pkg to it }.toMap()
-//            )
-//        }
-//    }
-//
-//    return null
-//}
-
 
 fun TypeDB.getTypeOfIdentifierReceiver(
     typeName: String,

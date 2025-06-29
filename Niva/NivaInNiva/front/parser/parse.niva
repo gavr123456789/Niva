@@ -181,7 +181,7 @@ extend mut Parser [
     ]
 
     // wait, just check if there was an arrow, if not, then restore from tok
-    mut body = .parseManyExprUntilTok: TokenType.CloseBracket
+    mut body = .parseManyExprUntilTok: TokenType.CloseBracket split: null
 
     result = CodeBlock 
       args: args 
@@ -193,9 +193,9 @@ extend mut Parser [
   ]
 
 
-  on parseManyExprUntilTok: until::TokenType -> List::Expr = [
+  on parseManyExprUntilTok: until::TokenType split::TokenType? -> List::Expr = [
     body::mut List::Expr = {}!
-
+    
     mut c = true
     [c] whileTrue: [
       tok = .peek
@@ -206,9 +206,25 @@ extend mut Parser [
         // parse statement
         nextTok = .step 
         statement = .nextExperssion: nextTok
+        split unpack: [.match: it]
         body add: statement
         Unit
       ]
+    ]
+
+    ^ body
+  ]
+  on parseManyExprSplitBy: split::TokenType -> List::Expr = [
+    body::mut List::Expr = {}!
+    
+    mut c = true
+    [c] whileTrue: [
+      tok = .peek
+      nextTok = .step 
+      statement = .nextExperssion: nextTok
+      body add: statement
+
+      c <- .match: split
     ]
 
     ^ body
@@ -218,7 +234,7 @@ extend mut Parser [
     // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
     ^ .match: TokenType.OpenBracket, ifTrue: [
       // parse body
-      .parseManyExprUntilTok: TokenType.CloseBracket
+      .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
       {(.nextExperssion: .step)}
@@ -260,6 +276,40 @@ extend mut Parser [
     ]
   ]
 
+  on parseMatch: tok::Token -> Match = [
+    branches::mut List::MatchBranch = {}!
+    mut elseBranch::List(Expr) = {}
+
+    subject = .nextExperssion: .step
+
+    parseBranches = [
+      mut c = true 
+      exprConditions::mut List::Expr = {}!
+      body::mut List::Expr = {}!
+
+      // match ifs
+      [c] whileTrue: [
+        c <- .match: TokenType.If
+        exprs = .parseManyExprSplitBy: TokenType.If
+        exprs isEmpty ifTrue: [TO DO: "One or more conditions (separated by `|`) expected"]
+
+        .matchAssert: TokenType.Then
+
+        body = .parseBodyOrSingleExpr
+        mb = MatchBranch condition: exprs first conditions: (exprs drop: 1) body: body
+        branches add: mb
+
+        c <- .match: TokenType.If
+      ]
+      // match else
+      .match: TokenType.Else, ifTrue: [
+        elseBranch <- .parseBodyOrSingleExpr
+      ]
+
+    ] do
+
+    ^ Match subject: subject branches: branches elseBranch: elseBranch token: tok
+  ]
   on nextStatement -> Statement = [
     // .skipComments
     savePosition = current
@@ -379,8 +429,11 @@ extend mut Parser [
 
       ^ result
     ]
+    | TokenType.If => [
+      ^.parseMatch: tok
+    ]
     | TokenType.Return => [
-      .parseReturnExpr: tok
+      ^.parseReturnExpr: tok
     ]
     // commented since expression after is possible
     // | TokenType .OpenBracket => [

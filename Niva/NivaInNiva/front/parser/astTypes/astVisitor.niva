@@ -19,8 +19,6 @@ PrintingVisitor visit: st::Statement = [
 
 
 TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)= [
-
-
   pkgTotypeDecls::mut Map(String, TypeDecl) = #{}!
   msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
@@ -85,7 +83,7 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
 
-      method = NivaMethod name: msg name args: argsT returnType: (msg getReturnTypeFromDb: db) forMut: isMutable
+      method = NivaMethod name: msg name args: argsT returnType: (msg getReturnTypeFromDb: db) forMut: isMutable possibleErrors: {}
       db addNewMethod: method forType: receiverType inProtocol: null
       "added method " + method name, echo
     ]
@@ -214,6 +212,7 @@ Expr exprAccept: visitor::AstVisitor -> Unit =
 | CodeBlock => [
   TO DO
 ]
+| Match => TO DO
 
 
 

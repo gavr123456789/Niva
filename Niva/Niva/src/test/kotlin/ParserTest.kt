@@ -46,6 +46,15 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class ParserTest {
+
+    @Test
+    fun genericWithRoundBranches() {
+        val source = "type Sas x: List(Int)?"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is TypeDeclaration)
+    }
+
     @Test
     fun varDeclaration() {
         val source = "x::Int = 1"
