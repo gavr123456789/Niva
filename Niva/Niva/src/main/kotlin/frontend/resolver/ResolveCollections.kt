@@ -69,14 +69,18 @@ fun Resolver.resolveCollection(
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }
     } else if (nearVarDecl != null && nearVarDecl.valueTypeAst != null) {
-        val type = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)//fix
-        if (type is Type.UserType) {
+        val typeFromAstDecl = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)
+        if (typeFromAstDecl is Type.UserType) {
+            if (typeName != typeFromAstDecl.name) {
+                statement.token.compileError("Declared type of collection: $typeFromAstDecl but literal used for $typeName")
+            }
             val pkg = getCurrentPackage(statement.token)
-            type.typeArgumentList.forEach {
+            typeFromAstDecl.typeArgumentList.forEach {
                 pkg.addImport(it.pkg)
             }
         }
-        statement.type = type
+
+        statement.type = typeFromAstDecl
     }
     else {
         fillCollectionType(listOf(Type.UnknownGenericType("T")), statement, typeName)

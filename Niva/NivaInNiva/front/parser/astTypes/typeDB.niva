@@ -20,11 +20,44 @@ constructor TyperDB new -> TyperDB = [
     listOfErrors: {}!
     listOfDeclaredTypes: {}!
     packages: #{}!
-    internalTypesCache: corePkg nivaTypes
+    internalTypesCache: corePkg types
     typesWithSameNames: #{}!
     
 ]
 
+
+NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
+  protocols at: forType, unpack: [ protocolsList ->
+    // we have concrete protocol where method should be created
+
+    // 1) find the protocol
+    // 2) add method to it
+    commonProtocol = protocolsList find: [it name == "common"]
+    | commonProtocol
+    | null => [
+      // no common proto -> create it
+      common = NivaProtocol name: "common"
+      common addMethod: m
+      protocolsList add: common
+      Unit
+    ]
+    |=> commonProtocol addMethod: m
+  ]
+  "added " + m name, echo
+]
+
+TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
+  // find pkg
+  pkg = packages at: forType pkgName
+
+  pkg unpack: [
+    it protocols at: forType, unpack: [ protocols ->
+      | inProtocol
+      | null => it addMethod: m toProtocol: "common" forType: forType
+      |=> it addMethod: m toProtocol: inProtocol forType: forType
+    ]
+  ]
+]
 
 TyperDB addNewPkgIfNotExists: pkgName::String = [
   packages containsKey: pkgName, ifFalse: [
@@ -39,13 +72,9 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
   | pkg
   | null => TO DO: "Compiler bug: cant find pkg $pkgName"
   |=> [
-    pkg nivaTypes at: "name" put: t
+    pkg types at: "name" put: t
     Unit
   ]
-
-  t echo
-  "------" echo
-  typesWithSameNames echo 
 
   setMaybe = typesWithSameNames at: t name
 
@@ -60,23 +89,6 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
     // add type to set
     setMaybe add: t
   ]
-
-
-  // TO DO: "eh"
-  // 2 add to typesWithSameNames cache
-
-      // add to typeswithsaenames
-    // listOfTypesWithThatName = typesWithSameNames at: pkgName
-    // | listOfTypesWithThatName
-    // | null => [
-    //   // create a list
-    //   newList = {t}
-    //   typesWithSameNames at: t name put: G
-    // ]
-    // |=> [
-    //   // add to that list
-
-    // ]
 ]
 
 
@@ -97,9 +109,9 @@ TyperDB
   // its not core type
   // so use typesWithSameNames
   
-  | pkgName
+  result = | pkgName
   | null => [
-// we dont know the pkg, so search type in every pkg
+    // we dont know the pkg, so search type in every pkg
     sameNameType = typesWithSameNames at: typeName
     knownNames = typesWithSameNames keys
     | sameNameType
@@ -114,21 +126,20 @@ TyperDB
     ]
   ]
   |=> [
-// we know the pkg, so search for type in it
+    // we know the pkg, so search for type in it
     pkg = packages at: pkgName
     | pkg
     | null => [TO DO: "No such package as $pkgName, known pkgs: $packages"]
     |=> [
-      foundType = pkg nivaTypes at: typeName
+      foundType = pkg types at: typeName
       | foundType
       | null => [TO DO: "No such type: $typeName in $pkgName"]
       |=> [
-        foundType
+        ^ foundType
       ]
     ]
-    
-    
   ]
+  ^ result
 
   ^ TO DO: "fix #363, and ther assign the previous switch to result and return it here"
 ]

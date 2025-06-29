@@ -1,12 +1,2 @@
 
-enum Color = Red | Blue
-
-Int sas -> Color? = [
-   x = Color.Red
-   y = | x
-   | Color.Red => Color.Red
-   | Color.Blue => Color.Red
-   |=> null
-
-   ^ y
-]
+map::Map(Int, String) = {}

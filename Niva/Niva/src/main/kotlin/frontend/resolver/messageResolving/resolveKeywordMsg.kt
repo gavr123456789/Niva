@@ -519,7 +519,7 @@ fun Resolver.resolveKwArgs(
     // add to letterList code blocks types from db
     if (!filterGenerics && letterToRealType != null) {
 
-        genericArgs.forEach {
+        genericArgs.forEach { it ->
             val typeFromDb = mapOfArgToDbArg[it]
             if (typeFromDb != null && typeFromDb is Type.Lambda) {
                 // add types to known args
@@ -529,6 +529,10 @@ fun Resolver.resolveKwArgs(
                         if (lambdaArgFromDBType is Type.UnknownGenericType) {
                             val qwe = letterToRealType[lambdaArgFromDBType.name]
                             if (qwe != null && it.inputList.isNotEmpty()) {
+                                val sas = it.inputList.getOrNull(i)
+                                if (sas == null) {
+                                    it.inputList.first().token.compileError("This codeblock needs ${typeFromDb.args.joinToString(", ")} parameters, but only ${it.inputList.count()} provided" )
+                                }
                                 it.inputList[i].type = qwe
                             }
                         }

@@ -7,7 +7,7 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
-    kotlin("jvm") version "2.2.0-Beta1"
+    kotlin("jvm") version "2.2.0"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")

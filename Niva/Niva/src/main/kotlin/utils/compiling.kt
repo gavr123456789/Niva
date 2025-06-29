@@ -316,7 +316,6 @@ fun compileProjFromFile(
     buildSystem: BuildSystem,
     previousFilePath: MutableList<File>? = null
 ): Resolver {
-    val verbosePrinter = VerbosePrinter(verbose)
 
     val mainFile = File(pm.pathToNivaMainFile)
     val nivaProjectFolder = mainFile.absoluteFile.parentFile
@@ -340,6 +339,8 @@ fun compileProjFromFile(
         currentResolvingFileName = mainFile
     )
 
+    val verbosePrinter = VerbosePrinter(verbose)
+
     // we need custom ast to fill file to ast table in LS(non incremental store)
     val (mainAst, otherAst) = {
         if (customAst == null) {
@@ -361,19 +362,8 @@ fun compileProjFromFile(
 
 
     if (resolver.otherFilesPaths.count() != otherAst.count()) {
-//        val set1 = otherAst.map { it.first }.toSet()
-//        val set2 = resolver.otherFilesPaths.toSet()
-//        val set3 = if (set1.count() > set2.count())
-//            set1 - set2 else set2 - set1
-
         val tok = mainAst.first().token
-        // okay workspace service doesn't work, so lets just replace our file instead
-//        set3.forEach { t ->
-//            resolver.otherFilesPaths.removeIf { it.path == t }
-//        }
-
         tok.compileError("resolver.otherFilesPaths = ${resolver.otherFilesPaths}, otherAst = $otherAst, customAST = $customAst")
-//        tok.compileError("Can't find files $set3, they was probably deleted, this is a temporary LSP problem, please run `reload window` command to reset LSP")
     }
     resolver.resolveWithBackTracking(
         mainAst,

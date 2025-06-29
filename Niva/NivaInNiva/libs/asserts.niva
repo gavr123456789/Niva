@@ -27,7 +27,7 @@ Bool assert: msg::String = [
 ]
 
 Int clampFrom: min::Int to: max::Int = 
-  | true 
-  | (this < min) => min 
-  | (this > max) => max 
+  | true
+  | (this < min) => min
+  | (this > max) => max
   |=> this
