@@ -1,4 +1,15 @@
 
+Test matchExpr -> Unit! = [
+  input = """
+    | x
+    | 1 | 1 => 2
+    | 3 => 4
+    |=> 5
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  
+]
+
 Test listLiterals -> Unit! = [
   input = """
     {1 2 3}

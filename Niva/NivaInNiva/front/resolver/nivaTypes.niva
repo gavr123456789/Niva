@@ -38,12 +38,14 @@ constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: 
 
 
 
+  // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
 type NivaMethod 
   name: String 
-  // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
   args: List::TypeTField
   returnType: NivaType
   forMut: Bool
+  possibleErrors: List::UnionT
+
 
 type NivaProtocol 
   name: String 
@@ -62,7 +64,12 @@ type NivaPkg
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}!
 constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
 constructor NivaProtocol common = NivaProtocol name: "common" methods: #{}!
-
+constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool = NivaMethod 
+  name: name 
+  args: args
+  returnType: returnType
+  forMut: forMut
+  possibleErrors: {}
 
 NivaProtocol addMethod::NivaMethod = [
   methods at: addMethod name put: addMethod

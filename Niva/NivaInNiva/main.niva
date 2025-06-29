@@ -8,7 +8,10 @@ resolver = [
     type Wallet money: Int
 
     // type Money declared in a different file
-    Money make::Int sas::String -> Int = [^1]
+    Money make::Int sas::String -> Int = [
+      1 inc
+      2 inc
+    ]
   """
 
   fileMoney = """
@@ -18,24 +21,25 @@ resolver = [
 
   statements  = TestParse withInput: fileMain expectedCount: -1
   statements2 = TestParse withInput: fileMoney expectedCount: -1
-  listOfFilesContents = #{"main.niva" statements "money.niva" statements2} 
+  listOfFilesContents = #{"main" statements "money" statements2} 
   db = TyperDB new
 
   TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: listOfFilesContents
 
-] do
+  db echo
+] 
 
-failingComment = [
+matchExpr = [
   input = """
-    1 + 2
-    //sas
-    // uu
-    3 / 4
-  """
-  statements = TestParse withInput: input expectedCount: 2
-
-]
+    | x
+    | 1 | 1 => 2
+    | 3 => 4
+    |=> 5
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  
+] do
 
 
 

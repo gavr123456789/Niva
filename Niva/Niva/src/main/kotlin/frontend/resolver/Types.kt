@@ -788,7 +788,6 @@ data class Protocol(
     val keywordMsgs: MutableMap<String, KeywordMsgMetaData> = mutableMapOf(),
     val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
     val staticMsgs: MutableMap<String, MessageMetadata> = mutableMapOf(),
-//    val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
 )
 
 class Package(
@@ -797,7 +796,6 @@ class Package(
     val types: MutableMap<String, Type> = mutableMapOf(),
     val builders: MutableMap<String, BuilderMetaData> = mutableMapOf(),
 
-//    val usingPackages: MutableList<Package> = mutableListOf(),
     // generates as import x.y.*
     val imports: MutableSet<String> = mutableSetOf(),
     val importsFromUse: MutableSet<String> = mutableSetOf(),

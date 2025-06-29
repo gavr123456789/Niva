@@ -205,7 +205,7 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
             }
         }
     }
-
+//    val isNullable = match("?")
     val x = matchAssertOr(TokenType.Identifier, TokenType.NullableIdentifier)
     var lastTokenDotSeparated: Token? = null
     val dotMatched = matchDotIfItsNotOnNewLine(x.line)//match(TokenType.Dot)

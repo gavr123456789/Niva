@@ -22,7 +22,16 @@ constructor TestParse expression::String -> Expr = [
 ]
 
 
+Test comments -> Unit! = [
+  input = """
+    1 + 2
+    //sas
+    // uu
+    3 / 4
+  """
+  statements = TestParse withInput: input expectedCount: 2
 
+]
 
 
 Test parseNumber -> Unit! = [
