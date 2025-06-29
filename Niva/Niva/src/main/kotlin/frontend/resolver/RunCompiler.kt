@@ -2,6 +2,12 @@ package frontend.resolver
 
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.newFixedThreadPoolContext
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import main.*
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -12,6 +18,7 @@ import main.utils.*
 import java.io.File
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.markNow
+import kotlin.time.measureTime
 
 const val MAIN_PKG_NAME = "mainNiva"
 
@@ -279,6 +286,7 @@ fun getAst(source: String, file: File): List<Statement> {
 }
 
 // third param is list of file paths
+@OptIn(DelicateCoroutinesApi::class)
 fun parseFilesToAST(
     mainFileContent: String,
     otherFileContents: List<File>,
@@ -292,18 +300,44 @@ fun parseFilesToAST(
     // generate ast for others
     // in lsp mode we change one file at a time
 
-    val otherASTs = if (!resolveOnlyOneFile) {
 
-        otherFileContents.map {
-            val src =
-                if (changedFileContent != null && pathToChangedFile != null && it.absolutePath == pathToChangedFile.absolutePath)
-                    changedFileContent
-                else
-                    it.readText()
-            listOfPaths.add(it)
-            it.nameWithoutExtension to getAst(source = src, file = it)
+
+//    val otherASTs = if (!resolveOnlyOneFile) {
+//        otherFileContents.map {
+//            val src =
+//                if (changedFileContent != null && pathToChangedFile != null && it.absolutePath == pathToChangedFile.absolutePath)
+//                    changedFileContent
+//                else
+//                    it.readText()
+//            listOfPaths.add(it)
+//            it.nameWithoutExtension to getAst(source = src, file = it)
+//        }
+//    } else emptyList()
+
+
+    val otherASTs = if (!resolveOnlyOneFile) {
+        listOfPaths.addAll(otherFileContents)
+        // paralel on 4 threads
+        val dispatcher = newFixedThreadPoolContext(4, "fileReaderPool")
+        runBlocking {
+            withContext(dispatcher) {
+                val deferredAsts = otherFileContents.map { file ->
+                    async {
+                        val src =
+                            if (changedFileContent != null && pathToChangedFile != null && file.absolutePath == pathToChangedFile.absolutePath) {
+                                changedFileContent
+                            } else {
+                                file.readText()
+                            }
+                        file.nameWithoutExtension to getAst(source = src, file = file)
+                    }
+                }
+
+                deferredAsts.awaitAll()
+            }
         }
+    } else {
+        emptyList()
     }
-    else emptyList()
     return Triple(mainAST, otherASTs, listOfPaths)
 }

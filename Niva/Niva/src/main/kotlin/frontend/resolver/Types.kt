@@ -190,7 +190,10 @@ sealed class FieldWithType(
 class KeywordArg(
     name: String,
     type: Type,
-) : FieldWithType(name, type)
+) : FieldWithType(name, type) {
+    override fun toString(): String =
+        "$name: $type"
+}
 
 
 class KeywordArgAst(

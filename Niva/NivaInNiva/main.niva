@@ -4,18 +4,14 @@ type Program
 
 resolver = [
   fileMain = """
-    
-    type Person name: String age: Int wallet: Wallet
+    type Person age: Int 
     type Wallet money: Int
 
-
-    // no such type Money
-    Money make::Int -> Int = [^1]
- 
+    // type Money declared in a different file
+    Money make::Int sas::String -> Int = [^1]
   """
 
   fileMoney = """
-
     type Money ofPerson: Person
   """
 
@@ -25,7 +21,6 @@ resolver = [
   listOfFilesContents = #{"main.niva" statements "money.niva" statements2} 
   db = TyperDB new
 
-  // эта штука должна принимать мапу строка к списку стейтментов файла
   TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: listOfFilesContents
 

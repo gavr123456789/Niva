@@ -1,4 +1,4 @@
-union NivaType = 
+union NivaType name: String pkgName: String = 
 | UnitT
 | IntegerT
 | FloatT
@@ -8,73 +8,82 @@ union NivaType =
 | AnyT
 | NothingT
 // complex
-| TypeT name: String fields: mut List::TypeTField genericArgs: mut List::NivaType
-| UnionT branches: List::UnionTBranch
+| TypeT  fields: mut List::TypeTField genericArgs: mut List::NivaType
+| UnionT  branches: List::UnionTBranch
 | FuntionT fields: List::TypeTField // method or lambda
 // collections
 | ListT t: NivaType
 | SetT t: NivaType
 | MapT k: NivaType v: NivaType
 // utility
-| UnresolvedGenericT name: String
+| UnresolvedGenericT 
 
 type TypeTField name: String typeT: NivaType
 type UnionTBranch name: String typeT: NivaType
 
-constructor TypeT noFieldsWithName: name::String = TypeT name: name fields: {}! genericArgs: {}!
+constructor TypeT noFieldsWithName: name::String pkgName::String= TypeT name: name pkgName: pkgName fields: {}! genericArgs: {}!
+constructor UnresolvedGenericT name::String = NothingT name: name pkgName: "core"
+constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
+constructor IntegerT new = IntegerT name: "Integer" pkgName: "core"
+constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
+constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
+constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"
+constructor StringT new  = StringT  name: "String"  pkgName: "core"
+constructor AnyT new     = AnyT     name: "Any"     pkgName: "core"
+constructor NothingT new = NothingT name: "Nothing" pkgName: "core"
+
+constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: "core"
+constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
+constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: "core"
+
 
 
 type NivaMethod 
   name: String 
+  // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
   args: List::TypeTField
   returnType: NivaType
+  forMut: Bool
 
 type NivaProtocol 
   name: String 
   methods: mut Map(String, NivaMethod)
-  mutableMethods: mut Map(String, NivaMethod)
 
-type NivaTypeWithProtocols 
-  nivaType: NivaType 
-  protocols: mut Map(String, NivaProtocol)
+// type NivaTypeWithProtocols 
+//   nivaType: NivaType 
+//   protocols: mut Map(String, NivaProtocol)
 
 type NivaPkg 
   name: String 
-  nivaTypes: mut Map(String, NivaType)
-  protocols: mut Map(NivaType, NivaProtocol)
+  types: mut Map(String, NivaType)
+  protocols: mut Map(NivaType, mut List::NivaProtocol)
+  
 
-constructor NivaPkg name::String = NivaPkg name: name nivaTypes: #{}! protocols: #{}!
-constructor NivaMethod name::String returnType::NivaType= NivaMethod name: name args: {}! returnType: returnType
-constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}! mutableMethods: #{}!
+constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}!
+constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
+constructor NivaProtocol common = NivaProtocol name: "common" methods: #{}!
 
 
-NivaProtocol addMethod::NivaMethod forMut::Bool = [
-  forMut ifTrue: [
-    methods at: addMethod name put: addMethod
-  ] ifFalse: [
-      mutableMethods at: addMethod name put: addMethod
-  ]
+NivaProtocol addMethod::NivaMethod = [
+  methods at: addMethod name put: addMethod
 ]
-/// for immutable
-NivaProtocol addMethod::NivaMethod = .addMethod: addMethod forMut: false
-
 
 
 constructor NivaProtocol intArithmetics: int::IntegerT bool::BoolT -> NivaProtocol = [
   intProtocol = NivaProtocol name: "arithmetic" 
 
   // unary
-  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int)
-  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int forMut: false)
   // binary
-  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int)
-  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int)
-  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int)
-  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int)
-  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int)
+  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int forMut: false)
 
-  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool)
-  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool)
+  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool forMut: false)
 
   ^intProtocol
 ]
@@ -100,7 +109,7 @@ constructor NivaPkg core -> NivaPkg = [
   intProtocol = NivaProtocol intArithmetics: int bool: bool
 
 
-  corePkg = NivaPkg name: "core" nivaTypes: #{
+  corePkg = NivaPkg name: "core" types: #{
     "Bool" bool
     "Unit" unit 
     "String" str
@@ -112,7 +121,7 @@ constructor NivaPkg core -> NivaPkg = [
     "Set" set 
     "Map" map 
   }! protocols: #{
-    int intProtocol
+    int ({intProtocol}!)
   }!
 
   ^ corePkg

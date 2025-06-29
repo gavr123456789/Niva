@@ -21,8 +21,8 @@ PrintingVisitor visit: st::Statement = [
 TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)= [
 
 
-  typeDecls::mut List::TypeDecl = {}!
-  msgDecls::mut List::MessageDecl = {}!
+  pkgTotypeDecls::mut Map(String, TypeDecl) = #{}!
+  msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
 
 
@@ -32,24 +32,25 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
 
     db addNewPkgIfNotExists: pkgName
 
+    // TODO unions, enums, aliases
     // save all types (without fields), and msg decls
     statements forEach: [
       | it
       | TypeDecl => [
-        noFieldsType = TypeT noFieldsWithName: it name
+        noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
         noFieldsTypes at: it name put: noFieldsType
-        typeDecls add: it
+        pkgTotypeDecls at: pkgName put: it
       ]
-      | MessageDecl => msgDecls add: it
+      | MessageDecl => msgDecls at: pkgName put: it
       | UnionDecl => TO DO: "UnionDecl"
       | EnumDecl => TO DO: "EnumDecl"
       |=> []
     ]
   ]
 
-  fileToStatements forEach: [pkgName, statements ->
-    typeDecls forEach: [
-      readyToAddToDBType = .fillFields: it knownTypeNames: noFieldsTypes
+  fillTypesAndMessages = [
+    pkgTotypeDecls forEach: [ pkgName, typeDecl ->
+      readyToAddToDBType = .fillFields: typeDecl knownTypeNames: noFieldsTypes
       readyToAddToDBType unpack: [
         db addNewType: it inPkg: pkgName
         it name + " type added to db", echo
@@ -57,33 +58,51 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
     ]
     
 
-  
-
-      
-    // TODO unions, enums, aliases
-
     // msg decls resolving
     // here we should have all the types resolved
-    msgDecls forEach: [
-      // it debug 
+    msgDecls forEach: [ pkg, msg ->
       // get real type for receiver
-      
-    
-      receiverType = db findByTypeName: it receiver name inPkg: null // we cant know the concrete pkg here
-      "found receiver $receiverType" echo
+      receiverType = db findByTypeName: msg receiver name inPkg: null // we cant know the concrete pkg here
       // get real type for each arg
+      argsT = msg args map: [ arg ->
+        argAstType = arg astType name
+        argType = db findByTypeName: argAstType inPkg: null // we cant know the concrete pkg here
+        TypeTField name: arg name typeT: argType
+      ]
 
-      TO DO
-      // get real type for return type, if presented
+
+
+      getReturnType = [
+        rt = msg returnType 
+        | rt 
+        | null => db findByTypeName: "Unit" inPkg: null 
+        |=> db findByTypeName: rt name inPkg: null 
+      ]
+
+      
+      astOfReceiver = msg receiver 
+      isMutable = | astOfReceiver
+      | AstType => astOfReceiver isMut
+      | AstLambdaType => false
+
+      method = NivaMethod name: msg name args: argsT returnType: (msg getReturnTypeFromDb: db) forMut: isMutable
+      db addNewMethod: method forType: receiverType inProtocol: null
+      "added method " + method name, echo
     ]
   
-  ]
+  ] do
 
 
   
 ]
 
 
+MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
+  rt = returnType
+ ^| rt
+  | null => db findByTypeName: "Unit" inPkg: null 
+  |=> db findByTypeName: rt name inPkg: null 
+]
 
 /// returns a type with fields filled with real types, ready to add to db
 /// returns null if such type was not found in knownTypeNames or db
@@ -135,14 +154,6 @@ String isCoreType -> Bool =
   | "Map"
   | "Set" => true
   |=> false
-
-
-
-
-TypeDeclVisitor visit: st::Statement = [
-  TO DO
-]
-
 
 AstVisitor visit: st::Statement = | this
 | PrintingVisitor => this visit: st
