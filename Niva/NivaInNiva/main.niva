@@ -9,6 +9,7 @@ resolver = [
 
     // type Money declared in a different file
     Money make::Int sas::String -> Int = [
+      x = 42
       1 inc
       2 inc
     ]
@@ -24,21 +25,27 @@ resolver = [
   listOfFilesContents = #{"main" statements "money" statements2} 
   db = TyperDB new
 
-  TypeDeclVisitor db: db, 
+  msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: listOfFilesContents
 
+  MsgDeclVisitor new processBodyesFromPkgToMsg: msgDecls db: db
   db echo
+
+  
+
 ] 
 
 matchExpr = [
+
   input = """
-    | x
-    | 1 | 1 => 2
-    | 3 => 4
-    |=> 5
+    x = 56
+    [
+      x = 32
+    ]
   """ trimIndent
-  statements = TestParse withInput: input expectedCount: 1
+  statements = TestParse withInput: input expectedCount: 2
   
+
 ] do
 
 

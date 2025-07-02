@@ -1,8 +1,0 @@
-type CodeDb
-  
-
-
-type Resolver
-  statements: List::Statement
-  codeDb: CodeDb
-

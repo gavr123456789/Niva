@@ -1,2 +1,5 @@
+union Color = Red | Blue
 
-map::Map(Int, String) = {}
+Int sas -> Color = [
+    ^ Blue new
+]

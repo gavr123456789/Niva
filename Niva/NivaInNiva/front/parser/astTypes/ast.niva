@@ -5,7 +5,6 @@
 union Statement token: Token =
 | ^Expr
 | ^Declaration
-| VarDeclaration    name: String value: Expr 
 | Assign            name: String value: Expr
 | DestructingAssign names: List::String value: Expr // {name} = person
 
@@ -21,6 +20,7 @@ union Declaration token: Token =
   args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
   body: List::Statement
+  isSingleExpr: Bool
 
 
 // Messages
@@ -82,6 +82,7 @@ union Expr token: Token =
 | ^LiteralExpr 
 | Identifier     name: String
 | ExprInBrackets value: Expr
+| VarDeclaration    name: String value: Expr 
 | ^CollectionLiteral
 | ^MessageSend2
 | ReturnStatement value: Expr?
