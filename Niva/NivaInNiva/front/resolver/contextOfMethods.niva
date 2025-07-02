@@ -1,0 +1,29 @@
+
+/// every [] have a context
+type Context 
+  parent: Context?
+  vars: mut Map(String, NivaType)
+
+/// no parents no vars(yet)
+constructor Context root = Context parent: null vars: #{}!
+
+extend Context [
+  on defineName: name::String t::NivaType = [
+    vars at: name put: t
+  ]
+
+  /// if not found, try to search in the parent
+  on lookupForVar: name::String -> NivaType? = [
+    result = vars at: name
+    localP = parent
+   ^| result 
+    | null => [
+        | localP
+        | null => null
+        |=> localP lookupForVar: name
+    ]
+    |=> result
+  ]
+]
+/// result of resolve
+type TypedExpr expr: Expr typed: NivaType

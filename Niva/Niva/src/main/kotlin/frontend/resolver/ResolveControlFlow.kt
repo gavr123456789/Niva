@@ -30,7 +30,7 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     }
     if (branchesWithoutNull.count() == 1) {
         val result = branchesWithoutNull.first()
-        return if (resultIsNullable) {
+        return if (resultIsNullable && result !is Type.NullableType) {
             Type.NullableType(result)
         } else
             result
@@ -43,14 +43,14 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     (1..<branchesWithoutNull.count()).forEach {
         val cur = branchesWithoutNull[it]
         val prev = branchesWithoutNull[it - 1]
-
+        /// null check
         val realType1 = cur.unpackNull()
         val realType2 = prev.unpackNull()
         if (!resultIsNullable && realType1 != cur) resultIsNullable = true
         if (typeIsNull(prev)) {
             resultIsNullable = true
         }
-
+        ///root between first 2
         val generalRoot = findGeneralRoot(realType1, realType2)
         if (generalRoot == null) {
             return@forEach
@@ -418,6 +418,7 @@ fun Resolver.resolveControlFlow(
                 }
                 elseReturnTypeMaybe = elseReturnType
 
+                // we have else branch here
                 val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
                 if (generalRoot == null) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
@@ -429,12 +430,6 @@ fun Resolver.resolveControlFlow(
                 branchesReturnTypes.add(elseReturnTypeMaybe)
             }
             val result = findGeneralRootMany(branchesReturnTypes, statement.token)
-            if (result is Type.NullableType) {
-                val unpacked = result.unpackNull()
-                if (unpacked.name == "NullExpr") {
-                    1
-                }
-            }
             statement.type = result
 
 

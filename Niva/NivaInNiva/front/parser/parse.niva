@@ -48,6 +48,19 @@ extend mut Parser [
     ^ result
   ]
 
+  /// tok is identifier
+  /// pasre: x = expr
+  on parseVarDeclExpr: tok::Token name::String -> VarDeclaration = [
+    // kind = tok kind 
+    // tok kind == TokenType.Identifier ifFalse: [TO DO: "Identifier expected, got $kind"]
+
+    .matchAssert: TokenType.Assign
+    value = .nextExperssion: .step
+    result = VarDeclaration name: name value: value token: tok
+    TO DO: "$result"
+    ^ result
+  ]
+
   /// "", 1, 1.1, true, []
   on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
@@ -349,13 +362,15 @@ extend mut Parser [
         returnType = getReturnType do 
         name = tok2 lexeme
 
-        // .matchAssert: TokenType.Assign
         .match: TokenType.Assign, ifFalse: [
           .restoreFrom: savePosition
           ^ .nextExperssion: .step
+        ] ifTrue: [
+          ^ TO DO: "rsknsr"
         ]
         // Int inc ->? = ^[]
 
+        isSingleExpr = .peek kind == TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -364,7 +379,8 @@ extend mut Parser [
           args: {}
           returnType: returnType
           token: tok
-          body: body        
+          body: body       
+          isSingleExpr: isSingleExpr
 
         // statements add: msgDecl
         msgDecl
@@ -380,6 +396,7 @@ extend mut Parser [
         .matchAssert: TokenType.Assign
         // Int a::Int b::Int ->? = ^[]
 
+        isSingleExpr = .peek kind == TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -389,6 +406,8 @@ extend mut Parser [
           returnType: returnType
           token: tok
           body: body 
+          isSingleExpr: isSingleExpr
+
         msgDecl
       ]
       | TokenType.BinarySymbol => [
@@ -409,6 +428,7 @@ extend mut Parser [
         .matchAssert: TokenType.Assign
         // Int inc ->? = ^[]
 
+        isSingleExpr = .peek kind == TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -417,7 +437,8 @@ extend mut Parser [
           args: {(NameAndAstType name: arg lexeme astType: argType)}
           returnType: returnType
           token: tok
-          body: body        
+          body: body   
+          isSingleExpr: isSingleExpr     
 
         // statements add: msgDecl
         msgDecl
@@ -470,11 +491,18 @@ extend mut Parser [
   on nextExperssion: tok::Token -> Expr = [
     // return expr
    ^| tok kind 
-    | TokenType.Return => .parseReturnExpr: tok
+    | TokenType.Return => [
+      e = .parseReturnExpr: tok
+      e
+      ]
     |=> [
       // message expr
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+      .peek kind == TokenType.Assign, ifTrue: [
+        .parseVarDeclExpr: tok name: primaryReceiver token lexeme
+      ]
       firstExpr = .nextExperssion2: tok receiver: primaryReceiver
+      
 
      ^| .peek kind
       | TokenType.Comma => [

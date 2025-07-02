@@ -26,6 +26,10 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 
+Project protocol: "adding"
+
+
+/// adds method to protocol, if no such protocol - creates it
 NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
   protocols at: forType, unpack: [ protocolsList ->
     // we have concrete protocol where method should be created
@@ -46,6 +50,7 @@ NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaT
   "added " + m name, echo
 ]
 
+/// adds ne method for db, if protocol is null then adds to "common"
 TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
   // find pkg
   pkg = packages at: forType pkgName
@@ -92,6 +97,14 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
 ]
 
 
+Project protocol: "finding"
+
+TyperDB 
+  findMsgFromReceiver: receiver::NivaType 
+  byName: name::String -> NivaMethod = [
+
+  ^ TO DO: "hii"
+] 
 
 TyperDB 
   findByTypeName: typeName::String 
@@ -140,7 +153,5 @@ TyperDB
     ]
   ]
   ^ result
-
-  ^ TO DO: "fix #363, and ther assign the previous switch to result and return it here"
 ]
 

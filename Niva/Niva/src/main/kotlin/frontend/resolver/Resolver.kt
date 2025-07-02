@@ -328,51 +328,7 @@ private fun Resolver.resolveStatement(
         is ReturnStatement -> {
             stack.push(statement)
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-            val expr = statement.expression
-            if (expr != null) {
-                resolveSingle((expr), previousAndCurrentScope, statement)
-                if (expr.type == null) {
-                    throw Exception("Cant infer type of return statement on line: ${expr.token.line}")
-                }
-            }
-            val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
-            val typeOfReturnExpr = if (expr == null) unit else expr.type!!
-
-            ///
-            val previousReturnType = wasThereReturn
-            val resolvingMessageDeclaration2 = resolvingMessageDeclaration
-
-            if (resolvingMessageDeclaration2 != null && resolvingMessageDeclaration2.returnTypeAST == null) {
-                if (previousReturnType != null) {
-                    val g = findGeneralRoot(previousReturnType, typeOfReturnExpr)
-                        ?: statement.token.compileError("Cant find general root between return types $YEL$typeOfReturnExpr$RESET and $YEL$previousReturnType$RESET")
-                    resolvingMessageDeclaration2.returnType = g
-                } else {
-                    resolvingMessageDeclaration2.returnType = typeOfReturnExpr
-                }
-            }
-
-
-            wasThereReturn = typeOfReturnExpr
-            val root = this.resolvingMessageDeclaration
-            if (root != null) {
-                val realReturn = wasThereReturn
-                val returnType = root.returnType
-
-                if (realReturn != null && returnType != null &&
-                    !compare2Types(
-                        returnType,
-                        realReturn,
-                        root.returnTypeAST?.token ?: statement.token,
-                        unpackNullForFirst = true,
-                        isOut = true
-                    )
-                // тут надо заюзать поиск общих предков
-//                    findGeneralRootMany(listOf(returnType, realReturn), root.token) == null
-                ) {
-                    statement.token.compileError("Return type defined: ${YEL}$returnType${RESET} but real type returned: ${YEL}$realReturn")
-                }
-            }
+            resolveReturnStatement(statement, previousAndCurrentScope)
 
             stack.pop()
         }
@@ -511,10 +467,9 @@ fun Resolver.resolveExpressionInBrackets(
 
 
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
-
     if (type1 == type2) return type1
     if (type1.toString() == type2.toString()) return type1
-//    if (type1.name == type2.name && type1 is Type.UserLike && type2 is Type.UserLike && type) return type1
+    /// check for nothing
     val firstIsNothing = type1.name == "Nothing"
     val secondIsNothing = type2.name == "Nothing"
     @Suppress("KotlinConstantConditions")
@@ -522,29 +477,49 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
         if (!firstIsNothing && secondIsNothing) return type1 else
             if (firstIsNothing && secondIsNothing) return type2
 
-
+    /// same generics
     if (type1 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1.name == type2.name) return type1
-
+    /// nulls
     val firstIsNull = typeIsNull(type1)
     val secondIsNull = typeIsNull(type2)
-    if (firstIsNull && !secondIsNull && type2 !is Type.NullableType) return Type.NullableType(type2)
-    if (!firstIsNull && secondIsNull && type1 !is Type.NullableType) return Type.NullableType(type1)
+    if (firstIsNull && !secondIsNull) {
+        // if second type is not nullable (returns Int or null)
+        // then pack it to Int?
+        // if its returns of Int? or null, then do not pack, just return the
+        return type2 as? Type.NullableType ?: Type.NullableType(type2)
+    }
+    if (!firstIsNull && secondIsNull) {
+        return type1 as? Type.NullableType ?: Type.NullableType(type1)
+    }
+
+    // Int and Int? -> Int?
+    if (type1 is Type.NullableType && type2 !is Type.NullableType) {
+        val type1Unpacked = type1.unpackNull()
+        if (type1Unpacked == type2) return type1
+        if (type1Unpacked.toString() == type2.toString()) return type1
+    } else
+    if (type1 !is Type.NullableType && type2 is Type.NullableType) {
+        val type2Unpacked = type2.unpackNull()
+        if (type1== type2Unpacked) return type2
+        if (type1.toString() == type2Unpacked.toString()) return type2
+    }
 
     // first is parent of the second
-    var parent1: Type? = type1.parent
-    while (parent1 != null) {
-        if (findGeneralRoot(type2, parent1) != null) {
-            return parent1
-        }
-        parent1 = parent1.parent
-    }
+    val parent1: Type? = type1.parent
+    val parent2: Type? = type2.parent
+    if (parent1 != null && parent1.toString() == type2.toString()) {
+        return parent1
+    } else
     // second is parent of the first
-    var parent2: Type? = type2.parent
-    while (parent2 != null) {
-        if (findGeneralRoot(type1, parent2) != null) {
-            return parent2
+    if (parent2 != null && parent2.toString() == type1.toString()) {
+        return parent2
+    } else if (parent1 != null && parent2 != null) {
+        if (parent1.toString() == parent2.toString()) {
+            return  parent1
         }
-        parent2 = parent2.parent
+        findGeneralRoot(parent1, type2)?.let { return it }
+        findGeneralRoot(type1, parent2)?.let { return it }
+        findGeneralRoot(parent1, parent2)?.let { return it }
     }
 
     if (type1 is Type.UnknownGenericType) return type1

@@ -1,4 +1,17 @@
 
+
+Test varDeclarationExpr -> Unit! = [
+  input = """
+    x = 56
+    [
+      x = 32
+    ]
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 2
+  
+]
+
+
 Test matchExpr -> Unit! = [
   input = """
     | x

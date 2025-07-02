@@ -5,6 +5,7 @@ union ResolveErrors =
 union AstVisitor =
 | PrintingVisitor //sb: StringBuilder
 | TypeDeclVisitor db: TyperDB 
+| MsgDeclVisitor
 
 AstVisitor run: statements::List::Statement= [
   statements forEach: [
@@ -17,8 +18,8 @@ PrintingVisitor visit: st::Statement = [
   "--------------" echo
 ]
 
-
-TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)= [
+/// returns pkg to message decl
+TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) -> Map(String, MessageDecl) = [
   pkgTotypeDecls::mut Map(String, TypeDecl) = #{}!
   msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
@@ -90,15 +91,17 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
   
   ] do
 
-
-  
+  ^ msgDecls
 ]
 
-
+/// if no return type and has body then its Unit
+/// if no return type and isSingleExpr then its unknown
 MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
   rt = returnType
  ^| rt
-  | null => db findByTypeName: "Unit" inPkg: null 
+  | null => [
+    db findByTypeName: "Unit" inPkg: null 
+  ]
   |=> db findByTypeName: rt name inPkg: null 
 ]
 
@@ -135,33 +138,58 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) 
   ]
 ]
 
+MsgDeclVisitor processBodyesFromPkgToMsg: pkg2Msg::Map(String, MessageDecl) db::TyperDB = [
+  pkg2Msg forEach: [pkgName, msgDecl -> 
+    // msgDecl echo
 
-/// if it is, we can get type from catche(core pkg)
-String isCoreType -> Bool = 
-  | this
-  | "String" 
-  | "Int" 
-  | "Bool"
+  
+    msgDecl resolveBodyWithDb: db
+    db //findMethodByName
+    TO DO : "findMethodByName"
+  ]
 
-  | "Double" 
-  | "Float"
-
-  | "Unit"
-
-  | "List"
-  | "Map"
-  | "Set" => true
-  |=> false
-
-AstVisitor visit: st::Statement = | this
-| PrintingVisitor => this visit: st
-| TypeDeclVisitor => [
-  | st
-  | TypeDecl => this visit: st
-  |=>[]
-    Unit
 ]
 
+// every message with its context attached
+// context is a tree like structure with parents
+// every context contains all the symbols inside, resolved
+type MessagesWithContext
+  data: Map(MessageDecl, Context)
+
+
+MessageDecl resolveBodyWithDb: db::TyperDB = [
+  // add receiver  as "this" to context
+  addReceiverAndArgsToContext = [
+    c = Context root
+    receiver = db findByTypeName: receiver name inPkg: null
+    c defineName: "this" t: receiver
+
+    args map: [
+      // receiver = db findByTypeName: it astType name inPkg: null
+      3
+    ]
+
+    TO DO: "return context with vars"
+  ]
+
+  TO DO
+]
+
+
+
+AstVisitor visit: st::Statement = [
+  | this
+  | PrintingVisitor => this visit: st
+  | TypeDeclVisitor => [
+    | st
+    | TypeDecl => this visit: st
+    |=>[]
+    Unit
+  ]
+  | MsgDeclVisitor => [
+    TO DO
+  ]
+]
 
 // todo go deep to call visitor on each child note
 Statement accept: visitor::AstVisitor = 
@@ -171,10 +199,10 @@ Statement accept: visitor::AstVisitor =
   this exprAccept: visitor
 ]
 | Declaration => this declAccept: visitor
-| VarDeclaration => [
-  visitor visit: this
-  this value exprAccept: visitor
-]
+// | VarDeclaration => [
+//   visitor visit: this
+//   this value exprAccept: visitor
+// ]
 | Assign => [
   visitor visit: this
   this value exprAccept: visitor
@@ -213,7 +241,7 @@ Expr exprAccept: visitor::AstVisitor -> Unit =
   TO DO
 ]
 | Match => TO DO
-
+| VarDeclaration => TO DO
 
 
 
