@@ -236,8 +236,8 @@ fun createStringProtocols(
             createUnary("toInt", intType),
             createUnary("toFloat", floatType),
             createUnary("toDouble", doubleType),
-            createUnary("uppercase".uppercase(), stringType, "Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale."),
-            createUnary("lowercase".lowercase(), doubleType, "Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale."),
+            createUnary("uppercase", stringType, "Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale."),
+            createUnary("lowercase", doubleType, "Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale."),
             createUnary("first", charType, "Returns the first character or panic"),
             createUnary("last", charType, "Returns the last character or panic"),
             createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`

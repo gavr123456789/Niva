@@ -1,6 +1,13 @@
-type Program
+type IO
   readFile: [String -> String]
   walkDir: [String -> List::String]
+
+
+/// takes fileNames to Content
+type NivaCompiler 
+/// takes main file and collects all the files for compilation
+type NivaBuildSystem
+
 
 resolver = [
   fileMain = """
@@ -32,20 +39,15 @@ resolver = [
   db echo
 
   
-
 ] 
 
 matchExpr = [
 
   input = """
-    x = 56
-    [
-      x = 32
-    ]
-  """ trimIndent
-  statements = TestParse withInput: input expectedCount: 2
-  
-
+    x::Int = 42
+  """
+  statements = TestParse withInput: input expectedCount: 1
+  statements at: 0, echo
 ] do
 
 
@@ -96,19 +98,11 @@ returnTest = [
   statements echo
 ] 
 
-opTest = [
-  LexTest checkThat: ". . ." 
-          equals: {
-                   TokenType.Dot
-                   TokenType.Dot
-                   TokenType.Dot
-                  }
-]
 
-  unions = """
-    union Color = Red | Blue | Green
+  // unions = """
+  //   union Color = Red | Blue | Green
 
-    union Figure size: Int = 
-    | Circle r: Int
-    | Rectangle width: Int heigth: Int
-  """ trimIndent
+  //   union Figure size: Int = 
+  //   | Circle r: Int
+  //   | Rectangle width: Int heigth: Int
+  // """ trimIndent

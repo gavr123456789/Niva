@@ -30,6 +30,7 @@ extend mut Parser [
     | TokenType.Char 
     | TokenType.Float 
     | TokenType.Double
+    | TokenType.Unit
     | TokenType.Null => true
     |=> false
   ]
@@ -51,13 +52,14 @@ extend mut Parser [
   /// tok is identifier
   /// pasre: x = expr
   on parseVarDeclExpr: tok::Token name::String -> VarDeclaration = [
-    // kind = tok kind 
-    // tok kind == TokenType.Identifier ifFalse: [TO DO: "Identifier expected, got $kind"]
+
+    astType = tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+      .parseType
+    ] ifFalse: [null]
 
     .matchAssert: TokenType.Assign
     value = .nextExperssion: .step
-    result = VarDeclaration name: name value: value token: tok
-    TO DO: "$result"
+    result = VarDeclaration name: name value: value token: tok astType: astType
     ^ result
   ]
 
@@ -84,8 +86,11 @@ extend mut Parser [
     | TokenType.Double => 
       DoubleExpr token: tok
     
-    | TokenType.Null => 
+    | TokenType.Null =>  
       NullExpr token: tok
+  
+    | TokenType.Unit => 
+      UnitExpr token: tok
     
     |=> [null]
     ^ x
@@ -365,12 +370,13 @@ extend mut Parser [
         .match: TokenType.Assign, ifFalse: [
           .restoreFrom: savePosition
           ^ .nextExperssion: .step
-        ] ifTrue: [
-          ^ TO DO: "rsknsr"
-        ]
+        ] 
+        // ifTrue: [
+        //   ^ TO DO: "rsknsr"
+        // ]
         // Int inc ->? = ^[]
 
-        isSingleExpr = .peek kind == TokenType.OpenBracket
+        isSingleExpr = .peek kind != TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -396,7 +402,7 @@ extend mut Parser [
         .matchAssert: TokenType.Assign
         // Int a::Int b::Int ->? = ^[]
 
-        isSingleExpr = .peek kind == TokenType.OpenBracket
+        isSingleExpr = .peek kind != TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -428,7 +434,7 @@ extend mut Parser [
         .matchAssert: TokenType.Assign
         // Int inc ->? = ^[]
 
-        isSingleExpr = .peek kind == TokenType.OpenBracket
+        isSingleExpr = .peek kind != TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
@@ -468,7 +474,9 @@ extend mut Parser [
       prevPrev = .peekAt: -1
       cur = .peek
       TO DO: "Got invalid token after $prev $prevPrev $cur"
-
+    ]
+    | TokenType.IdentifierDoubleColon => [
+      ^.parseVarDeclExpr: tok name: (tok lexeme dropLast: 2) // remove `::`
     ]
 
     |=> [
@@ -499,7 +507,7 @@ extend mut Parser [
       // message expr
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
       .peek kind == TokenType.Assign, ifTrue: [
-        .parseVarDeclExpr: tok name: primaryReceiver token lexeme
+        ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme
       ]
       firstExpr = .nextExperssion2: tok receiver: primaryReceiver
       

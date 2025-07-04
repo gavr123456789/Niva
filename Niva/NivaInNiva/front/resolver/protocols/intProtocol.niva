@@ -1,0 +1,18 @@
+constructor NivaProtocol intArithmetics: int::IntegerT bool::BoolT -> NivaProtocol = [
+  intProtocol = NivaProtocol name: "arithmetic" 
+
+  // unary
+  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int forMut: false)
+  // binary
+  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int forMut: false)
+
+  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+
+  ^intProtocol
+]

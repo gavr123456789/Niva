@@ -107,6 +107,10 @@ TyperDB
 ] 
 
 TyperDB 
+  findByTypeName: typeName::String =
+  .findByTypeName: typeName inPkg: null
+
+TyperDB 
   findByTypeName: typeName::String 
   inPkg: pkgName::String? -> NivaType = [
 

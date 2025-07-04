@@ -8,8 +8,8 @@ type Context
 constructor Context root = Context parent: null vars: #{}!
 
 extend Context [
-  on defineName: name::String t::NivaType = [
-    vars at: name put: t
+  on defineVar: name::String withType::NivaType = [
+    vars at: name put: withType
   ]
 
   /// if not found, try to search in the parent

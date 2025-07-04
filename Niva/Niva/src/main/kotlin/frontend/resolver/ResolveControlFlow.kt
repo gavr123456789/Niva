@@ -233,6 +233,7 @@ fun Resolver.resolveControlFlow(
         }
     }
 
+
     val resolveControlFlowSwitch = { statement: ControlFlow.Switch ->
 
         statement.kind = detectExprOrStatementBasedOnRootSt()
@@ -252,7 +253,18 @@ fun Resolver.resolveControlFlow(
         // | x | null => ... |=> ...
         var thisIsNullMatching = false
         // resolve | (^) => ... part
+        val mapOfExprStrToExpr = mutableMapOf<String, Expression>()
         statement.ifBranches.forEachIndexed { i, it ->
+
+            // check that we don't check for the same type twice
+            val strOfExpression = it.ifExpression.toString()
+            if (!mapOfExprStrToExpr.containsKey(strOfExpression)) {
+                mapOfExprStrToExpr[strOfExpression] = it.ifExpression
+            } else {
+                val previousLine = mapOfExprStrToExpr[strOfExpression]!!.token.line
+                it.ifExpression.token.compileError("Such expression($strOfExpression) was already checked on line $previousLine")
+            }
+
             currentLevel++
             resolveSingle(it.ifExpression, previousAndCurrentScope, statement)
             // resolving `| X, Y, Z` Y and Z here
