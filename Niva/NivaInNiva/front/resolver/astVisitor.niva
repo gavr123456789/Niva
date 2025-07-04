@@ -162,15 +162,25 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
   addReceiverAndArgsToContext = [
     c = Context root
     receiver = db findByTypeName: receiver name inPkg: null
-    c defineName: "this" t: receiver
+    c defineVar: "this" withType: receiver
 
-    args map: [
-      // receiver = db findByTypeName: it astType name inPkg: null
-      3
+
+    args forEach: [
+      argType = db findByTypeName: it astType name inPkg: null
+      c defineVar: it name withType: argType
+    ]
+
+    c debug
+
+    body debug
+
+    body map: [ expr ->
+      typedExpr = expr toTypedExprFromDb: db
+      TO DO: "$typedExpr"
     ]
 
     TO DO: "return context with vars"
-  ]
+  ] do
 
   TO DO
 ]

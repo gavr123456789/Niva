@@ -1,0 +1,36 @@
+Expr toTypedExprFromDb: db::TyperDB -> ExprTyped = [
+  
+
+ ^| this
+  | CharExpr    => ExprTyped nivaType: (db findByTypeName: "Char") isMutable: false
+  | IntExpr     => ExprTyped nivaType: (db findByTypeName: "Int") isMutable: false
+  | FloatExpr   => ExprTyped nivaType: (db findByTypeName: "Float") isMutable: false
+  | DoubleExpr  => ExprTyped nivaType: (db findByTypeName: "Double") isMutable: false
+  | StringExpr  => ExprTyped nivaType: (db findByTypeName: "String") isMutable: false
+  | BooleanExpr => ExprTyped nivaType: (db findByTypeName: "Boolean") isMutable: false
+  | NullExpr    => ExprTyped nivaType: (db findByTypeName: "Null") isMutable: false
+  | UnitExpr    => ExprTyped nivaType: (db findByTypeName: "Unit") isMutable: false
+  // Identifier can be type itself like Unit
+  | Identifier     => TO DO: "Identifier to TypedExpr"
+  | ExprInBrackets => TO DO: "ExprInBrackets to TypedExpr"
+  | ListLiteral    => TO DO: "ListLiteral to TypedExpr"
+  | SetLiteral     => TO DO: "SetLiteral to TypedExpr"
+  | MapLiteral     => TO DO: "MapLiteral to TypedExpr"
+
+  | UnaryMsg   => TO DO: "UnaryMsg to TypedExpr"
+  | BinaryMsg  => TO DO: "BinaryMsg to TypedExpr"
+  | KeywordMsg => TO DO: "KeywordMsg to TypedExpr"
+
+  | VarDeclaration  => [
+    this 
+    this value toTypedExprFromDb: db
+    ]
+  | ReturnStatement => TO DO: "ReturnStatement to TypedExpr"
+
+  | CodeBlock => TO DO: "CodeBlock to TypedExpr"
+  | Match     => TO DO: "Match to TypedExpr"
+
+
+  // result = ExprTyped nivaType: TO DO isMutable: TO DO
+  // ^ result
+]

@@ -231,3 +231,54 @@ Test parseRealWorldExample -> Unit! = [
   statements = TestParse withInput: input expectedCount: 2
   keyword = statements at: 0
 ]
+
+
+Test parseKeywordDeclWithBody -> Unit! = [
+  input = """
+    Money make::Int sas::String -> Int = [
+      x = 42
+      1 inc
+      2 dec
+    ]
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  kwDecl = statements at: 0
+
+  | kwDecl 
+  | MessageDecl => [
+      
+    {receiver returnType body} = kwDecl
+    | receiver
+    | AstType => [
+      Assert 
+        that: receiver name 
+        equals: "Money"
+
+      Assert 
+        that: returnType toString
+        equals: "Int"
+
+    ]
+    |=> TO DO: "It should be AstType, but it " + receiver toString
+
+    varDeclaration   = body at: 0
+    unaryInc = body at: 1
+    unaryDec = body at: 2
+
+    | varDeclaration
+    | VarDeclaration => []
+    |=> TO DO: "It should be varDeclaration, but its " + varDeclaration toString
+
+    | unaryInc
+    | UnaryMsg => []
+    |=> TO DO: "It should be UnaryMsg inc, but its " + unaryInc toString
+
+    | unaryDec
+    | UnaryMsg => []
+    |=> TO DO: "It should be UnaryMsg dec, but its " + unaryDec toString
+
+    Unit
+  ]
+  |=> [TO DO: "It should be MessageDecl, but it " + kwDecl toString]
+]

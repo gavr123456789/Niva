@@ -19,7 +19,7 @@ union Declaration token: Token =
   name: String 
   args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
-  body: List::Statement
+  body: List::Expr
   isSingleExpr: Bool
 
 
@@ -53,7 +53,7 @@ union MessageSend2 receiver: Expr token: Token =
 
 UnaryMsg toString = [
   realArgs = args joinWith: " " transform: [it name]
-  ^ "$receiver $realArgs"
+  ^ "UnaryMsg ($receiver $realArgs)"
 ]
 BinaryMsg toString = [
   realArgs = args joinWith: " " transform: [
@@ -82,7 +82,7 @@ union Expr token: Token =
 | ^LiteralExpr 
 | Identifier     name: String
 | ExprInBrackets value: Expr
-| VarDeclaration    name: String value: Expr 
+| VarDeclaration    name: String value: Expr astType: AstType2?
 | ^CollectionLiteral
 | ^MessageSend2
 | ReturnStatement value: Expr?
@@ -156,8 +156,7 @@ union LiteralExpr token: Token =
 | StringExpr
 | BooleanExpr
 | NullExpr
-| FloatExpr
-| DoubleExpr
+| UnitExpr
 
 IntExpr toString = "IntExpr $num"
 

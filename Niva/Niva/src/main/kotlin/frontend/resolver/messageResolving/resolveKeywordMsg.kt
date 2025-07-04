@@ -627,9 +627,8 @@ fun Resolver.resolveKwArgsGenerics(
             }
             /// remember letter to type args
             typeFromDBForThisArg.args.forEachIndexed { i, typeField ->
-//                val beforeGenericResolvedName = typeField.type.beforeGenericResolvedName
                 if (typeField.type.name.isGeneric()) {
-//                    letterToRealType[typeField.type.name] = argType.args[i].type
+
                     letterToRealType.genericAdd(
                         typeField.type.name,
                         argType.args[i].type,
@@ -638,16 +637,6 @@ fun Resolver.resolveKwArgsGenerics(
                         "codeblock argument №$i"
                     )
                 }
-                // its not possible for type from db to have a resolved generic!
-//                else if (beforeGenericResolvedName != null && beforeGenericResolvedName.isGeneric()) {
-////                    letterToRealType[beforeGenericResolvedName] = argType.args[i].type
-//                    letterToRealType.genericAdd(
-//                        beforeGenericResolvedName,
-//                        argType.args[i].type,
-//                        statement.token,
-//                        "codeblock argument №$i"
-//                    )
-//                }
             }
             /// remember letter to return type
             val returnTypeBefore = typeFromDBForThisArg.returnType.beforeGenericResolvedName
@@ -666,6 +655,7 @@ fun Resolver.resolveKwArgsGenerics(
                 )
 
             }
+            typeFromDBForThisArg.returnType.beforeGenericResolvedName = null
 
         }
     }

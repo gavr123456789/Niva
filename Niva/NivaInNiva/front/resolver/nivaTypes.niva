@@ -4,6 +4,7 @@ union NivaType name: String pkgName: String =
 | FloatT
 | DoubleT
 | BoolT
+| CharT
 | StringT
 | AnyT
 | NothingT
@@ -17,6 +18,7 @@ union NivaType name: String pkgName: String =
 | MapT k: NivaType v: NivaType
 // utility
 | UnresolvedGenericT 
+| NullT
 
 type TypeTField name: String typeT: NivaType
 type UnionTBranch name: String typeT: NivaType
@@ -29,8 +31,11 @@ constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
 constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
 constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"
 constructor StringT new  = StringT  name: "String"  pkgName: "core"
+constructor CharT new    = CharT    name: "Char"    pkgName: "core"
+
 constructor AnyT new     = AnyT     name: "Any"     pkgName: "core"
 constructor NothingT new = NothingT name: "Nothing" pkgName: "core"
+constructor NullT new    = NullT    name: "Null"    pkgName: "core"
 
 constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: "core"
 constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
@@ -50,10 +55,6 @@ type NivaMethod
 type NivaProtocol 
   name: String 
   methods: mut Map(String, NivaMethod)
-
-// type NivaTypeWithProtocols 
-//   nivaType: NivaType 
-//   protocols: mut Map(String, NivaProtocol)
 
 type NivaPkg 
   name: String 
@@ -76,36 +77,24 @@ NivaProtocol addMethod::NivaMethod = [
 ]
 
 
-constructor NivaProtocol intArithmetics: int::IntegerT bool::BoolT -> NivaProtocol = [
-  intProtocol = NivaProtocol name: "arithmetic" 
 
-  // unary
-  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int forMut: false)
-  // binary
-  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int forMut: false)
-
-  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool forMut: false)
-  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool forMut: false)
-
-  ^intProtocol
-]
 
 constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
 
 /// create basic types like String Int List
 constructor NivaPkg core -> NivaPkg = [
   // create all primitive types
-  bool = BoolT new
-  unit = UnitT new 
-  str = StringT new
+  char = CharT new
   int = IntegerT new
   float = FloatT new
   double = DoubleT new
+  str = StringT new
+  bool = BoolT new
+  nill = NullT new
+  unit = UnitT new 
+  // utils
+  nothing = NothingT new
+  any = AnyT new
   // T
   t = UnresolvedGenericT name: "T"
   // create collections
@@ -124,6 +113,10 @@ constructor NivaPkg core -> NivaPkg = [
     "Float" float 
     "Dobule" double
 
+    "Null" nill
+    "Nothing" nothing 
+    "Any" any
+
     "List" list 
     "Set" set 
     "Map" map 
@@ -139,10 +132,26 @@ constructor NivaPkg core -> NivaPkg = [
 
 // -----
 
-type ExprType 
+type ExprTyped 
   nivaType: NivaType
   isMutable: Bool
-constructor ExprType nivaType::NivaType = ExprType 
+constructor ExprTyped nivaType::NivaType = ExprTyped 
   nivaType: nivaType
   isMutable: false
+
+//
+Project protocol: "toString"
+
+TypeT toString -> String = [
+  // TODO genericArgs
+  strFields = fields joinWith: " " transform: [
+    it name + ": " + it typeT toString
+  ]
+  ^ " Type(" + name + " " + strFields + ")"
+]
+
+IntegerT toString -> String = " Type(" + name + ")" 
+StringT  toString -> String = " Type(" + name + ")"
+FloatT   toString -> String = " Type(" + name + ")"
+BoolT    toString -> String = " Type(" + name + ")"
 
