@@ -16,8 +16,8 @@ resolver = [
 
     // type Money declared in a different file
     Money make::Int sas::String -> Int = [
-      x = 42
-      1 inc
+      x::Int = 42
+      1 inc inc
       2 inc
     ]
   """
@@ -39,7 +39,7 @@ resolver = [
   db echo
 
   
-] 
+] do
 
 matchExpr = [
 
@@ -48,7 +48,8 @@ matchExpr = [
   """
   statements = TestParse withInput: input expectedCount: 1
   statements at: 0, echo
-] do
+] 
+
 
 
 

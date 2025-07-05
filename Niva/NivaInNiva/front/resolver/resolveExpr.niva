@@ -2,14 +2,14 @@ Expr toTypedExprFromDb: db::TyperDB -> ExprTyped = [
   
 
  ^| this
-  | CharExpr    => ExprTyped nivaType: (db findByTypeName: "Char") isMutable: false
-  | IntExpr     => ExprTyped nivaType: (db findByTypeName: "Int") isMutable: false
-  | FloatExpr   => ExprTyped nivaType: (db findByTypeName: "Float") isMutable: false
-  | DoubleExpr  => ExprTyped nivaType: (db findByTypeName: "Double") isMutable: false
-  | StringExpr  => ExprTyped nivaType: (db findByTypeName: "String") isMutable: false
-  | BooleanExpr => ExprTyped nivaType: (db findByTypeName: "Boolean") isMutable: false
-  | NullExpr    => ExprTyped nivaType: (db findByTypeName: "Null") isMutable: false
-  | UnitExpr    => ExprTyped nivaType: (db findByTypeName: "Unit") isMutable: false
+  | CharExpr    => ExprTyped nivaType: (db findByTypeName: "Char") exprAst: this
+  | IntExpr     => ExprTyped nivaType: (db findByTypeName: "Int") exprAst: this
+  | FloatExpr   => ExprTyped nivaType: (db findByTypeName: "Float") exprAst: this
+  | DoubleExpr  => ExprTyped nivaType: (db findByTypeName: "Double") exprAst: this
+  | StringExpr  => ExprTyped nivaType: (db findByTypeName: "String") exprAst: this
+  | BooleanExpr => ExprTyped nivaType: (db findByTypeName: "Boolean") exprAst: this
+  | NullExpr    => ExprTyped nivaType: (db findByTypeName: "Null") exprAst: this
+  | UnitExpr    => ExprTyped nivaType: (db findByTypeName: "Unit") exprAst: this
   // Identifier can be type itself like Unit
   | Identifier     => TO DO: "Identifier to TypedExpr"
   | ExprInBrackets => TO DO: "ExprInBrackets to TypedExpr"
@@ -17,18 +17,56 @@ Expr toTypedExprFromDb: db::TyperDB -> ExprTyped = [
   | SetLiteral     => TO DO: "SetLiteral to TypedExpr"
   | MapLiteral     => TO DO: "MapLiteral to TypedExpr"
 
-  | UnaryMsg   => TO DO: "UnaryMsg to TypedExpr"
+  | UnaryMsg   => [
+
+
+    receiverTypedExpr = receiver toTypedExprFromDb: db
+    // TO DO: receiverTypedExpr toString
+    typeOfReceiver = receiverTypedExpr nivaType
+    
+
+    // а может быть тут сразу ловерить?
+    args forEach: [ unary ->
+      found = db findMsgFromReceiver: typeOfReceiver  byName: unary name
+      TO DO: found toString
+    ]
+
+    TO DO: this toString
+    TO DO: "UnaryMsg to TypedExpr"
+    
+    // TODO emit new UnaryMsg ast node, in which every Identifier replaced with typed
+    // not possible(, identifiers does not contain types
+    // lest for now resolve only the last one 
+    
+    ]
   | BinaryMsg  => TO DO: "BinaryMsg to TypedExpr"
   | KeywordMsg => TO DO: "KeywordMsg to TypedExpr"
 
   | VarDeclaration  => [
-    this 
-    this value toTypedExprFromDb: db
+
+    exprTyped = this value toTypedExprFromDb: db
+    // check that ast type is the same as declared
+    this astType unpack: [
+      // x::Int = "ars"
+      nivaType = db findByTypeName: it name
+      exprTyped nivaType compareWith: nivaType, ifFalse: [
+        valName = name
+        astTypeName = it name
+        realTypeName = exprTyped nivaType name
+        // TODO add it to error list
+        TO DO: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
+      ]
     ]
+    ExprTyped 
+      nivaType: exprTyped nivaType 
+      exprAst: this 
+      isMutable: exprTyped isMutable
+  ]
   | ReturnStatement => TO DO: "ReturnStatement to TypedExpr"
 
   | CodeBlock => TO DO: "CodeBlock to TypedExpr"
   | Match     => TO DO: "Match to TypedExpr"
+  | ExprTyped => TO DO: "Compiler bug: Recursive check, $this already type checked"
 
 
   // result = ExprTyped nivaType: TO DO isMutable: TO DO

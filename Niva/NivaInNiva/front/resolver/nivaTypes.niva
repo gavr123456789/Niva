@@ -17,8 +17,9 @@ union NivaType name: String pkgName: String =
 | SetT t: NivaType
 | MapT k: NivaType v: NivaType
 // utility
-| UnresolvedGenericT 
+| UnresolvedGenericT letter: String
 | NullT
+| NullableT v: NivaType
 
 type TypeTField name: String typeT: NivaType
 type UnionTBranch name: String typeT: NivaType
@@ -132,12 +133,7 @@ constructor NivaPkg core -> NivaPkg = [
 
 // -----
 
-type ExprTyped 
-  nivaType: NivaType
-  isMutable: Bool
-constructor ExprTyped nivaType::NivaType = ExprTyped 
-  nivaType: nivaType
-  isMutable: false
+
 
 //
 Project protocol: "toString"

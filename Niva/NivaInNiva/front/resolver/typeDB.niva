@@ -19,7 +19,7 @@ constructor TyperDB new -> TyperDB = [
     // setOfTypeNames: #()! 
     listOfErrors: {}!
     listOfDeclaredTypes: {}!
-    packages: #{}!
+    packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: #{}!
     
@@ -99,11 +99,36 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
 
 Project protocol: "finding"
 
+
+NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod = [
+  protocol = protocols at: forType, unpackOrPANIC
+
+  knownMethods::mut List::String = {}!
+
+  protocol forEach: [p -> 
+    method = p methods at: name
+    | method 
+    | null => [
+      knownMethods add: name
+      method // Thats stupid
+    ]
+    |=> ^ method
+  ]
+
+  typeName = forType name
+  TO DO: "Compiler bug: Method $name not found for type $typeName"
+]
+
 TyperDB 
   findMsgFromReceiver: receiver::NivaType 
   byName: name::String -> NivaMethod = [
+  
+  // protocols are inside packages
+  // TO DO: receiver toString
+  pkg = packages at: receiver pkgName, unpackOrPANIC
+  method = pkg findMethodInAllProtocols: name forType: receiver
 
-  ^ TO DO: "hii"
+  ^ method
 ] 
 
 TyperDB 

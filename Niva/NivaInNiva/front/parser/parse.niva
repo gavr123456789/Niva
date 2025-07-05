@@ -377,7 +377,7 @@ extend mut Parser [
         // Int inc ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr
+        body = .parseBodyOrSingleExpr toMutableList
 
         msgDecl = MessageDecl 
           receiver: receiverType
@@ -403,7 +403,7 @@ extend mut Parser [
         // Int a::Int b::Int ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr
+        body = .parseBodyOrSingleExpr toMutableList
 
         msgDecl = MessageDecl 
           receiver: receiverType
@@ -435,7 +435,7 @@ extend mut Parser [
         // Int inc ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr
+        body = .parseBodyOrSingleExpr toMutableList
 
         msgDecl = MessageDecl 
           receiver: receiverType
@@ -476,7 +476,7 @@ extend mut Parser [
       TO DO: "Got invalid token after $prev $prevPrev $cur"
     ]
     | TokenType.IdentifierDoubleColon => [
-      ^.parseVarDeclExpr: tok name: (tok lexeme dropLast: 2) // remove `::`
+      ^.parseVarDeclExpr: tok name: tok lexeme // `::` for IdentifierDoubleColon is removed in lexer
     ]
 
     |=> [
@@ -504,6 +504,11 @@ extend mut Parser [
       e
       ]
     |=> [
+
+      // VarDeclaration: `x::Int` 
+      tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+        ^.parseVarDeclExpr: tok name: tok lexeme
+      ]
       // message expr
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
       .peek kind == TokenType.Assign, ifTrue: [
@@ -586,7 +591,6 @@ extend mut Parser [
     | TokenType.Identifier => [
       // primary identifier
 
-      // msg = MessageSend args: List::NameAndExpr token: next
       // while there are identifiers - parse and save them, its a begining of unary     
       tok = .peek
       | tok kind 
