@@ -166,7 +166,7 @@ fun Resolver.resolveVarDeclaration(
     // DevMode
 //    devModeSetInlineRepl(valueOfVarDecl, resolvingMessageDeclaration)
 
-
+    getCurrentPackage(statement.token).addImport(typeOfValueInVarDecl.pkg)
     addToTopLevelStatements(statement)
 }
 

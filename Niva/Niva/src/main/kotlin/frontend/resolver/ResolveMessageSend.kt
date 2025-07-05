@@ -23,7 +23,11 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 
     type.typeArgumentList.forEachIndexed { i, it ->
         val k = genericLetters[i]
-        it.beforeGenericResolvedName = k
+        if (it is Type.InternalType) {
+            it.beforeGenericResolvedName = null
+            type.typeArgumentList[i] = it.copyAnyType().also { it.beforeGenericResolvedName = k }
+        } else
+            it.beforeGenericResolvedName = k
     }
 }
 
@@ -237,11 +241,14 @@ fun replaceAllGenericsToRealTypeRecursive(
         val isSingleGeneric = typeArg.name.isGeneric()
 
         if (isSingleGeneric) {
-            val resolvedLetterType =
-                letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
+            val resolvedLetterType = letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
+
             if (resolvedLetterType != null) {
-                newResolvedTypeArgs2.add(resolvedLetterType)
+                if (typeArg is Type.InternalType) {
+                    resolvedLetterType
+                }
                 resolvedLetterType.beforeGenericResolvedName = typeArg.name
+                newResolvedTypeArgs2.add(resolvedLetterType)
             } else {
                 // we need to know from here, is this generic need to be resolved or not
                 newResolvedTypeArgs2.add(typeArg)

@@ -3,13 +3,14 @@ extend mut Parser [
   /// Map(String, Int)
   /// identifier ("(" | "::")
   on parseGenericType -> AstType = [
-    identifier = .matchAssertAnyIdent: "in type declaration identifier expected"
+    
+    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 
     isListLike = identifier kind == TokenType.IdentifierDoubleColon
     isMapLike = .match: TokenType.OpenParen
-
+    
     
 
     isListLike ifTrue: [

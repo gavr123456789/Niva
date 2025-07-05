@@ -13,7 +13,7 @@ enum TokenType =
 
   // Keywords
   |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain
-  |True|False|Null|Unit
+  |True|False|Null
   |On // on for many messages declarations
 
   |Return // ^
@@ -93,5 +93,5 @@ constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "true" => TokenType.True
 | "false" => TokenType.False
 | "null" => TokenType.Null
-| "Unit" => TokenType.Unit
+// | "Unit" => TokenType.Unit
 |=> TokenType.Identifier

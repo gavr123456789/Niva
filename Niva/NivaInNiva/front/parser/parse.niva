@@ -30,7 +30,7 @@ extend mut Parser [
     | TokenType.Char 
     | TokenType.Float 
     | TokenType.Double
-    | TokenType.Unit
+    // | TokenType.Unit
     | TokenType.Null => true
     |=> false
   ]
@@ -89,8 +89,8 @@ extend mut Parser [
     | TokenType.Null =>  
       NullExpr token: tok
   
-    | TokenType.Unit => 
-      UnitExpr token: tok
+    // | TokenType.Unit => 
+    //   UnitExpr token: tok
     
     |=> [null]
     ^ x
@@ -470,12 +470,13 @@ extend mut Parser [
       TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
     ]
     | TokenType.Invalid => [
-      prev = .peekAt: -2
-      prevPrev = .peekAt: -1
+      prevPrev = .peekAt: -2
+      prev = .peekAt: -1
       cur = .peek
-      TO DO: "Got invalid token after $prev $prevPrev $cur"
+      TO DO: "Got invalid token after $prevPrev $prev $cur"
     ]
     | TokenType.IdentifierDoubleColon => [
+      
       ^.parseVarDeclExpr: tok name: tok lexeme // `::` for IdentifierDoubleColon is removed in lexer
     ]
 
@@ -595,10 +596,14 @@ extend mut Parser [
       tok = .peek
       | tok kind 
       | TokenType.Identifier => [
-        unaryIdentifiers = .parseManyIdentSeparated: null
+        unaryIdentifiers = .parseManyIdentSeparated: null, 
+                            map: [
+                              NameAndExpr name: it expr: it
+                            ]
+        
         // 1 inc inc^
         unary = UnaryMsg 
-          args: unaryIdentifiers toList 
+          args: unaryIdentifiers
           receiver: maybePrimary 
           token: maybePrimary token
         

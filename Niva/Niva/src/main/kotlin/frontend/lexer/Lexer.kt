@@ -164,23 +164,26 @@ fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexe
 }
 
 fun Lexer.error(message: String): Nothing {
-    val msg = "${message}\nline: ${line}\n$file\npos: $lineCurrent - ${linePos - 1}\n"
+    val msg = "Lexer: ${message}\nline: ${line}\n$file\npos: $lineCurrent - ${linePos - 1}\n"
     this.tokens.last().compileError(msg)
 }
 
 enum class StrMode {
     Single,
-    Raw,
+//    Raw,
     Multi,
-    Format,
-    Bytes
+//    Format,
+//    Bytes
 }
 
 fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
     var slen = 0
     var wasUtfSymbol = false
+
+    if (mode == StrMode.Multi) {
+
+    }
     while (!this.check(delimiter) && !this.done()) {
-        val peek = peek()
         if (this.match("\n")) {
             if (mode == StrMode.Multi) {
                 this.incLine(false)// multi-string
@@ -192,32 +195,35 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
             break
 
         if (mode == StrMode.Multi) { // || mode == StrMode.Raw
-            this.step()
+            val x = this.step()
+            if (x == "\n"){
+                this.incLine(false)// multi-string
+            }
             continue
         } else {
             wasUtfSymbol = wasUtfSymbol || match("\\u")
             this.match("\\")
         }
 
-        if (mode == StrMode.Format && match("{")) {
-            if (match("{")) {
-                source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
-                continue
-            }
-            val x = arrayOf("}", "\"")
-            while (!check(x)) {
-                step()
-            }
-            if (check("\"")) {
-                error("unclosed '{' in format string")
-            }
-        } else if (mode == StrMode.Format && check("}")) {
-            if (check("}", 1)) {
-                error("unmatched '}' in format string")
-            } else {
-                source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
-            }
-        }
+//        if (mode == StrMode.Format && match("{")) {
+//            if (match("{")) {
+//                source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
+//                continue
+//            }
+//            val x = arrayOf("}", "\"")
+//            while (!check(x)) {
+//                step()
+//            }
+//            if (check("\"")) {
+//                error("unclosed '{' in format string")
+//            }
+//        } else if (mode == StrMode.Format && check("}")) {
+//            if (check("}", 1)) {
+//                error("unmatched '}' in format string")
+//            } else {
+//                source = source.slice(0 until current) + source.slice(current + 1 until source.lastIndex)
+//            }
+//        }
 
         step()
         slen++
@@ -230,7 +236,7 @@ fun Lexer.parseString(delimiter: String, mode: StrMode = StrMode.Single) {
 
     if (mode == StrMode.Multi) {
         if (!match(delimiter)) {
-            error("unexpected EOL while parsing multi-line string literal, $delimiter must be repeated 3 times for multi strings")
+            error("Cant find end of multi-line string literal, $delimiter must be repeated 3 times for multi strings")
         }
     } else if (done() && peek(-1) != delimiter) {
         error("unexpected EOF while parsing string literal")
@@ -425,9 +431,9 @@ fun Lexer.next() {
 
             //  Prefixed string literal (i.e. f"Hi {name}!")
             when (step()) {
-                "r" -> parseString(step(), StrMode.Raw)
-                "b" -> parseString(step(), StrMode.Bytes)
-                "f" -> parseString(step(), StrMode.Format)
+//                "r" -> parseString(step(), StrMode.Raw)
+//                "b" -> parseString(step(), StrMode.Bytes)
+//                "f" -> parseString(step(), StrMode.Format)
                 else -> error("unknown string prefix '${peek(-1)}'")
             }
         }

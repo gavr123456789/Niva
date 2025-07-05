@@ -1,5 +1,3 @@
-
-
 Test someExpressions -> Unit! = [
   input = """
     1 + 2
@@ -21,9 +19,9 @@ Test someExpressions -> Unit! = [
     [a b c] do
     [a b c] from: 1 to: 2
     [a b c] + 3
-
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 16
+  
 ]
 
 Test pipes = [
@@ -72,7 +70,7 @@ Test pipesMany -> Unit! = [
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 6
-
+  
 ]
 
 Test parseSimbleBinaryMsg -> Unit! = [
@@ -121,7 +119,7 @@ Test parseBinaryMsgWithUnary -> Unit! = [
     | UnaryMsg => [
       Assert that: expr args count equals: 1
       first = expr args at: 0
-      name = first token lexeme
+      name = first name token lexeme
       Assert that: name equals: "inc"
       receiver = expr receiver
       | receiver
@@ -161,7 +159,7 @@ Test parseBinaryMsgWithUnary2 -> Unit! = [
     | UnaryMsg => [
       Assert that: receiver args count equals: 1
       first = receiver args at: 0
-      name = first token lexeme
+      name = first name token lexeme
       Assert that: name equals: "inc"
       receiver = receiver receiver
       | receiver

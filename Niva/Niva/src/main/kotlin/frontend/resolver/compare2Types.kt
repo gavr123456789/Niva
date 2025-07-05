@@ -29,7 +29,8 @@ fun compare2Types(
 ): Boolean {
     if (type1OrChildOf2 === type2) return true
 
-    if (compareMutability && type1OrChildOf2.isMutable && !type2.isMutable)
+
+    if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable))
         tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()}$WHITE::mut $YEL$type1OrChildOf2$WHITE = ...")
 
     if (type1OrChildOf2 is Type.Lambda && type2 is Type.Lambda) {
@@ -192,11 +193,13 @@ fun compare2Types(
                 }
 //                if (sameArgs && )
 
-                else {
-                    val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
-                    return hasGeneralRoot_Or_itsListTAndListInt
-                } //type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
+                //else {
+//                    val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
+//                    return hasGeneralRoot_Or_itsListTAndListInt
+                //} //type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
             }
+            val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
+            return hasGeneralRoot_Or_itsListTAndListInt
         }
 
 

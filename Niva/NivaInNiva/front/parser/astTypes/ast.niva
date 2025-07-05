@@ -5,6 +5,7 @@
 union Statement token: Token =
 | ^Expr
 | ^Declaration
+// TODO move to Expr
 | Assign            name: String value: Expr
 | DestructingAssign names: List::String value: Expr // {name} = person
 
@@ -45,14 +46,14 @@ TypeDecl toString -> String = [
 
 union MessageSend receiver: Expr token: Token =
 | UnaryMsg 
-    args: List::Identifier
+    args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
 | BinaryMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg
 | KeywordMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
 
 UnaryMsg toString = [
-  realArgs = args joinWith: " " transform: [it name]
+  realArgs = args joinWith: " " transform: [it name name]
   ^ "UnaryMsg ($receiver $realArgs)"
 ]
 BinaryMsg toString = [
@@ -92,8 +93,7 @@ union Expr token: Token =
   subject: Expr 
   branches: List::MatchBranch 
   elseBranch: List(Expr) // possible body
-
-| ExprTyped 
+| TypedExpr 
   exprAst: Expr
   nivaType: NivaType
   isMutable: Bool
@@ -101,13 +101,13 @@ union Expr token: Token =
 
 
 
-constructor ExprTyped nivaType::NivaType exprAst::Expr isMutable::Bool = ExprTyped 
+constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr 
   exprAst: exprAst
   nivaType: nivaType
   isMutable: isMutable
   token: exprAst token
 
-  constructor ExprTyped nivaType::NivaType exprAst::Expr = ExprTyped 
+  constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr 
   exprAst: exprAst
   nivaType: nivaType
   isMutable: false
@@ -176,7 +176,7 @@ union LiteralExpr token: Token =
 | StringExpr
 | BooleanExpr
 | NullExpr
-| UnitExpr
+// | UnitExpr
 
 IntExpr toString = "IntExpr $num"
 

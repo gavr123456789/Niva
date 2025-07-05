@@ -18,6 +18,15 @@ import main.utils.isGeneric
 import kotlin.collections.mutableMapOf
 
 
+//fun MutableMap<String, Type>.replaceAllInternalTypesWithItsCopies(): MutableMap<String, Type> {
+//    for ((key, value) in this) {
+//        if (value is Type.InternalType) {
+//            this[key] = value.copyAnyType()
+//        }
+//    }
+//    return this
+//}
+
 fun Resolver.resolveKeywordMsg(
     statement: KeywordMsg, previousScope: MutableMap<String, Type>, currentScope: MutableMap<String, Type>
 
@@ -189,7 +198,8 @@ fun Resolver.resolveKeywordMsg(
             map
         }
 
-    val fromReceiverAndfromArgsTable = (letterToTypeFromReceiver + letterToTypeFromArgs).toMutableMap()
+
+    val fromReceiverAndfromArgsTable = (letterToTypeFromReceiver + letterToTypeFromArgs).toMutableMap()//.replaceAllInternalTypesWithItsCopies()
 
     // resolve args types
     resolveKwArgs(
@@ -584,7 +594,7 @@ fun Resolver.resolveKwArgsGenerics(
                     receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
                 if (argTypeWithSameLetter != null) {
                     // receiver has the same generic param resolved
-                    if (!compare2Types(argTypeWithSameLetter, argType, it.keywordArg.token)) {
+                    if (!compare2Types( argType, argTypeWithSameLetter, it.keywordArg.token)) {
                         it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                     }
                 }

@@ -1,5 +1,2 @@
-union Color = Red | Blue
 
-Int sas -> Color = [
-    ^ Blue new
-]
+x::mut List::Int = {}!
