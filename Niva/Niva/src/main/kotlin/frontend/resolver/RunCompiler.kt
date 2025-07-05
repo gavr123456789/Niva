@@ -18,7 +18,6 @@ import main.utils.*
 import java.io.File
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.markNow
-import kotlin.time.measureTime
 
 const val MAIN_PKG_NAME = "mainNiva"
 
@@ -140,11 +139,18 @@ fun Resolver.resolveWithBackTracking(
 
     /// Resolving unresolved types N times, because in the worst scenario, each next can depend on previous
     val resolveUnresolvedTypes = {
-        unResolvedTypeDeclarations.forEach { (t, u) ->
+        val iterator = unResolvedTypeDeclarations.iterator()
+        while (iterator.hasNext()) {
+            val (t, u) = iterator.next()
             changePackage(t, fakeTok)
             resolveDeclarationsOnly(u.toMutableList())
+            if (u.isEmpty()) {
+                iterator.remove()
+            }
         }
+
     }
+
     var c = unResolvedTypeDeclarations.flatMap { it.value }.count()
     while (c-- > 0 && unResolvedTypeDeclarations.isNotEmpty()) {
         resolveUnresolvedTypes()

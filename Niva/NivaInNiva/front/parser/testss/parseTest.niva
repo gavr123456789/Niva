@@ -33,15 +33,16 @@ Test varDeclarationWithAstType -> Unit! = [
     Assert that: vardecl name equals: "x"
   ]
   |=> [TO DO: "VarDeclaration expected"]
-  
-  // here we have it inside body, which trigers a different path
-  // inside nextExpr, not nextStatement 
-  input2 = """
+
+]
+Test varDeclarationWithAstType2 -> Unit! = [
+
+  input = """
     Money make::Int sas::String -> Unit = [
       x::Int = 42
     ]
   """
-  statements2 = TestParse withInput: input2 expectedCount: 1
+  statements = TestParse withInput: input expectedCount: 1
 
 ]
 

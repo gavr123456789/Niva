@@ -55,7 +55,10 @@ extend mut Parser [
             binSymbol = Identifier fromToken: tok
             result add: (NameAndExpr name: (binSymbol) expr: receiver)
           ] ifFalse: [
-            unary = UnaryMsg args: unaryList toList receiver: receiver token: tok
+            args = unaryList map: [
+              NameAndExpr name: it expr: it
+            ]
+            unary = UnaryMsg args: args receiver: receiver token: tok
             // + 1 inc inc + 2
             binSymbol = Identifier fromToken: tok
             result add: (NameAndExpr name: (binSymbol) expr: unary)

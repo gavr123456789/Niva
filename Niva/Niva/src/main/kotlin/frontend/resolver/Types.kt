@@ -554,7 +554,7 @@ sealed class Type(
 
     sealed class UserLike(
         name: String,
-        var typeArgumentList: List<Type>,
+        var typeArgumentList: MutableList<Type>,
         var fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -613,7 +613,7 @@ sealed class Type(
                                 it.copy()
                             } else
                                 it
-                        },
+                        }.toMutableList(),
                         fields = this.fields.copy(this),
                         isPrivate = this.isPrivate,
                         pkg = withDifferentPkg ?: this.pkg,
@@ -624,7 +624,7 @@ sealed class Type(
 
                 is EnumRootType -> EnumRootType(
                     name = this.name,
-                    typeArgumentList = this.typeArgumentList.toList(),
+                    typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
@@ -635,7 +635,7 @@ sealed class Type(
 
                 is UnionRootType -> UnionRootType(
                     name = this.name,
-                    typeArgumentList = this.typeArgumentList.toList(),
+                    typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
@@ -648,7 +648,7 @@ sealed class Type(
                 is EnumBranchType -> TODO()
                 is UnionBranchType -> UnionBranchType(
                     name = this.name,
-                    typeArgumentList = this.typeArgumentList.toList(),
+                    typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
                     isPrivate = this.isPrivate,
                     pkg = withDifferentPkg ?: this.pkg,
@@ -670,7 +670,7 @@ sealed class Type(
 
     class UserType(
         name: String,
-        typeArgumentList: List<Type> = emptyList(), // for <T, G>
+        typeArgumentList: MutableList<Type> = mutableListOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -683,7 +683,7 @@ sealed class Type(
     // Error -> Root, Branch
     sealed class Union(
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: MutableList<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -695,7 +695,7 @@ sealed class Type(
     class UnionRootType(
         var branches: List<Union>, // can be union or branch
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: MutableList<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -727,7 +727,7 @@ sealed class Type(
     class UnionBranchType(
         val root: UnionRootType,
         name: String,
-        typeArgumentList: List<Type> = listOf(), // for <T, G>
+        typeArgumentList: MutableList<Type> = mutableListOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -740,7 +740,7 @@ sealed class Type(
     class EnumRootType(
         var branches: List<EnumBranchType>,
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: MutableList<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -751,7 +751,7 @@ sealed class Type(
     class EnumBranchType(
         val root: EnumRootType,
         name: String,
-        typeArgumentList: List<Type>, // for <T, G>
+        typeArgumentList: MutableList<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -762,7 +762,7 @@ sealed class Type(
 
     sealed class GenericType(
         name: String,
-        typeArgumentList: List<Type>,
+        typeArgumentList: MutableList<Type>,
         pkg: String,
         fields: MutableList<KeywordArg> = mutableListOf(),
         isPrivate: Boolean = false,
@@ -772,7 +772,7 @@ sealed class Type(
 
     class UnknownGenericType(
         name: String,
-        typeArgumentList: List<Type> = emptyList(),
+        typeArgumentList: MutableList<Type> = mutableListOf(),
         pkg: String = "common",
     ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null) {
         override fun toString(): String {
@@ -935,7 +935,7 @@ fun TypeAST.toType(
                         )
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
                         typeOfArg
-                    }
+                    }.toMutableList()
 
 
                     copy.typeArgumentList = typeArgs
@@ -1072,7 +1072,7 @@ fun SomeTypeDeclaration.toType(
         Type.UnionRootType(
             branches = emptyList(),
             name = typeName,
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1084,7 +1084,7 @@ fun SomeTypeDeclaration.toType(
         Type.EnumRootType(
             branches = emptyList(),
             name = typeName,
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1095,7 +1095,7 @@ fun SomeTypeDeclaration.toType(
         Type.EnumBranchType(
             root = enumRootType,
             name = typeName,
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1106,7 +1106,7 @@ fun SomeTypeDeclaration.toType(
         Type.UnionBranchType(
             root = unionRootType,
             name = typeName,
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1119,7 +1119,7 @@ fun SomeTypeDeclaration.toType(
     } else
         Type.UserType(
             name = typeName,
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1233,7 +1233,7 @@ fun SomeTypeDeclaration.toType(
         }
     }
 
-    result.typeArgumentList = genericTypeFields.distinctBy { it.name }
+    result.typeArgumentList = genericTypeFields.distinctBy { it.name }.toMutableList()
     result.fields = fieldsTyped
     //    result.protocols
     // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen

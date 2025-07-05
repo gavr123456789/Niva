@@ -163,7 +163,7 @@ Test keywords = [
                    TokenType.True 
                    TokenType.False 
                    TokenType.Null 
-                   TokenType.Unit
+                   TokenType.Identifier
                    TokenType.On}
 ]
 Test singleNum = [

@@ -30,35 +30,23 @@ const val fakeFileSourceGOOD = """
 """
 
 
+//
 
+//class  AstNode <T> (val v: T)
+//class TypeInfo(val n: Int)
+//typealias TypedAstNode = AstNode<TypeInfo>
+//typealias UntypedAstNode = AstNode<Nothing>
+//
+//fun <T> sas(astNode: AstNode<T>) {
+//    when (astNode) {
+//        is TypedAstNode -> {
+//
+//        }
+//    }
+//}
+//
 
 fun main(args: Array<String>) {
-
-    // test
-//    val x = DevLiveData(
-//        name = "x",
-//        start = 0,
-//        end = 1,
-//        values = mutableListOf("25")
-//    )
-//    val itt = DevLiveData(
-//        name = "it",
-//        start = 2,
-//        end = 4,
-//        values = mutableListOf("1", "1","1","1","5",)
-//    )
-//
-//    val db = DevModeStore(
-//        data = mutableMapOf("main.niva" to sortedMapOf(
-//            1 to mutableListOf(x),
-//            4 to mutableListOf(itt),
-//        ))
-//    )
-
-//    db.add(1, "filePath", "x", 11, 1, 2)
-
-//    if (NivaDevModeDB.wasDevModeUsed) File("devModeData.json").writeText(NivaDevModeDB.db.toJson().toString())
-
 
 
 //    val ls = LS { println("Niva LS: $it") }
@@ -82,6 +70,7 @@ fun main(args: Array<String>) {
 ///////////////////////
 
 //    val args = arrayOf("run","/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/main.niva")
+
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {

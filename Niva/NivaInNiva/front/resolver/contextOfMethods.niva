@@ -25,5 +25,3 @@ extend Context [
     |=> result
   ]
 ]
-/// result of resolve
-type TypedExpr expr: Expr typed: NivaType

@@ -99,7 +99,7 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
         val result = Type.UnionRootType(
             branches = errors.toList(),
             name = "ErrorsOfTheScope",
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(KeywordArg("message", Resolver.defaultTypes[InternalTypes.String]!!)),
             pkg = pkg.packageName,
             isError = true,

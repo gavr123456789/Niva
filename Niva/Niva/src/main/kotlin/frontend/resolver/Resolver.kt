@@ -779,9 +779,9 @@ fun Resolver.addNewType(
         val typeToRemove =
             unresolved.find { it.typeName == statement.typeName && it.receiver?.pkg == statement.receiver?.pkg }
         unresolved.remove(typeToRemove)
-        if (unresolved.isEmpty()) {
-            unResolvedTypeDeclarations.remove(pack.packageName)
-        }
+//        if (unresolved.isEmpty()) {
+//            unResolvedTypeDeclarations.remove(pack.packageName)
+//        }
     }
 
 //    unResolvedTypeDeclarations.remove(typeName)
@@ -977,7 +977,7 @@ fun Resolver.getTypeForIdentifier(
             val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)
                 ?: x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
             val copy = typeFromDB.copy()
-            copy.typeArgumentList = listOf(e)
+            copy.typeArgumentList = mutableListOf(e)
             copy
         } else typeFromDB
 //    x.type = type
@@ -1084,7 +1084,7 @@ val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, l
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = mutableListOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
@@ -1098,7 +1098,7 @@ val createTypeListOfType = { name: String, elementType: Type.InternalType, listT
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = mutableListOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
@@ -1112,7 +1112,7 @@ val createTypeListOfType = { name: String, elementType: Type.InternalType, listT
 val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.UserLike, mapType: Type.UserType, emitName: String ->
     Type.UserType(
         name = name,
-        typeArgumentList = listOf(
+        typeArgumentList = mutableListOf(
             key.copy().also { it.beforeGenericResolvedName = "T" },
             value.copy().also { it.beforeGenericResolvedName = "G" }),
         fields = mutableListOf(),
@@ -1429,7 +1429,7 @@ class Resolver(
         // Pair
         val pairType = Type.UserType(
             name = "Pair",
-            typeArgumentList = listOf(genericType, differentGenericType),
+            typeArgumentList = mutableListOf(genericType, differentGenericType),
             fields = mutableListOf(KeywordArg("first", genericType), KeywordArg("second", differentGenericType)),
             pkg = "core",
             typeDeclaration = null
@@ -1439,14 +1439,14 @@ class Resolver(
         // List
         val listType = Type.UserType(
             name = "List",
-            typeArgumentList = listOf(genericType),
+            typeArgumentList = mutableListOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
         )
         val listTypeOfDifferentGeneric = Type.UserType(
             name = "List",
-            typeArgumentList = listOf(differentGenericType),
+            typeArgumentList = mutableListOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1467,14 +1467,14 @@ class Resolver(
         // Sequence
         val sequenceType = Type.UserType(
             name = "Sequence",
-            typeArgumentList = listOf(genericType),
+            typeArgumentList = mutableListOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null,
         )
         val sequenceTypeOfDifferentGeneric = Type.UserType(
             name = "Sequence",
-            typeArgumentList = listOf(differentGenericType),
+            typeArgumentList = mutableListOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1482,7 +1482,7 @@ class Resolver(
 
         val mutableListType = Type.UserType(
             name = "List",
-            typeArgumentList = listOf(genericType),
+            typeArgumentList = mutableListOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null,
@@ -1591,7 +1591,7 @@ class Resolver(
         }
         val mutListTypeOfDifferentGeneric = Type.UserType(
             name = "List",
-            typeArgumentList = listOf(differentGenericType),
+            typeArgumentList = mutableListOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null,
@@ -1624,7 +1624,7 @@ class Resolver(
         // mutable set
         val mutableSetType = Type.UserType(
             name = "Set",
-            typeArgumentList = listOf(genericType),
+            typeArgumentList = mutableListOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1635,7 +1635,7 @@ class Resolver(
 
         val mutSetTypeOfDifferentGeneric = Type.UserType(
             name = "Set",
-            typeArgumentList = listOf(differentGenericType),
+            typeArgumentList = mutableListOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1646,7 +1646,7 @@ class Resolver(
 
         val setType = Type.UserType(
             name = "Set",
-            typeArgumentList = listOf(genericType),
+            typeArgumentList = mutableListOf(genericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1671,7 +1671,7 @@ class Resolver(
 
         val setTypeOfDifGeneric = Type.UserType(
             name = "Set",
-            typeArgumentList = listOf(differentGenericType),
+            typeArgumentList = mutableListOf(differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1697,7 +1697,7 @@ class Resolver(
         // mutable map
         val mapTypeMut = Type.UserType(
             name = "Map",
-            typeArgumentList = listOf(genericType, differentGenericType),
+            typeArgumentList = mutableListOf(genericType, differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1708,7 +1708,7 @@ class Resolver(
 
         val mapType = Type.UserType(
             name = "Map",
-            typeArgumentList = listOf(genericType, differentGenericType),
+            typeArgumentList = mutableListOf(genericType, differentGenericType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1756,7 +1756,7 @@ class Resolver(
 
             ),
             isError = false,
-            typeArgumentList = listOf()
+            typeArgumentList = mutableListOf()
         )
 
         val createDynamicBranchType = { root: Type.UnionRootType, name: String, fieldValueType: Type? ->
@@ -1789,7 +1789,7 @@ class Resolver(
 
         val mutableMapOfFields = Type.UserType(
             name = "Map",
-            typeArgumentList = listOf(anyType, dynamicType),
+            typeArgumentList = mutableListOf(anyType, dynamicType),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null,
@@ -1811,7 +1811,7 @@ class Resolver(
         /// ERROR TYPE
         val errorRootType = Type.UnionRootType(
             name = "ErrorRoot",
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             pkg = "core",
             isError = true,
@@ -1821,7 +1821,7 @@ class Resolver(
 
         val errorType = Type.UnionBranchType(
             name = "Error",
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             pkg = "core",
             isError = true,
@@ -1843,7 +1843,7 @@ class Resolver(
         // StringBuilder
         val stringBuilderType = Type.UserType(
             name = "StringBuilder",
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
@@ -1861,7 +1861,7 @@ class Resolver(
         // TypeType
         val typeType = Type.UserType(
             name = "TypeType",
-            typeArgumentList = emptyList(),
+            typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null

@@ -606,7 +606,7 @@ fun LS.resolveAllFirstTime(
 
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
     val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
-    info?.invoke("allFiles is ${allFiles.joinToString(", ") { it.name }} ") //all files is ${allFiles.joinToString(", ") { it.name }}
+//    info?.invoke("allFiles is ${allFiles.joinToString(", ") { it.name }} ") //all files is ${allFiles.joinToString(", ") { it.name }}
 
 
     // Resolve
@@ -619,9 +619,7 @@ fun LS.resolveAllFirstTime(
         // custom ast
         val customAst = parseFilesToAST(
             mainFileContent = if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null) changedFileContent else {
-                info?.invoke("!!! main file reread $mainFile")
-//                info?.invoke("mainFile.toURI().toString() = ${mainFile.toURI()}")
-//                info?.invoke("changedFile.absolutePath = ${changedFile.absolutePath}")
+//                info?.invoke("!!! main file reread $mainFile")
                 mainFile.readText()
             },
             otherFileContents = allFiles.toList(),

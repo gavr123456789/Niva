@@ -233,7 +233,7 @@ AstVisitor visit: st::Statement = [
 // | ExprInBrackets => [
 //   this value exprAccept: visitor
 // ]
-// | ExprTyped => []
+// | TypedExpr => []
 // | CollectionLiteral => [
 //   this elements forEach: [it exprAccept: visitor]
 // ]

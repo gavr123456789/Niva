@@ -2514,6 +2514,40 @@ class ParserTest {
         assert(ast.count() == 6)
     }
 
+    @Test
+    fun wrongMultiStringCoordinates() {
+        val source = """
+            Test someExpressions -> Unit! = [
+              input = ""${'"'}
+                1 + 2
+                1 inc
+                1 inc + 2
+                1 + 2 inc
+                a + b
+                a + b inc
+                a + b inc + c
+                a + b inc + c dec
+                a + b inc + c dec * d
+                a + b inc + c dec * d / e
+             
+                // collections receivers
+                {1 2 3} inc
+                #{1 2 3 4} from: 5
+                #(1 2 3) + #(3 4 5)
+             
+                [a b c] do
+                [a b c] from: 1 to: 2
+                [a b c] + 3
+             
+              ""${'"'} trimIndent
+              statements = TestParse withInput: input expectedCount: 16
+              
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
 
 //    @Test
 //    fun newUnionSynta2x() {

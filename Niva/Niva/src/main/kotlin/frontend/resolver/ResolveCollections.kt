@@ -7,7 +7,7 @@ import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
-fun Resolver.fillCollectionType(typeArgumentList: List<Type>, statement2: Receiver, collectionTypeName: String): Type.UserType {
+fun Resolver.fillCollectionType(typeArgumentList: MutableList<Type>, statement2: Receiver, collectionTypeName: String): Type.UserType {
     val listType =
         this.projects[currentProjectName]!!.packages["core"]!!.types[collectionTypeName] as Type.UserType
 
@@ -63,7 +63,7 @@ fun Resolver.resolveCollection(
 //            val anyType2: Type.InternalType? = null
 //            val firstElemType2: Type? = null
             // try to find list with the same generic type
-            fillCollectionType(listOf(anyType ?: firstElemType), statement, typeName)
+            fillCollectionType(mutableListOf(anyType ?: firstElemType), statement, typeName)
 
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
@@ -83,7 +83,7 @@ fun Resolver.resolveCollection(
         statement.type = typeFromAstDecl
     }
     else {
-        fillCollectionType(listOf(Type.UnknownGenericType("T")), statement, typeName)
+        fillCollectionType(mutableListOf(Type.UnknownGenericType("T")), statement, typeName)
     }
 
 }
@@ -143,7 +143,7 @@ fun Resolver.resolveMap2(
     }
     val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"
     if (statement.initElements.isEmpty()) {
-        return fillCollectionType(listOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
+        return fillCollectionType(mutableListOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
     }
     val (key, value) = statement.initElements[0]
     currentLevel++
@@ -171,7 +171,7 @@ fun Resolver.resolveMap2(
 
     val mapType = Type.UserType(
         name = mapTypeFromDb.name,
-        typeArgumentList = listOf(keyType, unifiedValueType),
+        typeArgumentList = mutableListOf(keyType, unifiedValueType),
         fields = mutableListOf(),
         pkg = "core",
         protocols = mapTypeFromDb.protocols,

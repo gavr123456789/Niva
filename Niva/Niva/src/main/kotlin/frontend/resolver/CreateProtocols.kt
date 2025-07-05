@@ -687,7 +687,7 @@ fun createListProtocols(
     val listOfLists = Type.UserType(
         name = "List",
         fields = listType.fields,
-        typeArgumentList = listOf(listType),
+        typeArgumentList = mutableListOf(listType),
         pkg = "core",
         protocols = listType.protocols,
         typeDeclaration = null
@@ -696,7 +696,7 @@ fun createListProtocols(
     val pairOf2ListsType = Type.UserType(
         name = "Pair",
         fields = pairType.fields,
-        typeArgumentList = listOf(sequenceType, sequenceType), // List<T>, List<G>
+        typeArgumentList = mutableListOf(sequenceType, sequenceType), // List<T>, List<G>
         pkg = "core",
         protocols = pairType.protocols,
         typeDeclaration = null
@@ -760,7 +760,7 @@ fun createListProtocols(
                     "joinTransform",
                     Type.Lambda(
                         mutableListOf(KeywordArg("transform", itType)),
-                        differentGenericType
+                        stringType
                     )
                 ),
                 stringType,
@@ -827,7 +827,7 @@ fun createListProtocols(
                         "transform",
                         Type.Lambda(
                             mutableListOf(KeywordArg("transform", itType)),
-                            differentGenericType
+                            stringType
                         )
                     )
                 ),
