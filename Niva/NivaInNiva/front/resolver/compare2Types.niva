@@ -1,0 +1,114 @@
+NivaType compareWith: nivaType::NivaType -> Bool = [
+
+ ^| nivaType
+  | UnitT => [
+    | this
+    | UnitT => true
+    |=> false
+  ]
+  | IntegerT => [
+    | this
+    | IntegerT => true
+    |=> false
+  ]
+  | FloatT => [
+    | this
+    | FloatT => true
+    |=> false
+  ]
+  | DoubleT => [
+    | this
+    | DoubleT => true
+    |=> false
+  ]
+  | BoolT => [
+    | this
+    | BoolT => true
+    |=> false
+  ]
+  | CharT => [
+    | this
+    | CharT => true
+    |=> false
+  ]
+  | StringT => [
+    | this
+    | StringT => true
+    |=> false
+  ]
+  | AnyT => [
+    | this
+    | AnyT => true
+    |=> false
+  ]
+
+  | NothingT => [
+    true
+  ]
+  // compare generics
+  | TypeT => [
+    | this
+    | TypeT => [
+      
+      // this genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
+      // nivaType genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
+
+      (name == nivaType name) &&
+      (pkgName == nivaType pkgName) &&
+      (genericArgs toString == nivaType genericArgs toString)
+    ]
+    |=> false  
+  ]
+  | UnionT => [
+    | this
+    | UnionT => true
+    |=> false  
+  ]
+  // compare each arg and return type
+  | FuntionT => [
+    | this
+    | FuntionT => (fields toString == fields toString)
+    |=> false  
+  ]
+  // compare generics
+  | ListT => [
+    | this
+    | ListT => this t compareWith: nivaType t
+    |=> false  
+  ]
+  | SetT => [
+    | this
+    | SetT => this t compareWith: nivaType t
+    |=> false  
+  ]
+  | MapT => [
+    | this
+    | MapT => [
+      (this k compareWith: nivaType k) && 
+      (this v compareWith: nivaType v)
+    ]
+    |=> false  
+  ]
+  // ???
+  | UnresolvedGenericT => [
+    | this
+    | UnresolvedGenericT => letter == nivaType letter
+    |=> false  
+  ]
+  // ???
+  | NullT => [
+    | this
+    | NullT => true
+    |=> false  
+  ]
+  // compare internal types
+  | NullableT => [
+    | this
+    | NullableT => [
+      this v compareWith: nivaType v
+    ]
+    |=> false  
+  ]
+
+]
+

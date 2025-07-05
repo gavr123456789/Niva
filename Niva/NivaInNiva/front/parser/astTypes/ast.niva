@@ -19,7 +19,7 @@ union Declaration token: Token =
   name: String 
   args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
-  body: List::Expr
+  body: mut List::Expr
   isSingleExpr: Bool
 
 
@@ -43,7 +43,7 @@ TypeDecl toString -> String = [
 // 1 inc dec
 // {{name: "dec" expr: {name: "inc" expr: 1}}}
 
-union MessageSend2 receiver: Expr token: Token =
+union MessageSend receiver: Expr token: Token =
 | UnaryMsg 
     args: List::Identifier
 | BinaryMsg
@@ -84,7 +84,7 @@ union Expr token: Token =
 | ExprInBrackets value: Expr
 | VarDeclaration    name: String value: Expr astType: AstType2?
 | ^CollectionLiteral
-| ^MessageSend2
+| ^MessageSend
 | ReturnStatement value: Expr?
 // only one of the lists can be non empty
 | CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: List::Expr
@@ -92,6 +92,26 @@ union Expr token: Token =
   subject: Expr 
   branches: List::MatchBranch 
   elseBranch: List(Expr) // possible body
+
+| ExprTyped 
+  exprAst: Expr
+  nivaType: NivaType
+  isMutable: Bool
+
+
+
+
+constructor ExprTyped nivaType::NivaType exprAst::Expr isMutable::Bool = ExprTyped 
+  exprAst: exprAst
+  nivaType: nivaType
+  isMutable: isMutable
+  token: exprAst token
+
+  constructor ExprTyped nivaType::NivaType exprAst::Expr = ExprTyped 
+  exprAst: exprAst
+  nivaType: nivaType
+  isMutable: false
+  token: exprAst token
 
 Identifier toString = "$name"
 

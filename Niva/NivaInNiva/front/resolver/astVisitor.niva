@@ -172,12 +172,20 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
 
     c debug
 
+    "BEFORE" echo 
+    body debug
+    body forEachIndexed: [i, expr -> 
+      typedExpr = expr toTypedExprFromDb: db
+      body at: i put: typedExpr
+    ]
+    "AFTER" echo 
     body debug
 
-    body map: [ expr ->
-      typedExpr = expr toTypedExprFromDb: db
-      TO DO: "$typedExpr"
-    ]
+    // body map: [ expr ->
+    //   typedExpr = expr toTypedExprFromDb: db
+    //   typedExpr
+    //   TO DO: "$typedExpr"
+    // ]
 
     TO DO: "return context with vars"
   ] do
@@ -202,67 +210,64 @@ AstVisitor visit: st::Statement = [
 ]
 
 // todo go deep to call visitor on each child note
-Statement accept: visitor::AstVisitor = 
-| this
-| Expr => [
-  visitor visit: this
-  this exprAccept: visitor
-]
-| Declaration => this declAccept: visitor
-// | VarDeclaration => [
+// Statement accept: visitor::AstVisitor = 
+// | this
+// | Expr => [
+//   visitor visit: this
+//   this exprAccept: visitor
+// ]
+// | Declaration => this declAccept: visitor
+// | Assign => [
 //   visitor visit: this
 //   this value exprAccept: visitor
 // ]
-| Assign => [
-  visitor visit: this
-  this value exprAccept: visitor
-]
-| DestructingAssign => [
-  visitor visit: this
-  this value exprAccept: visitor
-]
+// | DestructingAssign => [
+//   visitor visit: this
+//   this value exprAccept: visitor
+// ]
 
 
-Expr exprAccept: visitor::AstVisitor -> Unit = 
-| this
-| LiteralExpr | Identifier | ReturnStatement => [visitor visit: this]
-| ExprInBrackets => [
-  this value exprAccept: visitor
-]
-| CollectionLiteral => [
-  this elements forEach: [it exprAccept: visitor]
-]
-| MessageSend2 => [
-  | this
-  | UnaryMsg => [
-    visitor visit: this
-  ]
-  | BinaryMsg => [
-    this args forEach: [it expr exprAccept: visitor]
-    visitor visit: this
-  ]
-  | KeywordMsg => [
-    this args forEach: [it expr exprAccept: visitor]
-    visitor visit: this
-  ]
+// Expr exprAccept: visitor::AstVisitor -> Unit = 
+// | this
+// | LiteralExpr | Identifier | ReturnStatement => [visitor visit: this]
+// | ExprInBrackets => [
+//   this value exprAccept: visitor
+// ]
+// | ExprTyped => []
+// | CollectionLiteral => [
+//   this elements forEach: [it exprAccept: visitor]
+// ]
+// | MessageSend => [
+//   | this
+//   | UnaryMsg => [
+//     visitor visit: this
+//   ]
+//   | BinaryMsg => [
+//     this args forEach: [it expr exprAccept: visitor]
+//     visitor visit: this
+//   ]
+//   | KeywordMsg => [
+//     this args forEach: [it expr exprAccept: visitor]
+//     visitor visit: this
+//   ]
 
-]
-| CodeBlock => [
-  TO DO
-]
-| Match => TO DO
-| VarDeclaration => TO DO
+// ]
+// | CodeBlock => [
+//   TO DO
+// ]
+// | Match => TO DO
+// | VarDeclaration => TO DO
 
 
 
-Declaration declAccept: visitor::AstVisitor -> Unit = 
-| this
-| TypeDecl =>  visitor visit: this
+// Declaration declAccept: visitor::AstVisitor -> Unit = 
+// | this
+// | TypeDecl =>  visitor visit: this
 
-| EnumDecl => visitor visit: this
-| UnionDecl => visitor visit: this
-| MessageDecl => [
-  // Cant visit receiver type and return types since they are not declarations
-  visitor visit: this
-  this body forEach: [it accept: visitor]
-]
+// | EnumDecl => visitor visit: this
+// | UnionDecl => visitor visit: this
+// | MessageDecl => [
+//   // Cant visit receiver type and return types since they are not declarations
+//   visitor visit: this
+//   this body forEach: [it accept: visitor]
+// ]
