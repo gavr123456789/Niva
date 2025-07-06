@@ -576,13 +576,6 @@ object NivaDevModeDB {
             //@ core.niva:::0
             throw kotlin.Exception(message)
         }
-        
-        // for ct reflection
-        class TypeType(
-            val name: String,
-            val fields: MutableMap<String, TypeType> = mutableMapOf(),
-            val genericParams: MutableList<TypeType> = mutableListOf()
-        )
 
         inline fun Any?.echo() = println(this)
         inline fun Any?.echonnl() = print(this)

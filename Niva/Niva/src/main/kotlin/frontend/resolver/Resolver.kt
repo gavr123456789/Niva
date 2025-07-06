@@ -1857,31 +1857,10 @@ class Resolver(
             )
         )
 
-
-        // TypeType
-        val typeType = Type.UserType(
-            name = "TypeType",
-            typeArgumentList = mutableListOf(),
-            fields = mutableListOf(),
-            pkg = "core",
-            typeDeclaration = null
-        )
-        val fieldsMap = createTypeMapOfType("Map", stringType, typeType, mapTypeMut, "MutableMap")
-
-        // add fields
-        typeType.fields = mutableListOf(
-            KeywordArg("name", stringType),
-            KeywordArg("fields", fieldsMap),
-        )
-
-        addCustomTypeToDb(
-            typeType, mutableMapOf()
-        )
-
         // Compiler
         compiler.protocols.putAll(
             createCompilerProtocols(
-                intType = intType, stringType = stringType, typeType = typeType, listOfString,
+                intType = intType, stringType = stringType, listOfString,
                 unitType = unitType
             )
         )

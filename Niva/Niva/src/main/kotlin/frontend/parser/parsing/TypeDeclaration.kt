@@ -213,10 +213,13 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
                     peek(2).compileError("parsing error, field declaration expected(Identifier after :)")
 
             }
-
             checkMany(TokenType.Identifier, TokenType.Colon) -> {
                 // 1
-                if (checkIdentifier(2) || check(TokenType.OpenBracket, 2))
+                if (checkIdentifier(2) ||
+                    check(TokenType.OpenBracket, 2)
+                    || check(TokenType.OpenBrace, 2) // collection type List
+                    || check(TokenType.OpenBraceHash, 2) // collection type Map
+                    || check(TokenType.OpenParenHash, 2)) // collection type Set
                     KindOfTypeDecl.Field
                 else
                     peek(2).compileError("parsing error, field declaration expected(Identifier after :)")

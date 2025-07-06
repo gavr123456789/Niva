@@ -65,13 +65,65 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
 
 
     // literal collections type set or map
-//    if (match(TokenType.OpenBraceHash)) {
-//        TODO()
-//    }
-    // list
-//    if (match(TokenType.OpenBrace)) {
-//        TODO()
-//    }
+    if (match(TokenType.OpenBraceHash)) {
+        val token = peek(-1)
+        // #{^Int, String}
+        val typeArg1 = parseTypeAST()
+        match(TokenType.Comma)
+        val typeArg2 = parseTypeAST()
+
+        matchAssert(TokenType.CloseBrace, "closing } expected")
+
+        val isNullable = match("?")
+        val isMutable = match("!")
+        return TypeAST.UserType(
+            name = "Map",
+            names = listOf("Map"),
+            typeArgumentList = mutableSetOf(typeArg1, typeArg2),
+            isNullable = isNullable,
+            token = token,
+            errors = null
+        ).also { it.isMutable = isMutable }
+    }
+//     list
+    if (match(TokenType.OpenBrace)) {
+        val token = peek(-1)
+        // {^Int}
+        val typeArg = parseTypeAST()
+
+        matchAssert(TokenType.CloseBrace, "closing } expected")
+
+        val isNullable = match("?")
+        val isMutable = match("!")
+        return TypeAST.UserType(
+            name = "List",
+            names = listOf("List"),
+            typeArgumentList = mutableSetOf(typeArg),
+            isNullable = isNullable,
+            token = token,
+            errors = null
+        ).also { it.isMutable = isMutable }
+    }
+    // set
+    //
+    if (match(TokenType.OpenParenHash)) {
+        val token = peek(-1)
+        // #(^Int)
+        val typeArg = parseTypeAST()
+
+        matchAssert(TokenType.CloseParen, "closing ) expected")
+
+        val isNullable = match("?")
+        val isMutable = match("!")
+        return TypeAST.UserType(
+            name = "Set",
+            names = listOf("Set"),
+            typeArgumentList = mutableSetOf(typeArg),
+            isNullable = isNullable,
+            token = token,
+            errors = null
+        ).also { it.isMutable = isMutable }
+    }
 
 
     val mutableType = match(TokenType.Mut)

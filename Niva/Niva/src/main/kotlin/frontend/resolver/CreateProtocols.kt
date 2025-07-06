@@ -1060,7 +1060,6 @@ enum class CompilerMessages(val str: String) {
 fun createCompilerProtocols(
     intType: Type.InternalType,
     stringType: Type.InternalType,
-    typeType: Type.UserType,
     listOfString: Type.UserType,
     unitType: Type.InternalType,
 ): MutableMap<String, Protocol> {
