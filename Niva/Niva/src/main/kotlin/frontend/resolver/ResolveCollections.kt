@@ -7,7 +7,7 @@ import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
-fun Resolver.fillCollectionType(typeArgumentList: MutableList<Type>, statement2: Receiver, collectionTypeName: String): Type.UserType {
+fun Resolver.setTypeForCollection(typeArgumentList: MutableList<Type>, statement2: Receiver, collectionTypeName: String): Type.UserType {
     val listType =
         this.projects[currentProjectName]!!.packages["core"]!!.types[collectionTypeName] as Type.UserType
 
@@ -60,10 +60,8 @@ fun Resolver.resolveCollection(
                 else null
             } else null
 
-//            val anyType2: Type.InternalType? = null
-//            val firstElemType2: Type? = null
             // try to find list with the same generic type
-            fillCollectionType(mutableListOf(anyType ?: firstElemType), statement, typeName)
+            setTypeForCollection(mutableListOf(anyType ?: firstElemType), statement, typeName)
 
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
@@ -83,7 +81,7 @@ fun Resolver.resolveCollection(
         statement.type = typeFromAstDecl
     }
     else {
-        fillCollectionType(mutableListOf(Type.UnknownGenericType("T")), statement, typeName)
+        setTypeForCollection(mutableListOf(Type.UnknownGenericType("T")), statement, typeName)
     }
 
 }
@@ -143,7 +141,7 @@ fun Resolver.resolveMap2(
     }
     val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"
     if (statement.initElements.isEmpty()) {
-        return fillCollectionType(mutableListOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
+        return setTypeForCollection(mutableListOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
     }
     val (key, value) = statement.initElements[0]
     currentLevel++

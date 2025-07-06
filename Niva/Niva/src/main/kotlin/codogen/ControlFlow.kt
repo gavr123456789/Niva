@@ -101,38 +101,60 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
     }
 }
 
+private fun isReceiverATypeItself(x: Receiver): Boolean =
+    x is IdentifierExpr && x.isType
+
 fun ListCollection.generateList() = buildString {
+    val filteredInitElements = initElements.filter { !isReceiverATypeItself(it) }
+    // x = {Int}
+    val wasTypesInsideCollection = filteredInitElements.count() < initElements.count()
+
     if (!isMutableCollection)
         append("listOf")
     else
         append("mutableListOf")
 
-    // when we have some alias to that, there is an error since it inputs the real type, not aliased, and Kotlin say error no such function, since alias expected(http4k)
+    if (wasTypesInsideCollection && initElements.isNotEmpty()){
+        append("<")
+        append(initElements.first().type!!.toKotlinString(false))
+        append(">")
+    }
 
-//    val type = this@generateList.type
-//    if (type is Type.UserLike && type.typeArgumentList.find { it.name.isGeneric() } == null ) {
-//        append("<")
-//        type.typeArgumentList.forEach {
-//            append(it.toKotlinString(true))
-//        }
-//        append(">")
-//    }
     append("(")
 
-    initElements.forEach(exceptLastDo = { append(", ") }) {
+    filteredInitElements
+        .forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())
     }
 
     append(")")
 }
 
-fun MapCollection.generateMap() = buildString {
-    if (!isMutable)
-        append("mapOf(")
-    else
-        append("mutableMapOf(")
 
-    initElements.forEach(exceptLastDo = { append(", ") }) {
+fun MapCollection.generateMap() = buildString {
+    val filteredInitElements = initElements.filter { (key, value) -> !(isReceiverATypeItself(key) && isReceiverATypeItself(value)) }
+    // x = {Int}
+    val wasTypesInsideCollection = filteredInitElements.count() < initElements.count()
+
+
+
+    if (!isMutable)
+        append("mapOf")
+    else
+        append("mutableMapOf")
+
+    if (wasTypesInsideCollection && initElements.isNotEmpty()){
+        append("<")
+        append(initElements.first().first.type!!.toKotlinString(false))
+        append(", ")
+        append(initElements.first().second.type!!.toKotlinString(false))
+        append(">")
+    }
+
+    append("(")
+
+    filteredInitElements
+        .forEach(exceptLastDo = { append(", ") }) {
         append(it.first.generateExpression(), " to ", it.second.generateExpression())
     }
 
@@ -140,12 +162,25 @@ fun MapCollection.generateMap() = buildString {
 }
 
 fun SetCollection.generateSet() = buildString {
-    if (!isMutableCollection)
-        append("setOf(")
-    else
-        append("mutableSetOf(")
+    val filteredInitElements = initElements.filter { !isReceiverATypeItself(it) }
+    // x = {Int}
+    val wasTypesInsideCollection = filteredInitElements.count() < initElements.count()
 
-    initElements.forEach(exceptLastDo = { append(", ") }) {
+    if (!isMutableCollection)
+        append("setOf")
+    else
+        append("mutableSetOf")
+
+    if (wasTypesInsideCollection && initElements.isNotEmpty()){
+        append("<")
+        append(initElements.first().type!!.toKotlinString(false))
+        append(">")
+    }
+
+    append("(")
+
+    filteredInitElements
+        .forEach(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())
     }
 

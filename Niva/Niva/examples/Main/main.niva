@@ -1,2 +1,23 @@
+//
+//list::{Int}! = {Int}!
+//list add: 1; add: 2
+//
+//map:: #{Int String}! = #{Int String}!
+//map at: 1 put: "a";
+//    at: 2 put: "b";
+//    at: 3 put: "c"
+//
+//
+//set:: #(Int)! = #(Int)!
+//set add: 1; add: 1
+//
+//list echo
+//map echo
+//set echo
 
-x::mut List::Int = {}!
+union Fruit = Apple | Orange
+type FruitStore
+    fruits: {Fruit}
+
+fs = FruitStore fruits: {(Apple new) (Orange new)}
+fs echo

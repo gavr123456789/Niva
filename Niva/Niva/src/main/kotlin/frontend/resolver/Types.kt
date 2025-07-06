@@ -463,39 +463,6 @@ sealed class Type(
 
     }
 
-    class TypeType(
-        val name: String,
-        val fields: MutableMap<String, TypeType> = mutableMapOf(),
-        val genericParams: MutableList<TypeType> = mutableListOf()
-    )
-
-    // type Person name: String age: Int
-    fun toTypeTypeStringRepresentation() = buildString {
-//        TypeType(
-//            "Person", mutableMapOf(
-//                "name" to TypeType("String"),
-//                "age" to TypeType("Int")
-//            )
-//        )
-        append("TypeType(")
-        when (this@Type) {
-            is UserLike -> {
-                append("\n")
-            }
-
-            is InternalType -> {
-                // internal has only name
-                append("")
-            }
-
-            is Lambda -> TODO()
-            is NullableType -> TODO()
-            is UnresolvedType -> TODO()
-        }
-
-        append(")")
-    }
-
     class NullableType(
         val realType: Type
     ) : Type(
