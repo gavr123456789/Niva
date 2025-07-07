@@ -81,7 +81,7 @@ type MatchBranch
 // Expressions
 union Expr token: Token = 
 | ^LiteralExpr 
-| Identifier     name: String
+| Identifier     name: String path: {String}?
 | ExprInBrackets value: Expr
 | VarDeclaration    name: String value: Expr astType: AstType2?
 | ^CollectionLiteral
@@ -115,8 +115,10 @@ constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedEx
 
 Identifier toString = "$name"
 
+
+/// path will be empty when
 constructor Identifier fromToken::Token = 
-  Identifier name: (fromToken lexeme) token: fromToken
+  Identifier name: (fromToken lexeme) token: fromToken path: null
   
 ExprInBrackets toString = "($value)"
 

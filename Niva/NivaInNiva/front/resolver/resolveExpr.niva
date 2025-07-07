@@ -9,7 +9,6 @@ Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
   | StringExpr  => TypedExpr nivaType: (db findByTypeName: "String") exprAst: this
   | BooleanExpr => TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
   | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Null") exprAst: this
-  // | UnitExpr    => TypedExpr nivaType: (db findByTypeName: "Unit") exprAst: this
   // Identifier can be type itself like Unit
   | Identifier     => TO DO: "Identifier to TypedExpr"
   | ExprInBrackets => TO DO: "ExprInBrackets to TypedExpr"

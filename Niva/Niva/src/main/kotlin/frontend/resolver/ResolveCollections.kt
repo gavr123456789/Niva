@@ -48,10 +48,11 @@ fun Resolver.resolveCollection(
         }
 
         val firstElem = statement.initElements[0]
-        val firstElemType = firstElem.type
+        var firstElemType = firstElem.type
         if (firstElemType != null) {
-            firstElemType.beforeGenericResolvedName = "T" // Default List has T type
 
+//            firstElemType.beforeGenericResolvedName = "T" // Default List has T type
+            firstElemType = firstElemType.cloneAndChangeBeforeGeneric("T")
             // set Any type of collection, if {1, "sas"}
             val anyType = if (statement.initElements.count() > 1) {
                 val argTypesNames = statement.initElements.map { it.type?.name }.toSet()
@@ -63,6 +64,7 @@ fun Resolver.resolveCollection(
             // try to find list with the same generic type
             setTypeForCollection(mutableListOf(anyType ?: firstElemType), statement, typeName)
 
+//            firstElemType.beforeGenericResolvedName = null
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }

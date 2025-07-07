@@ -1,3 +1,6 @@
+type Program
+  io: IO
+  
 type IO
   readFile: [String -> String]
   walkDir: [String -> List::String]
@@ -41,14 +44,9 @@ resolver = [
   
 ] 
 
-matchExpr = [
-
-  input2 = """
-    Money make::Int sas::String -> Unit = [
-      1
-    ]
-  """
-  statements2 = TestParse withInput: input2 expectedCount: 1
+parsing = [
+  exprWithPath = 
+    TestParse expression: "a.b.c"
 
 ] do
 
@@ -100,6 +98,7 @@ returnTest = [
   statements = TestParse withInput: input expectedCount: 7
   statements echo
 ] 
+
 
 
   // unions = """
