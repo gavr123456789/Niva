@@ -254,7 +254,11 @@ private fun Resolver.resolveStatement(
                     if (rootStatement is VarDeclaration) {
                         val astValueType = rootStatement.valueTypeAst
                         if (astValueType != null) {
+                            if (!astValueType.isNullable) {
+                                astValueType.token.compileError("You assign null to non nullable type, mark it with ? like $YEL${astValueType.name}?")
+                            }
                             val type = astValueType.toType(typeDB, typeTable)
+
                             statement.type = type
                         }
                     } else {
