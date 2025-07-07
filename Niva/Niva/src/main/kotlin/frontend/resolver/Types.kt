@@ -308,6 +308,16 @@ sealed class Type(
             field = value
         }
 
+    fun cloneAndChangeBeforeGeneric(newValue: String): Type {
+        // we need to copy only when its internal type because bug exist only in LSP
+        // because LSP does not recreate internal types
+        // because they are created inside companion object
+//        return this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
+        return if (this is InternalType)
+            this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
+        else
+            this.also { it.beforeGenericResolvedName = newValue }
+    }
     fun copyAnyType(): Type =
         (when (this) {
             is UserLike -> {
@@ -841,7 +851,7 @@ fun TypeAST.toType(
     resolver: Resolver? = null
 ): Type {
     val replaceToNullableAndAddErrorsIfNeeded = { type: Type ->
-        val isNullable = token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
+        val isNullable = this.isNullable || token.kind == TokenType.NullableIdentifier || token.kind == TokenType.Null
 
         if (isNullable) {
             Type.NullableType(realType = type)
@@ -914,8 +924,12 @@ fun TypeAST.toType(
                         }
                     }
                     return copy.also {
-
                         if (isMutable) it.isMutable = true
+                    }.let {
+                        if (this.isNullable)
+                            Type.NullableType(it)
+                        else
+                            it
                     }
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")

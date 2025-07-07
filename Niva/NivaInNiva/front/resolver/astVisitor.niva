@@ -170,24 +170,14 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
       c defineVar: it name withType: argType
     ]
 
-    c debug
-
-    "BEFORE" echo 
-    body debug
+    c
+  ]
+  c = addReceiverAndArgsToContext do
+  replaceBodyOfUnaryWithTypedExpr = [
     body forEachIndexed: [i, expr -> 
       typedExpr = expr toTypedExprFromDb: db
       body at: i put: typedExpr
     ]
-    "AFTER" echo 
-    body debug
-
-    // body map: [ expr ->
-    //   typedExpr = expr toTypedExprFromDb: db
-    //   typedExpr
-    //   TO DO: "$typedExpr"
-    // ]
-
-    TO DO: "return context with vars"
   ] do
 
   TO DO

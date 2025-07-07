@@ -1,5 +1,21 @@
 
 
+
+Test expressionWithDots -> Unit! = [
+  input = """
+    a.b.c
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  ident = statements at: 0
+  | ident
+  | Identifier => [
+    path = ident path unpackOrPANIC
+    Assert that: path count equals: 3
+  ]
+  |=> []
+  
+]
+
 Test varDeclarationExpr -> Unit! = [
   input = """
     x = 56

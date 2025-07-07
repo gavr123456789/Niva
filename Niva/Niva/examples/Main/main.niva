@@ -15,9 +15,16 @@
 //map echo
 //set echo
 
-union Fruit = Apple | Orange
-type FruitStore
-    fruits: {Fruit}
+//union Fruit = Apple | Orange
+//type FruitStore
+//    fruits: List(Int)?
 
-fs = FruitStore fruits: {(Apple new) (Orange new)}
-fs echo
+//fs = FruitStore fruits: null
+//fs echo
+
+type Sas
+    name: List(Int)?
+
+sas = Sas name: null
+
+//nullableList::{Int}? = null

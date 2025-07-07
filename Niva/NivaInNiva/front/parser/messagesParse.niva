@@ -15,7 +15,7 @@ extend mut Parser [
           c <- false
         ] ifFalse: [
           identifier = .step
-          expr = (Identifier name: (tok lexeme) token: tok)
+          expr = (.parseDotSeparatedIdentifier: tok)
           result add: expr
           sep unpack: [.match: it]
           Unit

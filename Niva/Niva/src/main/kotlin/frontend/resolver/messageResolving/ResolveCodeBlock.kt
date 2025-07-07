@@ -143,7 +143,7 @@ fun Resolver.resolveCodeBlock(
                     typeOfFirstArgs
                 } else {
                     val foundRealType = genericLetterToTypesOfReceiver[typeOfFirstArgs.name]
-                        ?: throw Exception("Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock, use receiver that has generic param")
+                        ?: throw Exception("Compiler bug: Can't find resolved type ${typeOfFirstArgs.name} while resolving codeblock, use receiver that has generic param")
                     foundRealType
                 }
                 previousAndCurrentScope["it"] = typeForIt
@@ -210,7 +210,8 @@ fun Resolver.resolveCodeBlock(
             val e = metaDataFound.argTypes[0]
             val type = e.type
             if (type is Type.Lambda) {
-                returnType.beforeGenericResolvedName = type.returnType.name
+                type.returnType =  returnType.cloneAndChangeBeforeGeneric(type.returnType.name)
+//                returnType.beforeGenericResolvedName = type.returnType.name
             }
         }
         args.add(KeywordArg("it", itArgType))

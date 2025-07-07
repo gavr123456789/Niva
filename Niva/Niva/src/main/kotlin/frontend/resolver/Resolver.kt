@@ -1084,7 +1084,7 @@ val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, l
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = mutableListOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
@@ -1098,7 +1098,7 @@ val createTypeListOfType = { name: String, elementType: Type.InternalType, listT
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
     Type.UserType(
         name = name,
-        typeArgumentList = mutableListOf(elementType.copy().also { it.beforeGenericResolvedName = "T" }),
+        typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
         pkg = "core",
         protocols = listTypeProtocolDonor.protocols,
@@ -1113,8 +1113,10 @@ val createTypeMapOfType = { name: String, key: Type.InternalType, value: Type.Us
     Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(
-            key.copy().also { it.beforeGenericResolvedName = "T" },
-            value.copy().also { it.beforeGenericResolvedName = "G" }),
+            key.cloneAndChangeBeforeGeneric("T"),
+            value.cloneAndChangeBeforeGeneric("G")),
+//            key.copy().also { it.beforeGenericResolvedName = "T" },
+//            value.copy().also { it.beforeGenericResolvedName = "G" }),
         fields = mutableListOf(),
         pkg = "core",
         protocols = mapType.protocols,
@@ -1872,11 +1874,11 @@ class Resolver(
     }
 }
 
-private fun Type.InternalType.copy(): Type.InternalType {
-    return Type.InternalType(
-        typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
-    )
-}
+//private fun Type.InternalType.copy(): Type.InternalType {
+//    return Type.InternalType(
+//        typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
+//    )
+//}
 
 fun <E> ArrayDeque<E>.pop(): E = this.removeLast()
 fun <E> ArrayDeque<E>.push(e: E) = this.add(e)

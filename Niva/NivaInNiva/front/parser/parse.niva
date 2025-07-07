@@ -63,6 +63,25 @@ extend mut Parser [
     ^ result
   ]
 
+  /// a^.b.c
+  on parseDotSeparatedIdentifier: tok::Token -> Identifier = [
+    ^ .match: TokenType.Dot, ifTrue: [
+
+      path = {(tok lexeme)}!
+      mut c = true 
+      [c] whileTrue: [
+        ident = .matchAssert: TokenType.Identifier
+        .peek debug 
+        ident debug
+        path add: ident lexeme 
+        c <- .match: TokenType.Dot
+      ]
+      Identifier name: tok lexeme token: tok path: path
+    ] ifFalse: [
+      Identifier name: tok lexeme token: tok path: null
+    ]
+  ]
+
   /// "", 1, 1.1, true, []
   on literalExprFrom: tok::Token -> LiteralExpr? = [
     mut isAdded = false
@@ -156,7 +175,7 @@ extend mut Parser [
     ]
 
     tok isNullOrIdentifier ifTrue: [
-      ^ Identifier name: tok lexeme token: tok
+      ^.parseDotSeparatedIdentifier: tok
     ]
 
     .parseCollection: tok, unpack: [
@@ -720,16 +739,6 @@ extend mut Parser [
       tok
     ] ifFalse: [
       TO DO: error
-    ]
-  ]
-
-  on parseNullOrIdentifier -> Identifier? = [
-    tok = .peek
-    ^ tok isNullOrIdentifier ifTrue: [
-      .step
-      Identifier name: tok lexeme token: tok
-    ] ifFalse: [
-      null
     ]
   ]
 

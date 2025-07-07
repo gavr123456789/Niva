@@ -64,7 +64,7 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     // x::Int!ErrorType
 
 
-    // literal collections type set or map
+    // map::{String Int}!?
     if (match(TokenType.OpenBraceHash)) {
         val token = peek(-1)
         // #{^Int, String}
@@ -74,8 +74,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
 
         matchAssert(TokenType.CloseBrace, "closing } expected")
 
-        val isNullable = match("?")
         val isMutable = match("!")
+        val isNullable = match("?")
         return TypeAST.UserType(
             name = "Map",
             names = listOf("Map"),
@@ -93,8 +93,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
 
         matchAssert(TokenType.CloseBrace, "closing } expected")
 
-        val isNullable = match("?")
         val isMutable = match("!")
+        val isNullable = match("?")
         return TypeAST.UserType(
             name = "List",
             names = listOf("List"),
@@ -105,7 +105,6 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
         ).also { it.isMutable = isMutable }
     }
     // set
-    //
     if (match(TokenType.OpenParenHash)) {
         val token = peek(-1)
         // #(^Int)
@@ -113,8 +112,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
 
         matchAssert(TokenType.CloseParen, "closing ) expected")
 
-        val isNullable = match("?")
         val isMutable = match("!")
+        val isNullable = match("?")
         return TypeAST.UserType(
             name = "Set",
             names = listOf("Set"),
