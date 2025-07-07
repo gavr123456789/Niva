@@ -101,7 +101,7 @@ fun Resolver.resolveVarDeclaration(
     if (definedASTType != null) {
         val statementDeclared = definedASTType.toType(typeDB, typeTable)
         val rightPartType = typeOfValueInVarDecl
-        if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = true, compareMutability = false)) {
+        if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = false, compareMutability = false)) {
             val text = "$definedASTType != $rightPartType"
             statement.token.compileError("Type declared for ${YEL}${statement.name}$RESET is not equal for it's value type ${YEL}$text")
         }

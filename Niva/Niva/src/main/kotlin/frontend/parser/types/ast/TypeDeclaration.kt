@@ -68,45 +68,7 @@ sealed class TypeAST(
         isPrivate: Boolean = false,
         pragmas: MutableList<Pragma> = mutableListOf(),
         errors: List<String>? = null
-    ) : TypeAST(name, isNullable, token, isPrivate, pragmas, errors = errors) {
-//        fun toMethodReference(forType: TypeAST): MethodReference {
-//            val names2 = inputTypesList.map { it.name }
-//            val count = inputTypesList.count()
-//
-//            return when {
-////                 вот тут вот надо вообщещето попытаться понять что это, но пока не ясно каким способом
-////                         1 может быть как унари байнари так и кв, 2 может быть только кв, но как отличать когда 1
-////                         String.[from] // это унари или кв???
-//
-//                count == 0  -> {
-//                    MethodReference.Unary(
-//                        forIdentifier = forType,
-//                        name = forType.name,
-//                        token = token,
-//                    )
-//                }
-//                count == 1 -> {
-//                    MethodReference.Binary(
-//                        forIdentifier = forType,
-//                        name = forType.name,
-//                        token = token,
-//                    )
-//                }
-//                count > 1 -> {
-//                    MethodReference.Keyword(
-//                        keys = names2,
-//                        forIdentifier = forType,
-//                        name = forType.name,
-//                        token = token,
-//                    )
-//                }
-//                else -> {
-//                    throw Exception()
-//                }
-//            }
-//
-//        }
-    }
+    ) : TypeAST(name, isNullable, token, isPrivate, pragmas, errors = errors)
 }
 
 
