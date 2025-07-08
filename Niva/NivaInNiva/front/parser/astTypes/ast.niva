@@ -5,9 +5,15 @@
 union Statement token: Token =
 | ^Expr
 | ^Declaration
-// TODO move to Expr
-| Assign            name: String value: Expr
-| DestructingAssign names: List::String value: Expr // {name} = person
+
+// TODO maybe replace with union
+// union Body2 = 
+// | TypedBody v: List::TypedExpr 
+// | UntypedBody v: List::Expr 
+
+type Body 
+  typedBody: mut List::TypedExpr
+  unTypedBody: List::Expr
 
 
 
@@ -20,7 +26,7 @@ union Declaration token: Token =
   name: String 
   args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
-  body: mut List::Expr
+  body: Body
   isSingleExpr: Bool
 
 
@@ -74,8 +80,8 @@ KeywordMsg toString = [
 // | 4 => body
 type MatchBranch 
   condition: Expr
-  conditions: List::Expr
-  body: List::Expr
+  conditions: Body
+  body: Body
 
 
 // Expressions
@@ -84,15 +90,18 @@ union Expr token: Token =
 | Identifier     name: String path: {String}?
 | ExprInBrackets value: Expr
 | VarDeclaration    name: String value: Expr astType: AstType2?
+| Assign            name: String value: Expr
+| DestructingAssign names: List::String value: Expr // {name} = person
+
 | ^CollectionLiteral
 | ^MessageSend
 | ReturnStatement value: Expr?
 // only one of the lists can be non empty
-| CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: List::Expr
+| CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: Body
 | Match 
   subject: Expr 
   branches: List::MatchBranch 
-  elseBranch: List(Expr) // possible body
+  elseBranch: Body? // possible body
 | TypedExpr 
   exprAst: Expr
   nivaType: NivaType
@@ -165,7 +174,7 @@ extend mut AstType [
 
 
 
-union CollectionLiteral token: Token elements: List::Expr = 
+union CollectionLiteral token: Token elements: Body = 
 | ListLiteral
 | SetLiteral
 | MapLiteral

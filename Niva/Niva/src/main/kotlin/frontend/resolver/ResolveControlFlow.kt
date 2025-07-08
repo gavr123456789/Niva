@@ -172,7 +172,7 @@ fun Resolver.resolveControlFlow(
             }
 
             // compare the current branch type with the last one
-            if (i > 0) {
+            if (i > 0 && (statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.Expression)) {
                 val prev = statement.ifBranches[i - 1]
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
@@ -383,7 +383,7 @@ fun Resolver.resolveControlFlow(
             }
 
             // compare the current branch type with the last one
-            if (i > 0) {
+            if (i > 0 && (statement.kind == ControlFlowKind.ExpressionTypeMatch || statement.kind == ControlFlowKind.Expression)) {
                 val prev = statement.ifBranches[i - 1]
 
                 val prevType: Type = prev.getReturnTypeOrThrow()

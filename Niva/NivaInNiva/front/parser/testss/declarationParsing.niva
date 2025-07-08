@@ -262,9 +262,9 @@ Test parseKeywordDeclWithBody -> Unit! = [
     ]
     |=> TO DO: "It should be AstType, but it " + receiver toString
 
-    varDeclaration   = body at: 0
-    unaryInc = body at: 1
-    unaryDec = body at: 2
+    varDeclaration   = body unTypedBody at: 0
+    unaryInc = body unTypedBody at: 1
+    unaryDec = body unTypedBody at: 2
 
     | varDeclaration
     | VarDeclaration => []

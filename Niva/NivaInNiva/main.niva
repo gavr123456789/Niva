@@ -21,7 +21,7 @@ resolver = [
     Money make::Int sas::String -> Int = [
       x::Int = 42
       1 inc dec
-      2 inc
+      x inc
     ]
   """
 
@@ -38,17 +38,17 @@ resolver = [
   msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: listOfFilesContents
 
-  MsgDeclVisitor new processBodyesFromPkgToMsg: msgDecls db: db
-  db echo
+  MsgDeclVisitor new processBodyes: msgDecls db: db
+  
 
   
-] 
+] do
 
 parsing = [
   exprWithPath = 
     TestParse expression: "a.b.c"
 
-] do
+]
 
 
 

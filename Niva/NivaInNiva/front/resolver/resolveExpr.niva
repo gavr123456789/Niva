@@ -1,4 +1,4 @@
-Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
+Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   
 
  ^| this
@@ -10,7 +10,15 @@ Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
   | BooleanExpr => TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
   | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Null") exprAst: this
   // Identifier can be type itself like Unit
-  | Identifier     => TO DO: "Identifier to TypedExpr"
+  | Identifier     => [
+    varType = c lookupForVar: this name
+    | varType
+    | null => TO DO: "Cant find $this in the current context"
+    |=> [
+      varType 
+      TypedExpr nivaType: varType exprAst: this
+    ]
+  ]
   | ExprInBrackets => TO DO: "ExprInBrackets to TypedExpr"
   | ListLiteral    => TO DO: "ListLiteral to TypedExpr"
   | SetLiteral     => TO DO: "SetLiteral to TypedExpr"
@@ -19,7 +27,7 @@ Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
   | UnaryMsg   => [
     // replacing every expr inside typeAndExpr with typedExpr to be able to tell the types of each arg
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: unary without args is like a single identifier"]
-    tupleOfUnaryAndType = .replaceArgsWithTypedfromDb: db
+    tupleOfUnaryAndType = .replaceArgsWithTypedfromDb: db withContext: c
     ^TypedExpr 
       exprAst: tupleOfUnaryAndType x 
       nivaType: tupleOfUnaryAndType y 
@@ -32,24 +40,29 @@ Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
 
   | VarDeclaration  => [
 
-    TypedExpr = this value toTypedExprFromDb: db
+    typedExpr = this value toTypedExprFromDb: db withContext: c
     // check that ast type is the same as declared
     this astType unpack: [
       // x::Int = "ars"
       nivaType = db findByTypeName: it name
-      TypedExpr nivaType compareWith: nivaType, ifFalse: [
+      typedExpr nivaType compareWith: nivaType, ifFalse: [
         valName = name
         astTypeName = it name
-        realTypeName = TypedExpr nivaType name
+        realTypeName = typedExpr nivaType name
         // TODO add it to error list
         TO DO: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
       ]
     ]
+
+    c defineVar: name withType: typedExpr nivaType
+
     TypedExpr 
-      nivaType: TypedExpr nivaType 
+      nivaType: typedExpr nivaType 
       exprAst: this 
-      isMutable: TypedExpr isMutable
+      isMutable: typedExpr isMutable
   ]
+  | Assign => TO DO
+  | DestructingAssign => TO DO
   | ReturnStatement => TO DO: "ReturnStatement to TypedExpr"
 
   | CodeBlock => TO DO: "CodeBlock to TypedExpr"
@@ -64,10 +77,10 @@ Expr toTypedExprFromDb: db::TyperDB -> TypedExpr = [
 
 type Tuple x: T y: G 
 
-UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB -> Tuple(UnaryMsg, NivaType) = [
+UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
   
   // recreate receiver
-  receiverTypedExpr = receiver toTypedExprFromDb: db
+  receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
 
   typeOfReceiver = receiverTypedExpr nivaType
   // recreate args
