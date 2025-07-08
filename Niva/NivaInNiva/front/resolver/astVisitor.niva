@@ -138,14 +138,9 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) 
   ]
 ]
 
-MsgDeclVisitor processBodyesFromPkgToMsg: pkg2Msg::Map(String, MessageDecl) db::TyperDB = [
+MsgDeclVisitor processBodyes: pkg2Msg::Map(String, MessageDecl) db::TyperDB = [
   pkg2Msg forEach: [pkgName, msgDecl -> 
-    // msgDecl echo
-
-  
     msgDecl resolveBodyWithDb: db
-    db //findMethodByName
-    TO DO : "findMethodByName"
   ]
 
 ]
@@ -159,7 +154,7 @@ type MessagesWithContext
 
 MessageDecl resolveBodyWithDb: db::TyperDB = [
   // add receiver  as "this" to context
-  addReceiverAndArgsToContext = [
+  createContextWithThisAndArgs = [
     c = Context root
     receiver = db findByTypeName: receiver name inPkg: null
     c defineVar: "this" withType: receiver
@@ -172,16 +167,14 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
 
     c
   ]
-  c = addReceiverAndArgsToContext do
-  replaceBodyOfUnaryWithTypedExpr = [
-    body forEachIndexed: [i, expr -> 
-      typedExpr = expr toTypedExprFromDb: db
-      body at: i put: typedExpr
-    ]
-  ] do
 
-  TO DO
+  c = createContextWithThisAndArgs do
+  body resolve: db withContext: c
+
+  body typedBody count debug
+  
 ]
+
 
 
 

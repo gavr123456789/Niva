@@ -51,15 +51,15 @@ Test listLiterals -> Unit! = [
   set = statements at: 2
 
   | list 
-  | ListLiteral => [Assert that: list elements count equals: 3]
+  | ListLiteral => [Assert that: list elements unTypedBody count equals: 3]
   |=> [TO DO: "$list is not list literal"]
 
   | map 
-  | MapLiteral => [Assert that: map elements count equals: 4]
+  | MapLiteral => [Assert that: map elements unTypedBody count equals: 4]
   |=> [TO DO: "$list is not map literal"]
 
   | set 
-  | SetLiteral => [Assert that: set elements count equals: 3]
+  | SetLiteral => [Assert that: set elements unTypedBody count equals: 3]
   |=> [TO DO: "$list is not set literal"]
 
 

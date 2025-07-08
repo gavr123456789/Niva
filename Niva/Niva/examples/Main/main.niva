@@ -15,16 +15,16 @@
 //map echo
 //set echo
 
-//union Fruit = Apple | Orange
+union Fruit = Apple | Orange
 //type FruitStore
 //    fruits: List(Int)?
-
+//
 //fs = FruitStore fruits: null
 //fs echo
 
-type Sas
-    name: List(Int)?
+x = Apple new
 
-sas = Sas name: null
+| x
+| Apple => 56
+| Orange => "aaa"
 
-//nullableList::{Int}? = null

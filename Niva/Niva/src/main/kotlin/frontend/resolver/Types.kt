@@ -312,11 +312,11 @@ sealed class Type(
         // we need to copy only when its internal type because bug exist only in LSP
         // because LSP does not recreate internal types
         // because they are created inside companion object
-//        return this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
-        return if (this is InternalType)
-            this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
-        else
-            this.also { it.beforeGenericResolvedName = newValue }
+        return this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
+//        return if (this is InternalType)
+//            this.copyAnyType().also { it.beforeGenericResolvedName = newValue }
+//        else
+//            this.also { it.beforeGenericResolvedName = newValue }
     }
     fun copyAnyType(): Type =
         (when (this) {

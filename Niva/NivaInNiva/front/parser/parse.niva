@@ -136,7 +136,7 @@ extend mut Parser [
           Unit
         ]
       ]
-      body
+      Body typedBody: {}! unTypedBody: body
     ]
 
    ^| tok kind
@@ -149,7 +149,7 @@ extend mut Parser [
       body = manyPrimary do
       .match: TokenType.CloseBrace
 
-      body count % 2 != 0 ifTrue: [
+      body unTypedBody count % 2 != 0 ifTrue: [
         TO DO: "elements count in Map should be even"
       ]
 
@@ -230,7 +230,7 @@ extend mut Parser [
   ]
 
 
-  on parseManyExprUntilTok: until::TokenType split::TokenType? -> List::Expr = [
+  on parseManyExprUntilTok: until::TokenType split::TokenType? -> Body = [
     body::mut List::Expr = {}!
     
     mut c = true
@@ -249,7 +249,9 @@ extend mut Parser [
       ]
     ]
 
-    ^ body
+    result = Body typedBody: {}! unTypedBody: body
+
+    ^ result
   ]
   on parseManyExprSplitBy: split::TokenType -> List::Expr = [
     body::mut List::Expr = {}!
@@ -267,14 +269,16 @@ extend mut Parser [
     ^ body
   ]
 
-  on parseBodyOrSingleExpr -> List::Expr = [
+
+  /// return body untyped
+  on parseBodyOrSingleExpr -> Body = [
     // tokens map: [it kind toString + "\t\t" + it lexeme], joinWith: "\n"
     ^ .match: TokenType.OpenBracket, ifTrue: [
       // parse body
       .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
-      {(.nextExperssion: .step)}
+      Body typedBody: {}! unTypedBody: {(.nextExperssion: .step)}
     ]
   ]
 
@@ -315,8 +319,7 @@ extend mut Parser [
 
   on parseMatch: tok::Token -> Match = [
     branches::mut List::MatchBranch = {}!
-    mut elseBranch::List(Expr) = {}
-
+    mut elseBranch::Body? = null
     subject = .nextExperssion: .step
 
     parseBranches = [
@@ -333,7 +336,8 @@ extend mut Parser [
         .matchAssert: TokenType.Then
 
         body = .parseBodyOrSingleExpr
-        mb = MatchBranch condition: exprs first conditions: (exprs drop: 1) body: body
+        conditions = Body typedBody: {}! unTypedBody: (exprs drop: 1)
+        mb = MatchBranch condition: exprs first conditions: conditions body: body
         branches add: mb
 
         c <- .match: TokenType.If
@@ -396,7 +400,7 @@ extend mut Parser [
         // Int inc ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr toMutableList
+        body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
           receiver: receiverType
@@ -422,7 +426,7 @@ extend mut Parser [
         // Int a::Int b::Int ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr toMutableList
+        body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
           receiver: receiverType
@@ -454,7 +458,7 @@ extend mut Parser [
         // Int inc ->? = ^[]
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr toMutableList
+        body = .parseBodyOrSingleExpr
 
         msgDecl = MessageDecl 
           receiver: receiverType
