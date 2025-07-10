@@ -23,6 +23,7 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
   pkgTotypeDecls::mut Map(String, TypeDecl) = #{}!
   msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
+  msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
 
 
   // first iteration, fill the lists of statements, create pkgs
@@ -40,7 +41,10 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
         noFieldsTypes at: it name put: noFieldsType
         pkgTotypeDecls at: pkgName put: it
       ]
-      | MessageDecl => msgDecls at: pkgName put: it
+      | MessageDecl => [
+        msgDecls2 add: (Tuple x: pkgName y: it) 
+        Unit]
+      // msgDecls at: pkgName put: it debug
       | UnionDecl => TO DO: "UnionDecl"
       | EnumDecl => TO DO: "EnumDecl"
       |=> []
@@ -50,16 +54,23 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
   fillTypesAndMessages = [
     pkgTotypeDecls forEach: [ pkgName, typeDecl ->
       readyToAddToDBType = .fillFields: typeDecl knownTypeNames: noFieldsTypes
-      readyToAddToDBType unpack: [
-        db addNewType: it inPkg: pkgName
-        it name + " type added to db", echo
+      readyToAddToDBType unpack: [ resolvedType ->
+        db addNewType: resolvedType inPkg: pkgName
+        "added type " + resolvedType name, echo
+      ]
+      readyToAddToDBType == null ifTrue: [
+        name = typeDecl name
+        TO DO: "cant fill fields for $name"
       ]
     ]
     
 
     // msg decls resolving
     // here we should have all the types resolved
-    msgDecls forEach: [ pkg, msg ->
+    msgDecls2 forEach: [ tuple ->
+      pkg = tuple x 
+      msg = tuple y
+
       // get real type for receiver
       receiverType = db findByTypeName: msg receiver name inPkg: null // we cant know the concrete pkg here
       // get real type for each arg
@@ -68,7 +79,6 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
         argType = db findByTypeName: argAstType inPkg: null // we cant know the concrete pkg here
         TypeTField name: arg name typeT: argType
       ]
-
 
 
       getReturnType = [
@@ -83,7 +93,7 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
       isMutable = | astOfReceiver
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
-
+      
       method = NivaMethod name: msg name args: argsT returnType: (msg getReturnTypeFromDb: db) forMut: isMutable possibleErrors: {}
       db addNewMethod: method forType: receiverType inProtocol: null
       "added method " + method name, echo
@@ -142,7 +152,6 @@ MsgDeclVisitor processBodyes: pkg2Msg::Map(String, MessageDecl) db::TyperDB = [
   pkg2Msg forEach: [pkgName, msgDecl -> 
     msgDecl resolveBodyWithDb: db
   ]
-
 ]
 
 // every message with its context attached
@@ -170,9 +179,6 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
 
   c = createContextWithThisAndArgs do
   body resolve: db withContext: c
-
-  body typedBody count debug
-  
 ]
 
 

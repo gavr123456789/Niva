@@ -114,6 +114,15 @@ private class FakeToken {
     }
 }
 
+fun createFakeToken(lexeme: String): Token = Token(
+    kind = TokenType.Identifier,
+    lexeme = lexeme,
+    line = 0,
+    pos = Position(0, 0),
+    relPos = Position(0, 1),
+    file = FakeToken.fakeToken.file
+)
+
 fun createFakeToken(): Token = FakeToken.fakeToken
 fun createFakeToken2(name: String, lineNum: Int, start: Int, end: Int, file: File): Token =
     Token(

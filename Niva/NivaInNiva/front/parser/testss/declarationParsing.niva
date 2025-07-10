@@ -113,6 +113,15 @@ Test parseUnion -> Unit! = [
 ]
 
 
+Test parseUnaryConstructor -> Unit! = [
+  input = """
+    constructor Int theAnswer = 42
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  cnstr = statements at: 0
+]
+
 Test parseUnaryDecl -> Unit! = [
   input = """
     Int inc -> Bool = [ 
@@ -199,7 +208,7 @@ Test parseKeywordDecl -> Unit! = [
   | MessageDecl => [
     Assert 
       that: keyword name
-      equals: "from"
+      equals: "from:to:"
     Assert
       that: keyword args count
       equals: 2

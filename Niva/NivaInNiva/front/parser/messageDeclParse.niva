@@ -1,0 +1,118 @@
+
+mut Parser 
+  messageDeclarationOrExpression: tok::Token 
+  savedPosition: savePosition::Int
+  isConstructor::Bool -> Statement = [
+
+  // message declaration or exprassion
+  getReturnType = [
+    .match: TokenType.ReturnArrow, ifTrue: [
+      .parseType
+    ] ifFalse: [null]
+  ]
+
+  // change current position back to parse receiver
+  .stepBack
+  receiverType = .parseType
+
+  // Int^ inc =
+  // Int^ a::Int b::Int =
+  // Int^ a: q::Int b::Int =
+  // Int^ + a::Int =
+  tok2 = .step
+  result = | tok2 kind
+  | TokenType.Identifier => [
+    // Int inc^ ->? = []
+    
+    returnType = getReturnType do 
+    name = tok2 lexeme
+
+    .match: TokenType.Assign, ifFalse: [
+      .restoreFrom: savePosition
+      ^ .nextExperssion: .step
+    ] 
+    // Int inc ->? = ^[]
+    isSingleExpr = .peek kind != TokenType.OpenBracket
+    body = .parseBodyOrSingleExpr
+
+    msgDecl = MessageDecl 
+      receiver: receiverType
+      name: name
+      args: {}
+      returnType: returnType
+      token: tok
+      body: body       
+      isSingleExpr: isSingleExpr
+      isConstructor: false
+
+    msgDecl
+  ]
+  | TokenType.IdentifierDoubleColon => [
+    // Int inc^::Int b::Int =
+    
+    kwArgs = .parseNameDoubleColonAstTypePair: tok2 separatedBy: null
+
+    returnType = getReturnType do 
+    name = tok2 lexeme
+    
+    .matchAssert: TokenType.Assign
+    // Int a::Int b::Int ->? = ^[]
+
+    isSingleExpr = .peek kind != TokenType.OpenBracket
+    body = .parseBodyOrSingleExpr
+    kwName = kwArgs joinWith: ":" transform: [
+      it name
+    ], + ":"
+    msgDecl = MessageDecl 
+      receiver: receiverType
+      name: kwName
+      args: kwArgs toList//{(NameAndAstType name: arg lexeme astType: argType)}
+      returnType: returnType
+      token: tok
+      body: body 
+      isSingleExpr: isSingleExpr
+      isConstructor: false
+
+    msgDecl
+  ]
+  | TokenType.BinarySymbol => [
+    // Int +^ a::Int -> Int=
+
+    // if its not binary declaration then parse expression
+    arg = .step
+    arg kind == TokenType.IdentifierDoubleColon, ifFalse: [
+      .restoreFrom: savePosition
+      ^.nextExperssion: .step
+    ]
+    argType = .parseType
+
+
+    returnType = getReturnType do 
+    name = tok2 lexeme
+    
+    .matchAssert: TokenType.Assign
+    // Int inc ->? = ^[]
+
+    isSingleExpr = .peek kind != TokenType.OpenBracket
+    body = .parseBodyOrSingleExpr
+
+    msgDecl = MessageDecl 
+      receiver: receiverType
+      name: name
+      args: {(NameAndAstType name: arg lexeme astType: argType)}
+      returnType: returnType
+      token: tok
+      body: body   
+      isSingleExpr: isSingleExpr     
+      isConstructor: false
+
+    // statements add: msgDecl
+    msgDecl
+  ]
+  |=> [
+    .restoreFrom: savePosition
+    ^.nextExperssion: .step
+  ]
+
+  ^ result
+] 

@@ -123,11 +123,24 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 }
 
 fun MutableList<Pragma>.addInvisibleArgsToMethodDeclaration(args: List<KeywordDeclarationArg>, builder: StringBuilder) {
-    this.asSequence().filterIsInstance<KeyPragma>().filter { it.name == "arg" }.forEachIndexed { i, it ->
+    val seq = this.asSequence()
+    val keyPragmas = seq.filterIsInstance<KeyPragma>()
+    val nameOfTheArgPragmas = keyPragmas.filter { it.name == "arg" }
+//    val callerPlacePragma = keyPragmas.filter { it.name == "callerPlace" }
+
+    nameOfTheArgPragmas.forEachIndexed { i, it ->
         if (args.isNotEmpty() || i > 0) builder.append(", ")
         val num = it.value.token.lexeme
         builder.append("__arg", num, ": String")
     }
+
+//    callerPlacePragma.forEachIndexed { i, it ->
+//        val allArgs = nameOfTheArgPragmas.count() + args.count()
+//
+//        if (allArgs != 0 || i > 0) builder.append(", ")
+////        val codePlace = it.value.token.prettyCodePlace()
+//        builder.append("callerPlace", ": String")
+//    }
 }
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
@@ -214,7 +227,7 @@ private fun returnTypeAndBodyPart(
     if (debug != null && msgDecl !is ConstructorDeclaration) {
         if (msgDecl is MessageDeclarationKeyword) {
             msgDecl.args.forEach { arg ->
-                val thisExpr = IdentifierExpr(arg.name, token = arg.tok).also {
+                val thisExpr = IdentifierExpr(arg.localName ?: arg.name, token = arg.tok).also {
                     it.isInlineRepl = true
                 }
                 msgDecl.body.addFirst(thisExpr)

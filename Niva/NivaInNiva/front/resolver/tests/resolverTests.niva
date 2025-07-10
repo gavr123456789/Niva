@@ -1,0 +1,30 @@
+Test resolveAFewDeclarations = [
+  
+  fileMain = """
+    // type Money declared in a different file
+    Int make::Wallet sas::Person -> Int = [
+      x::Int = 42
+      1 inc dec
+      2 inc
+    ]
+
+    type Person age: Int 
+    type Wallet money: Int
+
+  """
+
+  statements  = TestParse withInput: fileMain expectedCount: -1
+  listOfFilesContents = #{"main" statements} 
+  db = TyperDB new
+
+  msgDecls = TypeDeclVisitor db: db, 
+    visitAllTypesThenTypesAndMethods: listOfFilesContents
+
+  MsgDeclVisitor new processBodyes: msgDecls db: db
+
+  mainPkg = db packages at: "main", unpackOrPANIC
+
+  mainPkg types at: "Person", unpackOrPANIC
+  mainPkg types at: "Wallet", unpackOrPANIC
+
+]

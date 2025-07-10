@@ -37,9 +37,7 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
     |=> false
   ]
   | AnyT => [
-    | this
-    | AnyT => true
-    |=> false
+    true
   ]
 
   | NothingT => [
