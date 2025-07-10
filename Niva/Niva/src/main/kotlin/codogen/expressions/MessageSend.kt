@@ -7,12 +7,15 @@ import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.CompilerMessages
 import frontend.resolver.Type
 import main.frontend.meta.compileError
+import main.frontend.meta.prettyCodePlace
 import main.frontend.parser.types.ast.*
 import main.utils.*
 
 
+data class EvaledPragmas(val isThereEmit: Boolean, val invisibleArgs: List<String>?)
+
 // second in pair is a list of invisible args
-val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
+val evalPragmas: (Message) -> EvaledPragmas = { it: Message ->
     if (it.pragmas.isNotEmpty()) {
         val keyPragmas = mutableListOf<KeyPragma>()
         val singleWordPragmas = mutableListOf<SingleWordPragma>()
@@ -26,8 +29,11 @@ val evalPragmas: (Message) -> Pair<Boolean, List<String>?> = { it: Message ->
         replaceNameFromPragma(it, keyPragmas)
         emitFromPragma(it, keyPragmas)
         val newInvisibleArgs = ctNames(it, keyPragmas)
-        Pair(it.pragmas.find { it.name == Pragmas.EMIT.v } != null, newInvisibleArgs)
-    } else Pair(false, null)
+//        val codePlaceArg = codePlace(it, keyPragmas)
+
+//        val combined = (newInvisibleArgs.orEmpty() + codePlaceArg.orEmpty())
+        EvaledPragmas(it.pragmas.find { it.name == Pragmas.EMIT.v } != null, newInvisibleArgs)
+    } else EvaledPragmas(false, null)
 }
 
 fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
@@ -69,10 +75,10 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
         // pragmas for binary args
         if (it is BinaryMsg) {
             it.unaryMsgsForArg.forEach { binary ->
-                isThereEmitPragma = evalPragmas(binary).first
+                isThereEmitPragma = evalPragmas(binary).isThereEmit
             }
             it.unaryMsgsForReceiver.forEach { binary ->
-                isThereEmitPragma = evalPragmas(binary).first
+                isThereEmitPragma = evalPragmas(binary).isThereEmit
             }
         }
 
@@ -153,12 +159,24 @@ fun generateMessages(
 }
 
 enum class Pragmas(val v: String) {
-    RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg")
+    RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg"),
 }
 
 val builtInPragmas = setOf("rename", "emit", "arg", "debug")
 
-// adding invisible args like for Compiler getName:
+// adding invisible arg of codeplace
+//fun codePlace(msg: Message, keyPragmas: List<KeyPragma>): List<String>?  {
+//    val codePlaces = keyPragmas.filter { it.name == Pragmas.CODE_PLACE.v }
+//
+//    if (codePlaces.isEmpty()) return null
+//
+//    if (codePlaces.count() != 1) msg.token.compileError("There should be only one GetCodePlace pragma per method call")
+//
+//    val codePlace = codePlaces.first()
+//
+//    return listOf(codePlace.value.token.prettyCodePlace())
+//}
+// adding invisible args like for Compiler getName: "getName"
 fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
 
     val ctPragmas = keyPragmas.filter { it.name == Pragmas.CT_NAME.v }
@@ -179,7 +197,12 @@ fun ctNames(msg: Message, keyPragmas: List<KeyPragma>): List<String>? {
                     "$expr"
                 }
             }
-            if (num > 0) {
+            if(num == 100) {
+                // special num for caller name arg
+                listOfArgs.add(buildString { append("\"\"\"", msg.token.prettyCodePlace(), "\"\"\"") })
+
+            }
+            else if (num > 0) {
                 // add all args, 1 for binary, all for kw
                 val kwMsg = msg as? KeywordMsg
                     ?: msg.token.compileError("Compiler getName: with more than 0 arg can be used only with binary and keyword messages")
@@ -331,22 +354,30 @@ fun generateSingleKeyword(
     // if Compiler
     if (receiver.token.lexeme == "Compiler") {
         val firstArg = keywordMsg.args[0]
-        when (firstArg.name) {
-            CompilerMessages.GetName.str -> {
+        val f = try {
+            CompilerMessages.valueOf(firstArg.name)
+        } catch (e: Exception) {
+            firstArg.keywordArg.token.compileError("unexpected Compiler arg: $CYAN${firstArg.name}")
+        }
+        when (f) {
+            CompilerMessages.getName -> {
                 val getArg = {
                     if (firstArg.keywordArg !is LiteralExpression.IntExpr) {
-                        firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.GetName.name}`")
+                        firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.getName.name}`")
                     }
 
                     firstArg.keywordArg.token.lexeme.toIntOrNull()
-                        ?: firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.GetName.name}`")
+                        ?: firstArg.keywordArg.token.compileError("Int argument expected for `${CompilerMessages.getName.name}`")
                 }
                 val arg = getArg()
                 append("(__arg$arg)")
                 return@buildString
             }
-            "getType" -> firstArg.keywordArg.token.compileError("getType not implemented yet")
-            else -> firstArg.keywordArg.token.compileError("unexpected Compiler arg: $CYAN${firstArg.name}")
+            CompilerMessages.getPlace -> {
+                firstArg.keywordArg.token.compileError("Cant send getPlace as Keyword msg")
+            }
+
+            CompilerMessages.debug -> {}
         }
 
     }
@@ -487,25 +518,33 @@ fun generateSingleUnary(
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
         if (receiver.token.lexeme == "Compiler") {
-            if (it.selectorName == CompilerMessages.Debug.str) {
-                it.pragmas.forEach {
-                    when (it) {
-                        is SingleWordPragma -> {
-                            val q = it.name
-                            appendLine("println(\"$q = $$q\")")
-                        }
-                        is KeyPragma -> {}
-                    }
+            val f = try {
+                CompilerMessages.valueOf(it.selectorName)
+            } catch (e: Exception) {
+                it.token.compileError("unexpected Compiler arg: $CYAN${it.selectorName}")
+            }
+            when (f) {
+                CompilerMessages.getName -> it.token.compileError("cant get name from unary msg")
+                CompilerMessages.getPlace -> {
+                    append("(__arg100)")
+                    return@buildString
                 }
-                return@buildString
+                CompilerMessages.debug -> {
+                    it.pragmas.forEach {
+                        when (it) {
+                            is SingleWordPragma -> {
+                                val q = it.name
+                                appendLine("println(\"$q = $$q\")")
+                            }
+                            is KeyPragma -> {}
+                        }
+                    }
+                    return@buildString
+
+                }
             }
         }
         append(receiverCode)
-//        val type = receiver.type!!
-//        if (receiver is IdentifierExpr && receiver.isType && type is Type.UserLike) {
-//            if (type.typeArgumentList.count() == 1)
-//                append("<", type.typeArgumentList[0].name + ">")
-//        }
     }
 
 

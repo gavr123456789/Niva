@@ -36,7 +36,12 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
 
     ]
   | BinaryMsg  => TO DO: "BinaryMsg to TypedExpr"
-  | KeywordMsg => TO DO: "KeywordMsg to TypedExpr"
+  | KeywordMsg =>[ 
+    this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
+    kek = .resolveKeywordFromDb: db withContext: c
+
+    
+    TO DO: "KeywordMsg to TypedExpr"]
 
   | VarDeclaration  => [
 
@@ -77,6 +82,44 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
 
 type Tuple x: T y: G 
 
+KeywordMsg getNameFromArgs -> String = [
+  ^ args joinWith: ":" transform: [
+    it name name
+  ], + ":"
+]
+KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context = [
+  receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
+
+  typedArgs = args map: [ kwArg -> 
+    {name expr} = kwArg
+    typedExpr = expr toTypedExprFromDb: db withContext: c
+    NameAndExpr name: name expr: typedExpr
+  ]
+  
+  // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
+  foundMsg = db 
+    findMsgFromReceiver: receiverTypedExpr nivaType 
+    byName: .getNameFromArgs
+  
+  foundMsg debug
+
+  newKeyword = KeywordMsg 
+    args: typedArgs 
+    receiver: receiverTypedExpr 
+    token: token
+  // newKeyword debug
+
+  ^TypedExpr 
+    exprAst: newKeyword
+    nivaType: (TO DO: "return")
+    isMutable: false 
+    token: token
+] 
+
+
+/// since every unary contain its own return type
+/// and identifiers cant contain types
+/// we replacing each of its args with typed expr wich same identifiers
 UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
   
   // recreate receiver

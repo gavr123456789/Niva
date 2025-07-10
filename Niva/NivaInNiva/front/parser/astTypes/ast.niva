@@ -28,6 +28,7 @@ union Declaration token: Token =
   returnType: AstType2?
   body: Body
   isSingleExpr: Bool
+  isConstructor: Bool
 
 
 // Messages

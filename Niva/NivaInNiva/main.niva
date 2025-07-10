@@ -17,11 +17,11 @@ resolver = [
     type Person age: Int 
     type Wallet money: Int
 
+    Int from::Int to::Int -> Int = 5
+
     // type Money declared in a different file
     Money make::Int sas::String -> Int = [
-      x::Int = 42
-      1 inc dec
-      x inc
+      make from: 1 to: 2
     ]
   """
 
@@ -39,16 +39,53 @@ resolver = [
     visitAllTypesThenTypesAndMethods: listOfFilesContents
 
   MsgDeclVisitor new processBodyes: msgDecls db: db
-  
 
-  
+  TO DO: "add keywords resolve"
+
 ] do
 
-parsing = [
-  exprWithPath = 
-    TestParse expression: "a.b.c"
+dbTest = [
 
-]
+  fileMain = """
+    type Person age: Int 
+    type Wallet money: Int
+
+    // type Money declared in a different file
+    Money make::Int sas::String -> Int = [
+      x::Int = 42
+      1 inc dec
+      2 inc
+    ]
+    // forward declaration
+    type Money ofPerson: Person
+
+  """
+
+  statements  = TestParse withInput: fileMain expectedCount: -1
+  listOfFilesContents = #{"main" statements} 
+  db = TyperDB new
+
+  msgDecls = TypeDeclVisitor db: db, 
+    visitAllTypesThenTypesAndMethods: listOfFilesContents
+
+  MsgDeclVisitor new processBodyes: msgDecls db: db
+
+
+
+] 
+
+parsing = [
+  input = """
+    | 3
+    | 1 => 6
+    | 2 => 5
+    | 3 => 4
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  unaryDecl = statements at: 0
+  unaryDecl debug
+] 
 
 
 
@@ -107,4 +144,4 @@ returnTest = [
   //   union Figure size: Int = 
   //   | Circle r: Int
   //   | Rectangle width: Int heigth: Int
-  // """ trimIndent
+  // """ trimIndent2

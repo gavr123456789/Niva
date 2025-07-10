@@ -1,30 +1,9 @@
-//
-//list::{Int}! = {Int}!
-//list add: 1; add: 2
-//
-//map:: #{Int String}! = #{Int String}!
-//map at: 1 put: "a";
-//    at: 2 put: "b";
-//    at: 3 put: "c"
-//
-//
-//set:: #(Int)! = #(Int)!
-//set add: 1; add: 1
-//
-//list echo
-//map echo
-//set echo
+@debug
+Int sas = [
 
-union Fruit = Apple | Orange
-//type FruitStore
-//    fruits: List(Int)?
-//
-//fs = FruitStore fruits: null
-//fs echo
+    x = 23
+    x + 334
+    x inc inc
+]
 
-x = Apple new
-
-| x
-| Apple => 56
-| Orange => "aaa"
-
+1 sas

@@ -722,7 +722,6 @@ fun putInMainKotlinCode(
     append("try {\n")
 
     appendLine(code)
-    appendLine("if (NivaDevModeDB.wasDevModeUsed) java.io.File(\"$devDataJsonPath\").writeText(NivaDevModeDB.db.toJson().toString())")
 
     val catchExpressions = if (compilationTarget != CompilationTarget.jvm) """
         } catch (e: Throwable) {
@@ -809,8 +808,13 @@ fun putInMainKotlinCode(
         catchExpressions
     )
 
+    val addDevModeDataIfItWasUsed = ("if (NivaDevModeDB.wasDevModeUsed) java.io.File(\"$devDataJsonPath\").writeText(NivaDevModeDB.db.toJson().toString())")
+    appendLine("""finally {
+        $addDevModeDataIfItWasUsed
+    }""")
 
-    append("}\n")
+
+    append("\n}\n")
 }
 
 enum class CurrentOS {

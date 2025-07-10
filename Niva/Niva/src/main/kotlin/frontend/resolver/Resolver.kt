@@ -144,8 +144,17 @@ private fun Resolver.resolveStatement(
                 val msg = statement.messages[0]
                 if (msg.selectorName == "getName") {
                     val intArg = (msg as KeywordMsg).args[0].keywordArg
+                    // помещаем прагму с цифрой аргумента на декларацию сообщения чтобы можно было потом из коллера понять что нужно добавить аргументов
                     val codeAtr = KeyPragma("arg", intArg as Primary)
 
+                    resolvingMessageDeclaration?.apply {
+                        this.pragmas.add(codeAtr)
+                    }
+                    statement.pragmas.add(codeAtr)
+                }
+                if (msg.selectorName == "getPlace") {
+                    // помещаем прагму с цифрой аргумента на декларацию сообщения чтобы можно было потом из коллера понять что нужно добавить аргументов
+                    val codeAtr = KeyPragma("arg", LiteralExpression.IntExpr(createFakeToken("100")))
                     resolvingMessageDeclaration?.apply {
                         this.pragmas.add(codeAtr)
                     }

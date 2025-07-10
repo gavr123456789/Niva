@@ -747,7 +747,6 @@ fun createListProtocols(
             createKeyword(KeywordArg("minus", itType), listType, "Returns a new list without given element"),
 
             createKeyword(KeywordArg("at", intType), itType, "like list[x] in C, can panic").rename("get"),
-            createKeyword(KeywordArg("plusElement", itType), currentType, "new collection with element added"),
             createKeyword(KeywordArg("atOrNull", intType), itTypeNullable, "safe version of at").rename("getOrNull"),
 
             createKeyword(KeywordArg("contains", itType), boolType, "{1 2 3} contains: 1 is true"),
@@ -915,9 +914,9 @@ fun createListProtocols(
         collectionProtocol.unaryMsgs[clear.first] = clear.second
         // kw
         val mutKwMsgs = mutableMapOf(
-            createKeyword(KeywordArg("add", itType), boolType, forMutable = true),
+            createKeyword(KeywordArg("add", itType), unitType, forMutable = true),
             createKeyword(KeywordArg("addFirst", itType), unitType, forMutable = true),
-            createKeyword(KeywordArg("addAll", currentType), boolType, "Add all items from other collection", forMutable = true),
+            createKeyword(KeywordArg("addAll", currentType), unitType, "Add all items from other collection", forMutable = true),
             createKeyword(KeywordArg("removeAt", intType), unitType, "Remove element by index", forMutable = true),
             createKeyword(KeywordArg("remove", itType), unitType, "Remove element", forMutable = true),
             createKeyword(
@@ -1054,8 +1053,9 @@ fun createSetProtocols(
 
 
 enum class CompilerMessages(val str: String) {
-    GetName(str = "getName"),
-    Debug(str = "debug"),
+    getName(str = "getName"),
+    getPlace(str = "getPlace"),
+    debug(str = "debug"),
 }
 fun createCompilerProtocols(
     intType: Type.InternalType,
@@ -1073,6 +1073,7 @@ fun createCompilerProtocols(
         keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
             createUnary("debug", unitType, "Prints every variable from current scope"),
+            createUnary("getPlace", stringType, "Returns place in code like `asserts.niva:12:0`"),
             createKeyword(KeywordArg("getName", intType), stringType),
 //            createKeyword(KeywordArg("getType", intType), typeType),
             )
