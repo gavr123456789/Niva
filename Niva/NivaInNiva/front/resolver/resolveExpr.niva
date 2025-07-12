@@ -8,7 +8,7 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   | DoubleExpr  => TypedExpr nivaType: (db findByTypeName: "Double") exprAst: this
   | StringExpr  => TypedExpr nivaType: (db findByTypeName: "String") exprAst: this
   | BooleanExpr => TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
-  | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Null") exprAst: this
+  | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Nothing") exprAst: this
   // Identifier can be type itself like Unit
   | Identifier     => [
     varType = c lookupForVar: this name
@@ -19,9 +19,14 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
       TypedExpr nivaType: varType exprAst: this
     ]
   ]
-  | ExprInBrackets => TO DO: "ExprInBrackets to TypedExpr"
-  | ListLiteral    => TO DO: "ListLiteral to TypedExpr"
-  | SetLiteral     => TO DO: "SetLiteral to TypedExpr"
+  | ExprInBrackets => value toTypedExprFromDb: db withContext: c
+  | ListLiteral    => [
+    elements resolve: db withContext: c
+    // Compare all elements between each other
+    TO DO: "ListLiteral to TypedExpr"]
+  | SetLiteral     => [
+    elements resolve: db withContext: c
+    TO DO: "SetLiteral to TypedExpr"]
   | MapLiteral     => TO DO: "MapLiteral to TypedExpr" 
 
   | UnaryMsg   => [
@@ -35,13 +40,22 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
       token: token
 
     ]
-  | BinaryMsg  => TO DO: "BinaryMsg to TypedExpr"
+  | BinaryMsg  => [
+    this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
+    
+    {x y} = .replaceArgsWithTypedfromDb: db withContext: c
+    ^TypedExpr 
+      exprAst: x 
+      nivaType: y 
+      isMutable: false 
+      token: token
+    ]
   | KeywordMsg =>[ 
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
     kek = .resolveKeywordFromDb: db withContext: c
 
-    
-    TO DO: "KeywordMsg to TypedExpr"]
+    ^kek 
+    ]
 
   | VarDeclaration  => [
 
@@ -87,7 +101,7 @@ KeywordMsg getNameFromArgs -> String = [
     it name name
   ], + ":"
 ]
-KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context = [
+KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
 
   typedArgs = args map: [ kwArg -> 
@@ -117,7 +131,47 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context = [
 ] 
 
 
-/// since every unary contain its own return type
+BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(BinaryMsg, NivaType) = [ 
+  receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
+
+  typeOfReceiver = receiverTypedExpr nivaType
+  mut lastType = typeOfReceiver
+
+  typedArgs = args map: [ binary ->
+    // 1 + (2 inc)
+    // find the message
+    // resolce type of arg
+    // compare that found message has arg with same type
+    binaryName = binary name name
+    dbMsg = db findMsgFromReceiver: lastType  byName: binaryName
+    (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
+    dbArg = dbMsg args first
+    // resolve type of arg
+    resolvedArg = binary expr toTypedExprFromDb: db withContext: c
+
+
+    (resolvedArg nivaType compareWith: dbArg typeT) ifFalse: [
+      expected = dbMsg args first typeT
+      butGot = resolvedArg nivaType
+      currentBinary = lastType toString + " " + binaryName + " " 
+      TO DO: "In binary $currentBinary arg of type $expected expected, but got $butGot"
+    ]
+
+    // create typed expr with return type of dbMsg in db message
+    typed = TypedExpr 
+      exprAst: binary name 
+      nivaType: dbMsg returnType 
+      isMutable: false 
+      token: binary name token
+
+    lastType <- dbMsg returnType
+    NameAndExpr name: binary name expr: typed
+  ]
+
+  newBinary = BinaryMsg args: typedArgs receiver: receiverTypedExpr token: token
+  ^ Tuple x: newBinary y: lastType 
+] 
+/// since every binary contain its own return type
 /// and identifiers cant contain types
 /// we replacing each of its args with typed expr wich same identifiers
 UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
@@ -128,25 +182,24 @@ UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tupl
   typeOfReceiver = receiverTypedExpr nivaType
   // recreate args
 
-  mut lastType::NivaType? = null
+  mut lastType = typeOfReceiver
 
-  typedArgs = args map: [ unary ->
-    dbMsg = db findMsgFromReceiver: typeOfReceiver  byName: unary name name
+  typedArgs = args map: [ binary ->
+    dbMsg = db findMsgFromReceiver: lastType  byName: binary name name
 
-    dbMsg args isNotEmpty ifTrue: [TO DO: "Compiler bug, unary $dbMsg with arguments in db"]
+    dbMsg args isNotEmpty ifTrue: [TO DO: "Compiler bug, binary $dbMsg with arguments in db"]
 
     // create typed expr with return type of dbMsg in db message
-    dbMsg returnType
     typed = TypedExpr 
-      exprAst: unary name 
+      exprAst: binary name 
       nivaType: dbMsg returnType 
       isMutable: false 
-      token: unary name token
+      token: binary name token
 
     lastType <- dbMsg returnType
-    NameAndExpr name: unary name expr: typed
+    NameAndExpr name: binary name expr: typed
   ]
 
-  newUnary = UnaryMsg args: typedArgs receiver: receiverTypedExpr token: token
-  ^ Tuple x: newUnary y: lastType unpackOrPANIC
+  newBinary = UnaryMsg args: typedArgs receiver: receiverTypedExpr token: token
+  ^ Tuple x: newBinary y: lastType 
 ]

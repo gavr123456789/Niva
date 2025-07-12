@@ -21,7 +21,8 @@ resolver = [
 
     // type Money declared in a different file
     Money make::Int sas::String -> Int = [
-      make from: 1 to: 2
+      1 + 2
+      //make from: 1 to: 2
     ]
   """
 
@@ -30,9 +31,9 @@ resolver = [
   """
 
 
-  statements  = TestParse withInput: fileMain expectedCount: -1
-  statements2 = TestParse withInput: fileMoney expectedCount: -1
-  listOfFilesContents = #{"main" statements "money" statements2} 
+  statementsMain  = TestParse withInput: fileMain expectedCount: -1
+  statementsMoney = TestParse withInput: fileMoney expectedCount: -1
+  listOfFilesContents = #{"main" statementsMain "money" statementsMoney} 
   db = TyperDB new
 
   msgDecls = TypeDeclVisitor db: db, 
@@ -40,7 +41,7 @@ resolver = [
 
   MsgDeclVisitor new processBodyes: msgDecls db: db
 
-  TO DO: "add keywords resolve"
+  TO DO: "binary resolve"
 
 ] do
 
@@ -92,51 +93,43 @@ parsing = [
 
 
 returnTest = [
-  input = """
-    [a + b]
-
-    // typed args with comma
-    [ a::Int, b::Int ->
-      1 inc
+  
+  fileMain = """
+    // type Money declared in a different file
+    Int make::Wallet sas::Person -> Int = [
+      x::Int = 42
+      1 inc dec
+      2 inc
     ]
 
-    // typed args no comma
-    [ a::Int b::Int ->
-      1 inc
-    ]
+    type Person age: Int 
+    type Wallet money: Int
 
-    // untyped args with comma
-    [ a, b ->
-      1 inc
-    ]
-
-    // untyped args no comma
-    [ a b ->
-      1 inc
-    ]
-
-    // empty
-    []
-
-    // no args
-    [a b inc]
-
-    // unary after
-    ["sas"] do
-
-    // call with args
-    [x::Int, y::Int -> x + y] x: 1 y: 2
-  """ trimIndent
-
-  input2 = """
-  [a b] do
   """
 
-  statements = TestParse withInput: input expectedCount: 7
-  statements echo
+  statements  = TestParse withInput: fileMain expectedCount: -1
+  listOfFilesContents = #{"main" statements} 
+  db = TyperDB new
+
+  msgDecls = TypeDeclVisitor db: db, 
+    visitAllTypesThenTypesAndMethods: listOfFilesContents
+
+  MsgDeclVisitor new processBodyes: msgDecls db: db
+
+  mainPkg = db packages at: "main", unpackOrPANIC
+
+  mainPkg types keys debug
+  mainPkg types at: "Person", unpackOrPANIC
+  mainPkg types at: "Wallet", unpackOrPANIC
+
 ] 
+ 
+// add = [a::Int -> [b::Int -> a + b]]
+// a = add a: 1
+// b = a b: 2
+// b echo
 
-
+// add a: 40, b: 2, echo
 
   // unions = """
   //   union Color = Red | Blue | Green

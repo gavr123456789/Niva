@@ -431,6 +431,8 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
     """.trimIndent() else "fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int) {}"
 
     val nivaStd = """
+        
+        
         import kotlinx.serialization.json.JsonArray
         import kotlinx.serialization.json.JsonObject
         import kotlinx.serialization.json.JsonPrimitive
@@ -444,6 +446,12 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         
         // STD
         $jvmSpecific
+        
+        
+        object Compiler {
+            var cliArgs = listOf<String>()
+            fun cliArgs() = cliArgs
+        }
         
         typealias Bool = Boolean
         // Live Dev Mode
@@ -719,6 +727,9 @@ fun putInMainKotlinCode(
     val devDataJsonPath = pathToMainNivaFileFolder / DEV_MODE_FILE_NAME
 
     append("fun main(args: Array<String>) {\n")
+
+    appendLine("Compiler.cliArgs = args.toList()")
+
     append("try {\n")
 
     appendLine(code)

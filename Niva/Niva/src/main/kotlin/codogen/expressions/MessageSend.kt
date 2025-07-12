@@ -378,6 +378,7 @@ fun generateSingleKeyword(
             }
 
             CompilerMessages.debug -> {}
+            CompilerMessages.cliArgs -> {}
         }
 
     }
@@ -542,6 +543,8 @@ fun generateSingleUnary(
                     return@buildString
 
                 }
+                CompilerMessages.cliArgs -> {}
+                
             }
         }
         append(receiverCode)

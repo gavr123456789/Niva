@@ -77,8 +77,7 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
   | pkg
   | null => TO DO: "Compiler bug: cant find pkg $pkgName"
   |=> [
-    pkg types at: "name" put: t
-    Unit
+    pkg types at: t name put: t
   ]
 
   setMaybe = typesWithSameNames at: t name
