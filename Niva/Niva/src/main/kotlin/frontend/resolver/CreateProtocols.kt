@@ -1056,6 +1056,7 @@ enum class CompilerMessages(val str: String) {
     getName(str = "getName"),
     getPlace(str = "getPlace"),
     debug(str = "debug"),
+    cliArgs(str = "cliArgs"),
 }
 fun createCompilerProtocols(
     intType: Type.InternalType,
@@ -1066,12 +1067,12 @@ fun createCompilerProtocols(
     val commonProtocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-//            createUnary("getArgs", listOfString),
 //            createUnary("debug", unitType),
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(),
         staticMsgs = mutableMapOf(
+            createUnary("cliArgs", listOfString),
             createUnary("debug", unitType, "Prints every variable from current scope"),
             createUnary("getPlace", stringType, "Returns place in code like `asserts.niva:12:0`"),
             createKeyword(KeywordArg("getName", intType), stringType),

@@ -19,9 +19,9 @@ PrintingVisitor visit: st::Statement = [
 ]
 
 /// returns pkg to message decl
-TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) -> Map(String, MessageDecl) = [
-  pkgTotypeDecls::mut Map(String, TypeDecl) = #{}!
-  msgDecls::mut Map(String, MessageDecl) = #{}!
+TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) -> List(Tuple(String, MessageDecl)) = [
+  pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
+  // msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
   msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
 
@@ -39,7 +39,7 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
       | TypeDecl => [
         noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
         noFieldsTypes at: it name put: noFieldsType
-        pkgTotypeDecls at: pkgName put: it
+        pkgTotypeDecls2 add: (Tuple x: pkgName y: it)
       ]
       | MessageDecl => [
         msgDecls2 add: (Tuple x: pkgName y: it) 
@@ -52,11 +52,14 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
   ]
 
   fillTypesAndMessages = [
-    pkgTotypeDecls forEach: [ pkgName, typeDecl ->
+    pkgTotypeDecls2 forEach: [ tuple ->
+      pkgName = tuple x
+      typeDecl = tuple y
+
       readyToAddToDBType = .fillFields: typeDecl knownTypeNames: noFieldsTypes
       readyToAddToDBType unpack: [ resolvedType ->
         db addNewType: resolvedType inPkg: pkgName
-        "added type " + resolvedType name, echo
+        "added type " + resolvedType name + " in pkg " + pkgName, echo
       ]
       readyToAddToDBType == null ifTrue: [
         name = typeDecl name
@@ -101,7 +104,7 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
   
   ] do
 
-  ^ msgDecls
+  ^ msgDecls2
 ]
 
 /// if no return type and has body then its Unit
@@ -148,8 +151,10 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) 
   ]
 ]
 
-MsgDeclVisitor processBodyes: pkg2Msg::Map(String, MessageDecl) db::TyperDB = [
-  pkg2Msg forEach: [pkgName, msgDecl -> 
+MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
+  pkg2Msg forEach: [tuple -> 
+    pkgName = tuple x 
+    msgDecl = tuple y 
     msgDecl resolveBodyWithDb: db
   ]
 ]
@@ -166,6 +171,10 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
   createContextWithThisAndArgs = [
     c = Context root
     receiver = db findByTypeName: receiver name inPkg: null
+    receiver name == "Nothing" ifTrue: [
+      TO DO: "You cant declare methods for Nothing type"
+    ]
+    
     c defineVar: "this" withType: receiver
 
 

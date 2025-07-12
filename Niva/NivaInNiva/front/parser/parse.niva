@@ -425,14 +425,16 @@ extend mut Parser [
       tok kind == TokenType.IdentifierDoubleColon ifTrue: [
         ^.parseVarDeclExpr: tok name: tok lexeme
       ]
-      // message expr
+
+      // assign
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
       .peek kind == TokenType.Assign, ifTrue: [
         ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme
       ]
+      // any expr
       firstExpr = .nextExperssion2: tok receiver: primaryReceiver
       
-
+      // expr, expr
      ^| .peek kind
       | TokenType.Comma => [
         .step // skip comma
@@ -517,7 +519,7 @@ extend mut Parser [
                             ]
         
         // 1 inc inc^
-        unary = UnaryMsg 
+        unary::UnaryMsg = UnaryMsg 
           args: unaryIdentifiers
           receiver: maybePrimary 
           token: maybePrimary token
