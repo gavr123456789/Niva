@@ -120,6 +120,11 @@ Test parseUnaryConstructor -> Unit! = [
 
   statements = TestParse withInput: input expectedCount: 1
   cnstr = statements at: 0
+  | cnstr
+  | MessageDecl => [
+    Assert that: cnstr isConstructor equals: true
+  ]
+  |=> []
 ]
 
 Test parseUnaryDecl -> Unit! = [

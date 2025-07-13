@@ -51,25 +51,29 @@ TypeDecl toString -> String = [
 // 1 inc dec
 // {{name: "dec" expr: {name: "inc" expr: 1}}}
 
+enum  MessageSendKind =  Call | Getter | Constructor
 union MessageSend receiver: Expr token: Token =
-| UnaryMsg 
-    args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
+// args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
+| UnaryMsg
+    selector: Identifier
+    kind: MessageSendKind
 | BinaryMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg
 | KeywordMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
-
+    kind: MessageSendKind
 UnaryMsg toString = [
-  realArgs = args joinWith: " " transform: [it name name]
-  ^ "UnaryMsg ($receiver $realArgs)"
+  // realArgs = args joinWith: " " transform: [it name name]
+  x = selector name
+  ^ "UnaryMsg ($receiver $x)"
 ]
-BinaryMsg toString = [
+BinaryMsg toString -> String = [
   realArgs = args joinWith: " " transform: [
     it name name + " " + it expr toString
   ]
   ^ "$receiver $realArgs"
 ]
-KeywordMsg toString = [
+KeywordMsg toString -> String = [
   realArgs = args joinWith: " " transform: [
     it name toString + ": " + it expr toString
   ]
@@ -117,7 +121,7 @@ constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedEx
   isMutable: isMutable
   token: exprAst token
 
-  constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr 
+constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr 
   exprAst: exprAst
   nivaType: nivaType
   isMutable: false

@@ -31,37 +31,50 @@ Project protocol: "adding"
 
 /// adds method to protocol, if no such protocol - creates it
 NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
-  protocols at: forType, unpack: [ protocolsList ->
-    // we have concrete protocol where method should be created
+  // find type to protocols list or create a new list with new protocol
+  // find new protocol in a list or create a new protocol
+  // add method to protocol
 
-    // 1) find the protocol
-    // 2) add method to it
-    commonProtocol = protocolsList find: [it name == "common"]
-    | commonProtocol
-    | null => [
-      // no common proto -> create it
-      common = NivaProtocol name: "common"
-      common addMethod: m
-      protocolsList add: common
-      Unit
-    ]
-    |=> commonProtocol addMethod: m
+  createNewProtocol = [
+    newProtocol = NivaProtocol name: protocolName
+    newProtocol addMethod: m
+    newProtocol  
   ]
-  "added " + m name, echo
+  
+  foundProtocols = protocols at: forType
+  | foundProtocols
+  | null => [
+    newProtocol = createNewProtocol do
+    protocols at: forType put: {newProtocol}!
+    "added method" + m name + " to new protocol $protocolName", log
+  ]
+  |=> [
+    protocol = foundProtocols find: [it name == protocolName]
+    | protocol
+    | null => [
+      // no such protocol -> create it
+      newProtocol = createNewProtocol do
+      foundProtocols add: newProtocol
+      "added method" + m name + " to new protocol $protocolName", log
+    ]
+    |=> [
+      protocol addMethod: m
+      "added method" + m name + " to protocol $protocolName", log
+    ]  
+  ]
+
 ]
 
 /// adds ne method for db, if protocol is null then adds to "common"
 TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
-  // find pkg
   pkg = packages at: forType pkgName
+  | pkg 
+  | null => TO DO: "no pkg"
+  |=> pkg 
+        addMethod: m 
+        toProtocol: (inProtocol unpackOrValue: "common") 
+        forType: forType
 
-  pkg unpack: [
-    it protocols at: forType, unpack: [ protocols ->
-      | inProtocol
-      | null => it addMethod: m toProtocol: "common" forType: forType
-      |=> it addMethod: m toProtocol: inProtocol forType: forType
-    ]
-  ]
 ]
 
 TyperDB addNewPkgIfNotExists: pkgName::String = [
@@ -102,17 +115,19 @@ Project protocol: "finding"
 NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod = [
   protocol = protocols at: forType, unpackOrPANIC
 
-  knownMethods::mut List::String = {}!
+  // knownMethods::mut List::String = {}!
 
   protocol forEach: [p -> 
     method = p methods at: name
     | method 
     | null => [
-      knownMethods add: name
-      method // Thats stupid
+      // knownMethods add: name
+      null
     ]
     |=> ^ method
   ]
+  // its not in the one of the protocols
+  // ^ null
 
   typeName = forType name
   TO DO: "Compiler bug: Method $name not found for type $typeName"
@@ -122,11 +137,9 @@ TyperDB
   findMsgFromReceiver: receiver::NivaType 
   byName: name::String -> NivaMethod = [
   
-  // protocols are inside packages
-  // TO DO: receiver toString
   pkg = packages at: receiver pkgName, unpackOrPANIC
   method = pkg findMethodInAllProtocols: name forType: receiver
-
+  
   ^ method
 ] 
 

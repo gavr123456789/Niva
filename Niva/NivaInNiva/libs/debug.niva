@@ -6,3 +6,8 @@ T debug -> T = [
   codePlace red + " $receiver = $this", echo
   ^ this
 ]
+
+String log -> Unit = [
+  codePlace = Compiler getPlace
+  codePlace red + " " + this, echo
+]

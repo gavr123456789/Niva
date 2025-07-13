@@ -49,8 +49,9 @@ type NivaMethod
   name: String 
   args: List::TypeTField
   returnType: NivaType
-  forMut: Bool
+  forMut: Bool // can be called only on mutable types
   possibleErrors: List::UnionT
+  kind: MessageSendKind
 
 
 type NivaProtocol 
@@ -66,12 +67,14 @@ type NivaPkg
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}!
 constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
 constructor NivaProtocol common = NivaProtocol name: "common" methods: #{}!
+/// Create CALL
 constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool = NivaMethod 
   name: name 
   args: args
   returnType: returnType
   forMut: forMut
   possibleErrors: {}
+  kind: MessageSendKind.Call
 
 NivaProtocol addMethod::NivaMethod = [
   methods at: addMethod name put: addMethod
@@ -103,7 +106,8 @@ constructor NivaPkg core -> NivaPkg = [
   map = MapT k: t v: t
   set = SetT t: t
   // create Int Protocol
-  intProtocol = NivaProtocol intArithmetics: int bool: bool
+  
+  intProtocol = NivaProtocol intArithmetics: int bool: bool string: str
 
 
   corePkg = NivaPkg name: "core" types: #{

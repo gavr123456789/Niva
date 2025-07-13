@@ -25,6 +25,7 @@ Test someExpressions -> Unit! = [
 ]
 
 Test pipes = [
+  
   input = """
     1 to: 2, inc echo
   """ trimIndent
@@ -36,22 +37,30 @@ Test pipes = [
   | UnaryMsg => [
     receiver = first receiver
     | receiver
-    | ExprInBrackets => [
-      expr = receiver value
+    | UnaryMsg => [
+      expr = receiver receiver
       | expr
-      | KeywordMsg => [
-        Assert that: expr args count equals: 1
-        first = expr args at: 0
-        Assert that: first name token lexeme equals: "to"
-        Assert that: first expr token lexeme equals: "2"
+      | ExprInBrackets => [
+        expr = expr value
+        | expr
+        | KeywordMsg => [
+          Assert that: expr args count equals: 1
+          first = expr args at: 0
+          Assert that: first name token lexeme equals: "to"
+          Assert that: first expr token lexeme equals: "2"
+        ]
+        |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
       ]
-      |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
+      |=> [
+        TO DO: "123"
+      ]
+
     ]
     |=> [TO DO: "It should be ExprInBrackets, but it " + receiver toString]
 
     Assert
-      that: first args count
-      equals: 2
+      that: first selector name
+      equals: "echo"
 
   ]
   |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
@@ -103,32 +112,9 @@ Test parseSimbleBinaryMsg -> Unit! = [
   |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]
 
-Test parseBinaryMsgWithUnary -> Unit! = [
+Test parseBinaryMsgWithUnary -> Unit! = [  
   msgSend = TestParse expression: "1 + 2 inc"
-
-  | msgSend 
-  | BinaryMsg => [
-    Assert 
-      that: msgSend args count
-      equals: 1
-    
-    first = msgSend args at: 0
-    Assert that: first name token lexeme equals: "+"
-    expr = first expr
-    | expr 
-    | UnaryMsg => [
-      Assert that: expr args count equals: 1
-      first = expr args at: 0
-      name = first name token lexeme
-      Assert that: name equals: "inc"
-      receiver = expr receiver
-      | receiver
-      | IntExpr => Assert that: receiver num  equals: 2
-      |=> TO DO: "It should be IntExpr, but it " + expr toString
-    ]
-    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
-  ]
-  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+  Assert that: msgSend toString equals: "IntExpr 1 + UnaryMsg (IntExpr 2 inc)"
 ]
 
 Test parseBinaryMsgWithUnary2 -> Unit! = [
@@ -157,10 +143,7 @@ Test parseBinaryMsgWithUnary2 -> Unit! = [
     receiver = msgSend receiver
     | receiver
     | UnaryMsg => [
-      Assert that: receiver args count equals: 1
-      first = receiver args at: 0
-      name = first name token lexeme
-      Assert that: name equals: "inc"
+      Assert that: receiver selector name  equals: "inc"
       receiver = receiver receiver
       | receiver
       | IntExpr => Assert that: receiver num  equals: 1

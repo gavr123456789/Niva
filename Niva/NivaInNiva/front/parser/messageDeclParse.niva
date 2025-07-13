@@ -43,7 +43,7 @@ mut Parser
       token: tok
       body: body       
       isSingleExpr: isSingleExpr
-      isConstructor: false
+      isConstructor: isConstructor
 
     msgDecl
   ]
@@ -71,7 +71,7 @@ mut Parser
       token: tok
       body: body 
       isSingleExpr: isSingleExpr
-      isConstructor: false
+      isConstructor: isConstructor
 
     msgDecl
   ]
@@ -104,7 +104,7 @@ mut Parser
       token: tok
       body: body   
       isSingleExpr: isSingleExpr     
-      isConstructor: false
+      isConstructor: isConstructor
 
     // statements add: msgDecl
     msgDecl
