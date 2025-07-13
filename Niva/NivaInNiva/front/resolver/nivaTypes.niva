@@ -11,7 +11,7 @@ union NivaType name: String pkgName: String =
 // complex
 | TypeT  fields: mut List::TypeTField genericArgs: mut List::NivaType
 | UnionT  branches: List::UnionTBranch
-| FuntionT fields: List::TypeTField // method or lambda
+| FuntionT args: List::TypeTField returnType: NivaType// method or lambda
 // collections
 | ListT t: NivaType
 | SetT t: NivaType
@@ -20,12 +20,27 @@ union NivaType name: String pkgName: String =
 | UnresolvedGenericT letter: String
 | NullT
 | NullableT v: NivaType
+| TypeOfTheType v: NivaType // hack for constructors
 
 type TypeTField name: String typeT: NivaType
 type UnionTBranch name: String typeT: NivaType
 
 constructor TypeT noFieldsWithName: name::String pkgName::String= TypeT name: name pkgName: pkgName fields: {}! genericArgs: {}!
-constructor UnresolvedGenericT name::String = NothingT name: name pkgName: "core"
+
+TypeT generateDefaultConstructor -> NivaMethod = [
+ ^| fields isEmpty
+  | true => [
+    // new 
+    NivaMethod constructorWithName: "new" args: {} returnType: this
+  ] 
+  | false => [
+    // each field
+    constructorName = fields joinWith: ":" transform: [it name], + ":"
+    NivaMethod constructorWithName: constructorName args: fields returnType: this
+  ] 
+]
+
+constructor UnresolvedGenericT name::String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
 constructor IntegerT new = IntegerT name: "Integer" pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
@@ -42,6 +57,8 @@ constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: 
 constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
 constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: "core"
 
+constructor TypeOfTheType v::NivaType = TypeOfTheType v: v name: v name pkgName: v pkgName
+constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgName
 
 
   // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
@@ -62,11 +79,14 @@ type NivaPkg
   name: String 
   types: mut Map(String, NivaType)
   protocols: mut Map(NivaType, mut List::NivaProtocol)
+  constructorsProtocol: NivaProtocol
   
-
-constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}!
-constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
 constructor NivaProtocol common = NivaProtocol name: "common" methods: #{}!
+constructor NivaProtocol constructors = NivaProtocol name: "constructors" methods: #{}!
+constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
+
+constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors
+
 /// Create CALL
 constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool = NivaMethod 
   name: name 
@@ -76,14 +96,44 @@ constructor NivaMethod name::String args::List::TypeTField returnType::NivaType 
   possibleErrors: {}
   kind: MessageSendKind.Call
 
+constructor NivaMethod constructorWithName: name::String args::List::TypeTField returnType::NivaType -> NivaMethod = [
+  ^ NivaMethod 
+      name: name 
+      args: args
+      returnType: returnType
+      forMut: false
+      possibleErrors: {}
+      kind: MessageSendKind.Constructor
+]
+
 NivaProtocol addMethod::NivaMethod = [
   methods at: addMethod name put: addMethod
 ]
 
 
 
-
+/// no name provided
 constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
+
+
+type DefaultTypesContainer 
+  char: CharT
+  int: IntegerT
+  float: FloatT
+  double: DoubleT
+  str: StringT
+  bool: BoolT
+  nill: NullT
+  unit: UnitT 
+  // utils
+  nothing: NothingT
+  any: AnyT
+  t: UnresolvedGenericT 
+  // create collections
+  list: ListT 
+  map: MapT 
+  set: SetT 
+
 
 /// create basic types like String Int List
 constructor NivaPkg core -> NivaPkg = [
@@ -105,9 +155,27 @@ constructor NivaPkg core -> NivaPkg = [
   list = ListT t: t
   map = MapT k: t v: t
   set = SetT t: t
+
+  dtc = DefaultTypesContainer 
+    char: char 
+    int: int 
+    float: float 
+    double: double 
+    str: str 
+    bool: bool 
+    nill: nill 
+    unit: unit 
+    nothing: nothing 
+    any: any 
+    t: t 
+    list: list 
+    map: map 
+    set: set
+
   // create Int Protocol
-  
-  intProtocol = NivaProtocol intArithmetics: int bool: bool string: str
+  intProtocol = NivaProtocol intArithmeticsFromDefaultTypes: dtc
+  strProtocol = NivaProtocol stringFromDefaultTypes: dtc
+  boolProtocol= NivaProtocol boolFromDefaultTypes: dtc
 
 
   corePkg = NivaPkg name: "core" types: #{
@@ -127,7 +195,11 @@ constructor NivaPkg core -> NivaPkg = [
     "Map" map 
   }! protocols: #{
     int ({intProtocol}!)
-  }!
+    str ({strProtocol}!)
+    str ({boolProtocol}!)
+
+  }! constructorsProtocol: NivaProtocol constructors
+   
 
   ^ corePkg
 ]

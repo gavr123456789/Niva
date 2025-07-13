@@ -78,7 +78,9 @@ KeywordMsg toString -> String = [
   realArgs = args joinWith: " " transform: [
     it name toString + ": " + it expr toString
   ]
-  ^ "$receiver $realArgs"
+  kindStr = kind toString
+
+  ^ "KeywordMsg $kindStr ($receiver $realArgs)"
 ]
 
 // | x 

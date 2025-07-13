@@ -59,7 +59,16 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
 
       readyToAddToDBType = .fillFields: typeDecl knownTypes: noFieldsTypes
       readyToAddToDBType unpack: [ resolvedType ->
-        db addNewType: resolvedType inPkg: pkgName
+
+        db 
+          addNewType: resolvedType 
+          inPkg: pkgName
+
+        
+        db 
+          addNewConstructor: resolvedType generateDefaultConstructor 
+          forType: resolvedType 
+
         "added type " + resolvedType name + " in pkg " + pkgName, log
       ]
       readyToAddToDBType == null ifTrue: [

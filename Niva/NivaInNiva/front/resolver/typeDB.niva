@@ -55,11 +55,11 @@ NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaT
       // no such protocol -> create it
       newProtocol = createNewProtocol do
       foundProtocols add: newProtocol
-      "added method" + m name + " to new protocol $protocolName", log
+      "added method " + m name + " to new protocol $protocolName", log
     ]
     |=> [
       protocol addMethod: m
-      "added method" + m name + " to protocol $protocolName", log
+      "added method " + m name + " to protocol $protocolName", log
     ]  
   ]
 
@@ -74,6 +74,20 @@ TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
         addMethod: m 
         toProtocol: (inProtocol unpackOrValue: "common") 
         forType: forType
+
+]
+
+TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
+
+  Assert that: m kind equals: MessageSendKind.Constructor andSay: "add New Constructor, but its kind is " + m kind toString
+  pkg = packages at: forType pkgName
+  | pkg 
+  | null => TO DO: "no pkg"
+  |=> [
+    pkg constructorsProtocol addMethod: m
+    "added constructor " + m name + " for type " + forType name, log
+
+  ]
 
 ]
 
@@ -114,7 +128,18 @@ Project protocol: "finding"
 
 NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod = [
   protocol2 = protocols at: forType
-  protocol2 == null ifTrue: [TO DO: "type $forType has zero protocols"]
+  protocol2 == null ifTrue: [
+    | forType
+    | TypeOfTheType => [
+      maybeConstructor = constructorsProtocol methods at: name
+      | maybeConstructor
+      | null => [TO DO: "No such constructor $name for type $forType"]
+      |=> [
+        ^ maybeConstructor
+      ]
+    ]
+    |=> TO DO: "Searching for $name method but type $forType has zero protocols"
+  ]
   protocol = protocol2 unpackOrPANIC
 
   // knownMethods::mut List::String = {}!
@@ -132,7 +157,7 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod =
   // ^ null
 
   typeName = forType name
-  TO DO: "Compiler bug: Method $name not found for type $typeName"
+  TO DO: "Searching for $name method but its not found for type $typeName"
 ]
 
 TyperDB 

@@ -1,0 +1,80 @@
+constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContainer  -> NivaProtocol = [
+  {int str bool unit} = dtc
+
+  intProtocol = NivaProtocol name: "arithmetic" 
+
+  // unary
+  intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
+  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "toString" args: {} returnType: str forMut: false)
+  // binary
+  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int forMut: false)
+
+  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+
+  ^intProtocol
+]
+
+
+constructor NivaProtocol stringFromDefaultTypes: dtc::DefaultTypesContainer  -> NivaProtocol = [
+  {int str bool char unit} = dtc
+
+  strProto = NivaProtocol name: "common" 
+  // unary
+  strProto addMethod: (NivaMethod unary: "echo" returnT: unit)
+  strProto addMethod: (NivaMethod unary: "toString" returnT: str)
+  strProto addMethod: (NivaMethod unary: "count" returnT: int)
+  strProto addMethod: (NivaMethod unary: "isEmpty" returnT: str)
+  // binary
+  strProto addMethod: (NivaMethod binary: "+" argT: str returnT: str)
+  strProto addMethod: (NivaMethod binary: "==" argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "!=" argT: str returnT: bool)
+
+  // keyword
+  strProto addMethod: (NivaMethod singleArgKw: "at" argT: str returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "contains" argT: str returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "drop" argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "dropLast" argT: int returnT: str )
+
+  ^strProto
+]
+
+
+constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> NivaProtocol = [
+  {str bool unit} = dtc
+
+  boolProto = NivaProtocol name: "common" 
+
+  // unary
+  boolProto addMethod: (NivaMethod unary: "echo" returnT: unit)
+  boolProto addMethod: (NivaMethod unary: "toString" returnT: bool)
+  boolProto addMethod: (NivaMethod unary: "not" returnT: bool)
+  // binary
+  boolProto addMethod: (NivaMethod binary: "==" argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "!=" argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "||" argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "&&" argT: bool returnT: bool)
+
+  // keyword
+  noArgs = FuntionT args: {} name: "noFields" pkgName: "core" returnType: unit
+  boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  argT: noArgs returnT: unit )
+  boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" argT: noArgs returnT: unit )
+
+  ^boolProto
+]
+
+// helpers
+constructor NivaMethod unary: name::String returnT::NivaType = 
+  NivaMethod name: name args: {} returnType: returnT forMut: false
+
+constructor NivaMethod binary: name::String argT::NivaType returnT::NivaType = 
+  NivaMethod name: name args: {(TypeTField binary: argT)} returnType: returnT forMut: false
+
+constructor NivaMethod singleArgKw: name::String argT::NivaType returnT::NivaType = 
+  NivaMethod name: name + ":" args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false

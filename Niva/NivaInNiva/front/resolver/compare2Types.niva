@@ -65,7 +65,7 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   // compare each arg and return type
   | FuntionT => [
     | this
-    | FuntionT => (fields toString == fields toString)
+    | FuntionT => (args toString == nivaType args toString)
     |=> false  
   ]
   // compare generics
@@ -103,6 +103,13 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   | NullableT => [
     | this
     | NullableT => [
+      this v compareWith: nivaType v
+    ]
+    |=> false  
+  ]
+  | TypeOfTheType => [
+    | this
+    | TypeOfTheType => [
       this v compareWith: nivaType v
     ]
     |=> false  
