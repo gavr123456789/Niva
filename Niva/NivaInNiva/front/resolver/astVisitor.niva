@@ -6,6 +6,7 @@ union AstVisitor =
 | PrintingVisitor //sb: StringBuilder
 | TypeDeclVisitor db: TyperDB 
 | MsgDeclVisitor
+| GoBackendVisitor
 
 AstVisitor run: statements::List::Statement= [
   statements forEach: [
@@ -56,10 +57,10 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
       pkgName = tuple x
       typeDecl = tuple y
 
-      readyToAddToDBType = .fillFields: typeDecl knownTypeNames: noFieldsTypes
+      readyToAddToDBType = .fillFields: typeDecl knownTypes: noFieldsTypes
       readyToAddToDBType unpack: [ resolvedType ->
         db addNewType: resolvedType inPkg: pkgName
-        "added type " + resolvedType name + " in pkg " + pkgName, echo
+        "added type " + resolvedType name + " in pkg " + pkgName, log
       ]
       readyToAddToDBType == null ifTrue: [
         name = typeDecl name
@@ -97,9 +98,16 @@ TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, 
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
       
-      method = NivaMethod name: msg name args: argsT returnType: (msg getReturnTypeFromDb: db) forMut: isMutable possibleErrors: {}
+      method = NivaMethod 
+        name: msg name 
+        args: argsT 
+        returnType: (msg getReturnTypeFromDb: db) 
+        forMut: isMutable 
+        possibleErrors: {}
+        kind: MessageSendKind.Call
+
       db addNewMethod: method forType: receiverType inProtocol: null
-      "added method " + method name, echo
+      "added method " + method name, log
     ]
   
   ] do
@@ -121,10 +129,9 @@ MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
 /// returns a type with fields filled with real types, ready to add to db
 /// returns null if such type was not found in knownTypeNames or db
 /// and adds that as error to listOfErrors
-TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) -> TypeT? = [
+TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> TypeT? = [
 
-  typeStub = knownTypeNames at: st name
-
+  typeStub = knownTypes at: st name
 
   | typeStub
   | null => [
@@ -132,12 +139,14 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) 
     ^ null
   ]
   |=> [
+
+
     fields = st fields forEach: [
       fieldName = it astType name
-      knownNames = knownTypeNames keys
+      knownNames = knownTypes keys
       // search in known types, if not found search in db, db always has core types, 
       // known types contains every type from AST decls
-      maybeFieldType = knownTypeNames at: fieldName
+      maybeFieldType = knownTypes at: fieldName
       fieldType = | maybeFieldType
       | null => db findByTypeName: fieldName inPkg: null
       |=> maybeFieldType
@@ -145,8 +154,18 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypeNames::mut Map(String, TypeT) 
 
       field = TypeTField name: it name typeT: fieldType
       typeStub fields add: field
-    ]
 
+      getter = NivaMethod 
+        name: it name 
+        args: {} 
+        returnType: fieldType 
+        forMut: false // false because its getter
+        possibleErrors: {}
+        kind: MessageSendKind.Getter
+      
+      db addNewMethod: getter forType: typeStub inProtocol: "getters"
+    ]
+    
     ^ typeStub
   ]
 ]
@@ -204,6 +223,9 @@ AstVisitor visit: st::Statement = [
   ]
   | MsgDeclVisitor => [
     TO DO
+  ]
+  | GoBackendVisitor => [
+    this visit: st
   ]
 ]
 

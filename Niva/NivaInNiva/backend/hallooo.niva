@@ -1,0 +1,3 @@
+type GoBackend
+    fileToStatements: Map(String, List::Statement)
+    db: TyperDB 

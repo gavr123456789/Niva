@@ -5,7 +5,7 @@ Test resolveAFewDeclarations = [
     Int make::Wallet sas::Person -> Int = [
       x::Int = 42
       1 inc dec
-      2 inc
+      2 + 3
     ]
 
     type Person age: Int 
@@ -22,9 +22,26 @@ Test resolveAFewDeclarations = [
 
   MsgDeclVisitor new processBodyes: msgDecls db: db
 
-  mainPkg = db packages at: "main", unpackOrPANIC
+  typesWereRegistered = [
+    mainPkg = db packages at: "main", unpackOrPANIC
+    mainPkg types at: "Person", unpackOrPANIC
+    mainPkg types at: "Wallet", unpackOrPANIC
+  ] do
 
-  mainPkg types at: "Person", unpackOrPANIC
-  mainPkg types at: "Wallet", unpackOrPANIC
+  makeSas = msgDecls at: 0, y
+  checkExpressionsTypes = [
+    Assert 
+      that: makeSas body typedBody count  
+      equals: 3
+      andSay: "wrong number of expressions"
+   
+    varDecl = makeSas body typedBody at: 0
+    unary = makeSas body typedBody at: 1
+    binary = makeSas body typedBody at: 2
 
+    Assert that: varDecl nivaType name equals: "Integer"
+    Assert that: unary nivaType name equals: "Integer"
+    Assert that: binary nivaType name equals: "Integer"
+    
+  ] do
 ]

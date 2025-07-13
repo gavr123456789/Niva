@@ -58,7 +58,23 @@ extend mut Parser [
             args = unaryList map: [
               NameAndExpr name: it expr: it
             ]
-            unary = UnaryMsg args: args receiver: receiver token: tok
+            mut tempUnary = UnaryMsg 
+              selector: unaryList first
+              kind: MessageSendKind.Call 
+              receiver: receiver 
+              token: tok
+
+            unaryList drop: 1, forEach: [
+              newUnary = UnaryMsg 
+                selector: it
+                kind: MessageSendKind.Call 
+                receiver: tempUnary 
+                token: tok
+              tempUnary <- newUnary
+            ]
+
+            unary = tempUnary
+
             // + 1 inc inc + 2
             binSymbol = Identifier fromToken: tok
             result add: (NameAndExpr name: (binSymbol) expr: unary)

@@ -31,14 +31,9 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
 
   | UnaryMsg   => [
     // replacing every expr inside typeAndExpr with typedExpr to be able to tell the types of each arg
-    this args isEmpty, ifTrue: [TO DO: "Compiler bug: unary without args is like a single identifier"]
-    tupleOfUnaryAndType = .replaceArgsWithTypedfromDb: db withContext: c
-    ^TypedExpr 
-      exprAst: tupleOfUnaryAndType x 
-      nivaType: tupleOfUnaryAndType y 
-      isMutable: false 
-      token: token
-
+    // this args isEmpty, ifTrue: [TO DO: "Compiler bug: unary without args is like a single identifier"]
+      typedExpr = .resolveFromDb: db withContext: c
+      ^ typedExpr
     ]
   | BinaryMsg  => [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
@@ -121,6 +116,8 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     args: typedArgs 
     receiver: receiverTypedExpr 
     token: token
+    kind: TO DO//KeywordKind.Call
+
   // newKeyword debug
 
   ^TypedExpr 
@@ -171,35 +168,63 @@ BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tup
   newBinary = BinaryMsg args: typedArgs receiver: receiverTypedExpr token: token
   ^ Tuple x: newBinary y: lastType 
 ] 
-/// since every binary contain its own return type
-/// and identifiers cant contain types
-/// we replacing each of its args with typed expr wich same identifiers
-UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
-  
-  // recreate receiver
-  receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
 
-  typeOfReceiver = receiverTypedExpr nivaType
-  // recreate args
 
-  mut lastType = typeOfReceiver
 
-  typedArgs = args map: [ binary ->
-    dbMsg = db findMsgFromReceiver: lastType  byName: binary name name
+UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
+  resolvedReceiver = receiver toTypedExprFromDb: db withContext: c
+  typeOfReceiver = resolvedReceiver nivaType
+  dbMsg = db findMsgFromReceiver: typeOfReceiver  byName: selector name
 
-    dbMsg args isNotEmpty ifTrue: [TO DO: "Compiler bug, binary $dbMsg with arguments in db"]
+  newUnary = UnaryMsg 
+    receiver: resolvedReceiver 
+    selector: selector
+    token: token
+    kind: dbMsg kind
 
-    // create typed expr with return type of dbMsg in db message
-    typed = TypedExpr 
-      exprAst: binary name 
-      nivaType: dbMsg returnType 
-      isMutable: false 
-      token: binary name token
+  typed = TypedExpr 
+    exprAst: this
+    nivaType: dbMsg returnType 
+    isMutable: dbMsg forMut 
+    token: selector token
 
-    lastType <- dbMsg returnType
-    NameAndExpr name: binary name expr: typed
-  ]
 
-  newBinary = UnaryMsg args: typedArgs receiver: receiverTypedExpr token: token
-  ^ Tuple x: newBinary y: lastType 
+  ^ typed
 ]
+// since every binary contain its own return type
+// and identifiers cant contain types
+// we replacing each of its args with typed expr wich same identifiers
+// UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
+  
+//   // recreate receiver
+//   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
+
+//   typeOfReceiver = receiverTypedExpr nivaType
+//   // recreate args
+
+//   mut lastType = typeOfReceiver
+
+//   typedArgs = args map: [ unary ->
+//     dbMsg = db findMsgFromReceiver: lastType  byName: unary name name
+
+//     dbMsg args isNotEmpty ifTrue: [TO DO: "Compiler bug, unary $dbMsg with arguments in db"]
+
+//     // create typed expr with return type of dbMsg in db message
+//     typed = TypedExpr 
+//       exprAst: unary name 
+//       nivaType: dbMsg returnType 
+//       isMutable: false 
+//       token: unary name token
+
+//     lastType <- dbMsg returnType
+//     NameAndExpr name: unary name expr: typed
+//   ]
+
+//   newUnary = UnaryMsg 
+//     args: typedArgs 
+//     receiver: receiverTypedExpr 
+//     token: token
+//     kind: (TO DO: "а мы не можем так делать потому что потом будет не ясно какой из цепочки какого типа, придется делать рекурсивный унари")// UnaryKind.Call
+
+//   ^ Tuple x: newUnary y: lastType 
+// ]
