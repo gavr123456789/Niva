@@ -47,6 +47,7 @@ const val fakeFileSourceGOOD = """
 //
 
 fun main(args: Array<String>) {
+//    println(cm.b)
 
 
 //    val ls = LS { println("Niva LS: $it") }

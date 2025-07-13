@@ -13,11 +13,17 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   | Identifier     => [
     varType = c lookupForVar: this name
     | varType
-    | null => TO DO: "Cant find $this in the current context"
-    |=> [
-      varType 
-      TypedExpr nivaType: varType exprAst: this
+    | null => [
+      // this identifier can be name of the type and just a constructor call  
+      name first isUpperCase ifTrue: [
+        q = db findByTypeName: name
+        TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
+      ] ifFalse: [
+        TO DO: "Cant find $this in the current context"
+      ]
     ]
+    |=> TypedExpr nivaType: varType exprAst: this
+    
   ]
   | ExprInBrackets => value toTypedExprFromDb: db withContext: c
   | ListLiteral    => [
@@ -72,7 +78,7 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
 
     TypedExpr 
       nivaType: typedExpr nivaType 
-      exprAst: this 
+      exprAst: typedExpr 
       isMutable: typedExpr isMutable
   ]
   | Assign => TO DO
@@ -110,19 +116,16 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     findMsgFromReceiver: receiverTypedExpr nivaType 
     byName: .getNameFromArgs
   
-  foundMsg debug
 
   newKeyword = KeywordMsg 
     args: typedArgs 
     receiver: receiverTypedExpr 
     token: token
-    kind: TO DO//KeywordKind.Call
-
-  // newKeyword debug
+    kind: foundMsg kind
 
   ^TypedExpr 
     exprAst: newKeyword
-    nivaType: (TO DO: "return")
+    nivaType: foundMsg returnType
     isMutable: false 
     token: token
 ] 

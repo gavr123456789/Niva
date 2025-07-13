@@ -16,7 +16,7 @@ type ResolverHelper
   fileToStatements: Map(String, List::Statement) 
   db: TyperDB
 
-constructor ResolverHelper resolve: fileToContent::Map(String, String) -> ResolverHelper  = [
+constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
 
   fileToStatements::mut Map(String, List::Statement) = #{}!
   fileToContent forEach: [ file, content ->
@@ -26,6 +26,8 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) -> Resolv
    
   db = TyperDB new
 
+
+  // visitAllTypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
   msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: fileToStatements
 
@@ -37,26 +39,38 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) -> Resolv
 resolver = [
   fileMain = """
     type Person age: Int 
-    
-    Person getAge -> Int = [
-      1 toString inc
+    Int sas = [
+      p = Person age: 27
     ]
     
   """
 
 
-  result = ResolverHelper resolve: #{"main" fileMain}
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
   typedAst = result fileToStatements at: "main", unpackOrPANIC
   msgDecl = typedAst at: 1
-
   
-] 
-
-sass = [
-  msgSend = TestParse expression: "1 + 2 inc"
-  msgSend echo
+  | msgDecl
+  | MessageDecl => [
+    varDecl = msgDecl body typedBody at: 0, exprAst
+    
+    | varDecl
+    | TypedExpr => [
+      kwMsg = varDecl exprAst
+      | kwMsg
+      | KeywordMsg => [
+        Assert that: kwMsg kind equals: MessageSendKind.Constructor
+      ]
+      |=> TO DO
+    ]
+    |=> TO DO
+  ]
+  |=> [TO DO]
+  
 ] do
+
+
 
 
 constructorTest = [
