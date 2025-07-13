@@ -12,7 +12,11 @@ type NivaCompiler
 type NivaBuildSystem
 
 
-resolve = [ fileToContent::Map(String, String) ->
+type ResolverHelper
+  fileToStatements: Map(String, List::Statement) 
+  db: TyperDB
+
+constructor ResolverHelper resolve: fileToContent::Map(String, String) -> ResolverHelper  = [
 
   fileToStatements::mut Map(String, List::Statement) = #{}!
   fileToContent forEach: [ file, content ->
@@ -27,7 +31,7 @@ resolve = [ fileToContent::Map(String, String) ->
 
   MsgDeclVisitor new processBodyes: msgDecls db: db
 
-  Tuple x: fileToStatements y: db
+  ^ ResolverHelper fileToStatements: fileToStatements db: db
 ]
 
 resolver = [
@@ -35,61 +39,25 @@ resolver = [
     type Person age: Int 
     
     Person getAge -> Int = [
-      this age
+      1 toString inc
     ]
     
   """
 
 
-  result = resolve fileToContent: #{"main" fileMain}
-  db = result y
-  typedAst = result x
+  result = ResolverHelper resolve: #{"main" fileMain}
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedAst at: 1
 
   
-]
+] 
 
 sass = [
-  
-  input = """
-    1 to: 2, inc echo
-  """ trimIndent
-
-  statements = TestParse withInput: input expectedCount: 1
-  statements at: 0
-  first = statements at: 0
-  | first
-  | UnaryMsg => [
-    receiver = first receiver
-    | receiver
-    | UnaryMsg => [
-      expr = receiver receiver
-      | expr
-      | ExprInBrackets => [
-        expr = expr value
-        | expr
-        | KeywordMsg => [
-          Assert that: expr args count equals: 1
-          first = expr args at: 0
-          Assert that: first name token lexeme equals: "to"
-          Assert that: first expr token lexeme equals: "2"
-        ]
-        |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
-      ]
-      |=> [
-        TO DO: "123"
-      ]
-
-    ]
-    |=> [TO DO: "It should be ExprInBrackets, but it " + receiver toString]
-
-    Assert
-      that: first selector name
-      equals: "echo"
-
-  ]
-  |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
-
+  msgSend = TestParse expression: "1 + 2 inc"
+  msgSend echo
 ] do
+
 
 constructorTest = [
 

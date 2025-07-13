@@ -183,7 +183,7 @@ UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
     kind: dbMsg kind
 
   typed = TypedExpr 
-    exprAst: this
+    exprAst: newUnary
     nivaType: dbMsg returnType 
     isMutable: dbMsg forMut 
     token: selector token

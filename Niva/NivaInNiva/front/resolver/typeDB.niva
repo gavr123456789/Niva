@@ -46,7 +46,7 @@ NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaT
   | null => [
     newProtocol = createNewProtocol do
     protocols at: forType put: {newProtocol}!
-    "added method" + m name + " to new protocol $protocolName", log
+    "added method " + m name + " to new protocol $protocolName", log
   ]
   |=> [
     protocol = foundProtocols find: [it name == protocolName]
@@ -113,7 +113,9 @@ Project protocol: "finding"
 
 
 NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod = [
-  protocol = protocols at: forType, unpackOrPANIC
+  protocol2 = protocols at: forType
+  protocol2 == null ifTrue: [TO DO: "type $forType has zero protocols"]
+  protocol = protocol2 unpackOrPANIC
 
   // knownMethods::mut List::String = {}!
 

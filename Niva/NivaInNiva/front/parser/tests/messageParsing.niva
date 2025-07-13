@@ -114,7 +114,7 @@ Test parseSimbleBinaryMsg -> Unit! = [
 
 Test parseBinaryMsgWithUnary -> Unit! = [  
   msgSend = TestParse expression: "1 + 2 inc"
-  Assert that: msgSend toString equals: "IntExpr 1 + UnaryMsg (IntExpr 2 inc)"
+  Assert that: msgSend toString equals: "IntExpr 1 + UnaryMsg Call(IntExpr 2 inc)"
 ]
 
 Test parseBinaryMsgWithUnary2 -> Unit! = [

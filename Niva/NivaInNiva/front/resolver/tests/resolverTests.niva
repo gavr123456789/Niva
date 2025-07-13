@@ -1,3 +1,36 @@
+  
+
+
+Test getter = [
+
+  fileMain = """
+    type Person age: Int 
+    
+    Person getAge -> Int = [
+      this age
+    ]
+    
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain}
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedAst at: 1
+  | msgDecl
+  | MessageDecl => [
+    getter = msgDecl body typedBody at: 0
+    ast = getter exprAst
+    | ast 
+    | UnaryMsg => [
+      Assert that: ast kind equals: MessageSendKind.Getter
+    ]
+    |=> []
+  ]
+  |=>[TO DO]
+  
+
+]
 Test resolveAFewDeclarations = [
   
   fileMain = """

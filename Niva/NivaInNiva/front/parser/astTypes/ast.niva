@@ -62,10 +62,11 @@ union MessageSend receiver: Expr token: Token =
 | KeywordMsg
     args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
     kind: MessageSendKind
-UnaryMsg toString = [
+UnaryMsg toString -> String = [
   // realArgs = args joinWith: " " transform: [it name name]
   x = selector name
-  ^ "UnaryMsg ($receiver $x)"
+  kindStr = kind toString//!= MessageSendKind.Call ifTrue: [kind toString] ifFalse: [""]
+  ^ "UnaryMsg $kindStr($receiver $x)"
 ]
 BinaryMsg toString -> String = [
   realArgs = args joinWith: " " transform: [
