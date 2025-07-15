@@ -83,6 +83,7 @@ Test resolveAFewDeclarations = [
 
   msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: listOfFilesContents
+    entryPointStatements: statements
 
   MsgDeclVisitor new processBodyes: msgDecls db: db
 

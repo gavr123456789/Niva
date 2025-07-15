@@ -20,12 +20,16 @@ PrintingVisitor visit: st::Statement = [
 ]
 
 /// returns pkg to message decl
-TypeDeclVisitor visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) -> List(Tuple(String, MessageDecl)) = [
+TypeDeclVisitor 
+  visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) 
+  entryPointStatements::List::Statement -> List(Tuple(String, MessageDecl)) = [
+
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
-  // msgDecls::mut Map(String, MessageDecl) = #{}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
   msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
 
+  // expressions of the main file
+  entryPointExpressions:: mut List::Expr = {}!
 
   // first iteration, fill the lists of statements, create pkgs
   fileToStatements forEach: [file, statements -> 
