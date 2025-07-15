@@ -185,15 +185,17 @@ fun GeneratorKt.regenerateGradleForAmper(
 
 fun GeneratorKt.regenerateMill(pathToMill: String) {
     val deps = buildString {
-        if (dependencies.isNotEmpty()) {
-            appendLine("def ivyDeps = Agg(")
-            appendLine(
-                dependencies.joinToString(",\n") {
-                    "    ivy$it"
-                }
-            )
-            appendLine(")")
-        }
+//        if (dependencies.isNotEmpty()) {
+        appendLine("def mvnDeps = Seq(")
+        // we always have serialization
+        appendLine("""    mvn"org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1",""")
+        appendLine(
+        dependencies.joinToString(",\n") {
+                "    mvn$it"
+            }
+        )
+        appendLine(")")
+//        }
     }
     val newMillBuildFile = MILL_BUILD
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, deps)
