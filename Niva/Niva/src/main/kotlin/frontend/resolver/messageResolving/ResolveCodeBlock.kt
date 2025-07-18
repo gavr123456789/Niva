@@ -5,7 +5,6 @@ import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.KeywordArg
-import frontend.resolver.compare2Types
 import frontend.resolver.fillGenericsWithLettersByOrder
 import frontend.resolver.resolve
 import frontend.resolver.toType
@@ -62,7 +61,6 @@ fun Resolver.resolveCodeBlock(
 
 
     var isThisWhileCycle = true
-    var metaDataFound: KeywordMsgMetaData? = null
     var itArgType: Type? = null
     // resolve generic args and just args, kinda
     val genericLetterToTypesOfReceiver = mutableMapOf<String, Type>()
@@ -96,7 +94,6 @@ fun Resolver.resolveCodeBlock(
                 MessageDeclarationType.Keyword
             ) as KeywordMsgMetaData
         }()
-        metaDataFound = metaDataFromDb
         val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
         // T sas -> T = []
         // 4 sas
@@ -205,15 +202,7 @@ fun Resolver.resolveCodeBlock(
     }.toMutableList()
 
 
-    if (itArgType != null && args.isEmpty()) {
-        if (compare2Types(returnType, itArgType, statement.token) && metaDataFound != null) {
-            val e = metaDataFound.argTypes[0]
-            val type = e.type
-            if (type is Type.Lambda) {
-                type.returnType =  returnType.cloneAndChangeBeforeGeneric(type.returnType.name)
-//                returnType.beforeGenericResolvedName = type.returnType.name
-            }
-        }
+    if (itArgType != null && args.isEmpty() ) {
         args.add(KeywordArg("it", itArgType))
     }
     val type = Type.Lambda(

@@ -4,6 +4,7 @@ type Context
   parent: Context?
   vars: mut Map(String, NivaType)
 
+
 /// no parents no vars(yet)
 constructor Context root = Context parent: null vars: #{}!
 

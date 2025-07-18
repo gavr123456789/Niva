@@ -1,9 +1,1 @@
-@debug
-Int sas = [
-
-    x = 23
-    x + 334
-    x inc inc
-]
-
-1 sas
+{1 2 3 4} find: [42]

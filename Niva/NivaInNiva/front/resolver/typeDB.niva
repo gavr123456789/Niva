@@ -123,8 +123,17 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
 ]
 
 
-Project protocol: "finding"
 
+NivaPkg replaceMethod: m::NivaMethod inType::NivaType= [
+  protocols2 = protocols at: inType, unpackOrPANIC
+  foundProtocol = protocols2 find: [ proto ->
+    proto name == m protocolName
+  ], unpackOrPANIC
+  
+  foundProtocol methods at: m name put: m 
+]
+
+Project protocol: "finding"
 
 NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod = [
   protocol2 = protocols at: forType
@@ -160,6 +169,8 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod =
   TO DO: "Searching for $name method but its not found for type $typeName"
 ]
 
+
+
 TyperDB 
   findMsgFromReceiver: receiver::NivaType 
   byName: name::String -> NivaMethod = [
@@ -167,7 +178,32 @@ TyperDB
   pkg = packages at: receiver pkgName, unpackOrPANIC
   method = pkg findMethodInAllProtocols: name forType: receiver
   
-  ^ method
+ ^| method returnType
+  | Unknown => [
+    "Lazy resolving for $name", log
+
+    // TODO stack of resolving, probably inside Typer itself
+    {decl} = method
+    | decl
+    | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
+    |=> [
+      Assert that: decl isSingleExpr equals: true
+
+      decl resolveBodyWithDb: this
+      Assert that: decl body typedBody isNotEmpty equals: true
+
+      returnType = decl body typedBody last nivaType
+
+      returnType debug
+      replaceMethod = method copyWithDifferentType: returnType
+      pkg replaceMethod: replaceMethod inType: receiver
+      replaceMethod returnType debug
+      replaceMethod
+    ]
+  ]
+  |=> method
+
+  // ^ method
 ] 
 
 TyperDB 

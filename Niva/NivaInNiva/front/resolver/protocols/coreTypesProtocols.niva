@@ -5,18 +5,18 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
 
   // unary
   intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
-  intProtocol addMethod: (NivaMethod name: "inc" args: {} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "dec" args: {} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "toString" args: {} returnType: str forMut: false)
+  intProtocol addMethod: (NivaMethod unary: "inc" returnT: int)
+  intProtocol addMethod: (NivaMethod unary: "dec" returnT: str)
+  intProtocol addMethod: (NivaMethod unary: "toString" returnT: int)
   // binary
-  intProtocol addMethod: (NivaMethod name: "+" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "-" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "*" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "/" args: {(TypeTField binary: int)} returnType: int forMut: false)
-  intProtocol addMethod: (NivaMethod name: "%" args: {(TypeTField binary: int)} returnType: int forMut: false)
+  intProtocol addMethod: (NivaMethod binary: "+" argT: int returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "-" argT: int returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "*" argT: int returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "/" argT: int returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "%" argT: int returnT: int)
 
-  intProtocol addMethod: (NivaMethod name: "==" args: {(TypeTField binary: int)} returnType: bool forMut: false)
-  intProtocol addMethod: (NivaMethod name: "!=" args: {(TypeTField binary: int)} returnType: bool forMut: false)
+  intProtocol addMethod: (NivaMethod binary: "==" argT: bool returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "!=" argT: bool returnT: int)
 
   ^intProtocol
 ]
@@ -71,10 +71,10 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> Ni
 
 // helpers
 constructor NivaMethod unary: name::String returnT::NivaType = 
-  NivaMethod name: name args: {} returnType: returnT forMut: false
+  NivaMethod name: name args: {} returnType: returnT forMut: false protocolName: "common"
 
-constructor NivaMethod binary: name::String argT::NivaType returnT::NivaType = 
-  NivaMethod name: name args: {(TypeTField binary: argT)} returnType: returnT forMut: false
+constructor NivaMethod binary: name::String argT::NivaType returnT::NivaType= 
+  NivaMethod name: name args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common"
 
 constructor NivaMethod singleArgKw: name::String argT::NivaType returnT::NivaType = 
-  NivaMethod name: name + ":" args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false
+  NivaMethod name: name + ":" args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common"

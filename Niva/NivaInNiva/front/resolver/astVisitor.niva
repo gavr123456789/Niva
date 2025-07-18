@@ -30,9 +30,13 @@ TypeDeclVisitor
 
   // expressions of the main file
   entryPointExpressions:: mut List::Expr = {}!
+  entryPointStatements forEach: [
+    | it
+    | Expr => entryPointExpressions add: it
+    |=> []
+  ]
 
-  // first iteration, fill the lists of statements, create pkgs
-  fileToStatements forEach: [file, statements -> 
+  processDeclarations = [file::String, statements::List::Statement -> 
     pkgName = file
 
     db addNewPkgIfNotExists: pkgName
@@ -54,6 +58,11 @@ TypeDeclVisitor
       | EnumDecl => TO DO: "EnumDecl"
       |=> []
     ]
+  ]
+  
+  // first iteration, fill the lists of statements, create pkgs
+  fileToStatements forEach: [file, statements -> 
+    processDeclarations file: file statements: statements
   ]
 
   fillTypesAndMessages = [
@@ -84,6 +93,11 @@ TypeDeclVisitor
 
     // msg decls resolving
     // here we should have all the types resolved
+    // msgDecls2 addFirst: (Tuple x: "main" y: entry)
+
+// first resolve all the declarations
+// then resolve main "body"
+// then resolve all others method's bodies 
     msgDecls2 forEach: [ tuple ->
       pkg = tuple x 
       msg = tuple y
@@ -111,6 +125,7 @@ TypeDeclVisitor
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
       
+
       method = NivaMethod 
         name: msg name 
         args: argsT 
@@ -118,11 +133,16 @@ TypeDeclVisitor
         forMut: isMutable 
         possibleErrors: {}
         kind: MessageSendKind.Call
+        decl: msg
+        protocolName: "common"
 
       db addNewMethod: method forType: receiverType inProtocol: null
       "added method " + method name, log
     ]
   
+    mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions) 
+    mainBody resolve: db withContext: Context root
+
   ] do
 
   ^ msgDecls2
@@ -134,7 +154,9 @@ MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
   rt = returnType
  ^| rt
   | null => [
-    db findByTypeName: "Unit" inPkg: null 
+    | isSingleExpr
+    | true => Unknown new
+    | false => db findByTypeName: "Unit" inPkg: null 
   ]
   |=> db findByTypeName: rt name inPkg: null 
 ]
@@ -175,6 +197,8 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
         forMut: false // false because its getter
         possibleErrors: {}
         kind: MessageSendKind.Getter
+        decl: null
+        protocolName: "getters"
       
       db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
@@ -185,7 +209,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
 
 MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
   pkg2Msg forEach: [tuple -> 
-    pkgName = tuple x 
+    // pkgName = tuple x 
     msgDecl = tuple y 
     msgDecl resolveBodyWithDb: db
   ]
@@ -197,9 +221,9 @@ MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::Type
 type MessagesWithContext
   data: Map(MessageDecl, Context)
 
-
+/// fills typedBody inside body
 MessageDecl resolveBodyWithDb: db::TyperDB = [
-  // add receiver  as "this" to context
+// add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context root
     receiver = db findByTypeName: receiver name inPkg: null
@@ -217,7 +241,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
 
     c
   ]
-
+// resolve body
   c = createContextWithThisAndArgs do
   body resolve: db withContext: c
 ]

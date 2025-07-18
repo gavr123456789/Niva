@@ -1,4 +1,8 @@
   
+// Test recursiveMessageDeclaration = [
+  // shoud be error, but there are no way to typeChecks errors for now
+// ]
+
 Test constructorCall = [
   fileMain = """
     type Person age: Int 

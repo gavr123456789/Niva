@@ -86,11 +86,11 @@ fun Resolver.resolveWithBackTracking(
     verbosePrinter: VerbosePrinter,
 ) {
 
-    verbosePrinter.print {
-        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFilePath}" +
-                (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
-                otherFilesPaths.joinToString("\n\t") { it.path }
-    }
+//    verbosePrinter.print {
+//        "Files to compile: ${otherFilesPaths.count() + 1}\n\t${mainFilePath}" +
+//                (if (otherFilesPaths.isNotEmpty()) "\n\t" else "") +
+//                otherFilesPaths.joinToString("\n\t") { it.path }
+//    }
     /// resolve all declarations
     statements = mainAST.toMutableList()
 
@@ -300,14 +300,56 @@ fun parseFilesToAST(
     resolveOnlyOneFile: Boolean,
     pathToChangedFile: File? = null,
     changedFileContent: String? = null,
+    verbosePrinter: VerbosePrinter? = null,
 ): Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>> {
     val mainAST = getAst(source = mainFileContent, file = File(mainFilePath))
     val listOfPaths = mutableListOf<File>()
     // generate ast for others
     // in lsp mode we change one file at a time
 
+    // Virtual threads from java 21
+//    val otherASTs = if (!resolveOnlyOneFile) {
+//        listOfPaths.addAll(otherFileContents)
+//
+//        val markBeforeAsync = markNow()
+//
+//        val executor = Executors.newVirtualThreadPerTaskExecutor() // Java 21 API
+//
+//        try {
+//            val futures: List<Future<Pair<String, List<Statement>>>> = otherFileContents.map { file ->
+//                executor.submit<Pair<String, List<Statement>>> {
+//                    val localMark = markNow()
+//                    verbosePrinter?.print { GREEN + "${markBeforeAsync.getMs()} ms Parsing file ${file.name}: Started" + RESET }
+//
+//                    val src =
+//                        if (changedFileContent != null && pathToChangedFile != null &&
+//                            file.absolutePath == pathToChangedFile.absolutePath)
+//                            changedFileContent
+//                        else
+//                            Files.readString(file.toPath()) // More idiomatic for Java interop
+//
+//                    verbosePrinter?.print { "${localMark.getMs()} ms Parsing file ${file.name}: alone" + RESET }
+//                    verbosePrinter?.print { RED + "${markBeforeAsync.getMs()} ms Parsing file ${file.name}: ended" + RESET }
+//
+//                    file.nameWithoutExtension to getAst(src, file)
+//                }
+//            }
+//
+//            verbosePrinter?.print { "Starting to wait for all ${markBeforeAsync.getMs()} ms" }
+//
+//            val results = futures.map { it.get() } // Blocks, but runs concurrently thanks to virtual threads
+//
+//            verbosePrinter?.print { "Ended to wait for all ${markBeforeAsync.getMs()} ms" }
+//
+//            results
+//        } finally {
+//            executor.shutdown()
+//        }
+//    } else {
+//        emptyList()
+//    }
 
-
+    // single thread solution
 //    val otherASTs = if (!resolveOnlyOneFile) {
 //        otherFileContents.map {
 //            val src =
@@ -320,26 +362,36 @@ fun parseFilesToAST(
 //        }
 //    } else emptyList()
 
-
+    // Coroutines
     val otherASTs = if (!resolveOnlyOneFile) {
         listOfPaths.addAll(otherFileContents)
-        // paralel on 4 threads
+        // parallel on 4 threads
         val dispatcher = newFixedThreadPoolContext(4, "fileReaderPool")
         runBlocking {
             withContext(dispatcher) {
+                val markBeforeAsync = markNow()
                 val deferredAsts = otherFileContents.map { file ->
-                    async {
+
+                    async(dispatcher) {
+                        val localMark = markNow()
+                        verbosePrinter?.print { GREEN + "${markBeforeAsync.getMs()} ms Parsing file ${file.name}: Started at " + RESET }
+
                         val src =
-                            if (changedFileContent != null && pathToChangedFile != null && file.absolutePath == pathToChangedFile.absolutePath) {
+                            if (changedFileContent != null && pathToChangedFile != null && file.absolutePath == pathToChangedFile.absolutePath)
                                 changedFileContent
-                            } else {
+                            else
                                 file.readText()
-                            }
+
+                        verbosePrinter?.print { "${localMark.getMs()} ms Parsing file ${file.name}: alone "+ RESET }
+                        verbosePrinter?.print { RED + "${markBeforeAsync.getMs()} ms Parsing file ${file.name}: ended at" + RESET}
                         file.nameWithoutExtension to getAst(source = src, file = file)
                     }
                 }
 
-                deferredAsts.awaitAll()
+                verbosePrinter?.print { "Starting to wait for all ${markBeforeAsync.getMs()} ms" }
+                val x = deferredAsts.awaitAll()
+                verbosePrinter?.print { "Ended to wait for all ${markBeforeAsync.getMs()} ms" }
+                x
             }
         }
     } else {

@@ -173,7 +173,6 @@ BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tup
 ] 
 
 
-
 UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
   resolvedReceiver = receiver toTypedExprFromDb: db withContext: c
   typeOfReceiver = resolvedReceiver nivaType
@@ -194,40 +193,3 @@ UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
 
   ^ typed
 ]
-// since every binary contain its own return type
-// and identifiers cant contain types
-// we replacing each of its args with typed expr wich same identifiers
-// UnaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(UnaryMsg, NivaType) = [
-  
-//   // recreate receiver
-//   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
-
-//   typeOfReceiver = receiverTypedExpr nivaType
-//   // recreate args
-
-//   mut lastType = typeOfReceiver
-
-//   typedArgs = args map: [ unary ->
-//     dbMsg = db findMsgFromReceiver: lastType  byName: unary name name
-
-//     dbMsg args isNotEmpty ifTrue: [TO DO: "Compiler bug, unary $dbMsg with arguments in db"]
-
-//     // create typed expr with return type of dbMsg in db message
-//     typed = TypedExpr 
-//       exprAst: unary name 
-//       nivaType: dbMsg returnType 
-//       isMutable: false 
-//       token: unary name token
-
-//     lastType <- dbMsg returnType
-//     NameAndExpr name: unary name expr: typed
-//   ]
-
-//   newUnary = UnaryMsg 
-//     args: typedArgs 
-//     receiver: receiverTypedExpr 
-//     token: token
-//     kind: (TO DO: "а мы не можем так делать потому что потом будет не ясно какой из цепочки какого типа, придется делать рекурсивный унари")// UnaryKind.Call
-
-//   ^ Tuple x: newUnary y: lastType 
-// ]
