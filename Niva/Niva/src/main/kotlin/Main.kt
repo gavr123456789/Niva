@@ -46,28 +46,9 @@ const val fakeFileSourceGOOD = """
 //}
 //
 
+
 fun main(args: Array<String>) {
-//    println(cm.b)
 
-
-//    val ls = LS { println("Niva LS: $it") }
-//    val fromJson = readFromJson("devModeData.json")
-//
-//    fromJson.data.forEach { (fileName, value) ->
-//        val file = File(fileName)
-//        value.forEach { (lineNum, values) ->
-//            values.forEach {
-//                val w = it.toIdentifierExpr(file, lineNum)
-//                ls.megaStore.addNew(
-//                    s = w,
-//                    scope = mapOf(),
-//                    prepend = false
-//                )
-//            }
-//        }
-//    }
-
-//    println(fromJson)
 ///////////////////////
 
 //    val args = arrayOf("run","/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/main.niva")

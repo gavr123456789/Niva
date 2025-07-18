@@ -1,13 +1,30 @@
 
 Body resolve: db::TyperDB withContext: c::Context = [
-  Assert that: typedBody isEmpty equals: true
   Assert that: unTypedBody isNotEmpty equals: true
+  typedBody isEmpty ifTrue: [
+    unTypedBody first toString + " was already resolved", log
+    ^
+  ]
+
+  Assert that: typedBody isEmpty equals: true
+
+  stackOfVisited::mut Set::MessageDecl = #()
 
   unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb: db withContext: c
+    typeOfExpr = typed nivaType
+    // check that type is not Unknown
+    | typeOfExpr
+    | Unknown => [
+      TO DO: "Unknown type of expr is not possible $expr"
+    ]
+    |=> []
+    // if it is, then go and resolve the body, with remembering stack
+
+
+
     typedBody add: typed
   ]
 
   Assert that: typedBody isNotEmpty equals: true
-
 ]

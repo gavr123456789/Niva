@@ -344,15 +344,16 @@ fun compileProjFromFile(
     // we need custom ast to fill file to ast table in LS(non incremental store)
     val (mainAst, otherAst) = {
         if (customAst == null) {
-            val beforeParserMark = markNow()
             val mainText = mainFile.readText()
+            val beforeParserMark = markNow()
             val w = parseFilesToAST(
                 mainFileContent = mainText,
                 otherFileContents = resolver.otherFilesPaths,
                 mainFilePath = mainFile.absolutePath,
-                resolveOnlyOneFile = compileOnlyOneFile
+                resolveOnlyOneFile = compileOnlyOneFile,
+                verbosePrinter = verbosePrinter,
             )
-            verbosePrinter.print { "Parsing: ${beforeParserMark.getMs()} ms" }
+            verbosePrinter.print { "Parsing full: ${beforeParserMark.getMs()} ms" }
 
             Pair(w.first, w.second)
         }

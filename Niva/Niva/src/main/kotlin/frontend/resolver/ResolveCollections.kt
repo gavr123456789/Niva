@@ -139,6 +139,9 @@ fun Resolver.resolveMap2(
     // get type of the first value
     if (statement.initElements.isEmpty() && (rootStatement is VarDeclaration && rootStatement.valueTypeAst != null)) {
         val type = rootStatement.valueTypeAst!!.toType(typeDB, typeTable)
+        if (type.name != "Map") {
+            statement.token.compileError("Expected $type but u used empty Map literal, {} - list, #() - set")
+        }
         return type
     }
     val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"

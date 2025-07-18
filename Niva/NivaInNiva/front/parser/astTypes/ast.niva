@@ -157,6 +157,9 @@ union AstType2 tok: Token name: String =
   args: List::AstType2
   returnType: AstType2
 
+constructor AstType2 unitType -> AstType2 = 
+  AstType name: "Unit" tok: (Token fake)
+
 AstType toString = [
   genericParamsStr = genericParams joinWith: "::" transform: [it toString]
   ^ "$name$genericParamsStr"

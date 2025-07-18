@@ -32,6 +32,30 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
 
+
+  // we need to have map of methodDeclName to DeclStatement
+
+  // then go main expr by expr, when we see non resolved expr
+
+  // how to check that expr is resolved - if it presended inside map!
+  // no, just by checking is there a typedBody not Empty!
+  // if its not found in db then its probably std, so just search in db
+
+
+  // when the body of expr is not yet resolved then resolve it, else find msg from db
+
+
+
+  // мапа Pkg.Type.MethodName -> NivaType
+  // val resolvedFunctions: MutableMap<String, Type> = mutableMapOf()
+  // стек в глубину где мы сейчас пока резолвим
+  // val resolvingFunctions: MutableSet<String> = mutableSetOf()
+
+  // алгоритм ResolveMethodByName
+  // если есть в мапе resolvedFunctions то возвращаем результат
+  // если текущая есть среди resolvingFunctions, значит мы уже начинали резолвить текущуюю и попали в цикл
+  // add current func to resolving
+  // resolve return type 
   MsgDeclVisitor new processBodyes: msgDecls db: db
 
   ^ ResolverHelper fileToStatements: fileToStatements db: db
@@ -39,11 +63,9 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
 
 resolver = [
   fileMain = """
-    type Person age: Int 
-    Int sas = [
-      p = Person age: 27
-    ]
-    1 inc
+    //type Person age: Int 
+    1 sus
+    Int sus = 42
     
   """
 

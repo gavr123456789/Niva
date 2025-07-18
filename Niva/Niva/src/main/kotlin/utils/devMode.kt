@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import main.Option
+import main.codogen.BuildSystem
 import main.languageServer.OnCompletionException
 import main.languageServer.Scope
 import main.frontend.meta.CompilerError
@@ -111,7 +113,13 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
             if (!watcherIsRunning) {
                 watcherIsRunning = true
                 launch {
-                    compiler.runGradleAmperBuildCommand()
+                    when (am.buildSystem) {
+                        BuildSystem.Amper -> compiler.runGradleAmperBuildCommand()
+                        BuildSystem.Mill -> compiler.runMill(Option.RUN, am.outputRename)
+                        BuildSystem.Gradle -> {TODO("No dev mode for gradle, its old, use mill or amper")}
+                    }
+
+
                 }
             }
 

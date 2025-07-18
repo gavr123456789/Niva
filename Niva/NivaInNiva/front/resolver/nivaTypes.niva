@@ -18,9 +18,10 @@ union NivaType name: String pkgName: String =
 | MapT k: NivaType v: NivaType
 // utility
 | UnresolvedGenericT letter: String
-| NullT
+| NullT // usually x = null, should be resolved to x::Nothing = null
 | NullableT v: NivaType
 | TypeOfTheType v: NivaType // hack for constructors
+| Unknown // Special type for 
 
 type TypeTField name: String typeT: NivaType
 type UnionTBranch name: String typeT: NivaType
@@ -31,12 +32,12 @@ TypeT generateDefaultConstructor -> NivaMethod = [
  ^| fields isEmpty
   | true => [
     // new 
-    NivaMethod constructorWithName: "new" args: {} returnType: this
+    NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors"
   ] 
   | false => [
     // each field
     constructorName = fields joinWith: ":" transform: [it name], + ":"
-    NivaMethod constructorWithName: constructorName args: fields returnType: this
+    NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors"
   ] 
 ]
 
@@ -52,6 +53,7 @@ constructor CharT new    = CharT    name: "Char"    pkgName: "core"
 constructor AnyT new     = AnyT     name: "Any"     pkgName: "core"
 constructor NothingT new = NothingT name: "Nothing" pkgName: "core"
 constructor NullT new    = NullT    name: "Null"    pkgName: "core"
+constructor Unknown new  = Unknown  name: "Unknown" pkgName: "core"
 
 constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: "core"
 constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
@@ -69,6 +71,11 @@ type NivaMethod
   forMut: Bool // can be called only on mutable types
   possibleErrors: List::UnionT
   kind: MessageSendKind
+  decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
+  protocolName: String
+
+NivaMethod copyWithDifferentType: rt::NivaType = 
+  NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
 
 
 type NivaProtocol 
@@ -88,15 +95,27 @@ constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors
 
 /// Create CALL
-constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool = NivaMethod 
+constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String = NivaMethod 
   name: name 
   args: args
   returnType: returnType
   forMut: forMut
   possibleErrors: {}
   kind: MessageSendKind.Call
+  decl: decl
+  protocolName: protocolName
 
-constructor NivaMethod constructorWithName: name::String args::List::TypeTField returnType::NivaType -> NivaMethod = [
+  constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String = NivaMethod 
+  name: name 
+  args: args
+  returnType: returnType
+  forMut: forMut
+  possibleErrors: {}
+  kind: MessageSendKind.Call
+  decl: null
+  protocolName: protocolName
+
+constructor NivaMethod constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String -> NivaMethod = [
   ^ NivaMethod 
       name: name 
       args: args
@@ -104,6 +123,9 @@ constructor NivaMethod constructorWithName: name::String args::List::TypeTField 
       forMut: false
       possibleErrors: {}
       kind: MessageSendKind.Constructor
+      decl: decl
+      protocolName: protocolName
+
 ]
 
 NivaProtocol addMethod::NivaMethod = [

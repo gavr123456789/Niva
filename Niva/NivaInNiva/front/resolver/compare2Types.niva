@@ -39,7 +39,9 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   | AnyT => [
     true
   ]
-
+  | Unknown => [
+    TO DO: "Compiler bug: u cant compare Unknown"
+  ]
   | NothingT => [
     true
   ]
