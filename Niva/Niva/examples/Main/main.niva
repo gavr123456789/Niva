@@ -1,1 +1,22 @@
-{1 2 3 4} find: [42]
+union Color = Red | ^Green
+union Green = LightGreen | DarkGreen
+
+@debug
+Int sas::Color = [
+    | sas
+    | Red => 1 echo
+    | Green => [
+        | sas
+        | LightGreen => 4 echo
+        | DarkGreen => 5 echo
+    ]
+    |=> 3 echo
+]
+
+//Int sus = [
+//    x::Int? = null
+//
+//
+//]
+
+1 sas: Red new

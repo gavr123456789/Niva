@@ -228,14 +228,14 @@ private fun returnTypeAndBodyPart(
         if (msgDecl is MessageDeclarationKeyword) {
             msgDecl.args.forEach { arg ->
                 val thisExpr = IdentifierExpr(arg.localName ?: arg.name, token = arg.tok).also {
-                    it.isInlineRepl = true
+                    it.isInlineRepl = true // args
                 }
                 msgDecl.body.addFirst(thisExpr)
             }
         }
         // add receiver as this identifier for devmode 2
         val thisExpr = IdentifierExpr("this", token = msgDecl.forTypeAst.token).also {
-            it.isInlineRepl = true
+            it.isInlineRepl = true // this
         }
         msgDecl.body.addFirst(thisExpr)
     }

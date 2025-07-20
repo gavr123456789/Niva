@@ -61,7 +61,23 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
   ^ ResolverHelper fileToStatements: fileToStatements db: db
 ]
 
-resolver = [
+recursiveType = [
+  fileMain = """
+    type Person age: Int friend: Person
+    
+  """
+  x = 42
+
+  
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedAst at: 0
+
+] do
+
+lazyResolve = [
   fileMain = """
     //type Person age: Int 
     1 sus
@@ -75,7 +91,7 @@ resolver = [
   typedAst = result fileToStatements at: "main", unpackOrPANIC
   msgDecl = typedAst at: 1
 
-] do
+] 
 
 
 

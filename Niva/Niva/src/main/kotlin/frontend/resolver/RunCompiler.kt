@@ -242,7 +242,7 @@ fun Resolver.resolveWithBackTracking(
     val resolveExpressionsMark = markNow()
 
     resolvingMainFile = true
-    resolve(mainAST, createArgsFromMain())
+    resolve(mainAST, mutableMapOf())// createArgsFromMain()
     resolvingMainFile = false
 
     otherASTs.forEach {
@@ -274,12 +274,13 @@ fun Resolver.printInfoFromCode() {
     }
 }
 
-fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
-    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
-    val listType = this.typeDB.userTypes["List"]!!.first()
-    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType, "List")
-    return mutableMapOf("args" to listOfString)
-}
+/// create `args` variable on top level of type List::String
+//fun Resolver.createArgsFromMain(): MutableMap<String, Type> {
+//    val stringType = Resolver.defaultTypes[InternalTypes.String]!!
+//    val listType = this.typeDB.userTypes["List"]!!.first()
+//    val listOfString = createTypeListOfType("List", stringType, listType as Type.UserType, "List")
+//    return mutableMapOf("args" to listOfString)
+//}
 
 fun TimeSource.Monotonic.ValueTimeMark.getMs() = this.elapsedNow().inWholeMilliseconds.toString()
 

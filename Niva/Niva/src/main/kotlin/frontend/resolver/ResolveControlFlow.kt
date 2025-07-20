@@ -243,6 +243,7 @@ fun Resolver.resolveControlFlow(
             resolveSingle(statement.switch, previousAndCurrentScope, statement)
             currentLevel--
         }
+        statement.switch.isInlineRepl = false
 
 
         var firstBranchReturnType: Type? = null

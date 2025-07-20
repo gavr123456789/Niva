@@ -1,6 +1,9 @@
 
 Body resolve: db::TyperDB withContext: c::Context = [
-  Assert that: unTypedBody isNotEmpty equals: true
+  unTypedBody isEmpty ifTrue: [
+    ^ 
+  ]
+
   typedBody isEmpty ifTrue: [
     unTypedBody first toString + " was already resolved", log
     ^
