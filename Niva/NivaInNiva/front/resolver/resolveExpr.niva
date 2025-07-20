@@ -85,7 +85,16 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   | DestructingAssign => TO DO
   | ReturnStatement => TO DO: "ReturnStatement to TypedExpr"
 
-  | CodeBlock => TO DO: "CodeBlock to TypedExpr"
+  | CodeBlock => [
+    body unTypedBody isEmpty ifTrue: [
+      TypedExpr nivaType: (db findByTypeName: "Unit") exprAst: this
+    ] ifFalse: [
+      body resolve: db withContext: c 
+      TypedExpr 
+        nivaType: body typedBody last nivaType 
+        exprAst: this 
+    ]
+  ]
   | Match     => TO DO: "Match to TypedExpr"
   | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"
 
