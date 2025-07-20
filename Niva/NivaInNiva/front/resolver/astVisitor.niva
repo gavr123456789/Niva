@@ -82,7 +82,9 @@ TypeDeclVisitor
           addNewConstructor: resolvedType generateDefaultConstructor 
           forType: resolvedType 
 
+        
         "added type " + resolvedType name + " in pkg " + pkgName, log
+
       ]
       readyToAddToDBType == null ifTrue: [
         name = typeDecl name
