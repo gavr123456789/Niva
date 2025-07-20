@@ -1,11 +1,13 @@
 
 Body resolve: db::TyperDB withContext: c::Context = [
+  // [] nothing to resolve
   unTypedBody isEmpty ifTrue: [
     ^ 
   ]
 
-  typedBody isEmpty ifTrue: [
-    unTypedBody first toString + " was already resolved", log
+
+  typedBody isNotEmpty ifTrue: [
+    typedBody first toString + " was already resolved", log
     ^
   ]
 

@@ -4,18 +4,19 @@ type Assert
 constructor Assert that::Any? equals::Any? -> Unit = [
   a = Compiler getName: 1
   b = Compiler getName: 2
-
+  codePlace = Compiler getPlace
   that != equals => [
-    Error throwWithMessage: "Assertion failed: ($a($that) != $b($equals)) ($that != $equals)", orPANIC
+    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) ($that != $equals)", orPANIC
   ]
 ]
 
 constructor Assert that::Any? equals::Any? andSay::String -> Unit = [
   a = Compiler getName: 1
   b = Compiler getName: 2
+  codePlace = Compiler getPlace
 
   that != equals => [
-    Error throwWithMessage: "Assertion failed: ($a($that) != $b($equals)), $andSay", orPANIC
+    Error throwWithMessage: "$codePlace Assertion failed: ($a($that) != $b($equals)), $andSay", orPANIC
   ]
 ]
 

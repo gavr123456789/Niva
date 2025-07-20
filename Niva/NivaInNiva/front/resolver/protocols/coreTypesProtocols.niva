@@ -6,7 +6,7 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
   // unary
   intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
   intProtocol addMethod: (NivaMethod unary: "inc" returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "dec" returnT: str)
+  intProtocol addMethod: (NivaMethod unary: "dec" returnT: int)
   intProtocol addMethod: (NivaMethod unary: "toString" returnT: int)
   // binary
   intProtocol addMethod: (NivaMethod binary: "+" argT: int returnT: int)
@@ -30,9 +30,10 @@ constructor NivaProtocol stringFromDefaultTypes: dtc::DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod unary: "echo" returnT: unit)
   strProto addMethod: (NivaMethod unary: "toString" returnT: str)
   strProto addMethod: (NivaMethod unary: "count" returnT: int)
-  strProto addMethod: (NivaMethod unary: "isEmpty" returnT: str)
+  strProto addMethod: (NivaMethod unary: "isEmpty" returnT: bool)
   // binary
   strProto addMethod: (NivaMethod binary: "+" argT: str returnT: str)
+  
   strProto addMethod: (NivaMethod binary: "==" argT: str returnT: bool)
   strProto addMethod: (NivaMethod binary: "!=" argT: str returnT: bool)
 
