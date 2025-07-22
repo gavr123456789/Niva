@@ -89,7 +89,7 @@ fun Resolver.resolveMessageDeclaration(
         }
 
         if (alTypeArgsAreFound) {
-            copyTypeIfGenerics.typeArgumentList = newListOfTypeArgs
+            copyTypeIfGenerics.replaceTypeArguments(newListOfTypeArgs)
         } else {
             unResolvedMessageDeclarations.add(currentPackageName, statement)
             currentLevel--

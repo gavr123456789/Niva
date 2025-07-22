@@ -21,7 +21,8 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 ) = buildString {
     appendPragmas(pragmas, this)
     val receiverType = receiver!!
-    if (isUnionRoot) append("sealed ")
+    if (isUnionRoot)
+        append("sealed ")
     if (isEnumRoot) append("enum ")
     append("class ")
     append(receiverType.toKotlinString(false))
@@ -324,7 +325,7 @@ fun TypeAliasDeclaration.generateTypeAlias() = buildString {
     val realType = this@generateTypeAlias.realType!!
     if (realType is Type.UserLike && realType.typeArgumentList.isNotEmpty()) {
         append("<")
-        append(realType.typeArgumentList.joinToString(", ") { it.name })
+        append(realType.typeArgumentList.map { it.name }.toSet().joinToString(", ") { it })
         append(">")
     }
     if (realType is Type.Lambda) {

@@ -990,7 +990,8 @@ fun Resolver.getTypeForIdentifier(
             val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)
                 ?: x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
             val copy = typeFromDB.copy()
-            copy.typeArgumentList = mutableListOf(e)
+//            copy.typeArgumentList = mutableListOf(e)
+            copy.replaceTypeArguments(mutableListOf(e))
             copy
         } else typeFromDB
 //    x.type = type

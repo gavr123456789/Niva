@@ -177,11 +177,11 @@ fun compare2Types(
                 val arg2 = args2[index]
                 if (isSameNames) {
                     if (arg1 is Type.UnknownGenericType) {
-                        type1OrChildOf2.typeArgumentList = type2.typeArgumentList
+                        type1OrChildOf2.replaceTypeArguments(type2.typeArgumentList)
                         return true
                     }
                     if (arg2 is Type.UnknownGenericType) {
-                        type2.typeArgumentList = type1OrChildOf2.typeArgumentList
+                        type2.replaceTypeArguments(type1OrChildOf2.typeArgumentList)
                         return true
                     }
                 }

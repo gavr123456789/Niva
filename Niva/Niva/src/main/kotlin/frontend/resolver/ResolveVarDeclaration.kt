@@ -86,13 +86,15 @@ fun Resolver.resolveVarDeclaration(
             e.beforeGenericResolvedName = copyType.typeArgumentList[i].name
             newTypeArgList.add(e)
         }
-        copyType.typeArgumentList = newTypeArgList
+//        copyType.typeArgumentList = newTypeArgList
+        copyType.replaceTypeArguments(newTypeArgList)
         valueOfVarDecl.type = copyType
 
         if (valueOfVarDecl is MessageSend) {
             val tt = valueOfVarDecl.receiver.type
             if (tt is Type.UserLike && tt.typeArgumentList.count() == newTypeArgList.count()) {
-                tt.typeArgumentList = newTypeArgList
+//                tt.typeArgumentList = newTypeArgList
+                tt.replaceTypeArguments(newTypeArgList)
             }
         }
     }

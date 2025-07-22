@@ -21,15 +21,11 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
     }
     val genericLetters = listOf("T", "G")
 
-    type.typeArgumentList.forEachIndexed { i, it ->
+    val newArgs = type.typeArgumentList.mapIndexed { i, it ->
         val k = genericLetters[i]
-        type.typeArgumentList[i] = it.cloneAndChangeBeforeGeneric(k)
-//        if (it is Type.InternalType) {
-//            it.beforeGenericResolvedName = null
-//            type.typeArgumentList[i] = it.copyAnyType().also { it.beforeGenericResolvedName = k }
-//        } else
-//            it.beforeGenericResolvedName = k
+        it.cloneAndChangeBeforeGeneric(k)
     }
+    type.replaceTypeArguments(newArgs)
 }
 
 // goes like
@@ -151,7 +147,8 @@ fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst
             }
         }
     }
-    replacerTypeIfItGeneric.typeArgumentList = realTypes
+//    replacerTypeIfItGeneric.typeArgumentList = realTypes
+    replacerTypeIfItGeneric.replaceTypeArguments(realTypes)
     return replacerTypeIfItGeneric
 }
 
@@ -267,7 +264,10 @@ fun replaceAllGenericsToRealTypeRecursive(
             newResolvedTypeArgs2.add(typeArg)
         }
     }
-    return copyType.also { it.typeArgumentList = newResolvedTypeArgs2 }
+    return copyType.also {
+        //it.typeArgumentList = newResolvedTypeArgs2
+        it.replaceTypeArguments(newResolvedTypeArgs2)
+    }
 //    return Type.UserType(
 //        name = copyType.name,
 //        typeArgumentList = newResolvedTypeArgs2,
