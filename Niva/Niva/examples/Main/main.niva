@@ -1,22 +1,5 @@
-union Color = Red | ^Green
-union Green = LightGreen | DarkGreen
+union Color t: T = ^Green
+union Green t: T = LightGreen | DarkGreen
 
-@debug
-Int sas::Color = [
-    | sas
-    | Red => 1 echo
-    | Green => [
-        | sas
-        | LightGreen => 4 echo
-        | DarkGreen => 5 echo
-    ]
-    |=> 3 echo
-]
+type Sas = Color::Unit
 
-//Int sus = [
-//    x::Int? = null
-//
-//
-//]
-
-1 sas: Red new

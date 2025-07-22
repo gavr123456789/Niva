@@ -87,7 +87,8 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     addNewType(rootType, statement)
 
     rootType.branches = branches
-    rootType.typeArgumentList += genericsOfBranches
+//    rootType.typeArgumentList += genericsOfBranches
+    rootType.addAllTypeArguments(genericsOfBranches)
 
     /// generics
     // add generics from branches

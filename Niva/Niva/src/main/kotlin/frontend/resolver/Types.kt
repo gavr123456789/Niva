@@ -531,7 +531,7 @@ sealed class Type(
 
     sealed class UserLike(
         name: String,
-        var typeArgumentList: MutableList<Type>,
+        typeArguments: List<Type> = emptyList(),
         var fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -543,6 +543,39 @@ sealed class Type(
     ) : Type(name, pkg, isPrivate, protocols) {
 
         var emitName: String
+
+        // Приватная мутабельная реализация
+        private val _typeArgumentList: MutableList<Type> = typeArguments.toMutableList()
+
+        // Публичное API — только чтение
+        val typeArgumentList: List<Type>
+            get() = _typeArgumentList
+
+        // Метод для добавления аргумента типа
+        fun addTypeArgument(type: Type) {
+            if (_typeArgumentList.none { it.name == type.name }) {
+                _typeArgumentList.add(type)
+            }
+        }
+
+        fun addAllTypeArguments(types: Collection<Type>) {
+            for (type in types) {
+                addTypeArgument(type)
+            }
+        }
+
+        fun replaceTypeArguments(types: Collection<Type>) {
+            _typeArgumentList.clear()
+            val seenNames = mutableSetOf<String>()
+            for (type in types) {
+                val isNew = seenNames.add(type.name)
+                if (isNew || !type.name.isGeneric()) {
+                    _typeArgumentList.add(type)
+                } else {
+                    throw Exception("allo, 2 same generics $seenNames")
+                }
+            }
+        }
 
         init {
             val decl = typeDeclaration
@@ -660,7 +693,7 @@ sealed class Type(
     // Error -> Root, Branch
     sealed class Union(
         name: String,
-        typeArgumentList: MutableList<Type>, // for <T, G>
+        typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -672,7 +705,7 @@ sealed class Type(
     class UnionRootType(
         var branches: List<Union>, // can be union or branch
         name: String,
-        typeArgumentList: MutableList<Type>, // for <T, G>
+        typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -704,7 +737,7 @@ sealed class Type(
     class UnionBranchType(
         val root: UnionRootType,
         name: String,
-        typeArgumentList: MutableList<Type> = mutableListOf(), // for <T, G>
+        typeArgumentList: List<Type> = mutableListOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -717,7 +750,7 @@ sealed class Type(
     class EnumRootType(
         var branches: List<EnumBranchType>,
         name: String,
-        typeArgumentList: MutableList<Type>, // for <T, G>
+        typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -728,7 +761,7 @@ sealed class Type(
     class EnumBranchType(
         val root: EnumRootType,
         name: String,
-        typeArgumentList: MutableList<Type>, // for <T, G>
+        typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
         isPrivate: Boolean = false,
         pkg: String,
@@ -739,7 +772,7 @@ sealed class Type(
 
     sealed class GenericType(
         name: String,
-        typeArgumentList: MutableList<Type>,
+        typeArgumentList: List<Type>,
         pkg: String,
         fields: MutableList<KeywordArg> = mutableListOf(),
         isPrivate: Boolean = false,
@@ -749,7 +782,7 @@ sealed class Type(
 
     class UnknownGenericType(
         name: String,
-        typeArgumentList: MutableList<Type> = mutableListOf(),
+        typeArgumentList: List<Type> = mutableListOf(),
         pkg: String = "common",
     ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null) {
         override fun toString(): String {
@@ -895,7 +928,8 @@ fun TypeAST.toType(
                     if (resolver != null)
                         resolver.getAnyType(name,mutableMapOf(), mutableMapOf(), null, this.token )
                     else
-                        typeTable[name] ?: this.token.compileError("Can't find user type: ${YEL}$name")
+                        typeTable[name] ?:
+                        this.token.compileError("Can't find user type: ${YEL}$name")
 
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
@@ -915,7 +949,7 @@ fun TypeAST.toType(
                     }.toMutableList()
 
 
-                    copy.typeArgumentList = typeArgs
+                    copy.replaceTypeArguments(typeArgs)
                     // replace fields types from T to real
                     copy.fields.forEachIndexed { i, field ->
                         val fieldType = letterToTypeMap[field.type.name]
@@ -1170,7 +1204,7 @@ fun SomeTypeDeclaration.toType(
     val genericsFromFieldsTypes = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
 
 
-    val genericTypeFields = (genericsDeclarated + genericsFromFieldsTypes).toMutableList()
+    val genericTypeFields = (genericsDeclarated + genericsFromFieldsTypes).distinctBy { it.name }.toMutableList()
 
 
     unresolvedSelfTypeFields.forEach {
@@ -1214,7 +1248,8 @@ fun SomeTypeDeclaration.toType(
         }
     }
 
-    result.typeArgumentList = genericTypeFields.distinctBy { it.name }.toMutableList()
+//    result.typeArgumentList = genericTypeFields.distinctBy { it.name }.toMutableList()
+    result.replaceTypeArguments(genericTypeFields)
     result.fields = fieldsTyped
     //    result.protocols
     // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen
@@ -1223,7 +1258,8 @@ fun SomeTypeDeclaration.toType(
         if (x.typeArgumentList.isEmpty()) return x
         if (x.typeArgumentList.first() is Type.UnknownGenericType) return x
         val copy = x.copy()
-        copy.typeArgumentList = result.typeArgumentList
+        copy.replaceTypeArguments(result.typeArgumentList)
+//        copy.typeArgumentList = result.typeArgumentList
         return copy
     }
 
