@@ -128,7 +128,6 @@ fun TypeDB.getTypeOfIdentifierReceiver(
 fun TypeDB.add(type: Type, customNameAlias: String? = null) {
     val realName = customNameAlias ?: type.name
     when (type) {
-//        is Type.ErrorType -> addErrorDomain(realName, type, token)
         is Type.UserLike -> addUserLike(realName, type)
         is Type.InternalType -> addInternalType(realName, type)
         is Type.Lambda -> addLambdaType(realName, type)
@@ -145,6 +144,10 @@ fun TypeDB.addLambdaType(typeName: TypeName, type: Type.Lambda) {
 }
 
 fun TypeDB.addUserLike(typeName: TypeName, type: Type.UserLike) {
+    if (typeName == "CollectionLiteral") {
+        1
+        // TODO разобраться почему в type не попадают дженерики из Parentа
+    }
     val list = userTypes[typeName]
     if (list == null) {
         // create list with single new type

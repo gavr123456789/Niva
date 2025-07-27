@@ -15,24 +15,28 @@ fun Resolver.resolveReturnStatement(statement: ReturnStatement, previousAndCurre
         }
     }
     val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
-    val typeOfReturnExpr = if (expr == null) unit else expr.type!!
+    val typeOfCurrentBlock = if (expr == null) unit else expr.type!!
 
     ///
     val previousReturnType = wasThereReturn
     val resolvingMessageDeclaration2 = resolvingMessageDeclaration
 
     if (resolvingMessageDeclaration2 != null && resolvingMessageDeclaration2.returnTypeAST == null) {
-        if (previousReturnType != null) {
-            val g = findGeneralRoot(previousReturnType, typeOfReturnExpr)
-                ?: statement.token.compileError("Cant find general root between return types $YEL$typeOfReturnExpr$RESET and $YEL$previousReturnType$RESET")
-            resolvingMessageDeclaration2.returnType = g
+        resolvingMessageDeclaration2.returnType = if (previousReturnType != null) {
+            val g = findGeneralRoot(previousReturnType, typeOfCurrentBlock)
+                ?: statement.token.compileError("Cant find general root between return types $YEL$typeOfCurrentBlock$RESET and $YEL$previousReturnType$RESET")
+            if (g.name == "Statement" && statement.token.line == 422) {
+                1
+//                val g = findGeneralRoot(previousReturnType, typeOfCurrentBlock)
+            }
+            g
         } else {
-            resolvingMessageDeclaration2.returnType = typeOfReturnExpr
+            typeOfCurrentBlock
         }
     }
 
 
-    wasThereReturn = typeOfReturnExpr
+    wasThereReturn = typeOfCurrentBlock
     val root = this.resolvingMessageDeclaration
     if (root != null) {
         val realReturn = wasThereReturn

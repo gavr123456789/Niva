@@ -67,6 +67,7 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
         return cgr
     }
 
+    val generalRoot = findGeneralRoot(branchesWithoutNull[0], branchesWithoutNull[1])
     tok.compileError("Cant find general root between $YEL$branchesWithoutNull$RESET")
 
 }
@@ -432,6 +433,7 @@ fun Resolver.resolveControlFlow(
                 elseReturnTypeMaybe = elseReturnType
 
                 // we have else branch here
+
                 val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
                 if (generalRoot == null) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
@@ -509,8 +511,6 @@ fun Resolver.resolveControlFlow(
                 statement.token
             )
         }
-        // check for true exhaustiveness
-
     }
 
     when (statement) {

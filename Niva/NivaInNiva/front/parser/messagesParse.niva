@@ -30,8 +30,8 @@ extend mut Parser [
   ]
 
   /// + 2 inc inc + 3 dec dec
-  on parseManyBinary -> List::NameAndExpr = [
-      result::mut List::NameAndExpr = {}!
+  on parseManyBinary -> List::NameAndExpr::Unit = [
+      result::mut List::NameAndExpr::Unit = {}!
       mut c = true
       [c] whileTrue: [
         tok = .peek

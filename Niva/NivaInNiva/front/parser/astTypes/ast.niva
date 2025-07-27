@@ -11,9 +11,17 @@ union Statement token: Token =
 // | TypedBody v: List::TypedExpr 
 // | UntypedBody v: List::Expr 
 
+type TypeInfo
+  nivaType: NivaType
+  isMutable: Bool
+
+
+type UntypedExpr = Expr::Unit
+type TypedExpr2 = Expr::TypeInfo
+
 type Body 
-  typedBody: mut List::TypedExpr
-  unTypedBody: List::Expr
+  typedBody: mut List::TypedExpr2
+  unTypedBody: List::UntypedExpr
 
 
 
@@ -58,9 +66,9 @@ union MessageSend receiver: Expr token: Token =
     selector: Identifier
     kind: MessageSendKind
 | BinaryMsg
-    args: List::NameAndExpr // expr - Primary or UnaryMsg
+    args: List::NameAndExpr::T // expr - Primary or UnaryMsg
 | KeywordMsg
-    args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
+    args: List::NameAndExpr::T // expr - Primary or UnaryMsg or BinaryMsg
     kind: MessageSendKind
 UnaryMsg toString -> String = [
   // realArgs = args joinWith: " " transform: [it name name]
@@ -91,9 +99,20 @@ type MatchBranch
   conditions: Body
   body: Body
 
+// Refactor plan
+// add generic T param
+// add UntypedExpr alias
+// fix all the problems, send Unit param to the T from new constructor
+// replace UntypedExpr in Body type with this new Alias
+
+// Stage 2
+// remove TypedExpr2Node
+// add type TypeInfo
+// add new type alias for TypedExpr2
+// replace TypedExpr2 in Body
 
 // Expressions
-union Expr token: Token = 
+union Expr token: Token t: T = 
 | ^LiteralExpr 
 | Identifier     name: String path: {String}?
 | ExprInBrackets value: Expr
@@ -110,37 +129,40 @@ union Expr token: Token =
   subject: Expr 
   branches: List::MatchBranch 
   elseBranch: Body? // possible body
-| TypedExpr 
-  exprAst: Expr
-  nivaType: NivaType
-  isMutable: Bool
+//| TypedExpr
+//  exprAst: Expr
+//  nivaType: NivaType
+//  isMutable: Bool
 
 
+// untyped constructors
 
 
-constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr 
-  exprAst: exprAst
-  nivaType: nivaType
-  isMutable: isMutable
-  token: exprAst token
-
-constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr 
-  exprAst: exprAst
-  nivaType: nivaType
-  isMutable: false
-  token: exprAst token
+//constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr
+//  exprAst: exprAst
+//  nivaType: nivaType
+//  isMutable: isMutable
+//  token: exprAst token
+//  t: Unit
+//
+//constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr
+//  exprAst: exprAst
+//  nivaType: nivaType
+//  isMutable: false
+//  token: exprAst token
+//  t: Unit
 
 Identifier toString = "$name"
 
 
 /// path will be empty when
-constructor Identifier fromToken::Token = 
-  Identifier name: (fromToken lexeme) token: fromToken path: null
+constructor Identifier fromToken::Token -> UntypedExpr =
+  Identifier name: (fromToken lexeme) token: fromToken path: null t: Unit
   
 ExprInBrackets toString = "($value)"
 
 
-type NameAndExpr name: Identifier expr: Expr
+type NameAndExpr name: Identifier::T expr: Expr::T
 
 type NameAndAstType name: String astType: AstType2
 NameAndAstType toString = [
@@ -185,12 +207,12 @@ extend mut AstType [
 
 
 
-union CollectionLiteral token: Token elements: Body = 
+union CollectionLiteral token: Token elements: Body t: T = 
 | ListLiteral
 | SetLiteral
 | MapLiteral
 
-union LiteralExpr token: Token = 
+union LiteralExpr token: Token t: T = 
 | CharExpr
 | IntExpr num: Int
 | FloatExpr

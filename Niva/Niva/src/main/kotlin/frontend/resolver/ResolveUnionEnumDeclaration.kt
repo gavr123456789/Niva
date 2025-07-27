@@ -34,9 +34,16 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         currentType.protocols["dynamic"] = dynamicProtocol
     }
 
+
     val branches = mutableListOf<Type.Union>()
     val genericsOfBranches = mutableSetOf<Type>()
+
+    if(statement.typeName == "Expr") {
+        1
+    }
+
     statement.branches.forEach {
+
         // check if type already exist, and it doesn't have fields,
         // than it's not a new type, but branch with branches
         val tok = it.token
@@ -51,8 +58,11 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
             return
         }
 
-
-        val branchType = if (alreadyRegisteredType is Type.Union && it.isRoot) {
+        if (it.typeName == "MessageSend") {
+            1
+        }
+        // this is included branch, since root already known and it is root itself
+        val branchType = (if (alreadyRegisteredType is Type.Union && it.isRoot) {
             if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields, statement.token)) {
                 it.token.compileError("Union inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name} ${WHITE}${alreadyRegisteredType.fields.map { "${it.name}: ${it.type}" }} $RED!=${YEL} ${rootType.name}${RED} $WHITE${rootType.fields.map { "${it.name}: ${it.type}" }}")
             }
@@ -66,21 +76,40 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
                     unionRootType = rootType,
                     isError = isError
                 ) as Type.UnionBranchType
-
+            if (it.typeName == "KeywordMsg") {
+                1
+            }
 
             if (alreadyRegisteredType == null)
                 addNewType(branchType, it, alreadyCheckedOnUnique = false)
 
 
             branchType
-        }.also { it.parent = rootType }
+        }).also {
+            it.parent = rootType
+            if (rootType.name == "MessageSend") {
+                1
+            }
+            if (it.name == "MessageSend") {
+                1
+            }
 
+            it.addAllTypeArguments(rootType.typeArgumentList)
 
+        }
+
+        if (branchType.name == "MessageSend") {
+            1
+        }
         branchType.fields += rootType.fields
 
         addToFromDynamic(branchType)
         branches.add(branchType)
-        genericsOfBranches.addAll(branchType.typeArgumentList)
+
+        if (branchType !is Type.UnionRootType) {
+            genericsOfBranches.addAll(branchType.typeArgumentList)
+
+        }
     }
 
     addToFromDynamic(rootType)

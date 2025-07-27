@@ -29,7 +29,7 @@ mut Parser
 
     .match: TokenType.Assign, ifFalse: [
       .restoreFrom: savePosition
-      ^ .nextExperssion: .step
+      ^ .nextExpression: .step
     ] 
     // Int inc ->? = ^[]
     isSingleExpr = .peek kind != TokenType.OpenBracket
@@ -82,7 +82,7 @@ mut Parser
     arg = .step
     arg kind == TokenType.IdentifierDoubleColon, ifFalse: [
       .restoreFrom: savePosition
-      ^.nextExperssion: .step
+      ^.nextExpression: .step
     ]
     argType = .parseType
 
@@ -111,7 +111,7 @@ mut Parser
   ]
   |=> [
     .restoreFrom: savePosition
-    ^.nextExperssion: .step
+    ^.nextExpression: .step
   ]
 
   ^ result

@@ -242,13 +242,15 @@ fun compare2Types(
             val win = compare2Types(type1OrChildOf2, type2.realType, tokenForErrors)
             if (win) return true
         }
+    }else if (type1OrChildOf2 is Type.NullableType && type2 is Type.NullableType) {
+        return compare2Types(type1OrChildOf2.realType, type2.realType, tokenForErrors)
     } else if (unpackNullForFirst) {
         if ((type1OrChildOf2 is Type.NullableType && type2 !is Type.NullableType)) {
             val win = compare2Types(type1OrChildOf2.realType, type2, tokenForErrors)
             if (win) return true
         }
+        // both are nullable
     }
-
 
     if (type1OrChildOf2.toStringWithoutErrors() == type2.toStringWithoutErrors() && !isDifferentPkgs) {
         return true

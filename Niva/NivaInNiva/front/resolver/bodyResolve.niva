@@ -17,7 +17,7 @@ Body resolve: db::TyperDB withContext: c::Context = [
 
   unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb: db withContext: c
-    typeOfExpr = typed nivaType
+    typeOfExpr = typed t nivaType
     // check that type is not Unknown
     | typeOfExpr
     | Unknown => [

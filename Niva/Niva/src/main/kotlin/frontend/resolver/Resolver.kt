@@ -478,10 +478,14 @@ fun Resolver.resolveExpressionInBrackets(
     return lastExpr.type!!
 }
 
+private val namesAndPkgEqual = {t1: Type, t2: Type ->
+    t1.name == t2.name && t1.pkg == t2.pkg// || (t1.toString() == t2.toString())
+}
 
+// we do not care about generics when searching for generic root
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 == type2) return type1
-    if (type1.toString() == type2.toString()) return type1
+    if (namesAndPkgEqual(type1, type2)) return type1
     /// check for nothing
     val firstIsNothing = type1.name == "Nothing"
     val secondIsNothing = type2.name == "Nothing"
@@ -509,26 +513,26 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 is Type.NullableType && type2 !is Type.NullableType) {
         val type1Unpacked = type1.unpackNull()
         if (type1Unpacked == type2) return type1
-        if (type1Unpacked.toString() == type2.toString()) return type1
+        if (namesAndPkgEqual(type1Unpacked, type2)) return type1
     } else
     if (type1 !is Type.NullableType && type2 is Type.NullableType) {
         val type2Unpacked = type2.unpackNull()
         if (type1== type2Unpacked) return type2
-        if (type1.toString() == type2Unpacked.toString()) return type2
+        if (namesAndPkgEqual(type1, type2Unpacked)) return type2
     }
 
     // first is parent of the second
     val parent1: Type? = type1.parent
     val parent2: Type? = type2.parent
-    if (parent1 != null && parent1.toString() == type2.toString()) {
+    if (parent1 != null && namesAndPkgEqual(parent1, type2)) { // we do not care about generics when searching for generic root
         return parent1
     } else
     // second is parent of the first
-    if (parent2 != null && parent2.toString() == type1.toString()) {
+    if (parent2 != null && namesAndPkgEqual(parent2, type1)) {
         return parent2
     } else if (parent1 != null && parent2 != null) {
-        if (parent1.toString() == parent2.toString()) {
-            return  parent1
+        if (namesAndPkgEqual(parent1, parent2)) {
+            return parent1
         }
         findGeneralRoot(parent1, type2)?.let { return it }
         findGeneralRoot(type1, parent2)?.let { return it }
