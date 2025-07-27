@@ -75,7 +75,7 @@ findVarFromOuterScope = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedAst at: 0
+  TypedExpr2 = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = TypedExpr2 at: 0
 
 ] do

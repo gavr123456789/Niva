@@ -43,9 +43,9 @@ extend mut Parser [
     isThereAValue = (.primary: .peek) != null
     .restoreFrom: savePosition
 
-    value = isThereAValue ifTrue: [.nextExperssion: .step] ifFalse: [null]
+    value = isThereAValue ifTrue: [.nextExpression: .step] ifFalse: [null]
 
-    result = ReturnStatement value: value token: tok
+    result = ReturnStatement value: value token: tok t: Unit
     ^ result
   ]
 
@@ -57,9 +57,13 @@ extend mut Parser [
       .parseType
     ] ifFalse: [null]
 
+
+
+
+
     .matchAssert: TokenType.Assign
-    value = .nextExperssion: .step
-    result = VarDeclaration name: name value: value token: tok astType: astType
+    value = .nextExpression: .step
+    result = VarDeclaration name: name value: value token: tok astType: astType t: Unit
     ^ result
   ]
 
@@ -74,9 +78,9 @@ extend mut Parser [
         path add: ident lexeme 
         c <- .match: TokenType.Dot
       ]
-      Identifier name: tok lexeme token: tok path: path
+      Identifier name: tok lexeme token: tok path: path t: Unit
     ] ifFalse: [
-      Identifier name: tok lexeme token: tok path: null
+      Identifier name: tok lexeme token: tok path: null t: Unit
     ]
   ]
 
@@ -86,28 +90,28 @@ extend mut Parser [
 
     x = | tok kind
     | TokenType.Integer => 
-      IntExpr num: tok lexeme toInt token: tok
+      IntExpr num: tok lexeme toInt token: tok t: Unit
     
     | TokenType.String => 
-      StringExpr token: tok
+      StringExpr token: tok t: Unit
     
     | TokenType.True|TokenType.False => 
-      BooleanExpr token: tok
+      BooleanExpr token: tok t: Unit
     
     | TokenType.Char => 
-      CharExpr token: tok
+      CharExpr token: tok t: Unit
     
     | TokenType.Float => 
-      FloatExpr token: tok
+      FloatExpr token: tok t: Unit
     
     | TokenType.Double => 
-      DoubleExpr token: tok
+      DoubleExpr token: tok t: Unit
     
     | TokenType.Null =>  
-      NullExpr token: tok
+      NullExpr token: tok t: Unit
   
     // | TokenType.Unit => 
-    //   UnitExpr token: tok
+    //   UnitExpr token: tok t: Unit
     
     |=> [null]
     ^ x
@@ -118,7 +122,7 @@ extend mut Parser [
   on parseCollection: tok::Token -> CollectionLiteral? = [
 
     manyPrimary = [
-      body::mut List::Expr = {}!
+      body::mut List::UntypedExpr = {}!
 
       mut c = true
       [c] whileTrue: [
@@ -141,7 +145,7 @@ extend mut Parser [
     | TokenType.OpenBrace => [
       body = manyPrimary do
       .match: TokenType.CloseBrace
-      ListLiteral token: tok elements: body
+      ListLiteral token: tok elements: body t: Unit
     ]
     | TokenType.OpenBraceHash => [
       body = manyPrimary do
@@ -151,12 +155,12 @@ extend mut Parser [
         TO DO: "elements count in Map should be even"
       ]
 
-      MapLiteral token: tok elements: body
+      MapLiteral token: tok elements: body t: Unit
     ]
     | TokenType.OpenParenHash => [
       body = manyPrimary do
       .match: TokenType.CloseParen
-      SetLiteral token: tok elements: body
+      SetLiteral token: tok elements: body t: Unit
     ]
     |=> null 
   ]
@@ -166,7 +170,7 @@ extend mut Parser [
   /// lambda
   /// or identifier | nullableIdentifier 
   /// simple literal 1 "" '' true false 1.1 1.1f
-  on primary: tok::Token -> Expr? = [
+  on primary: tok::Token -> UntypedExpr? = [
     
     .literalExprFrom: tok, unpack: [
       ^it
@@ -223,13 +227,14 @@ extend mut Parser [
       untypedArgs: untypedArgs
       body: body 
       token: tok
+      t: Unit
     
     ^ result
   ]
 
 
   on parseManyExprUntilTok: until::TokenType split::TokenType? -> Body = [
-    body::mut List::Expr = {}!
+    body::mut List::UntypedExpr = {}!
     
     mut c = true
     [c] whileTrue: [
@@ -240,7 +245,7 @@ extend mut Parser [
       ] ifFalse: [
         // parse statement
         nextTok = .step 
-        statement = .nextExperssion: nextTok
+        statement = .nextExpression: nextTok
         split unpack: [.match: it]
         body add: statement
         Unit
@@ -251,14 +256,14 @@ extend mut Parser [
 
     ^ result
   ]
-  on parseManyExprSplitBy: split::TokenType -> List::Expr = [
-    body::mut List::Expr = {}!
+  on parseManyExprSplitBy: split::TokenType -> List::UntypedExpr = [
+    body::mut List::UntypedExpr = {}!
     
     mut c = true
     [c] whileTrue: [
       tok = .peek
       nextTok = .step 
-      statement = .nextExperssion: nextTok
+      statement = .nextExpression: nextTok
       body add: statement
 
       c <- .match: split
@@ -276,7 +281,7 @@ extend mut Parser [
       .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
-      Body typedBody: {}! unTypedBody: {(.nextExperssion: .step)}
+      Body typedBody: {}! unTypedBody: {(.nextExpression: .step)}
     ]
   ]
 
@@ -318,12 +323,12 @@ extend mut Parser [
   on parseMatch: tok::Token -> Match = [
     branches::mut List::MatchBranch = {}!
     mut elseBranch::Body? = null
-    subject = .nextExperssion: .step
+    subject = .nextExpression: .step
 
     parseBranches = [
       mut c = true 
-      exprConditions::mut List::Expr = {}!
-      body::mut List::Expr = {}!
+      exprConditions::mut List::UntypedExpr = {}!
+      body::mut List::UntypedExpr = {}!
 
       // match ifs
       [c] whileTrue: [
@@ -347,7 +352,7 @@ extend mut Parser [
 
     ] do
 
-    ^ Match subject: subject branches: branches elseBranch: elseBranch token: tok
+    ^ Match subject: subject branches: branches elseBranch: elseBranch token: tok t: Unit
   ]
   on nextStatement -> Statement = [
     // .skipComments
@@ -359,7 +364,7 @@ extend mut Parser [
 
     // optimization for expr that starts from 1 | ""
     .isLiteralExpr: tok, ifTrue: [
-      ^ .nextExperssion: tok
+      ^ .nextExpression: tok
     ]
 
     | tok kind
@@ -397,7 +402,7 @@ extend mut Parser [
 
     |=> [
       "Warning: Parser: fallback to expr parsing with tok: $tok" echo
-      ^ .nextExperssion: tok
+      ^ .nextExpression: tok
     ]
 
     
@@ -412,13 +417,13 @@ extend mut Parser [
   ]
 
   /// `^ expr` | `expr`
-  on nextExperssion: tok::Token -> Expr = [
+  on nextExpression: tok::Token -> UntypedExpr = [
     // return expr
    ^| tok kind 
     | TokenType.Return => [
-      e = .parseReturnExpr: tok
-      e
-      ]
+      eee = .parseReturnExpr: tok
+      eee
+    ]
     |=> [
 
       // VarDeclaration: `x::Int` 
@@ -427,24 +432,24 @@ extend mut Parser [
       ]
 
       // assign
-      primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+      primaryReceiver = .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
       .peek kind == TokenType.Assign, ifTrue: [
         ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme
       ]
       // any expr
-      firstExpr = .nextExperssion2: tok receiver: primaryReceiver
+      firstExpr = .nextExpression2: tok receiver: primaryReceiver
       
       // expr, expr
      ^| .peek kind
       | TokenType.Comma => [
         .step // skip comma
-        .nextExperssion2: tok receiver: (ExprInBrackets value: firstExpr token: tok)
+        .nextExpression2: tok receiver: (ExprInBrackets value: firstExpr token: tok t: Unit)
       ]
       |=> firstExpr
     ]
   ]
 
-  on nextExperssion2: tok::Token receiver::Expr? -> Expr = [
+  on nextExpression2: tok::Token receiver::UntypedExpr? -> UntypedExpr = [
     // return expr
     tok kind == TokenType.Return ifTrue: [
       ^ .parseReturnExpr: tok
@@ -491,10 +496,10 @@ extend mut Parser [
   // Primary
   // UnaryMsg
   // BinaryMsg
-  on parsePrimaryOrUnaryOrBinary: tok::Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
-  on parsePrimaryOrUnaryOrBinary: tok::Token receiver::Expr? -> Expr = [
+  on parsePrimaryOrUnaryOrBinary: tok::Token -> UntypedExpr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
+  on parsePrimaryOrUnaryOrBinary: tok::Token receiver::UntypedExpr? -> UntypedExpr = [
     maybePrimary = | receiver 
-    | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+    | null => .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
     |=> receiver
 
     next = .peek

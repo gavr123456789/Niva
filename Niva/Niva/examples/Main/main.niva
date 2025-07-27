@@ -1,5 +1,13 @@
-union Color t: T = ^Green
-union Green t: T = LightGreen | DarkGreen
+//union Color t: T = ^Green
+//union Green t: T = LightGreen | DarkGreen
+//
+//type Sas = Color::Unit
 
-type Sas = Color::Unit
+// should be an error
+Int x::Identifier = [
+    1 echo
+]
 
+
+
+type Identifier x: T

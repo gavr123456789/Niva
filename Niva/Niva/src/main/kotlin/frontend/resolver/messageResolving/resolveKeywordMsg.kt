@@ -60,7 +60,7 @@ fun Resolver.resolveKeywordMsg(
         if (receiverText == "Project" || receiverText == "Bind") {
             statement.token.compileError("We cant get here, type Project are ignored")
         }
-        val isThisConstructor = (receiver is IdentifierExpr && (receiver.names.last() == keywordReceiverType.name || receiver.type?.isAlias == true))
+        val isThisConstructor = (receiver is IdentifierExpr && receiver.isType && (receiver.names.last() == keywordReceiverType.name || receiver.type?.isAlias == true))
         if (isThisConstructor) {
 
             if (keywordReceiverType is Type.UnionRootType) {
@@ -331,6 +331,7 @@ fun Resolver.resolveKeywordMsg(
             val type = kwArg.keywordArg.type!!
             val unpackLambda = if (argFromDB.type !is Type.Lambda && type is Type.Lambda) type.returnType else type
             if (!compare2Types(argFromDB.type, unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
+                compare2Types(argFromDB.type, unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)
                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
             }
         }
@@ -626,6 +627,7 @@ fun Resolver.resolveKwArgsGenerics(
                     }
                 }
             } else {
+                // here we see a Statement::T, which means that T was added to every branch of the tree, but it should be only on every branch of the Expr
                 it.keywordArg.token.compileError("$YEL${typeFromDBForThisArg.name}$RESET expected but found $YEL${argType.name}")
             }
         }

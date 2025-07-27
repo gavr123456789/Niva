@@ -12,7 +12,7 @@ import main.frontend.resolver.findAnyMethod
 import main.utils.CYAN
 import main.utils.RESET
 import main.utils.YEL
-
+import main.utils.isGeneric
 
 fun SomeTypeDeclaration.generateTypeDeclaration(
     isUnionRoot: Boolean = false,
@@ -26,17 +26,38 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     if (isEnumRoot) append("enum ")
     append("class ")
     append(receiverType.toKotlinString(false))
-    val addGenericsFromParent = {
-        val parent = receiverType.parent
-        if (this.last() != '>' && parent is Type.UserLike && parent.typeArgumentList.isNotEmpty()) {
-            append("<")
-            append(
-                parent.typeArgumentList.asSequence().map { it.toKotlinString(true) }.toSortedSet().joinToString(", ")
-            )
-            append(">")
+    val addGenericsFromParentAndFields = {
+        val receiverAlreadyHasGenericsGenerated =  this.last() == '>'
+
+        // if one field has generic T in it, we should add it to class definition
+        // class Sas(val x: Sus<T>) -> class Sas<T>(val x: Sus<T>)
+
+        if (!receiverAlreadyHasGenericsGenerated) {
+            val generalGenerics = mutableSetOf<String>()
+            // from parent
+            val parent = receiverType.parent
+            if (parent is Type.UserLike && parent.typeArgumentList.isNotEmpty()) {
+                generalGenerics.addAll(parent.typeArgumentList.map { it.toKotlinString(true) })
+            }
+            // from fields, BUT ONLY GENERAL GENERICS LIKE T G, not the resolved one
+            fields.forEach { field ->
+                val x = field.type as? Type.UserLike
+                if (x?.typeArgumentList?.isNotEmpty() == true) {
+                    generalGenerics.addAll(x.typeArgumentList.filter { it.name.isGeneric() }.map { it.name })
+                }
+            }
+
+            if (generalGenerics.isNotEmpty()) {
+                append("<")
+                append(
+                    generalGenerics.joinToString(", ")
+                )
+                append(">")
+            }
         }
+
     }
-    addGenericsFromParent()
+    addGenericsFromParentAndFields()
 
     append("(")
     // class Person (^ arg: Type
@@ -46,6 +67,9 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     val setOfAlreadyAddedArgs = mutableSetOf<String>()
 
     fun generateFieldArgument2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {
+        if (typeName == "BinaryMsg") {
+            1
+        }
         if (fieldName in setOfAlreadyAddedArgs)
             return
         else
@@ -81,12 +105,19 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         }
     }
 
+
     // filter fields from root fields
     val root2 = receiverType.parent as? Type.UserLike
     val (nonRootFields, overlappedRootFields) = if (root2 != null) {
         val rootFields = root2.fields.map { it.name }.toSet()
         fields.partition { it.name !in rootFields }
-    } else Pair(fields, emptyList())
+    } else
+        Pair(fields, emptyList())
+
+    // 3 phases here
+    // 1) add fields of this branch (nonRootFields)
+    // 2) add fields that overlaps with root
+    // 3) add root fields
 
     nonRootFields.forEachIndexed { i, it ->
         generateFieldArgument2(
@@ -97,6 +128,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             fields.count() - 1
         )
     }
+    // 2
     overlappedRootFields.forEachIndexed { i, it ->
         generateFieldArgument2(
             it.name,
@@ -108,16 +140,26 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     }
     // class Person (var age: Int,
 
-    // add fields of the root
-    if (receiverType is Type.UnionBranchType) {
-        if (receiverType.root.fields.isNotEmpty() && fields.isNotEmpty()) {
-            // comma after branch fields, before root fields
+    // 3 add fields of the root
+    val parent = receiverType.parent as? Type.UserLike
+    if (parent != null && parent.fields.isNotEmpty()) {
+        if ((fields.isNotEmpty() || overlappedRootFields.isNotEmpty()) && this[this.count() - 2] != ',') {
+//             comma after branch fields, before root fields
             append(", ")
         }
-        receiverType.root.fields.forEachIndexed { i, it ->
-            generateFieldArgument2(it.name, it.type, i, true, receiverType.root.fields.count() - 1)
+        parent.fields.forEachIndexed { i, it ->
+            generateFieldArgument2(it.name, it.type, i, true, parent.fields.count() - 1)
         }
     }
+//    if (receiverType is Type.UnionBranchType) {
+//        if (receiverType.root.fields.isNotEmpty() && fields.isNotEmpty()) {
+//            // comma after branch fields, before root fields
+//            append(", ")
+//        }
+//        receiverType.root.fields.forEachIndexed { i, it ->
+//            generateFieldArgument2(it.name, it.type, i, true, receiverType.root.fields.count() - 1)
+//        }
+//    }
 
     append(")")
     // class Person (var age: Int, kek: String)^
@@ -130,26 +172,35 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
         append(" : ${root2.name}")
 
+        if (root2.name == "Statement") {
+            1
+        }
+        if (root2.name == "MessageSend") {
+            1
+        }
+        if (typeName == "MessageSend") {
+            1
+        }
         // for each generic that is not in genericsOfTheRoot we must use Nothing
         // if current branch does not have a generic param, but root has, then add Never
-        val isThereGenericsSomewhere = genericsOfTheBranch.isNotEmpty() || rootGenericFields.isNotEmpty()
+        val isThereGenericsSomewhere = rootGenericFields.isNotEmpty() //|| genericsOfTheBranch.isNotEmpty()
         if (isThereGenericsSomewhere)
             append("<")
 
-        val realGenerics = mutableListOf<String>()
-        realGenerics.addAll(genericsOfTheBranch)
+//        val realGenerics = mutableListOf<String>()
+//        realGenerics.addAll(genericsOfTheBranch)
 
         // replacing all missing generics of current branch, that root have, to Nothing
-        rootGenericFields.forEach {
-            if (!genericsOfTheBranch.contains(it)) {
-                // NOT REPLACING IT, since then we need to support out in params too
-//                realGenerics.add("Nothing")
-                realGenerics.add(it)
-            } else
-                realGenerics.add(it)
-        }
+//        rootGenericFields.forEach {
+//            if (!genericsOfTheBranch.contains(it)) {
+//                // NOT REPLACING IT, since then we need to support out in params too
+////                realGenerics.add("Nothing")
+//                realGenerics.add(it)
+//            } else
+//                realGenerics.add(it)
+//        }
 
-        append(realGenerics.toSortedSet().joinToString(", "))
+        append(rootGenericFields.toSortedSet().joinToString(", "))
 
 
         if (isThereGenericsSomewhere)
@@ -179,6 +230,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
 
     /// Override toString
+    /// generate default, if "toString" is not declarated already
     if (enumRoot == null) {
         append("\toverride fun toString(): String")
 
@@ -296,6 +348,7 @@ private fun generateFields(
 }
 
 
+//collect all fields from root and this
 fun SomeTypeDeclaration.collectFields(): List<TypeFieldAST> {
     val result: MutableList<TypeFieldAST> = mutableListOf()
     if (this is UnionBranchDeclaration) {

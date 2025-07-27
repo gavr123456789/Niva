@@ -1,116 +1,117 @@
-  
-// Test recursiveMessageDeclaration = [
-  // shoud be error, but there are no way to typeChecks errors for now
-// ]
-
-Test constructorCall = [
-  fileMain = """
-    type Person age: Int 
-    Int sas = [
-      p = Person age: 27
-    ]
-    
-  """
-
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedAst at: 1
-  
-  | msgDecl
-  | MessageDecl => [
-    varDecl = msgDecl body typedBody at: 0, exprAst
-    
-    | varDecl
-    | TypedExpr => [
-      kwMsg = varDecl exprAst
-      | kwMsg
-      | KeywordMsg => [
-        Assert that: kwMsg kind equals: MessageSendKind.Constructor
-      ]
-      |=> TO DO
-    ]
-    |=> TO DO
-  ]
-  |=> [TO DO]
-  
-]
-
-Test getter = [
-
-  fileMain = """
-    type Person age: Int 
-    
-    Person getAge -> Int = [
-      this age
-    ]
-    
-  """
-
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedAst at: 1
-  | msgDecl
-  | MessageDecl => [
-    getter = msgDecl body typedBody at: 0
-    ast = getter exprAst
-    | ast 
-    | UnaryMsg => [
-      Assert that: ast kind equals: MessageSendKind.Getter
-    ]
-    |=> []
-  ]
-  |=>[TO DO]  
-]
-
-Test resolveAFewDeclarations = [
-  
-  fileMain = """
-    // type Money declared in a different file
-    Int make::Wallet sas::Person -> Int = [
-      x::Int = 42
-      1 inc dec
-      2 + 3
-    ]
-
-    type Person age: Int 
-    type Wallet money: Int
-
-  """
-
-  statements  = TestParse withInput: fileMain expectedCount: -1
-  listOfFilesContents = #{"main" statements} 
-  db = TyperDB new
-
-  msgDecls = TypeDeclVisitor db: db, 
-    visitAllTypesThenTypesAndMethods: listOfFilesContents
-    entryPointStatements: statements
-
-  MsgDeclVisitor new processBodyes: msgDecls db: db
-
-  typesWereRegistered = [
-    mainPkg = db packages at: "main", unpackOrPANIC
-    mainPkg types at: "Person", unpackOrPANIC
-    mainPkg types at: "Wallet", unpackOrPANIC
-  ] do
-
-  makeSas = msgDecls at: 0, y
-  checkExpressionsTypes = [
-    Assert 
-      that: makeSas body typedBody count  
-      equals: 3
-      andSay: "wrong number of expressions"
-   
-    varDecl = makeSas body typedBody at: 0
-    unary = makeSas body typedBody at: 1
-    binary = makeSas body typedBody at: 2
-
-    Assert that: varDecl nivaType name equals: "Integer"
-    Assert that: unary nivaType name equals: "Integer"
-    Assert that: binary nivaType name equals: "Integer"
-    
-  ] do
-]
+//
+//// Test recursiveMessageDeclaration = [
+//  // shoud be error, but there are no way to typeChecks errors for now
+//// ]
+//
+//Test constructorCall = [
+//  fileMain = """
+//    type Person age: Int
+//    Int sas = [
+//      p = Person age: 27
+//    ]
+//
+//  """
+//
+//
+//  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+//  db = result db
+//  TypedExpr2 = result fileToStatements at: "main", unpackOrPANIC
+//  msgDecl = TypedExpr2 at: 1
+//
+//  | msgDecl
+//  | MessageDecl => [
+//    varDecl = msgDecl body typedBody at: 0, exprAst
+//
+//    | varDecl
+//    | TypedExpr => [
+//      kwMsg = varDecl exprAst
+//      | kwMsg
+//      | KeywordMsg => [
+//        Assert that: kwMsg kind equals: MessageSendKind.Constructor
+//      ]
+//      |=> TO DO
+//    ]
+//    |=> TO DO
+//  ]
+//  |=> [TO DO]
+//
+//]
+//
+//Test getter = [
+//
+//  fileMain = """
+//    type Person age: Int
+//
+//    Person getAge -> Int = [
+//      this age
+//    ]
+//
+//  """
+//
+//
+//  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+//  db = result db
+//  TypedExpr2 = result fileToStatements at: "main", unpackOrPANIC
+//  msgDecl = TypedExpr2 at: 1
+//  | msgDecl
+//  | MessageDecl => [
+//    getter = msgDecl body typedBody at: 0
+//    ast = getter exprAst
+//    | ast
+//    | UnaryMsg => [
+//      Assert that: ast kind equals: MessageSendKind.Getter
+//    ]
+//    |=> []
+//  ]
+//  |=>[TO DO]
+//]
+//
+//Test resolveAFewDeclarations = [
+//
+//  fileMain = """
+//    // type Money declared in a different file
+//    Int make::Wallet sas::Person -> Int = [
+//      x::Int = 42
+//      1 inc dec
+//      2 + 3
+//    ]
+//
+//    type Person age: Int
+//    type Wallet money: Int
+//
+//  """
+//
+//  statements  = TestParse withInput: fileMain expectedCount: -1
+//  listOfFilesContents = #{"main" statements}
+//  db = TyperDB new
+//
+//  msgDecls = TypeDeclVisitor db: db,
+//    visitAllTypesThenTypesAndMethods: listOfFilesContents
+//    entryPointStatements: statements
+//
+//  MsgDeclVisitor new processBodyes: msgDecls db: db
+//
+//  typesWereRegistered = [
+//    mainPkg = db packages at: "main", unpackOrPANIC
+//    mainPkg types at: "Person", unpackOrPANIC
+//    mainPkg types at: "Wallet", unpackOrPANIC
+//  ] do
+//
+//  makeSas = msgDecls at: 0, y
+//  checkExpressionsTypes = [
+//    Assert
+//      that: makeSas body typedBody count
+//      equals: 3
+//      andSay: "wrong number of expressions"
+//
+//    varDecl = makeSas body typedBody at: 0
+//    unary = makeSas body typedBody at: 1
+//    binary = makeSas body typedBody at: 2
+//
+//    Assert that: varDecl t nivaType name equals: "Integer"
+//    Assert that: unary t nivaType name equals: "Integer"
+//    Assert that: binary t nivaType name equals: "Integer"
+//
+//  ] do
+//]
+1

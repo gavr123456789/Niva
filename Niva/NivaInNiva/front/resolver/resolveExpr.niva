@@ -1,14 +1,14 @@
-Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
+Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr2 = [
   
 
  ^| this
-  | CharExpr    => TypedExpr nivaType: (db findByTypeName: "Char") exprAst: this
-  | IntExpr     => TypedExpr nivaType: (db findByTypeName: "Int") exprAst: this
-  | FloatExpr   => TypedExpr nivaType: (db findByTypeName: "Float") exprAst: this
-  | DoubleExpr  => TypedExpr nivaType: (db findByTypeName: "Double") exprAst: this
-  | StringExpr  => TypedExpr nivaType: (db findByTypeName: "String") exprAst: this
-  | BooleanExpr => TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
-  | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Nothing") exprAst: this
+  | CharExpr    => TO DO //TypedExpr nivaType: (db findByTypeName: "Char") exprAst: this
+  | IntExpr     => TO DO //TypedExpr nivaType: (db findByTypeName: "Int") exprAst: this
+  | FloatExpr   => TO DO //TypedExpr nivaType: (db findByTypeName: "Float") exprAst: this
+  | DoubleExpr  => TO DO //TypedExpr nivaType: (db findByTypeName: "Double") exprAst: this
+  | StringExpr  => TO DO //TypedExpr nivaType: (db findByTypeName: "String") exprAst: this
+  | BooleanExpr => TO DO //TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
+  | NullExpr    => TO DO //TypedExpr nivaType: (db findByTypeName: "Nothing") exprAst: this
   // Identifier can be type itself like Unit
   | Identifier     => [
     varType = c lookupForVar: this name
@@ -17,12 +17,12 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
       // this identifier can be name of the type and just a constructor call  
       name first isUpperCase ifTrue: [
         q = db findByTypeName: name
-        TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
+        TO DO //TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
       ] ifFalse: [
         TO DO: "Cant find $this in the current context"
       ]
     ]
-    |=> TypedExpr nivaType: varType exprAst: this
+    |=> TO DO //TypedExpr nivaType: varType exprAst: this
     
   ]
   | ExprInBrackets => value toTypedExprFromDb: db withContext: c
@@ -45,11 +45,13 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
     
     {x y} = .replaceArgsWithTypedfromDb: db withContext: c
-    ^TypedExpr 
-      exprAst: x 
-      nivaType: y 
-      isMutable: false 
-      token: token
+
+    ^ TO DO //
+//    ^TypedExpr
+//      exprAst: x
+//      nivaType: y
+//      isMutable: false
+//      token: token
     ]
   | KeywordMsg =>[ 
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
@@ -65,21 +67,21 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
     this astType unpack: [
       // x::Int = "ars"
       nivaType = db findByTypeName: it name
-      typedExpr nivaType compareWith: nivaType, ifFalse: [
+      typedExpr t nivaType compareWith: nivaType, ifFalse: [
         valName = name
         astTypeName = it name
-        realTypeName = typedExpr nivaType name
+        realTypeName = typedExpr t nivaType name
         // TODO add it to error list
         TO DO: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
       ]
     ]
 
-    c defineVar: name withType: typedExpr nivaType
-
-    TypedExpr 
-      nivaType: typedExpr nivaType 
-      exprAst: typedExpr 
-      isMutable: typedExpr isMutable
+    c defineVar: name withType: typedExpr t nivaType
+    TO DO //
+//    TypedExpr
+//      nivaType: typedExpr nivaType
+//      exprAst: typedExpr
+//      isMutable: typedExpr isMutable
   ]
   | Assign => TO DO
   | DestructingAssign => TO DO
@@ -87,16 +89,16 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
 
   | CodeBlock => [
     body unTypedBody isEmpty ifTrue: [
-      TypedExpr nivaType: (db findByTypeName: "Unit") exprAst: this
+      TO DO //TypedExpr nivaType: (db findByTypeName: "Unit") exprAst: this
     ] ifFalse: [
-      body resolve: db withContext: c 
-      TypedExpr 
-        nivaType: body typedBody last nivaType 
-        exprAst: this 
+      body resolve: db withContext: c
+      TO DO //
+//      TypedExpr
+//        nivaType: body typedBody last nivaType
+//        exprAst: this
     ]
   ]
   | Match     => TO DO: "Match to TypedExpr"
-  | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"
 
 
   // result = TypedExpr nivaType: TO DO isMutable: TO DO
@@ -111,7 +113,7 @@ KeywordMsg getNameFromArgs -> String = [
     it name name
   ], + ":"
 ]
-KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
+KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr2 = [
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
 
   typedArgs = args map: [ kwArg -> 
@@ -122,7 +124,7 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
   
   // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
   foundMsg = db 
-    findMsgFromReceiver: receiverTypedExpr nivaType 
+    findMsgFromReceiver: receiverTypedExpr t nivaType
     byName: .getNameFromArgs
   
 
@@ -131,19 +133,19 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     receiver: receiverTypedExpr 
     token: token
     kind: foundMsg kind
-
-  ^TypedExpr 
-    exprAst: newKeyword
-    nivaType: foundMsg returnType
-    isMutable: false 
-    token: token
+  ^TO DO //
+//  ^TypedExpr
+//    exprAst: newKeyword
+//    nivaType: foundMsg returnType
+//    isMutable: false
+//    token: token
 ] 
 
 
 BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tuple(BinaryMsg, NivaType) = [ 
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
 
-  typeOfReceiver = receiverTypedExpr nivaType
+  typeOfReceiver = receiverTypedExpr t nivaType
   mut lastType = typeOfReceiver
 
   typedArgs = args map: [ binary ->
@@ -159,19 +161,20 @@ BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tup
     resolvedArg = binary expr toTypedExprFromDb: db withContext: c
 
 
-    (resolvedArg nivaType compareWith: dbArg typeT) ifFalse: [
+    (resolvedArg t nivaType compareWith: dbArg typeT) ifFalse: [
       expected = dbMsg args first typeT
-      butGot = resolvedArg nivaType
+      butGot = resolvedArg t nivaType
       currentBinary = lastType toString + " " + binaryName + " " 
       TO DO: "In binary $currentBinary arg of type $expected expected, but got $butGot"
     ]
 
     // create typed expr with return type of dbMsg in db message
-    typed = TypedExpr 
-      exprAst: binary name 
-      nivaType: dbMsg returnType 
-      isMutable: false 
-      token: binary name token
+
+    typed = TO DO //    TypedExpr
+//      exprAst: binary name
+//      nivaType: dbMsg returnType
+//      isMutable: false
+//      token: binary name token
 
     lastType <- dbMsg returnType
     NameAndExpr name: binary name expr: typed
@@ -182,9 +185,9 @@ BinaryMsg replaceArgsWithTypedfromDb: db::TyperDB withContext: c::Context -> Tup
 ] 
 
 
-UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
+UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr2 = [
   resolvedReceiver = receiver toTypedExprFromDb: db withContext: c
-  typeOfReceiver = resolvedReceiver nivaType
+  typeOfReceiver = resolvedReceiver t nivaType
   dbMsg = db findMsgFromReceiver: typeOfReceiver  byName: selector name
 
   newUnary = UnaryMsg 
@@ -193,11 +196,11 @@ UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
     token: token
     kind: dbMsg kind
 
-  typed = TypedExpr 
-    exprAst: newUnary
-    nivaType: dbMsg returnType 
-    isMutable: dbMsg forMut 
-    token: selector token
+  typed = TO DO//TypedExpr
+//    exprAst: newUnary
+//    nivaType: dbMsg returnType
+//    isMutable: dbMsg forMut
+//    token: selector token
 
 
   ^ typed

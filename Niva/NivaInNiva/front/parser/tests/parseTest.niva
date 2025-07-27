@@ -13,11 +13,11 @@ constructor TestParse withInput::String expectedCount::Int -> mut List::Statemen
   ^statements
 ]
 
-constructor TestParse expression::String -> Expr = [
+constructor TestParse expression::String -> Expr::Unit = [
   expr = Parser newParseTokens: (Lexer newLex: expression), statements at: 0
   
   ^| expr
-  | Expr=> expr
+  | Expr => expr
   |=> [TO DO: "It should be Expr, but it " + expr toString]
 ]
 

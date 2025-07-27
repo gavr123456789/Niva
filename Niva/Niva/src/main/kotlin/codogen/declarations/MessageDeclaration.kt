@@ -86,6 +86,10 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
 }
 
 fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+    // no need to generate toString method extension, we generate it from MessageDeclaration.kt 186
+    if (name == "toString") {
+        return@buildString
+    }
     append(funGenerateReceiver(isStatic))
 
     // fun Int.sas^() {...}

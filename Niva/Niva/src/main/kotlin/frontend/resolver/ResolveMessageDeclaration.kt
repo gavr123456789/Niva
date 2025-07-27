@@ -200,7 +200,8 @@ fun Resolver.resolveMessageDeclaration(
                 // match types of args from forType to Generics fields\
                 copyTypeIfGenerics.fields.forEachIndexed { i, it ->
                     if (it.type.name.isGeneric()) {
-                        bodyScope[it.name] = copyTypeIfGenerics.typeArgumentList[i].copyAnyType()
+
+                        bodyScope[it.name] = it.type.copyAnyType()
                     } else
                         bodyScope[it.name] = it.type
                 }
@@ -430,10 +431,15 @@ fun Resolver.resolveMessageDeclaration(
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)
             }
-        } catch (_: CompilerError) {
-            unResolvedMessageDeclarations.add(currentPackageName, statement)
-            currentLevel--
-            return true
+        } catch (e: CompilerError) {
+            if (e.message!!.contains("Can't")) {
+                unResolvedMessageDeclarations.add(currentPackageName, statement)
+                currentLevel--
+                return true
+            } else {
+                throw e
+            }
+
         }
     }
 

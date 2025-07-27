@@ -192,7 +192,7 @@ TyperDB
       decl resolveBodyWithDb: this
       Assert that: decl body typedBody isNotEmpty equals: true
 
-      returnType = decl body typedBody last nivaType
+      returnType = decl body typedBody last t nivaType
 
       returnType debug
       replaceMethod = method copyWithDifferentType: returnType

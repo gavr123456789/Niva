@@ -928,14 +928,37 @@ fun TypeAST.toType(
                     if (resolver != null)
                         resolver.getAnyType(name,mutableMapOf(), mutableMapOf(), null, this.token )
                     else
-                        typeTable[name] ?:
+                        typeTable[name]
+
+                if (typeFromDb == null) {
+                    if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
+                        // we are not resolving type fields of different type
                         this.token.compileError("Can't find user type: ${YEL}$name")
+                    }
+
+
+                    typeDB.addUnresolvedField(
+                        name,
+                        FieldNameAndParent(
+                            resolvingFieldName,
+                            parentType,
+                            typeDeclaration = typeDeclaration,
+                            ast = realParentAstFromGeneric ?: this
+                        )
+                    )
+                    return Type.UnresolvedType()
+                }
 
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
+                    if (typeFromDb.fields.isNotEmpty() && typeFromDb.fields.find { it.type is Type.UnresolvedType } != null) {
+                        1
+                    }
+
                     val copy = typeFromDb.copy(customPkg)
                     val letterToTypeMap = mutableMapOf<String, Type>()
 
+                    // it can contain ::T, since one of its fields has T, but we do not know it yet
                     if (this.typeArgumentList.count() != copy.typeArgumentList.count()) {
                         this.token.compileError("Type ${YEL}${this.name}${RESET} has ${WHITE}${copy.typeArgumentList.count()}${RESET} generic params, but you send only ${WHITE}${this.typeArgumentList.count()}")
                     }
@@ -993,6 +1016,12 @@ fun TypeAST.toType(
             val type2 = if (this.isMutable) {
                 (type).copyAnyType().also { it.isMutable = true }
             } else type
+
+            // compare generic arguments types
+//            if (typeArgumentList.isEmpty() && type2 is Type.UserLike && type2.typeArgumentList.isNotEmpty()) {
+//                val x = type2.typeArgumentList.joinToString(", ")
+//                this.token.compileError("$x generic param is missing, try ${this.name}::$x")
+//            }
 
             return replaceToNullableAndAddErrorsIfNeeded(type2)
         }
@@ -1082,7 +1111,6 @@ fun SomeTypeDeclaration.toType(
     enumRootType: Type.EnumRootType? = null,
 ): Type.UserLike {
 
-//    listOf("").find {  }
     val result = if (isUnion)
         Type.UnionRootType(
             branches = emptyList(),
@@ -1110,7 +1138,7 @@ fun SomeTypeDeclaration.toType(
         Type.EnumBranchType(
             root = enumRootType,
             name = typeName,
-            typeArgumentList = mutableListOf(),
+            typeArgumentList = enumRootType.typeArgumentList.map { it.copyAnyType() },
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
@@ -1121,7 +1149,7 @@ fun SomeTypeDeclaration.toType(
         Type.UnionBranchType(
             root = unionRootType,
             name = typeName,
-            typeArgumentList = mutableListOf(),
+            typeArgumentList = unionRootType.typeArgumentList.map { it.copyAnyType() },
             fields = mutableListOf(),
             isPrivate = isPrivate,
             pkg = pkg,
