@@ -19,33 +19,63 @@ fun String.ifKtKeywordAddBackTicks(): String =
 fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     // return type can be generic
     // receiver can be generic
+    // args can be generic
 
-    val genericsFromReceiverAndReturnType = mutableSetOf<String>()
+    val result = mutableSetOf<String>()
     // from return type
     if (returnTypeAST != null) {
         val isThereUnresolvedTypeArgs = returnTypeAST.name.isGeneric()
         if (isThereUnresolvedTypeArgs) {
             // There can be resolved type args like box::Box::Int, then we don't need to add them
-            genericsFromReceiverAndReturnType.add(returnTypeAST.name)
+            result.add(returnTypeAST.name)
         }
     }
 
     val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
     if (isThereUnresolvedTypeArgs.isNotEmpty()) {
         // There can be resolved type args like box::Box::Int, then we don't need to add them
-        genericsFromReceiverAndReturnType.addAll(isThereUnresolvedTypeArgs)
+        result.addAll(isThereUnresolvedTypeArgs)
     }
 
+    // from args
+    this.collectGenericsFromArgs(result)
 
+    // from receiver
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
-        genericsFromReceiverAndReturnType.addAll(forTypeVal.collectGenericParamsRecursively(mutableSetOf()))
-        val q = genericsFromReceiverAndReturnType.reversed().distinctBy { string -> string.first() }
-        genericsFromReceiverAndReturnType.clear()
-        genericsFromReceiverAndReturnType.addAll(q)
+        forTypeVal.collectGenericParamsRecursively(mutableSetOf())
+        val q = result.reversed().distinctBy { string -> string.first() }
+        result.clear()
+        result.addAll(q)
     }
 
-    return genericsFromReceiverAndReturnType
+
+
+
+    return result
+}
+
+fun MessageDeclaration.collectGenericsFromArgs (set: MutableSet<String>) {
+    val x = this
+    when (x) {
+        is ConstructorDeclaration -> x.msgDeclaration.collectGenericsFromArgs(set)
+        is MessageDeclarationBinary -> {
+            val type = x.arg.type
+            if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+                type.collectGenericParamsRecursively(set)
+            }
+        }
+        is MessageDeclarationKeyword -> {
+            x.args.forEach { arg ->
+                val type = arg.type
+                if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
+                    type.collectGenericParamsRecursively(set)
+                }
+            }
+        }
+        is MessageDeclarationUnary -> {}
+        is StaticBuilderDeclaration -> {x.msgDeclaration.collectGenericsFromArgs(set)}
+    }
 }
 
 // fun ReceiverType^
@@ -86,6 +116,11 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
 }
 
 fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) = buildString {
+    // no need to generate toString method extension, we generate it from MessageDeclaration.kt 186
+    if (name == "toString") {
+        return@buildString
+    }
+
     append(funGenerateReceiver(isStatic))
 
     // fun Int.sas^() {...}

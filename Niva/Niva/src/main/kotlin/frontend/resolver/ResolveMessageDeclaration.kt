@@ -56,8 +56,17 @@ fun Resolver.resolveMessageDeclaration(
         return true
     }
 
+    // check that generic params are declared for a generic receiver
+    if (typeFromDB is Type.UserLike && typeFromDB.typeArgumentList.isNotEmpty() && forTypeAst is TypeAST.UserType && forTypeAst.typeArgumentList.isEmpty()) {
+        if (typeFromDB.typeArgumentList.any { it.name.isGeneric() }) {
+            1
+            forTypeAst.token.compileError("Please declare missing generic arguments of receiver: $YEL$typeFromDB")
+        }
+
+    }
+
     val checkThatTypeGenericsResolvable = {
-        if (typeFromDB is Type.UserType &&
+        if (typeFromDB is Type.UserLike &&
             typeFromDB.typeArgumentList.isNotEmpty() &&
             !typeFromDB.isCopy //&&
 //            typeFromDB.typeArgumentList.find { it.name.isGeneric() } == null &&
@@ -130,7 +139,7 @@ fun Resolver.resolveMessageDeclaration(
                     st.typeArgs.add(typeFromAst.name)
                 }
                 // add generic params to scope
-                if (typeFromAst is Type.UserType && typeFromAst.typeArgumentList.isNotEmpty()) {
+                if (typeFromAst is Type.UserLike && typeFromAst.typeArgumentList.isNotEmpty()) {
                     st.typeArgs.addAll(typeFromAst.typeArgumentList.map { typeArg -> typeArg.name })
                     // T == T
                     if (typeFromAst.name == it.typeAST.name) {
@@ -200,7 +209,8 @@ fun Resolver.resolveMessageDeclaration(
                 // match types of args from forType to Generics fields\
                 copyTypeIfGenerics.fields.forEachIndexed { i, it ->
                     if (it.type.name.isGeneric()) {
-                        bodyScope[it.name] = copyTypeIfGenerics.typeArgumentList[i].copyAnyType()
+//                        bodyScope[it.name] = copyTypeIfGenerics.typeArgumentList[i].copyAnyType()
+                        bodyScope[it.name] = it.type.copyAnyType().also { it.isCopy = true }
                     } else
                         bodyScope[it.name] = it.type
                 }

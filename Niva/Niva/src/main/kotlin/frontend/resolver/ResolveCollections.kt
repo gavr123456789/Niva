@@ -70,7 +70,7 @@ fun Resolver.resolveCollection(
         }
     } else if (nearVarDecl != null && nearVarDecl.valueTypeAst != null) {
         val typeFromAstDecl = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)
-        if (typeFromAstDecl is Type.UserType) {
+        if (typeFromAstDecl is Type.UserLike) {
             if (typeName != typeFromAstDecl.name) {
                 statement.token.compileError("Declared type of collection: $typeFromAstDecl but literal used for $typeName")
             }

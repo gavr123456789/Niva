@@ -565,6 +565,9 @@ sealed class Type(
         }
 
         fun replaceTypeArguments(types: Collection<Type>) {
+            if (types.isEmpty())
+                return
+
             _typeArgumentList.clear()
             val seenNames = mutableSetOf<String>()
             for (type in types) {
@@ -595,7 +598,8 @@ sealed class Type(
         }
 
         // will get T from types like List::List::T
-        fun collectGenericParamsRecursively(x: MutableSet<String>): Set<String> {
+        // takes mutable list and return it
+        fun collectGenericParamsRecursively(x: MutableSet<String>) {
             typeArgumentList.forEach {
                 if (it.name.isGeneric()) {
                     var name = it.name
@@ -608,7 +612,16 @@ sealed class Type(
                     it.collectGenericParamsRecursively(x)
                 }
             }
-            return x
+        }
+        // use real types instead of strings
+        fun collectGenericParamsRecursivelyFRFR(x: MutableSet<UnknownGenericType>) {
+            typeArgumentList.forEach {
+                if (it is UnknownGenericType) {
+                    x.add(it)
+                } else if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
+                    it.collectGenericParamsRecursivelyFRFR(x)
+                }
+            }
         }
 
         fun printConstructorExample() = fields.joinToString(": value") { it.name } + ": value"
@@ -928,9 +941,27 @@ fun TypeAST.toType(
                     if (resolver != null)
                         resolver.getAnyType(name,mutableMapOf(), mutableMapOf(), null, this.token )
                     else
-                        typeTable[name] ?:
-                        this.token.compileError("Can't find user type: ${YEL}$name")
+                        typeTable[name]
+                            //?: this.token.compileError("Can't find user type: ${YEL}$name")
+                if (typeFromDb == null) {
 
+                    if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
+                        // we are not resolving type fields of different type
+                        // yes, these 3 are not null when we are doing that
+                        this.token.compileError("Can't find user type: ${YEL}$name")
+                    }
+
+                    typeDB.addUnresolvedField(
+                        name,
+                        FieldNameAndParent(
+                            resolvingFieldName,
+                            parentType,
+                            typeDeclaration = typeDeclaration,
+                            ast = realParentAstFromGeneric ?: this
+                        )
+                    )
+                    return Type.UnresolvedType()
+                }
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy(customPkg)

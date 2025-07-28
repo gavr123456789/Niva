@@ -102,7 +102,7 @@ fun Resolver.resolveCodeBlock(
             genericLetterToTypesOfReceiver["T"] = rootReceiverType
         }
         // List(T, G) map::[T -> G] -> G = []
-        if (rootReceiverType is Type.UserType && rootReceiverType.typeArgumentList.isNotEmpty()) {
+        if (rootReceiverType is Type.UserLike && rootReceiverType.typeArgumentList.isNotEmpty()) {
             val rootType = rootReceiverType.copy()
 
             fillGenericsWithLettersByOrder(rootType)

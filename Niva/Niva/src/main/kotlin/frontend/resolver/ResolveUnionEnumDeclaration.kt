@@ -52,7 +52,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         }
 
 
-        val branchType = if (alreadyRegisteredType is Type.Union && it.isRoot) {
+        val branchType = (if (alreadyRegisteredType is Type.Union && it.isRoot) {
             if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields, statement.token)) {
                 it.token.compileError("Union inside other union declaration must have same fields, $YEL${alreadyRegisteredType.name} ${WHITE}${alreadyRegisteredType.fields.map { "${it.name}: ${it.type}" }} $RED!=${YEL} ${rootType.name}${RED} $WHITE${rootType.fields.map { "${it.name}: ${it.type}" }}")
             }
@@ -73,7 +73,13 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
 
             branchType
-        }.also { it.parent = rootType }
+        }).also { branchType ->
+            branchType.parent = rootType
+            val set = mutableSetOf<Type.UnknownGenericType>()
+            rootType.collectGenericParamsRecursivelyFRFR(set)
+            branchType.addAllTypeArguments(set)
+            1
+        }
 
 
         branchType.fields += rootType.fields
@@ -87,7 +93,6 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     addNewType(rootType, statement)
 
     rootType.branches = branches
-//    rootType.typeArgumentList += genericsOfBranches
     rootType.addAllTypeArguments(genericsOfBranches)
 
     /// generics

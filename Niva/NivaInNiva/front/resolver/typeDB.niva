@@ -5,9 +5,12 @@ type TyperDB
 
   packages: mut Map(String, NivaPkg)
 
+
   // caches
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
+
+  typesWithResolvedGenerics: mut Map(String, NivaType)
 
 
 constructor TyperDB new -> TyperDB = [
@@ -22,6 +25,7 @@ constructor TyperDB new -> TyperDB = [
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: #{}!
+    typesWithResolvedGenerics: #{}!
     
 ]
 
