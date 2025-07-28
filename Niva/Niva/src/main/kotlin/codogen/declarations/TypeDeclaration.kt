@@ -42,7 +42,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     // class Person (^ arg: Type
 
 
-    // when its a union included in other union, fields of the root and current type can overlap
+    // when it's a union included in other union, fields of the root and current type can overlap
     val setOfAlreadyAddedArgs = mutableSetOf<String>()
 
     fun generateFieldArgument2(fieldName: String, type: Type, i: Int, rootFields: Boolean, fieldsCountMinus1: Int) {

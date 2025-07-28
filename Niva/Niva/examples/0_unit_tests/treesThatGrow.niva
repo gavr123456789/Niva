@@ -15,17 +15,17 @@ union Expr t: T =
 type TypedExpr = Expr::Type
 type UntypedExpr = Expr::Unit
 type Later
-//Int x::Statement = [
-//
-//  | x
-//  | Red => []
-//  | Blue => []
-//  | Declaration => []
-//]
-//
-//TypedExpr printType = [
-//    this t name echo
-//]
+Int x::Statement = [
+
+  | x
+  | Red => []
+  | Blue => []
+  | Declaration => []
+]
+
+TypedExpr printType = [
+    this t name echo
+]
 
 
 

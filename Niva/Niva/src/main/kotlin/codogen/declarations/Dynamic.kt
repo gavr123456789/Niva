@@ -64,7 +64,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
             is Type.UserLike -> isCollection(type.name)
             is Type.NullableType -> {
                 val unpack = type.unpackNull()
-                if (unpack is Type.UserType) isCollection(unpack.name) else false
+                if (unpack is Type.UserLike) isCollection(unpack.name) else false
             }
 
             is Type.InternalType -> false

@@ -1,3 +1,8 @@
+type UnionTBranch name: String typeT: NivaType
+type TypeTField name: String typeT: NivaType
+/// no name provided
+constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
+
 union NivaType name: String pkgName: String = 
 | UnitT
 | IntegerT
@@ -23,23 +28,30 @@ union NivaType name: String pkgName: String =
 | TypeOfTheType v: NivaType // hack for constructors
 | Unknown // Special type for 
 
-type TypeTField name: String typeT: NivaType
-type UnionTBranch name: String typeT: NivaType
+
 
 constructor TypeT noFieldsWithName: name::String pkgName::String= TypeT name: name pkgName: pkgName fields: {}! genericArgs: {}!
 
-TypeT generateDefaultConstructor -> NivaMethod = [
- ^| fields isEmpty
-  | true => [
-    // new 
-    NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors"
+extend TypeT [
+  on generateDefaultConstructor -> NivaMethod = 
+    | fields isEmpty
+    | true => [
+      // new 
+      NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors"
+    ] 
+    | false => [
+      // each field
+      constructorName = fields joinWith: ":" transform: [it name], + ":"
+      NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors"
+    ]
+  /// creates unique identificator
+  on toIdString -> String = [
+
+    ^ ""
   ] 
-  | false => [
-    // each field
-    constructorName = fields joinWith: ":" transform: [it name], + ":"
-    NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors"
-  ] 
+  
 ]
+
 
 constructor UnresolvedGenericT name::String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
@@ -74,68 +86,76 @@ type NivaMethod
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
 
-NivaMethod copyWithDifferentType: rt::NivaType = 
-  NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
+extend NivaMethod [
+  on copyWithDifferentType: rt::NivaType = 
+    NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
+]
 
+constructor NivaMethod [
+  /// Create CALL
+  on name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String = NivaMethod 
+    name: name 
+    args: args
+    returnType: returnType
+    forMut: forMut
+    possibleErrors: {}
+    kind: MessageSendKind.Call
+    decl: decl
+    protocolName: protocolName
+
+  on name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String = NivaMethod 
+    name: name 
+    args: args
+    returnType: returnType
+    forMut: forMut
+    possibleErrors: {}
+    kind: MessageSendKind.Call
+    decl: null
+    protocolName: protocolName
+
+  on constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String -> NivaMethod = NivaMethod 
+    name: name 
+    args: args
+    returnType: returnType
+    forMut: false
+    possibleErrors: {}
+    kind: MessageSendKind.Constructor
+    decl: decl
+    protocolName: protocolName
+
+]
 
 type NivaProtocol 
   name: String 
   methods: mut Map(String, NivaMethod)
+
+constructor NivaProtocol [
+  on common = NivaProtocol name: "common" methods: #{}!
+  on constructors = NivaProtocol name: "constructors" methods: #{}!
+  on name::String = NivaProtocol name: name methods: #{}!
+]
+
+extend NivaProtocol [
+  on addMethod::NivaMethod = [
+    methods at: addMethod name put: addMethod
+  ]
+]
 
 type NivaPkg 
   name: String 
   types: mut Map(String, NivaType)
   protocols: mut Map(NivaType, mut List::NivaProtocol)
   constructorsProtocol: NivaProtocol
-  
-constructor NivaProtocol common = NivaProtocol name: "common" methods: #{}!
-constructor NivaProtocol constructors = NivaProtocol name: "constructors" methods: #{}!
-constructor NivaProtocol name::String = NivaProtocol name: name methods: #{}!
+
+
 
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors
 
-/// Create CALL
-constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String = NivaMethod 
-  name: name 
-  args: args
-  returnType: returnType
-  forMut: forMut
-  possibleErrors: {}
-  kind: MessageSendKind.Call
-  decl: decl
-  protocolName: protocolName
-
-  constructor NivaMethod name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String = NivaMethod 
-  name: name 
-  args: args
-  returnType: returnType
-  forMut: forMut
-  possibleErrors: {}
-  kind: MessageSendKind.Call
-  decl: null
-  protocolName: protocolName
-
-constructor NivaMethod constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String -> NivaMethod = [
-  ^ NivaMethod 
-      name: name 
-      args: args
-      returnType: returnType
-      forMut: false
-      possibleErrors: {}
-      kind: MessageSendKind.Constructor
-      decl: decl
-      protocolName: protocolName
-
-]
-
-NivaProtocol addMethod::NivaMethod = [
-  methods at: addMethod name put: addMethod
-]
 
 
 
-/// no name provided
-constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
+
+
 
 
 type DefaultTypesContainer 
@@ -231,9 +251,6 @@ constructor NivaPkg core -> NivaPkg = [
 
 // -----
 
-
-
-//
 Project protocol: "toString"
 
 TypeT toString -> String = [

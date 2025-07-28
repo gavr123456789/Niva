@@ -83,7 +83,7 @@ fun Resolver.resolveKeywordMsg(
         // This is Setter or Keyword now
 
         // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
-        if (statement.args.count() == 1 && receiverType is Type.UserType) {
+        if (statement.args.count() == 1 && receiverType is Type.UserLike) {
             val keyArgText = statement.args[0].name
             // find receiver arg same as keyArgText
             val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
@@ -351,7 +351,7 @@ fun Resolver.resolveKeywordMsg(
                 // collect all fields from parents
                 val listOfAllParentsFields = mutableListOf<KeywordArg>()
                 var parent = receiverType.parent
-                while (parent != null && parent is Type.UserType) {
+                while (parent != null && parent is Type.UserLike) {
                     listOfAllParentsFields.addAll(parent.fields)
                     parent = parent.parent
                 }

@@ -92,6 +92,7 @@ type MatchBranch
   body: Body
 
 
+
 // Expressions
 union Expr token: Token = 
 | ^LiteralExpr 
@@ -115,6 +116,10 @@ union Expr token: Token =
   nivaType: NivaType
   isMutable: Bool
 
+Expr toTyped -> TypedExpr = 
+| this 
+| TypedExpr => this
+|=> TO DO: "Its not typed, its $this"
 
 
 

@@ -152,6 +152,7 @@ fun Resolver.resolveWithBackTracking(
     }
 
     var c = unResolvedTypeDeclarations.flatMap { it.value }.count()
+    1
     while (c-- > 0 && unResolvedTypeDeclarations.isNotEmpty()) {
         resolveUnresolvedTypes()
     }
