@@ -35,7 +35,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
     }
 
     val branches = mutableListOf<Type.Union>()
-    val genericsOfBranches = mutableSetOf<Type>()
+//    val genericsOfBranches = mutableSetOf<Type>()
     statement.branches.forEach {
         // check if type already exist, and it doesn't have fields,
         // than it's not a new type, but branch with branches
@@ -78,7 +78,6 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
             val set = mutableSetOf<Type.UnknownGenericType>()
             rootType.collectGenericParamsRecursivelyFRFR(set)
             branchType.addAllTypeArguments(set)
-            1
         }
 
 
@@ -86,15 +85,18 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
 
         addToFromDynamic(branchType)
         branches.add(branchType)
-        genericsOfBranches.addAll(branchType.typeArgumentList)
+//        genericsOfBranches.addAll(branchType.typeArgumentList)
+
+//        if (branchType !is Type.UnionRootType) {
+//            genericsOfBranches.addAll(branchType.typeArgumentList)
+//        }
     }
 
     addToFromDynamic(rootType)
     addNewType(rootType, statement)
 
     rootType.branches = branches
-    rootType.addAllTypeArguments(genericsOfBranches)
-
+//    rootType.addAllTypeArguments(genericsOfBranches)
     /// generics
     // add generics from branches
     val allGenerics = statement.collectAllGenericsFromBranches() + statement.genericFields

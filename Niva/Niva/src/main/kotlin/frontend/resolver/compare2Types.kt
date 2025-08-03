@@ -22,10 +22,11 @@ fun compare2Types(
     tokenForErrors: Token,
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type
-    unpackNullForFirst: Boolean = false, // x::Int? <- y::Int
+    unpackNullForSecond: Boolean = false, // x::Int? <- y::Int
     compareParentsOfBothTypes: Boolean = true,
-    nullIsAny: Boolean = false, // any branch of switch can return null
+    nullIsFirstOrSecond: Boolean = false, // any branch of switch can return null
     compareMutability: Boolean = true,
+    unpackNullForFirst: Boolean = false,
 ): Boolean {
     if (type1OrChildOf2 === type2) return true
 
@@ -77,11 +78,11 @@ fun compare2Types(
                 it.type,
                 it2.type,
                 tokenForErrors,
-                unpackNullForFirst = unpackNullForFirst,
+                unpackNullForSecond = unpackNullForSecond,
                 unpackNull = unpackNull,
                 isOut = isOut,
                 compareParentsOfBothTypes = compareParentsOfBothTypes,
-                nullIsAny = nullIsAny,
+                nullIsFirstOrSecond = nullIsFirstOrSecond,
 
             )
             if (!isEqual) {
@@ -124,7 +125,7 @@ fun compare2Types(
     }
 
     // in switch one branch can return Int and the other null
-    if (nullIsAny && (typeIsNull(type1OrChildOf2) || typeIsNull(type2))) {
+    if (nullIsFirstOrSecond && (typeIsNull(type1OrChildOf2) || typeIsNull(type2))) {
         return true
     }
 
@@ -198,6 +199,7 @@ fun compare2Types(
 //                    return hasGeneralRoot_Or_itsListTAndListInt
                 //} //type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
             }
+
             val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
             return hasGeneralRoot_Or_itsListTAndListInt
         }
@@ -219,11 +221,20 @@ fun compare2Types(
 
         var parent2: Type? = type2.parent
         while (parent2 != null) {
-            if (compare2Types(type1OrChildOf2, parent2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+            if (compare2Types(type1OrChildOf2, parent2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false, isOut = isOut)) {
                 return true
             }
             parent2 = parent2.parent
         }
+
+
+//        var parent1: Type? = type1OrChildOf2.parent
+//        while (parent1 != null) {
+//            if (compare2Types(type2, parent1, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+//                return true
+//            }
+//            parent1 = parent1.parent
+//        }
     }
 
 
@@ -242,9 +253,18 @@ fun compare2Types(
             val win = compare2Types(type1OrChildOf2, type2.realType, tokenForErrors)
             if (win) return true
         }
+        // both are null
+    } else if (type1OrChildOf2 is Type.NullableType && type2 is Type.NullableType) {
+        return compare2Types(type1OrChildOf2.realType, type2.realType, tokenForErrors)
+    }
+    else if (unpackNullForSecond) {
+        if ((type2 is Type.NullableType )) { //&& type1OrChildOf2 !is Type.NullableType
+            val win = compare2Types(type2.realType, type1OrChildOf2, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
+            if (win) return true
+        }
     } else if (unpackNullForFirst) {
-        if ((type1OrChildOf2 is Type.NullableType && type2 !is Type.NullableType)) {
-            val win = compare2Types(type1OrChildOf2.realType, type2, tokenForErrors)
+        if ((type1OrChildOf2 is Type.NullableType )) { //&& type2 !is Type.NullableType
+            val win = compare2Types(type1OrChildOf2.realType, type2, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
             if (win) return true
         }
     }

@@ -14,5 +14,6 @@ fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
         realType.alias = statement.typeName
 //        realType.pkg = currentPackageName
     }
+
     addNewType(realType, statement, alias = true, alreadyCheckedOnUnique = false)
 }

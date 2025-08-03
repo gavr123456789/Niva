@@ -3,6 +3,8 @@ package main.frontend.parser.types.ast
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
 import main.frontend.meta.Token
+import main.frontend.meta.compileError
+import main.utils.YEL
 
 
 sealed class TypeAST(
@@ -197,4 +199,30 @@ class ErrorDomainDeclaration(
 enum class InternalTypes {
     Int, String, Float, Double, Bool, Unit, Project, Char, Long, IntRange, CharRange, Any, Bind, Compiler, Nothing, Null, UnknownGeneric, Test
 //    NotResolved
+}
+
+
+fun TypeAST.UserType.validateAstTypeHasGenericsDeclared(type: Type) {
+    if (this.typeArgumentList.isEmpty() &&
+        type is Type.UserLike &&
+        type.typeArgumentList.isNotEmpty() &&
+        !type.isAlias) {
+        // this can be an alias to a type with generics
+        // if by its name we will find that it's an alias to type with generics, that it's ok
+
+        // find the type by astName, if typetable contains this type again by its real name, this is type alias
+//        val possibleAlias = typeTable[this.name]
+//        if (possibleAlias != null) {
+//            val realAliasedType = typeTable[possibleAlias.name]
+//
+//            if (realAliasedType == null || possibleAlias != realAliasedType) {
+//                this.token.compileError("Please specify a type argument for type $YEL$type")
+//            }
+//        } else
+//            this.token.compileError("Please specify a type argument for type $YEL$type")
+
+        this.token.compileError("Please specify a type argument for type $YEL$type")
+
+    }
+
 }

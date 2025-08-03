@@ -124,32 +124,30 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
     // add inheritance
     if (root2 != null) {
-        val currentType = receiverType as Type.UserLike
         val rootGenericFields = root2.typeArgumentList.map { it.name }
-        val genericsOfTheBranch = currentType.typeArgumentList.map { it.name }.toSet()
 
         append(" : ${root2.name}")
 
         // for each generic that is not in genericsOfTheRoot we must use Nothing
         // if current branch does not have a generic param, but root has, then add Never
-        val isThereGenericsSomewhere = genericsOfTheBranch.isNotEmpty() || rootGenericFields.isNotEmpty()
+        val isThereGenericsSomewhere = rootGenericFields.isNotEmpty() //|| genericsOfTheBranch.isNotEmpty()
         if (isThereGenericsSomewhere)
             append("<")
 
-        val realGenerics = mutableListOf<String>()
-        realGenerics.addAll(genericsOfTheBranch)
+//        val realGenerics = mutableListOf<String>()
+//        realGenerics.addAll(genericsOfTheBranch)
 
         // replacing all missing generics of current branch, that root have, to Nothing
-        rootGenericFields.forEach {
-            if (!genericsOfTheBranch.contains(it)) {
-                // NOT REPLACING IT, since then we need to support out in params too
-//                realGenerics.add("Nothing")
-                realGenerics.add(it)
-            } else
-                realGenerics.add(it)
-        }
+//        rootGenericFields.forEach {
+//            if (!genericsOfTheBranch.contains(it)) {
+//                // NOT REPLACING IT, since then we need to support out in params too
+////                realGenerics.add("Nothing")
+//                realGenerics.add(it)
+//            } else
+//                realGenerics.add(it)
+//        }
 
-        append(realGenerics.toSortedSet().joinToString(", "))
+        append(rootGenericFields.toSortedSet().joinToString(", "))
 
 
         if (isThereGenericsSomewhere)

@@ -32,7 +32,6 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
             while (fieldIter.hasNext()) {
                 val field = fieldIter.next()
 
-
                 val resolvedFromDifferentFileType = getAnyType(
                     name,
                     mutableMapOf(),
@@ -66,8 +65,6 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
                     resolveAndRemoveField(field)
 
                     // resolve types in branches, if this is union root with common field
-
-
                     fieldIter.remove()
                 }
                 if (fieldSet.isEmpty())
@@ -152,7 +149,7 @@ fun Resolver.resolveWithBackTracking(
     }
 
     var c = unResolvedTypeDeclarations.flatMap { it.value }.count()
-    1
+
     while (c-- > 0 && unResolvedTypeDeclarations.isNotEmpty()) {
         resolveUnresolvedTypes()
     }

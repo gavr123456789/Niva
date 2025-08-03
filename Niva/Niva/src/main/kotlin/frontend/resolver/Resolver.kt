@@ -327,6 +327,7 @@ private fun Resolver.resolveStatement(
                 // this is <-, not =
                 val w = statement.value.type!!
                 if (!compare2Types(q, w, statement.token, unpackNullForFirst = true)) {
+                    compare2Types(q, w, statement.token, unpackNullForFirst = true)
                     statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
@@ -451,9 +452,6 @@ fun Resolver.resolve(
         resolveStatement(
             statement, currentScope, previousScope, rootStatement
         )
-
-//        println("$currentLevel on line ${statement.token.line} resolving1 ${statement::class.simpleName} $statement")
-
     }
 
     // we need to filter this things, only ifcurrent level is 0
@@ -478,10 +476,15 @@ fun Resolver.resolveExpressionInBrackets(
     return lastExpr.type!!
 }
 
-
+private val namesAndPkgEqual = {t1: Type, t2: Type ->
+    t1.name == t2.name && t1.pkg == t2.pkg// || (t1.toString() == t2.toString())
+}
+// we do not care about generics when searching for generic root,
+// like Box::T should be equal to Box::Int
+// so we compare only name and pkg instead of toSting
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 == type2) return type1
-    if (type1.toString() == type2.toString()) return type1
+    if (namesAndPkgEqual(type1, type2)) return type1
     /// check for nothing
     val firstIsNothing = type1.name == "Nothing"
     val secondIsNothing = type2.name == "Nothing"
@@ -509,30 +512,47 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 is Type.NullableType && type2 !is Type.NullableType) {
         val type1Unpacked = type1.unpackNull()
         if (type1Unpacked == type2) return type1
-        if (type1Unpacked.toString() == type2.toString()) return type1
+        if (namesAndPkgEqual(type1Unpacked, type2)) return type1
     } else
     if (type1 !is Type.NullableType && type2 is Type.NullableType) {
         val type2Unpacked = type2.unpackNull()
         if (type1== type2Unpacked) return type2
-        if (type1.toString() == type2Unpacked.toString()) return type2
+        if (namesAndPkgEqual(type1, type2Unpacked)) return type2
     }
+
+    // generate chain of parents for both types
+    // find the first common
+    fun findNearestCommonAncestor(type1: Type, type2: Type): Type? {
+        val ancestors1 = generateSequence(type1) { it.parent }.toList()
+
+        return generateSequence(type2) { it.parent }
+            .firstOrNull { t2 -> ancestors1.any { t1 -> namesAndPkgEqual(t1, t2) } }
+    }
+    val possibleResult = findNearestCommonAncestor(type1, type2)
+    if (possibleResult != null) return possibleResult
+    //////////////////////
 
     // first is parent of the second
     val parent1: Type? = type1.parent
     val parent2: Type? = type2.parent
-    if (parent1 != null && parent1.toString() == type2.toString()) {
+    if (parent1 != null && namesAndPkgEqual(parent1, type2)) {
         return parent1
     } else
     // second is parent of the first
-    if (parent2 != null && parent2.toString() == type1.toString()) {
+    if (parent2 != null && namesAndPkgEqual(parent2, type1)) {
         return parent2
-    } else if (parent1 != null && parent2 != null) {
-        if (parent1.toString() == parent2.toString()) {
-            return  parent1
+    }
+    else if (parent1 != null && parent2 != null) {
+        if (namesAndPkgEqual(parent1, parent2)) {
+            return parent1
         }
         findGeneralRoot(parent1, type2)?.let { return it }
         findGeneralRoot(type1, parent2)?.let { return it }
         findGeneralRoot(parent1, parent2)?.let { return it }
+    } else if (parent1 != null && parent2 == null) {
+        findGeneralRoot(parent1, type2)?.let { return it }
+    } else if (parent2 != null ) { //&& parent1 == null
+        findGeneralRoot(type1, parent2)?.let { return it }
     }
 
     if (type1 is Type.UnknownGenericType) return type1
@@ -750,6 +770,10 @@ fun Resolver.addNewType(
     alreadyCheckedOnUnique: Boolean = false,
     alias: Boolean = false
 ) {
+    if (pkg != null && statement != null && type is Type.UserLike && type.fields.any { it.type is Type.UnresolvedType }) {
+        this.unResolvedTypeDeclarations.add(pkg.packageName, statement)
+        return
+    }
     // 1 get package
     val pack = pkg ?: getCurrentPackage(statement?.token ?: createFakeToken())
     // 2 check type for unique
@@ -779,25 +803,26 @@ fun Resolver.addNewType(
     // alias
     if (alias) {
         type.isAlias = true
+//        val realNonAliasType = typeTable[type.name]
+//        if (realNonAliasType != null) {
+//            type.protocols = realNonAliasType.protocols
+//        }
     }
     // 5 put type to all type sources
     pack.types[typeName] = type
     typeTable[typeName] = type //fix
     typeDB.add(type, customNameAlias = typeName)
 
-//    typeDB.unresolvedFields.remove(typeName)
 
     val unresolved = unResolvedTypeDeclarations[pack.packageName]
     if (unresolved != null && statement != null) {
         val typeToRemove =
             unresolved.find { it.typeName == statement.typeName && it.receiver?.pkg == statement.receiver?.pkg }
-        unresolved.remove(typeToRemove)
-//        if (unresolved.isEmpty()) {
-//            unResolvedTypeDeclarations.remove(pack.packageName)
-//        }
+        if (typeToRemove != null) {
+            unresolved.remove(typeToRemove)
+        }
     }
 
-//    unResolvedTypeDeclarations.remove(typeName)
 }
 
 
@@ -1036,8 +1061,6 @@ fun Resolver.getAnyType(
     val typeFromDb = typeDB.getType(typeName, currentScope, previousScope)
     val currentPackage = getCurrentPackage(statement?.token ?: createFakeToken())
 
-//    if (typeName == "Sas")
-//        println()
     val type = typeFromDb.getTypeFromTypeDBResultConstructor(
         statement, currentPackage.importsFromUse, currentPackageName, tokenForError
     ) ?: currentPackage.builders[typeName]?.returnType

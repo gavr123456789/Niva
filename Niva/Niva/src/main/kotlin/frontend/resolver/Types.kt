@@ -461,7 +461,7 @@ sealed class Type(
             names = names,
             token = token
         )
-        val unInitializedType = resolver.typeDB.getTypeOfIdentifierReceiver(
+        val unInitializedTypeFromDB = resolver.typeDB.getTypeOfIdentifierReceiver(
             typeName,
             ident,
             resolver.getCurrentImports(token),
@@ -469,7 +469,7 @@ sealed class Type(
             names = names
         ) ?: token.compileError(errorText)
 
-        return unInitializedType.also { it.errors = x.errors }
+        return if (x.errors?.isNotEmpty() == true) unInitializedTypeFromDB.copyAnyType().also { it.errors = x.errors } else unInitializedTypeFromDB
 
     }
 
@@ -924,7 +924,7 @@ fun TypeAST.toType(
 
         is TypeAST.UserType -> {
             if (name.isGeneric()) {
-                return (if (!isNullable)
+                val result = (if (!isNullable)
                     Type.UnknownGenericType(name)
                 else
                     Type.NullableType(Type.UnknownGenericType(name))).let {
@@ -933,6 +933,8 @@ fun TypeAST.toType(
                         } else
                             it
                 }
+                validateAstTypeHasGenericsDeclared(result)
+                return result
             }
 
             if (this.typeArgumentList.isNotEmpty()) {
@@ -988,7 +990,7 @@ fun TypeAST.toType(
                             field.type = fieldType
                         }
                     }
-                    return copy.also {
+                    val result =  copy.also {
                         if (isMutable) it.isMutable = true
                     }.let {
                         if (this.isNullable)
@@ -996,6 +998,8 @@ fun TypeAST.toType(
                         else
                             it
                     }
+                    validateAstTypeHasGenericsDeclared(result)
+                    return result
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
@@ -1025,6 +1029,7 @@ fun TypeAST.toType(
                 (type).copyAnyType().also { it.isMutable = true }
             } else type
 
+            validateAstTypeHasGenericsDeclared(type2)
             return replaceToNullableAndAddErrorsIfNeeded(type2)
         }
 
@@ -1054,15 +1059,6 @@ fun TypeAST.toType(
 
             val returnType =
                 this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
-
-//            if (returnType is Type.UnresolvedType) {
-//                val q = typeDB.unresolvedFields[this.returnType.name]!!
-//
-//                q.forEach {
-//                    if (it.ast == null)
-//                        it.ast = this
-//                }
-//            }
 
             val lambdaType = Type.Lambda(
                 args = args,
@@ -1099,6 +1095,7 @@ fun TypeFieldAST.toTypeField(
                 it.isMutable = true // может тут надо копировать
         }
     )
+
     return result
 }
 
@@ -1231,23 +1228,19 @@ fun SomeTypeDeclaration.toType(
     val genericsDeclarated = fieldsTyped.asSequence()
         .filter { it.type is Type.UnknownGenericType }
         .map { it.type }
-        .distinctBy { it.name }
     val genericsFromFieldsTypes = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
 
 
-    val genericTypeFields = (genericsDeclarated + genericsFromFieldsTypes).distinctBy { it.name }.toMutableList()
-
+    val genericsFromFieldsAndDecl = (genericsDeclarated + genericsFromFieldsTypes).toMutableList()
 
     unresolvedSelfTypeFields.forEach {
         it.type = if ((it.type !is Type.NullableType)) result else Type.NullableType(result)
     }
 
-    this.genericFields.addAll(genericTypeFields.map { it.name })
-
     // add already declared generic fields(via `type Sas::T` syntax)
     this.genericFields.forEach {
-        if (it.isGeneric() && genericTypeFields.find { x -> x.name == it } == null) {
-            genericTypeFields.add(Type.UnknownGenericType(it))
+        if (it.isGeneric() && genericsFromFieldsAndDecl.find { x -> x.name == it } == null) {
+            genericsFromFieldsAndDecl.add(Type.UnknownGenericType(it))
             // add to recursive ast types of fields generic params
 
         }
@@ -1259,7 +1252,7 @@ fun SomeTypeDeclaration.toType(
         .filter { it.names.first() == this.typeName }
         .forEach { field ->
             field.typeArgumentList.addAll(
-                genericTypeFields.map {
+                genericsFromFieldsAndDecl.map {
                     TypeAST.UserType(
                         name = it.name,
                         token = field.token,
@@ -1275,12 +1268,11 @@ fun SomeTypeDeclaration.toType(
 
         val unpackedNull = type.unpackNull()
         if (unpackedNull is Type.UserLike && unpackedNull.typeArgumentList.isNotEmpty()) {
-            genericTypeFields.addAll(unpackedNull.typeArgumentList.filter { it.name.isGeneric() })
+            genericsFromFieldsAndDecl.addAll(unpackedNull.typeArgumentList.filter { it.name.isGeneric() })
         }
     }
 
-//    result.typeArgumentList = genericTypeFields.distinctBy { it.name }.toMutableList()
-    result.replaceTypeArguments(genericTypeFields)
+    result.replaceTypeArguments(genericsFromFieldsAndDecl.distinctBy { it.name })
     result.fields = fieldsTyped
     //    result.protocols
     // Box::List::T will be resolved, but we need only Box::T to generate correct method in codogen
