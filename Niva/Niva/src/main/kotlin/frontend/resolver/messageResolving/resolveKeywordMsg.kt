@@ -38,6 +38,7 @@ fun Resolver.resolveKeywordMsg(
 
     // resolve receiverType
     val selectorName = statement.args.map { it.name }.toCamelCase()
+
     if (statement.receiver.type == null) {
         currentLevel++
         resolveSingle((statement.receiver), previousAndCurrentScope, statement)
@@ -60,7 +61,7 @@ fun Resolver.resolveKeywordMsg(
         if (receiverText == "Project" || receiverText == "Bind") {
             statement.token.compileError("We cant get here, type Project are ignored")
         }
-        val isThisConstructor = (receiver is IdentifierExpr && (receiver.names.last() == keywordReceiverType.name || receiver.type?.isAlias == true))
+        val isThisConstructor = (receiver is IdentifierExpr && receiver.isType && (receiver.names.last() == keywordReceiverType.name || receiver.type?.isAlias == true))
         if (isThisConstructor) {
 
             if (keywordReceiverType is Type.UnionRootType) {
@@ -330,7 +331,7 @@ fun Resolver.resolveKeywordMsg(
             }
             val type = kwArg.keywordArg.type!!
             val unpackLambda = if (argFromDB.type !is Type.Lambda && type is Type.Lambda) type.returnType else type
-            if (!compare2Types(argFromDB.type, unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
+            if (!compare2Types(argFromDB.type,unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
             }
         }
@@ -455,10 +456,19 @@ fun Resolver.resolveKeywordMsg(
                     typeOfArgFromDeclaration,
                     argAndItsMessages.keywordArg.token,
                     unpackNull = true,
-                    nullIsAny = true,
+                    nullIsFirstOrSecond = true,
                     compareParentsOfBothTypes = false
                 )
                 if (!sameTypes) {
+                    // ДОЛЖНО РАБОТАТЬ
+                    compare2Types(
+                        typeOfArgFromDb,
+                        typeOfArgFromDeclaration,
+                        argAndItsMessages.keywordArg.token,
+                        unpackNull = true,
+                        nullIsFirstOrSecond = true,
+                        compareParentsOfBothTypes = false
+                    )
                     argAndItsMessages.keywordArg.token.compileError(
                         "Type of $WHITE${argAndItsMessages.keywordArg}$RESET is $YEL${typeOfArgFromDeclaration}${RESET} but $YEL${typeOfArgFromDb}${RESET} for argument $CYAN${argAndItsMessages.name}${RESET} required"
                     )
@@ -678,7 +688,7 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
     val alreadyAddedType = this[str]
 
     if (alreadyAddedType != null) {
-        val sameTypes = compare2Types(alreadyAddedType, type, errorTok, nullIsAny = true, compareParentsOfBothTypes = true, isOut = true)
+        val sameTypes = compare2Types(alreadyAddedType, type, errorTok, nullIsFirstOrSecond = true, compareParentsOfBothTypes = true, isOut = true)
 
         // same letter gets different type
         if (!sameTypes) {

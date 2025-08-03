@@ -34,6 +34,7 @@ fun Resolver.resolveVarDeclaration(
     previousScope: MutableMap<String, Type>,
 ) {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
+
     // currentNode, depth + 1
     currentLevel++
     resolveSingle((statement.value), previousAndCurrentScope, statement)

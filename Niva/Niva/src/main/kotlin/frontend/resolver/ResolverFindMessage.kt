@@ -141,7 +141,7 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
 }
 
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
-    val cantFind = "Cant send ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET}"
+    val cantFind = "Can't find ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET}"
     val errorText = if (receiverType is Type.NullableType)
         "$cantFind to nullable type: ${YEL}${receiverType}${RESET}, please use $CYAN unpackOrPANIC${RESET}/${CYAN}unpackOrValue: value${RESET}/${CYAN}unpack: [it]${RESET}/${CYAN}unpack: ${WHITE}[...] ${CYAN}or: ${WHITE}T"
     else
@@ -244,7 +244,6 @@ fun Resolver.findAnyMsgType(
 
     val pkg = getCurrentPackage(token)
 
-    val receiverType = receiverType.replaceInitializedGenericToUnInitialized(resolver = this, token = token)
 
     findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
         return it
@@ -324,6 +323,15 @@ fun Resolver.findAnyMsgType(
         }
 
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
-    } else
+    } else {
+        // maybe its changed after resolve
+//    val receiverType = receiverType.replaceInitializedGenericToUnInitialized(resolver = this, token = token)
+        val q = typeTable[receiverType.name]
+        if (q != null && q != receiverType && q.protocols.count() != receiverType.protocols.count()) { // q != receiverType - protection from infinity recursion
+            val allProtocolsExceptDynamic = q.protocols - "dynamic"
+            receiverType.protocols.putAll(allProtocolsExceptDynamic)
+            return findAnyMsgType(q,selectorName,token, msgType)
+        }
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
+    }
 }

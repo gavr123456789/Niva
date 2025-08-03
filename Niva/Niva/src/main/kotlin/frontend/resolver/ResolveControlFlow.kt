@@ -44,13 +44,14 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
         val cur = branchesWithoutNull[it]
         val prev = branchesWithoutNull[it - 1]
         /// null check
-        val realType1 = cur.unpackNull()
         val realType2 = prev.unpackNull()
+        val realType1 = cur.unpackNull()
         if (!resultIsNullable && realType1 != cur) resultIsNullable = true
         if (typeIsNull(prev)) {
             resultIsNullable = true
         }
         ///root between first 2
+        // мы тут сравниваем их не в том же порядке первым идет более старший тип, поэтому и результирующий получается более старшим
         val generalRoot = findGeneralRoot(realType1, realType2)
         if (generalRoot == null) {
             return@forEach
@@ -177,7 +178,7 @@ fun Resolver.resolveControlFlow(
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
                 val isTypeEqual =
-                    compare2Types(prevType, currType, prev.ifExpression.token, unpackNull = true, compareParentsOfBothTypes = true, isOut = true, nullIsAny = true)
+                    compare2Types(prevType, currType, prev.ifExpression.token, unpackNull = true, compareParentsOfBothTypes = true, isOut = true, nullIsFirstOrSecond = true)
                 if (!isTypeEqual) {
                     it.ifExpression.token.compileError(
                         "In if Expression return type of branch on line: ${WHITE}${prev.ifExpression.token.line}$RESET is ${WHITE}${prevType.name}${RESET} " +
@@ -332,7 +333,7 @@ fun Resolver.resolveControlFlow(
                     statement.switch.type = unpackedNull
                 }
             }
-            if (thisIsTypeMatching && statement.switch is IdentifierExpr) {
+            if (thisIsTypeMatching && statement.switch is IdentifierExpr) { // add current switching if Identifier to scope, type narrowed
                 if (currentType is Type.UserLike) {
                     currentType.fields.forEach {
                         val alreadyDeclarated = currentScope[it.name]
@@ -352,7 +353,7 @@ fun Resolver.resolveControlFlow(
             }
 
             val curTok = it.ifExpression.token
-            if (!compare2Types(statement.switch.type!!, currentType, curTok, unpackNullForFirst = true)) {
+            if (!compare2Types(statement.switch.type!!, currentType, curTok, unpackNullForSecond = true)) {
                 curTok.compileError("${WHITE}${it.ifExpression}${RESET} has type: ${YEL}$currentType${RESET} but you matching on\n       $WHITE${statement.switch}$RESET of type ${YEL}${statement.switch.type!!}")
             }
             /// resolving then, if() ^
@@ -389,7 +390,7 @@ fun Resolver.resolveControlFlow(
 
                 val prevType: Type = prev.getReturnTypeOrThrow()
                 val currType = it.getReturnTypeOrThrow()
-                val isTypeEqual = compare2Types(prevType, currType, prev.ifExpression.token, unpackNull = true, compareParentsOfBothTypes = true, isOut = true, nullIsAny = true)
+                val isTypeEqual = compare2Types(prevType, currType, prev.ifExpression.token, unpackNull = true, compareParentsOfBothTypes = true, isOut = true, nullIsFirstOrSecond = true)
                 if (!isTypeEqual) {
                     it.ifExpression.token.compileError(
                         "In switch Expression return type of branch on line: $WHITE${prev.ifExpression.token.line}$RESET is $YEL${prevType.name}$RESET "

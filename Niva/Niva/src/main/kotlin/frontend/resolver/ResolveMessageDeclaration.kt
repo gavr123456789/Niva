@@ -59,7 +59,6 @@ fun Resolver.resolveMessageDeclaration(
     // check that generic params are declared for a generic receiver
     if (typeFromDB is Type.UserLike && typeFromDB.typeArgumentList.isNotEmpty() && forTypeAst is TypeAST.UserType && forTypeAst.typeArgumentList.isEmpty()) {
         if (typeFromDB.typeArgumentList.any { it.name.isGeneric() }) {
-            1
             forTypeAst.token.compileError("Please declare missing generic arguments of receiver: $YEL$typeFromDB")
         }
 
@@ -81,7 +80,10 @@ fun Resolver.resolveMessageDeclaration(
     val copyTypeIfGenerics = checkThatTypeGenericsResolvable()
 
     // but wait maybe some generic param's type is unresolved (List::T unary = [])
-    if (copyTypeIfGenerics is Type.UserLike && statement.forTypeAst is TypeAST.UserType && statement.forTypeAst.typeArgumentList.isNotEmpty()) {
+    if (copyTypeIfGenerics is Type.UserLike &&
+        statement.forTypeAst is TypeAST.UserType &&
+        statement.forTypeAst.typeArgumentList.isNotEmpty())
+    {
         var alTypeArgsAreFound = true
         val newListOfTypeArgs = mutableListOf<Type>()
         statement.forTypeAst.typeArgumentList.forEach {
@@ -105,6 +107,7 @@ fun Resolver.resolveMessageDeclaration(
             return true
         }
     }
+    // amm, actually here we still did not resolve args
     unResolvedMessageDeclarations.remove(currentPackageName, statement)
     statement.forType = copyTypeIfGenerics
 
@@ -413,15 +416,19 @@ fun Resolver.resolveMessageDeclaration(
                     copy
                 } else returnType
 
-        } catch (_: CompilerError) {
-            unResolvedMessageDeclarations.add(currentPackageName, statement)
-            currentLevel--
-            return true
+        } catch (e: CompilerError) {
+            if (e.message!!.contains("Can't find")) {
+                unResolvedMessageDeclarations.add(currentPackageName, statement)
+                currentLevel--
+                return true
+            } else
+                throw e
         }
     }
 
 
     val currentReturnType = statement.returnType
+
     // addToDb
     if (addToDb) {
         // check that message is unique for type
@@ -435,22 +442,29 @@ fun Resolver.resolveMessageDeclaration(
         }
 
         try {
+
             val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
             val errors = statement.returnType?.errors
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)
             }
-        } catch (_: CompilerError) {
-            unResolvedMessageDeclarations.add(currentPackageName, statement)
-            currentLevel--
-            return true
+        } catch (e: CompilerError) {
+            if (e.message!!.contains("Can't find")) {
+                unResolvedMessageDeclarations.add(currentPackageName, statement)
+                currentLevel--
+                return true
+            }
+            throw e
+
         }
     }
 
     val isResolvedSingleExpr = if (statement.isSingleExpression && statement.body.isNotEmpty()) {
         val first = statement.body.first()
         first is Expression && first.type != null
-    } else false
+    } else
+        false
+
     if (needResolveOnlyBody && !isResolvedSingleExpr) {
         resolveBody()
         val newReturnType = statement.returnType

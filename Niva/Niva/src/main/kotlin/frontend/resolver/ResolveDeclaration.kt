@@ -23,6 +23,8 @@ fun Resolver.resolveDeclarations(
     when (statement) {
         is TypeDeclaration -> {
             val newType = statement.toType(currentPackageName, typeTable, typeDB)// fixed
+
+
 //            if (newType is Type.UserLike) {
                 val dynamicProtocol = createDynamicProtocol(newType, dynamicType = dynamicType)
                 newType.protocols["dynamic"] = dynamicProtocol
