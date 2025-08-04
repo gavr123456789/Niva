@@ -1,5 +1,9 @@
+Body resolveBody: db::TyperDB withContext: upperContext::Context = [
+  // StackTrace get log
+  // Compiler getPlace log
 
-Body resolve: db::TyperDB withContext: c::Context = [
+  c = Context fromParent: upperContext
+  
   // [] nothing to resolve
   unTypedBody isEmpty ifTrue: [
     ^ 
@@ -13,7 +17,7 @@ Body resolve: db::TyperDB withContext: c::Context = [
 
   Assert that: typedBody isEmpty equals: true
 
-  stackOfVisited::mut Set::MessageDecl = #()
+  // stackOfVisited::mut Set::MessageDecl = #()
 
   unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb: db withContext: c

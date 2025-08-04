@@ -5,14 +5,21 @@ type Context
   vars: mut Map(String, NivaType)
 
 
-/// no parents no vars(yet)
-constructor Context root = Context parent: null vars: #{}!
+
+constructor Context [
+  /// no parents no vars(yet)
+  on root = Context parent: null vars: #{}!
+  on fromParent::Context? = 
+    Context parent: fromParent vars: #{}!
+]
 
 extend Context [
+
+  
   on defineVar: name::String withType::NivaType = [
     vars at: name put: withType
   ]
-
+  
   /// if not found, try to search in the parent
   on lookupForVar: name::String -> NivaType? = [
     result = vars at: name
@@ -24,5 +31,28 @@ extend Context [
         |=> localP lookupForVar: name
     ]
     |=> result
+  ]
+
+  on allKnownVars -> String = [
+    compute = [c::Context ->
+      c vars map: [k, v -> "$k: $v"], joinWith: ", "
+    ]
+
+    result::{String}! = {(compute c: this)}!
+    
+    mut p = parent
+    [p != null] whileTrue: [
+      nonNullP = p unpackOrPANIC
+      newLine = compute c: nonNullP
+      result add: newLine
+      // result <- newLine + "\n" +levelStr + result
+      p <- nonNullP parent
+    ]
+    mut level = -1
+    ^result reversed joinWith: "\n" transform: [      
+      level <- level inc
+      levelStr = "  " repeat: level
+      levelStr + it
+    ]
   ]
 ]

@@ -44,6 +44,29 @@ extend TypeT [
       constructorName = fields joinWith: ":" transform: [it name], + ":"
       NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors"
     ]
+
+  on collectGenerics -> List::NivaType = [
+    genericFields = fields filter: [
+      nivaType = it typeT
+      | nivaType
+      | UnresolvedGenericT => true
+      |=> false
+    ]
+    
+    set = #(String)!
+    result = {NivaType}!
+    genericFields forEach: [
+      set contains: it typeT name, ifFalse: [
+        set add: it typeT name
+        result add: it typeT
+      ]
+    ]
+    
+    // result = genericFields map: [it name], toSet, map: [
+    //    UnresolvedGenericT name: it
+    // ]
+    ^ result
+  ]
   /// creates unique identificator
   on toIdString -> String = [
 
@@ -55,7 +78,7 @@ extend TypeT [
 
 constructor UnresolvedGenericT name::String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
-constructor IntegerT new = IntegerT name: "Integer" pkgName: "core"
+constructor IntegerT new = IntegerT name: "Int" pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
 constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
 constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"
@@ -148,13 +171,7 @@ type NivaPkg
   constructorsProtocol: NivaProtocol
 
 
-
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors
-
-
-
-
-
 
 
 
@@ -176,43 +193,37 @@ type DefaultTypesContainer
   map: MapT 
   set: SetT 
 
+constructor DefaultTypesContainer new -> DefaultTypesContainer = [
+  t = (UnresolvedGenericT name: "T")
+  dtc = DefaultTypesContainer 
+    char: CharT new 
+    int: IntegerT new 
+    float: FloatT new 
+    double: DoubleT new 
+    str: StringT new 
+    bool: BoolT new 
+    nill: NullT new 
+    unit: UnitT new 
+    nothing: NothingT new 
+    any: AnyT new 
+    t: t
+    list: (ListT t: t) 
+    map: (MapT k: t v: t) 
+    set: (SetT t: t)
+  ^ dtc
+]
+
 
 /// create basic types like String Int List
-constructor NivaPkg core -> NivaPkg = [
-  // create all primitive types
-  char = CharT new
-  int = IntegerT new
-  float = FloatT new
-  double = DoubleT new
-  str = StringT new
-  bool = BoolT new
-  nill = NullT new
-  unit = UnitT new 
+constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
+  dtc = DefaultTypesContainer new
+  {char, int, float, double, str, bool, nill, unit, 
   // utils
-  nothing = NothingT new
-  any = AnyT new
+  nothing, any,
   // T
-  t = UnresolvedGenericT name: "T"
-  // create collections
-  list = ListT t: t
-  map = MapT k: t v: t
-  set = SetT t: t
-
-  dtc = DefaultTypesContainer 
-    char: char 
-    int: int 
-    float: float 
-    double: double 
-    str: str 
-    bool: bool 
-    nill: nill 
-    unit: unit 
-    nothing: nothing 
-    any: any 
-    t: t 
-    list: list 
-    map: map 
-    set: set
+  t,
+  // collections
+  list, map, set} = dtc
 
   // create Int Protocol
   intProtocol = NivaProtocol intArithmeticsFromDefaultTypes: dtc
@@ -243,7 +254,7 @@ constructor NivaPkg core -> NivaPkg = [
   }! constructorsProtocol: NivaProtocol constructors
    
 
-  ^ corePkg
+  ^ Tuple x: corePkg y: dtc
 ]
 
 
@@ -264,5 +275,9 @@ TypeT toString -> String = [
 IntegerT toString -> String = " Type(" + name + ")" 
 StringT  toString -> String = " Type(" + name + ")"
 FloatT   toString -> String = " Type(" + name + ")"
+DoubleT  toString -> String = " Type(" + name + ")"
 BoolT    toString -> String = " Type(" + name + ")"
+UnitT    toString -> String = " Type(" + name + ")"
+CharT    toString -> String = " Type(" + name + ")"
+NullT    toString -> String = " Type(" + name + ")"
 

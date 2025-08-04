@@ -1,9 +1,14 @@
 type Program
   io: IO
-  
+
+
+type FilePath = String
+type FileContent = String
+
 type IO
-  readFile: [String -> String]
-  walkDir: [String -> List::String]
+  readFile: [FilePath -> String]
+  writeFile: [FilePath, FileContent -> String] // 
+  walkDir: [FilePath -> List::String]
 
 
 /// takes fileNames to Content
@@ -12,70 +17,25 @@ type NivaCompiler
 type NivaBuildSystem
 
 
-type ResolverHelper
-  fileToStatements: Map(String, List::Statement) 
-  db: TyperDB
-
-constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
-  fileToStatements::mut Map(String, List::Statement) = #{}!
-  fileToContent forEach: [ file, content ->
-    statements = TestParse withInput: content expectedCount: -1
-    fileToStatements at: file put: statements
-  ]
-   
-  entryPointStatements = fileToStatements at: entryPoint, unpackOrPANIC
-
-
-  db = TyperDB new
-  // visitAllTypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
-  msgDecls = TypeDeclVisitor db: db, 
-    visitAllTypesThenTypesAndMethods: fileToStatements
-    entryPointStatements: entryPointStatements
-
-
-  // we need to have map of methodDeclName to DeclStatement
-
-  // then go main expr by expr, when we see non resolved expr
-
-  // how to check that expr is resolved - if it presended inside map!
-  // no, just by checking is there a typedBody not Empty!
-  // if its not found in db then its probably std, so just search in db
-
-
-  // when the body of expr is not yet resolved then resolve it, else find msg from db
 
 
 
-  // мапа Pkg.Type.MethodName -> NivaType
-  // val resolvedFunctions: MutableMap<String, Type> = mutableMapOf()
-  // стек в глубину где мы сейчас пока резолвим
-  // val resolvingFunctions: MutableSet<String> = mutableSetOf()
-
-  // алгоритм ResolveMethodByName
-  // если есть в мапе resolvedFunctions то возвращаем результат
-  // если текущая есть среди resolvingFunctions, значит мы уже начинали резолвить текущуюю и попали в цикл
-  // add current func to resolving
-  // resolve return type 
-  MsgDeclVisitor new processBodyes: msgDecls db: db
-
-  ^ ResolverHelper fileToStatements: fileToStatements db: db
-]
-
-
-findVarFromOuterScope = [
+resolve = [
   fileMain = """
-    Int sas -> Unit = [
-      x = 1
-      block = [
-        x inc
-      ] 
-    ]
+    //type Box x: T y: T
+    //box = Box x: 1 y: 2
+
+    1 + "str"
+
+    
   """
 
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedAst at: 0
+  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+
+  Assert that: db listOfErrors count equals: 3
+  
 
 ] do

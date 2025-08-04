@@ -259,6 +259,8 @@ fun createStringProtocols(
             createForEachKeywordIndexed(intType, charType, unitType, """"abc" forEachIndexed: [index, char -> char echo] // a b c """),
             createFilterKeyword(charType, boolType, stringType, """"abc" filter: [it != 'c'] // "ab""""),
 
+            createKeyword(KeywordArg("repeat", intType), stringType),
+
             createKeyword(KeywordArg("startsWith", stringType), boolType, """"abc" startsWith: "ab" // true"""),
             createKeyword(KeywordArg("contains", stringType), boolType),
             createKeyword(KeywordArg("endsWith", stringType), boolType, "see startWith:"),
@@ -682,6 +684,7 @@ fun createListProtocols(
     pairType: Type.UserType,
     listType: Type.UserType,
     mutListType: Type.UserType,
+    setType: Type.UserType,
 
     ): MutableMap<String, Protocol> {
     val listOfLists = Type.UserType(
@@ -691,7 +694,6 @@ fun createListProtocols(
         pkg = "core",
         protocols = listType.protocols,
         typeDeclaration = null
-
     )
     val pairOf2ListsType = Type.UserType(
         name = "Pair",
@@ -721,6 +723,7 @@ fun createListProtocols(
 
             createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
+            createUnary("toSet", setType),
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", listType),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
@@ -993,6 +996,7 @@ fun createSetProtocols(
     differentGenericType: Type.UnknownGenericType,
     listType: Type.UserType,
     setType: Type.UserType,
+    listOfDifferentGeneric: Type.UserType,
 ): MutableMap<String, Protocol> {
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
@@ -1023,8 +1027,8 @@ fun createSetProtocols(
             createForEachKeyword(itType, unitType),
             createOnEach(mutableSetType, itType, unitType),
 
-            createMapKeyword(itType, differentGenericType, setTypeOfDifferentGeneric),
-            createMapKeywordIndexed(intType, itType, differentGenericType, setTypeOfDifferentGeneric),
+            createMapKeyword(itType, differentGenericType, listOfDifferentGeneric),
+            createMapKeywordIndexed(intType, itType, differentGenericType, listOfDifferentGeneric),
 
 
             createFilterKeyword(itType, boolType, mutableSetType),
@@ -1202,6 +1206,8 @@ fun createMapProtocols(
     setType: Type.UserType,
     setTypeOfDifferentGeneric: Type.UserType,
     mapType: Type.UserType,
+    listOfDifferentGeneric: Type.UserType,
+    differentGenericType: Type.UnknownGenericType,
 
     ): MutableMap<String, Protocol> {
 
@@ -1252,12 +1258,12 @@ fun createMapProtocols(
                                 KeywordArg("key", keyType),
                                 KeywordArg("value", valueType),
                             ),
-                            unitType,
+                            differentGenericType,
                             specialFlagForLambdaWithDestruct = true
                         )
                     )
                 ),
-                unitType,
+                listOfDifferentGeneric,
 
                 ),
             createKeyword(

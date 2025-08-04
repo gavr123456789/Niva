@@ -10,14 +10,21 @@ type TyperDB
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
 
-  typesWithResolvedGenerics: mut Map(String, NivaType)
+  typesWithResolvedGenerics: mut Map(String, NivaType) // typeID to type
+  // utils
+  dtc: DefaultTypesContainer
+
+  
 
 
 constructor TyperDB new -> TyperDB = [
   // for now I wont add core types to typesWithSameNames db
   // just inside search method check if its name from core, then return from core cache
+  tuple = NivaPkg core
+  corePkg = tuple x
+  dtc = tuple y
+  
 
-  corePkg = NivaPkg core
   ^TyperDB 
     // setOfTypeNames: #()! 
     listOfErrors: {}!
@@ -26,7 +33,44 @@ constructor TyperDB new -> TyperDB = [
     internalTypesCache: corePkg types
     typesWithSameNames: #{}!
     typesWithResolvedGenerics: #{}!
-    
+    dtc: dtc
+]
+
+type ResolverHelper
+  fileToStatements: Map(String, List::Statement) 
+  db: TyperDB
+
+constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
+  fileToStatements::mut Map(String, List::Statement) = #{}!
+  fileToContent forEach: [ file, content ->
+    statements = TestParse withInput: content expectedCount: -1
+    fileToStatements at: file put: statements
+  ]
+   
+  entryPointStatements = fileToStatements at: entryPoint, unpackOrPANIC
+
+
+  db = TyperDB new
+  // visitAllTypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
+  msgDecls = TypeDeclVisitor db: db, 
+    visitAllTypesThenTypesAndMethods: fileToStatements
+    entryPointStatements: entryPointStatements
+
+
+  // we need to have map of methodDeclName to DeclStatement
+
+  // then go main expr by expr, when we see non resolved expr
+
+  // how to check that expr is resolved - if it presended inside map!
+  // no, just by checking is there a typedBody not Empty!
+  // if its not found in db then its probably std, so just search in db
+
+
+  // when the body of expr is not yet resolved then resolve it, else find msg from db
+
+  MsgDeclVisitor new processBodyes: msgDecls db: db
+
+  ^ ResolverHelper fileToStatements: fileToStatements db: db
 ]
 
 
@@ -78,7 +122,21 @@ TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
         addMethod: m 
         toProtocol: (inProtocol unpackOrValue: "common") 
         forType: forType
+]
 
+TyperDB addErrorMessage: e::ResolveErrors = [
+  listOfErrors add: e
+]
+
+TyperDB printAllErrorMessages = [
+  fakeFilePath = "main.niva"
+  listOfErrors forEach: [
+    tokStart = it tok start toString
+    tokLine = it tok line toString
+
+    "Error: ($fakeFilePath.$tokLine.$tokStart)" red + it msg cyan,
+      echo
+  ]
 ]
 
 TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
@@ -90,7 +148,6 @@ TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
   |=> [
     pkg constructorsProtocol addMethod: m
     "added constructor " + m name + " for type " + forType name, log
-
   ]
 
 ]
@@ -217,6 +274,11 @@ TyperDB
 TyperDB 
   findByTypeName: typeName::String 
   inPkg: pkgName::String? -> NivaType = [
+
+  
+  typeName isGeneric ifTrue: [
+    ^ UnresolvedGenericT name: typeName
+  ]
 
   // if core return from cache 
   typeName isCoreType ifTrue: [

@@ -99,5 +99,4 @@ constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "true" => TokenType.True
 | "false" => TokenType.False
 | "null" => TokenType.Null
-// | "Unit" => TokenType.Unit
 |=> TokenType.Identifier

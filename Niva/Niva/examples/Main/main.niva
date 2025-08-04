@@ -1,31 +1,5 @@
-Red::Type printX = [
-    x echo
-]
+map = #{1 "1" 2 "2"}
 
-type Type name: String
+q = map map: [k, v -> k toString]
 
-union Statement =
-| ^Expr
-| Declaration
-
-union Expr t: T =
-| Red x: Int later: Expr::T
-| Blue y: Int
-
-type TypedExpr = Expr::Type
-type UntypedExpr = Expr::Unit
-type Later
-//Int x::Statement = [
-//
-//  | x
-//  | Red => []
-//  | Blue => []
-//  | Declaration => []
-//]
-//
-//TypedExpr printType = [
-//    this t name echo
-//]
-
-
-
+q + "1", echo
