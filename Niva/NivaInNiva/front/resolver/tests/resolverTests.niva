@@ -3,6 +3,42 @@
   // shoud be error, but there are no way to typeChecks errors for now
 // ]
 
+Test wrongArgTypeError = [
+  fileMain = """
+    type Person name: String
+    p = Person name: 234
+    q = Person name: 'c'
+    w = Person name: true
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+
+  Assert that: db listOfErrors count equals: 3
+]
+
+Test scopeVariables = [
+  fileMain = """
+    a = 0
+    codeBlock = [
+      b = 1
+      b inc
+      codeblock2 = [
+        c = 2
+        a inc
+      ]
+    ]
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+]
+
+
 Test constructorCall = [
   fileMain = """
     type Person age: Int 
@@ -103,9 +139,9 @@ Test resolveAFewDeclarations = [
     unary = makeSas body typedBody at: 1
     binary = makeSas body typedBody at: 2
 
-    Assert that: varDecl nivaType name equals: "Integer"
-    Assert that: unary nivaType name equals: "Integer"
-    Assert that: binary nivaType name equals: "Integer"
+    Assert that: varDecl nivaType name equals: "Unit"
+    Assert that: unary nivaType name equals: "Int"
+    Assert that: binary nivaType name equals: "Int"
     
   ] do
 ]

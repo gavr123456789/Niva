@@ -70,7 +70,7 @@ class ListCollection(
     isMutable: Boolean
 ) : CollectionAst(initElements, type, token, isMutable) {
     override fun toString(): String {
-        return "[${initElements.joinToString(", ")}]"
+        return "{${initElements.joinToString(", ")}}"
     }
 }
 

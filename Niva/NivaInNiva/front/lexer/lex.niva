@@ -143,7 +143,7 @@ extend mut Lexer [
     ]
     | '\'' => [
       result = .parseStringLike: '\'' 
-      ^ .createToken: TokenType.String lexeme: result
+      ^ .createToken: TokenType.Char lexeme: result
     ]
     // | '/' => .stepMatch: '/', 
     //   ifTrue:  [

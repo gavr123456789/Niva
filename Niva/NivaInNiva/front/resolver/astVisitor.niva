@@ -1,5 +1,6 @@
-union ResolveErrors =
-| ErrorNoSuchType tok: Token
+union ResolveErrors tok: Token msg: String =
+| ErrorNoSuchType 
+| ErrorWrongArgType
 
 
 union AstVisitor =
@@ -113,11 +114,11 @@ TypeDeclVisitor
         TypeTField name: arg name typeT: argType
       ]
 
-
+      
       getReturnType = [
         rt = msg returnType 
         | rt 
-        | null => db findByTypeName: "Unit" inPkg: null 
+        | null => db dtc unit
         |=> db findByTypeName: rt name inPkg: null 
       ]
 
@@ -143,7 +144,7 @@ TypeDeclVisitor
     ]
   
     mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions) 
-    mainBody resolve: db withContext: Context root
+    mainBody resolveBody: db withContext: Context root
 
   ] do
 
@@ -153,12 +154,13 @@ TypeDeclVisitor
 /// if no return type and has body then its Unit
 /// if no return type and isSingleExpr then its unknown
 MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
+
   rt = returnType
  ^| rt
   | null => [
     | isSingleExpr
     | true => Unknown new
-    | false => db findByTypeName: "Unit" inPkg: null 
+    | false => db dtc unit
   ]
   |=> db findByTypeName: rt name inPkg: null 
 ]
@@ -167,18 +169,18 @@ MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
 /// returns null if such type was not found in knownTypeNames or db
 /// and adds that as error to listOfErrors
 TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> TypeT? = [
-
-  typeStub = knownTypes at: st name
+  name = st name
+  typeStub = knownTypes at: name
 
   | typeStub
   | null => [
-    db listOfErrors add: (ErrorNoSuchType tok: st token)
+    db listOfErrors add: (ErrorNoSuchType tok: st token msg: "type $name not found")
     ^ null
   ]
   |=> [
 
 
-    fields = st fields forEach: [
+    st fields forEach: [
       fieldName = it astType name
       knownNames = knownTypes keys
       // search in known types, if not found search in db, db always has core types, 
@@ -187,7 +189,6 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
       fieldType = | maybeFieldType
       | null => db findByTypeName: fieldName inPkg: null
       |=> maybeFieldType
-
 
       field = TypeTField name: it name typeT: fieldType
       typeStub fields add: field
@@ -204,6 +205,11 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
       
       db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
+    
+
+    // пока шо с стейтментом ниче не делаем, нагенерим мономорфных типов потом когда будет сас
+    
+    typeStub genericArgs addAll: typeStub collectGenerics
     
     ^ typeStub
   ]
@@ -245,7 +251,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
   ]
 // resolve body
   c = createContextWithThisAndArgs do
-  body resolve: db withContext: c
+  body resolveBody: db withContext: c
 ]
 
 

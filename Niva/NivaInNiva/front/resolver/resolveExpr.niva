@@ -1,16 +1,18 @@
 Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
-  
 
+  
+  // todo optimize by adding core pkg to the TyperDB
  ^| this
-  | CharExpr    => TypedExpr nivaType: (db findByTypeName: "Char") exprAst: this
-  | IntExpr     => TypedExpr nivaType: (db findByTypeName: "Int") exprAst: this
-  | FloatExpr   => TypedExpr nivaType: (db findByTypeName: "Float") exprAst: this
-  | DoubleExpr  => TypedExpr nivaType: (db findByTypeName: "Double") exprAst: this
-  | StringExpr  => TypedExpr nivaType: (db findByTypeName: "String") exprAst: this
-  | BooleanExpr => TypedExpr nivaType: (db findByTypeName: "Boolean") exprAst: this
-  | NullExpr    => TypedExpr nivaType: (db findByTypeName: "Nothing") exprAst: this
+  | CharExpr    => TypedExpr nivaType: (db dtc char) exprAst: this
+  | IntExpr     => TypedExpr nivaType: (db dtc int) exprAst: this
+  | FloatExpr   => TypedExpr nivaType: (db dtc float) exprAst: this
+  | DoubleExpr  => TypedExpr nivaType: (db dtc double) exprAst: this
+  | StringExpr  => TypedExpr nivaType: (db dtc str) exprAst: this
+  | BooleanExpr => TypedExpr nivaType: (db dtc bool) exprAst: this
+  | NullExpr    => TypedExpr nivaType: (db dtc nothing) exprAst: this
   // Identifier can be type itself like Unit
   | Identifier     => [
+
     varType = c lookupForVar: this name
     | varType
     | null => [
@@ -19,7 +21,8 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
         q = db findByTypeName: name
         TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
       ] ifFalse: [
-        TO DO: "Cant find $this in the current context"
+        contextString = c allKnownVars        
+        TO DO: "Cant find $this in the current context: \n$contextString"
       ]
     ]
     |=> TypedExpr nivaType: varType exprAst: this
@@ -27,11 +30,11 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   ]
   | ExprInBrackets => value toTypedExprFromDb: db withContext: c
   | ListLiteral    => [
-    elements resolve: db withContext: c
+    elements resolveBody: db withContext: c
     // Compare all elements between each other
     TO DO: "ListLiteral to TypedExpr"]
   | SetLiteral     => [
-    elements resolve: db withContext: c
+    elements resolveBody: db withContext: c
     TO DO: "SetLiteral to TypedExpr"]
   | MapLiteral     => TO DO: "MapLiteral to TypedExpr" 
 
@@ -53,13 +56,13 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
     ]
   | KeywordMsg =>[ 
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
-    kek = .resolveKeywordFromDb: db withContext: c
+    typedExpr = .resolveKeywordFromDb: db withContext: c
 
-    ^kek 
-    ]
+    ^typedExpr 
+  ]
 
   | VarDeclaration  => [
-
+    // "var decl " + c toString, log
     typedExpr = this value toTypedExprFromDb: db withContext: c
     // check that ast type is the same as declared
     this astType unpack: [
@@ -77,7 +80,7 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
     c defineVar: name withType: typedExpr nivaType
 
     TypedExpr 
-      nivaType: typedExpr nivaType 
+      nivaType: db dtc unit
       exprAst: typedExpr 
       isMutable: typedExpr isMutable
   ]
@@ -86,10 +89,12 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   | ReturnStatement => TO DO: "ReturnStatement to TypedExpr"
 
   | CodeBlock => [
+
     body unTypedBody isEmpty ifTrue: [
-      TypedExpr nivaType: (db findByTypeName: "Unit") exprAst: this
+      TypedExpr nivaType: (db dtc unit) exprAst: this
     ] ifFalse: [
-      body resolve: db withContext: c 
+      "CodeBlock"
+      body resolveBody: db withContext: c
       TypedExpr 
         nivaType: body typedBody last nivaType 
         exprAst: this 
@@ -111,12 +116,42 @@ KeywordMsg getNameFromArgs -> String = [
     it name name
   ], + ":"
 ]
+
+
+type CheckMethodArg nivaType: NivaType expr: Expr argName: String
+// both for binary and keywords
+@debug
+TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField = [
+  Assert that: checkRealArgs count equals: withExpectedArgs count
+
+  withExpectedArgs forEachIndexed: [ i, it ->
+    {nivaType, expr, argName} = checkRealArgs at: i 
+    
+
+    it typeT compareWith: nivaType, ifFalse: [
+      expected = it typeT toString
+      sended = nivaType toString
+      exprStr = expr toString
+      
+      
+      this addErrorMessage: (ErrorWrongArgType 
+                              tok: expr token 
+                              msg: "($sended != $expected) $expected expected, but $argName $exprStr is $sended")
+    ]
+  ]
+
+]
+
 KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
+
+  argTypesAndExprs :: mut List::CheckMethodArg = {}!
 
   typedArgs = args map: [ kwArg -> 
     {name expr} = kwArg
     typedExpr = expr toTypedExprFromDb: db withContext: c
+    argTypesAndExprs add: (CheckMethodArg nivaType: typedExpr nivaType expr: expr argName: name name)
+
     NameAndExpr name: name expr: typedExpr
   ]
   
@@ -125,6 +160,9 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     findMsgFromReceiver: receiverTypedExpr nivaType 
     byName: .getNameFromArgs
   
+
+  db checkRealArgs: argTypesAndExprs withExpectedArgs: foundMsg args
+  // TO DO
 
   newKeyword = KeywordMsg 
     args: typedArgs 
