@@ -100,7 +100,44 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
         exprAst: this 
     ]
   ]
-  | Match     => TO DO: "Match to TypedExpr"
+  | Match     => [
+
+    // TODO exhaustivness for unions and bool and enums
+    elseb = elseBranch // local smart cast
+
+
+    subjectT = subject toTypedExprFromDb: db withContext: c
+    elseBranchT = 
+      | elseb
+      | null => [null]
+      |=> [
+        elseb resolveBody: db withContext: c
+        elseb
+      ] 
+    
+    // TODO infer common type between all branches
+    mut matchType::NivaType = db dtc unit
+    branchesT = branches map: [
+
+      it conditions resolveBody: db withContext: c
+      it body       resolveBody: db withContext: c
+      
+      matchType <- it body typedBody last nivaType
+
+      MatchBranch 
+        condition: (it condition toTypedExprFromDb: db withContext: c)
+        conditions: it conditions 
+        body: it body
+    ]
+    // branchesT log
+    
+
+    
+    newAst = Match subject: subjectT branches: branchesT elseBranch: elseBranchT token: token
+
+    r = TypedExpr exprAst: newAst nivaType: matchType isMutable: false token: token
+    ^ r 
+  ]
   | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"
 
 
@@ -142,34 +179,100 @@ TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField =
 
 ]
 
+@debug
 KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
-
+  receiverType = receiverTypedExpr nivaType
   argTypesAndExprs :: mut List::CheckMethodArg = {}!
 
-  typedArgs = args map: [ kwArg -> 
+
+  // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
+  foundMsg = db 
+    findMsgFromReceiver: receiverType 
+    byName: .getNameFromArgs, log
+  
+  Assert that: foundMsg args count equals: args count
+
+  letterToType::mut Map(String, NivaType) = #{}!
+
+  typedArgs = args mapIndexed: [ i, kwArg -> 
     {name expr} = kwArg
     typedExpr = expr toTypedExprFromDb: db withContext: c
-    argTypesAndExprs add: (CheckMethodArg nivaType: typedExpr nivaType expr: expr argName: name name)
+    argTypesAndExprs add: (CheckMethodArg 
+                            nivaType: typedExpr nivaType 
+                            expr: expr 
+                            argName: name name)
+    
+    argTypeFromDb = foundMsg args at: i, typeT
+    | argTypeFromDb | UnresolvedGenericT => [
+      letterToType 
+        at: argTypeFromDb letter 
+        put: typedExpr nivaType
+    ] |=> []
 
     NameAndExpr name: name expr: typedExpr
   ]
   
-  // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
-  foundMsg = db 
-    findMsgFromReceiver: receiverTypedExpr nivaType 
-    byName: .getNameFromArgs
+  // try to find by id
+  id = "qqq"
+
+  alreadyResolvedGenericMaybe = db typesWithResolvedGenerics at: id
+  | alreadyResolvedGenericMaybe
+  | null => []
+  |=> []
   
 
+  
+
+ 
+
+ 
+
+
+  receiverType log
+  typedArgs map: [it expr toTyped nivaType name], log
+
+  extractGenerics = [
+    // Assert that: typedArgs count equals: foundMsg args count
+    // typedArgs forEach: [
+    //   argType it expr toTyped nivaType
+    // ]
+  ]
+
+  | receiverType
+  // usual call
+  | TypeT => [
+    receiverType genericArgs log isNotEmpty ifTrue: [
+      TO DO
+    ]
+    Unit
+  ]
+
+  // constructor
+  | TypeOfTheType => [
+    v = receiverType v 
+    |v|TypeT => [
+      v genericArgs log isNotEmpty ifTrue: [
+        // 1 check if there are resolved type with such ID (pkg.type.Int.Int)
+        // 2 if yes - take it, if not - resolve(replace both T with Int) and save it with ID
+        TO DO
+      ]
+    ]
+    |=> [] 
+    Unit
+  ]
+  |=> []
+
+  // do not check if they are generics
   db checkRealArgs: argTypesAndExprs withExpectedArgs: foundMsg args
-  // TO DO
+
 
   newKeyword = KeywordMsg 
     args: typedArgs 
     receiver: receiverTypedExpr 
     token: token
     kind: foundMsg kind
-
+  TO DO
   ^TypedExpr 
     exprAst: newKeyword
     nivaType: foundMsg returnType
