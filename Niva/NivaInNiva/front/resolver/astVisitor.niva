@@ -21,6 +21,8 @@ PrintingVisitor visit: st::Statement = [
 ]
 
 /// returns pkg to message decl
+/// entryPointStatements just all statements from the main.niva
+/// not only expr
 TypeDeclVisitor 
   visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) 
   entryPointStatements::List::Statement -> List(Tuple(String, MessageDecl)) = [
@@ -142,12 +144,19 @@ TypeDeclVisitor
       db addNewMethod: method forType: receiverType inProtocol: null
       "added method " + method name, log
     ]
-  
+// resolve main
     mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions) 
     mainBody resolveBody: db withContext: Context root
 
+    fakeUnitAstType = AstType2 unitType
+    fakeMsgDecl = MessageDecl 
+      receiver: fakeUnitAstType 
+      name: "main" args: {} 
+      returnType: fakeUnitAstType body: mainBody 
+      isSingleExpr: false isConstructor: false 
+      token: mainBody unTypedBody first token
+    msgDecls2 add: (Tuple x: "main" y: fakeMsgDecl)
   ] do
-
   ^ msgDecls2
 ]
 
@@ -216,6 +225,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
 ]
 
 MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
+
   pkg2Msg forEach: [tuple -> 
     // pkgName = tuple x 
     msgDecl = tuple y 

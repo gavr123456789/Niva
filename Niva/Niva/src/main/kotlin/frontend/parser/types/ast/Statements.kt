@@ -67,7 +67,8 @@ class VarDeclaration(
     var valueTypeAst: TypeAST? = null,
     val mutable: Boolean = false,
     isPrivate: Boolean = false,
-    pragmas: MutableList<Pragma> = mutableListOf()
+    pragmas: MutableList<Pragma> = mutableListOf(),
+    var declaredType: Type? = null,
 ) : Statement(token, isPrivate, pragmas) {
     override fun toString(): String {
         val type = if (value.type != null) "::" + value.type.toString() else ""

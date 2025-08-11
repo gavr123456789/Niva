@@ -17,17 +17,12 @@ type NivaCompiler
 type NivaBuildSystem
 
 
-
-
-
-resolve = [
+resolveMatch = [
   fileMain = """
-    //type Box x: T y: T
-    //box = Box x: 1 y: 2
-
-    1 + "str"
-
-    
+    | 1
+    | 1 => [1 echo]
+    | 2 => [2 echo]
+    |=> 3 echo
   """
 
 
@@ -35,7 +30,24 @@ resolve = [
   db = result db
   typedAst = result fileToStatements at: "main", unpackOrPANIC  
 
-  Assert that: db listOfErrors count equals: 3
+  typedAst first toTyped nivaType log
+
+] 
+
+
+resolveGenerics = [
+  fileMain = """
+    type Box x: T y: T
+    box = Box x: 1 y: 2
+
+
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+
   
 
 ] do

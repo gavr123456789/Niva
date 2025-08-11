@@ -10,7 +10,7 @@ type TyperDB
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
 
-  typesWithResolvedGenerics: mut Map(String, NivaType) // typeID to type
+  typesWithResolvedGenerics: mut Map(String, NivaType) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
   dtc: DefaultTypesContainer
 
@@ -51,26 +51,22 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
 
 
   db = TyperDB new
-  // visitAllTypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
+  // visitAll TypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
   msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
+  // find main and replace statements from fileToStatements with typed
+  fileToStatements 
+    at: entryPoint 
+    put: (msgDecls find: [it x == "main"], unpackOrPANIC) y body typedBody
 
-
-  // we need to have map of methodDeclName to DeclStatement
-
-  // then go main expr by expr, when we see non resolved expr
-
-  // how to check that expr is resolved - if it presended inside map!
-  // no, just by checking is there a typedBody not Empty!
-  // if its not found in db then its probably std, so just search in db
-
-
-  // when the body of expr is not yet resolved then resolve it, else find msg from db
-
-  MsgDeclVisitor new processBodyes: msgDecls db: db
-
-  ^ ResolverHelper fileToStatements: fileToStatements db: db
+  MsgDeclVisitor new 
+    processBodyes: msgDecls 
+    db: db
+    
+  ^ ResolverHelper 
+    fileToStatements: fileToStatements 
+    db: db
 ]
 
 
@@ -230,8 +226,6 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType -> NivaMethod =
   TO DO: "Searching for $name method but its not found for type $typeName"
 ]
 
-
-
 TyperDB 
   findMsgFromReceiver: receiver::NivaType 
   byName: name::String -> NivaMethod = [
@@ -268,8 +262,8 @@ TyperDB
 ] 
 
 TyperDB 
-  findByTypeName: typeName::String =
-  .findByTypeName: typeName inPkg: null
+  findByTypeName: typeName::String = .findByTypeName: typeName inPkg: null
+
 
 TyperDB 
   findByTypeName: typeName::String 
@@ -281,13 +275,11 @@ TyperDB
   ]
 
   // if core return from cache 
-  typeName isCoreType ifTrue: [
-    result = internalTypesCache at: typeName
-
-   ^| result
-    | null => TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
-    |=> result
-  ] 
+  internalType = internalTypesCache at: typeName
+  | internalType
+  | null => []//TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
+  |=> [^ internalType 
+        Unit]
 
   // its not core type
   // so use typesWithSameNames

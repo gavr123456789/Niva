@@ -269,7 +269,11 @@ TypeT toString -> String = [
   strFields = fields joinWith: " " transform: [
     it name + ": " + it typeT toString
   ]
-  ^ " Type(" + name + " " + strFields + ")"
+  strGenericArgs =  genericArgs joinWith: " " transform: [
+    it name
+  ]
+  strGenerics2 = genericArgs isNotEmpty ifTrue: [" <$strGenericArgs> "] ifFalse: [""]
+  ^ " Type(" + name + " " + strFields  + strGenerics2 +  ")"
 ]
 
 IntegerT toString -> String = " Type(" + name + ")" 
@@ -280,4 +284,4 @@ BoolT    toString -> String = " Type(" + name + ")"
 UnitT    toString -> String = " Type(" + name + ")"
 CharT    toString -> String = " Type(" + name + ")"
 NullT    toString -> String = " Type(" + name + ")"
-
+UnresolvedGenericT toString -> String = " Type(" + name + ")"

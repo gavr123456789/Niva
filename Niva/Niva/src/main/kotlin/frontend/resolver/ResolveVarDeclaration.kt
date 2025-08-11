@@ -1,3 +1,5 @@
+@file:Suppress("UnusedVariable", "unused")
+
 package main.frontend.typer
 
 import frontend.resolver.*
@@ -103,6 +105,7 @@ fun Resolver.resolveVarDeclaration(
     // check that declared type == inferred type
     if (definedASTType != null) {
         val statementDeclared = definedASTType.toType(typeDB, typeTable)
+        statement.declaredType = statementDeclared
         val rightPartType = typeOfValueInVarDecl
         if (!compare2Types(statementDeclared, rightPartType, statement.token, unpackNull = false, compareMutability = false)) {
             val text = "$definedASTType != $rightPartType"
@@ -203,7 +206,7 @@ fun Resolver.resolveDestruction(
     if (statement.names.count() > type.fields.count())
         valueTok.compileError("Destructing ${statement.names.count()} fields, but $type has only ${type.fields}")
 
-    statement.names.forEachIndexed { i, name ->
+    statement.names.forEach { name ->
         // check that there are such name
         val field = type.fields.find { it.name == name.name }
         if (field == null)

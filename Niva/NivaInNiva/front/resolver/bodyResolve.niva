@@ -11,7 +11,7 @@ Body resolveBody: db::TyperDB withContext: upperContext::Context = [
 
 
   typedBody isNotEmpty ifTrue: [
-    typedBody first toString + " was already resolved", log
+    typedBody first token toString + " body was already resolved", yel echo
     ^
   ]
 

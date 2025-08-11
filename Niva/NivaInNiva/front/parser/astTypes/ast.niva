@@ -116,12 +116,6 @@ union Expr token: Token =
   nivaType: NivaType
   isMutable: Bool
 
-Expr toTyped -> TypedExpr = 
-| this 
-| TypedExpr => this
-|=> TO DO: "Its not typed, its $this"
-
-
 
 constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr 
   exprAst: exprAst
