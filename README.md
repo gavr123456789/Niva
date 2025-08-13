@@ -14,7 +14,8 @@
 </div>
 
 <p>
-<img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width=30% height=30%>
+<p align="center">
+  <img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width="30%" height="30%">
 </p>
 
 Niva is a simple language that takes a lot of inspiration from Smalltalk.
@@ -36,10 +37,256 @@ but in niva there are 3 types of expressions:
 "foo-bar" split: "-" // keywoard - n args
 ```
 
+## Code Examples
+
+<details>
+<summary><b>Hello World</b></summary>
+
+```Scala
+"Hello World" echo
+```
+</details>
+
+<details>
+<summary><b>Methods</b></summary>
+
+```Scala
+type Person
+  name: String
+  age: Int
+
+Person greet = "Hello, my name is " + name
+
+// create person obj
+p = Person name: "Alice" age: 24
+// call greet and print
+p greet echo
+```
+[Message declaration](https://gavr123456789.github.io/niva-site/message-declaration.html)
+</details>
+
+
+<details>
+<summary><b>Some string methods</b></summary>
+
+```Scala
+// unary
+"foo-bar" count
+"drawer" reversed
+"BAOBAB" lowercase
+// binary
+"ee" == "ee"
+"foo" + "bar"
+// keyword
+"foo-bar" split: "-"
+"abcdef" forEach: [char -> char echo]
+"baobab" filter: [it == 'b'] // it - implicit param
+"foo-bar-baz" replace: "-" with: " "
+"chocolate" contains: "late"
+```
+[String STD](https://gavr123456789.github.io/niva-site/stringtype.html)
+</details>
+
+
+<details>
+<summary><b>Some collections methods</b></summary>
+
+```Scala
+// commas are optional, same as in Clojure
+list = {1 2 3 4}
+map = #{1 "one", 2 "two"}
+set = #(1 1 2 2)
+
+// {"2!" "4!"}
+list
+  filter: [it % 2 == 0],
+  map: [it toString + "!"]
+
+// {{1 2} {3 4}}
+list chunked: 2
+
+//Pair({3 4} {1 2})
+list partition: [it > 2]
+// splits into 2 collections, where condition is true and where its false
+```
+</details>
+
+<details>
+<summary><b>Control flow</b></summary>
+
+```Scala
+name = "Alice"
+// switching on name
+| name
+| "Bob"   => "Hi Bob!" echo
+| "Alice" => "Hi Alice!" echo
+|=> "Hi guest" echo
+
+// if is a message for Boolean that takes 2 lambdas
+x = 1 > 2 ifTrue: ["what?!"] ifFalse: ["yea"]
+// multiline variant, \n are not important
+{1 2 3} isEmpty
+  ifTrue: []
+  ifFalse: []
+
+// you can switch on bool (and all primitive types)
+| 1 > 2
+| true => "what?!" echo
+| false => "yea" echo
+```
+[Control flow](https://gavr123456789.github.io/niva-site/control-flow.html)
+</details>
+
+<details>
+<summary><b>Simple algoritms</b></summary>
+
+[Fibonacci](https://github.com/gavr123456789/Niva/blob/main/Niva/Niva/examples/Algoritms/Factorial/factorial.niva)
+
+```Scala
+Int fib -> Int = |this
+| 0 => 1
+| 1 => 1
+|=> (this - 2) fib + (this - 1) fib
+
+6 fib echo
+```
+Bottles of beer
+```Scala
+Int bottles = | this
+| 0 => "no more bottles"
+| 1 => "1 bottle"
+|=> "$this bottles"
+
+onTheWall = " of beer on the wall, "
+99 downTo: 1 do: [
+  it bottles + onTheWall + it bottles + " of beer.", echo
+  "Take one down and pass it around, " + it dec bottles + onTheWall, echo
+]
+"No more bottles of beer on the wall, no more bottles of beer." echo
+"Go to the store and buy some more, 99 bottles of beer on the wall." echo
+```
+
+</details>
+
+
+<details>
+  <summary><b>Code blocks</b></summary>
+
+```Scala
+// A code block is a collection of statements that returns last expr
+[
+  x = 1
+  y = 2
+  x + y
+]
+// to run block send `do` message
+x = [1 + 2]
+x do echo // 3
+
+[x * 2] // capture
+
+// to run block with args send their names
+add2nums = [a::Int, b::Int -> a + b]
+result = add2nums a: 21 b: 21 // 42
+```
+
+</details>
+
+<details>
+  <summary><b>Bind JVM</b></summary>
+
+```Scala
+union Color = Red | Blue | Green
+
+// branches can have fields
+union Shape =
+| Rectangle width: Int height: Int
+| Circle    radius: Double
+
+constructor Double pi = 3.14
+Double square = this * this
+
+// match on this(Shape)
+Shape getArea -> Double =
+| this
+| Rectangle => width * height, toDouble
+| Circle => Double pi * radius square
+
+// a * b, c is syndax sugar for (a * b) c
+
+
+// There is exhaustiveness checking, so when you add a new branch
+// all the matches will become errors until all cases processed
+
+Shape getArea -> Double = | this
+    | Rectangle => width * height, toDouble
+// ERROR: Not all possible variants have been checked (Circle)
+```
+
+</details>
+
+<details>
+  <summary><b>Bind JVM</b></summary>
+
+```Scala
+// this is a message `package:content:` for Bind object
+Bind package: "java.io" content: [
+  type File path: String
+  File readText -> String
+  File writeText::String -> Unit
+  File exists -> Boolean
+]
+// use
+content = File path: "main.niva", readText
+File path: "newFile.txt", writeText
+
+
+Bind package: "java.math" content: [
+  type BigDecimal value: String
+  BigDecimal + x::BigDecimal -> BigDecimal
+  BigDecimal - x::BigDecimal -> BigDecimal
+  BigDecimal * x::BigDecimal -> BigDecimal
+  BigDecimal / x::BigDecimal -> BigDecimal
+]
+
+x = BigDecimal value: "123456789123435"
+y = BigDecimal value: "123456789123435"
+z = x + y
+z echo // 246913578246870
+```
+
+Other bindings: https://github.com/gavr123456789/bazar/tree/main/Bindings
+</details>
+
+## Features
+- Simple expression based syntax inspired by Smalltalk
+- Smalltalk like hierarchy: projects -> packages -> protocols -> methods
+- Everything is an object and every method has a receiver(this\self)
+  - So methods can be defined for core types like Int or List(unlike go)
+  - Methods are not tied to type declaration, you can define new method from different file(like go)
+  - That means you can define `5 days` that returns seconds, just like in Ruby, but in a statically typed lang
+  - Smalltalk syntax is great for creating DSLs without any complicated macros or AST manipulations: `1d/12m/2028y`,
+    in Java-like lang it would look like: `(1.d()) / (12.m()) / (2028.y())`
+  - Operators are nothing special — they are just methods, but you cannot define new kinds of operators(so + for Vectors is ok, but no UFO like <=> from functional langs)
+- Simple semantics - the whole lang is essentially types(type\enum\union) and methods for them.
+  - [type](https://gavr123456789.github.io/niva-site/type-declaration.html) is sum of fields, [enum](https://gavr123456789.github.io/niva-site/enum.html) is union of objects, [union](https://gavr123456789.github.io/niva-site/unions.html) is union of types
+- IDE support - LSP with plugins for [VSC](https://github.com/gavr123456789/niva-vscode-bundle) and [Zed](https://github.com/gavr123456789/zed-niva) (check some demos [here](https://github.com/gavr123456789/niva-vscode-bundle?tab=readme-ov-file#features-include))
+- No NPE, nullability works the same as in Kotlin\Swift\TS
+- Errors work like a middle ground between values and exceptions (think Nim or Roc effects). In any given scope, all possible errors form a union you can match against exhaustively. [Error docs](https://gavr123456789.github.io/niva-site/error-handling.html)
+- JVM\Kotlin compatibility, easy lib [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
+- Easy serialize any obj via Dynamic type, no Docs yet, but its like json for JS or EDN for Clojure, write `Dynamic toJson` method and you get toJson for every type(since every type can be converted to\from Dynamic)
+- Docgen and unit tests included
+
+- No imports until full type name + fields clash. Since every modern IDE adds imports for you I decided to make the same on the compiler level
+
+
+
+
 <details>
     <summary>Backend</summary>
 
 Current backend is Kotlin, because you get 4 backends for free - JVM, Native, JS, Wasm, also ecosystem is rich. A lot of pet-project languages are translated into js, which is very high-level, so why not be translated into a real language.
+Different backends are planned for self hosted implementation
 </details>
 
 <details>
@@ -103,160 +350,9 @@ p = Point new
 
 </details>
 
-## Code Examples
-
-<details>
-<summary><b>Hello World</b></summary>
-
-```Scala
-"Hello World" echo
-```
-</details>
-
-<details>
-<summary><b>Methods</b></summary>
-
-```Scala
-type Person
-  name: String
-  age: Int
-
-Person greet = "Hello, my name is " + name
-
-// create person obj
-p = Person name: "Alice" age: 24
-// call greet and print
-p greet echo
-```
-[Message declaration](https://gavr123456789.github.io/niva-site/message-declaration.html)
-</details>
-
-
-<details>
-<summary><b>Some Strings methods</b></summary>
-
-```Scala
-// unary
-"foo-bar" count
-"drawer" reversed
-"BAOBAB" lowercase
-// binary
-"ee" == "ee"
-"foo" + "bar"
-// keyword
-"foo-bar" split: "-"
-"abcdef" forEach: [char -> char echo]
-"baobab" filter: [it == 'b'] // it - implicit param
-"foo-bar-baz" replace: "-" with: " "
-"chocolate" contains: "late"
-```
-[String STD](https://gavr123456789.github.io/niva-site/stringtype.html)
-</details>
-
-
-
-<details>
-<summary><b>Control flow</b></summary>
-
-```Scala
-name = "Alice"
-// switching on name
-| name
-| "Bob"   => "Hi Bob!" echo
-| "Alice" => "Hi Alice!" echo
-|=> "Hi guest" echo
-
-// if is a message for Boolean that takes 2 lambdas
-x = 1 > 2 ifTrue: ["what?!"] ifFalse: ["yea"]
-
-// you can switch on bool (and all primitive types)
-| 1 > 2
-| true => "what?!" echo
-| false => "yea" echo
-```
-[Control flow](https://gavr123456789.github.io/niva-site/control-flow.html)
-</details>
-
-<details>
-<summary><b>Fibonacci</b></summary>
-
-```Scala
-Int fib -> Int = |this
-| 0 => 1
-| 1 => 1
-|=> (this - 2) fib + (this - 1) fib
-
-6 fib echo
-```
-[Fibonacci](https://github.com/gavr123456789/Niva/blob/main/Niva/Niva/examples/Algoritms/Factorial/factorial.niva)
-</details>
-
-
-<details>
-  <summary><b>Bottles of beer</b></summary>
-
-```Scala
-Int bottles = | this
-| 0 => "no more bottles"
-| 1 => "1 bottle"
-|=> "$this bottles"
-
-onTheWall = " of beer on the wall, "
-99 downTo: 1 do: [
-  it bottles + onTheWall + it bottles + " of beer.", echo
-  "Take one down and pass it around, " + it dec bottles + onTheWall, echo
-]
-"No more bottles of beer on the wall, no more bottles of beer." echo
-"Go to the store and buy some more, 99 bottles of beer on the wall." echo
-```
-</details>
-
-
-<details>
-  <summary><b>Code blocks</b></summary>
-
-```Scala
-// A code block is a collection of statements that returns last expr
-[
-  x = 1
-  y = 2
-  x + y
-]
-// to run block send `do` message
-x = [1 + 2]
-x do echo // 3
-
-[x * 2] // capture
-
-// to run block with args send their names
-add2nums = [a::Int, b::Int -> a + b]
-result = add2nums a: 21 b: 21 // 42
-```
-</details>
-
-## Features
-- Simple expression based syntax inspired by Smalltalk
-- Smalltalk like hierarchy: projects -> packages -> protocols -> methods
-- Everything is an object and every method has a receiver(this\self)
-  - So methods can be defined for core types like Int or List(unlike go)
-  - Methods are not tied to type declaration, define new method from different file(like go)
-  - That means you can define `5 days` that returns seconds, just like in Ruby, but in a statically typed lang
-  - Smalltalk syntax is great for creating DSLs without any complicated macros or AST manipulations: `1d/12m/2028y`,
-    in Java-like lang it would look like: `(1.d()) / (12.m()) / (2028.y())`
-  - Operators are nothing special — they are just methods, but you cannot define new kinds of operators(so + for Vectors is ok, but no UFO like <=> from functional langs)
-- Simple semantics - the whole lang is essentially types(type\enum\union) and methods for them.
-  - [type](https://gavr123456789.github.io/niva-site/type-declaration.html) is sum of fields, [enum](https://gavr123456789.github.io/niva-site/enum.html) is union of objects, [union](https://gavr123456789.github.io/niva-site/unions.html) is union of types
-- IDE support - LSP with plugins for [VSC](https://github.com/gavr123456789/niva-vscode-bundle) and [Zed](https://github.com/gavr123456789/zed-niva) (check some demos [here](https://github.com/gavr123456789/niva-vscode-bundle?tab=readme-ov-file#features-include))
-- No NPE, nullability works the same as in Kotlin\Swift\TS
-- Errors work like a middle ground between values and exceptions (think Nim or Roc effects). In any given scope, all possible errors form a union you can match against exhaustively. [Error docs](https://gavr123456789.github.io/niva-site/error-handling.html)
-- JVM\Kotlin compatibility, easy lib [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
-- Easy serialize any obj via Dynamic type, no Docs yet, but its like json for JS or EDN for Clojure, write `Dynamic toJson` method and you get toJson for every type(since every type can be converted to\from Dynamic)
-- Docgen and unit tests included
-
-- No imports until full type name + fields clash. Since every modern IDE adds imports for you I decided to make the same on the compiler level
-
 ## Project examples
-- [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer + parser)
+- [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer, parser, half of resolver)
+- [eBF](https://github.com/Nadelio/eBF) - Extended Brainfuck implementation
 - [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
 - [tons of small stupid things](https://github.com/gavr123456789/bazar/tree/main/Examples)
 
