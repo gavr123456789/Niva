@@ -90,12 +90,33 @@ class A : BodyTag("a") {
         }
 }
 
+fun String.sas() {
+
+}
 fun html(init: HTML.() -> Unit): HTML {
     val html = HTML()
     html.init()
     return html
 }
 
+// функции расширения +
+// лямбды =
+// лямбды расширения
+// + синт сахар над вызовом функций с лямбдой ласт параметром
+// + inline
+
 fun sas() {
-    html { head { title { +"XML encoding with Kotlin" } } }
+    1 + 1
+   val q =
+       html {
+            head {
+                title {
+                    +"XML encoding with Kotlin"
+                }
+            }
+            head {
+               title { +"XML encoding with Kotlin" }
+            }
+       }
+
 }

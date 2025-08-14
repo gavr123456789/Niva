@@ -157,7 +157,6 @@ KeywordMsg getNameFromArgs -> String = [
 
 type CheckMethodArg nivaType: NivaType expr: Expr argName: String
 // both for binary and keywords
-@debug
 TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField = [
   Assert that: checkRealArgs count equals: withExpectedArgs count
 
@@ -179,7 +178,6 @@ TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField =
 
 ]
 
-@debug
 KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
   receiverTypedExpr = receiver toTypedExprFromDb: db withContext: c
   receiverType = receiverTypedExpr nivaType
@@ -189,7 +187,7 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
   // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
   foundMsg = db 
     findMsgFromReceiver: receiverType 
-    byName: .getNameFromArgs, log
+    byName: .getNameFromArgs
   
   Assert that: foundMsg args count equals: args count
 
@@ -213,56 +211,39 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     NameAndExpr name: name expr: typedExpr
   ]
   
+  // если это конструктор то скорее всего генерим 
+  
   // try to find by id
-  id = "qqq"
+  letterToType isNotEmpty && true ifTrue: [
+    // GENERIC CONSTRUCTOR - register instantiated variant
+    | receiverType
+    | TypeOfTheType => [
+      realT = receiverType v 
+      | realT
+      | TypeT => [
+        thisIsConstructor = foundMsg isConstructorForReceiver: realT
+        thisIsConstructor log
+        thisIsConstructor ifTrue: [
+          typeId = receiverType generateId
 
-  alreadyResolvedGenericMaybe = db typesWithResolvedGenerics at: id
-  | alreadyResolvedGenericMaybe
-  | null => []
-  |=> []
-  
-
-  
-
- 
-
- 
+          db addGenericInstantiationIfAbsent: realT 
+            typeId: typeId 
+            letterToType: letterToType
+        ]
 
 
-  receiverType log
-  typedArgs map: [it expr toTyped nivaType name], log
+        TO DO: "SAS"
+      ] |=> []
 
-  extractGenerics = [
-    // Assert that: typedArgs count equals: foundMsg args count
-    // typedArgs forEach: [
-    //   argType it expr toTyped nivaType
-    // ]
-  ]
-
-  | receiverType
-  // usual call
-  | TypeT => [
-    receiverType genericArgs log isNotEmpty ifTrue: [
+    ]
+    |=> [
+      // GENERIC MESSAGE FOR OBJ - resolve generic method with true types
       TO DO
+
     ]
-    Unit
   ]
 
-  // constructor
-  | TypeOfTheType => [
-    v = receiverType v 
-    |v|TypeT => [
-      v genericArgs log isNotEmpty ifTrue: [
-        // 1 check if there are resolved type with such ID (pkg.type.Int.Int)
-        // 2 if yes - take it, if not - resolve(replace both T with Int) and save it with ID
-        TO DO
-      ]
-    ]
-    |=> [] 
-    Unit
-  ]
-  |=> []
-
+  
   // do not check if they are generics
   db checkRealArgs: argTypesAndExprs withExpectedArgs: foundMsg args
 

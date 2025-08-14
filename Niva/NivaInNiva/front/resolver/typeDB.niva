@@ -10,7 +10,7 @@ type TyperDB
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
 
-  typesWithResolvedGenerics: mut Map(String, NivaType) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
+  typesWithResolvedGenerics: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
   dtc: DefaultTypesContainer
 
@@ -179,7 +179,39 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
   ]
 ]
 
+TyperDB addGenericInstantiationIfAbsent: t::TypeT typeId::String letterToType::Map(String, NivaType) -> TypeT = [
+  // check if it already 
+  typesWithResolvedGenerics at: typeId, unpack: [
+     ^it 
+  ]
 
+  newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
+  typesWithResolvedGenerics at: typeId put: newTypeWithGenericInstantiated
+  ^ newTypeWithGenericInstantiated
+]
+
+TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) -> TypeT = [
+  newFields = fields map: [
+    TypeTField name: it name 
+               typeT: [
+                  maybe = letterToType at: it typeT name
+                  | maybe
+                  | null => it typeT
+                  |=> maybe 
+               ] do
+  ]
+
+  newGenericArgs = genericArgs map: [
+    maybe = letterToType at: it name
+    | maybe
+    | null => it
+    |=> maybe 
+  ]
+
+  ^TypeT fields: newFields toMutableList 
+         genericArgs: newGenericArgs toMutableList 
+         name: name pkgName: pkgName
+]
 
 NivaPkg replaceMethod: m::NivaMethod inType::NivaType= [
   protocols2 = protocols at: inType, unpackOrPANIC
