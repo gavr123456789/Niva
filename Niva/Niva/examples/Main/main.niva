@@ -1,5 +1,7 @@
-map = #{1 "1" 2 "2"}
+readText::[ -> String] = [
+    "sas"
+//    Error throwWithMessage: "sasasas"
+]
+readText do echo
+1 echo
 
-q = map map: [k, v -> k toString]
-
-q + "1", echo

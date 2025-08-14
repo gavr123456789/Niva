@@ -1,0 +1,9 @@
+Expr toTyped -> TypedExpr = 
+| this 
+| TypedExpr => this
+|=> TO DO: "Its not typed, its $this"
+
+Statement toTyped -> TypedExpr = 
+| this 
+| TypedExpr => this
+|=> TO DO: "Its not typed, its $this"

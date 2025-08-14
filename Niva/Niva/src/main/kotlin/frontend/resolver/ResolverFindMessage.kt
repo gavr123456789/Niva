@@ -2,6 +2,7 @@ package main.frontend.resolver
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
+import frontend.resolver.findNearestCodeBlockInStack
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.ExpressionInBrackets
@@ -67,7 +68,7 @@ fun checkForAny(selectorName: String, pkg: Package, kind: MessageDeclarationType
     return findAnyMethod(anyType, selectorName, pkg, kind)
 }
 
-fun checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
+fun Resolver.checkForError(receiverType: Type, selectorName: String, pkg: Package): MessageMetadata? {
     val errors = receiverType.errors
         ?: return null
 
@@ -78,8 +79,7 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
     // | Int => ...?? // can be used if this is statement
     // | Error1 => 4
     // | Error2 => 6
-    val returnTypeWithoutErrors = receiverType.copyAnyType()
-        .also { it.errors = null }
+
 
     val ifErrorKW = { returnTypeWithoutErrors2: Type, rootTypeOfAllErrors: Type.UnionRootType ->
         (createKeyword("ifError",
@@ -108,11 +108,14 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
         result
     }
 
-    return when (selectorName) {
+    val result =  when (selectorName) {
         "ifError" -> {
+            val returnTypeWithoutErrors = receiverType.copyAnyType().also { it.errors = null }
             ifErrorKW(returnTypeWithoutErrors, createUnionOfErrorsInCurrentScope()).second
         }
         "orValue" -> {
+            val returnTypeWithoutErrors = receiverType.copyAnyType().also { it.errors = null }
+
             (createKeyword(
                 "orValue",
                 listOf(
@@ -125,6 +128,8 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
             ).emitKw("try {\n    $0\n} catch (it: Throwable) {$1}")).second
         }
         "orPANIC" -> {
+            val returnTypeWithoutErrors = receiverType.copyAnyType().also { it.errors = null }
+
             createUnary(
                 "orPANIC",
                 returnTypeWithoutErrors
@@ -133,6 +138,14 @@ fun checkForError(receiverType: Type, selectorName: String, pkg: Package): Messa
 
         else -> null
     }
+    if (result != null) {
+        val codeBlock = findNearestCodeBlockInStack()
+        if (codeBlock != null && codeBlock.errors.isNotEmpty()) {
+            codeBlock.errors -= errors
+        }
+    }
+
+    return result
 }
 
 fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
