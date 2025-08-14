@@ -193,7 +193,7 @@ result = add2nums a: 21 b: 21 // 42
 </details>
 
 <details>
-  <summary><b>Bind JVM</b></summary>
+  <summary><b>Unions</b></summary>
 
 ```Scala
 union Color = Red | Blue | Green
