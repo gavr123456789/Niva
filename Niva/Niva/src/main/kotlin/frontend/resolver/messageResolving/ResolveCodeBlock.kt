@@ -41,6 +41,8 @@ fun Resolver.resolveCodeBlock(
     currentScope: MutableMap<String, Type>,
     rootStatement: Statement?,
 ) {
+//    stack.push(statement)
+
 
     // [] vs x = []
     if ((rootStatement != null && (rootStatement !is VarDeclaration && rootStatement !is Message && rootStatement !is ControlFlow && rootStatement !is ReturnStatement)) || rootStatement == null) {
@@ -251,5 +253,7 @@ fun Resolver.resolveCodeBlock(
             }
         }
     }
+
+//    stack.pop()
 
 }

@@ -21,7 +21,7 @@ fun compare2Types(
     type2: Type,
     tokenForErrors: Token,
     unpackNull: Boolean = false,
-    isOut: Boolean = false, // checking for return type
+    isOut: Boolean = false, // checking for return type, where type1OrChildOf2 - declared return type, type2 - real
     unpackNullForSecond: Boolean = false, // x::Int? <- y::Int
     compareParentsOfBothTypes: Boolean = true,
     nullIsFirstOrSecond: Boolean = false, // any branch of switch can return null
@@ -33,6 +33,16 @@ fun compare2Types(
 
     if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable))
         tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()}$WHITE::mut $YEL$type1OrChildOf2$WHITE = ...")
+
+    if (type2.errors != type1OrChildOf2.errors){
+        val expectedTypeErrors = type1OrChildOf2.errors
+        val realTypeReturnErrors = type2.errors
+        if (expectedTypeErrors != null && realTypeReturnErrors != null) {
+            if (realTypeReturnErrors.count() > expectedTypeErrors.count()) {
+                return false
+            }
+        }
+    }
 
     if (type1OrChildOf2 is Type.Lambda && type2 is Type.Lambda) {
 

@@ -204,18 +204,8 @@ fun Resolver.resolveMessage(
         statement.selectorName != "orPANIC" &&
         statement.selectorName != "orValue" &&
         statement.selectorName != "ifError") {
-        statement.receiver.token.compileError("Can't send message to ${statement.receiver.type} that can contain error, use orValue: | orPANIC | ifError: [it]")
-//        val type2 = addErrorEffect(null, receiverType, statement)
-//        // and also add error effects from type
-//        val errorsFromMessageReturn = type.errors
-//        val errorsFromReceiver = type2.errors
-//
-//        if (errorsFromReceiver?.isNotEmpty() == true && errorsFromMessageReturn?.isNotEmpty() == true) {
-//            type2.errors?.addAll(errorsFromMessageReturn)
-//            statement.type = type2
-//        } else
-//            statement.type = type2
 
+        statement.receiver.token.compileError("Can't send message to ${statement.receiver.type} that can contain error, use orValue: | orPANIC | ifError: [it]")
     }
 
 
@@ -242,11 +232,7 @@ fun replaceAllGenericsToRealTypeRecursive(
             var resolvedLetterType = letterToRealType[typeArg.name] ?: receiverGenericsTable[typeArg.name]
 
             if (resolvedLetterType != null) {
-                if (typeArg is Type.InternalType) {
-                    resolvedLetterType
-                }
                 resolvedLetterType = resolvedLetterType.cloneAndChangeBeforeGeneric(typeArg.name)
-//                resolvedLetterType.beforeGenericResolvedName = typeArg.name
                 newResolvedTypeArgs2.add(resolvedLetterType)
             } else {
                 // we need to know from here, is this generic need to be resolved or not
@@ -265,20 +251,6 @@ fun replaceAllGenericsToRealTypeRecursive(
         }
     }
     return copyType.also {
-        //it.typeArgumentList = newResolvedTypeArgs2
         it.replaceTypeArguments(newResolvedTypeArgs2)
     }
-//    return Type.UserType(
-//        name = copyType.name,
-//        typeArgumentList = newResolvedTypeArgs2,
-//        fields = copyType.fields,
-//        isPrivate = copyType.isPrivate,
-//        pkg = copyType.pkg,
-//        protocols = copyType.protocols,
-//        typeDeclaration = copyType.typeDeclaration,
-//
-//    ).also {
-//        it.parent = copyType.parent
-//        it.errors = copyType.errors
-//    }
 }
