@@ -1,9 +1,10 @@
 package frontend.resolver
 
+import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 
 fun Resolver.resolveTypeAlias(statement: TypeAliasDeclaration) {
-    if (typeTable[statement.realTypeAST.name] == null) {
+    if (statement.realTypeAST !is TypeAST.Lambda && typeTable[statement.realTypeAST.name] == null) {
         unResolvedTypeDeclarations.add(currentPackageName, statement)
         return
     }

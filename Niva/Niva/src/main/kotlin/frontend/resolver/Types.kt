@@ -345,7 +345,24 @@ sealed class Type(
                 )
             }
 
-            is Lambda -> TODO()
+            is Lambda -> {
+
+
+                Lambda(
+                    args = args.map {
+                        KeywordArg(
+                            name = it.name,
+                            type = it.type.copyAnyType()
+                        )
+                    }.toMutableList(),
+                    returnType = returnType.copyAnyType(),
+                    pkg = pkg,
+                    isPrivate = isPrivate,
+                    extensionOfType = extensionOfType,
+                    specialFlagForLambdaWithDestruct = specialFlagForLambdaWithDestruct,
+                    alias = alias
+                )
+            }
         }).also {
             it.errors = errors
             it.parent = parent

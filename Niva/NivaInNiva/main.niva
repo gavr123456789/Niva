@@ -34,6 +34,22 @@ resolveMatch = [
 
 ] 
 
+collections = [
+  list = {1 2 3 4} 
+  map = #{1 "one", 2 "two"}
+  //set = #(1 1 2 2) 
+  
+  // {"2!" "4!"}
+  list 
+    filter: [it % 2 == 0], 
+    map: [it toString + "!"] 
+  // {{1 2} {3 4}}
+  list chunked: 2
+
+  //Pair({3 4} {1 2})
+  list partition: [it > 2], echo
+] do
+
 
 resolveGenerics = [
   fileMain = """

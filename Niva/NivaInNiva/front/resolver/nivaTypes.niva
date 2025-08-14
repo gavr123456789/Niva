@@ -28,7 +28,28 @@ union NivaType name: String pkgName: String =
 | TypeOfTheType v: NivaType // hack for constructors
 | Unknown // Special type for 
 
+extend NivaType [
+  on generateId -> String = [
 
+    result = | this
+    | TypeOfTheType => v generateId
+    | TypeT => [
+      genericArgsStr = genericArgs isNotEmpty 
+                        ifTrue: ["(" + (genericArgs joinWith: "," transform: [it name]) + ")"] 
+                        ifFalse: [""]
+      
+      pkgName + "." + name + genericArgsStr
+    ]
+    // | FuntionT => [TO DO]
+    | UnresolvedGenericT => [name]
+    | NullableT => [this v generateId + "?"]
+    | Unknown => [TO DO: "Can't get id of Unknown type, all types should be resolved"]
+    |=> [
+      pkgName + "." + name 
+    ]
+    ^ result
+  ]
+]
 
 constructor TypeT noFieldsWithName: name::String pkgName::String= TypeT name: name pkgName: pkgName fields: {}! genericArgs: {}!
 
@@ -112,6 +133,13 @@ type NivaMethod
 extend NivaMethod [
   on copyWithDifferentType: rt::NivaType = 
     NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
+  
+  on isConstructorForReceiver: receiver::TypeT -> Bool = [
+    {fields} = receiver
+    argsSorted = args map: [it name], sortedBy: [it], joinWith: ", "
+    fieldsSorted = fields map: [it name], sortedBy: [it], joinWith: ", "
+    ^ argsSorted == fieldsSorted
+  ]
 ]
 
 constructor NivaMethod [
