@@ -75,7 +75,7 @@ data class Position(val start: Int, var end: Int)
 
 class Token(
     val kind: TokenType,
-    val lexeme: String,
+    var lexeme: String,
     val line: Int,
     val pos: Position,
     val relPos: Position,

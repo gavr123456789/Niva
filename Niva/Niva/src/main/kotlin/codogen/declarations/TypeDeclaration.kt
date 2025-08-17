@@ -12,6 +12,7 @@ import main.frontend.resolver.findAnyMethod
 import main.utils.CYAN
 import main.utils.RESET
 import main.utils.YEL
+import main.utils.isGeneric
 
 
 fun SomeTypeDeclaration.generateTypeDeclaration(
@@ -322,9 +323,13 @@ fun TypeAliasDeclaration.generateTypeAlias() = buildString {
     append("typealias ", typeName)
     val realType = this@generateTypeAlias.realType!!
     if (realType is Type.UserLike && realType.typeArgumentList.isNotEmpty()) {
-        append("<")
-        append(realType.typeArgumentList.map { it.name }.toSet().joinToString(", ") { it })
-        append(">")
+        val unknownGenericParams = realType.typeArgumentList.filter {it.name.isGeneric()}
+        if (unknownGenericParams.isNotEmpty()) {
+            append("<")
+            append(unknownGenericParams.map { it.name }.toSet().joinToString(", ") { it })
+            append(">")
+        }
+
     }
     if (realType is Type.Lambda) {
         val getAllGenerics = {

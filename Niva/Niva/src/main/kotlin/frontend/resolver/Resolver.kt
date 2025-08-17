@@ -966,6 +966,9 @@ fun Resolver.changeCompilationMode(mode: String, token: Token) {
     val modeEnum = modeFromString(mode, token)
     compilationMode = modeEnum
 }
+fun enableCapabilities(bool: Boolean) {
+    GlobalVariables.capabilities = bool
+}
 
 
 fun Resolver.getTypeForIdentifier(

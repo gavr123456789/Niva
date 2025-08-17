@@ -35,7 +35,7 @@ fun Parser.unaryMessagesMatching(receiver: Receiver): MutableList<UnaryMsg> {
             identifier.token.compileError("Error: You can't put type on a unary message send: $CYAN${identifier.token.lexeme + "::" + identifier.typeAST.name}$RED, line: $WHITE${identifier.token.line}")
         }
         if (check(TokenType.Colon)) {
-            throw Exception("This is not unary, but a keyword with path")
+            identifier.token.compileError("This is not unary, but a keyword with path")
         }
         // each unary message must have previous unary as receiver because
         // person name echo -- receiver of echo is name, not person

@@ -35,6 +35,19 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                     else -> statement.token.compileError("Unexpected argument $WHITE${it.name} ${RED}for Project")
                 }
             }
+            // for now bool is used only for capabilities
+            is LiteralExpression.TrueExpr -> {
+                if (it.name != "capabilities") {
+                    statement.token.compileError("Unexpected argument $WHITE${it.name} ${RED}for Project")
+                }
+                enableCapabilities(true)
+            }
+            is LiteralExpression.FalseExpr -> {
+                if (it.name != "capabilities") {
+                    statement.token.compileError("Unexpected argument $WHITE${it.name} ${RED}for Project")
+                }
+                enableCapabilities(false)
+            }
 
             is ListCollection -> {
                 when (it.name) {
@@ -49,7 +62,7 @@ fun Resolver.resolveProjectKeyMessage(statement: MessageSend) {
                 }
             }
 
-            else -> it.keywordArg.token.compileError("Only ${YEL}String$WHITE args allowed for $YEL${it.name}")
+            else -> it.keywordArg.token.compileError("Unknown argument name $WHITE${it.name}")
         }
     }
 }
