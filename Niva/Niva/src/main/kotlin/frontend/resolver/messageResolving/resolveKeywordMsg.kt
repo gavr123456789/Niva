@@ -455,12 +455,12 @@ fun Resolver.resolveKeywordMsg(
                     typeOfArgFromDb,
                     typeOfArgFromDeclaration,
                     argAndItsMessages.keywordArg.token,
-                    unpackNull = true,
+//                    unpackNull = true,
                     nullIsFirstOrSecond = true,
-                    compareParentsOfBothTypes = false
+                    compareParentsOfBothTypes = false,
+                    unpackNullForFirst = true
                 )
                 if (!sameTypes) {
-                    // ДОЛЖНО РАБОТАТЬ
                     compare2Types(
                         typeOfArgFromDb,
                         typeOfArgFromDeclaration,
@@ -527,7 +527,7 @@ fun Resolver.resolveKwArgs(
             // because non codeblock args already resolved
         }
         mapOfArgToDbArg[it.keywordArg] = argsTypesFromDb[i]
-    } else args.forEachIndexed { i, it ->
+    } else args.forEach {
         if (it.keywordArg is CodeBlock) {
             codeBlocks.add(it)
             genericArgs.add(it.keywordArg)
@@ -539,7 +539,7 @@ fun Resolver.resolveKwArgs(
     // add to letterList code blocks types from db
     if (!filterGenerics && letterToRealType != null) {
 
-        genericArgs.forEach { it ->
+        genericArgs.forEach {
             val typeFromDb = mapOfArgToDbArg[it]
             if (typeFromDb != null && typeFromDb is Type.Lambda) {
                 // add types to known args
@@ -568,7 +568,7 @@ fun Resolver.resolveKwArgs(
 
 
     val realArgs = if (filterGenerics) usualArgs else codeBlocks
-    realArgs.forEachIndexed { argNum, it ->
+    realArgs.forEach {
         val arg = it.keywordArg
         if (arg.type == null) {
             currentLevel++

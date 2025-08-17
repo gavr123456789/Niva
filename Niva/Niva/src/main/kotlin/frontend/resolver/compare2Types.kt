@@ -17,8 +17,8 @@ val typeIsNull = { type: Type ->
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 // type from db must be always first, because Int -> arg::Number, but not the other way around
 fun compare2Types(
-    type1OrChildOf2: Type,
-    type2: Type,
+    type1OrChildOf2: Type, // expected type
+    type2: Type, // real type
     tokenForErrors: Token,
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type, where type1OrChildOf2 - declared return type, type2 - real
@@ -34,7 +34,7 @@ fun compare2Types(
     if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable))
         tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()}$WHITE::mut $YEL$type1OrChildOf2$WHITE = ...")
 
-    if (type2.errors != type1OrChildOf2.errors){
+    if (type2.errors != type1OrChildOf2.errors && type1OrChildOf2.errors?.isNotEmpty() == true){ // if declared return type errors are empty and not null - its just any error inferring
         val expectedTypeErrors = type1OrChildOf2.errors
         val realTypeReturnErrors = type2.errors
         if (expectedTypeErrors != null && realTypeReturnErrors != null) {
@@ -263,7 +263,7 @@ fun compare2Types(
             val win = compare2Types(type1OrChildOf2, type2.realType, tokenForErrors)
             if (win) return true
         }
-        // both are null
+        // both are nullable: Int? vs Int?
     } else if (type1OrChildOf2 is Type.NullableType && type2 is Type.NullableType) {
         return compare2Types(type1OrChildOf2.realType, type2.realType, tokenForErrors)
     }

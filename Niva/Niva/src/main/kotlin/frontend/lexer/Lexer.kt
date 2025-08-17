@@ -462,6 +462,23 @@ fun Lexer.next() {
             createToken(TokenType.InlineReplWithNum)
         }
 
+        check(":") && peek(1).first().isLetter() -> {
+            // :sas -> sas: sas
+
+            createToken(TokenType.Identifier, addToLexeme = "temp")
+
+            step() // skip :
+            createToken(TokenType.Colon)
+
+            stepWhileAlphaNumeric()
+            // temp : sas
+            createToken(TokenType.Identifier)
+            // change :sas -> sas
+            tokens.last().lexeme = tokens.last().lexeme.drop(1)
+            // change temp -> sas
+            tokens[tokens.count() - 3].lexeme = tokens.last().lexeme
+        }
+
 
         match("::") -> createToken(TokenType.DoubleColon)
 

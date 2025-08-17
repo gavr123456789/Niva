@@ -177,6 +177,9 @@ fun Resolver.resolveMessage(
         val receiver = statement.receiver
         val receiverType = receiver.type!!
 
+        if (GlobalVariables.capabilities && receiverType is Type.UserLike && receiverType.isBinding && !this.resolvingMainFile) {
+            statement.token.compileError("Can't use bindings outside of main entry point when capabilities enabled: ${YEL}${receiverType}")
+        }
         //check that it was mutable call for mutable type
         if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
             val receiverFromScope = previousAndCurrentScope[receiver.name]
