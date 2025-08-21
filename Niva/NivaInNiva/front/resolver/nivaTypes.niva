@@ -90,8 +90,8 @@ extend TypeT [
   ]
   /// creates unique identificator
   on toIdString -> String = [
-
-    ^ ""
+    genericStr = genericArgs map: [it name], sortedBy: [it], joinWith: " " transform: [it]
+    ^ pkgName + "." + name + "<" + genericStr + ">"
   ] 
   
 ]

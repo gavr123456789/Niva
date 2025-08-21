@@ -3,7 +3,7 @@ T debug -> T = [
   receiver = Compiler getName: 0
   codePlace = Compiler getPlace
 
-  codePlace red + " $receiver = $this", echo
+  codePlace cyan + " $receiver = $this", echo
   ^ this
 ]
 

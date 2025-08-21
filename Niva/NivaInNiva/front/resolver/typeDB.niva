@@ -39,9 +39,11 @@ constructor TyperDB new -> TyperDB = [
 type ResolverHelper
   fileToStatements: Map(String, List::Statement) 
   db: TyperDB
+  // entryPointStatements: List::TypedExpr
 
 constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
   fileToStatements::mut Map(String, List::Statement) = #{}!
+  
   fileToContent forEach: [ file, content ->
     statements = TestParse withInput: content expectedCount: -1
     fileToStatements at: file put: statements
@@ -57,13 +59,15 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     entryPointStatements: entryPointStatements
   // find main and replace statements from fileToStatements with typed
   fileToStatements 
-    at: entryPoint 
-    put: (msgDecls find: [it x == "main"], unpackOrPANIC) y body typedBody
+    at: "entryPoint" 
+    put: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody
+
 
   MsgDeclVisitor new 
     processBodyes: msgDecls 
     db: db
     
+
   ^ ResolverHelper 
     fileToStatements: fileToStatements 
     db: db
@@ -179,14 +183,18 @@ TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
   ]
 ]
 
-TyperDB addGenericInstantiationIfAbsent: t::TypeT typeId::String letterToType::Map(String, NivaType) -> TypeT = [
+TyperDB addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
+  newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
+  typeId = newTypeWithGenericInstantiated toIdString
   // check if it already 
   typesWithResolvedGenerics at: typeId, unpack: [
+    "already resolved generic $typeId" log
      ^it 
   ]
 
-  newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
   typesWithResolvedGenerics at: typeId put: newTypeWithGenericInstantiated
+  "added new generic instantiation $typeId" log
+
   ^ newTypeWithGenericInstantiated
 ]
 

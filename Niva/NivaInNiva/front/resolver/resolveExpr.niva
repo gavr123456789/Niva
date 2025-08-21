@@ -203,6 +203,15 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     
     argTypeFromDb = foundMsg args at: i, typeT
     | argTypeFromDb | UnresolvedGenericT => [
+      // Check if we already resolved same letter to different type
+      letterToType at: argTypeFromDb letter, unpack: [ alreadyResolvedTo::NivaType ->
+        alreadyResolvedTo compareWith: typedExpr nivaType, ifFalse: [
+          l = argTypeFromDb letter
+          to = typedExpr nivaType
+          TO DO: "Cant resolve $l to $to, it was already resolved to $alreadyResolvedTo"
+        ]
+      ]
+      
       letterToType 
         at: argTypeFromDb letter 
         put: typedExpr nivaType
@@ -222,23 +231,21 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
       | realT
       | TypeT => [
         thisIsConstructor = foundMsg isConstructorForReceiver: realT
-        thisIsConstructor log
         thisIsConstructor ifTrue: [
-          typeId = receiverType generateId
+          // typeId = receiverType generateId
 
-          db addGenericInstantiationIfAbsent: realT 
-            typeId: typeId 
-            letterToType: letterToType
+          db addGenericInstantiationIfAbsent: realT
+             letterToType: letterToType 
         ]
 
 
-        TO DO: "SAS"
+        // TO DO: "SAS"
       ] |=> []
 
     ]
     |=> [
       // GENERIC MESSAGE FOR OBJ - resolve generic method with true types
-      TO DO
+      TO DO: "GENERIC MESSAGE FOR OBJ"
 
     ]
   ]
@@ -253,7 +260,7 @@ KeywordMsg resolveKeywordFromDb: db::TyperDB withContext: c::Context -> TypedExp
     receiver: receiverTypedExpr 
     token: token
     kind: foundMsg kind
-  TO DO
+  // TO DO
   ^TypedExpr 
     exprAst: newKeyword
     nivaType: foundMsg returnType
@@ -317,7 +324,7 @@ UnaryMsg resolveFromDb:  db::TyperDB withContext: c::Context -> TypedExpr = [
 
   typed = TypedExpr 
     exprAst: newUnary
-    nivaType: dbMsg returnType 
+    nivaType: dbMsg returnType log 
     isMutable: dbMsg forMut 
     token: selector token
 

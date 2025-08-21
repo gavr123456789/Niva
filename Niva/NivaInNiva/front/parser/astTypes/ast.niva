@@ -74,14 +74,14 @@ BinaryMsg toString -> String = [
   ]
   ^ "$receiver $realArgs"
 ]
-KeywordMsg toString -> String = [
-  realArgs = args joinWith: " " transform: [
-    it name toString + ": " + it expr toString
-  ]
-  kindStr = kind toString
+// KeywordMsg toString -> String = [
+//   realArgs = args joinWith: " " transform: [
+//     it name toString + ": " + it expr toString
+//   ]
+//   kindStr = kind toString
 
-  ^ "KeywordMsg $kindStr ($receiver $realArgs)"
-]
+//   ^ "KeywordMsg $kindStr ($receiver $realArgs)"
+// ]
 
 // | x 
 // | 5 | 6 | 7 => [body] // condition: 5, conditions: 6 7
