@@ -1575,7 +1575,12 @@ class Resolver(
                 listType = listType,
                 mutListType = mutableListType,
                 setType = setType
-            )
+            ).also {
+                it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
+                it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
+                it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform")
+
+            }
         )
 
         // List

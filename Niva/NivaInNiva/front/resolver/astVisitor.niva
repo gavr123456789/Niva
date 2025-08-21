@@ -107,8 +107,20 @@ TypeDeclVisitor
       pkg = tuple x 
       msg = tuple y
 
+      msg receiver 
       // get real type for receiver
-      receiverType = db findByTypeName: msg receiver name inPkg: null // we cant know the concrete pkg here
+
+      receiverType = msg receiver toNivaTypefromDB: db inPkg: null
+      receiverType debug
+
+      | receiverType | TypeT => [
+        receiverType genericArgs isNotEmpty ifTrue: [
+          TO DO: "Ast have generics"
+        ]
+      ]
+      |=> [] 
+      // receiverType = db findByTypeName: msg receiver debug name inPkg: null // we cant know the concrete pkg here
+
       // get real type for each arg
       argsT = msg args map: [ arg ->
         argAstType = arg astType name
@@ -141,7 +153,7 @@ TypeDeclVisitor
         decl: msg
         protocolName: "common"
 
-      db addNewMethod: method forType: receiverType inProtocol: null
+      db addNewMethod: method forType: receiverType log inProtocol: null
       "added method " + method name, log
     ]
 // resolve main
@@ -149,13 +161,14 @@ TypeDeclVisitor
     mainBody resolveBody: db withContext: Context root
 
     fakeUnitAstType = AstType2 unitType
+    
     fakeMsgDecl = MessageDecl 
       receiver: fakeUnitAstType 
-      name: "main" args: {} 
+      name: "entryPoint" args: {} 
       returnType: fakeUnitAstType body: mainBody 
       isSingleExpr: false isConstructor: false 
-      token: mainBody unTypedBody first token
-    msgDecls2 add: (Tuple x: "main" y: fakeMsgDecl)
+      token: (mainBody unTypedBody isNotEmpty ifTrue: [mainBody unTypedBody first token]  ifFalse: [Token fake])
+    msgDecls2 add: (Tuple x: "entryPoint" y: fakeMsgDecl)
   ] do
   ^ msgDecls2
 ]

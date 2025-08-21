@@ -15,9 +15,16 @@ constructor Context [
 
 extend Context [
 
-  
+  // TODO store token with, no, need to store typed expr since all typeInfo is from there
+  // TODO or add new TypeFlags type and store it inside typedExpr, to be more flexible(not always we have typedExpr, for example for kw msg params)
+
+
+  // TODO need to store 
   on defineVar: name::String withType::NivaType = [
-    vars at: name put: withType
+    varType = vars at: name
+    | varType
+    | null => vars at: name put: withType
+    |=> [ TO DO: "variable $name with type $varType was already declared, declare it with mut and use <- instead of = for mutation" ]    
   ]
   
   /// if not found, try to search in the parent
