@@ -55,7 +55,8 @@ TypeDeclVisitor
       ]
       | MessageDecl => [
         msgDecls2 add: (Tuple x: pkgName y: it) 
-        Unit]
+        Unit
+      ]
       // msgDecls at: pkgName put: it debug
       | UnionDecl => TO DO: "UnionDecl"
       | EnumDecl => TO DO: "EnumDecl"
@@ -107,7 +108,6 @@ TypeDeclVisitor
       pkg = tuple x 
       msg = tuple y
 
-      msg receiver 
       // get real type for receiver
 
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
@@ -119,21 +119,11 @@ TypeDeclVisitor
         ]
       ]
       |=> [] 
-      // receiverType = db findByTypeName: msg receiver debug name inPkg: null // we cant know the concrete pkg here
 
       // get real type for each arg
       argsT = msg args map: [ arg ->
-        argAstType = arg astType name
-        argType = db findByTypeName: argAstType inPkg: null // we cant know the concrete pkg here
+        argType = arg astType toNivaTypefromDB: db inPkg: null // we cant know the concrete pkg here
         TypeTField name: arg name typeT: argType
-      ]
-
-      
-      getReturnType = [
-        rt = msg returnType 
-        | rt 
-        | null => db dtc unit
-        |=> db findByTypeName: rt name inPkg: null 
       ]
 
       
@@ -146,7 +136,7 @@ TypeDeclVisitor
       method = NivaMethod 
         name: msg name 
         args: argsT 
-        returnType: (msg getReturnTypeFromDb: db) 
+        returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
         forMut: isMutable 
         possibleErrors: {}
         kind: MessageSendKind.Call
@@ -156,18 +146,28 @@ TypeDeclVisitor
       db addNewMethod: method forType: receiverType log inProtocol: null
       "added method " + method name, log
     ]
+    
 // resolve main
-    mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions) 
-    mainBody resolveBody: db withContext: Context root
+    mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions typedBody2: {}!) 
+
+
+    mainBody resolveBody: db 
+             withContext: Context root
+
+
 
     fakeUnitAstType = AstType2 unitType
+
     
-    fakeMsgDecl = MessageDecl 
-      receiver: fakeUnitAstType 
+    fakeMsgDecl = MessageDecl receiver: fakeUnitAstType 
       name: "entryPoint" args: {} 
       returnType: fakeUnitAstType body: mainBody 
       isSingleExpr: false isConstructor: false 
       token: (mainBody unTypedBody isNotEmpty ifTrue: [mainBody unTypedBody first token]  ifFalse: [Token fake])
+
+
+
+
     msgDecls2 add: (Tuple x: "entryPoint" y: fakeMsgDecl)
   ] do
   ^ msgDecls2

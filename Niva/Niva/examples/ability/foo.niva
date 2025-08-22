@@ -1,0 +1,4 @@
+Int io::IO = [
+  str::String = io read text: "a/b/c"
+  File path: "it", readText, orPANIC
+]

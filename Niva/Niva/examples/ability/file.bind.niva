@@ -1,0 +1,8 @@
+errordomain IOException
+
+Bind package: "java.io" content: [
+  type File path: String
+  File readText -> String!IOException
+  File writeText::String -> Unit!IOException
+  File exists -> Bool 
+]
