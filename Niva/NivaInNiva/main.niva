@@ -66,6 +66,23 @@ scopeVariables = [
   ]
   |=> [TO DO]
   
+] 
+
+
+newResolve = [
+  fileMain = """
+    type Person age: Int 
+    Int sas = [
+      p = Person age: 27
+    ]
+    
+    1 inc
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+
+  
 ] do
 
 

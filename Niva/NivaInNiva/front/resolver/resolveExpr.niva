@@ -95,6 +95,7 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
     ] ifFalse: [
       "CodeBlock"
       body resolveBody: db withContext: c
+
       TypedExpr 
         nivaType: body typedBody last nivaType 
         exprAst: this 
@@ -115,14 +116,15 @@ Expr toTypedExprFromDb: db::TyperDB withContext: c::Context -> TypedExpr = [
         elseb
       ] 
     
-    // TODO infer common type between all branches
+    // TODO infer common return type between all branches
     mut matchType::NivaType = db dtc unit
     branchesT = branches map: [
 
       it conditions resolveBody: db withContext: c
       it body       resolveBody: db withContext: c
       
-      matchType <- it body typedBody last nivaType
+      // matchType <- it body typedBody last nivaType
+      matchType <- it body typedBody2 last typeInfo t
 
       MatchBranch 
         condition: (it condition toTypedExprFromDb: db withContext: c)

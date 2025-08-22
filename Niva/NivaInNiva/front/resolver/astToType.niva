@@ -1,0 +1,40 @@
+AstType2 toNivaTypefromDB: db::TyperDB inPkg::String? -> NivaType = [
+  x = | this
+  | AstType => [
+    name isGeneric ifTrue: [
+      ^ UnresolvedGenericT name: name
+    ]
+
+    typeT = db findByTypeName: name :inPkg 
+    result = genericParams isNotEmpty ifTrue: [
+      // transform each generic astType to real type
+      // create table of them
+      // replace T with real types from the table
+      | typeT
+      | TypeT => [
+        Assert that: typeT genericArgs count 
+              equals: genericParams count
+
+
+        idToType:: mut Map(String, NivaType) = #{}!
+
+        typeT genericArgs forEachIndexed: [ i, it ->
+          sas = genericParams at: i, toNivaTypefromDB: db inPkg: inPkg
+          idToType at: it name put: sas
+        ]
+        
+        idToType debug
+        typeT replaceGenericsFromTable: idToType
+      ]
+      | TypeOfTheType => TO DO: "TypeOfTheType???"
+      |=> [TO DO: "only TypeT can have generics"]
+    ] ifFalse: [
+      typeT
+    ]
+
+    result
+  ]
+  | AstLambdaType => [TO DO]
+
+  ^ x
+]

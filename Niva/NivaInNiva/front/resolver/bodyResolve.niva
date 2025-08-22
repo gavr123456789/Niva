@@ -9,31 +9,40 @@ Body resolveBody: db::TyperDB withContext: upperContext::Context = [
     ^ 
   ]
 
-
-  typedBody isNotEmpty ifTrue: [
-    typedBody first token toString + " body was already resolved", yel echo
+  typedBody2 isNotEmpty ifTrue: [
+    typedBody2 first token toString + " body was already resolved", yel echo
     ^
   ]
 
-  Assert that: typedBody isEmpty equals: true
+  // typedBody isNotEmpty ifTrue: [
+  //   typedBody first token toString + " body was already resolved", yel echo
+  //   ^
+  // ]
+
+  // Assert that: typedBody isEmpty equals: true
+  Assert that: typedBody2 isEmpty equals: true
 
   // stackOfVisited::mut Set::MessageDecl = #()
 
+  checkThatTypeIsNotUnknown = [ t::NivaType expr::Expr ->
+    | t | Unknown => [
+      TO DO: "Unknown type of expr is not possible $expr"
+    ] |=> []
+  ]
   unTypedBody map: [ expr ->
+// old
     typed = expr toTypedExprFromDb: db withContext: c
     typeOfExpr = typed nivaType
+    checkThatTypeIsNotUnknown t: typed nivaType expr: expr
+// new
     // check that type is not Unknown
-    | typeOfExpr
-    | Unknown => [
-      TO DO: "Unknown type of expr is not possible $expr"
-    ]
-    |=> []
-    // if it is, then go and resolve the body, with remembering stack
+    typed2 = expr toTypedExprFromDb2: db withContext: c
+    checkThatTypeIsNotUnknown t: typed2 typeInfo t expr: expr
 
-
-
-    typedBody add: typed
+    // typedBody add: typed
+    typedBody2 add: typed2
   ]
 
-  Assert that: typedBody isNotEmpty equals: true
+  // Assert that: typedBody isNotEmpty equals: true
+  Assert that: typedBody2 isNotEmpty equals: true
 ]

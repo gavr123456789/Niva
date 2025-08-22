@@ -41,9 +41,12 @@ type ResolverHelper
   db: TyperDB
   // entryPointStatements: List::TypedExpr
 
+
+// 1 выделить экспрешоны являющиеся мейн функцией из списка стейтментов ентри поинта
 constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
   fileToStatements::mut Map(String, List::Statement) = #{}!
   
+  // parsing
   fileToContent forEach: [ file, content ->
     statements = TestParse withInput: content expectedCount: -1
     fileToStatements at: file put: statements
@@ -53,10 +56,14 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
 
 
   db = TyperDB new
-  // visitAll TypesThenTypesAndMethods shoud return 2 things - body of the entryPoint and msgDecls, or maybe entry point is just another decl?
+
   msgDecls = TypeDeclVisitor db: db, 
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
+
+
+  msgDecls debug
+  TO DO
   // find main and replace statements from fileToStatements with typed
   fileToStatements 
     at: "entryPoint" 

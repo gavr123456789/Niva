@@ -1,0 +1,343 @@
+Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody = [
+  // StackTrace get log
+  // Compiler getPlace log
+
+  c = Context fromParent: upperContext
+  
+  // [] nothing to resolve
+  unTypedBody isEmpty ifTrue: [
+    ^ TypedBody v: {} t: db dtc unit
+  ]
+
+
+  Assert that: typedBody isEmpty equals: true
+
+  // stackOfVisited::mut Set::MessageDecl = #()
+
+  listOfTypedExpr2 = unTypedBody map: [ expr ->
+    typed = expr toTypedExprFromDb2: db withContext: c
+    typeOfExpr = typed typeInfo t
+    // check that type is not Unknown
+    | typeOfExpr
+    | Unknown => [
+      TO DO: "Unknown type of expr is not possible $expr"
+    ]
+    |=> []
+    // if it is, then go and resolve the body, with remembering stack
+
+
+
+    typed
+  ]
+
+  Assert that: typedBody isNotEmpty equals: true
+
+  ^ TypedBody v: listOfTypedExpr2 
+              t: listOfTypedExpr2 last typeInfo t
+]
+
+
+Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
+
+  // todo optimize by adding core pkg to the TyperDB
+  result = | this
+  | CharExpr    => CharExprT :token typeInfo: db dtc char toTypeInfoDefault
+  | IntExpr     => IntExprT :token typeInfo: db dtc int toTypeInfoDefault
+  | FloatExpr   => FloatExprT :token typeInfo: db dtc float toTypeInfoDefault
+  | DoubleExpr  => DoubleExprT :token typeInfo: db dtc double toTypeInfoDefault
+  | StringExpr  => StringExprT :token typeInfo: db dtc str toTypeInfoDefault
+  | BooleanExpr => BooleanExprT :token typeInfo: db dtc bool toTypeInfoDefault
+  | NullExpr    => NullExprT :token typeInfo: db dtc nothing toTypeInfoDefault
+  // Identifier can be type itself like Unit
+  | Identifier   => [
+
+    varType = c lookupForVar: this name
+    | varType
+    | null => [
+      // this identifier can be name of the type and just a constructor call  
+      name first isUpperCase ifTrue: [
+        q = db findByTypeName: name // TODO replace by findMaybe, and dont check for UpperCase
+        
+        IdentifierT :name :path :token typeInfo: q toTypeInfoDefault
+        // TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
+      ] ifFalse: [
+        contextString = c allKnownVars        
+        TO DO: "Cant find $this in the current context: \n$contextString"
+      ]
+    ]
+    |=> IdentifierT :name :path :token typeInfo: varType toTypeInfoDefault
+    
+  ]
+  | ExprInBrackets => [
+    valueT = value toTypedExprFromDb2: db withContext: c
+    ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
+  ]
+  | ListLiteral    => [
+    typedElements = elements resolveBody2: db withContext: c
+    // Compare all elements between each other
+    TO DO: "ListLiteral to TypedExpr"]
+  | SetLiteral     => [
+    typedElements = elements resolveBody2: db withContext: c
+    TO DO: "SetLiteral to TypedExpr"]
+  | MapLiteral     => TO DO: "MapLiteral to TypedExpr" 
+
+  | UnaryMsg   => [
+      typedExpr = .resolveUnaryFromDb2: db withContext: c
+      ^ typedExpr
+  ]
+  | BinaryMsg  => [
+    this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
+    
+    {x y} = .replaceArgsWithTypedfromDb2: db withContext: c
+    ^ x
+  ]
+  | KeywordMsg =>[ 
+    this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
+    typedExpr = .resolveKeywordFromDb2: db withContext: c
+    
+    typedExpr 
+  ]
+
+  | VarDeclaration  => [
+    // "var decl " + c toString, log
+    typedExpr = this value toTypedExprFromDb2: db withContext: c
+    // check that ast type is the same as declared
+    this astType unpack: [
+      // x::Int = "ars"
+      nivaType = db findByTypeName: it name
+      typedExpr typeInfo t compareWith: nivaType, ifFalse: [
+        valName = name
+        astTypeName = it name
+        realTypeName = typedExpr typeInfo t name
+        // TODO add it to error list
+        TO DO: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
+      ]
+    ]
+
+    c defineVar: name withType: typedExpr typeInfo t
+
+    VarDeclarationT :name value: typedExpr :astType :token typeInfo: db dtc unit toTypeInfoDefault
+    
+    // TypedExpr 
+    //   nivaType: db dtc unit
+    //   exprAst: typedExpr 
+    //   isMutable: typedExpr typeInfo isMut
+  ]
+  | Assign => AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
+  | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
+  | ReturnStatement =>[ 
+    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
+    returnType = 
+      | valueT
+      | null => db dtc unit
+      |=> valueT typeInfo t
+
+    ReturnStatementT value: valueT 
+                     :token 
+                     typeInfo: returnType toTypeInfoDefault
+  ]
+
+  | CodeBlock => [
+    typedBody = body resolveBody2: db withContext: c 
+    returnType = typedBody t
+
+    CodeBlockT args: args untypedArgs: untypedArgs body: typedBody token: token typeInfo: returnType toTypeInfoDefault
+  ]
+  | Match     => [
+
+    // TODO exhaustivness for unions and bool and enums and nullMatching
+    elseb = elseBranch // local smart cast
+
+
+    subjectT = subject toTypedExprFromDb2: db withContext: c
+    elseBranchT = 
+      | elseb
+      | null => [null]
+      |=> [
+        elseb resolveBody2: db withContext: c
+        elseb
+      ] 
+    
+    // TODO infer common type between all branches
+    mut matchType::NivaType = db dtc unit
+    branchesT = branches map: [
+
+      conditionsT = it conditions resolveBody2: db withContext: c
+      bodyT = it body       resolveBody2: db withContext: c
+      
+      matchType <- it body typedBody last nivaType
+
+      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c) 
+                   conditions: conditionsT
+                   body: bodyT
+    ]
+    
+
+    newAst = MatchT subject: subjectT branches: branchesT elseBranch: TO DO token: token typeInfo: matchType toTypeInfoDefault
+    ^ newAst
+  ]
+  | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"
+
+
+  ^ result
+]
+
+
+
+
+
+type CheckMethodArg2 nivaType: NivaType expr: Expr argName: String
+
+// both for binary and keywords
+TyperDB checkRealArgs2::List::CheckMethodArg2 withExpectedArgs::List::TypeTField = [
+  Assert that: checkRealArgs2 count equals: withExpectedArgs count
+
+  withExpectedArgs forEachIndexed: [ i, it ->
+    {nivaType, expr, argName} = checkRealArgs2 at: i 
+    
+
+    it typeT compareWith: nivaType, ifFalse: [
+      expected = it typeT toString
+      sended = nivaType toString
+      exprStr = expr toString
+      
+      
+      this addErrorMessage: (ErrorWrongArgType 
+                              tok: expr token 
+                              msg: "($sended != $expected) $expected expected, but $argName $exprStr is $sended")
+    ]
+  ]
+
+]
+
+
+KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context -> KeywordMsgT = [
+  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
+  receiverType = receiverTypedExpr typeInfo t
+  argTypesAndExprs :: mut List::CheckMethodArg2 = {}!
+
+
+  // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
+  foundMsg = db 
+    findMsgFromReceiver: receiverType 
+    byName: .getNameFromArgs
+  
+  Assert that: foundMsg args count equals: args count
+
+  letterToType::mut Map(String, NivaType) = #{}!
+
+  typedArgs = args mapIndexed: [ i, kwArg -> 
+    {name expr} = kwArg
+    typedExpr = expr toTypedExprFromDb2: db withContext: c
+    argTypesAndExprs add: (CheckMethodArg2 
+                            nivaType: typedExpr typeInfo t 
+                            expr: expr 
+                            argName: name name)
+    
+    argTypeFromDb = foundMsg args at: i, typeT
+    | argTypeFromDb | UnresolvedGenericT => [
+      // Check if we already resolved same letter to different type
+      letterToType at: argTypeFromDb letter, unpack: [ alreadyResolvedTo::NivaType ->
+        alreadyResolvedTo compareWith: typedExpr typeInfo t, ifFalse: [
+          l = argTypeFromDb letter
+          to = typedExpr typeInfo t
+          TO DO: "Cant resolve $l to $to, it was already resolved to $alreadyResolvedTo"
+        ]
+      ]
+      
+      letterToType 
+        at: argTypeFromDb letter 
+        put: typedExpr typeInfo t
+    ] |=> []
+
+    NameAndExprT name: name expr: typedExpr
+  ]
+  
+  // если это конструктор то скорее всего генерим 
+  
+  // try to find by id
+  letterToType isNotEmpty && true ifTrue: [
+    // GENERIC CONSTRUCTOR - register instantiated variant
+    | receiverType
+    | TypeOfTheType => [
+      realT = receiverType v 
+      | realT
+      | TypeT => [
+        thisIsConstructor = foundMsg isConstructorForReceiver: realT
+        thisIsConstructor ifTrue: [
+          // typeId = receiverType generateId
+
+          db addGenericInstantiationIfAbsent: realT
+             letterToType: letterToType 
+        ]
+
+
+        // TO DO: "SAS"
+      ] |=> []
+
+    ]
+    |=> [
+      // GENERIC MESSAGE FOR OBJ - resolve generic method with true types
+      TO DO: "GENERIC MESSAGE FOR OBJ"
+    ]
+  ]
+
+  
+  // do not check if they are generics
+  db checkRealArgs2: argTypesAndExprs withExpectedArgs: foundMsg args
+
+  newKeyword = KeywordMsgT args: typedArgs kind: foundMsg kind receiver: receiverTypedExpr token: token typeInfo: (TypeInfo t: foundMsg returnType isMut: foundMsg forMut)
+  ^ newKeyword
+] 
+
+// rework - instead of replacing - make the receiver typed
+BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Tuple(BinaryMsgT, NivaType) = [ 
+  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
+
+  typeOfReceiver = receiverTypedExpr typeInfo t
+  mut lastType = typeOfReceiver
+
+  typedArgs = args map: [ binary ->
+    // 1 + (2 inc)
+    // find the message
+    // resolce type of arg
+    // compare that found message has arg with same type
+    binaryName = binary name name
+    dbMsg = db findMsgFromReceiver: lastType  byName: binaryName
+    (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
+    dbArg = dbMsg args first
+    // resolve type of arg
+    resolvedArg = binary expr toTypedExprFromDb2: db withContext: c
+
+
+    (resolvedArg typeInfo t compareWith: dbArg typeT) ifFalse: [
+      expected = dbMsg args first typeT
+      butGot = resolvedArg typeInfo t
+      currentBinary = lastType toString + " " + binaryName + " " 
+      TO DO: "In binary $currentBinary arg of type $expected expected, but got $butGot"
+    ]
+
+    // create typed expr with return type of dbMsg in db message
+    typed = resolvedArg
+
+    lastType <- dbMsg returnType
+    NameAndExprT name: binary name expr: resolvedArg
+    // NameAndExpr name: binary name expr: typed
+  ]
+
+  newBinaryT = BinaryMsgT args: typedArgs receiver: receiverTypedExpr token: token typeInfo: lastType toTypeInfoDefault
+  // newBinary = BinaryMsg args: typedArgs receiver: receiverTypedExpr token: token
+  ^ Tuple x: newBinaryT y: lastType 
+] 
+
+
+UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT = [
+  resolvedReceiver = receiver toTypedExprFromDb2: db withContext: c
+  typeOfReceiver = resolvedReceiver typeInfo t
+  dbMsg = db findMsgFromReceiver: typeOfReceiver  byName: selector name
+
+  typeInfo = TypeInfo t: dbMsg returnType isMut: dbMsg forMut
+  newUnary2 = UnaryMsgT selector: selector kind: dbMsg kind receiver: resolvedReceiver token: token typeInfo: typeInfo
+
+  ^ newUnary2
+]

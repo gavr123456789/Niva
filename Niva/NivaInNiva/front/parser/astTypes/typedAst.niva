@@ -1,0 +1,76 @@
+
+
+type TypeInfo t: NivaType isMut: Bool
+
+NivaType toTypeInfoDefault = TypeInfo t: this isMut: false
+// constructor TypeInfo default: t::NivaType = 
+//   TypeInfo :t isMut: false
+
+type MatchBranchT
+  condition: TypedExpr2
+  conditions: TypedBody
+  body: TypedBody
+
+
+union TypedExpr2 token: Token typeInfo: TypeInfo = 
+| ^LiteralExprT 
+| IdentifierT     name: String path: {String}?
+| ExprInBracketsT value: TypedExpr2
+| VarDeclarationT    name: String value: TypedExpr2 astType: AstType2?
+| AssignT            name: String value: TypedExpr2
+| DestructingAssignT names: List::String value: TypedExpr2 // {name} = person
+
+| ^CollectionLiteralT
+| ^MessageSendT
+| ReturnStatementT value: TypedExpr2?
+// only one of the lists can be non empty
+| CodeBlockT args: List::NameAndAstType untypedArgs: List::Identifier body: TypedBody
+| MatchT 
+  subject: TypedExpr2 
+  branches: List::MatchBranchT 
+  elseBranch: TypedBody? // possible body
+
+
+
+type NameAndExprT name: Identifier expr: TypedExpr2
+
+type TypedBody 
+  v: List::TypedExpr2
+  t: NivaType
+
+
+union LiteralExprT token: Token typeInfo: TypeInfo = 
+| CharExprT
+| IntExprT
+| FloatExprT
+| DoubleExprT
+| StringExprT
+| BooleanExprT
+| NullExprT
+
+
+union CollectionLiteralT token: Token elements: TypedBody typeInfo: TypeInfo = 
+| ListLiteralT
+| SetLiteralT
+| MapLiteralT
+
+
+
+union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo =
+// args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
+| UnaryMsgT
+    selector: Identifier // no need for type here
+    kind: MessageSendKind
+| BinaryMsgT
+    args: List::NameAndExprT // expr - Primary or UnaryMsg
+| KeywordMsgT
+    args: List::NameAndExprT // expr - Primary or UnaryMsg or BinaryMsg
+    kind: MessageSendKind
+
+
+
+// constructors
+
+constructor IdentifierT fromToken::Token typeInfo::TypeInfo= 
+  IdentifierT name: (fromToken lexeme) token: fromToken path: null typeInfo: typeInfo
+

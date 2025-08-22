@@ -1,0 +1,17 @@
+Project capabilities: true
+
+type IO
+  read: [String -> String]
+  write: [String -> String]
+
+
+type Program
+  io: IO
+
+
+x::String = File path: "it", readText, orPANIC
+
+io = IO read: [File path: it, readText, orPANIC] 
+        write: [File path: it, readText, orPANIC]
+
+
