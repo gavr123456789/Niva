@@ -15,8 +15,10 @@
 
 <p>
 <p align="center">
-  <img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width="30%" height="30%">
+  <img src="https://github.com/gavr123456789/Niva/assets/30507409/7dbdf939-cb71-4459-8a74-4d50fce2c9d3" width="30%" height="30%" />
+  <img src="https://github.com/user-attachments/assets/4d9ee517-8c4d-426c-a15f-e158b6364fec" width="65%"/>
 </p>
+
 
 Niva is a simple language that takes a lot of inspiration from Smalltalk.
 But leaning towards the functional side and static types. Everything is still an object, but instead of classes, interfaces, inheritance, and abstract classes, we have tagged unions, which is the only way to achieve polymorphism.
