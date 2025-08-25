@@ -56,8 +56,8 @@ Test constructorCall = [
   
   | msgDecl
   | MessageDecl => [
-    varDecl = msgDecl body typedBody at: 0, exprAst
-    kwMsg = varDecl toTyped exprAst
+    varDecl = msgDecl body typedBody2 at: 0
+    kwMsg = varDecl
     | kwMsg
     | KeywordMsg => [
       Assert that: kwMsg kind equals: MessageSendKind.Constructor
@@ -86,8 +86,8 @@ Test getter = [
   msgDecl = typedAst at: 1
   | msgDecl
   | MessageDecl => [
-    getter = msgDecl body typedBody at: 0
-    ast = getter exprAst
+    getter = msgDecl body typedBody2 at: 0
+    ast = getter
     | ast 
     | UnaryMsg => [
       Assert that: ast kind equals: MessageSendKind.Getter
@@ -131,17 +131,17 @@ Test resolveAFewDeclarations = [
   makeSas = msgDecls at: 0, y
   checkExpressionsTypes = [
     Assert 
-      that: makeSas body typedBody count  
+      that: makeSas body typedBody2 count  
       equals: 3
       andSay: "wrong number of expressions"
    
-    varDecl = makeSas body typedBody at: 0
-    unary = makeSas body typedBody at: 1
-    binary = makeSas body typedBody at: 2
+    varDecl = makeSas body typedBody2 at: 0
+    unary = makeSas body typedBody2 at: 1
+    binary = makeSas body typedBody2 at: 2
 
-    Assert that: varDecl nivaType name equals: "Unit"
-    Assert that: unary nivaType name equals: "Int"
-    Assert that: binary nivaType name equals: "Int"
+    Assert that: varDecl typeInfo t name equals: "Unit"
+    Assert that: unary typeInfo t name equals: "Int"
+    Assert that: binary typeInfo t name equals: "Int"
     
   ] do
 ]

@@ -117,24 +117,33 @@ list partition: [it > 2]
 <summary><b>Control flow</b></summary>
 
 ```Scala
+// if - is a Bool Method that takes 2 lambdas arguments
+// can be used as expression
+x = 1 > 2 ifTrue: ["what?!"] ifFalse: ["yea"]
+// newlines can be anywhere
+{1 2 3} isEmpty
+  ifTrue: []
+  ifFalse: []
+
+// blocks can have multiple statements
+x count == 3 ifTrue: [
+    "yea" echo
+    x echo
+]
+
 name = "Alice"
-// switching on name
+// switch on name
 | name
 | "Bob"   => "Hi Bob!" echo
 | "Alice" => "Hi Alice!" echo
 |=> "Hi guest" echo
 
-// if is a message for Boolean that takes 2 lambdas
-x = 1 > 2 ifTrue: ["what?!"] ifFalse: ["yea"]
-// multiline variant, \n are not important
-{1 2 3} isEmpty
-  ifTrue: []
-  ifFalse: []
-
 // you can switch on bool (and all primitive types)
 | 1 > 2
 | true => "what?!" echo
 | false => "yea" echo
+
+// if switch is used on Bool|Nullable|union type then its exhaustive, see Unions
 ```
 [Control flow](https://gavr123456789.github.io/niva-site/control-flow.html)
 </details>

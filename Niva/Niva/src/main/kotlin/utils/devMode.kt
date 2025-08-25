@@ -19,6 +19,7 @@ import java.io.File
 import java.io.InputStreamReader
 import kotlin.collections.forEach
 import kotlin.collections.joinToString
+import kotlin.coroutines.CoroutineContext
 import kotlin.text.lowercase
 import kotlin.text.startsWith
 import kotlin.time.measureTime
@@ -89,7 +90,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
         }
     }
     var watcherIsRunning = false
-    val compileWithErrorPrinting = {
+    val compileWithErrorPrinting = { evalString: String? ->
         try {
             val resolver = compileProjFromFile(
                 pm,
@@ -97,7 +98,8 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
                 compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
                 tests = mainArg == MainArgument.TEST,
                 verbose = am.verbose,
-                buildSystem = am.buildSystem
+                buildSystem = am.buildSystem,
+                evalCustomExpr = evalString
             )
 
             val compiler = CompilerRunner(
@@ -112,15 +114,12 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
             println("compiled")
             if (!watcherIsRunning) {
                 watcherIsRunning = true
-                launch {
-                    when (am.buildSystem) {
-                        BuildSystem.Amper -> compiler.runGradleAmperBuildCommand()
-                        BuildSystem.Mill -> compiler.runMill(Option.RUN, am.outputRename)
-                        BuildSystem.Gradle -> {TODO("No dev mode for gradle, its old, use mill or amper")}
-                    }
-
-
+                when (am.buildSystem) {
+                    BuildSystem.Amper -> compiler.runGradleAmperBuildCommand()
+                    BuildSystem.Mill -> compiler.runMill(Option.RUN, am.outputRename)
+                    BuildSystem.Gradle -> {TODO("No dev mode for gradle, its old, use mill or amper")}
                 }
+
             }
 
         }   catch (e: CompilerError) {
@@ -130,32 +129,44 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
     }
 
     // read console commands
-    suspend fun BufferedReader.readLineSuspending() =
-        withContext(Dispatchers.IO) { readLine() }
+    suspend fun BufferedReader.readLineSuspending(coroutineContext1: CoroutineContext) =
+        withContext(coroutineContext1) {
+            print("> ")
+            readLine() }
 
 
     launch{
-        val q = BufferedReader(InputStreamReader(System.`in`))
-        var input = ""
         println(DEV_MODE_INSTRUCTIONS)
+        val q = BufferedReader(InputStreamReader(System.`in`))
+        var input = q.readLineSuspending(this.coroutineContext)
         while (input != "e") {
-            input = q.readLineSuspending()
-            runProcess("clear")
+
+
             when (input) {
-                "c", "" -> {
+                "c" -> {
                     val x = measureTime{
-                        compileWithErrorPrinting()
+                        compileWithErrorPrinting(null)
                     }
                     println("done in $x")
                 }
                 "w" -> {
                     watchFolderAndEmitKt()
                 }
+                "" -> {
+                    println("empty input")
+                }
+                "\n" -> println(" \\n empty input")
                 else -> {
-                    print("unknown command")
-                    println(DEV_MODE_INSTRUCTIONS)
+                    compileWithErrorPrinting(input)
+
+//                    print("unknown command")
+//                    println(DEV_MODE_INSTRUCTIONS)
                 }
             }
+
+            input = q.readLineSuspending(this.coroutineContext)
+
+
         }
     }
 

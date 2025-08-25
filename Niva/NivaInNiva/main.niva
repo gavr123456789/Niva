@@ -17,6 +17,22 @@ type NivaCompiler
 type NivaBuildSystem
 
 
+wrongArgTypeError = [
+  fileMain = """
+    type Person name: String
+    p = Person name: 234
+    q = Person name: 'c'
+    w = Person name: true
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+
+  Assert that: db listOfErrors count equals: 3
+] do
+
 scopeVariables = [
   fileMain = """
     a = 0
@@ -56,8 +72,8 @@ scopeVariables = [
   
   | msgDecl
   | MessageDecl => [
-    varDecl = msgDecl body typedBody at: 0, exprAst
-    kwMsg = varDecl toTyped exprAst
+    varDecl = msgDecl body typedBody2 at: 0
+    kwMsg = varDecl
     | kwMsg
     | KeywordMsg => [
       Assert that: kwMsg kind equals: MessageSendKind.Constructor
@@ -72,18 +88,20 @@ scopeVariables = [
 newResolve = [
   fileMain = """
     type Person age: Int 
-    Int sas = [
-      p = Person age: 27
-    ]
+    Person age: 27
     
-    1 inc
+    // Int sas = [
+      // p = Person age: 27 
+    // ]
+    
+    //1 inc
   """
 
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
 
   
-] do
+] 
 
 
 tsBack = [

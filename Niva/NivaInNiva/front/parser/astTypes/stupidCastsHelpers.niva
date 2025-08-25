@@ -7,3 +7,8 @@ Statement toTyped -> TypedExpr =
 | this 
 | TypedExpr => this
 |=> TO DO: "Its not typed, its $this"
+
+
+TypedExpr2 isIdentifierConstructor = | this 
+| IdentifierT => [this isNameOfTheType]
+|=> [false]

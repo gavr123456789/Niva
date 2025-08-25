@@ -10,7 +10,7 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody =
   ]
 
 
-  Assert that: typedBody isEmpty equals: true
+  Assert that: typedBody2 isEmpty equals: true
 
   // stackOfVisited::mut Set::MessageDecl = #()
 
@@ -30,7 +30,7 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody =
     typed
   ]
 
-  Assert that: typedBody isNotEmpty equals: true
+  Assert that: typedBody2 isNotEmpty equals: true
 
   ^ TypedBody v: listOfTypedExpr2 
               t: listOfTypedExpr2 last typeInfo t
@@ -58,14 +58,14 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       name first isUpperCase ifTrue: [
         q = db findByTypeName: name // TODO replace by findMaybe, and dont check for UpperCase
         
-        IdentifierT :name :path :token typeInfo: q toTypeInfoDefault
+        IdentifierT :name :path :token typeInfo: q toTypeInfoDefault isNameOfTheType: true
         // TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
       ] ifFalse: [
         contextString = c allKnownVars        
         TO DO: "Cant find $this in the current context: \n$contextString"
       ]
     ]
-    |=> IdentifierT :name :path :token typeInfo: varType toTypeInfoDefault
+    |=> IdentifierT :name :path :token typeInfo: varType toTypeInfoDefault isNameOfTheType: false
     
   ]
   | ExprInBrackets => [
@@ -116,12 +116,13 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
 
     c defineVar: name withType: typedExpr typeInfo t
 
-    VarDeclarationT :name value: typedExpr :astType :token typeInfo: db dtc unit toTypeInfoDefault
+    VarDeclarationT 
+      :name 
+      value: typedExpr 
+      :astType 
+      :token 
+      typeInfo: db dtc unit toTypeInfoDefault
     
-    // TypedExpr 
-    //   nivaType: db dtc unit
-    //   exprAst: typedExpr 
-    //   isMutable: typedExpr typeInfo isMut
   ]
   | Assign => AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
   | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
@@ -138,10 +139,10 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
   ]
 
   | CodeBlock => [
-    typedBody = body resolveBody2: db withContext: c 
-    returnType = typedBody t
+    typedBody2 = body resolveBody2: db withContext: c 
+    returnType = typedBody2 t
 
-    CodeBlockT args: args untypedArgs: untypedArgs body: typedBody token: token typeInfo: returnType toTypeInfoDefault
+    CodeBlockT args: args untypedArgs: untypedArgs body: typedBody2 token: token typeInfo: returnType toTypeInfoDefault
   ]
   | Match     => [
 
@@ -163,9 +164,9 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
     branchesT = branches map: [
 
       conditionsT = it conditions resolveBody2: db withContext: c
-      bodyT = it body       resolveBody2: db withContext: c
+      bodyT = it body resolveBody2: db withContext: c
       
-      matchType <- it body typedBody last nivaType
+      matchType <- it body typedBody2 last typeInfo t
 
       MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c) 
                    conditions: conditionsT
@@ -195,16 +196,14 @@ TyperDB checkRealArgs2::List::CheckMethodArg2 withExpectedArgs::List::TypeTField
   withExpectedArgs forEachIndexed: [ i, it ->
     {nivaType, expr, argName} = checkRealArgs2 at: i 
     
-
     it typeT compareWith: nivaType, ifFalse: [
       expected = it typeT toString
       sended = nivaType toString
       exprStr = expr toString
-      
-      
+      msg = "($sended != $expected) $expected expected, but $argName $exprStr is $sended"
       this addErrorMessage: (ErrorWrongArgType 
                               tok: expr token 
-                              msg: "($sended != $expected) $expected expected, but $argName $exprStr is $sended")
+                              msg: msg)
     ]
   ]
 
@@ -219,7 +218,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context -> Keyword
 
   // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
   foundMsg = db 
-    findMsgFromReceiver: receiverType 
+    findMsgFromReceiver: receiverTypedExpr 
     byName: .getNameFromArgs
   
   Assert that: foundMsg args count equals: args count
@@ -253,30 +252,26 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context -> Keyword
     NameAndExprT name: name expr: typedExpr
   ]
   
-  // если это конструктор то скорее всего генерим 
   
   // try to find by id
-  letterToType isNotEmpty && true ifTrue: [
-    // GENERIC CONSTRUCTOR - register instantiated variant
-    | receiverType
-    | TypeOfTheType => [
-      realT = receiverType v 
-      | realT
+  letterToType isNotEmpty ifTrue: [
+    receiverTypedExpr isIdentifierConstructor ifTrue: [
+      // GENERIC DEFAULT CONSTRUCTOR - register instantiated variant
+      | receiverType
       | TypeT => [
-        thisIsConstructor = foundMsg isConstructorForReceiver: realT
-        thisIsConstructor ifTrue: [
-          // typeId = receiverType generateId
+          receiverTypedExpr isIdentifierConstructor ifTrue: [] ifFalse: []
+          thisIsConstructor = foundMsg isConstructorForReceiver: receiverType
+          thisIsConstructor ifTrue: [
 
-          db addGenericInstantiationIfAbsent: realT
-             letterToType: letterToType 
-        ]
+            db addGenericInstantiationIfAbsent: receiverType
+              letterToType: letterToType 
+          ]
 
+      ] |=> [
+        TO DO: "generic constructor for usual receiver"
 
-        // TO DO: "SAS"
-      ] |=> []
-
-    ]
-    |=> [
+      ]
+    ] ifFalse: [
       // GENERIC MESSAGE FOR OBJ - resolve generic method with true types
       TO DO: "GENERIC MESSAGE FOR OBJ"
     ]
@@ -284,8 +279,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context -> Keyword
 
   
   // do not check if they are generics
-  db checkRealArgs2: argTypesAndExprs withExpectedArgs: foundMsg args
-
+  db checkRealArgs2: argTypesAndExprs withExpectedArgs: foundMsg args 
   newKeyword = KeywordMsgT args: typedArgs kind: foundMsg kind receiver: receiverTypedExpr token: token typeInfo: (TypeInfo t: foundMsg returnType isMut: foundMsg forMut)
   ^ newKeyword
 ] 
@@ -296,6 +290,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Tu
 
   typeOfReceiver = receiverTypedExpr typeInfo t
   mut lastType = typeOfReceiver
+  mut lastReceiver = receiverTypedExpr
 
   typedArgs = args map: [ binary ->
     // 1 + (2 inc)
@@ -303,7 +298,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Tu
     // resolce type of arg
     // compare that found message has arg with same type
     binaryName = binary name name
-    dbMsg = db findMsgFromReceiver: lastType  byName: binaryName
+    dbMsg = db findMsgFromReceiver: lastReceiver  byName: binaryName
     (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
     dbArg = dbMsg args first
     // resolve type of arg
@@ -320,7 +315,8 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Tu
     // create typed expr with return type of dbMsg in db message
     typed = resolvedArg
 
-    lastType <- dbMsg returnType
+    lastType <- dbMsg returnType // 2 + 2 ^(Int)+ 2
+    lastReceiver <- resolvedArg // 2 + ^2 + 2
     NameAndExprT name: binary name expr: resolvedArg
     // NameAndExpr name: binary name expr: typed
   ]
@@ -334,7 +330,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Tu
 UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT = [
   resolvedReceiver = receiver toTypedExprFromDb2: db withContext: c
   typeOfReceiver = resolvedReceiver typeInfo t
-  dbMsg = db findMsgFromReceiver: typeOfReceiver  byName: selector name
+  dbMsg = db findMsgFromReceiver: resolvedReceiver byName: selector name
 
   typeInfo = TypeInfo t: dbMsg returnType isMut: dbMsg forMut
   newUnary2 = UnaryMsgT selector: selector kind: dbMsg kind receiver: resolvedReceiver token: token typeInfo: typeInfo

@@ -148,7 +148,7 @@ TypeDeclVisitor
     ]
     
 // resolve main
-    mainBody = (Body typedBody: {}! unTypedBody: entryPointExpressions typedBody2: {}!) 
+    mainBody = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
 
 
     mainBody resolveBody: db 
