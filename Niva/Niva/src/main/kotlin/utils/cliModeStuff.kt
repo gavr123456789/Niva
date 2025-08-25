@@ -54,8 +54,10 @@ class ArgsManager(val args: MutableList<String>) {
                 "run" -> if (mill) MainArgument.RUN_MILL
                     else MainArgument.RUN
 
-                "build" -> if (mill) MainArgument.BUILD_MILL
-                else MainArgument.BUIlD
+                "build" -> if (mill)
+                    MainArgument.BUILD_MILL
+                else
+                    MainArgument.BUIlD
                 "distr" -> MainArgument.DISRT
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY

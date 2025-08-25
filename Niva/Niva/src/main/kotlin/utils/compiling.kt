@@ -61,8 +61,9 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
         .directory(workingDir)
 
     if (withOutputCapture && !runTests) {
-        p.redirectOutput(ProcessBuilder.Redirect.INHERIT)
-            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+        p
+            .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectInput(ProcessBuilder.Redirect.PIPE)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
 
@@ -81,10 +82,6 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 
 
     val inputStream = BufferedReader(InputStreamReader(process.inputStream))
-//    while (process.isAlive) {
-//        inputStream.readLine()?.also { output = it } //!= null ||
-//        println(output)
-//    }
 
     // do not watch if its file watcher
     if (!this.contains("-t"))
@@ -316,7 +313,8 @@ fun compileProjFromFile(
     onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, File) -> Unit)? = null,
     customAst: Pair<List<Statement>, List<Pair<String, List<Statement>>>>? = null,
     buildSystem: BuildSystem,
-    previousFilePath: MutableList<File>? = null
+    previousFilePath: MutableList<File>? = null,
+    evalCustomExpr: String? = null,
 ): Resolver {
 
     val mainFile = File(pm.pathToNivaMainFile)
@@ -346,7 +344,14 @@ fun compileProjFromFile(
     // we need custom ast to fill file to ast table in LS(non incremental store)
     val (mainAst, otherAst) = {
         if (customAst == null) {
-            val mainText = mainFile.readText()
+            val qwf = if (evalCustomExpr != null) {
+                """
+                    [
+                        $evalCustomExpr
+                    ] do echo
+                """.trimIndent()
+            } else null
+            val mainText = qwf ?: mainFile.readText()
             val beforeParserMark = markNow()
             val w = parseFilesToAST(
                 mainFileContent = mainText,

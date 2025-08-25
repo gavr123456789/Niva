@@ -177,6 +177,12 @@ fun Resolver.resolveWithBackTracking(
     unResolvedTypeDeclarations.forEach { (_, u) ->
         if (u.isNotEmpty()) {
             val decl = u.first()
+            if (decl is UnionRootDeclaration) {
+                val unresolvedBranches = decl.branches.filter{ it.receiver == null }.joinToString("\n").prependIndent("    ")
+                decl.token.compileError("Unresolved branches of the union ${decl.typeName}: \n$unresolvedBranches")
+
+            }
+
             decl.token.compileError("Unresolved type declarations: $unResolvedTypeDeclarations")
         }
     }

@@ -1,5 +1,7 @@
 NivaType compareWith: nivaType::NivaType -> Bool = [
 
+
+
  ^| nivaType
   | UnitT => [
     | this
@@ -8,8 +10,8 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   ]
   | IntegerT => [
     | this
-    | IntegerT => true
-    |=> false
+    | IntegerT => [true]
+    |=> [false]
   ]
   | FloatT => [
     | this
@@ -32,6 +34,7 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
     |=> false
   ]
   | StringT => [
+    TO DO: "111"
     | this
     | StringT => true
     |=> false
@@ -50,9 +53,12 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
     | this
     | TypeT => [
       
+        this debug
+        nivaType debug
+        TO DO
       // this genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
       // nivaType genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
-
+      // (isConstructorForReceiver == nivaType isConstructorForReceiver) &&
       (name == nivaType name) &&
       (pkgName == nivaType pkgName) &&
       (genericArgs toString == nivaType genericArgs toString)
@@ -105,13 +111,6 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   | NullableT => [
     | this
     | NullableT => [
-      this v compareWith: nivaType v
-    ]
-    |=> false  
-  ]
-  | TypeOfTheType => [
-    | this
-    | TypeOfTheType => [
       this v compareWith: nivaType v
     ]
     |=> false  

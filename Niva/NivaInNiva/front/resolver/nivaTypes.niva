@@ -14,7 +14,7 @@ union NivaType name: String pkgName: String =
 | AnyT
 | NothingT
 // complex
-| TypeT  fields: mut List::TypeTField genericArgs: mut List::NivaType
+| TypeT  fields: mut List::TypeTField genericArgs: mut List::NivaType 
 | UnionT  branches: List::UnionTBranch
 | FuntionT args: List::TypeTField returnType: NivaType// method or lambda
 // collections
@@ -25,14 +25,12 @@ union NivaType name: String pkgName: String =
 | UnresolvedGenericT letter: String
 | NullT // usually x = null, should be resolved to x::Nothing = null
 | NullableT v: NivaType
-| TypeOfTheType v: NivaType // hack for constructors
 | Unknown // Special type for 
 
 extend NivaType [
   on generateId -> String = [
 
     result = | this
-    | TypeOfTheType => v generateId
     | TypeT => [
       genericArgsStr = genericArgs isNotEmpty 
                         ifTrue: ["(" + (genericArgs joinWith: "," transform: [it name]) + ")"] 
@@ -51,7 +49,8 @@ extend NivaType [
   ]
 ]
 
-constructor TypeT noFieldsWithName: name::String pkgName::String= TypeT name: name pkgName: pkgName fields: {}! genericArgs: {}!
+constructor TypeT noFieldsWithName: name::String pkgName::String  = TypeT 
+  :name :pkgName fields: {}! genericArgs: {}!
 
 extend TypeT [
   on generateDefaultConstructor -> NivaMethod = 
@@ -115,7 +114,6 @@ constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: 
 constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
 constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: "core"
 
-constructor TypeOfTheType v::NivaType = TypeOfTheType v: v name: v name pkgName: v pkgName
 constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgName
 
 
@@ -134,6 +132,7 @@ extend NivaMethod [
   on copyWithDifferentType: rt::NivaType = 
     NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
   
+  /// sort args and checks them with fields, so any arg order should work probably 
   on isConstructorForReceiver: receiver::TypeT -> Bool = [
     {fields} = receiver
     argsSorted = args map: [it name], sortedBy: [it], joinWith: ", "

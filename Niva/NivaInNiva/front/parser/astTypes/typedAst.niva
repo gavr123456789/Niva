@@ -14,7 +14,7 @@ type MatchBranchT
 
 union TypedExpr2 token: Token typeInfo: TypeInfo = 
 | ^LiteralExprT 
-| IdentifierT     name: String path: {String}?
+| IdentifierT     name: String path: {String}? isNameOfTheType: Bool
 | ExprInBracketsT value: TypedExpr2
 | VarDeclarationT    name: String value: TypedExpr2 astType: AstType2?
 | AssignT            name: String value: TypedExpr2
@@ -71,6 +71,6 @@ union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo =
 
 // constructors
 
-constructor IdentifierT fromToken::Token typeInfo::TypeInfo= 
-  IdentifierT name: (fromToken lexeme) token: fromToken path: null typeInfo: typeInfo
+constructor IdentifierT fromToken::Token typeInfo::TypeInfo isNameOfTheType::Bool= 
+  IdentifierT name: (fromToken lexeme) token: fromToken path: null :typeInfo :isNameOfTheType
 
