@@ -180,7 +180,6 @@ fun MutableList<Pragma>.addInvisibleArgsToMethodDeclaration(args: List<KeywordDe
 
 fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = false) = buildString {
     append(funGenerateReceiver(isStatic))
-
     // fun Person^.sas() {}
     append(".", name.ifKtKeywordAddBackTicks(), "(")
 
@@ -190,8 +189,9 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
         append(arg.name())
         if (arg.typeAST != null) {
             val type = arg.type
-            val name = type?.toKotlinString(true) ?: arg.typeAST.generateType(null)
-            append(": ", name) // typeAST.generateType((arg.type as? Type.UserLike)?.emitName
+            val name = type?.toKotlinString(true)
+                ?: arg.typeAST.generateType(null)
+            append(": ", name)
             if (i != c) {
                 append(", ")
             }

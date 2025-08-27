@@ -27,7 +27,6 @@ fun Resolver.setTypeForCollection(typeArgumentList: MutableList<Type>, statement
     statement2.type = collectionType
     return collectionType
 }
-
 fun Resolver.resolveCollection(
     statement: CollectionAst,
     typeName: String,
@@ -35,6 +34,7 @@ fun Resolver.resolveCollection(
 ) {
 
     val nearVarDecl = findNearestVarDeclInStack()
+    val nearVarDeclType = nearVarDecl?.valueTypeAst
     if (statement.initElements.isNotEmpty()) {
         // resolve args
         statement.initElements.forEach {
@@ -68,8 +68,9 @@ fun Resolver.resolveCollection(
         } else {
             statement.token.compileError("Compiler bug: Can't get type of elements of list literal")
         }
-    } else if (nearVarDecl != null && nearVarDecl.valueTypeAst != null) {
-        val typeFromAstDecl = nearVarDecl.valueTypeAst!!.toType(typeDB, typeTable)
+    } else if (nearVarDecl != null && nearVarDeclType != null && isCollection(nearVarDeclType.name)) {
+        // check that literal type is same as var declared type
+        val typeFromAstDecl = nearVarDeclType.toType(typeDB, typeTable)
         if (typeFromAstDecl is Type.UserLike) {
             if (typeName != typeFromAstDecl.name) {
                 statement.token.compileError("Declared type of collection: $typeFromAstDecl but literal used for $typeName")

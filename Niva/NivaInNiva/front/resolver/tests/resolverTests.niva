@@ -57,12 +57,19 @@ Test constructorCall = [
   | msgDecl
   | MessageDecl => [
     varDecl = msgDecl body typedBody2 at: 0
-    kwMsg = varDecl
-    | kwMsg
-    | KeywordMsg => [
-      Assert that: kwMsg kind equals: MessageSendKind.Constructor
+
+    | varDecl
+    | VarDeclarationT => [
+      kwMsg = varDecl value
+      | kwMsg
+      | KeywordMsgT => [
+        Assert that: kwMsg kind equals: MessageSendKind.Constructor
+      ]
+      |=> TO DO
     ]
-    |=> TO DO
+    |=> []
+
+
   ]
   |=> [TO DO]
   

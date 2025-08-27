@@ -70,11 +70,10 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
   //   put: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2 // todo
 
 
-  MsgDeclVisitor new 
+  MsgDeclVisitor new
     processBodyes: msgDecls 
     db: db
-    
-
+     
   ^ ResolverHelper 
     fileToStatements: fileToStatements 
     db: db
@@ -158,7 +157,6 @@ TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
   |=> [
     pkg constructorsProtocol addMethod: m
     "added constructor " + m name + " for type " + forType name, log
-    forType debug
   ]
 
 ]
@@ -254,9 +252,10 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
       "found constructor $name" log
       ^ maybeConstructor 
     ]
-  ] ifFalse: [
-    TO DO: "Searching for $name method but type $forType has zero protocols"
-  ]
+  ] 
+  // ifFalse: [
+    // TO DO: "Searching for $name method but type $forType has zero protocols, error in resolving: $receiver"
+  // ]
 
   protocols = protocols at: forType
   | protocols
