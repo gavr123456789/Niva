@@ -13,7 +13,7 @@ union Statement token: Token =
 
 type Body 
   // typedBody: mut List::TypedExpr
-  unTypedBody: List::Expr
+  unTypedBody: mut List::Expr
   typedBody2: mut List::TypedExpr2
 
 

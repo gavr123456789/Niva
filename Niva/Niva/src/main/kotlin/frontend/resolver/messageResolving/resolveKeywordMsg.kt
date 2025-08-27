@@ -330,8 +330,8 @@ fun Resolver.resolveKeywordMsg(
                 kwArg.keywordArg.token.compileError("Constructor of ${YEL}${statement.receiver} has fields: $CYAN${receiverFields.map { it.name }}${RESET}, not ${CYAN}${kwArg.name} ")
             }
             val type = kwArg.keywordArg.type!!
-            val unpackLambda = if (argFromDB.type !is Type.Lambda && type is Type.Lambda) type.returnType else type
-            if (!compare2Types(argFromDB.type,unpackLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
+            val unpackTypeIfLambda = if (argFromDB.type !is Type.Lambda && type is Type.Lambda) type.returnType else type
+            if (!compare2Types(argFromDB.type,unpackTypeIfLambda,kwArg.keywordArg.token, unpackNullForFirst = true)) {
                 kwArg.keywordArg.token.compileError("Inside constructor of $YEL${statement.receiver.type}$RESET, type of ${WHITE}${kwArg.name}${RESET} must be ${YEL}${argFromDB.type}${RESET}, not ${YEL}${kwArg.keywordArg.type} ")
             }
         }

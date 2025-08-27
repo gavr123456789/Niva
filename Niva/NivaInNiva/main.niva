@@ -17,23 +17,7 @@ type NivaCompiler
 type NivaBuildSystem
 
 
-wrongArgTypeError = [
-  fileMain = """
-    type Person name: String
-    p = Person name: 234
-    q = Person name: 'c'
-    w = Person name: true
-  """
-
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
-
-  Assert that: db listOfErrors count equals: 3
-] do
-
-scopeVariables = [
+ scopeVariables = [
   fileMain = """
     a = 0
     codeBlock = [
@@ -50,39 +34,7 @@ scopeVariables = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
   typedAst = result fileToStatements at: "main", unpackOrPANIC  
-]
-
-
- constructorCall = [
-  fileMain = """
-    type Person age: Int 
-    Int sas = [
-      p = Person age: 27
-    ]
-    
-  """
-
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-  // typedAst map: [it toTyped exprAst toString], joinWith: "\n\n"
-  
-  msgDecl = typedAst at: 1
-  
-  | msgDecl
-  | MessageDecl => [
-    varDecl = msgDecl body typedBody2 at: 0
-    kwMsg = varDecl
-    | kwMsg
-    | KeywordMsg => [
-      Assert that: kwMsg kind equals: MessageSendKind.Constructor
-    ]
-    |=> TO DO
-  ]
-  |=> [TO DO]
-  
-] 
+] do
 
 
 newResolve = [

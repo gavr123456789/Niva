@@ -276,7 +276,7 @@ extend mut Parser [
       .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
-      Body unTypedBody: {(.nextExperssion: .step)} typedBody2: {}!
+      Body unTypedBody: {(.nextExperssion: .step)}! typedBody2: {}!
     ]
   ]
 
@@ -334,7 +334,7 @@ extend mut Parser [
         .matchAssert: TokenType.Then
 
         body = .parseBodyOrSingleExpr
-        conditions = Body unTypedBody: (exprs drop: 1) typedBody2: {}!
+        conditions = Body unTypedBody: (exprs drop: 1, toMutableList) typedBody2: {}!
         mb = MatchBranch condition: exprs first conditions: conditions body: body
         branches add: mb
 

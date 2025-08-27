@@ -111,7 +111,7 @@ TypeDeclVisitor
       // get real type for receiver
 
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
-      receiverType debug
+      receiverType 
 
       | receiverType | TypeT => [
         receiverType genericArgs isNotEmpty ifTrue: [
@@ -148,12 +148,13 @@ TypeDeclVisitor
     ]
     
 // resolve main
-    mainBody = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
+    mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
 
 
-    mainBody resolveBody: db 
-             withContext: Context root
-
+    typedMain = mainBody resolveBody2: db 
+      withContext: Context root
+    
+    // mainBody typedBody2 addAll: 
 
 
     fakeUnitAstType = AstType2 unitType
@@ -274,7 +275,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
   ]
 // resolve body
   c = createContextWithThisAndArgs do
-  body resolveBody: db withContext: c
+  body resolveBody2: db withContext: c
 ]
 
 

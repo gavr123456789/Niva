@@ -1,3 +1,4 @@
+/// used only for resolving body insied expressions, not for resolve body from message declarations
 Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody = [
   // StackTrace get log
   // Compiler getPlace log
@@ -13,24 +14,23 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody =
   Assert that: typedBody2 isEmpty equals: true
 
   // stackOfVisited::mut Set::MessageDecl = #()
-
   listOfTypedExpr2 = unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb2: db withContext: c
     typeOfExpr = typed typeInfo t
     // check that type is not Unknown
-    | typeOfExpr
-    | Unknown => [
+    | typeOfExpr | Unknown => [
       TO DO: "Unknown type of expr is not possible $expr"
-    ]
-    |=> []
+    ] |=> []
     // if it is, then go and resolve the body, with remembering stack
-
-
 
     typed
   ]
 
+  typedBody2 addAll: listOfTypedExpr2
+  unTypedBody clear
+
   Assert that: typedBody2 isNotEmpty equals: true
+  Assert that: unTypedBody isEmpty equals: true
 
   ^ TypedBody v: listOfTypedExpr2 
               t: listOfTypedExpr2 last typeInfo t
@@ -141,7 +141,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
   | CodeBlock => [
     typedBody2 = body resolveBody2: db withContext: c 
     returnType = typedBody2 t
-
+ 
     CodeBlockT args: args untypedArgs: untypedArgs body: typedBody2 token: token typeInfo: returnType toTypeInfoDefault
   ]
   | Match     => [
