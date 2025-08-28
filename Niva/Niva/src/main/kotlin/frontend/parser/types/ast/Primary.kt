@@ -53,7 +53,8 @@ class IdentifierExpr(
     val names: List<String> = listOf(name),
     type: TypeAST? = null,
     token: Token,
-    var isType: Boolean = false
+    var isType: Boolean = false,
+//    var varDeclaration: VarDeclaration? = null
 ) : Primary(type, token) {
     override fun toString(): String {
         return names.joinToString(".")

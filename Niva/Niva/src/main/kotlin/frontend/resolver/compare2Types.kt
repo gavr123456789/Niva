@@ -197,7 +197,7 @@ fun compare2Types(
                     }
                 }
 
-                val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)
+                val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false) // we dont need to compare mutability of generic args
                 if (!sameArgs) {
                     return false
 //                    tokenForErrors.compileError("Generic argument of type: ${YEL}${type1OrChildOf2.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")

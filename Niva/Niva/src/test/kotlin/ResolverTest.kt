@@ -31,6 +31,18 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 )
 
 class ResolverTest {
+
+    @Test
+    fun noMutabilityCompareBetweenGenericArgs(){
+        val source = """
+            type Ball
+        
+            balls::List(mut Ball) = {(Ball new)}
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
     @Test
     fun getterCall() {
         val source = """

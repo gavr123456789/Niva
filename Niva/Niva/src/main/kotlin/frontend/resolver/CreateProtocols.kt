@@ -518,7 +518,9 @@ fun createRangeProtocols(
     unitType: Type.InternalType,
 
     listOfIt: Type.UserType,
-    sequenceOfIt: Type.UserType
+    sequenceOfIt: Type.UserType,
+    differentGenericType: Type.UnknownGenericType,
+    listOfDifferentGeneric: Type.UserType
 ): MutableMap<String, Protocol> {
     //     listType: Type.UserType,
     //    sequenceType: Type.UserType,
@@ -541,6 +543,8 @@ fun createRangeProtocols(
             createKeyword(KeywordArg("step", itType), rangeType, "The step of the progression"),
 
             createForEachKeyword(itType, unitType),
+            createMapKeyword(itType, differentGenericType, listOfDifferentGeneric),
+
             createForEachKeywordIndexed(itType, itType, unitType),
             createFilterKeyword(itType, boolType, rangeType),
 

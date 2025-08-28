@@ -17,11 +17,10 @@ type NivaCompiler
 type NivaBuildSystem
 
 
- codeblockCall = [
+codeblockCall = [
   fileMain = """
     x = [
-      "sas"
-      1 inc
+      1
     ]
     
     x do
@@ -30,18 +29,24 @@ type NivaBuildSystem
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   
   db = result db
-  typedAst = result entryPointExpressions 
+  typedAst = result entryPointExpressions debug
+
+
   checkFirst = [
     codeBlock = typedAst at: 0
-    | codeBlock | CodeBlockT => [
+    | codeBlock 
+    | CodeBlockT => [
       Assert that: codeBlock args count equals: 0
       t = codeBlock typeInfo t
-      | t | FuntionT => [
+      | t 
+      | FuntionT => [
         Assert that: t returnType name equals: "Int"
-      ] |=> [TO DO: "function type expected"]
+      ] 
+      |=> [TO DO: "function type expected"]
 
-    ] |=> [TO DO: "codeblock expected"]
-  ] do
+    ] 
+    |=> [TO DO: "codeblock expected"]
+  ] 
 
 
 ] do
@@ -80,7 +85,7 @@ tsBack = [
   // typedAst first toTyped nivaType log
   typedAst debug
 
-  TSBackend mainStatements: typedAst sb: StringBuilder new, generate
+  // TSBackend mainStatements: typedAst sb: StringBuilder new, generate
 
 ] 
 

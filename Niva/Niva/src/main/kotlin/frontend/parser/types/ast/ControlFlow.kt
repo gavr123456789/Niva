@@ -41,8 +41,7 @@ sealed class ControlFlow(
     token: Token,
     type: Type?,
     pragmas: MutableList<Pragma> = mutableListOf(),
-    isPrivate: Boolean = false,
-) : Expression(type, token, isPrivate, pragmas) {
+) : Expression(type, token, pragmas) {
 
     class If(
         ifBranches: List<IfBranch>,

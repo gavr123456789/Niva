@@ -14,7 +14,6 @@ sealed class ASTNode2(
 
 sealed class Statement(
     token: Token,
-    val isPrivate: Boolean,
     var pragmas: MutableList<Pragma>,
     var docComment: DocComment? = null
 ) : ASTNode2(token) {
@@ -25,9 +24,8 @@ sealed class Statement(
 
 sealed class Declaration(
     token: Token,
-    isPrivate: Boolean,
     pragmas: MutableList<Pragma>,
-) : Statement(token, isPrivate, pragmas) {
+) : Statement(token, pragmas) {
     override fun toString(): String {
         return "Declaration(${token.lexeme})"
     }
@@ -37,28 +35,25 @@ sealed class Expression(
     var type: Type? = null,
 
     token: Token,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var isInlineRepl: Boolean = false,
     var inlineReplCounter: Int = 1,
     var isInfoRepl: Boolean = false,
-) : Statement(token, isPrivate, pragmas)
+) : Statement(token, pragmas)
 
 
 class NeedInfo(
     var expression: Expression?,
     token: Token,
 //    num: Int = 1, // selected suggestion
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : Statement(token, isPrivate, pragmas)
+) : Statement(token, pragmas)
 
 class ReturnStatement(
     var expression: Expression?,
     token: Token,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : Statement(token, isPrivate, pragmas)
+) : Statement(token, pragmas)
 
 class VarDeclaration(
     token: Token,
@@ -66,10 +61,9 @@ class VarDeclaration(
     var value: Expression,
     var valueTypeAst: TypeAST? = null,
     val mutable: Boolean = false,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var declaredType: Type? = null,
-) : Statement(token, isPrivate, pragmas) {
+) : Statement(token, pragmas) {
     override fun toString(): String {
         val type = if (value.type != null) "::" + value.type.toString() else ""
         return "$name$type = $value"
@@ -81,7 +75,7 @@ class DestructingAssign(
     val names: List<IdentifierExpr>,
     val value: Expression,
     pragmas: MutableList<Pragma> = mutableListOf()
-) : Statement(token, false, pragmas) {
+) : Statement(token, pragmas) {
     override fun toString(): String {
         return "{" + "${names.joinToString(", ") + "}"} <- $value"
     }
@@ -93,9 +87,8 @@ class Assign(
     token: Token,
     val name: String,
     val value: Expression,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf()
-) : Statement(token, isPrivate, pragmas) {
+) : Statement(token, pragmas) {
     override fun toString(): String {
         return "$name <- $value"
     }
