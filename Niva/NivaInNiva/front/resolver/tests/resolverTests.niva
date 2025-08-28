@@ -3,6 +3,54 @@
   // shoud be error, but there are no way to typeChecks errors for now
 // ]
 
+Test  codeblockReturnType = [
+  fileMain = """
+    [
+      "sas"
+      1 inc
+    ]
+    [a::Int, b::Int -> 
+      a + b
+    ]
+
+    
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+
+
+  db = result db
+  typedAst = result entryPointExpressions 
+  checkFirst = [
+    codeBlock = typedAst at: 0
+    | codeBlock | CodeBlockT => [
+      Assert that: codeBlock args count equals: 0
+      t = codeBlock typeInfo t
+      | t | FuntionT => [
+        Assert that: t returnType name equals: "Int"
+      ] |=> [TO DO: "function type expected"]
+
+    ] |=> [TO DO: "codeblock expected"]
+  ] do
+
+
+  checkSecond = [
+    codeBlock = typedAst at: 1
+    | codeBlock | CodeBlockT => [
+      Assert that: codeBlock args count equals: 2
+      
+
+
+      t = codeBlock typeInfo t
+      | t | FuntionT => [
+        Assert that: t returnType name equals: "Int"
+      ] |=> [TO DO: "function type expected"]
+
+    ] |=> [TO DO: "codeblock expected"]
+  ] do
+
+]
+
 Test wrongArgTypeError = [
   fileMain = """
     type Person name: String
@@ -22,10 +70,10 @@ Test wrongArgTypeError = [
 Test scopeVariables = [
   fileMain = """
     a = 0
-    codeBlock = [
+    block = [
       b = 1
       b inc
-      codeblock2 = [
+      block2 = [
         c = 2
         a inc
       ]

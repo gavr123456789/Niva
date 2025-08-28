@@ -150,9 +150,11 @@ TypeDeclVisitor
 // resolve main
     mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
 
-
-    typedMain = mainBody resolveBody2: db 
+    
+    typedMain = mainBody 
+      resolveBody2: db 
       withContext: Context root
+      pkg: "entryPoint"
     
     // mainBody typedBody2 addAll: 
 
@@ -241,9 +243,9 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
 MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
 
   pkg2Msg forEach: [tuple -> 
-    // pkgName = tuple x 
+    pkg = tuple x 
     msgDecl = tuple y 
-    msgDecl resolveBodyWithDb: db
+    msgDecl resolveBodyWithDb: db :pkg
   ]
 ]
 
@@ -254,7 +256,7 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb: db::TyperDB = [
+MessageDecl resolveBodyWithDb: db::TyperDB pkg::String= [
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context root
@@ -275,7 +277,8 @@ MessageDecl resolveBodyWithDb: db::TyperDB = [
   ]
 // resolve body
   c = createContextWithThisAndArgs do
-  body resolveBody2: db withContext: c
+  
+  body resolveBody2: db withContext: c :pkg
 ]
 
 
