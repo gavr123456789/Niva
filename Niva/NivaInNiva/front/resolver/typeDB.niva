@@ -37,7 +37,7 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 type ResolverHelper
-  fileToStatements: Map(String, List::Statement) 
+  fileToStatements: Map(String, List::Statement)  // по сути это список аст деклараций типов и методов, в которых боди теперь типизированы
   db: TyperDB
   entryPointExpressions: List::TypedExpr2
   // entryPointStatements: List::TypedExpr
@@ -300,7 +300,9 @@ TyperDB
     |=> [
       Assert that: decl isSingleExpr equals: true
 
-      decl resolveBodyWithDb: this
+  
+      decl resolveBodyWithDb: this pkg: pkg name
+
       Assert that: decl body typedBody2 isNotEmpty equals: true
 
       returnType = decl body typedBody2 last typeInfo t

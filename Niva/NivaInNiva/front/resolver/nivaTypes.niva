@@ -38,7 +38,7 @@ extend NivaType [
       
       pkgName + "." + name + genericArgsStr
     ]
-    // | FuntionT => [TO DO]
+    
     | UnresolvedGenericT => [name]
     | NullableT => [this v generateId + "?"]
     | Unknown => [TO DO: "Can't get id of Unknown type, all types should be resolved"]

@@ -17,23 +17,33 @@ type NivaCompiler
 type NivaBuildSystem
 
 
- scopeVariables = [
+ codeblockCall = [
   fileMain = """
-    a = 0
-    codeBlock = [
-      b = 1
-      b inc
-      codeblock2 = [
-        c = 2
-        a inc
-      ]
+    x = [
+      "sas"
+      1 inc
     ]
+    
+    x do
   """
-
-
+  
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  typedAst = result entryPointExpressions 
+  checkFirst = [
+    codeBlock = typedAst at: 0
+    | codeBlock | CodeBlockT => [
+      Assert that: codeBlock args count equals: 0
+      t = codeBlock typeInfo t
+      | t | FuntionT => [
+        Assert that: t returnType name equals: "Int"
+      ] |=> [TO DO: "function type expected"]
+
+    ] |=> [TO DO: "codeblock expected"]
+  ] do
+
+
 ] do
 
 
