@@ -293,7 +293,6 @@ fun isCollection(name: String) = when (name) {
 sealed class Type(
     val name: String,
     val pkg: String,
-    val isPrivate: Boolean,
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
@@ -328,7 +327,6 @@ sealed class Type(
                 InternalType(
                     typeName = InternalTypes.valueOf(name),
                     pkg = pkg,
-                    isPrivate = isPrivate,
                     protocols = protocols,
                 )
             }
@@ -357,7 +355,6 @@ sealed class Type(
                     }.toMutableList(),
                     returnType = returnType.copyAnyType(),
                     pkg = pkg,
-                    isPrivate = isPrivate,
                     extensionOfType = extensionOfType,
                     specialFlagForLambdaWithDestruct = specialFlagForLambdaWithDestruct,
                     alias = alias
@@ -495,7 +492,6 @@ sealed class Type(
     ) : Type(
         realType.name,
         realType.pkg,
-        realType.isPrivate,
         createNullableAnyProtocols(realType)
     ) {
         init {
@@ -514,10 +510,9 @@ sealed class Type(
     ) : Type(
         "???",
         "???",
-        false,
 //        realType.name,
 //        realType.pkg,
-//        realType.isPrivate,
+//        realType,
 //        createNullableAnyProtocols(realType)
     )
 
@@ -526,38 +521,29 @@ sealed class Type(
         val args: MutableList<KeywordArg>,
         var returnType: Type,
         pkg: String = "common",
-        isPrivate: Boolean = false,
         var specialFlagForLambdaWithDestruct: Boolean = false,
         val extensionOfType: Type? = null,
         var alias: String? = null
-    ) : Type("[${args.joinToString(", ") { it.type.toString() }} -> $returnType]", pkg, isPrivate)
+    ) : Type("[${args.joinToString(", ") { it.type.toString() }} -> $returnType]", pkg)
 
-//    sealed class InternalLike(
-//        typeName: InternalTypes,
-//        pkg: String,
-//        isPrivate: Boolean = false,
-//        protocols: MutableMap<String, Protocol>
-//    ) : Type(typeName.name, pkg, isPrivate, protocols)
 
     class InternalType(
         typeName: InternalTypes,
         pkg: String,
-        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf()
-    ) : Type(typeName.name, pkg, isPrivate, protocols) //: InternalLike(typeName, pkg, isPrivate, protocols)
+    ) : Type(typeName.name, pkg, protocols) //: InternalLike(typeName, pkg,, protocols)
 
     sealed class UserLike(
         name: String,
         typeArguments: List<Type> = emptyList(),
         var fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol>,
         var isBinding: Boolean = false,
         val typeDeclaration: SomeTypeDeclaration?, // for example List doesn't have type decl
 
         var needGenerateDynamic: Boolean = false // for backend, need to generate
-    ) : Type(name, pkg, isPrivate, protocols) {
+    ) : Type(name, pkg, protocols) {
 
         var emitName: String
 
@@ -655,7 +641,7 @@ sealed class Type(
                                 it
                         }.toMutableList(),
                         fields = this.fields.copy(this),
-                        isPrivate = this.isPrivate,
+                        
                         pkg = withDifferentPkg ?: this.pkg,
                         protocols = this.protocols.toMutableMap(),
                         typeDeclaration = this.typeDeclaration,
@@ -666,7 +652,7 @@ sealed class Type(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
-                    isPrivate = this.isPrivate,
+                    
                     pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
                     protocols = this.protocols.toMutableMap(),
@@ -677,7 +663,7 @@ sealed class Type(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
-                    isPrivate = this.isPrivate,
+                    
                     pkg = withDifferentPkg ?: this.pkg,
                     branches = this.branches.toList(),
                     protocols = this.protocols.toMutableMap(),
@@ -690,7 +676,7 @@ sealed class Type(
                     name = this.name,
                     typeArgumentList = this.typeArgumentList,
                     fields = this.fields.copy(this),
-                    isPrivate = this.isPrivate,
+                    
                     pkg = withDifferentPkg ?: this.pkg,
                     root = this.root,
                     protocols = this.protocols.toMutableMap(),
@@ -712,11 +698,10 @@ sealed class Type(
         name: String,
         typeArgumentList: MutableList<Type> = mutableListOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
 
     // Union -> Error, User
     // User -> Root, Branch
@@ -725,24 +710,22 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         val isError: Boolean,
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class UnionRootType(
         var branches: List<Union>, // can be union or branch
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         isError: Boolean,
         typeDeclaration: SomeTypeDeclaration?
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration) {
+    ) : Union(name, typeArgumentList, fields, pkg, protocols, isError, typeDeclaration = typeDeclaration) {
         fun allBranchesDeep(): Set<Union> {
             return branches.flatMap { it.unpackUnionToAllBranches(mutableSetOf(), null) }.toSet()
         }
@@ -769,12 +752,11 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type> = mutableListOf(), // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         isError: Boolean = false,
         typeDeclaration: SomeTypeDeclaration? = null
-    ) : Union(name, typeArgumentList, fields, isPrivate, pkg, protocols, isError, typeDeclaration = typeDeclaration)
+    ) : Union(name, typeArgumentList, fields, pkg, protocols, isError, typeDeclaration = typeDeclaration)
 
 
     class EnumRootType(
@@ -782,22 +764,20 @@ sealed class Type(
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class EnumBranchType(
         val root: EnumRootType,
         name: String,
         typeArgumentList: List<Type>, // for <T, G>
         fields: MutableList<KeywordArg>,
-        isPrivate: Boolean = false,
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
 
 
     sealed class GenericType(
@@ -805,10 +785,9 @@ sealed class Type(
         typeArgumentList: List<Type>,
         pkg: String,
         fields: MutableList<KeywordArg> = mutableListOf(),
-        isPrivate: Boolean = false,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: TypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, isPrivate, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
 
     class UnknownGenericType(
         name: String,
@@ -1134,7 +1113,7 @@ fun SomeTypeDeclaration.toType(
             name = typeName,
             typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
-            isPrivate = isPrivate,
+            
             pkg = pkg,
             protocols = mutableMapOf(),
             isError = isError,
@@ -1146,7 +1125,7 @@ fun SomeTypeDeclaration.toType(
             name = typeName,
             typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
-            isPrivate = isPrivate,
+            
             pkg = pkg,
             protocols = mutableMapOf(),
             typeDeclaration = this
@@ -1157,7 +1136,7 @@ fun SomeTypeDeclaration.toType(
             name = typeName,
             typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
-            isPrivate = isPrivate,
+            
             pkg = pkg,
             protocols = mutableMapOf(),
             typeDeclaration = this
@@ -1168,7 +1147,7 @@ fun SomeTypeDeclaration.toType(
             name = typeName,
             typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
-            isPrivate = isPrivate,
+            
             pkg = pkg,
             protocols = mutableMapOf(),
             isError = isError,
@@ -1181,7 +1160,7 @@ fun SomeTypeDeclaration.toType(
             name = typeName,
             typeArgumentList = mutableListOf(),
             fields = mutableListOf(),
-            isPrivate = isPrivate,
+            
             pkg = pkg,
             protocols = mutableMapOf(),
             typeDeclaration = this

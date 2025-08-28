@@ -49,8 +49,6 @@ const val fakeFileSourceGOOD = """
 
 fun main(args: Array<String>) {
 
-///////////////////////
-
 //    val args = arrayOf("run","/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/main.niva")
 
     //    val qqq =

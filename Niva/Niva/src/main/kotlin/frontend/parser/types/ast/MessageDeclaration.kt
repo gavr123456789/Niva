@@ -24,7 +24,6 @@ sealed class MessageDeclaration(
     val isSingleExpression: Boolean,
     val body: MutableList<Statement>,
     val returnTypeAST: TypeAST?,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     val isInline: Boolean = false,
     val isSuspend: Boolean = false,
@@ -34,7 +33,7 @@ sealed class MessageDeclaration(
     val typeArgs: MutableList<String> = mutableListOf(),
     val stackOfPossibleErrors: Stack<PairOfErrorAndMessage> = Stack(),
     var messageData: MessageMetadata? = null
-) : Declaration(token, isPrivate, pragmas) {
+) : Declaration(token, pragmas) {
     override fun toString(): String {
         return "${forTypeAst.name} $name -> ${returnType?.toString() ?: returnTypeAST?.name ?: "Unit"}"
     }
@@ -70,7 +69,6 @@ class MessageDeclarationUnary(
     isSingleExpression: Boolean,
     body: MutableList<Statement>,
     returnType: TypeAST?,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean,
     isSuspend: Boolean,
@@ -83,7 +81,6 @@ class MessageDeclarationUnary(
     isSingleExpression,
     body,
     returnType,
-    isPrivate,
     pragmas,
     isInline,
     isSuspend,
@@ -98,7 +95,6 @@ class MessageDeclarationBinary(
     body: MutableList<Statement>,
     returnType: TypeAST?,
     isSingleExpression: Boolean,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false,
     isSuspend: Boolean,
@@ -111,7 +107,6 @@ class MessageDeclarationBinary(
     isSingleExpression,
     body,
     returnType,
-    isPrivate,
     pragmas,
     isInline,
     isSuspend,
@@ -145,7 +140,6 @@ class MessageDeclarationKeyword(
     returnType: TypeAST?,
     isSingleExpression: Boolean,
     typeArgs: MutableList<String> = mutableListOf(),
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     isInline: Boolean = false,
     isSuspend: Boolean,
@@ -157,7 +151,6 @@ class MessageDeclarationKeyword(
     isSingleExpression,
     body,
     returnType,
-    isPrivate,
     pragmas,
     isInline,
     isSuspend,
@@ -178,23 +171,20 @@ class ConstructorDeclaration(
     msgDeclaration.isSingleExpression,
     msgDeclaration.body,
     msgDeclaration.returnTypeAST,
-    msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
 )
 
 class ManyConstructorDecl(
     val messageDeclarations: List<ConstructorDeclaration>,
     token: Token,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : Declaration(token, isPrivate, pragmas)
+) : Declaration(token, pragmas)
 
 class ExtendDeclaration(
     val messageDeclarations: List<MessageDeclaration>,
     token: Token,
-    isPrivate: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
-) : Declaration(token, isPrivate, pragmas)
+) : Declaration(token, pragmas)
 
 
 class StaticBuilderDeclaration(
@@ -211,7 +201,6 @@ class StaticBuilderDeclaration(
     msgDeclaration.isSingleExpression,
     msgDeclaration.body,
     msgDeclaration.returnTypeAST,
-    msgDeclaration.isPrivate,
     msgDeclaration.pragmas,
     msgDeclaration.isInline,
     msgDeclaration.isSuspend,

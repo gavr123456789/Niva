@@ -303,7 +303,6 @@ private fun Resolver.resolveStatement(
 
         is Assign -> {
             stack.push(statement)
-
             // change field inside method for non mut type
             val checkIfThisIsMut = {
                 val thiz = previousScope["this"]
@@ -1624,6 +1623,8 @@ class Resolver(
                 unitType = unitType,
                 listOfIt = listOfInt,
                 sequenceOfIt = seqOfInt,
+                differentGenericType = differentGenericType,
+                listOfDifferentGeneric = listTypeOfDifferentGeneric
             )
         )
         charRangeType.protocols.putAll(
@@ -1634,6 +1635,8 @@ class Resolver(
                 unitType = unitType,
                 listOfIt = listOfChar,
                 sequenceOfIt = seqOfChar,
+                differentGenericType = differentGenericType,
+                listOfDifferentGeneric = listTypeOfDifferentGeneric
             )
         )
 

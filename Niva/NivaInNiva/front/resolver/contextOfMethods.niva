@@ -3,14 +3,15 @@
 type Context 
   parent: Context?
   vars: mut Map(String, NivaType)
+  currentPkg: String
 
 
 
 constructor Context [
   /// no parents no vars(yet)
-  on root = Context parent: null vars: #{}!
-  on fromParent::Context? = 
-    Context parent: fromParent vars: #{}!
+  on rootWithPkg: currentPkg::String = Context parent: null vars: #{}! :currentPkg
+  on fromParent::Context = 
+    Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg
 ]
 
 extend Context [

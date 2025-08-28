@@ -1,8 +1,2 @@
-type Box x: Int?
-
-type Person name: String age: Int
-
-sas::Int? = null
-b = Box x: sas
-
-p = Person name: "John" age: b x
+x = 4
+x <- 5

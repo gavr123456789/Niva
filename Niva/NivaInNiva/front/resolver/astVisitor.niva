@@ -153,8 +153,7 @@ TypeDeclVisitor
     
     typedMain = mainBody 
       resolveBody2: db 
-      withContext: Context root
-      pkg: "entryPoint"
+      withContext: (Context rootWithPkg: "entryPoint")
     
     // mainBody typedBody2 addAll: 
 
@@ -259,7 +258,7 @@ type MessagesWithContext
 MessageDecl resolveBodyWithDb: db::TyperDB pkg::String= [
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
-    c = Context root
+    c = Context rootWithPkg: pkg
     receiver = db findByTypeName: receiver name inPkg: null
     receiver name == "Nothing" ifTrue: [
       TO DO: "You cant declare methods for Nothing type"
@@ -278,7 +277,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::String= [
 // resolve body
   c = createContextWithThisAndArgs do
   
-  body resolveBody2: db withContext: c :pkg
+  body resolveBody2: db withContext: c 
 ]
 
 

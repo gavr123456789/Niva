@@ -249,14 +249,11 @@ fun Parser.methodBody(
 fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
     if (isConstructorOrOn) return true
 
-    var isThereReturn = false
     var isThereEqual = false
 
     val returnArrow = match(TokenType.ReturnArrow)
     if (returnArrow) {
-        isThereReturn = true
         return true
-        identifierMayBeTyped()
     }
     match(TokenType.Return) // (^)?
     match(">>")             // (>>)?
@@ -265,7 +262,7 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
 
 //    return
 
-    return isThereReturn || isThereEqual
+    return isThereEqual
 }
 
 fun Parser.tryUnary(isConstructor: Boolean): Boolean {
@@ -484,7 +481,6 @@ fun Parser.manyConstructorsDecl(pragmas: MutableList<Pragma>): ManyConstructorDe
             )
         },
         token = forTypeAst.token,
-        isPrivate = false,
         pragmas = pragmas
     )
     return result
@@ -493,7 +489,7 @@ fun Parser.manyConstructorsDecl(pragmas: MutableList<Pragma>): ManyConstructorDe
 
 fun Parser.builderDeclarationWithReceiver(pragmas: MutableList<Pragma>): StaticBuilderDeclaration {
     val receiver = parseTypeAST()
-    var builderDecl = builderDeclaration(pragmas, receiver)
+    val builderDecl = builderDeclaration(pragmas, receiver)
     return builderDecl
 }
 

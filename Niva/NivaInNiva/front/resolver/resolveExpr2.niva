@@ -1,5 +1,5 @@
 /// used only for resolving body insied expressions, not for resolve body from message declarations
-Body resolveBody2: db::TyperDB withContext: upperContext::Context pkg::String -> TypedBody = [
+Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody = [
   // StackTrace get log
   // Compiler getPlace log
 
@@ -15,7 +15,7 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context pkg::String ->
 
   // stackOfVisited::mut Set::MessageDecl = #()
   listOfTypedExpr2 = unTypedBody map: [ expr ->
-    typed = expr toTypedExprFromDb2: db withContext: c :pkg
+    typed = expr toTypedExprFromDb2: db withContext: c
     typeOfExpr = typed typeInfo t
     // check that type is not Unknown
     | typeOfExpr | Unknown => [
@@ -37,7 +37,7 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context pkg::String ->
 ]
 
 
-Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> TypedExpr2 = [
+Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
 
   // todo optimize by adding core pkg to the TyperDB
   result = | this
@@ -69,31 +69,31 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
     
   ]
   | ExprInBrackets => [
-    valueT = value toTypedExprFromDb2: db withContext: c :pkg
+    valueT = value toTypedExprFromDb2: db withContext: c 
     ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
   ]
   | ListLiteral    => [
-    typedElements = elements resolveBody2: db withContext: c :pkg
+    typedElements = elements resolveBody2: db withContext: c 
     // Compare all elements between each other
     TO DO: "ListLiteral to TypedExpr"]
   | SetLiteral     => [
-    typedElements = elements resolveBody2: db withContext: c :pkg
+    typedElements = elements resolveBody2: db withContext: c 
     TO DO: "SetLiteral to TypedExpr"]
   | MapLiteral     => TO DO: "MapLiteral to TypedExpr" 
 
-  | UnaryMsg   => .resolveUnaryFromDb2: db withContext: c :pkg
+  | UnaryMsg   => .resolveUnaryFromDb2: db withContext: c 
   | BinaryMsg  => [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
-    ^ .replaceArgsWithTypedfromDb2: db withContext: c :pkg
+    ^ .replaceArgsWithTypedfromDb2: db withContext: c 
   ]
   | KeywordMsg =>[ 
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
-    ^ .resolveKeywordFromDb2: db withContext: c :pkg
+    ^ .resolveKeywordFromDb2: db withContext: c 
   ]
 
   | VarDeclaration  => [
     // "var decl " + c toString, log
-    typedExpr = this value toTypedExprFromDb2: db withContext: c :pkg
+    typedExpr = this value toTypedExprFromDb2: db withContext: c 
     // check that ast type is the same as declared
     this astType unpack: [
       // x::Int = "ars"
@@ -117,10 +117,10 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
       typeInfo: db dtc unit toTypeInfoDefault
     
   ]
-  | Assign => AssignT :name value: (value toTypedExprFromDb2: db withContext: c :pkg) :token typeInfo: db dtc unit toTypeInfoDefault
-  | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c :pkg) :token typeInfo: db dtc unit toTypeInfoDefault
+  | Assign => AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
+  | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
   | ReturnStatement =>[ 
-    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c :pkg] or: null
+    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
     returnType = 
       | valueT
       | null => db dtc unit
@@ -143,7 +143,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
 
 
     
-    typedBody2 = body resolveBody2: db withContext: c  :pkg
+    typedBody2 = body resolveBody2: db withContext: c
     returnType = typedBody2 t
 
     name = args joinWith: ":" transform: [it astType name], + ":" 
@@ -152,7 +152,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
       args: typeTFields 
       returnType: returnType 
       name: name 
-      pkgName: pkg) 
+      pkgName: c currentPkg) 
 
    
     
@@ -163,7 +163,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
                   args: typeTFields 
                   returnType: returnType 
                   name: name 
-                  pkgName: pkg) toTypeInfoDefault
+                  pkgName: c currentPkg) toTypeInfoDefault
   ]
   | Match     => [
 
@@ -171,12 +171,12 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
     elseb = elseBranch // local smart cast
 
 
-    subjectT = subject toTypedExprFromDb2: db withContext: c :pkg
+    subjectT = subject toTypedExprFromDb2: db withContext: c 
     elseBranchT = 
       | elseb
       | null => [null]
       |=> [
-        elseb resolveBody2: db withContext: c :pkg
+        elseb resolveBody2: db withContext: c
         elseb
       ] 
     
@@ -184,12 +184,12 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context pkg::String -> Type
     mut matchType::NivaType = db dtc unit
     branchesT = branches map: [
 
-      conditionsT = it conditions resolveBody2: db withContext: c :pkg
-      bodyT = it body resolveBody2: db withContext: c :pkg
+      conditionsT = it conditions resolveBody2: db withContext: c
+      bodyT = it body resolveBody2: db withContext: c
       
       matchType <- it body typedBody2 last typeInfo t
 
-      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c :pkg) 
+      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c) 
                    conditions: conditionsT
                    body: bodyT
     ]
@@ -231,8 +231,8 @@ TyperDB checkRealArgs2::List::CheckMethodArg2 withExpectedArgs::List::TypeTField
 ]
 
 
-KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context pkg::String -> KeywordMsgT = [
-  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c :pkg
+KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> KeywordMsgT = [
+  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
   receiverType = receiverTypedExpr typeInfo t
   argTypesAndExprs :: mut List::CheckMethodArg2 = {}!
 
@@ -248,7 +248,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context pkg::Strin
 
   typedArgs = args mapIndexed: [ i, kwArg -> 
     {name expr} = kwArg
-    typedExpr = expr toTypedExprFromDb2: db withContext: c :pkg
+    typedExpr = expr toTypedExprFromDb2: db withContext: c
     argTypesAndExprs add: (CheckMethodArg2 
                             nivaType: typedExpr typeInfo t 
                             expr: expr 
@@ -306,8 +306,8 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context pkg::Strin
 ] 
 
 // rework - instead of replacing - make the receiver typed
-BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context pkg::String -> BinaryMsgT = [ 
-  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c :pkg
+BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> BinaryMsgT = [ 
+  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c 
 
   typeOfReceiver = receiverTypedExpr typeInfo t
   mut lastType = typeOfReceiver
@@ -323,7 +323,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context pkg::
     (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
     dbArg = dbMsg args first
     // resolve type of arg
-    resolvedArg = binary expr toTypedExprFromDb2: db withContext: c :pkg
+    resolvedArg = binary expr toTypedExprFromDb2: db withContext: c
 
 
     (resolvedArg typeInfo t compareWith: dbArg typeT) ifFalse: [
@@ -346,8 +346,8 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context pkg::
 ] 
 
 
-UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context pkg::String -> UnaryMsgT = [
-  resolvedReceiver = receiver toTypedExprFromDb2: db withContext: c :pkg
+UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT = [
+  resolvedReceiver = receiver toTypedExprFromDb2: db withContext: c
   typeOfReceiver = resolvedReceiver typeInfo t
   dbMsg = db findMsgFromReceiver: resolvedReceiver byName: selector name
 

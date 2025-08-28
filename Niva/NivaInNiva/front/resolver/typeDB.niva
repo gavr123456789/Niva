@@ -285,7 +285,21 @@ TyperDB
   findMsgFromReceiver: receiver::TypedExpr2 
   byName: name::String -> NivaMethod = [
   
-  receiverType = receiver typeInfo t 
+  receiverType = receiver typeInfo t debug
+
+  | receiverType
+  | FuntionT => [
+    // check that its Do or any arg names 
+    name debug 
+    result = name == "do" ifTrue: [
+      NivaMethod unary: "do" returnT: receiverType returnType
+    ] ifFalse: [TO DO]
+    
+    result debug
+    ^ result
+  ]
+  |=> []
+
   pkg = packages at: receiverType pkgName, unpackOrPANIC
   method = pkg findMethodInAllProtocols: name forType: receiverType :receiver
   
@@ -307,7 +321,6 @@ TyperDB
 
       returnType = decl body typedBody2 last typeInfo t
 
-      returnType debug
       replaceMethod = method copyWithDifferentType: returnType
       pkg replaceMethod: replaceMethod inType: receiverType
       replaceMethod returnType debug
