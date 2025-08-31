@@ -4,10 +4,10 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
   intProtocol = NivaProtocol name: "arithmetic" 
 
   // unary
-  intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
+  // intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
   intProtocol addMethod: (NivaMethod unary: "inc" returnT: int)
   intProtocol addMethod: (NivaMethod unary: "dec" returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "toString" returnT: int)
+  intProtocol addMethod: (NivaMethod unary: "toString" returnT: str)
   // binary
   intProtocol addMethod: (NivaMethod binary: "+" argT: int returnT: int)
   intProtocol addMethod: (NivaMethod binary: "-" argT: int returnT: int)
@@ -54,7 +54,7 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> Ni
 
   // unary
   boolProto addMethod: (NivaMethod unary: "echo" returnT: unit)
-  boolProto addMethod: (NivaMethod unary: "toString" returnT: bool)
+  boolProto addMethod: (NivaMethod unary: "toString" returnT: str)
   boolProto addMethod: (NivaMethod unary: "not" returnT: bool)
   // binary
   boolProto addMethod: (NivaMethod binary: "==" argT: bool returnT: bool)
@@ -68,6 +68,22 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> Ni
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" argT: noArgs returnT: unit )
 
   ^boolProto
+]
+
+constructor NivaProtocol anyFromDefaultTypes: dtc::DefaultTypesContainer  -> NivaProtocol = [
+  {str bool unit any} = dtc
+
+  anyProto = NivaProtocol name: "common" 
+
+  // unary
+  anyProto addMethod: (NivaMethod unary: "echo" returnT: unit)
+  anyProto addMethod: (NivaMethod unary: "toString" returnT: str)
+  // binary
+  anyProto addMethod: (NivaMethod binary: "==" argT: any returnT: bool)
+  anyProto addMethod: (NivaMethod binary: "!=" argT: any returnT: bool)
+
+  // keyword
+  ^anyProto
 ]
 
 // helpers

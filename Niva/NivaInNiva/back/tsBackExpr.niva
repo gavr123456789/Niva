@@ -64,6 +64,8 @@ TypedExpr2 toTS -> String =
 | ReturnStatementT => TO DO
 | CodeBlockT => .codeBlockToTS
 | MatchT => TO DO
+
+
    
 CodeBlockT codeBlockToTS -> String = [
     argsStr = args joinWith: ", " transform: [
@@ -98,13 +100,15 @@ MessageSendT msgSendToTS -> String = [
 
     | this
     | UnaryMsgT => [
-        newSelector =  selector name + "_" + receiver typeInfo t name 
+        newSelector = receiver typeInfo t name + "_" +  selector name 
         ^ qualifier + newSelector + "(" + r + ")"
     ]
     | BinaryMsgT => [
         q = args joinWith: " " transform: [
             it name name + " " + it expr toTS
         ]
+        // if receiver is Supported type for concrete operato like Int\String\Float\Double and '+' then do nothing
+        // if not then replace it with function call, like Vector + Vector is Vector_plus(Vector, Vector)
         ^ r + " " + q
     ]
     | KeywordMsgT => [
@@ -117,7 +121,7 @@ MessageSendT msgSendToTS -> String = [
             it name name
         ]
 
-        newSelector = selectorFromArgs + "_" + receiver typeInfo t name 
+        newSelector = receiver typeInfo t name + "_" + selectorFromArgs 
 
 
         args = r + ", " + (argsStr joinWith: ", ")

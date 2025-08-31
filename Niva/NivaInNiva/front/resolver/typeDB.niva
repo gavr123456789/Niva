@@ -293,7 +293,7 @@ Project protocol: "finding"
 // методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
 // как ни крути походу лучше всего хранить пакет в самом методе
 
-NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg -> NivaMethod = [
+NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
 
 
   receiver isIdentifierConstructor ifTrue: [
@@ -328,8 +328,13 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
     ]
   ]
 
-  typeName = forType name
-  TO DO: "Searching for $name method but its not found for type $typeName"
+// also try to find this method for Any
+  {any} = dtc
+  ^ this findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
+
+  ^ null
+  // typeName = forType name
+  // TO DO: "Searching for $name method but its not found for type $typeName"
 ]
 
 TyperDB 
@@ -350,8 +355,16 @@ TyperDB
   ]
   |=> []
   pkg = packages at: receiverType pkgName, unpackOrPANIC
-  method = pkg findMethodInAllProtocols: name forType: receiverType :receiver currentPkg: currentPkg
+
   
+  methodMaybe = pkg findMethodInAllProtocols: name forType: receiverType :receiver :currentPkg :dtc
+  method = 
+    | methodMaybe
+    | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
+    |=> [ methodMaybe ]
+
+  method debug
+
  ^| method returnType
   | Unknown => [
     "Lazy resolving for $name", log
