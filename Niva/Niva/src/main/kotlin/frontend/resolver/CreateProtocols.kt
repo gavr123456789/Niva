@@ -658,6 +658,8 @@ fun createStringBuilderProtocols(
             createUnary("first", stringType),
             createUnary("last", stringType),
             createUnary("count", intType),
+            createUnary("clear", stringBuilderType),
+            createUnary("trim", stringType),
 
             ),
         binaryMsgs = mutableMapOf(),

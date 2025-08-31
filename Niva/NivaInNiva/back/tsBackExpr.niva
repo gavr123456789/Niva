@@ -1,49 +1,52 @@
 type TypeScript
 
 constructor TypeScript  [
-    on rh::ResolverHelper -> String = [
-        result = rh entryPointExpressions map: [
-            it toTS 
-        ]
 
-        ^ result joinWith: "\n"
-    ]
-    on fullFromResolver: rh::ResolverHelper = [
+    on fullFromResolver: rh::ResolverHelper -> Map(String, String) = [
         db = rh db 
         packages = db packages
+        "\n" + db structureInfo, debug
 
-        sb = StringBuilder new
-        packages values filter: [it name != "core"], forEach: [ pkg -> 
+        generateImports = [pkg::NivaPkg sb::StringBuilder-> 
+            pkg imports forEach: [
+                // import * as core from "./core.js"
+                sb append: "import * as "
+                sb append: it 
+                sb append: " from \"./$it.js\"\n"
+            ]
+            sb appendLine: "\n" // 2
+        ]
+
+        outputFileToJS::mut Map(String, String) = #{}! 
+
+        rh fileToStatements forEach: [file, statement -> 
+            // one sb per file
+            sb = StringBuilder new
+
+            pkg = packages at: file, unpackOrPANIC
+
+            generateImports pkg: pkg sb: sb
             
-            
-            // sb appendLine: "# pkg: " + pkg name
-
-            // pkg imports count != 0, ifTrue: [
-            //     importsStr = pkg imports toList joinWith: ", "
-            //     sb appendLine: "- uses: " + importsStr
-            // ]
-
-            pkg protocols forEach: [t, protocolsOfType ->
-                sb appendLine: "## type: " + t toString
-
-
-                protocolsOfType forEach: [protocol -> 
-                    sb appendLine: "### protocol: " + protocol name
-
-                    protocol methods values forEach: [ method -> 
-                        sb appendLine: "- " + method toString
-                        method debug 
-                        TO DO: "000"
-                    ]
+            statement forEach: [
+                x = it toTS 
+                x != "" ifTrue: [
+                    sb appendLine: x
+                    sb appendLine: "\n"
                 ]
             ]
-            // // if no protocols, types would't be printed
-            // pkg protocols isEmpty ifTrue: [
-            //     x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
-            //     sb appendLine: x
-            // ]
-        
+
+            outputFileToJS at: file put: sb toString
         ]
+
+
+
+        generateMain = [
+            x = outputFileToJS at: "entryPoint", unpackOrPANIC
+            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTS])
+        ]
+
+        outputFileToJS at: "entryPoint" put: generateMain do
+        ^ outputFileToJS
     ]
 ] 
 
@@ -91,9 +94,12 @@ LiteralExprT literalToTS -> String =
 MessageSendT msgSendToTS -> String = [
     r = receiver toTS
 
+    qualifier = pkgName + "."
+
     | this
     | UnaryMsgT => [
-        ^ selector name + "(" + r + ")"
+        newSelector =  selector name + "_" + receiver typeInfo t name 
+        ^ qualifier + newSelector + "(" + r + ")"
     ]
     | BinaryMsgT => [
         q = args joinWith: " " transform: [
@@ -102,17 +108,21 @@ MessageSendT msgSendToTS -> String = [
         ^ r + " " + q
     ]
     | KeywordMsgT => [
+
         argsStr = args map: [
             it expr toTS
         ]
 
-        selector = args joinWith: "_" transform: [
+        selectorFromArgs = args joinWith: "_" transform: [
             it name name
         ]
 
+        newSelector = selectorFromArgs + "_" + receiver typeInfo t name 
+
+
         args = r + ", " + (argsStr joinWith: ", ")
 
-        ^ selector + "(" + args + ")"
+        ^ qualifier + newSelector + "(" + args + ")"
     ]
     ^ r
 ]
