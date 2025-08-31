@@ -49,34 +49,13 @@ compilerTry = [
 
 codeblockCall = [
   fileMain = """
-    x = [
-      1
-    ]
-    
-    x do
+    1 echo
   """
   
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   
   db = result db
   typedAst = result entryPointExpressions 
-
-
-  checkFirst = [
-    codeBlock = typedAst at: 0
-    | codeBlock 
-    | CodeBlockT => [
-      Assert that: codeBlock args count equals: 0
-      t = codeBlock typeInfo t
-      | t 
-      | FuntionT => [
-        Assert that: t returnType name equals: "Int"
-      ] 
-      |=> [TO DO: "function type expected"]
-
-    ] 
-    |=> [TO DO: "codeblock expected"]
-  ] 
 
 
 ] 

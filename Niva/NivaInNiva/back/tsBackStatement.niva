@@ -1,12 +1,43 @@
 Statement toTS -> String= 
     | this
-    | TypeDecl => [""]
+    | TypeDecl => [
+        // class Person {
+        //     constructor(name, age) {
+        //         this.name = name;
+        //         this.age = age;
+        //     }
+        // }
+        sb = StringBuilder new
+        
+        sb append: "export class "
+        sb append: this name
+        sb append: "{\n"
+        sb append: "    constructor("
+        
+        argsStr = this fields joinWith: "," transform: [it name]
+
+        sb append: argsStr
+        sb append: ") {\n"
+
+        // foreach arg
+        this fields forEach: [
+            name = it name
+            sb append: "        this.$name = $name;\n"
+        ]
+
+
+        sb append: "    }\n"
+        sb append: "}"   
+        
+        // and probably function CLASS_new_C()
+        sb toString
+    ]
     | EnumDecl => [TO DO]
     | UnionDecl => [TO DO]
     | MessageDecl => [
         
         sb = StringBuilder new
-        methodName = name + "_" + receiver name
+        methodName = receiver name + "_" + name 
         
         sb append: "export function "
         sb append: methodName

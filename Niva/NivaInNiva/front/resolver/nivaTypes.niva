@@ -279,6 +279,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   intProtocol = NivaProtocol intArithmeticsFromDefaultTypes: dtc
   strProtocol = NivaProtocol stringFromDefaultTypes: dtc
   boolProtocol= NivaProtocol boolFromDefaultTypes: dtc
+  anyProtocol = NivaProtocol anyFromDefaultTypes: dtc
 
 
   corePkg = NivaPkg name: "core" types: #{
@@ -298,9 +299,10 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Map" map 
   }! 
   protocols: #{
-    int ({intProtocol}!)
-    str ({strProtocol}!)
+    int  ({intProtocol}!)
+    str  ({strProtocol}!)
     bool ({boolProtocol}!)
+    any  ({anyProtocol}!)
   }! 
   constructorsProtocol: NivaProtocol constructors
   imports: #()!
