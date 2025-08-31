@@ -1,5 +1,8 @@
 type UnionTBranch name: String typeT: NivaType
 type TypeTField name: String typeT: NivaType
+TypeTField toString -> String = 
+  "$name: $typeT"
+
 /// no name provided
 constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
 
@@ -57,12 +60,13 @@ extend TypeT [
     | fields isEmpty
     | true => [
       // new 
-      NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors"
+      
+      NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors" pkgName: this pkgName 
     ] 
     | false => [
       // each field
       constructorName = fields joinWith: ":" transform: [it name], + ":"
-      NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors"
+      NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors" pkgName: this pkgName 
     ]
 
   on collectGenerics -> List::NivaType = [
@@ -127,10 +131,11 @@ type NivaMethod
   kind: MessageSendKind
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
+  pkgName: String
 
 extend NivaMethod [
-  on copyWithDifferentType: rt::NivaType = 
-    NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName
+  on copyWithDifferentReturnType: rt::NivaType = 
+    NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName
   
   /// sort args and checks them with fields, so any arg order should work probably 
   on isConstructorForReceiver: receiver::TypeT -> Bool = [
@@ -139,11 +144,18 @@ extend NivaMethod [
     fieldsSorted = fields map: [it name], sortedBy: [it], joinWith: ", "
     ^ argsSorted == fieldsSorted
   ]
+  on toString -> String = [
+    isMut = forMut ifTrue: ["mut"] ifFalse: [""]
+    possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name]) 
+    p2 = possibleErrorsStr == "" ifTrue: [""] ifFalse: [" with possible errors: (" + possibleErrorsStr + ")!"]
+    argsStr = args joinWith: " " transform: [it toString]    
+    ^ isMut + name + argsStr + p2 + " -> " + returnType toString
+  ]
 ]
 
 constructor NivaMethod [
   /// Create CALL
-  on name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String = NivaMethod 
+  on name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String pkgName::String= NivaMethod 
     name: name 
     args: args
     returnType: returnType
@@ -152,8 +164,9 @@ constructor NivaMethod [
     kind: MessageSendKind.Call
     decl: decl
     protocolName: protocolName
+    pkgName: pkgName
 
-  on name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String = NivaMethod 
+  on name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod 
     name: name 
     args: args
     returnType: returnType
@@ -162,8 +175,9 @@ constructor NivaMethod [
     kind: MessageSendKind.Call
     decl: null
     protocolName: protocolName
+    :pkgName
 
-  on constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String -> NivaMethod = NivaMethod 
+  on constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod 
     name: name 
     args: args
     returnType: returnType
@@ -172,6 +186,7 @@ constructor NivaMethod [
     kind: MessageSendKind.Constructor
     decl: decl
     protocolName: protocolName
+    :pkgName
 
 ]
 
@@ -196,10 +211,18 @@ type NivaPkg
   types: mut Map(String, NivaType)
   protocols: mut Map(NivaType, mut List::NivaProtocol)
   constructorsProtocol: NivaProtocol
+  imports: mut Set::String
 
 
-constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors
-
+constructor NivaPkg name::String = NivaPkg name: name types: #{}! protocols: #{}! constructorsProtocol: NivaProtocol constructors imports: #()!
+extend NivaPkg [
+  on addImport: pkgName::String = [
+    pkgName != this name ifTrue: [
+      "Imports: added import of $pkgName to $name pkg" log
+      imports add: pkgName
+    ]
+  ]
+] 
 
 
 type DefaultTypesContainer 
@@ -273,12 +296,14 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "List" list 
     "Set" set 
     "Map" map 
-  }! protocols: #{
+  }! 
+  protocols: #{
     int ({intProtocol}!)
     str ({strProtocol}!)
-    str ({boolProtocol}!)
-
-  }! constructorsProtocol: NivaProtocol constructors
+    bool ({boolProtocol}!)
+  }! 
+  constructorsProtocol: NivaProtocol constructors
+  imports: #()!
    
 
   ^ Tuple x: corePkg y: dtc

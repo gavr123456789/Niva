@@ -87,7 +87,7 @@ TypeDeclVisitor
           forType: resolvedType 
 
         
-        "added type " + resolvedType name + " in pkg " + pkgName, log
+        "Types: added type " + resolvedType name + " in pkg " + pkgName, log
 
       ]
       readyToAddToDBType == null ifTrue: [
@@ -132,7 +132,7 @@ TypeDeclVisitor
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
       
-
+      
       method = NivaMethod 
         name: msg name 
         args: argsT 
@@ -142,18 +142,19 @@ TypeDeclVisitor
         kind: MessageSendKind.Call
         decl: msg
         protocolName: "common"
+        pkgName: pkg
 
-      db addNewMethod: method forType: receiverType log inProtocol: null
-      "added method " + method name, log
+      db addNewMethod: method forType: receiverType inProtocol: null
+      "Methods: added method " + method name + " in pkg: " + pkg, log
     ]
     
 // resolve main
     mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
-
-    
+    // create entry point pkg
+    entryPointPkg = db addNewPkgIfNotExists: "entryPoint"
     typedMain = mainBody 
       resolveBody2: db 
-      withContext: (Context rootWithPkg: "entryPoint")
+      withContext: (Context rootWithPkg: entryPointPkg)
     
     // mainBody typedBody2 addAll: 
 
@@ -226,6 +227,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
         kind: MessageSendKind.Getter
         decl: null
         protocolName: "getters"
+        pkgName: "core" // this is getter
       
       db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
@@ -240,9 +242,10 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
 ]
 
 MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
-
   pkg2Msg forEach: [tuple -> 
-    pkg = tuple x 
+    pkgStr = tuple x 
+    pkg = db packages at: pkgStr, unpackOrPANIC
+
     msgDecl = tuple y 
     msgDecl resolveBodyWithDb: db :pkg
   ]
@@ -255,7 +258,9 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb: db::TyperDB pkg::String= [
+MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
+  "resolving body of " + this name + " from pkg: " + pkg name, debug
+
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context rootWithPkg: pkg

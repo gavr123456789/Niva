@@ -377,6 +377,7 @@ p = Point new
 git clone https://github.com/gavr123456789/Niva.git
 cd Niva/Niva
 ./gradlew buildJvmNiva # takes one min for the first time :(
+# read the instructions from output on how to add compiler binary to PATH for each shell
 # LSP here https://github.com/gavr123456789/niva-vscode-bundle
 ```
 

@@ -1,0 +1,32 @@
+Statement toTS -> String= 
+    | this
+    | TypeDecl => [""]
+    | EnumDecl => [TO DO]
+    | UnionDecl => [TO DO]
+    | MessageDecl => [
+        this debug
+        sb = StringBuilder new
+        methodName = name + "_" + receiver name
+        
+        sb append: "function "
+        sb append: methodName
+
+        argsStr = args joinWith: ", " transform: [it name]
+        sb append: "("
+        sb append: argsStr
+        sb append: ") {\n"
+
+        this body typedBody2 forEach: [expr -> 
+            sb append: "    "
+            sb appendLine: expr toTS
+        ]
+
+        sb append: "}"
+        sb toString debug
+        TO DO: "!!!"
+        sb toString 
+    ]
+    |=> [
+        
+        "toTS: skipping top level expr: " + this token toString, debug
+    ]
