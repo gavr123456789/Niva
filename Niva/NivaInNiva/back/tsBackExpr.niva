@@ -1,0 +1,119 @@
+type TypeScript
+
+constructor TypeScript  [
+    on rh::ResolverHelper -> String = [
+        result = rh entryPointExpressions map: [
+            it toTS 
+        ]
+
+        ^ result joinWith: "\n"
+    ]
+    on fullFromResolver: rh::ResolverHelper = [
+        db = rh db 
+        packages = db packages
+
+        sb = StringBuilder new
+        packages values filter: [it name != "core"], forEach: [ pkg -> 
+            
+            
+            // sb appendLine: "# pkg: " + pkg name
+
+            // pkg imports count != 0, ifTrue: [
+            //     importsStr = pkg imports toList joinWith: ", "
+            //     sb appendLine: "- uses: " + importsStr
+            // ]
+
+            pkg protocols forEach: [t, protocolsOfType ->
+                sb appendLine: "## type: " + t toString
+
+
+                protocolsOfType forEach: [protocol -> 
+                    sb appendLine: "### protocol: " + protocol name
+
+                    protocol methods values forEach: [ method -> 
+                        sb appendLine: "- " + method toString
+                        method debug 
+                        TO DO: "000"
+                    ]
+                ]
+            ]
+            // // if no protocols, types would't be printed
+            // pkg protocols isEmpty ifTrue: [
+            //     x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
+            //     sb appendLine: x
+            // ]
+        
+        ]
+    ]
+] 
+
+
+TypedExpr2 toTS -> String = 
+| this
+| LiteralExprT => .literalToTS
+| IdentifierT => .identToTS
+| ExprInBracketsT => "(" + value toTS + ")"
+| VarDeclarationT => .varDeclToTS
+| AssignT => "let " + name + " = " + value toTS
+| DestructingAssignT => TO DO
+| CollectionLiteralT => TO DO
+| MessageSendT => .msgSendToTS
+| ReturnStatementT => TO DO
+| CodeBlockT => .codeBlockToTS
+| MatchT => TO DO
+   
+CodeBlockT codeBlockToTS -> String = [
+    argsStr = args joinWith: ", " transform: [
+        it name
+    ]
+    bodyStr = body v joinWith: "\n" transform: [
+        it toTS
+    ]
+
+    ^ "(" + argsStr + ") => {" + bodyStr + "}" 
+]
+
+
+VarDeclarationT varDeclToTS = 
+    "const " + name  + " = " + value toTS
+
+
+IdentifierT identToTS -> String = 
+    | name
+    | "this" => "_this"
+    |=> name 
+
+
+LiteralExprT literalToTS -> String = 
+    token lexeme 
+
+
+MessageSendT msgSendToTS -> String = [
+    r = receiver toTS
+
+    | this
+    | UnaryMsgT => [
+        ^ selector name + "(" + r + ")"
+    ]
+    | BinaryMsgT => [
+        q = args joinWith: " " transform: [
+            it name name + " " + it expr toTS
+        ]
+        ^ r + " " + q
+    ]
+    | KeywordMsgT => [
+        argsStr = args map: [
+            it expr toTS
+        ]
+
+        selector = args joinWith: "_" transform: [
+            it name name
+        ]
+
+        args = r + ", " + (argsStr joinWith: ", ")
+
+        ^ selector + "(" + args + ")"
+    ]
+    ^ r
+]
+

@@ -42,7 +42,7 @@ Bind package: "okio" content: [
   @emit: "okio.FileSystem.SYSTEM.list($1)"
   constructor FileSystem list::Path -> List::Path
   // listRecursively
-  @emit: "okio.FileSystem.SYSTEM.listRecursively($1)"
+  @emit: "okio.FileSystem.SYSTEM.listRecursively($1).toList()"
   constructor FileSystem listRecursively::Path -> List::Path
 
   // delete

@@ -5,17 +5,47 @@ type Program
 type FilePath = String
 type FileContent = String
 
+type NivaSourceFile
+  path: String 
+  nameWithoutExt: String
+
 type IO
   readFile: [FilePath -> String]
-  writeFile: [FilePath, FileContent -> String] // 
-  walkDir: [FilePath -> List::String]
+  writeFile: [FilePath, FileContent -> Unit] // 
+  walkDir: [FilePath -> List::NivaSourceFile]
+  getParent: [String -> String]
+  currentDir: String 
+
+constructor IO new -> IO= [
+  readFile::[FilePath -> String] = [path::String ->
+    FileSystem read: (path toPath)
+  ]
+
+  writeFile = [path::String , fileContent::FileContent->
+    FileSystem write: fileContent toPath 
+               content: fileContent
+    Unit
+  ]
+
+  walkDir::[FilePath -> List::NivaSourceFile] = [path::String ->
+    x = FileSystem listRecursively: path toPath
+
+    x map: [
+      NivaSourceFile path: it toString nameWithoutExt: (it name substringBeforeLast: ".") 
+    ]
+  ]
+  
+  getParent = [path::String -> path toPath parent unpackOrPANIC name]
+
+  ^ IO :readFile :writeFile :walkDir :getParent currentDir: "."
+]
 
 
-/// takes fileNames to Content
-type NivaCompiler 
-/// takes main file and collects all the files for compilation
-type NivaBuildSystem
+compilerTry = [
+  path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/compilerTest/entryPoint.niva"
+  NivaCompiler runArgs: {"build" path} withIO: IO new
 
+] do
 
 codeblockCall = [
   fileMain = """
@@ -29,7 +59,7 @@ codeblockCall = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   
   db = result db
-  typedAst = result entryPointExpressions debug
+  typedAst = result entryPointExpressions 
 
 
   checkFirst = [
@@ -49,45 +79,52 @@ codeblockCall = [
   ] 
 
 
-] do
+] 
 
 
-newResolve = [
+
+pkgImports = [
   fileMain = """
-    type Person age: Int 
-    Person age: 27
-    
-    // Int sas = [
-      // p = Person age: 27 
-    // ]
-    
-    //1 inc
+    type FirstType
+
+    FirstType method1 = [
+      SecondType new
+    ]
+    FirstType toString -> String = [
+      ThirdType new
+      ^ ""
+    ]
+    FirstType + x::Int = []
   """
 
+  second = "type SecondType"
+  third = "type ThirdType"
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
 
+
+  result = ResolverHelper resolve: #{"main"   fileMain 
+                                     "second" second 
+                                     "third"  third} 
+                          entryPoint: "main"
+  // result entryPointExpressions at: 0, debug
+  result db structureInfo echo
+
+] 
+
+stupidBackExperiment = [
+  fileMain = """
+    x = "sas"
+    x at: 0
+    add = [x::Int, y::Int -> x + y]
+    add x: 1 y: 2
+  """
   
-] 
-
-
-tsBack = [
-  fileMain = """
-    x = "hello from niva ts backend!!! ^_^"
-    x echo
-  """
-
-
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  x = TypeScript rh: result
+  x log
+]
 
-  // typedAst first toTyped nivaType log
-  typedAst debug
 
-  // TSBackend mainStatements: typedAst sb: StringBuilder new, generate
-
-] 
 
 resolveMatch = [
   fileMain = """

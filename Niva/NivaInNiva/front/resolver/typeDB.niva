@@ -36,6 +36,42 @@ constructor TyperDB new -> TyperDB = [
     dtc: dtc
 ]
 
+extend TyperDB [
+  /// returns md like documentation about every pkg -> type -> protocol -> method
+  on structureInfo -> String = [
+    sb = StringBuilder new
+    packages values filter: [it name != "core"], forEach: [ pkg -> 
+      
+      sb appendLine: "# pkg: " + pkg name
+
+      pkg imports count != 0, ifTrue: [
+        importsStr = pkg imports toList joinWith: ", "
+        sb appendLine: "- uses: " + importsStr
+      ]
+
+      pkg protocols forEach: [t, protocolsOfType ->
+        sb appendLine: "## type: " + t toString
+
+        protocolsOfType forEach: [protocol -> 
+          sb appendLine: "### protocol: " + protocol name
+
+          protocol methods values forEach: [ method -> 
+            sb appendLine: "- " + method toString
+          ]
+        ]
+      ]
+      // if no protocols, types would't be printed
+      pkg protocols isEmpty ifTrue: [
+        x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
+        sb appendLine: x
+      ]
+      
+    ]
+
+    ^ sb toString
+  ]
+]
+
 type ResolverHelper
   fileToStatements: Map(String, List::Statement)  // по сути это список аст деклараций типов и методов, в которых боди теперь типизированы
   db: TyperDB
@@ -53,8 +89,11 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     fileToStatements at: file put: statements
   ]
    
-  entryPointStatements = fileToStatements at: entryPoint, unpackOrPANIC
-
+  entryPointStatementsMaybe = fileToStatements at: entryPoint
+  entryPointStatements = 
+    | entryPointStatementsMaybe
+    | null => [TO DO: "trying to find entryPoint: " + entryPoint + " but not found in " + fileToStatements toString]
+    |=> [ entryPointStatementsMaybe ]
 
   db = TyperDB new
 
@@ -101,7 +140,7 @@ NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaT
   | null => [
     newProtocol = createNewProtocol do
     protocols at: forType put: {newProtocol}!
-    "added method " + m name + " to new protocol $protocolName", log
+    "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
   ]
   |=> [
     protocol = foundProtocols find: [it name == protocolName]
@@ -110,11 +149,11 @@ NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaT
       // no such protocol -> create it
       newProtocol = createNewProtocol do
       foundProtocols add: newProtocol
-      "added method " + m name + " to new protocol $protocolName", log
+      "Methods: added method " + m name + " to new protocol $protocolName", log
     ]
     |=> [
       protocol addMethod: m
-      "added method " + m name + " to protocol $protocolName", log
+      "Methods: added method " + m name + " to protocol $protocolName", log
     ]  
   ]
 
@@ -156,15 +195,24 @@ TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
   | null => TO DO: "no pkg"
   |=> [
     pkg constructorsProtocol addMethod: m
-    "added constructor " + m name + " for type " + forType name, log
+    "Constructors: added constructor " + m name + " for type " + forType name, log
   ]
 
 ]
 
-TyperDB addNewPkgIfNotExists: pkgName::String = [
-  packages containsKey: pkgName, ifFalse: [
-    packages at: pkgName put: (NivaPkg name: pkgName)
-  ]
+TyperDB addNewPkgIfNotExists: pkgName::String -> NivaPkg = [
+  result = packages at: pkgName
+  p = | result
+      | null => [
+        newPkg = NivaPkg name: pkgName
+        packages at: pkgName put: (newPkg)
+        newPkg
+      ]
+      |=> [
+        result 
+      ]
+
+  ^ p
 ]
 
 TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
@@ -241,21 +289,26 @@ NivaPkg replaceMethod: m::NivaMethod inType::NivaType= [
 
 Project protocol: "finding"
 
-NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 -> NivaMethod = [
+// добавить в NivaPkg список методов из других пакетов, точнее даже мапа
+// методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
+// как ни крути походу лучше всего хранить пакет в самом методе
 
-  // forType debug
+NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg -> NivaMethod = [
+
+
   receiver isIdentifierConstructor ifTrue: [
     maybeConstructor = constructorsProtocol methods at: name
     | maybeConstructor
     | null => [TO DO: "No such constructor $name for type $forType"]
     |=> [
-      "found constructor $name" log
+      // currentImports add: ""
+      
+      currentPkg addImport: maybeConstructor pkgName
+      
+      "Constructors: found constructor $name for $forType" log
       ^ maybeConstructor 
     ]
-  ] 
-  // ifFalse: [
-    // TO DO: "Searching for $name method but type $forType has zero protocols, error in resolving: $receiver"
-  // ]
+  ]
 
   protocols = protocols at: forType
   | protocols
@@ -269,13 +322,11 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
         // knownMethods add: name
         null
       ]
-      |=> ^ method
+      |=> [
+        currentPkg addImport: method pkgName
+        ^ method]
     ]
   ]
-
-  
-  // its not in the one of the protocols
-  // ^ null
 
   typeName = forType name
   TO DO: "Searching for $name method but its not found for type $typeName"
@@ -283,31 +334,28 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
 
 TyperDB 
   findMsgFromReceiver: receiver::TypedExpr2 
-  byName: name::String -> NivaMethod = [
+  byName: name::String 
+  currentPkg::NivaPkg -> NivaMethod = [
   
-  receiverType = receiver typeInfo t debug
+  receiverType = receiver typeInfo t
 
   | receiverType
   | FuntionT => [
     // check that its Do or any arg names 
-    name debug 
     result = name == "do" ifTrue: [
       NivaMethod unary: "do" returnT: receiverType returnType
     ] ifFalse: [TO DO]
     
-    result debug
     ^ result
   ]
   |=> []
-
   pkg = packages at: receiverType pkgName, unpackOrPANIC
-  method = pkg findMethodInAllProtocols: name forType: receiverType :receiver
+  method = pkg findMethodInAllProtocols: name forType: receiverType :receiver currentPkg: currentPkg
   
  ^| method returnType
   | Unknown => [
     "Lazy resolving for $name", log
 
-    // TODO stack of resolving, probably inside Typer itself
     {decl} = method
     | decl
     | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
@@ -315,13 +363,13 @@ TyperDB
       Assert that: decl isSingleExpr equals: true
 
   
-      decl resolveBodyWithDb: this pkg: pkg name
+      decl resolveBodyWithDb: this pkg: pkg
 
       Assert that: decl body typedBody2 isNotEmpty equals: true
 
       returnType = decl body typedBody2 last typeInfo t
 
-      replaceMethod = method copyWithDifferentType: returnType
+      replaceMethod = method copyWithDifferentReturnType: returnType
       pkg replaceMethod: replaceMethod inType: receiverType
       replaceMethod returnType debug
       replaceMethod

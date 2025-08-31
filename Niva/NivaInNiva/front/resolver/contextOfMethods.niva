@@ -3,13 +3,13 @@
 type Context 
   parent: Context?
   vars: mut Map(String, NivaType)
-  currentPkg: String
+  currentPkg: NivaPkg
 
 
 
 constructor Context [
   /// no parents no vars(yet)
-  on rootWithPkg: currentPkg::String = Context parent: null vars: #{}! :currentPkg
+  on rootWithPkg: currentPkg::NivaPkg = Context parent: null vars: #{}! :currentPkg
   on fromParent::Context = 
     Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg
 ]
