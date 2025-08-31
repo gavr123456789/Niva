@@ -4,14 +4,21 @@ Statement toTS -> String=
     | EnumDecl => [TO DO]
     | UnionDecl => [TO DO]
     | MessageDecl => [
-        this debug
+        
         sb = StringBuilder new
         methodName = name + "_" + receiver name
         
-        sb append: "function "
+        sb append: "export function "
         sb append: methodName
 
-        argsStr = args joinWith: ", " transform: [it name]
+        
+        argsStr = "_this" +
+            (args isNotEmpty ifTrue: [", "] 
+                             ifFalse: [""]) +
+            (args joinWith: ", " 
+                  transform: [it name])
+
+
         sb append: "("
         sb append: argsStr
         sb append: ") {\n"
@@ -22,11 +29,9 @@ Statement toTS -> String=
         ]
 
         sb append: "}"
-        sb toString debug
-        TO DO: "!!!"
         sb toString 
     ]
     |=> [
-        
-        "toTS: skipping top level expr: " + this token toString, debug
+        "toTS: skipping top level expr: " + this token toString, log
+        ""
     ]

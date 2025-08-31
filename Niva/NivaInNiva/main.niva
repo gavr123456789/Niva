@@ -22,7 +22,7 @@ constructor IO new -> IO= [
   ]
 
   writeFile = [path::String , fileContent::FileContent->
-    FileSystem write: fileContent toPath 
+    FileSystem write: path toPath 
                content: fileContent
     Unit
   ]
@@ -42,7 +42,7 @@ constructor IO new -> IO= [
 
 
 compilerTry = [
-  path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/compilerTest/entryPoint.niva"
+  path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
 
 ] do
@@ -110,19 +110,6 @@ pkgImports = [
   result db structureInfo echo
 
 ] 
-
-stupidBackExperiment = [
-  fileMain = """
-    x = "sas"
-    x at: 0
-    add = [x::Int, y::Int -> x + y]
-    add x: 1 y: 2
-  """
-  
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  x = TypeScript rh: result
-  x log
-]
 
 
 

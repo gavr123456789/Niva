@@ -56,7 +56,7 @@ union CollectionLiteralT token: Token elements: TypedBody typeInfo: TypeInfo =
 
 
 
-union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo  =
+union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo pkgName: String =
 // args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
 | UnaryMsgT
     selector: Identifier // no need for type here

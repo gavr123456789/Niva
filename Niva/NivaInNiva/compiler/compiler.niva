@@ -34,22 +34,21 @@ constructor NivaCompiler [
                                 entryPoint: "entryPoint"
 
         // result entryPointExpressions at: 0, debug
-        result fileToStatements debug
-        result fileToStatements values forEach: [x -> 
-            x forEach: [statement -> 
-                statement toTS debug
-                
-            ]
         
-        ]
-        TO DO
         {option} = argsParsed
         | option
         | CompilerOption.Run => [
             
         ]
         | CompilerOption.Build => [
-            TO DO: "BUILD"
+            fileToJSCOntent = TypeScript fullFromResolver: result
+
+            realJSPath = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/realJS"
+            fileToJSCOntent forEach: [file, jsContent -> 
+                destanation = realJSPath + "/" + file + ".js"
+                io writeFile file: destanation content: jsContent
+            ]
+
             Unit
         ]
         | CompilerOption.Help => []
