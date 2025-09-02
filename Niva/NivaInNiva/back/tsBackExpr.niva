@@ -1,5 +1,6 @@
 type TypeScript
 
+
 constructor TypeScript  [
 
     on fullFromResolver: rh::ResolverHelper -> Map(String, String) = [
@@ -28,7 +29,7 @@ constructor TypeScript  [
             generateImports pkg: pkg sb: sb
             
             statement forEach: [
-                x = it toTS 
+                x = it toTSFromPkg: file 
                 x != "" ifTrue: [
                     sb appendLine: x
                     sb appendLine: "\n"
@@ -42,7 +43,7 @@ constructor TypeScript  [
 
         generateMain = [
             x = outputFileToJS at: "entryPoint", unpackOrPANIC
-            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTS])
+            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTSFromPkg: "entryPoint"])
         ]
 
         outputFileToJS at: "entryPoint" put: generateMain do
@@ -51,36 +52,39 @@ constructor TypeScript  [
 ] 
 
 
-TypedExpr2 toTS -> String = 
+// currentPkg is basically a file name from which this expr is
+// this is needed to remove qualifiers from calls from the same file, like 
+// sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
+TypedExpr2 toTSFromPkg: currentPkg::String -> String = 
 | this
 | LiteralExprT => .literalToTS
 | IdentifierT => .identToTS
-| ExprInBracketsT => "(" + value toTS + ")"
-| VarDeclarationT => .varDeclToTS
-| AssignT => "let " + name + " = " + value toTS
+| ExprInBracketsT => "(" + (value toTSFromPkg: currentPkg) + ")"
+| VarDeclarationT => .varDeclToTSFromPkg: currentPkg
+| AssignT => "let " + name + " = " + (value toTSFromPkg: currentPkg)
 | DestructingAssignT => TO DO
 | CollectionLiteralT => TO DO
-| MessageSendT => .msgSendToTS
+| MessageSendT => .msgSendToTSFromPkg: currentPkg
 | ReturnStatementT => TO DO
-| CodeBlockT => .codeBlockToTS
+| CodeBlockT => .codeBlockToTSFromPkg: currentPkg
 | MatchT => TO DO
 
 
    
-CodeBlockT codeBlockToTS -> String = [
+CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
     argsStr = args joinWith: ", " transform: [
         it name
     ]
     bodyStr = body v joinWith: "\n" transform: [
-        it toTS
+        it toTSFromPkg: currentPkg
     ]
 
     ^ "(" + argsStr + ") => {" + bodyStr + "}" 
 ]
 
 
-VarDeclarationT varDeclToTS = 
-    "const " + name  + " = " + value toTS
+VarDeclarationT varDeclToTSFromPkg: currentPkg::String = 
+    "const " + name  + " = " + (value toTSFromPkg: currentPkg)
 
 
 IdentifierT identToTS -> String = 
@@ -93,41 +97,81 @@ LiteralExprT literalToTS -> String =
     token lexeme 
 
 
-MessageSendT msgSendToTS -> String = [
-    r = receiver toTS
+MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
+    rec = receiver
+    isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
 
-    qualifier = pkgName + "."
+    getReceiverTs = [
+        // we dont need to send receiver as first argument when its a constructor(its just a typeName identifier in such cases)
+        isDefaultConstructor ifFalse: [
+            receiver toTSFromPkg: currentPkg
+        ] ifTrue: [
+            ""
+        ]
+    ]
+
+
+    // we dont need to generate qualifier in the same pkg
+    qualifier = currentPkg == dbMsg pkgName ifFalse: [dbMsg pkgName + "."] ifTrue: [""]
 
     | this
     | UnaryMsgT => [
-        newSelector = receiver typeInfo t name + "_" +  selector name 
-        ^ qualifier + newSelector + "(" + r + ")"
+
+        | rec
+        | CodeBlockT => [
+            selector name == "do" ifTrue: [
+                ^ "()"
+            ]
+        ]
+        |=> []
+        
+
+        qSelector = isDefaultConstructor ifFalse: [
+            // entryPoint.Person2_name_age("sas", 42)
+            dbMsg receiverType name + "_" +  selector name
+        ] ifTrue: [
+            // new Person2("", 23)
+            "new " + dbMsg receiverType name
+            dbMsg receiverType name + "_" +  selector name
+        ]
+        newSelector = dbMsg receiverType name + "_" +  selector name 
+        ^ qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
         q = args joinWith: " " transform: [
-            it name name + " " + it expr toTS
+            it name name + " " + (it expr toTSFromPkg: currentPkg)
         ]
         // if receiver is Supported type for concrete operato like Int\String\Float\Double and '+' then do nothing
         // if not then replace it with function call, like Vector + Vector is Vector_plus(Vector, Vector)
-        ^ r + " " + q
+        ^ getReceiverTs do + " " + q
     ]
     | KeywordMsgT => [
 
-        argsStr = args map: [
-            it expr toTS
+
+    // selector
+        newSelector = isDefaultConstructor
+            ifFalse: [
+                selectorFromArgs = args joinWith: "_" transform: [
+                    it name name
+                ]
+                dbMsg receiverType name + "_" + selectorFromArgs 
+            ] ifTrue: [
+                "new " + dbMsg receiverType name
+            ]
+        
+        receiverStr = getReceiverTs do
+        receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
+
+    // args
+        argsExprStr = args map: [
+            it expr toTSFromPkg: currentPkg
         ]
-
-        selectorFromArgs = args joinWith: "_" transform: [
-            it name name
-        ]
-
-        newSelector = receiver typeInfo t name + "_" + selectorFromArgs 
-
-
-        args = r + ", " + (argsStr joinWith: ", ")
+        args = receiverWithComma + (argsExprStr joinWith: ", ")
 
         ^ qualifier + newSelector + "(" + args + ")"
     ]
-    ^ r
+
+    
+    ^ getReceiverTs do
 ]
 

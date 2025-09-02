@@ -48,6 +48,8 @@ constructor NivaCompiler [
                 destanation = realJSPath + "/" + file + ".js"
                 io writeFile file: destanation content: jsContent
             ]
+            pathToEntryPoint = realJSPath + "/" + "entryPoint.js"
+            io runProgram args: {"bun" pathToEntryPoint}
 
             Unit
         ]

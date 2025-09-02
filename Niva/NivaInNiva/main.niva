@@ -11,10 +11,11 @@ type NivaSourceFile
 
 type IO
   readFile: [FilePath -> String]
-  writeFile: [FilePath, FileContent -> Unit] // 
+  writeFile: [FilePath, FileContent -> Unit] 
   walkDir: [FilePath -> List::NivaSourceFile]
   getParent: [String -> String]
   currentDir: String 
+  runProgram: [List::String -> ]
 
 constructor IO new -> IO= [
   readFile::[FilePath -> String] = [path::String ->
@@ -37,15 +38,25 @@ constructor IO new -> IO= [
   
   getParent = [path::String -> path toPath parent unpackOrPANIC name]
 
-  ^ IO :readFile :writeFile :walkDir :getParent currentDir: "."
+  runProgram = [args::List::String -> 
+    processBuilder = ProcessBuilder command: args
+    processBuilder redirectOutput start waitFor
+    Unit
+  ]
+
+  ^ IO :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
 ]
 
+
+runPTry = [
+  io = IO new 
+  io runProgram args: {"bun" "--help"}
+] 
 
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-
-] do
+] do 
 
 codeblockCall = [
   fileMain = """
@@ -133,4 +144,3 @@ resolveGenerics = [
   
 
 ] 
-

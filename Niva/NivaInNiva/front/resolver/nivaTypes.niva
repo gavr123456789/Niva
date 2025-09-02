@@ -57,17 +57,18 @@ constructor TypeT noFieldsWithName: name::String pkgName::String  = TypeT
 
 extend TypeT [
   on generateDefaultConstructor -> NivaMethod = 
-    | fields isEmpty
-    | true => [
-      // new 
-      
-      NivaMethod constructorWithName: "new" args: {} returnType: this decl: null protocolName: "constructors" pkgName: this pkgName 
-    ] 
-    | false => [
-      // each field
-      constructorName = fields joinWith: ":" transform: [it name], + ":"
-      NivaMethod constructorWithName: constructorName args: fields returnType: this decl: null protocolName: "constructors" pkgName: this pkgName 
-    ]
+    NivaMethod 
+      defaultConstructorWithName: (fields isEmpty ifTrue: ["new"] 
+                                                  ifFalse: [fields joinWith: ":" 
+                                                                   transform: [it name], + ":"])
+      receiverType: this 
+      args: fields
+      returnType: this 
+      decl: null 
+      protocolName: "constructors" 
+      pkgName: this pkgName 
+  
+
 
   on collectGenerics -> List::NivaType = [
     genericFields = fields filter: [
@@ -124,6 +125,7 @@ constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgNa
   // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
 type NivaMethod 
   name: String 
+  receiverType: NivaType
   args: List::TypeTField
   returnType: NivaType
   forMut: Bool // can be called only on mutable types
@@ -135,7 +137,7 @@ type NivaMethod
 
 extend NivaMethod [
   on copyWithDifferentReturnType: rt::NivaType = 
-    NivaMethod name: name args: args returnType: rt forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName
+    NivaMethod :name  :receiverType :args returnType: rt :forMut :possibleErrors :kind :decl :protocolName :pkgName
   
   /// sort args and checks them with fields, so any arg order should work probably 
   on isConstructorForReceiver: receiver::TypeT -> Bool = [
@@ -155,8 +157,9 @@ extend NivaMethod [
 
 constructor NivaMethod [
   /// Create CALL
-  on name::String args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String pkgName::String= NivaMethod 
+  on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String pkgName::String= NivaMethod 
     name: name 
+    receiverType: receiverType
     args: args
     returnType: returnType
     forMut: forMut
@@ -166,8 +169,9 @@ constructor NivaMethod [
     protocolName: protocolName
     pkgName: pkgName
 
-  on name::String args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod 
+  on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod 
     name: name 
+    :receiverType
     args: args
     returnType: returnType
     forMut: forMut
@@ -177,13 +181,14 @@ constructor NivaMethod [
     protocolName: protocolName
     :pkgName
 
-  on constructorWithName: name::String args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod 
+  on defaultConstructorWithName: name::String receiverType::NivaType args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod 
     name: name 
+    :receiverType
     args: args
     returnType: returnType
     forMut: false
     possibleErrors: {}
-    kind: MessageSendKind.Constructor
+    kind: MessageSendKind.DefaultConstructor
     decl: decl
     protocolName: protocolName
     :pkgName

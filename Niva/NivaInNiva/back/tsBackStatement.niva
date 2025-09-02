@@ -1,4 +1,4 @@
-Statement toTS -> String= 
+Statement toTSFromPkg: currentPkg::String -> String= 
     | this
     | TypeDecl => [
         // class Person {
@@ -56,7 +56,7 @@ Statement toTS -> String=
 
         this body typedBody2 forEach: [expr -> 
             sb append: "    "
-            sb appendLine: expr toTS
+            sb appendLine: (expr toTSFromPkg: currentPkg)
         ]
 
         sb append: "}"
