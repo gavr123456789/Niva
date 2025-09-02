@@ -310,7 +310,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     typeInfo: (TypeInfo 
                   t: kwMsgDB returnType 
                   isMut: kwMsgDB forMut) 
-    pkgName: kwMsgDB pkgName
+    dbMsg: kwMsgDB
 
   ^ newKeyword
 ] 
@@ -322,6 +322,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Bi
   typeOfReceiver = receiverTypedExpr typeInfo t
   mut lastType = typeOfReceiver
   mut lastReceiver = receiverTypedExpr
+  mut lastDbMsg::NivaMethod? = null
 
   typedArgs = args map: [ binary ->
     // 1 + (2 inc)
@@ -330,6 +331,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Bi
     // compare that found message has arg with same type
     binaryName = binary name name
     dbMsg = db findMsgFromReceiver: lastReceiver  byName: binaryName currentPkg: c currentPkg 
+    lastDbMsg <- dbMsg
 
     (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
     dbArg = dbMsg args first
@@ -358,7 +360,7 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Bi
     receiver: receiverTypedExpr 
     token: token 
     typeInfo: lastType toTypeInfoDefault
-    pkgName: "" // this is +, its impossible to do 1 pkg.+ 2
+    dbMsg: lastDbMsg unpackOrPANIC // this is +, its impossible to do 1 pkg.+ 2
   ^ newBinaryT 
 ] 
 
@@ -375,7 +377,7 @@ UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT 
     receiver: resolvedReceiver 
     token: token 
     typeInfo: typeInfo
-    pkgName: dbMsg pkgName
+    dbMsg: dbMsg
 
   ^ newUnary2
 ]

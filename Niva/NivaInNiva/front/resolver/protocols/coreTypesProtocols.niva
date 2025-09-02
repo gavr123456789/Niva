@@ -5,18 +5,18 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
 
   // unary
   // intProtocol addMethod: (NivaMethod unary: "echo" returnT: unit)
-  intProtocol addMethod: (NivaMethod unary: "inc" returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "dec" returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "toString" returnT: str)
+  intProtocol addMethod: (NivaMethod unary: "inc" receiverType: int returnT: int)
+  intProtocol addMethod: (NivaMethod unary: "dec" receiverType: int returnT: int)
+  intProtocol addMethod: (NivaMethod unary: "toString" receiverType: int returnT: str)
   // binary
-  intProtocol addMethod: (NivaMethod binary: "+" argT: int returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "-" argT: int returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "*" argT: int returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "/" argT: int returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "%" argT: int returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "+" receiverType: int argT: int  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "-" receiverType: int argT: int  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "*" receiverType: int argT: int  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "/" receiverType: int argT: int  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "%" receiverType: int argT: int  returnT: int)
 
-  intProtocol addMethod: (NivaMethod binary: "==" argT: bool returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "!=" argT: bool returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "==" receiverType: int argT: bool  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "!=" receiverType: int argT: bool  returnT: int)
 
   ^intProtocol
 ]
@@ -27,21 +27,21 @@ constructor NivaProtocol stringFromDefaultTypes: dtc::DefaultTypesContainer  -> 
 
   strProto = NivaProtocol name: "common" 
   // unary
-  strProto addMethod: (NivaMethod unary: "echo" returnT: unit)
-  strProto addMethod: (NivaMethod unary: "toString" returnT: str)
-  strProto addMethod: (NivaMethod unary: "count" returnT: int)
-  strProto addMethod: (NivaMethod unary: "isEmpty" returnT: bool)
+  strProto addMethod: (NivaMethod unary: "echo" receiverType: str returnT: unit)
+  strProto addMethod: (NivaMethod unary: "toString" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
+  strProto addMethod: (NivaMethod unary: "isEmpty" receiverType: str returnT: bool)
   // binary
-  strProto addMethod: (NivaMethod binary: "+" argT: str returnT: str)
+  strProto addMethod: (NivaMethod binary: "+" receiverType: str argT: str returnT: str)
   
-  strProto addMethod: (NivaMethod binary: "==" argT: str returnT: bool)
-  strProto addMethod: (NivaMethod binary: "!=" argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "==" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "!=" receiverType: str argT: str returnT: bool)
 
   // keyword
-  strProto addMethod: (NivaMethod singleArgKw: "at" argT: int returnT: bool )
-  strProto addMethod: (NivaMethod singleArgKw: "contains" argT: str returnT: bool )
-  strProto addMethod: (NivaMethod singleArgKw: "drop" argT: int returnT: str )
-  strProto addMethod: (NivaMethod singleArgKw: "dropLast" argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "at" receiverType: str argT: int returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: str argT: str returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
 
   ^strProto
 ]
@@ -53,19 +53,19 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> Ni
   boolProto = NivaProtocol name: "common" 
 
   // unary
-  boolProto addMethod: (NivaMethod unary: "echo" returnT: unit)
-  boolProto addMethod: (NivaMethod unary: "toString" returnT: str)
-  boolProto addMethod: (NivaMethod unary: "not" returnT: bool)
+  boolProto addMethod: (NivaMethod unary: "echo" receiverType: bool returnT: unit)
+  boolProto addMethod: (NivaMethod unary: "toString" receiverType: bool returnT: str)
+  boolProto addMethod: (NivaMethod unary: "not" receiverType: bool returnT: bool)
   // binary
-  boolProto addMethod: (NivaMethod binary: "==" argT: bool returnT: bool)
-  boolProto addMethod: (NivaMethod binary: "!=" argT: bool returnT: bool)
-  boolProto addMethod: (NivaMethod binary: "||" argT: bool returnT: bool)
-  boolProto addMethod: (NivaMethod binary: "&&" argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "==" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "!=" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "||" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
 
   // keyword
   noArgs = FuntionT args: {} name: "noFields" pkgName: "core" returnType: unit
-  boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  argT: noArgs returnT: unit )
-  boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" argT: noArgs returnT: unit )
+  boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgs returnT: unit )
+  boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgs returnT: unit )
 
   ^boolProto
 ]
@@ -76,22 +76,22 @@ constructor NivaProtocol anyFromDefaultTypes: dtc::DefaultTypesContainer  -> Niv
   anyProto = NivaProtocol name: "common" 
 
   // unary
-  anyProto addMethod: (NivaMethod unary: "echo" returnT: unit)
-  anyProto addMethod: (NivaMethod unary: "toString" returnT: str)
+  anyProto addMethod: (NivaMethod unary: "echo" receiverType: any returnT: unit)
+  anyProto addMethod: (NivaMethod unary: "toString" receiverType: any returnT: str)
   // binary
-  anyProto addMethod: (NivaMethod binary: "==" argT: any returnT: bool)
-  anyProto addMethod: (NivaMethod binary: "!=" argT: any returnT: bool)
+  anyProto addMethod: (NivaMethod binary: "==" receiverType: any argT: any returnT: bool)
+  anyProto addMethod: (NivaMethod binary: "!=" receiverType: any argT: any returnT: bool)
 
   // keyword
   ^anyProto
 ]
 
 // helpers
-constructor NivaMethod unary: name::String returnT::NivaType = 
-  NivaMethod name: name args: {} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+constructor NivaMethod unary: name::String receiverType::NivaType returnT::NivaType = 
+  NivaMethod name: name :receiverType args: {} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
-constructor NivaMethod binary: name::String argT::NivaType returnT::NivaType  = 
-  NivaMethod name: name args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+constructor NivaMethod binary: name::String receiverType::NivaType argT::NivaType returnT::NivaType  = 
+  NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
-constructor NivaMethod singleArgKw: name::String argT::NivaType returnT::NivaType  = 
-  NivaMethod name: name + ":" args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+constructor NivaMethod singleArgKw: name::String receiverType::NivaType argT::NivaType returnT::NivaType  = 
+  NivaMethod name: name + ":" :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"

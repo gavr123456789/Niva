@@ -111,7 +111,7 @@ TypeDeclVisitor
       // get real type for receiver
 
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
-      receiverType 
+       
 
       | receiverType | TypeT => [
         receiverType genericArgs isNotEmpty ifTrue: [
@@ -135,6 +135,7 @@ TypeDeclVisitor
       
       method = NivaMethod 
         name: msg name 
+        receiverType: receiverType
         args: argsT 
         returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
         forMut: isMutable 
@@ -220,6 +221,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
 
       getter = NivaMethod 
         name: it name 
+        receiverType: typeStub
         args: {} 
         returnType: fieldType 
         forMut: false // false because its getter

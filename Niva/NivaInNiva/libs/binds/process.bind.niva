@@ -1,0 +1,31 @@
+Bind package: "java.lang" content: [
+  type ProcessBuilder command: List::String
+
+  @emit: "ProcessBuilder($1).directory(java.io.File($2))"
+  constructor ProcessBuilder command::List::String dir::String -> ProcessBuilder
+
+  type Process 
+  
+  ProcessBuilder start -> Process
+  
+  @emit: "$0.redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT)"
+  ProcessBuilder redirectOutput -> ProcessBuilder
+  
+  Process waitFor -> Int
+
+  @emit: """System.getProperty("user.dir")"""
+  constructor Process currentDir -> String
+
+  @emit: """System.getenv($1)"""
+  constructor Process getEnv::String -> String
+]
+
+// Process getEnv: "JAVA_HOME" |> echo
+
+// dsl
+// ProcessBuilder redirectAndStart = 
+//   this redirectOutput start waitFor
+
+// String runCommand = 
+//   ProcessBuilder command: {this},
+//   redirectOutput start waitFor

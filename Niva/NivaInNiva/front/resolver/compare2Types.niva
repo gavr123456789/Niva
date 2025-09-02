@@ -34,7 +34,6 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
     |=> false
   ]
   | StringT => [
-    TO DO: "111"
     | this
     | StringT => true
     |=> false

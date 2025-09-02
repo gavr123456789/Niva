@@ -189,7 +189,7 @@ TyperDB printAllErrorMessages = [
 
 TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
 
-  Assert that: m kind equals: MessageSendKind.Constructor andSay: "add New Constructor, but its kind is " + m kind toString
+  Assert that: m kind equals: MessageSendKind.DefaultConstructor andSay: "add New DefaultConstructor, but its kind is " + m kind toString
   pkg = packages at: forType pkgName
   | pkg 
   | null => TO DO: "no pkg"
@@ -310,9 +310,19 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
     ]
   ]
 
-  protocols = protocols at: forType
+  protocols = this protocols at: forType
   | protocols
-  | null => [TO DO: "Searching for $name method but type $forType has zero protocols"]
+  | null => [
+    typeName = forType name
+
+    this protocols debug
+    "раньше все методы были в типе а тип в пакете, и никак иначе"
+    "теперь метод для типа может быть объявлен из другого пакета"
+    "не того где объявлен сам тип, изза планируемой теоретической фичи приватных методов расширения базовых типов"
+    "тут мы ищем ехо у типа эни в пакете... мы должны искать всегда в типе, и вообще хранить методы в типах а не пакетах" debug
+
+    "навеерное в typerDB type to map of methodName to method"
+    TO DO: "Searching for $name method but type $typeName has zero protocols"]
   |=> [ 
 
     protocols forEach: [ p -> 
@@ -329,8 +339,6 @@ NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::Typed
   ]
 
 // also try to find this method for Any
-  {any} = dtc
-  ^ this findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
 
   ^ null
   // typeName = forType name
@@ -343,12 +351,12 @@ TyperDB
   currentPkg::NivaPkg -> NivaMethod = [
   
   receiverType = receiver typeInfo t
-
+// resolve do if this is message for a codeblock
   | receiverType
   | FuntionT => [
     // check that its Do or any arg names 
     result = name == "do" ifTrue: [
-      NivaMethod unary: "do" returnT: receiverType returnType
+      NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
     ] ifFalse: [TO DO]
     
     ^ result
@@ -356,41 +364,45 @@ TyperDB
   |=> []
   pkg = packages at: receiverType pkgName, unpackOrPANIC
 
-  
   methodMaybe = pkg findMethodInAllProtocols: name forType: receiverType :receiver :currentPkg :dtc
   method = 
     | methodMaybe
-    | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
-    |=> [ methodMaybe ]
+    | null => [
+        {any} = dtc
+        foundInAnyMaybe = pkg findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
+        | foundInAnyMaybe
+        | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
+        |=> foundInAnyMaybe 
+      ]
+    |=> methodMaybe 
 
-  method debug
 
- ^| method returnType
-  | Unknown => [
-    "Lazy resolving for $name", log
+ result = 
+    | method returnType
+    | Unknown => [
+      "Lazy resolving for $name", log
 
-    {decl} = method
-    | decl
-    | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
-    |=> [
-      Assert that: decl isSingleExpr equals: true
+      {decl} = method
+      | decl
+      | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
+      |=> [
+        Assert that: decl isSingleExpr equals: true
 
-  
-      decl resolveBodyWithDb: this pkg: pkg
+    
+        decl resolveBodyWithDb: this pkg: pkg
 
-      Assert that: decl body typedBody2 isNotEmpty equals: true
+        Assert that: decl body typedBody2 isNotEmpty equals: true
 
-      returnType = decl body typedBody2 last typeInfo t
+        returnType = decl body typedBody2 last typeInfo t
 
-      replaceMethod = method copyWithDifferentReturnType: returnType
-      pkg replaceMethod: replaceMethod inType: receiverType
-      replaceMethod returnType debug
-      replaceMethod
+        replaceMethod = method copyWithDifferentReturnType: returnType
+        pkg replaceMethod: replaceMethod inType: receiverType
+        replaceMethod
+      ]
     ]
-  ]
-  |=> method
+    |=> method
 
-  // ^ method
+  ^ result
 ] 
 
 TyperDB 

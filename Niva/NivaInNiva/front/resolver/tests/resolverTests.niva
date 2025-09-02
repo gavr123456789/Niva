@@ -111,7 +111,7 @@ Test constructorCall = [
       kwMsg = varDecl value
       | kwMsg
       | KeywordMsgT => [
-        Assert that: kwMsg kind equals: MessageSendKind.Constructor
+        Assert that: kwMsg kind equals: MessageSendKind.DefaultConstructor
       ]
       |=> TO DO
     ]
