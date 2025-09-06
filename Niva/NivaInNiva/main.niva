@@ -56,11 +56,12 @@ runPTry = [
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-] do 
+] 
 
 codeblockCall = [
   fileMain = """
-    1 echo
+    x = [x::Int -> x inc]
+    x x: 1
   """
   
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
@@ -69,7 +70,7 @@ codeblockCall = [
   typedAst = result entryPointExpressions 
 
 
-] 
+] do
 
 
 

@@ -357,7 +357,14 @@ TyperDB
     // check that its Do or any arg names 
     result = name == "do" ifTrue: [
       NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
-    ] ifFalse: [TO DO]
+    ] ifFalse: [
+      // check that it has args
+      // then compare them
+      receiverType debug
+
+      receiverType args
+      NivaMethod manyArgKw: receiverType args receiverType: receiverType returnT: receiverType returnType      
+  ]
     
     ^ result
   ]

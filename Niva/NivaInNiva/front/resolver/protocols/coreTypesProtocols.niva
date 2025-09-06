@@ -95,3 +95,15 @@ constructor NivaMethod binary: name::String receiverType::NivaType argT::NivaTyp
 
 constructor NivaMethod singleArgKw: name::String receiverType::NivaType argT::NivaType returnT::NivaType  = 
   NivaMethod name: name + ":" :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+
+
+
+constructor NivaMethod manyArgKw::{TypeTField} receiverType::NivaType returnT::NivaType  = 
+  NivaMethod 
+    name: (manyArgKw joinWith: ":" transform: [it name]) + ":"
+    :receiverType
+    args: manyArgKw 
+    returnType: returnT 
+    forMut: false 
+    protocolName: "common" 
+    pkgName: "core"
