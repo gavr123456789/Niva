@@ -21,10 +21,6 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
         return bracketsExpr
     }
 
-//    val readPrimaryCollection = readPrimaryCollection(typeAst)
-
-//    val readPrimaryMap = readPrimaryMap(typeAst)
-
     // builder
     if (checkMany(TokenType.Identifier, TokenType.OpenBracket))
         return staticBuilder()
@@ -71,6 +67,7 @@ private fun Parser.parseSetCollection(
     typeAst: TypeAST?,
     token: Token
 ): SetCollection {
+    skipNewLinesAndComments()
     val initElements = readPrimaryCollection(typeAst)
     skipNewLinesAndComments()
     match(TokenType.CloseParen)
@@ -83,6 +80,7 @@ fun Parser.parseMapCollection(
     typeAst: TypeAST?,
     token: Token
 ): MapCollection {
+    skipNewLinesAndComments()
     val initElements = readPrimaryMap(typeAst)
     skipNewLinesAndComments()
     match(TokenType.CloseBrace)
@@ -98,6 +96,7 @@ fun Parser.parseListCollection(
     // for now, messages inside collection literals are impossible
 
     //if there are keyword call, then read collection of constructors
+    skipNewLinesAndComments()
     val initElements = readPrimaryCollection(typeAst)
     skipNewLinesAndComments()
     match(TokenType.CloseBrace)

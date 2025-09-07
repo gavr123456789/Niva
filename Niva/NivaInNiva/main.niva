@@ -6,15 +6,15 @@ type FilePath = String
 type FileContent = String
 
 type NivaSourceFile
-  path: String 
+  path: String
   nameWithoutExt: String
 
 type IO
   readFile: [FilePath -> String]
-  writeFile: [FilePath, FileContent -> Unit] 
+  writeFile: [FilePath, FileContent -> Unit]
   walkDir: [FilePath -> List::NivaSourceFile]
   getParent: [String -> String]
-  currentDir: String 
+  currentDir: String
   runProgram: [List::String -> ]
 
 constructor IO new -> IO= [
@@ -23,7 +23,7 @@ constructor IO new -> IO= [
   ]
 
   writeFile = [path::String , fileContent::FileContent->
-    FileSystem write: path toPath 
+    FileSystem write: path toPath
                content: fileContent
     Unit
   ]
@@ -32,13 +32,13 @@ constructor IO new -> IO= [
     x = FileSystem listRecursively: path toPath
 
     x map: [
-      NivaSourceFile path: it toString nameWithoutExt: (it name substringBeforeLast: ".") 
+      NivaSourceFile path: it toString nameWithoutExt: (it name substringBeforeLast: ".")
     ]
   ]
-  
+
   getParent = [path::String -> path toPath parent unpackOrPANIC name]
 
-  runProgram = [args::List::String -> 
+  runProgram = [args::List::String ->
     processBuilder = ProcessBuilder command: args
     processBuilder redirectOutput start waitFor
     Unit
@@ -49,28 +49,28 @@ constructor IO new -> IO= [
 
 
 runPTry = [
-  io = IO new 
+  io = IO new
   io runProgram args: {"bun" "--help"}
-] 
+]
 
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-] 
+] do
 
 codeblockCall = [
   fileMain = """
     x = [x::Int -> x inc]
     x x: 1
   """
-  
+
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  
+
   db = result db
-  typedAst = result entryPointExpressions 
+  typedAst = result entryPointExpressions
 
 
-] do
+]
 
 
 
@@ -93,14 +93,14 @@ pkgImports = [
 
 
 
-  result = ResolverHelper resolve: #{"main"   fileMain 
-                                     "second" second 
-                                     "third"  third} 
+  result = ResolverHelper resolve: #{"main"   fileMain
+                                     "second" second
+                                     "third"  third}
                           entryPoint: "main"
   // result entryPointExpressions at: 0, debug
   result db structureInfo echo
 
-] 
+]
 
 
 
@@ -115,11 +115,11 @@ resolveMatch = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
 
   // typedAst first toTyped nivaType log
   typedAst debug
-] 
+]
 
 
 resolveGenerics = [
@@ -140,8 +140,8 @@ resolveGenerics = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
 
-  
 
-] 
+
+]

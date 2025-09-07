@@ -1,11 +1,12 @@
 union ResolveErrors tok: Token msg: String =
-| ErrorNoSuchType 
+| ErrorNoSuchType
 | ErrorWrongArgType
+| ErrorWrongArgCount
 
 
 union AstVisitor =
 | PrintingVisitor //sb: StringBuilder
-| TypeDeclVisitor db: TyperDB 
+| TypeDeclVisitor db: TyperDB
 | MsgDeclVisitor
 | GoBackendVisitor
 
@@ -23,8 +24,8 @@ PrintingVisitor visit: st::Statement = [
 /// returns pkg to message decl
 /// entryPointStatements just all statements from the main.niva
 /// not only expr
-TypeDeclVisitor 
-  visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement) 
+TypeDeclVisitor
+  visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)
   entryPointStatements::List::Statement -> List(Tuple(String, MessageDecl)) = [
 
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
@@ -39,7 +40,7 @@ TypeDeclVisitor
     |=> []
   ]
 
-  processDeclarations = [file::String, statements::List::Statement -> 
+  processDeclarations = [file::String, statements::List::Statement ->
     pkgName = file
 
     db addNewPkgIfNotExists: pkgName
@@ -54,7 +55,7 @@ TypeDeclVisitor
         pkgTotypeDecls2 add: (Tuple x: pkgName y: it)
       ]
       | MessageDecl => [
-        msgDecls2 add: (Tuple x: pkgName y: it) 
+        msgDecls2 add: (Tuple x: pkgName y: it)
         Unit
       ]
       // msgDecls at: pkgName put: it debug
@@ -63,9 +64,9 @@ TypeDeclVisitor
       |=> []
     ]
   ]
-  
+
   // first iteration, fill the lists of statements, create pkgs
-  fileToStatements forEach: [file, statements -> 
+  fileToStatements forEach: [file, statements ->
     processDeclarations file: file statements: statements
   ]
 
@@ -77,16 +78,39 @@ TypeDeclVisitor
       readyToAddToDBType = .fillFields: typeDecl knownTypes: noFieldsTypes
       readyToAddToDBType unpack: [ resolvedType ->
 
-        db 
-          addNewType: resolvedType 
+        db
+          addNewType: resolvedType
           inPkg: pkgName
 
-        
-        db 
-          addNewConstructor: resolvedType generateDefaultConstructor 
-          forType: resolvedType 
+        // add fields
 
-        
+
+        db
+          addNewConstructor: resolvedType generateDefaultConstructor
+          forType: resolvedType
+
+
+        // это снова происходит внутри  .fillFields
+        // addFields = [
+        //   resolvedType fields forEach: [ field ->
+
+        //     getter = NivaMethod
+        //       name: field name
+        //       receiverType: resolvedType
+        //       args: {}
+        //       returnType: field typeT
+        //       forMut: false // false because its getter
+        //       possibleErrors: {}
+        //       kind: MessageSendKind.Getter
+        //       decl: null
+        //       protocolName: "getters"
+        //       pkgName: "core" // this is getter
+
+        //     db addNewMethod: getter forType: resolvedType inProtocol: "getters"
+
+        //   ]
+        // ] do
+
         "Types: added type " + resolvedType name + " in pkg " + pkgName, log
 
       ]
@@ -95,30 +119,30 @@ TypeDeclVisitor
         TO DO: "cant fill fields for $name"
       ]
     ]
-    
 
-    // msg decls resolving
-    // here we should have all the types resolved
-    // msgDecls2 addFirst: (Tuple x: "main" y: entry)
+
+  // msg decls resolving
+  // here we should have all the types resolved
+  // msgDecls2 addFirst: (Tuple x: "main" y: entry)
 
 // first resolve all the declarations
 // then resolve main "body"
-// then resolve all others method's bodies 
+// then resolve all others method's bodies
     msgDecls2 forEach: [ tuple ->
-      pkg = tuple x 
+      pkg = tuple x
       msg = tuple y
 
       // get real type for receiver
 
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
-       
+
 
       | receiverType | TypeT => [
         receiverType genericArgs isNotEmpty ifTrue: [
           TO DO: "Ast have generics"
         ]
       ]
-      |=> [] 
+      |=> []
 
       // get real type for each arg
       argsT = msg args map: [ arg ->
@@ -126,19 +150,19 @@ TypeDeclVisitor
         TypeTField name: arg name typeT: argType
       ]
 
-      
-      astOfReceiver = msg receiver 
+
+      astOfReceiver = msg receiver
       isMutable = | astOfReceiver
       | AstType => astOfReceiver isMut
       | AstLambdaType => false
-      
-      
-      method = NivaMethod 
-        name: msg name 
+
+
+      method = NivaMethod
+        name: msg name
         receiverType: receiverType
-        args: argsT 
+        args: argsT
         returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
-        forMut: isMutable 
+        forMut: isMutable
         possibleErrors: {}
         kind: MessageSendKind.Call
         decl: msg
@@ -148,25 +172,25 @@ TypeDeclVisitor
       db addNewMethod: method forType: receiverType inProtocol: null
       "Methods: added method " + method name + " in pkg: " + pkg, log
     ]
-    
+
 // resolve main
-    mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!) 
+    mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!)
     // create entry point pkg
     entryPointPkg = db addNewPkgIfNotExists: "entryPoint"
-    typedMain = mainBody 
-      resolveBody2: db 
+    typedMain = mainBody
+      resolveBody2: db
       withContext: (Context rootWithPkg: entryPointPkg)
-    
-    // mainBody typedBody2 addAll: 
+
+    // mainBody typedBody2 addAll:
 
 
     fakeUnitAstType = AstType2 unitType
 
-    
-    fakeMsgDecl = MessageDecl receiver: fakeUnitAstType 
-      name: "entryPoint" args: {} 
-      returnType: fakeUnitAstType body: mainBody 
-      isSingleExpr: false isConstructor: false 
+
+    fakeMsgDecl = MessageDecl receiver: fakeUnitAstType
+      name: "entryPoint" args: {}
+      returnType: fakeUnitAstType body: mainBody
+      isSingleExpr: false isConstructor: false
       token: (mainBody unTypedBody isNotEmpty ifTrue: [mainBody unTypedBody first token]  ifFalse: [Token fake])
 
 
@@ -188,7 +212,7 @@ MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
     | true => Unknown new
     | false => db dtc unit
   ]
-  |=> db findByTypeName: rt name inPkg: null 
+  |=> db findByTypeName: rt name inPkg: null
 ]
 
 /// returns a type with fields filled with real types, ready to add to db
@@ -209,7 +233,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
     st fields forEach: [
       fieldName = it astType name
       knownNames = knownTypes keys
-      // search in known types, if not found search in db, db always has core types, 
+      // search in known types, if not found search in db, db always has core types,
       // known types contains every type from AST decls
       maybeFieldType = knownTypes at: fieldName
       fieldType = | maybeFieldType
@@ -219,36 +243,35 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
       field = TypeTField name: it name typeT: fieldType
       typeStub fields add: field
 
-      getter = NivaMethod 
-        name: it name 
+      getter = NivaMethod
+        name: it name
         receiverType: typeStub
-        args: {} 
-        returnType: fieldType 
+        args: {}
+        returnType: fieldType
         forMut: false // false because its getter
         possibleErrors: {}
         kind: MessageSendKind.Getter
         decl: null
         protocolName: "getters"
         pkgName: "core" // this is getter
-      
+
       db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
-    
+
 
     // пока шо с стейтментом ниче не делаем, нагенерим мономорфных типов потом когда будет сас
-    
+
     typeStub genericArgs addAll: typeStub collectGenerics
-    
     ^ typeStub
   ]
 ]
 
 MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
-  pkg2Msg forEach: [tuple -> 
-    pkgStr = tuple x 
+  pkg2Msg forEach: [tuple ->
+    pkgStr = tuple x
     pkg = db packages at: pkgStr, unpackOrPANIC
 
-    msgDecl = tuple y 
+    msgDecl = tuple y
     msgDecl resolveBodyWithDb: db :pkg
   ]
 ]
@@ -270,7 +293,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
     receiver name == "Nothing" ifTrue: [
       TO DO: "You cant declare methods for Nothing type"
     ]
-    
+
     c defineVar: "this" withType: receiver
 
 
@@ -283,8 +306,8 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
   ]
 // resolve body
   c = createContextWithThisAndArgs do
-  
-  body resolveBody2: db withContext: c 
+
+  body resolveBody2: db withContext: c
 ]
 
 
@@ -308,7 +331,7 @@ AstVisitor visit: st::Statement = [
 ]
 
 // todo go deep to call visitor on each child note
-// Statement accept: visitor::AstVisitor = 
+// Statement accept: visitor::AstVisitor =
 // | this
 // | Expr => [
 //   visitor visit: this
@@ -325,7 +348,7 @@ AstVisitor visit: st::Statement = [
 // ]
 
 
-// Expr exprAccept: visitor::AstVisitor -> Unit = 
+// Expr exprAccept: visitor::AstVisitor -> Unit =
 // | this
 // | LiteralExpr | Identifier | ReturnStatement => [visitor visit: this]
 // | ExprInBrackets => [
@@ -358,7 +381,7 @@ AstVisitor visit: st::Statement = [
 
 
 
-// Declaration declAccept: visitor::AstVisitor -> Unit = 
+// Declaration declAccept: visitor::AstVisitor -> Unit =
 // | this
 // | TypeDecl =>  visitor visit: this
 
