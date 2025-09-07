@@ -149,7 +149,9 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
 
 
 fun help(args: Array<String>): Boolean {
-    if (args.isNotEmpty() && (args[0] == "--help" || args[0] == "-help")) {
+    if (args.isEmpty())
+        return true
+    if (args[0] == "--help" || args[0] == "-help") {
         println(HELP)
         return true
     }

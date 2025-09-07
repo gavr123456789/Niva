@@ -32,24 +32,27 @@ constructor NivaCompiler [
         pathToContent = NivaBuildSystem findAllWilesFrom: argsParsed path withIO: io
         result = ResolverHelper resolve: pathToContent 
                                 entryPoint: "entryPoint"
-
-        // result entryPointExpressions at: 0, debug
         
-        {option} = argsParsed
-        | option
-        | CompilerOption.Run => [
-            
-        ]
-        | CompilerOption.Build => [
+        realJSPath = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/realJS"
+        
+        transpileToSources = [
             fileToJSCOntent = TypeScript fullFromResolver: result
 
-            realJSPath = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/realJS"
             fileToJSCOntent forEach: [file, jsContent -> 
                 destanation = realJSPath + "/" + file + ".js"
                 io writeFile file: destanation content: jsContent
             ]
+        ]
+
+        {option} = argsParsed
+        | option
+        | CompilerOption.Run => [
+            transpileToSources do
             pathToEntryPoint = realJSPath + "/" + "entryPoint.js"
             io runProgram args: {"bun" pathToEntryPoint}
+        ]
+        | CompilerOption.Build => [
+            transpileToSources do
 
             Unit
         ]

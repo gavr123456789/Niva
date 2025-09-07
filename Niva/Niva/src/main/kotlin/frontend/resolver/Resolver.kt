@@ -220,7 +220,7 @@ private fun Resolver.resolveStatement(
         }
 
         is ListCollection -> {
-            val collectionName = "List" //if (!statement.isMutable) "List" else "MutableList"
+            val collectionName = "List"
             resolveCollection(statement, collectionName, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
                 onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list

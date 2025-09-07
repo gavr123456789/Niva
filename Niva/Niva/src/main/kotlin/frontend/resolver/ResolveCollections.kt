@@ -19,6 +19,7 @@ fun Resolver.setTypeForCollection(typeArgumentList: MutableList<Type>, statement
         protocols = listType.protocols,
         typeDeclaration = null
     ).also {
+
         if (statement2 is CollectionAst && statement2.isMutableCollection)
             it.isMutable = true
         else if (statement2 is MapCollection && statement2.isMutable)

@@ -4,32 +4,32 @@ type TypeScript
 constructor TypeScript  [
 
     on fullFromResolver: rh::ResolverHelper -> Map(String, String) = [
-        db = rh db 
+        db = rh db
         packages = db packages
         "\n" + db structureInfo, debug
 
-        generateImports = [pkg::NivaPkg sb::StringBuilder-> 
+        generateImports = [pkg::NivaPkg sb::StringBuilder->
             pkg imports forEach: [
                 // import * as core from "./core.js"
                 sb append: "import * as "
-                sb append: it 
+                sb append: it
                 sb append: " from \"./$it.js\"\n"
             ]
             sb appendLine: "\n" // 2
         ]
 
-        outputFileToJS::mut Map(String, String) = #{}! 
+        outputFileToJS::mut Map(String, String) = #{}!
 
-        rh fileToStatements forEach: [file, statement -> 
+        rh fileToStatements forEach: [file, statement ->
             // one sb per file
             sb = StringBuilder new
 
             pkg = packages at: file, unpackOrPANIC
 
             generateImports pkg: pkg sb: sb
-            
+
             statement forEach: [
-                x = it toTSFromPkg: file 
+                x = it toTSFromPkg: file
                 x != "" ifTrue: [
                     sb appendLine: x
                     sb appendLine: "\n"
@@ -49,13 +49,13 @@ constructor TypeScript  [
         outputFileToJS at: "entryPoint" put: generateMain do
         ^ outputFileToJS
     ]
-] 
+]
 
 
 // currentPkg is basically a file name from which this expr is
-// this is needed to remove qualifiers from calls from the same file, like 
+// this is needed to remove qualifiers from calls from the same file, like
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
-TypedExpr2 toTSFromPkg: currentPkg::String -> String = 
+TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | this
 | LiteralExprT => .literalToTS
 | IdentifierT => .identToTS
@@ -69,8 +69,32 @@ TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | CodeBlockT => .codeBlockToTSFromPkg: currentPkg
 | MatchT => TO DO
 
+CollectionLiteralT toTSFromPkg: currentPkg::String -> String = [
+  sb = StringBuilder new
+  elementsStr = elements v joinWith: ", " transform: [
+    it toTSFromPkg: currentPkg
+  ]
+  ^ | this
+    | ListLiteralT => [
+      "[ " + elementsStr + " ]"
+    ]
+    | SetLiteralT => [
+      // new Set([1, 2, 2, 3])
+      "new Set([" + elementsStr + "])"
+    ]
+    | MapLiteralT => [
+      //new Map([
+      //   ["name", "Ada"],
+      //   ["age", 36],
+      //   [42, "answer"],
+      //   [{ id: 1 }, "object as key"]
+      // ]);
+      "new Map([" + elementsStr + "])"
+    ]
 
-   
+  ^ ""
+]
+
 CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
     argsStr = args joinWith: ", " transform: [
         it name
@@ -79,22 +103,22 @@ CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
         it toTSFromPkg: currentPkg
     ]
 
-    ^ "(" + argsStr + ") => {" + bodyStr + "}" 
+    ^ "(" + argsStr + ") => {" + bodyStr + "}"
 ]
 
 
-VarDeclarationT varDeclToTSFromPkg: currentPkg::String = 
+VarDeclarationT varDeclToTSFromPkg: currentPkg::String =
     "const " + name  + " = " + (value toTSFromPkg: currentPkg)
 
 
-IdentifierT identToTS -> String = 
+IdentifierT identToTS -> String =
     | name
     | "this" => "_this"
-    |=> name 
+    |=> name
 
 
-LiteralExprT literalToTS -> String = 
-    token lexeme 
+LiteralExprT literalToTS -> String =
+    token lexeme
 
 
 MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
@@ -124,7 +148,7 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
             ]
         ]
         |=> []
-        
+
 
         qSelector = isDefaultConstructor ifFalse: [
             // entryPoint.Person2_name_age("sas", 42)
@@ -134,7 +158,7 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
             "new " + dbMsg receiverType name
             dbMsg receiverType name + "_" +  selector name
         ]
-        newSelector = dbMsg receiverType name + "_" +  selector name 
+        newSelector = dbMsg receiverType name + "_" +  selector name
         ^ qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
@@ -154,11 +178,11 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
                 selectorFromArgs = args joinWith: "_" transform: [
                     it name name
                 ]
-                dbMsg receiverType name + "_" + selectorFromArgs 
+                dbMsg receiverType name + "_" + selectorFromArgs
             ] ifTrue: [
                 "new " + dbMsg receiverType name
             ]
-        
+
         receiverStr = getReceiverTs do
         receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
 
@@ -171,7 +195,6 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
         ^ qualifier + newSelector + "(" + args + ")"
     ]
 
-    
+
     ^ getReceiverTs do
 ]
-

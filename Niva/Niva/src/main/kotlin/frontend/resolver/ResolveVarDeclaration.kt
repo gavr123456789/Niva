@@ -36,7 +36,9 @@ fun Resolver.resolveVarDeclaration(
     previousScope: MutableMap<String, Type>,
 ) {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-
+    if (currentScope.contains(statement.name)) {
+        statement.token.compileError("This scope already contain varDeclaration with name ${statement.name}")
+    }
     // currentNode, depth + 1
     currentLevel++
     resolveSingle((statement.value), previousAndCurrentScope, statement)

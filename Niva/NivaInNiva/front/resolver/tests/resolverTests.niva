@@ -1,7 +1,50 @@
-  
+
 // Test recursiveMessageDeclaration = [
   // shoud be error, but there are no way to typeChecks errors for now
 // ]
+
+
+Test collectionsTesting = mapTry = [
+  fileMain = """
+    {1 2 3}
+    #("1" "2" "3")
+    #{1 "a" 2 "b"}
+  //{"a" 1 "b" 2}
+  """
+  result = ResolverHelper
+    resolve: #{"main" fileMain}
+    entryPoint: "main"
+
+  db = result db
+  typedAst = result entryPointExpressions
+
+  checkFirstList = [
+    t = typedAst at: 0, typeInfo t
+    | t
+    | ListT => Assert that: t t name equals: "Int"
+    |=> [TO DO: "list expected"]
+  ] do
+
+  checkSecondSet = [
+    t = typedAst at: 1, typeInfo t
+    | t
+    | SetT => Assert that: t t name equals: "String"
+    |=> [TO DO: "set expected"]
+  ] do
+
+  checkThirdMap = [
+    t = typedAst at: 2, typeInfo t
+    | t
+    | MapT => [
+      keyType = t k
+      valueType = t v
+      Assert that: keyType name equals: "Int"
+      Assert that: valueType name equals: "String"
+    ]
+    |=> [TO DO: "map expected but got: $t"]
+  ] do
+
+]
 
 Test  codeblockReturnType = [
   fileMain = """
@@ -9,18 +52,18 @@ Test  codeblockReturnType = [
       "sas"
       1 inc
     ]
-    [a::Int, b::Int -> 
+    [a::Int, b::Int ->
       a + b
     ]
 
-    
+
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
 
 
   db = result db
-  typedAst = result entryPointExpressions 
+  typedAst = result entryPointExpressions
   checkFirst = [
     codeBlock = typedAst at: 0
     | codeBlock | CodeBlockT => [
@@ -38,7 +81,7 @@ Test  codeblockReturnType = [
     codeBlock = typedAst at: 1
     | codeBlock | CodeBlockT => [
       Assert that: codeBlock args count equals: 2
-      
+
 
 
       t = codeBlock typeInfo t
@@ -62,7 +105,7 @@ Test wrongArgTypeError = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
 
   Assert that: db listOfErrors count equals: 3
 ]
@@ -83,17 +126,17 @@ Test scopeVariables = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC  
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
 ]
 
 
 Test constructorCall = [
   fileMain = """
-    type Person age: Int 
+    type Person age: Int
     Int sas = [
       p = Person age: 27
     ]
-    
+
   """
 
 
@@ -101,7 +144,7 @@ Test constructorCall = [
   db = result db
   typedAst = result fileToStatements at: "main", unpackOrPANIC
   msgDecl = typedAst at: 1
-  
+
   | msgDecl
   | MessageDecl => [
     varDecl = msgDecl body typedBody2 at: 0
@@ -120,18 +163,18 @@ Test constructorCall = [
 
   ]
   |=> [TO DO]
-  
+
 ]
 
 Test getter = [
 
   fileMain = """
-    type Person age: Int 
-    
+    type Person age: Int
+
     Person getAge -> Int = [
       this age
     ]
-    
+
   """
 
 
@@ -143,17 +186,17 @@ Test getter = [
   | MessageDecl => [
     getter = msgDecl body typedBody2 at: 0
     ast = getter
-    | ast 
+    | ast
     | UnaryMsg => [
       Assert that: ast kind equals: MessageSendKind.Getter
     ]
     |=> []
   ]
-  |=>[TO DO]  
+  |=>[TO DO]
 ]
 
 Test resolveAFewDeclarations = [
-  
+
   fileMain = """
     // type Money declared in a different file
     Int make::Wallet sas::Person -> Int = [
@@ -162,16 +205,16 @@ Test resolveAFewDeclarations = [
       2 + 3
     ]
 
-    type Person age: Int 
+    type Person age: Int
     type Wallet money: Int
 
   """
 
   statements  = TestParse withInput: fileMain expectedCount: -1
-  listOfFilesContents = #{"main" statements} 
+  listOfFilesContents = #{"main" statements}
   db = TyperDB new
 
-  msgDecls = TypeDeclVisitor db: db, 
+  msgDecls = TypeDeclVisitor db: db,
     visitAllTypesThenTypesAndMethods: listOfFilesContents
     entryPointStatements: statements
 
@@ -185,11 +228,11 @@ Test resolveAFewDeclarations = [
 
   makeSas = msgDecls at: 0, y
   checkExpressionsTypes = [
-    Assert 
-      that: makeSas body typedBody2 count  
+    Assert
+      that: makeSas body typedBody2 count
       equals: 3
       andSay: "wrong number of expressions"
-   
+
     varDecl = makeSas body typedBody2 at: 0
     unary = makeSas body typedBody2 at: 1
     binary = makeSas body typedBody2 at: 2
@@ -197,6 +240,6 @@ Test resolveAFewDeclarations = [
     Assert that: varDecl typeInfo t name equals: "Unit"
     Assert that: unary typeInfo t name equals: "Int"
     Assert that: binary typeInfo t name equals: "Int"
-    
+
   ] do
 ]

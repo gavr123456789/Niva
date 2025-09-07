@@ -1,4 +1,4 @@
-type TyperDB 
+type TyperDB
   // setOfTypeNames: mut Set::String
   listOfErrors: mut List::ResolveErrors
   listOfDeclaredTypes: mut List::TypeT
@@ -13,8 +13,13 @@ type TyperDB
   typesWithResolvedGenerics: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
   dtc: DefaultTypesContainer
+  // methods
+  typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
+  constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB
+  instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From generics to real types
 
-  
+
+
 
 
 constructor TyperDB new -> TyperDB = [
@@ -23,10 +28,54 @@ constructor TyperDB new -> TyperDB = [
   tuple = NivaPkg core
   corePkg = tuple x
   dtc = tuple y
-  
 
-  ^TyperDB 
-    // setOfTypeNames: #()! 
+  {char int float double str bool nill unit nothing any t list map set} = dtc
+
+
+  listProtocol = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
+  intProtocol  = NivaProtocol intArithmeticsFromDefaultTypes: dtc
+  strProtocol  = NivaProtocol stringFromDefaultTypes: dtc
+  boolProtocol = NivaProtocol boolFromDefaultTypes: dtc
+  anyProtocol  = NivaProtocol anyFromDefaultTypes: dtc
+
+  tempEmptyProto::mut Map(mut String, mut NivaMethod) = #{}!
+
+  typeToMethodNameToMethod::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
+    char tempEmptyProto
+    
+    int intProtocol
+
+    float tempEmptyProto
+    double tempEmptyProto
+
+    str strProtocol
+    bool boolProtocol
+
+    //nill
+    unit tempEmptyProto
+
+    any anyProtocol
+    list listProtocol
+    map tempEmptyProto
+    set tempEmptyProto
+  }
+
+  constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
+    char tempEmptyProto
+    int tempEmptyProto
+    float tempEmptyProto
+    double tempEmptyProto
+    str tempEmptyProto
+    bool tempEmptyProto
+    //nill
+    unit tempEmptyProto
+    any tempEmptyProto
+    list tempEmptyProto
+    map tempEmptyProto
+    set tempEmptyProto 
+  } 
+
+  ^TyperDB
     listOfErrors: {}!
     listOfDeclaredTypes: {}!
     packages: #{"core" corePkg}!
@@ -34,38 +83,345 @@ constructor TyperDB new -> TyperDB = [
     typesWithSameNames: #{}!
     typesWithResolvedGenerics: #{}!
     dtc: dtc
+    typeToMethodNameToMethod: typeToMethodNameToMethod
+    constructorsTypeToMethodNameToMethod: constructorsCache
+    instantiatedCache: #{}!
+
 ]
 
 extend TyperDB [
+
+  on addGenericTypeInstantiated: newType::NivaType fromOriginal: origType::NivaType = [
+    newType debug
+    origType debug
+    
+    // 1 find the pkg of original type 
+    // 2 add the ???
+
+    // maybe remake this to replace generics of the original to a new one and register
+    
+    TO DO
+  ]
+
+  /// adds method to protocol, if no such protocol - creates it
+  on addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
+    methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
+    methodNameToMethodMap containsKey: m name,
+      ifTrue: [TO DO: "Type $forType already has method $m"]
+
+    methodNameToMethodMap at: m name put: m
+    "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ",
+      log
+  ]
+
+
+  /// adds ne method for db, if protocol is null then adds to "common"
+  on addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
+    this
+      addMethod: m
+      toProtocol: (inProtocol unpackOrValue: "common")
+      forType: forType
+  ]
+
+  on addErrorMessage: e::ResolveErrors = [
+    msg = e msg
+    "ADDED ERROR $msg" red log
+    listOfErrors add: e
+  ]
+
+  on printAllErrorMessages = [
+    fakeFilePath = "main.niva"
+    listOfErrors forEach: [
+      tokStart = it tok start toString
+      tokLine = it tok line toString
+
+      "Error: ($fakeFilePath.$tokLine.$tokStart)" red + it msg cyan,
+        echo
+    ]
+  ]
+
+  on addNewConstructor: m::NivaMethod forType::NivaType = [
+    Assert that: m kind equals: MessageSendKind.DefaultConstructor andSay: "add New DefaultConstructor, but its kind is " + m kind toString
+
+    x::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
+    x at: m name put: m
+
+    "Constructors: added constructor " + m name + " for type " + forType name, log
+  ]
+
+  on addNewPkgIfNotExists: pkgName::String -> NivaPkg = [
+    result = packages at: pkgName
+    p = | result
+        | null => [
+          newPkg = NivaPkg name: pkgName
+          packages at: pkgName put: (newPkg)
+          newPkg
+        ]
+        |=> [
+          result
+        ]
+
+    ^ p
+  ]
+
+  on addToTypesWithTheSameName: t::TypeT = [
+    setMaybe = typesWithSameNames at: t name
+
+    | setMaybe
+    | null => [
+      // create set
+      newSet::mut Set::NivaType = #()!
+      newSet add: t
+      typesWithSameNames at: t name put: newSet
+    ]
+    |=> setMaybe add: t
+
+  ]
+  on addNewType: t::TypeT inPkg: pkgName::String = [
+    // 1 add to pkg
+    // find the pkg
+    pkg = packages at: pkgName
+    | pkg
+    | null => TO DO: "Compiler bug: cant find pkg $pkgName"
+    |=> pkg types at: t name put: t
+    
+
+    .addToTypesWithTheSameName: t    
+
+    // 2 add to methods db
+    x = this typeToMethodNameToMethod at: t
+    | x
+    | null => [
+      "Types: added type $t to constructor cache" log
+      this typeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
+    ]
+    |=> TO DO: "Compiler bug: such type was already added to methodDB"
+    
+    // 3 to constructors
+    xc = this constructorsTypeToMethodNameToMethod at: t
+    | xc
+    | null => [
+      "Types: added type $t to constructor cache" log
+      this constructorsTypeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
+    ]
+    |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
+    
+
+    // this typeToMethodNameToMethod at: t put:
+  ]
+
+  on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
+    newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
+    typeId = newTypeWithGenericInstantiated toIdString
+    // check if it already
+    typesWithResolvedGenerics at: typeId, unpack: [
+      "already resolved generic $typeId" log
+      ^it
+    ]
+
+    typesWithResolvedGenerics at: typeId put: newTypeWithGenericInstantiated
+    "added new generic instantiation $typeId" log
+
+    ^ newTypeWithGenericInstantiated
+  ]
+
+  /// we use this for replacing an old method with Unknown return type with new one with resolved rt
+  on replaceMethod: m::NivaMethod inType::NivaType = [
+    x::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: inType, unpackOrPANIC
+    x at: m name put: m
+  ]
+
+
+// FINDING
+
+// добавить в NivaPkg список методов из других пакетов, точнее даже мапа
+// методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
+// как ни крути походу лучше всего хранить пакет в самом методе
+
+  on findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
+
+    // constructorsTypeToMethodNameToMethod keys debug
+
+    receiver isIdentifierConstructor ? [
+      constructorDB = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC, at: name
+      | constructorDB
+      | null => [TO DO: "No such constructor $name for type $forType"]
+      |=> [
+        ^ constructorDB
+      ]
+    ]
+
+    typeToMethodNameToMethod keys debug
+    x = this typeToMethodNameToMethod at: forType
+    y::mut Map(String, NivaMethod) =
+      | x
+      | null => [TO DO: "cant find type $forType in db typeToMethodNameToMethod"]
+      |=> [ x ]
+
+    "Methods: found method $name in $forType" log
+    ^ y at: name
+  ]
+
+  on findMsgFromReceiver: receiver::TypedExpr2
+    byName: name::String
+    currentPkg::NivaPkg -> NivaMethod = [
+
+    receiverType = receiver typeInfo t
+    // resolve do if this is message for a codeblock
+    | receiverType
+    | FuntionT => [
+      // check that its Do or any arg names
+      result = name == "do" ifTrue: [
+        NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
+      ] ifFalse: [
+        // check that it has args
+        // then compare them
+        receiverType debug
+
+        receiverType args
+        NivaMethod manyArgKw: receiverType args receiverType: receiverType returnT: receiverType returnType
+    ]
+
+      ^ result
+    ]
+    |=> []
+    pkg = packages at: receiverType pkgName, unpackOrPANIC
+
+    methodMaybe = this findMethodInAllProtocols: name forType: receiverType :receiver :currentPkg :dtc
+    method =
+      | methodMaybe
+      | null => [
+          {any} = dtc
+          foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
+          | foundInAnyMaybe
+          | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
+          |=> foundInAnyMaybe
+        ]
+      |=> methodMaybe
+
+
+    result =
+      | method returnType
+      | Unknown => [
+        "Lazy resolving for $name", log
+
+        {decl} = method
+        | decl
+        | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
+        |=> [
+          Assert that: decl isSingleExpr equals: true
+
+
+          decl resolveBodyWithDb: this pkg: pkg
+
+          Assert that: decl body typedBody2 isNotEmpty equals: true
+
+          returnType = decl body typedBody2 last typeInfo t
+
+          methodToReplace = method copyWithDifferentReturnType: returnType
+          this replaceMethod: methodToReplace inType: receiverType
+          methodToReplace
+        ]
+      ]
+      |=> method
+
+    ^ result
+  ]
+
+  on findByTypeName: typeName::String = .findByTypeName: typeName inPkg: null
+
+
+  on findByTypeName: typeName::String inPkg: pkgName::String? -> NivaType = [
+
+    typeName isGeneric ifTrue: [
+      ^ UnresolvedGenericT name: typeName
+    ]
+
+    // if core return from cache
+    internalType = internalTypesCache at: typeName
+    | internalType
+    | null => []//TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
+    |=> [^ internalType
+          Unit]
+
+    // its not core type
+    // so use typesWithSameNames
+
+    result = | pkgName
+    | null => [
+      // we dont know the pkg, so search type in every pkg
+      sameNameType = typesWithSameNames at: typeName
+      knownNames = typesWithSameNames keys
+      | sameNameType
+      | null => TO DO: "Bug: Cant find type $typeName in typesWithSameNames, known: $knownNames"
+      |=> [
+        | sameNameType count == 1
+        | true => [
+          // found only one type in the pkg
+          ^ sameNameType first
+        ]
+        | false => TO DO: "There are many types with the same name: $sameNameType, please specify pkg like pkg.type"
+      ]
+    ]
+    |=> [
+      // we know the pkg, so search for type in it
+      pkg = packages at: pkgName
+      | pkg
+      | null => [TO DO: "No such package as $pkgName, known pkgs: $packages"]
+      |=> [
+        foundType = pkg types at: typeName
+        | foundType
+        | null => [TO DO: "No such type: $typeName in $pkgName"]
+        |=> [
+          ^ foundType
+        ]
+      ]
+    ]
+    ^ result
+  ]
+
+
+// INFO
+
   /// returns md like documentation about every pkg -> type -> protocol -> method
   on structureInfo -> String = [
     sb = StringBuilder new
-    packages values filter: [it name != "core"], forEach: [ pkg -> 
-      
-      sb appendLine: "# pkg: " + pkg name
+    packages values filter: [it name != "core"], forEach: [ pkg ->
+
+      sb appendLine: "## pkg: " + pkg name
 
       pkg imports count != 0, ifTrue: [
         importsStr = pkg imports toList joinWith: ", "
         sb appendLine: "- uses: " + importsStr
       ]
 
-      pkg protocols forEach: [t, protocolsOfType ->
-        sb appendLine: "## type: " + t toString
-
-        protocolsOfType forEach: [protocol -> 
-          sb appendLine: "### protocol: " + protocol name
-
-          protocol methods values forEach: [ method -> 
+      this typeToMethodNameToMethod forEach: [t, methodNameToMethod ->
+        t pkgName == pkg name ifTrue: [
+          sb appendLine: "### type: " + t toString
+          methodNameToMethod values forEach: [ method ->
             sb appendLine: "- " + method toString
           ]
         ]
+
       ]
+
+      // pkg protocols forEach: [t, protocolsOfType ->
+      //   sb appendLine: "## type: " + t toString
+
+      //   protocolsOfType forEach: [protocol ->
+      //     sb appendLine: "### protocol: " + protocol name
+
+      //     protocol methods values forEach: [ method ->
+      //       sb appendLine: "- " + method toString
+      //     ]
+      //   ]
+      // ]
       // if no protocols, types would't be printed
-      pkg protocols isEmpty ifTrue: [
-        x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
-        sb appendLine: x
-      ]
-      
+      // pkg protocols isEmpty ifTrue: [
+      //   x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
+      //   sb appendLine: x
+      // ]
+
     ]
 
     ^ sb toString
@@ -79,392 +435,64 @@ type ResolverHelper
   // entryPointStatements: List::TypedExpr
 
 
-// 1 выделить экспрешоны являющиеся мейн функцией из списка стейтментов ентри поинта
 constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
   fileToStatements::mut Map(String, List::Statement) = #{}!
-  
+
   // parsing
   fileToContent forEach: [ file, content ->
     statements = TestParse withInput: content expectedCount: -1
     fileToStatements at: file put: statements
   ]
-   
+
   entryPointStatementsMaybe = fileToStatements at: entryPoint
-  entryPointStatements = 
+  entryPointStatements =
     | entryPointStatementsMaybe
     | null => [TO DO: "trying to find entryPoint: " + entryPoint + " but not found in " + fileToStatements toString]
     |=> [ entryPointStatementsMaybe ]
 
   db = TyperDB new
 
-  msgDecls = TypeDeclVisitor db: db, 
+  msgDecls = TypeDeclVisitor db: db,
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
 
 
   // find main and replace statements from fileToStatements with typed
   // да просто стейтменты ентри поинта отдельно класть в резалте
-  // fileToStatements 
-  //   at: "entryPoint" 
+  // fileToStatements
+  //   at: "entryPoint"
   //   put: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2 // todo
 
 
   MsgDeclVisitor new
-    processBodyes: msgDecls 
+    processBodyes: msgDecls
     db: db
-     
-  ^ ResolverHelper 
-    fileToStatements: fileToStatements 
+
+  ^ ResolverHelper
+    fileToStatements: fileToStatements
     db: db
     entryPointExpressions: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2
 ]
 
-
-Project protocol: "adding"
-
-
-/// adds method to protocol, if no such protocol - creates it
-NivaPkg addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
-  // find type to protocols list or create a new list with new protocol
-  // find new protocol in a list or create a new protocol
-  // add method to protocol
-
-  createNewProtocol = [
-    newProtocol = NivaProtocol name: protocolName
-    newProtocol addMethod: m
-    newProtocol  
-  ]
-  
-  foundProtocols = protocols at: forType
-  | foundProtocols
-  | null => [
-    newProtocol = createNewProtocol do
-    protocols at: forType put: {newProtocol}!
-    "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
-  ]
-  |=> [
-    protocol = foundProtocols find: [it name == protocolName]
-    | protocol
-    | null => [
-      // no such protocol -> create it
-      newProtocol = createNewProtocol do
-      foundProtocols add: newProtocol
-      "Methods: added method " + m name + " to new protocol $protocolName", log
-    ]
-    |=> [
-      protocol addMethod: m
-      "Methods: added method " + m name + " to protocol $protocolName", log
-    ]  
-  ]
-
-]
-
-/// adds ne method for db, if protocol is null then adds to "common"
-TyperDB addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
-  pkg = packages at: forType pkgName
-  | pkg 
-  | null => TO DO: "no pkg"
-  |=> pkg 
-        addMethod: m 
-        toProtocol: (inProtocol unpackOrValue: "common") 
-        forType: forType
-]
-
-TyperDB addErrorMessage: e::ResolveErrors = [
-  msg = e msg
-  "ADDED ERROR $msg" red log
-  listOfErrors add: e
-]
-
-TyperDB printAllErrorMessages = [
-  fakeFilePath = "main.niva"
-  listOfErrors forEach: [
-    tokStart = it tok start toString
-    tokLine = it tok line toString
-
-    "Error: ($fakeFilePath.$tokLine.$tokStart)" red + it msg cyan,
-      echo
-  ]
-]
-
-TyperDB addNewConstructor: m::NivaMethod forType::NivaType = [
-
-  Assert that: m kind equals: MessageSendKind.DefaultConstructor andSay: "add New DefaultConstructor, but its kind is " + m kind toString
-  pkg = packages at: forType pkgName
-  | pkg 
-  | null => TO DO: "no pkg"
-  |=> [
-    pkg constructorsProtocol addMethod: m
-    "Constructors: added constructor " + m name + " for type " + forType name, log
-  ]
-
-]
-
-TyperDB addNewPkgIfNotExists: pkgName::String -> NivaPkg = [
-  result = packages at: pkgName
-  p = | result
-      | null => [
-        newPkg = NivaPkg name: pkgName
-        packages at: pkgName put: (newPkg)
-        newPkg
-      ]
-      |=> [
-        result 
-      ]
-
-  ^ p
-]
-
-TyperDB addNewType: t::TypeT inPkg: pkgName::String = [
-  // 1 add to pkg
-  // find the pkg
-  pkg = packages at: pkgName
-  | pkg
-  | null => TO DO: "Compiler bug: cant find pkg $pkgName"
-  |=> [
-    pkg types at: t name put: t
-  ]
-
-  setMaybe = typesWithSameNames at: t name
-
-  | setMaybe
-  | null => [
-    // create set
-    newSet::mut Set::NivaType = #()!
-    newSet add: t
-    typesWithSameNames at: t name put: newSet
-  ]
-  |=> [
-    // add type to set
-    setMaybe add: t
-  ]
-]
-
-TyperDB addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
-  newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
-  typeId = newTypeWithGenericInstantiated toIdString
-  // check if it already 
-  typesWithResolvedGenerics at: typeId, unpack: [
-    "already resolved generic $typeId" log
-     ^it 
-  ]
-
-  typesWithResolvedGenerics at: typeId put: newTypeWithGenericInstantiated
-  "added new generic instantiation $typeId" log
-
-  ^ newTypeWithGenericInstantiated
-]
-
 TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) -> TypeT = [
   newFields = fields map: [
-    TypeTField name: it name 
-               typeT: [
+    TypeTField name: it name
+              typeT: [
                   maybe = letterToType at: it typeT name
                   | maybe
                   | null => it typeT
-                  |=> maybe 
-               ] do
+                  |=> maybe
+              ] do
   ]
 
   newGenericArgs = genericArgs map: [
     maybe = letterToType at: it name
     | maybe
     | null => it
-    |=> maybe 
+    |=> maybe
   ]
 
-  ^TypeT fields: newFields toMutableList 
-         genericArgs: newGenericArgs toMutableList 
-         :name :pkgName 
+  ^TypeT fields: newFields toMutableList
+        genericArgs: newGenericArgs toMutableList
+        :name :pkgName
 ]
-
-NivaPkg replaceMethod: m::NivaMethod inType::NivaType= [
-  protocols2 = protocols at: inType, unpackOrPANIC
-  foundProtocol = protocols2 find: [ proto ->
-    proto name == m protocolName
-  ], unpackOrPANIC
-  
-  foundProtocol methods at: m name put: m 
-]
-
-Project protocol: "finding"
-
-// добавить в NivaPkg список методов из других пакетов, точнее даже мапа
-// методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
-// как ни крути походу лучше всего хранить пакет в самом методе
-
-NivaPkg findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
-
-
-  receiver isIdentifierConstructor ifTrue: [
-    maybeConstructor = constructorsProtocol methods at: name
-    | maybeConstructor
-    | null => [TO DO: "No such constructor $name for type $forType"]
-    |=> [
-      // currentImports add: ""
-      
-      currentPkg addImport: maybeConstructor pkgName
-      
-      "Constructors: found constructor $name for $forType" log
-      ^ maybeConstructor 
-    ]
-  ]
-
-  protocols = this protocols at: forType
-  | protocols
-  | null => [
-    typeName = forType name
-
-    this protocols debug
-    "раньше все методы были в типе а тип в пакете, и никак иначе"
-    "теперь метод для типа может быть объявлен из другого пакета"
-    "не того где объявлен сам тип, изза планируемой теоретической фичи приватных методов расширения базовых типов"
-    "тут мы ищем ехо у типа эни в пакете... мы должны искать всегда в типе, и вообще хранить методы в типах а не пакетах" debug
-
-    "навеерное в typerDB type to map of methodName to method"
-    TO DO: "Searching for $name method but type $typeName has zero protocols"]
-  |=> [ 
-
-    protocols forEach: [ p -> 
-      method = p methods at: name
-      | method 
-      | null => [
-        // knownMethods add: name
-        null
-      ]
-      |=> [
-        currentPkg addImport: method pkgName
-        ^ method]
-    ]
-  ]
-
-// also try to find this method for Any
-
-  ^ null
-  // typeName = forType name
-  // TO DO: "Searching for $name method but its not found for type $typeName"
-]
-
-TyperDB 
-  findMsgFromReceiver: receiver::TypedExpr2 
-  byName: name::String 
-  currentPkg::NivaPkg -> NivaMethod = [
-  
-  receiverType = receiver typeInfo t
-// resolve do if this is message for a codeblock
-  | receiverType
-  | FuntionT => [
-    // check that its Do or any arg names 
-    result = name == "do" ifTrue: [
-      NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
-    ] ifFalse: [
-      // check that it has args
-      // then compare them
-      receiverType debug
-
-      receiverType args
-      NivaMethod manyArgKw: receiverType args receiverType: receiverType returnT: receiverType returnType      
-  ]
-    
-    ^ result
-  ]
-  |=> []
-  pkg = packages at: receiverType pkgName, unpackOrPANIC
-
-  methodMaybe = pkg findMethodInAllProtocols: name forType: receiverType :receiver :currentPkg :dtc
-  method = 
-    | methodMaybe
-    | null => [
-        {any} = dtc
-        foundInAnyMaybe = pkg findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
-        | foundInAnyMaybe
-        | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
-        |=> foundInAnyMaybe 
-      ]
-    |=> methodMaybe 
-
-
- result = 
-    | method returnType
-    | Unknown => [
-      "Lazy resolving for $name", log
-
-      {decl} = method
-      | decl
-      | null => TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
-      |=> [
-        Assert that: decl isSingleExpr equals: true
-
-    
-        decl resolveBodyWithDb: this pkg: pkg
-
-        Assert that: decl body typedBody2 isNotEmpty equals: true
-
-        returnType = decl body typedBody2 last typeInfo t
-
-        replaceMethod = method copyWithDifferentReturnType: returnType
-        pkg replaceMethod: replaceMethod inType: receiverType
-        replaceMethod
-      ]
-    ]
-    |=> method
-
-  ^ result
-] 
-
-TyperDB 
-  findByTypeName: typeName::String = .findByTypeName: typeName inPkg: null
-
-
-TyperDB 
-  findByTypeName: typeName::String 
-  inPkg: pkgName::String? -> NivaType = [
-
-  
-  typeName isGeneric ifTrue: [
-    ^ UnresolvedGenericT name: typeName
-  ]
-
-  // if core return from cache 
-  internalType = internalTypesCache at: typeName
-  | internalType
-  | null => []//TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
-  |=> [^ internalType 
-        Unit]
-
-  // its not core type
-  // so use typesWithSameNames
-  
-  result = | pkgName
-  | null => [
-    // we dont know the pkg, so search type in every pkg
-    sameNameType = typesWithSameNames at: typeName
-    knownNames = typesWithSameNames keys
-    | sameNameType
-    | null => TO DO: "Bug: Cant find type $typeName in typesWithSameNames, known: $knownNames"
-    |=> [
-      | sameNameType count == 1
-      | true => [
-        // found only one type in the pkg
-        ^ sameNameType first
-      ]
-      | false => TO DO: "There are many types with the same name: $sameNameType, please specify pkg like pkg.type"
-    ]
-  ]
-  |=> [
-    // we know the pkg, so search for type in it
-    pkg = packages at: pkgName
-    | pkg
-    | null => [TO DO: "No such package as $pkgName, known pkgs: $packages"]
-    |=> [
-      foundType = pkg types at: typeName
-      | foundType
-      | null => [TO DO: "No such type: $typeName in $pkgName"]
-      |=> [
-        ^ foundType
-      ]
-    ]
-  ]
-  ^ result
-]
-

@@ -1,2 +1,4 @@
-x = 4
-x <- 5
+x::Map(Int, String) = #{
+// sasssaay
+1 "s"
+2 "t"}

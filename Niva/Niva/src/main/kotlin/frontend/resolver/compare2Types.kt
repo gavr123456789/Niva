@@ -32,7 +32,7 @@ fun compare2Types(
 
 
     if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable))
-        tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()}$WHITE::mut $YEL$type1OrChildOf2$WHITE = ...")
+        tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()} $YEL$type1OrChildOf2$WHITE = ...")
 
     if (type2.errors != type1OrChildOf2.errors && type1OrChildOf2.errors?.isNotEmpty() == true){ // if declared return type errors are empty and not null - its just any error inferring
         val expectedTypeErrors = type1OrChildOf2.errors
@@ -197,7 +197,7 @@ fun compare2Types(
                     }
                 }
 
-                val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false) // we dont need to compare mutability of generic args
+                val sameArgs = compare2Types(arg1, arg2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = true) // we dont need to compare mutability of generic args
                 if (!sameArgs) {
                     return false
 //                    tokenForErrors.compileError("Generic argument of type: ${YEL}${type1OrChildOf2.name} ${WHITE}$arg1${RESET} != ${WHITE}$arg2${RESET} from type ${YEL}${type2.name}")

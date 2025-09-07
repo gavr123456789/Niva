@@ -242,13 +242,14 @@ fun Type.unpackNull(): Type =
 // when generic, we need to reassign it to AST's Type field, instead of type's typeField
 fun generateGenerics(x: Type, sb: StringBuilder): String {
     val isNullable = if (x is Type.NullableType) "?" else ""
+    val isMut = if (x.isMutable) "mut " else ""
     val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
 //        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
 //            x.name
 //        } else {
 //            x.toString()
 
-            x.name + isNullable
+            isMut + x.name + isNullable
 //        }
     }
     if (x is Type.UserLike) {
@@ -426,11 +427,17 @@ sealed class Type(
         is UserLike -> {
             val genericParam =
                 if (typeArgumentList.isNotEmpty()) {
-                    "<" + typeArgumentList.joinToString(", ") { it.toKotlinString(needPkgName) } + ">"
+                    "<" + typeArgumentList.joinToString(", ") {
+                        it.toKotlinString(needPkgName)
+
+                    } + ">"
                 } else ""
             val needPkg = if (needPkgName && pkg != "core") "$pkg." else ""
 
-            val realEmit = if (isMutable) replaceCollectionWithMutable(emitName) else emitName
+            val realEmit = if (isMutable)
+                replaceCollectionWithMutable(emitName)
+            else
+                emitName
 
             "$needPkg$realEmit$genericParam"
         }

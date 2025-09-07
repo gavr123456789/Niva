@@ -203,7 +203,9 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
                 matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
                 val isNullable = match("?")
-                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable || isNullable, identifier)
+                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable || isNullable, identifier).also {
+                    it.isMutable = isMutableGenericParam
+                }
             }
             // ::Person
             TypeAST.UserType(identifier.lexeme, mutableSetOf(), isIdentifierNullable, identifier).also {

@@ -503,6 +503,10 @@ fun Lexer.next() {
         match("==") -> createToken(TokenType.BinarySymbol)
         match("!=") -> createToken(TokenType.BinarySymbol)
 
+        // alternative
+        match("?") -> createToken(TokenType.Then)
+        match("!") -> createToken(TokenType.Else)
+
         match("=") -> createToken(TokenType.Assign)
         match("`") -> createToken(TokenType.Apostrophe)
 
