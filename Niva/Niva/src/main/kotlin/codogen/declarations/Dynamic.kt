@@ -61,7 +61,10 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
     val isComplex: (Type?) -> Boolean = { type: Type? ->
         when (type) {
             is Type.EnumRootType, is Type.EnumBranchType, is Type.Lambda, is Type.UnresolvedType, null -> false
-            is Type.UserLike -> isCollection(type.name)
+            is Type.UserLike -> {
+                type.needGenerateDynamic = true
+                true
+            } //isCollection(type.name)
             is Type.NullableType -> {
                 val unpack = type.unpackNull()
                 if (unpack is Type.UserLike) isCollection(unpack.name) else false
@@ -71,8 +74,8 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
         }
     }
 
-    val isList: (Type?) -> Boolean = { type: Type? ->
-        type is Type.UserType && (type.name == "List" || type.name == "MutableList")
+    val isCollectionType: (Type?) -> Boolean = { type: Type? ->
+        type is Type.UserType && (isCollection(type.name))
     }
 
     val listElementType: (Type.UserType) -> Type? = { type: Type.UserType ->
@@ -97,7 +100,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
 
         val expr = when {
             type is Type.EnumRootType -> "DynamicStr($fieldName.name)"
-            isList(type) -> {
+            isCollectionType(type) -> {
                 val listType = type as Type.UserType
                 val elemType = listElementType(listType)
                 val unpackedElem = elemType?.unpackNull()
@@ -122,7 +125,9 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                 "DynamicList($listExpr)"
             }
 
-            isComplex(type) -> "${field.type?.name}.toDynamic($fieldName)"
+            isComplex(type) -> {
+                "${field.type?.name}.toDynamic($fieldName)"
+            }
             type is Type.InternalType -> when (type.name) {
                 "String" -> "DynamicStr($fieldName)"
                 "Int" -> "DynamicInt($fieldName)"
@@ -162,7 +167,7 @@ fun SomeTypeDeclaration.generateDynamicConverters5(b: StringBuilder) {
                 if (isNullable) "$fieldName = (fields[\"$fieldName\"] as? DynamicStr)?.value?.let { $enumClassName.valueOf(it) }"
                 else "$fieldName = $enumClassName.valueOf((fields[\"$fieldName\"] as DynamicStr).value)"
             }
-            isList(type) -> {
+            isCollectionType(type) -> {
                 val listType = type as Type.UserType
                 val elemType = listElementType(listType)
                 val unpackedElem = elemType?.unpackNull()

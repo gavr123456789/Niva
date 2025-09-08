@@ -827,7 +827,10 @@ fun putInMainKotlinCode(
         catchExpressions
     )
 
-    val addDevModeDataIfItWasUsed = ("if (NivaDevModeDB.wasDevModeUsed) java.io.File(\"$devDataJsonPath\").writeText(NivaDevModeDB.db.toJson().toString())")
+    val safePath = devDataJsonPath.replace("\\", "\\\\")
+    val addDevModeDataIfItWasUsed =
+        "if (NivaDevModeDB.wasDevModeUsed) java.io.File(\"$safePath\").writeText(NivaDevModeDB.db.toJson().toString())"
+
     appendLine("""finally {
         $addDevModeDataIfItWasUsed
     }""")
