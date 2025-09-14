@@ -56,7 +56,7 @@ runPTry = [
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-] do
+] 
 
 codeblockCall = [
   fileMain = """
@@ -124,16 +124,13 @@ resolveMatch = [
 
 resolveGenerics = [
   fileMain = """
-    type Box x: T y: T
-    // box = Box x: "sas" y: "42"
+    type Box x: T y: T z: Int
+    box = Box x: "sas" y: "42" z: 42
 
 
-    Box(Int) sas -> Unit = [42]
+    //Box(Int) sas -> Unit = [42]
 
 
-    //Box sasat::T = [
-    //  sasat inc
-    //]
 
   """
 
@@ -144,4 +141,4 @@ resolveGenerics = [
 
 
 
-]
+] do
