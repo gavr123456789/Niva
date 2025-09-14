@@ -10,13 +10,13 @@ type TyperDB
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
 
-  typesWithResolvedGenerics: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
+  typesById: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
   dtc: DefaultTypesContainer
   // methods
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
   constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB
-  instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From generics to real types
+  instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
 
 
 
@@ -81,7 +81,7 @@ constructor TyperDB new -> TyperDB = [
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: #{}!
-    typesWithResolvedGenerics: #{}!
+    typesById: #{}!
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
     constructorsTypeToMethodNameToMethod: constructorsCache
@@ -90,21 +90,10 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 extend TyperDB [
-
-  on addGenericTypeInstantiated: newType::NivaType fromOriginal: origType::NivaType = [
-    newType debug
-    origType debug
-    
-    // 1 find the pkg of original type 
-    // 2 add the ???
-
-    // maybe remake this to replace generics of the original to a new one and register
-    
-    TO DO
-  ]
-
   /// adds method to protocol, if no such protocol - creates it
   on addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
+    forType debug 
+    typeToMethodNameToMethod keys debug
     methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
     methodNameToMethodMap containsKey: m name,
       ifTrue: [TO DO: "Type $forType already has method $m"]
@@ -127,6 +116,18 @@ extend TyperDB [
     msg = e msg
     "ADDED ERROR $msg" red log
     listOfErrors add: e
+    TO DO: "Error"
+  ]
+
+  on addErrorFromTok: tok::Token withMsg: msg::String = [
+    "\n!!!!! ADDED ERROR $msg !!!!!\n" red log
+    listOfErrors add: (LazyError :tok :msg)
+  ]
+
+  on addFatalErrorFromTok: tok::Token withMsg: msg::String = [
+    "\n!!!!! ADDED ERROR $msg !!!!!\n" red log
+    listOfErrors add: (LazyError :tok :msg)
+    TO DO: "FATAL"
   ]
 
   on printAllErrorMessages = [
@@ -188,6 +189,8 @@ extend TyperDB [
 
     .addToTypesWithTheSameName: t    
 
+    typesById get: (t toIdString) orPut: [t]
+
     // 2 add to methods db
     x = this typeToMethodNameToMethod at: t
     | x
@@ -213,15 +216,23 @@ extend TyperDB [
   on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
     newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
     typeId = newTypeWithGenericInstantiated toIdString
+    // typesById get: typeId orPut: [newTypeWithGenericInstantiated]
     // check if it already
-    typesWithResolvedGenerics at: typeId, unpack: [
+    typesById at: typeId, unpack: [
       "already resolved generic $typeId" log
       ^it
     ]
 
-    typesWithResolvedGenerics at: typeId put: newTypeWithGenericInstantiated
+    typesById at: typeId put: newTypeWithGenericInstantiated
     "added new generic instantiation $typeId" log
 
+
+    // we adding type the first time, othervice it would be returned before
+    Assert that: (instantiatedCache at: t) equals: null
+
+    // add empty method lits to methods and constructors
+    this instantiatedCache at: t put: #{}!
+    this constructorsTypeToMethodNameToMethod at: t put: #{}!
     ^ newTypeWithGenericInstantiated
   ]
 

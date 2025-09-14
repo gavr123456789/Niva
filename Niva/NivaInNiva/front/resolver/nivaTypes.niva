@@ -159,6 +159,11 @@ type NivaMethod
   pkgName: String
 
 extend NivaMethod [
+  on replaceGenericsFromTable::Map(String, NivaType) = [
+    this debug 
+    TO DO
+    TO DO
+  ]
   on copyWithDifferentReturnType: rt::NivaType =
     NivaMethod :name  :receiverType :args returnType: rt :forMut :possibleErrors :kind :decl :protocolName :pkgName
 
@@ -174,7 +179,7 @@ extend NivaMethod [
     possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name])
     p2 = possibleErrorsStr == "" ifTrue: [""] ifFalse: [" with possible errors: (" + possibleErrorsStr + ")!"]
     argsStr = args joinWith: " " transform: [it toString]
-    ^ isMut + name + argsStr + p2 + " -> " + returnType toString
+    ^ isMut + " name: " +  name + "\nargs: (" + argsStr + ")" + p2 + "\n -> \n" + returnType toString
   ]
 ]
 

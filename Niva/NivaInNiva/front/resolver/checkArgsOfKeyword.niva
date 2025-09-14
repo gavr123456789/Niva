@@ -9,25 +9,3 @@ KeywordMsg getNameFromArgs -> String = [
 ]
 
 
-type CheckMethodArg nivaType: NivaType expr: Expr argName: String
-// both for binary and keywords
-TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField = [
-  Assert that: checkRealArgs count equals: withExpectedArgs count
-
-  withExpectedArgs forEachIndexed: [ i, it ->
-    {nivaType, expr, argName} = checkRealArgs at: i 
-    
-
-    it typeT compareWith: nivaType, ifFalse: [
-      expected = it typeT toString
-      sended = nivaType toString
-      exprStr = expr toString
-      
-      
-      this addErrorMessage: (ErrorWrongArgType 
-                              tok: expr token 
-                              msg: "($sended != $expected) $expected expected, but $argName $exprStr is $sended")
-    ]
-  ]
-
-]

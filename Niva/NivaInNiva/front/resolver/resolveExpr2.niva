@@ -104,9 +104,8 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       | this
       | ListLiteral => [
         newType = ListT t: f
-        
-        db addGenericTypeInstantiated: newType fromOriginal: db dtc list 
-        
+        TO DO: "LISTSSSSS"
+        // use addGenericInstantiationIfAbsent        
         TO DO: "Добавлять полученный тип в табличку ОРИГИНАЛ "
         ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
@@ -296,14 +295,14 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
 
 
 
-type CheckMethodArg2 nivaType: NivaType expr: Expr argName: String
+type CheckMethodArg nivaType: NivaType expr: Expr argName: String
 
 // both for binary and keywords
-TyperDB checkRealArgs2::List::CheckMethodArg2 withExpectedArgs::List::TypeTField = [
-  Assert that: checkRealArgs2 count equals: withExpectedArgs count
+TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField = [
+  Assert that: checkRealArgs count equals: withExpectedArgs count
 
   withExpectedArgs forEachIndexed: [ i, it ->
-    {nivaType, expr, argName} = checkRealArgs2 at: i
+    {nivaType, expr, argName} = checkRealArgs at: i
 
     it typeT compareWith: nivaType, ifFalse: [
       expected = it typeT toString
@@ -321,8 +320,8 @@ TyperDB checkRealArgs2::List::CheckMethodArg2 withExpectedArgs::List::TypeTField
 
 KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
-  receiverType = receiverTypedExpr typeInfo t
-  argTypesAndExprs :: mut List::CheckMethodArg2 = {}!
+  receiverType = receiverTypedExpr typeInfo t debug
+  argTypesAndExprs :: mut List::CheckMethodArg = {}!
 
 
   // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
@@ -333,12 +332,18 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
 
   Assert that: kwMsgDB args count equals: args count
 
+  
+  
+  // Всю эту часть потом нужно перенести в checkRealArgs: чтобы оно работало и для байнари
+  
+  
   letterToType::mut Map(String, NivaType) = #{}!
 
   typedArgs = args mapIndexed: [ i, kwArg ->
     {name expr} = kwArg
     typedExpr = expr toTypedExprFromDb2: db withContext: c
-    argTypesAndExprs add: (CheckMethodArg2
+    realType = typedExpr typeInfo t
+    argTypesAndExprs add: (CheckMethodArg
                             nivaType: typedExpr typeInfo t
                             expr: expr
                             argName: name name)
@@ -356,25 +361,59 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
 
       letterToType
         at: argTypeFromDb letter
-        put: typedExpr typeInfo t
-    ] |=> []
+        put: realType
+    ] |=> [
+      // вот, если это не женерик то сравниваем с тем шо в дб
+      realType compareWith: argTypeFromDb, ifFalse: [
+        db addErrorMessage: (ErrorWrongArgType
+                              tok: expr token
+                              msg: "Expected " + argTypeFromDb toString + " but got " + realType toString)
+      ]
+    ]
+
+
+    // Да тут можно сразу и проверять тип чеуж там
 
     NameAndExprT name: name expr: typedExpr
   ]
 
 
+  // К этому моменту мы проверили обычные типы, и получили таблицу женериков
+  // теперь можно сгенерировать Msg с замененными женериками из оригинального, или получить если он уже был сгенерен
+  // у инстанциированных типов, должны быть инстанциированные сообщения
+  // мы будем затем находит интанциированные типы по id, и затем их сообщения
+
+  // также нужно убрать отдельную таблицу конструкторов, наверное
+
+
+  letterToType debug
+
+
+
+
   // try to find by id
   letterToType isNotEmpty ifTrue: [
+    // 1) create new type with generic replaced based on receiverType, if it contains generics and this is a constructor
+    // 1.1) if type does not contains generics but message contains, it seams okay, we can infer them from args
+    // 1.2) if type does contains generics but message dont, then its a problem.
+    // 2) create a new message, if it contains any generics, current letter to type not empty means it does
     receiverTypedExpr isIdentifierConstructor ifTrue: [
       // GENERIC DEFAULT CONSTRUCTOR - register instantiated variant
       | receiverType
       | TypeT => [
-          receiverTypedExpr isIdentifierConstructor ifTrue: [] ifFalse: []
           thisIsConstructor = kwMsgDB isConstructorForReceiver: receiverType
           thisIsConstructor ifTrue: [
 
-            db addGenericInstantiationIfAbsent: receiverType
-              letterToType: letterToType
+            instantiatedType = db addGenericInstantiationIfAbsent: receiverType
+                                  letterToType: letterToType, debug
+            
+
+
+            kwMsgDB debug
+            kwMsgDB replaceGenericsFromTable: letterToType
+            // 
+            TO DO: "Recreate kwMsgDb with replaced generics just like in replaceGenericsFromTable: letterToType for types"
+            
           ]
 
       ] |=> [
@@ -385,11 +424,34 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
       // GENERIC MESSAGE FOR OBJ - resolve generic method with true types
       TO DO: "GENERIC MESSAGE FOR OBJ"
     ]
+  ] ifFalse: [
+    // 1.2) check here
+    | receiverType
+    | TypeT => [
+      isThereUnresolvedGenerics = receiverType genericArgs find: [
+        | it
+        | UnresolvedGenericT => [true]
+        |=> [false]
+      ]
+
+      isThereUnresolvedGenerics unpack: [
+        db addFatalErrorFromTok: receiver token 
+           withMsg: "Receiver has generic param " + it toString + " but I can't infer it via message arguments" 
+      ]
+
+      Unit
+    ] 
+    |=> []
+
   ]
+
+  TO DO: "ADD NEW MSG WITH INSTANTIATED PARAMS"
 
 
   // do not check if they are generics
-  db checkRealArgs2: argTypesAndExprs withExpectedArgs: kwMsgDB args
+  // no, probably just replace expected args here with real args, if they are generics
+
+  // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "realType compareWith: argTypeFromDb"
   newKeyword = KeywordMsgT
     args: typedArgs
     kind: kwMsgDB kind

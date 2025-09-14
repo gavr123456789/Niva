@@ -119,7 +119,6 @@ fun createFloatProtocols(
 
     ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
-
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
@@ -162,6 +161,7 @@ fun createFloatProtocols(
         ),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("mod", intType), floatType).rename("get"),
+            createKeyword(KeywordArg("toIntBy", intType), floatType).rename("get"),
 
             ),
     )
@@ -259,6 +259,7 @@ fun createStringProtocols(
             createFilterKeyword(charType, boolType, stringType, """"abc" filter: [it != 'c'] // "ab""""),
 
             createKeyword(KeywordArg("repeat", intType), stringType),
+            createKeyword(KeywordArg("toInt", intType), intType, "to Int with Radix, or error"),
 
             createKeyword(KeywordArg("startsWith", stringType), boolType, """"abc" startsWith: "ab" // true"""),
             createKeyword(KeywordArg("contains", stringType), boolType),
@@ -401,6 +402,7 @@ fun createCharProtocols(
             createBinary("..", charType, charRange, "creates a iterable CharRange"),
         ),
         keywordMsgs = mutableMapOf(
+            createKeyword(KeywordArg("digitToInt", intType), intType, "('2' digitToInt: 2) == 2, or panic"),
 
         ),
     )
@@ -1259,7 +1261,6 @@ fun createMapProtocols(
                         "map",
                         Type.Lambda(
                             mutableListOf(
-//                                KeywordArg("e", entryType),
                                 KeywordArg("key", keyType),
                                 KeywordArg("value", valueType),
                             ),
@@ -1278,8 +1279,6 @@ fun createMapProtocols(
                         "filter",
                         Type.Lambda(
                             mutableListOf(
-//                                KeywordArg("e", entryType),
-
                                 KeywordArg("key", keyType),
                                 KeywordArg("value", valueType),
                             ),
@@ -1288,8 +1287,8 @@ fun createMapProtocols(
                         )
                     )
                 ),
-                unitType,
-                ),
+                unitType
+            ),
 
 
 
@@ -1320,6 +1319,31 @@ fun createMapProtocols(
                 unitType,
                 forMutable = true
             ).rename("set"),
+
+            createKeyword(
+                "getOrPut",
+                listOf(
+                    KeywordArg("get", keyType),
+                    KeywordArg(
+                        "orPut",
+                        Type.Lambda(
+                            mutableListOf(),
+                            valueType,
+                        ))
+                ),
+                valueType,
+                forMutable = true
+            ),
+
+            createKeyword(
+                "atPutIfAbsent",
+                listOf(
+                    KeywordArg("at", keyType),
+                    KeywordArg("putIfAbsent", valueType)
+                ),
+                unitType,
+                forMutable = true
+            ).rename("putIfAbsent"),
         )
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
         collectionProtocol.unaryMsgs.putAll(unary)

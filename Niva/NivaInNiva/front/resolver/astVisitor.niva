@@ -1,7 +1,10 @@
+// why is these good? - some errors can contain second place in code to show!
 union ResolveErrors tok: Token msg: String =
 | ErrorNoSuchType
 | ErrorWrongArgType
 | ErrorWrongArgCount
+| LazyError
+
 
 
 union AstVisitor =
@@ -91,25 +94,26 @@ TypeDeclVisitor
 
 
         // это снова происходит внутри  .fillFields
-        // addFields = [
-        //   resolvedType fields forEach: [ field ->
+        // нет, это нельзя делать в фил филдс потому что addNewMethod использует уже добавленый тип, а там все на стабах недобавленных
+        addFields = [
+          resolvedType fields forEach: [ field ->
 
-        //     getter = NivaMethod
-        //       name: field name
-        //       receiverType: resolvedType
-        //       args: {}
-        //       returnType: field typeT
-        //       forMut: false // false because its getter
-        //       possibleErrors: {}
-        //       kind: MessageSendKind.Getter
-        //       decl: null
-        //       protocolName: "getters"
-        //       pkgName: "core" // this is getter
+            getter = NivaMethod
+              name: field name
+              receiverType: resolvedType
+              args: {}
+              returnType: field typeT
+              forMut: false // false because its getter
+              possibleErrors: {}
+              kind: MessageSendKind.Getter
+              decl: null
+              protocolName: "getters"
+              pkgName: "core" // this is getter
 
-        //     db addNewMethod: getter forType: resolvedType inProtocol: "getters"
+            db addNewMethod: getter forType: resolvedType inProtocol: "getters"
 
-        //   ]
-        // ] do
+          ]
+        ] do
 
         "Types: added type " + resolvedType name + " in pkg " + pkgName, log
 
@@ -243,19 +247,19 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
       field = TypeTField name: it name typeT: fieldType
       typeStub fields add: field
 
-      getter = NivaMethod
-        name: it name
-        receiverType: typeStub
-        args: {}
-        returnType: fieldType
-        forMut: false // false because its getter
-        possibleErrors: {}
-        kind: MessageSendKind.Getter
-        decl: null
-        protocolName: "getters"
-        pkgName: "core" // this is getter
+      // getter = NivaMethod
+      //   name: it name
+      //   receiverType: typeStub
+      //   args: {}
+      //   returnType: fieldType
+      //   forMut: false // false because its getter
+      //   possibleErrors: {}
+      //   kind: MessageSendKind.Getter
+      //   decl: null
+      //   protocolName: "getters"
+      //   pkgName: "core" // this is getter
 
-      db addNewMethod: getter forType: typeStub inProtocol: "getters"
+      // db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
 
 
