@@ -216,7 +216,7 @@ extend TyperDB [
   on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
     newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
     typeId = newTypeWithGenericInstantiated toIdString
-    // typesById get: typeId orPut: [newTypeWithGenericInstantiated]
+    
     // check if it already
     typesById at: typeId, unpack: [
       "already resolved generic $typeId" log

@@ -50,8 +50,7 @@ fun <T> MutableList<T>.addFirst(element: T) {
 
 fun LS.readDevDataFromFile(path: String, info: ((String) -> Unit)?) {
     val fromJson = readFromJson(path)
-
-    fromJson.data.forEach { (fileName, value) ->
+    fromJson?.data?.forEach { (fileName, value) ->
         val file = File(fileName)
         value.forEach { (lineNum, values) ->
             values.forEach {
@@ -79,14 +78,14 @@ class LS(val info: ((String) -> Unit)? = null) {
         val pm = pm ?: return
         val watchDirPath = pm.nivaRootFolder
         val jsonDevFilePath = watchDirPath / DEV_MODE_FILE_NAME
-        val file = File(jsonDevFilePath)
-        if (!file.exists()) return
         readDevDataFromFile(jsonDevFilePath, info)
 
         scope.launch(Dispatchers.IO) {
+            info?.invoke("watch started")
             val watcher = KfsDirectoryWatcher(this, dispatcher = Dispatchers.IO)
             watcher.add(watchDirPath)
             watcher.onEventFlow.collect { event ->
+                info?.invoke("watching, got event: " + event.toString())
                 if (event.path.endsWith("json") && (event.event == KfsEvent.Modify || event.event == KfsEvent.Create)) {
                     readDevDataFromFile(jsonDevFilePath, info)
                     info?.invoke("33333333333333333333")

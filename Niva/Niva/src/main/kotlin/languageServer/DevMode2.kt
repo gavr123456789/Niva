@@ -182,8 +182,11 @@ fun DevLiveData.toIdentifierExpr(file: File, lineNum: Int): IdentifierExpr {
     }
 }
 
-fun readFromJson(fileName: String): DevModeStore {
+fun readFromJson(fileName: String): DevModeStore? {
     val file = File(fileName)
+    if (!file.exists()) {
+        return null
+    }
     val fileContent = file.readText()
     val json = Json.parseToJsonElement(fileContent).jsonObject
     return DevModeStore.fromJson(json)

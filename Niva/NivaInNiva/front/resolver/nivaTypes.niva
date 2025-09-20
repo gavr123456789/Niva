@@ -159,11 +159,53 @@ type NivaMethod
   pkgName: String
 
 extend NivaMethod [
-  on replaceGenericsFromTable::Map(String, NivaType) = [
-    this debug 
-    TO DO
-    TO DO
+  on getGenericArgs = 
+    args filter: [
+      | it typeT
+      | UnresolvedGenericT => true
+      |=> false
+    ]
+
+  
+  on replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB = [
+
+    recType = receiverType
+    retType = returnType
+
+    instantiate = [ t::NivaType ->
+      | t
+      | TypeT => [
+        db addGenericInstantiationIfAbsent: t
+           letterToType: letterToType
+      ]
+      |=> [t]
+    ]
+    instantiatedReceiverOrDefaultT = instantiate t: recType
+    instantiatedReturnOrDefaultT = instantiate t: retType
+
+    newArgs = args map: [
+      TypeTField name: it name
+                typeT: [
+                    maybe = letterToType at: it typeT name
+                    | maybe
+                    | null => it typeT
+                    |=> maybe
+                ] do
+    ]
+
+    ^ NivaMethod 
+        :name  
+        receiverType: instantiatedReceiverOrDefaultT
+        args: newArgs 
+        returnType: instantiatedReturnOrDefaultT
+        :forMut  
+        :possibleErrors 
+        :kind 
+        :decl 
+        :protocolName  
+        :pkgName 
   ]
+
   on copyWithDifferentReturnType: rt::NivaType =
     NivaMethod :name  :receiverType :args returnType: rt :forMut :possibleErrors :kind :decl :protocolName :pkgName
 
@@ -179,7 +221,7 @@ extend NivaMethod [
     possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name])
     p2 = possibleErrorsStr == "" ifTrue: [""] ifFalse: [" with possible errors: (" + possibleErrorsStr + ")!"]
     argsStr = args joinWith: " " transform: [it toString]
-    ^ isMut + " name: " +  name + "\nargs: (" + argsStr + ")" + p2 + "\n -> \n" + returnType toString
+    ^ "NivaMethod " + isMut + " name: " +  name + "\nargs: (" + argsStr + ")" + p2 + "\n -> \n" + returnType toString
   ]
 ]
 

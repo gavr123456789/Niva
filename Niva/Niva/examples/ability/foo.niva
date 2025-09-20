@@ -1,4 +1,6 @@
-Int io::IO = [
+Program foo: io::IO = [
+  // call via io
   str::String = io read text: "a/b/c"
-  File path: "it", readText, orPANIC
+  // direct call
+  File path: "it", readText
 ]
