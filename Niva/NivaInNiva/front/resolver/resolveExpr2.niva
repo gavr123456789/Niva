@@ -386,10 +386,6 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
   // также нужно убрать отдельную таблицу конструкторов, наверное
 
 
-  letterToType debug
-
-
-
 
   // try to find by id
   letterToType isNotEmpty ifTrue: [
@@ -404,16 +400,12 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
           thisIsConstructor = kwMsgDB isConstructorForReceiver: receiverType
           thisIsConstructor ifTrue: [
 
-            instantiatedType = db addGenericInstantiationIfAbsent: receiverType
-                                  letterToType: letterToType, debug
-            
-
-
-            kwMsgDB debug
-            kwMsgDB replaceGenericsFromTable: letterToType
-            // 
-            TO DO: "Recreate kwMsgDb with replaced generics just like in replaceGenericsFromTable: letterToType for types"
-            
+            newMethod = kwMsgDB replaceGenericsFromTable: letterToType db: db
+            newMethod 
+            x = db instantiatedCache at: newMethod receiverType
+            x debug
+            db instantiatedCache keys debug
+            TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"            
           ]
 
       ] |=> [

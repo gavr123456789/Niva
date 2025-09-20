@@ -17,7 +17,7 @@ type IO
   currentDir: String
   runProgram: [List::String -> ]
 
-constructor IO new -> IO= [
+constructor IO new -> IO = [
   readFile::[FilePath -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
@@ -48,15 +48,18 @@ constructor IO new -> IO= [
 ]
 
 
-runPTry = [
-  io = IO new
-  io runProgram args: {"bun" "--help"}
-]
+
 
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
 ] 
+
+
+runPTry = [
+  io = IO new
+  io runProgram args: {"bun" "--help"}
+]
 
 codeblockCall = [
   fileMain = """
