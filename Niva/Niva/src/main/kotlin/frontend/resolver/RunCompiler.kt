@@ -1,5 +1,7 @@
 package frontend.resolver
 
+import frontend.Lexer
+import frontend.lex
 import frontend.parser.parsing.Parser
 import frontend.parser.parsing.statements
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -8,7 +10,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.newFixedThreadPoolContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import main.*
+import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
@@ -403,4 +405,9 @@ fun parseFilesToAST(
         emptyList()
     }
     return Triple(mainAST, otherASTs, listOfPaths)
+}
+
+fun lex(source: String, file: File): MutableList<Token> {
+    val lexer = Lexer(source, file)
+    return lexer.lex()
 }

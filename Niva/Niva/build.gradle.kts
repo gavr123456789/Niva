@@ -7,11 +7,11 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
-    kotlin("jvm") version "2.2.10"
+    kotlin("jvm") version "2.2.20"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
-    kotlin("plugin.serialization") version "2.2.10"
+    kotlin("plugin.serialization") version "2.2.20"
 }
 
 group = "org.example"
@@ -68,28 +68,31 @@ val javaHomeMayBeHere = "Library/Java/JavaVirtualMachines/graalvm-jdk-22.0.2/Con
 
 val checkGraalVMTask = "checkGraalVM"
 
-tasks.register(checkGraalVMTask) {
+tasks.register<Exec>(checkGraalVMTask) {
+    // Use Exec task instead of deprecated Project.exec
+    val javaVersionOutput = ByteArrayOutputStream()
+    commandLine("java", "-version")
+    isIgnoreExitValue = true
+    standardOutput = javaVersionOutput
+    errorOutput = javaVersionOutput
+
     doFirst {
         println("Checking GraalVM...")
-        val javaVersionOutput = ByteArrayOutputStream()
-        exec {
-            commandLine("java", "-version")
-            standardOutput = javaVersionOutput
-            errorOutput = javaVersionOutput
-            isIgnoreExitValue = true
-        }
-        val output = javaVersionOutput.toString()
+    }
+
+    val output = javaVersionOutput.toString()
+    doLast {
         if (!output.contains("GraalVM")) {
             throw GradleException(
-                    "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
-                            "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
-                            "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
-                            "\tOn mac its probably here: $javaHomeMayBeHere\n" +
-                            "\tThen set it with: \n" +
-                            "\t\tJAVA_HOME=value in bash-like shell \n" +
-                            "\t\tset JAVA_HOME value in fish shell\n" +
-                            "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
-                            "\tand run `./gradlew buildNativeNiva` again"
+                "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
+                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
+                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
+                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
+                    "\tThen set it with: \n" +
+                    "\t\tJAVA_HOME=value in bash-like shell \n" +
+                    "\t\tset JAVA_HOME value in fish shell\n" +
+                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
+                    "\tand run `./gradlew buildNativeNiva` again"
             )
         } else {
             println("GraalVM is found")
@@ -102,26 +105,102 @@ tasks.register(checkAndBuildNativeTask) { dependsOn(checkGraalVMTask, "nativeCom
 tasks.register(buildJvmNiva) {
     dependsOn("installDist", "publishToMavenLocal")
 
-    fun moveJvm() {
-        val userHome = System.getProperty("user.home")
-        val nivaJvmBinary = file("${layout.buildDirectory.get()}/install/niva").toPath()
-        val targetDir = file("$userHome/.niva/niva").toPath()
-        Files.createDirectories(targetDir)
-        copyRecursively(nivaJvmBinary, targetDir)
-
-        printNivaWelcome(targetDir, targetDir.toString() + "/bin")
-    }
+    // Precompute all values during configuration to avoid accessing Task.project at execution time
+    val userHome = System.getProperty("user.home")
+    val projectDirPath: Path = layout.projectDirectory.asFile.toPath()
+    val sourceInfro: Path = projectDirPath.resolve("../infroProject").normalize()
+    val nivaHomeDir: Path = File("$userHome/.niva").toPath()
+    val nivaJvmBinary: Path = layout.buildDirectory.dir("install/niva").get().asFile.toPath()
+    val targetInstallDir: Path = nivaHomeDir.resolve("niva")
+    val targetInfro: Path = nivaHomeDir.resolve("infroProject")
 
     doLast {
-        moveInfroDir()
-        moveJvm()
+        // Local helper to copy directories recursively without capturing script references
+        fun copyRecursivelyLocal(source: Path, target: Path) {
+            Files.walk(source).forEach { path ->
+                val targetPath = target.resolve(source.relativize(path).toString())
+                if (Files.isDirectory(path)) {
+                    if (!Files.exists(targetPath)) {
+                        Files.createDirectories(targetPath)
+                    }
+                } else {
+                    Files.copy(path, targetPath, StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
 
-        buildInfroProject()
+        // 1) Prepare ~/.niva by copying infroProject
+        if (Files.exists(sourceInfro)) {
+            if (Files.exists(nivaHomeDir)) {
+                // delete existing ~/.niva
+                nivaHomeDir.toFile().deleteRecursively()
+                println("$nivaHomeDir deleted")
+            }
+            Files.createDirectories(nivaHomeDir)
+            copyRecursivelyLocal(sourceInfro, targetInfro)
+            println("$userHome/.niva created")
+        } else {
+            println("Can't find: $sourceInfro, please run buildNativeNiva from Niva/Niva/Niva dir of the repo")
+        }
+
+        // 2) Install JVM distribution to ~/.niva/niva
+        Files.createDirectories(targetInstallDir)
+        copyRecursivelyLocal(nivaJvmBinary, targetInstallDir)
+
+        // 3) Build infro project using its Gradle wrapper
+        val infroDirFile = targetInfro.toFile()
+        if (infroDirFile.exists()) {
+            val output = ByteArrayOutputStream()
+            val isWindows = org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.WINDOWS
+            val cmd = if (isWindows) listOf("./gradlew.bat", "build") else listOf("./gradlew", "build")
+            try {
+                val pb = ProcessBuilder(cmd)
+                    .directory(infroDirFile)
+                    .redirectErrorStream(true)
+                val process = pb.start()
+                process.inputStream.copyTo(output)
+                val exit = process.waitFor()
+                if (exit != 0) {
+                    println("Infro project build failed with exit code $exit\n$output")
+                }
+            } catch (e: Exception) {
+                println("Failed to run wrapper in infroProject: ${e.message}")
+            }
+        }
+
+        // 4) Print welcome and PATH hints
+        val green = "\u001B[32m"
+        val purple = "\u001B[35m"
+        val pathHint = targetInstallDir.resolve("bin").toString()
+        println(
+            ("""
+            $green
+            niva binary has been installed in $targetInstallDir, you can add it to PATH
+            
+            Try to compile file main.niva with \"Hello niva\" echo with `niva main.niva`
+            First compilation will take time, but others are instant
+            Read about niva here: https://gavr123456789.github.io/niva-site/reference.html
+            Check examples from examples folder(in repo)
+            
+            $purple
+            Adding to PATH: 
+            
+        """.trimIndent()) +
+                "\tfish: set -U fish_user_paths ${pathHint} $" + "fish_user_paths\n" +
+                "\tbash: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.bashrc && source ~/.bashrc\n" +
+                "\tzsh: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.zshrc && source ~/.zshrc" +
+                "\twindows: setx PATH \"%PATH%;${pathHint}\""
+        )
     }
 }
 
 val green = "\u001B[32m"
 val purple = "\u001B[35m"
+
+val sourceDir = file("${layout.projectDirectory}/../infroProject")
+val nivaBinary: Path = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
+val isWindows = OperatingSystem.current() == OperatingSystem.WINDOWS
+
 
 fun printNivaWelcome(targetDir: Path, path: String) {
     println(
@@ -149,18 +228,20 @@ fun buildInfroProject() {
     println("Building test project, first time it can take up to 2 min, thanks to Gradle :(")
     val infroDir = File("${System.getProperty("user.home")}/.niva/infroProject")
     if (infroDir.exists()) {
-        val javaVersionOutput = ByteArrayOutputStream()
-        exec {
-            this.workingDir = infroDir
-            //            val isWindows = isWindows
-            if (OperatingSystem.current() == OperatingSystem.WINDOWS) {
-                commandLine("./gradlew.bat", "build")
-            } else {
-                commandLine("./gradlew", "build")
+        val output = ByteArrayOutputStream()
+        val cmd = if (isWindows) listOf("./gradlew.bat", "build") else listOf("./gradlew", "build")
+        try {
+            val pb = ProcessBuilder(cmd)
+                .directory(infroDir)
+                .redirectErrorStream(true)
+            val process = pb.start()
+            process.inputStream.copyTo(output)
+            val exit = process.waitFor()
+            if (exit != 0) {
+                println("Infro project build failed with exit code $exit\n$output")
             }
-            standardOutput = javaVersionOutput
-            errorOutput = javaVersionOutput
-            isIgnoreExitValue = true
+        } catch (e: Exception) {
+            println("Failed to run wrapper in infroProject: ${e.message}")
         }
     }
 }
@@ -176,7 +257,6 @@ tasks.register(buildNativeNiva) {
         }
 
         val userHome = System.getProperty("user.home")
-        val nivaBinary = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
         val targetDir = file("$userHome/.niva/bin/niva").toPath()
         Files.createDirectories(targetDir)
         copyRecursively(nivaBinary, targetDir)
@@ -185,6 +265,7 @@ tasks.register(buildNativeNiva) {
 
         printNivaWelcome(targetDir, targetDir.toString())
     }
+
 
     doLast {
         moveInfroDir()
@@ -195,7 +276,6 @@ tasks.register(buildNativeNiva) {
 fun moveInfroDir() {
     val userHome = System.getProperty("user.home")
 
-    val sourceDir = file("${layout.projectDirectory}/../infroProject")
     val targetDir = file("$userHome/.niva/infroProject")
     val nivaDir = file("$userHome/.niva")
 

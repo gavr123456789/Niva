@@ -7,21 +7,13 @@ package main
 // import main.languageServer.onCompletion
 // import main.languageServer.resolveAllFirstTime
 // import main.languageServer.resolveNonIncremental
-import frontend.Lexer
-import frontend.lex
 
 import java.io.File
 import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
-import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.utils.*
-
-fun lex(source: String, file: File): MutableList<Token> {
-    val lexer = Lexer(source, file)
-    return lexer.lex()
-}
 
 const val fakeFileSourceGOOD = """
 //Int sas = 1
@@ -49,7 +41,28 @@ const val fakeFileSourceGOOD = """
 
 fun main(args: Array<String>) {
 
-//    val args = arrayOf("run","/home/gavr/Documents/Fun/Niva/example/main.niva")
+
+//    val ls = LS { println("Niva LS: $it") }
+//    val fromJson = readFromJson("devModeData.json")
+//
+//    fromJson.data.forEach { (fileName, value) ->
+//        val file = File(fileName)
+//        value.forEach { (lineNum, values) ->
+//            values.forEach {
+//                val w = it.toIdentifierExpr(file, lineNum)
+//                ls.megaStore.addNew(
+//                    s = w,
+//                    scope = mapOf(),
+//                    prepend = false
+//                )
+//            }
+//        }
+//    }
+
+//    println(fromJson)
+///////////////////////
+
+//    val args = arrayOf("run","/home/gavr/Documents/Projects/Fun/byLangs/c3/main.niva")
 
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"

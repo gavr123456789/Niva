@@ -316,7 +316,7 @@ fun GeneratorKt.addStdAndPutInMain(
 
 fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Package>, isTestsRun: Boolean) {
 //    val builder = StringBuilder()
-    val src = pathToSource / "src"
+    val src = pathToSource / "src" / "main" / "kotlin"
 
     val pkgs1 = notBindedPackages.filter { it.declarations.isNotEmpty() }
 
