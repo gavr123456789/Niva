@@ -36,7 +36,7 @@ class ArgsManager(val args: MutableList<String>) {
         args.remove("--mill")
         true
     } else false
-    val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Amper
+    val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Gradle
 
     val outputRename = {
         val outputRename = args.find { it.startsWith(OUT_NAME_ARG) }

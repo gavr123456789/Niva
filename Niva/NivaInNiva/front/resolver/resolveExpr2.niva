@@ -385,8 +385,6 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
 
   // также нужно убрать отдельную таблицу конструкторов, наверное
 
-
-
   // try to find by id
   letterToType isNotEmpty ifTrue: [
     // 1) create new type with generic replaced based on receiverType, if it contains generics and this is a constructor
@@ -397,15 +395,32 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
       // GENERIC DEFAULT CONSTRUCTOR - register instantiated variant
       | receiverType
       | TypeT => [
+          newMethod = kwMsgDB replaceGenericsFromTable: letterToType db: db
+
           thisIsConstructor = kwMsgDB isConstructorForReceiver: receiverType
           thisIsConstructor ifTrue: [
 
-            newMethod = kwMsgDB replaceGenericsFromTable: letterToType db: db
-            newMethod 
-            x = db instantiatedCache at: newMethod receiverType
-            x debug
-            db instantiatedCache keys debug
-            TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"            
+            newReceiverType = newMethod receiverType
+            | newReceiverType
+            | TypeT => [
+              x = db instantiatedCache at: receiverType
+              x debug
+              | x
+              | null => TO DO: "oh no the map of instantiated methods is null"
+              |=> [
+                x at: newMethod name putIfAbsent: newMethod
+                "Methods: Registrated generic instantiation of method: " + newMethod toString, log 
+              ]
+              recId = newReceiverType generateId // 100% not needed
+              recFromDb = db typesById get: recId orPut: [ newReceiverType ] // same
+              
+              recFromDb debug 
+              db instantiatedCache keys debug
+            ]
+            |=> [TO DO: "Compiler bug, should be TypeT"]
+            // TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"            
+
+            
           ]
 
       ] |=> [

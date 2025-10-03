@@ -67,7 +67,8 @@ fun main(args: Array<String>) {
     //        println(e.scope)
     //    }
 
-    if (help(args)) return
+//    if (help(args))
+//        return
     run(args)
 }
 

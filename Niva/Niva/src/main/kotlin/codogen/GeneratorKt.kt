@@ -23,7 +23,6 @@ import java.nio.file.Path
 import kotlin.io.path.div
 
 
-
 // Can generate source files
 class GeneratorKt(
     val dependencies: MutableList<String> = mutableListOf(),
@@ -34,41 +33,43 @@ class GeneratorKt(
         const val TARGET = "%TARGET%"
         const val GRADLE_IMPORTS = "import org.gradle.api.tasks.testing.logging.TestExceptionFormat\n" +
                 "import org.gradle.api.tasks.testing.logging.TestLogEvent\n\n"
-//        const val GRADLE_TEMPLATE = """
-//plugins {
-//    kotlin("jvm") version "2.0.0-Beta4"
-//    application
-//}
-//
-//group = "org.example"
-//version = "0.0.1"
-//
-//repositories {
-//    mavenCentral()
-//}
-//
-//dependencies {
-//    testImplementation(kotlin("test"))
-//}
-//
-//dependencies {
-//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-//    //%IMPL%
-//}
-//
-//tasks.test {
-//    useJUnitPlatform()
-//}
-//
-//kotlin {
-//    jvmToolchain(21)
-//}
-//
-//application {
-//    mainClass.set("mainNiva.MainKt")
-//}
-//
-//"""
+        const val GRADLE_TEMPLATE = """
+plugins {
+    kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
+    application
+}
+
+group = "org.example"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
+dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    //%IMPL%
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+kotlin {
+    jvmToolchain(22)
+}
+
+application {
+    mainClass.set("mainNiva.MainKt")
+}
+
+"""
 
         const val AMPER_TEMPLATE = """
 product: %TARGET%/app
@@ -93,33 +94,34 @@ settings:
 
     fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """
 kotlin {
-    jvm {
-        compilations {
-            val main = getByName("main")
-            tasks {
-                register<Jar>("fatJar") {
-                    group = "application"
-                    manifest {
-                        attributes["Main-Class"] = "mainNiva.MainKt"
-                    }
-                    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-                    archiveBaseName.set("$jarName")
-                    archiveVersion.set("")
-
-                    from(main.output.classesDirs)
-                    dependsOn(configurations.runtimeClasspath)
-                    from({
-                        configurations.runtimeClasspath.get()
-                            .filter { it.name.endsWith("jar") }
-                            .map { zipTree(it) }
-                    })
-                    with(jar.get() as CopySpec)
-                }
-            }
-        }
-    }
+//    jvm {
+//        compilations {
+//            val main = getByName("main")
+//            tasks {
+//                register<Jar>("fatJar") {
+//                    group = "application"
+//                    manifest {
+//                        attributes["Main-Class"] = "mainNiva.MainKt"
+//                    }
+//                    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+//                    archiveBaseName.set("$jarName")
+//                    archiveVersion.set("")
+//
+//                    from(main.output.classesDirs)
+//                    dependsOn(configurations.runtimeClasspath)
+//                    from({
+//                        configurations.runtimeClasspath.get()
+//                            .filter { it.name.endsWith("jar") }
+//                            .map { zipTree(it) }
+//                    })
+//                    with(jar.get() as CopySpec)
+//                }
+//            }
+//        }
+//    }
 }
 """
+
     fun GRADLE_OPTIONS(workingDir: String) = """
 repositories {
     maven(url = "https://jitpack.io")
@@ -183,6 +185,48 @@ fun GeneratorKt.regenerateGradleForAmper(
     gradleFile.writeText(newGradle)
 }
 
+fun GeneratorKt.regenerateGoodOldGradle(
+    pathToGradle: String,
+    compilationTarget: CompilationTarget,
+    jarName: String
+) {
+    val deps = dependencies.joinToString("\n") {
+        "implementation($it)"
+    }
+
+    val newGradle = buildString {
+        append(GRADLE_IMPORTS)
+        append(GeneratorKt.GRADLE_TEMPLATE)
+        if (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose) {
+            append(GRADLE_FAT_JAR_TEMPLATE(jarName))
+        }
+        append(GRADLE_OPTIONS(File(".").absolutePath))
+    }
+        .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, deps)
+//        .replace(GeneratorKt.TARGET, target.targetName).let {
+//            if (target != CompilationTarget.jvmCompose)
+//                it.replace("compose: enabled", "")
+//            else
+//                it
+//        }
+
+    File(pathToGradle).writeText(newGradle)
+
+
+    ///
+//    val newGradle = buildString {
+//        append(GRADLE_IMPORTS)
+//        if (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose) {
+//            append(GRADLE_FAT_JAR_TEMPLATE(jarName))
+//        }
+//        append(GRADLE_OPTIONS(File(".").absolutePath))
+//    }
+
+
+    val gradleFile = File(pathToGradle)
+    gradleFile.writeText(newGradle)
+}
+
 fun GeneratorKt.regenerateMill(pathToMill: String) {
     val deps = buildString {
 //        if (dependencies.isNotEmpty()) {
@@ -190,7 +234,7 @@ fun GeneratorKt.regenerateMill(pathToMill: String) {
         // we always have serialization
         appendLine("""    mvn"org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1",""")
         appendLine(
-        dependencies.joinToString(",\n") {
+            dependencies.joinToString(",\n") {
                 "    mvn$it"
             }
         )
@@ -201,6 +245,7 @@ fun GeneratorKt.regenerateMill(pathToMill: String) {
         .replace(GeneratorKt.DEPENDENCIES_TEMPLATE, deps)
     File(pathToMill).writeText(newMillBuildFile)
 }
+
 fun GeneratorKt.regenerateAmper(pathToAmper: String, target: CompilationTarget) {
     val deps = dependencies.joinToString("\n") {
         "  - ${it.removeSurrounding("\"")}" // replace `- "qqqq"` with `- qqqq`
@@ -283,7 +328,8 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
         if (q != null) {
             q.declarations.add(statement)
         } else {
-            testPackages[pkgName] = Package(pkgName , declarations = mutableListOf(statement), imports = imports) // + "Test"
+            testPackages[pkgName] =
+                Package(pkgName, declarations = mutableListOf(statement), imports = imports) // + "Test"
         }
     }
 
@@ -337,12 +383,10 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
     }
 
 
-
-
 }
 
 fun Package.generateImports() = buildString {
-    val collectAll = (imports + importsFromUse).filter { it != this@generateImports.packageName}
+    val collectAll = (imports + importsFromUse).filter { it != this@generateImports.packageName }
 
 
     collectAll.forEach {
@@ -406,15 +450,21 @@ fun GeneratorKt.generateKtProject(
 
     fun generateProj(pathToInfroProj: Path, pathToMainNivaFileFolder: String, generateBuildFile: () -> Unit) {
         val pathToDotNivaFolder = pathToInfroProj
-        val pathToSrc = File("$pathToDotNivaFolder/src")
-        val pathToTests = File("$pathToDotNivaFolder/test")
+        val pathToSrc = File("$pathToDotNivaFolder/src/main/kotlin")
+        val pathToTests = File("$pathToDotNivaFolder/src/test/kotlin")
         // 1 recreate pathToSrcKtFolder
         deleteAndRecreateFolder(pathToSrc)
         deleteAndRecreateFolder(pathToTests)
         // 2 generate Main.kt
         val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
-        val mainCode = addStdAndPutInMain(codegenKt(topLevelStatements), mainPkg, compilationTarget, pathToInfroProject, pathToMainNivaFileFolder)
+        val mainCode = addStdAndPutInMain(
+            codegenKt(topLevelStatements),
+            mainPkg,
+            compilationTarget,
+            pathToInfroProject,
+            pathToMainNivaFileFolder
+        )
         createCodeKtFile(pathToSrc, "Main.kt", mainCode)
         // 3 generate every package like folders with code
         generatePackages(pathToInfroProj, notBindPackages.toList(), isTestsRun)
@@ -447,54 +497,71 @@ fun GeneratorKt.generateKtProject(
                 regenerateMill(pathToMill)
             }
         }
-        BuildSystem.Gradle ->
-            TODO("Deprecated")
+
+        BuildSystem.Gradle -> {
+            val path = File(pathToDotNivaFolder)
+
+            generateProj(path.toPath(), pathToMainNivaFileFolder) {
+                // 4 regenerate amper
+
+//                regenerateAmper(pathToAmper, compilationTarget)
+                // 4 regenerate amper's gradle
+                regenerateGoodOldGradle(
+                    pathToGradle,
+                    compilationTarget,
+                    mainFileName
+                )
+            }
+
+        }
     }
 
 }
 
-fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null, forTest: Boolean = false): String = buildString {
-    if (statements.isEmpty()) {
-        if (pkg != null)
+fun codegenKt(statements: List<Statement>, indent: Int = 0, pkg: Package? = null, forTest: Boolean = false): String =
+    buildString {
+        if (statements.isEmpty()) {
+            if (pkg != null)
+                append("package ${pkg.packageName}\n\n")
+            return@buildString
+        }
+
+        if (pkg != null) {
+
             append("package ${pkg.packageName}\n\n")
-        return@buildString
-    }
-
-    if (pkg != null) {
-
-        append("package ${pkg.packageName}\n\n")
-        if (pkg.packageName != "core")
-            append("import $MAIN_PKG_NAME.*\n")
-        if (forTest) {
-            append(
-                """
+            if (pkg.packageName != "core")
+                append("import $MAIN_PKG_NAME.*\n")
+            if (forTest) {
+                append(
+                    """
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-""")
+"""
+                )
 //            appendnl("import $it.*")
 
+            }
+            append(pkg.generateImports())
         }
-        append(pkg.generateImports())
-    }
-    val generator = GeneratorKt()
+        val generator = GeneratorKt()
 
-    if (forTest) {
-        append("class ", pkg!!.packageName + "Test", "{\n")
-        statements.forEach {
-            appendLine("@Test")
-            val md = it as MessageDeclaration
-            val qw = codegenKt(md.body, indent + 2)
-            append("fun ", md.name, "()", " {", "\n")
-            appendLine(qw)
-            append("    }")
+        if (forTest) {
+            append("class ", pkg!!.packageName + "Test", "{\n")
+            statements.forEach {
+                appendLine("@Test")
+                val md = it as MessageDeclaration
+                val qw = codegenKt(md.body, indent + 2)
+                append("fun ", md.name, "()", " {", "\n")
+                appendLine(qw)
+                append("    }")
+            }
+            append("\n}\n") // close class
+        } else {
+            statements.forEach {
+                appendLine(generator.generateKtStatement(it, indent))
+            }
         }
-        append("\n}\n") // close class
-    } else {
-        statements.forEach {
-            appendLine(generator.generateKtStatement(it, indent))
-        }
-    }
 
-}
+    }
 
