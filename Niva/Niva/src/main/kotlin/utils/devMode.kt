@@ -117,7 +117,7 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
                 when (am.buildSystem) {
                     BuildSystem.Amper -> compiler.runGradleAmperBuildCommand()
                     BuildSystem.Mill -> compiler.runMill(Option.RUN, am.outputRename)
-                    BuildSystem.Gradle -> {TODO("No dev mode for gradle, its old, use mill or amper")}
+                    BuildSystem.Gradle -> compiler.runGradleAmperBuildCommand()//{TODO("No dev mode for gradle, its old, use mill or amper")}
                 }
 
             }

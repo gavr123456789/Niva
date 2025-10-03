@@ -38,7 +38,7 @@ import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
-import main.lex
+import frontend.resolver.lex
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
