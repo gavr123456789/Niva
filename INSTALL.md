@@ -1,8 +1,11 @@
 # JAR
-`cd Niva/Niva`
-`./gradlew buildJvmNiva`
-binary is created in `~/.niva/niva/bin`
-## Add to PATH
+```
+git clone https://github.com/gavr123456789/Niva.git &&
+cd Niva/Niva/Niva &&
+./gradlew buildJvmNiva
+```
+binary is created in `~/.niva/niva/bin`  
+## Add niva binary to PATH
 replace $path with `~/.niva/niva/bin`
 - Bash: `echo 'export PATH=$PATH:$path' >> ~/.bashrc && source ~/.bashrc`
 - Fish: `set -U fish_user_paths ${path} $fish_user_paths`
