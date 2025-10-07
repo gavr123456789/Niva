@@ -39,9 +39,8 @@ const val fakeFileSourceGOOD = """
 //
 
 
+
 fun main(args: Array<String>) {
-
-
 //    val ls = LS { println("Niva LS: $it") }
 //    val fromJson = readFromJson("devModeData.json")
 //
