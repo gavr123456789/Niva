@@ -749,7 +749,7 @@ fun putInMainKotlinCode(
         println("----------")
         println(e.stackTraceToString())
     }
-    """ else """
+    """ else $$"""
         } catch (e: Throwable) {
 
         println("----------")
@@ -757,7 +757,7 @@ fun putInMainKotlinCode(
         println("----------")
         val q = e.stackTrace
         
-        val thisProjectPath = "${pathToInfroProject.replace("\\", "/")}/src/"
+        val thisProjectPath = "/home/gavr/.niva/infroProject/src/"
         
         fun replaceLinesInStackTrace(x: List<StackTraceElement>) {
 
@@ -772,14 +772,17 @@ fun putInMainKotlinCode(
                     val lines = thisFileContent.split("\n")
 
 
-                    val y = lines[kotlinLine - 1]
-                    val splitted = y.split("@")
-                    if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
-                    val fileAndLineNumber = splitted[1].trim()
-                    val (file, lineStr) = fileAndLineNumber.split(":::")
-                    val line = lineStr.toInt()
-
-                    FileAndLine(file, line)
+                    val y = lines.getOrNull(kotlinLine - 1)
+                    if (y != null) {
+                        val splitted = y.split("@")
+                        if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
+                            val fileAndLineNumber = splitted[1].trim()
+                            val (file, lineStr) = fileAndLineNumber.split(":::")
+                            val line = lineStr.toInt()
+                            FileAndLine(file, line)
+                        } else {
+                            null
+                        }
                 }
             }
             
@@ -790,36 +793,38 @@ fun putInMainKotlinCode(
             val stackTracesWithFiles = x.filter { it.fileName != null }
             stackTracesWithFiles.forEach {
                 val pathToFile =
-                    if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName
+                    "main/kotlin/" + (if (it.fileName != "Main.kt") it.fileName.split(".").first() + "/" + it.fileName else it.fileName)
                 val nivaLine = if (checkExistAsNivaFile(pathToFile))
                     getNearestNivaLine(it.lineNumber - 1, pathToFile)
                 else FileAndLine(
                     it.fileName,
                     it.lineNumber
                 )
-//            val newElement = StackTraceElement(it.className, it.methodName, nivaLine.file, nivaLine.line)
-                println(kotlin.text.buildString {
+
                 val methodLabel = "Method: "
                 val fileLabel = "File: "
                 val padding = 30
                 
-                append(methodLabel)
-                append(it.methodName.padEnd(padding - methodLabel.length))
-                append("\u001B[37m")
-                append(fileLabel)
-                append(nivaLine.file)
-                append(":")
-                append(nivaLine.line)
-                append("\u001B[0m")
-            })
-//            replacedStack.add(newElement)
+                if (nivaLine != null) {
+                    println(kotlin.text.buildString {
+
+
+                        append(methodLabel)
+                        append(it.methodName.padEnd(padding - methodLabel.length))
+                        append("\u001B[37m")
+                        append(fileLabel)
+                        append(nivaLine.file)
+                        append(":")
+                        append(nivaLine.line)
+                        append("\u001B[0m")
+                    })
+                } else {
+                    println("Can't locate source line of error from: ${it.methodName}")
+                }
             }
-//        return replacedStack
         }
         val methodName = q[0].methodName
         replaceLinesInStackTrace(if (methodName == "unpackOrPANIC" || methodName == "throwWithMessage") q.drop(1) else q.toList())
-
-//    println(e.stackTraceToString())
     }
     """.trimIndent()
 
