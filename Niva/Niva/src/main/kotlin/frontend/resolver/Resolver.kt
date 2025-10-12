@@ -1148,7 +1148,9 @@ val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, l
     }
 }
 val createTypeListOfType = { name: String, elementType: Type.InternalType, listTypeProtocolDonor: Type.UserType, emitName: String ->
-    assert(listTypeProtocolDonor.protocols.isNotEmpty())
+    val q = listTypeProtocolDonor.protocols.isNotEmpty()
+//    println(q)
+//    assert(q)
     Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
@@ -1577,7 +1579,7 @@ class Resolver(
             ).also {
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
-                it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform")
+                it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform") // sequence doesn't have such methods
 
             }
         )

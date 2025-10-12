@@ -92,15 +92,14 @@ constructor TyperDB new -> TyperDB = [
 extend TyperDB [
   /// adds method to protocol, if no such protocol - creates it
   on addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
-    forType debug 
-    typeToMethodNameToMethod keys debug
     methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
     methodNameToMethodMap containsKey: m name,
       ifTrue: [TO DO: "Type $forType already has method $m"]
 
     methodNameToMethodMap at: m name put: m
-    "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ",
-      log
+    m kind == MessageSendKind.Getter ifFalse: [
+      "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
+    ]
   ]
 
 
@@ -147,7 +146,7 @@ extend TyperDB [
     x::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
     x at: m name put: m
 
-    "Constructors: added constructor " + m name + " for type " + forType name, log
+    "addNewConstructor: added constructor " + m name + " for type " + forType name, log
   ]
 
   on addNewPkgIfNotExists: pkgName::String -> NivaPkg = [
@@ -189,28 +188,26 @@ extend TyperDB [
 
     .addToTypesWithTheSameName: t    
 
-    typesById get: (t toIdString) orPut: [t]
-
+    id = t toIdString
+    typesById get: id orPut: [t]
+    "addNewType typesById: added new type $t to typesById with id: $id" log
+    
+    
     // 2 add to methods db
     x = this typeToMethodNameToMethod at: t
     | x
     | null => [
-      "Types: added type $t to constructor cache" log
+      "addNewType: added new type $t to methods cache with 0 members" log
       this typeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
-    ]
-    |=> TO DO: "Compiler bug: such type was already added to methodDB"
+    ] |=> TO DO: "Compiler bug: such type was already added to methodDB"
     
     // 3 to constructors
     xc = this constructorsTypeToMethodNameToMethod at: t
     | xc
     | null => [
-      "Types: added type $t to constructor cache" log
+      "addNewType: added new type $t to constructor cache with 0 members" log
       this constructorsTypeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
-    ]
-    |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
-    
-
-    // this typeToMethodNameToMethod at: t put:
+    ] |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
   ]
 
   on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [

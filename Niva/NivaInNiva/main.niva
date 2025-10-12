@@ -132,16 +132,15 @@ resolveGenerics = [
 
 
     //Box(Int) sas -> Unit = [42]
-
-
-
   """
 
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
-
+  //typedAst = result fileToStatements at: "main", unpackOrPANIC
+  //typedAst debug
+  typegAst = result entryPointExpressions
+  typegAst debug
 
 
 ] do

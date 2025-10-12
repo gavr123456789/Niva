@@ -1,6 +1,11 @@
 
 
 type TypeInfo t: NivaType isMut: Bool
+extend TypeInfo [
+  on toString = 
+    t toString + (isMut ? " mut" ! "")
+  
+]
 
 NivaType toTypeInfoDefault = TypeInfo t: this isMut: false
 // constructor TypeInfo default: t::NivaType =
