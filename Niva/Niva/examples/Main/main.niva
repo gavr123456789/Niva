@@ -1,4 +1,29 @@
-x::Map(Int, String) = #{
-// sasssaay
-1 "s"
-2 "t"}
+//union NivaType  =
+//| UnitT
+//| IntegerT
+//| FloatT
+//| DoubleT
+//| BoolT
+//| CharT
+//| StringT
+//| AnyT
+//| NothingT
+//// complex
+//| TypeT   genericArgs: mut List::NivaType
+//
+//
+//r = TypeT genericArgs: {}!
+//
+//| r
+//| TypeT => [
+//    1 echo
+//    2 echo
+//    424
+//]
+
+
+union Color = Red | Green | Blue
+
+c = Red new
+| c
+| Red => 1 echo

@@ -288,7 +288,7 @@ type MessagesWithContext
 
 /// fills typedBody inside body
 MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
-  "resolving body of " + this name + " from pkg: " + pkg name, debug
+  //"resolving body of " + this name + " from pkg: " + pkg name, log
 
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [

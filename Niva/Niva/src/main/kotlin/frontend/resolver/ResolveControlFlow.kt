@@ -473,8 +473,33 @@ fun Resolver.resolveControlFlow(
                     }
 
                 }
+                is Type.UnionBranchType -> {
+                    val branchesFromDb = savedSwitchType.root.branches.toMutableSet()
+                    // if this is check has only one branch and it returns unit then ignore exhaustivnesCheck
+                    val needExhaustivnesCheck = statement.ifBranches.size > 1 || statement.ifBranches.first().getReturnTypeOrThrow().name != InternalTypes.Unit.name
+                    if (needExhaustivnesCheck) {
+                        recursiveCheckThatEveryBranchChecked(
+                            branchesFromDb,
+                            typesAlreadyChecked,
+                            statement.token,
+                            statement.ifBranches.associateBy({ it.ifExpression.type },
+                                { it.ifExpression.token })
+                        )
 
+                        if (statement.type == null) {
+                            statement.type = findGeneralRootMany(
+                                statement.ifBranches.map { it.getReturnTypeOrThrow() },
+                                statement.token
+                            )
+                        }
+                    } else {
+                        statement.type = Resolver.defaultTypes[InternalTypes.Unit]!!
+                    }
+
+
+                }
                 else -> {
+
                     // this is branch, no need to do anything... for some reason
                     // probably we resolve it already from resolving root
                 }
@@ -510,7 +535,8 @@ fun Resolver.resolveControlFlow(
                 statement.token
             )
         }
-        // check for true exhaustiveness
+
+
 
     }
 
@@ -519,6 +545,9 @@ fun Resolver.resolveControlFlow(
         is ControlFlow.Switch -> resolveControlFlowSwitch(statement)
     }
 
+    if (statement.type == null) {
+        statement.token.compileError("Can't infer type of the expression")
+    }
 }
 fun exhaustivenessEnumCheck(branchesFromDB: List<EnumBranchType>, switchingOn: List<Expression>, errToken: Token) {
     val setOfBranchesFromDb = branchesFromDB.map { it.name }.toSet()
@@ -586,7 +615,7 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
 }
 
 fun recursiveCheckThatEveryBranchChecked(
-    branchesFromDb: MutableSet<Type>,
+    branchesFromDb: MutableSet<out Type>,
     branchesInSwitch: MutableSet<Type>,
     tok: Token,
     typeToTok: Map<Type?, Token>

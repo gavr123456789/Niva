@@ -1,0 +1,50 @@
+
+// rework - instead of replacing - make the receiver typed
+BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> BinaryMsgT = [
+  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
+
+  typeOfReceiver = receiverTypedExpr typeInfo t
+  mut lastType = typeOfReceiver
+  mut lastReceiver = receiverTypedExpr
+  mut lastDbMsg::NivaMethod? = null
+
+  typedArgs = args map: [ binary ->
+    // 1 + (2 inc)
+    // find the message
+    // resolce type of arg
+    // compare that found message has arg with same type
+    binaryName = binary name name
+    dbMsg = db findMsgFromReceiver: lastReceiver  byName: binaryName currentPkg: c currentPkg
+    lastDbMsg <- dbMsg
+
+    (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
+    dbArg = dbMsg args first
+    // resolve type of arg
+    resolvedArg = binary expr toTypedExprFromDb2: db withContext: c
+
+
+    (resolvedArg typeInfo t compareWith: dbArg typeT) ifFalse: [
+      expected = dbMsg args first typeT
+      butGot = resolvedArg typeInfo t
+      currentBinary = lastType toString + " " + binaryName + " "
+      TO DO: "In binary $currentBinary arg of type $expected expected, but got $butGot"
+    ]
+
+    // create typed expr with return type of dbMsg in db message
+    typed = resolvedArg
+
+    lastType <- dbMsg returnType // 2 + 2 ^(Int)+ 2
+    lastReceiver <- resolvedArg // 2 + ^2 + 2
+    NameAndExprT name: binary name expr: resolvedArg
+  ]
+
+  //
+  newBinaryT = BinaryMsgT
+    args: typedArgs
+    receiver: receiverTypedExpr
+    token: token
+    typeInfo: lastType toTypeInfoDefault
+    dbMsg: lastDbMsg unpackOrPANIC // this is +, its impossible to do 1 pkg.+ 2
+  ^ newBinaryT
+]
+
