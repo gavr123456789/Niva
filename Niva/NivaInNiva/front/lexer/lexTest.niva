@@ -96,6 +96,7 @@ Test multiLine = [
   expectedEnds =   {5 9 7}
   expectedLines =  {1 1 2}
 
+
   tokens forEachIndexed: [ i, it ->
     Assert that: it kind  equals: (expectedKinds at: i)
     Assert that: it start equals: (expectedStarts at: i)

@@ -363,7 +363,7 @@ fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Pac
     }
 
     if (isTestsRun) {
-        val tests = pathToSource / "test"
+        val tests = (pathToSource / "src" / "test" / "kotlin")
 
         val generateTest = { v: Package ->
             val code = codegenKt(v.declarations, pkg = v, forTest = true)

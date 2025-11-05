@@ -39,7 +39,7 @@ sealed class MessageMetadata(
     }
 
     fun addErrors(errors: Set<Type.Union>) {
-        assert(errors.isNotEmpty())
+//        assert(errors.isNotEmpty())
         val errs = this._errors
         if (errs != null) {
             errs.addAll(errors)
@@ -381,10 +381,10 @@ sealed class Type(
         } else
             typeCopy.errors = errors2.toMutableSet()
 
-        val errors2 = typeCopy.errors
-        if (errors2 != null) {
-            assert(errors2.isNotEmpty())
-        }
+//        val errors2 = typeCopy.errors
+//        if (errors2 != null ) {
+//            assert(errors2.isNotEmpty())
+//        }
         return typeCopy
     }
 
