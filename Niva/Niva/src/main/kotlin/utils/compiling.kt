@@ -57,7 +57,7 @@ object GlobalVariables {
 
 // if we are running test we need to modify its output
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runTests: Boolean = false) {
-    val p = ProcessBuilder(this.split(" "))
+    val p = ProcessBuilder(this.split(" ").filter { it.isNotBlank() })
         .directory(workingDir)
 
     if (withOutputCapture && !runTests) {
@@ -86,13 +86,15 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
     // do not watch if its file watcher
     if (!this.contains("-t"))
         process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
+
     if (runTests) {
-        val first = "> Task :jvmTest"
-        val last = "> Task :allTests"
+        val upToDate = "UP-TO-DATE"
+        val first = "> Task :testClasses"
+        val last = "4 actionable tasks"
 
         val w = inputStream.readText()
 
-        val j = w.substringAfterLast(first).substringBefore(last)
+        val j = w.substringAfterLast(first).substringBefore(last).replace(upToDate, "")
         val l = j.replace("PASSED", "${GREEN}✅$RESET")
         val u = l.replace("FAILED", "${RED}❌$RESET")
             .replace("java.lang.Exception: ", "")
@@ -127,7 +129,7 @@ class CompilerRunner(
     private fun gradleCmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
         (if (!dist)
             if (runTests)
-                "allTests"
+                "test"
             else
                 targetToRunCommand(compilationTarget)
         else
@@ -136,7 +138,7 @@ class CompilerRunner(
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> if (buildFatJar) "fatJar" else "distZip"
                 CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
                 CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
-            }) + " --build-cache --parallel -Pkotlin.experimental.tryK2=true" + if (watch) " -t" else ""
+            }) + " --build-cache --parallel " + if (watch) " -t" else ""
 
 
     fun runMill(option: Option, outputRename: String?) {
