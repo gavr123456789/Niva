@@ -54,11 +54,36 @@ object GlobalVariables {
     }
 
 }
+private fun String.toCommandArgs(): List<String> {
+    val tokens = this.split(" ").filter { it.isNotBlank() }
+
+    return buildList {
+        var skipNext = false
+        tokens.forEachIndexed { index, token ->
+            if (skipNext) {
+                skipNext = false
+                return@forEachIndexed
+            }
+
+            if (token == "--tests" && index + 1 < tokens.size) {
+                add("--tests"  )
+                add(tokens[index + 1].trim('"'))
+                skipNext = true
+            } else {
+                add(token)
+            }
+        }
+    }
+}
 
 // if we are running test we need to modify its output
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runTests: Boolean = false) {
-    val p = ProcessBuilder(this.split(" ").filter { it.isNotBlank() })
+//    println("DEBUG: running command: $this")
+    val fixed = this.toCommandArgs()//.split(" ").filter { it.isNotBlank() }
+
+    val p = ProcessBuilder(fixed)
         .directory(workingDir)
+
 
     if (withOutputCapture && !runTests) {
         p
@@ -89,15 +114,16 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 
     if (runTests) {
         val upToDate = "UP-TO-DATE"
-        val first = "> Task :testClasses"
+        val first = "> Task :test"
         val last = "4 actionable tasks"
 
         val w = inputStream.readText()
+//        val e = process.errorStream.reader().readText()
 
-        val j = w.substringAfterLast(first).substringBefore(last).replace(upToDate, "")
+        val j = w.substringAfterLast(first).substringBefore(last).replace(upToDate, "").replace("BUILD SUCCESSFUL in", "").replace("STANDARD_OUT", "")
         val l = j.replace("PASSED", "${GREEN}✅$RESET")
         val u = l.replace("FAILED", "${RED}❌$RESET")
-            .replace("java.lang.Exception: ", "")
+            .replace("java.lang.Exception: ", "").trim()
 
         println(u)
     }
@@ -185,6 +211,7 @@ class CompilerRunner(
         buildFatJar: Boolean = false,
         runTests: Boolean = false,
         outputRename: String? = null,
+        testFilter: String? = null,
     ) {
         // 1 remove repl log file since it will be recreated
         removeReplFile()
@@ -199,7 +226,13 @@ class CompilerRunner(
             warning("Release mode is useless with jvm target")
         }
         // 3 generate command and run it
-        val cmd = gradleCmd(dist, buildFatJar, runTests)
+        var cmd = gradleCmd(dist, buildFatJar, runTests)
+        if (runTests && !testFilter.isNullOrBlank()) {
+            // Gradle test filtering. Supports patterns like ClassName.testName
+            // We quote the value to keep it intact across shells.
+            val escaped = testFilter.replace("\"", "\\\"")
+            cmd += " --tests \"$escaped\""
+        }
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
         runFinalCommand("./gradlew","cmd.exe /c gradlew.bat", defaultArgs, cmd, file, runTests)
         // 4 inline repl
