@@ -48,6 +48,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is LiteralExpression.IntExpr -> str
             is LiteralExpression.StringExpr -> str
             is LiteralExpression.CharExpr -> str
+            is LiteralExpression.UnitExpr -> "Unit"
             is DotReceiver -> "this"
 
             is ListCollection -> {

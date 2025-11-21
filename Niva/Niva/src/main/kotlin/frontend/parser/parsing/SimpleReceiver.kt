@@ -36,6 +36,10 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
         skipOneEndOfLineOrComment()
 
         tryPrimary = when (token.kind) {
+            TokenType.UnitSymbol -> LiteralExpression.UnitExpr(
+                literal = token
+            )
+
             TokenType.OpenBrace -> {
                 return parseListCollection(typeAst, token)
             }

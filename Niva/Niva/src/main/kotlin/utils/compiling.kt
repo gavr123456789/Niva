@@ -376,8 +376,9 @@ fun compileProjFromFile(
 
     val verbosePrinter = VerbosePrinter(verbose)
 
+
     // we need custom ast to fill file to ast table in LS(non incremental store)
-    val (mainAst, otherAst) = {
+    val (mainAst, otherAst) = run {
         if (customAst == null) {
             val qwf = if (evalCustomExpr != null) {
                 """
@@ -401,7 +402,7 @@ fun compileProjFromFile(
         }
         else
             customAst
-    }()
+    }
 
 
     if (resolver.otherFilesPaths.count() != otherAst.count()) {
@@ -788,7 +789,7 @@ fun putInMainKotlinCode(
         } catch (e: Throwable) {
 
         println("----------")
-        println("\u001B[31m" + (e.message ?: "no message") + "\u001B[0m")
+        println("\u001B[31m" + (e.message ?:  e.toString()) + "\u001B[0m")
         println("----------")
         val q = e.stackTrace
         

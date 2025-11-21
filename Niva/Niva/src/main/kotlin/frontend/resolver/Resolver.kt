@@ -258,6 +258,7 @@ private fun Resolver.resolveStatement(
                 is LiteralExpression.CharExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Char]
 
                 is LiteralExpression.TrueExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Bool]
+                is LiteralExpression.UnitExpr -> statement.type = Resolver.defaultTypes[InternalTypes.Unit]
 
                 is LiteralExpression.NullExpr -> {
                     if (rootStatement is VarDeclaration) {
@@ -1148,7 +1149,7 @@ val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, l
     }
 }
 val createTypeListOfType = { name: String, elementType: Type.InternalType, listTypeProtocolDonor: Type.UserType, emitName: String ->
-    val q = listTypeProtocolDonor.protocols.isNotEmpty()
+//    val q = listTypeProtocolDonor.protocols.isNotEmpty()
 //    println(q)
 //    assert(q)
     Type.UserType(

@@ -11,6 +11,7 @@ sealed class Primary(val typeAST: TypeAST?, token: Token) : Receiver(null, token
 sealed class LiteralExpression(typeAST: TypeAST?, literal: Token) : Primary(typeAST, literal) {
 
     class IntExpr(literal: Token) : LiteralExpression(TypeAST.InternalType(InternalTypes.Int, literal), literal)
+    class UnitExpr(literal: Token) : LiteralExpression(TypeAST.InternalType(InternalTypes.Unit, literal), literal)
 
     class StringExpr(literal: Token) :
         LiteralExpression(TypeAST.InternalType(InternalTypes.String, literal), literal) {

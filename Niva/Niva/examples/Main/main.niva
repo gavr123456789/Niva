@@ -21,9 +21,6 @@
 //    424
 //]
 
+Unit functionCall = "hi!"
+()functionCall echo
 
-union Color = Red | Green | Blue
-
-c = Red new
-| c
-| Red => 1 echo

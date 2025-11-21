@@ -22,6 +22,12 @@ x = r"string"
 class LexerTest {
 
     @Test
+    fun unit() {
+        val manyExpr = "()"
+        checkWithEnd(manyExpr, listOf(UnitSymbol))
+    }
+
+    @Test
     fun identifierColon() {
         val manyExpr = "sas:"
         checkWithEnd(manyExpr, listOf(Identifier, Colon))

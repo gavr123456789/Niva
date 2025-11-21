@@ -49,7 +49,8 @@ enum class TokenType {
     OpenParenHash, // #(
 
     // punctuation
-    Dot, Cascade, Comma, Colon, Apostrophe,// . ; , `
+    Dot, Cascade, Comma, Colon, Apostrophe, // . ; , `
+    UnitSymbol, // ()
     DotOpenBracket, // .[
     Ampersand, // &
 
