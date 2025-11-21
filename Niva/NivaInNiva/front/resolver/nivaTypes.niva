@@ -92,7 +92,7 @@ extend TypeT [
       pkgName: this pkgName
 
 
-  
+
   on collectGenerics -> List::NivaType = [
     genericFields = fields filter: [
       nivaType = it typeT
@@ -117,8 +117,11 @@ extend TypeT [
   ]
   /// creates unique identificator
   on toIdString -> String = [
-    genericStr = genericArgs map: [it name], sortedBy: [it], joinWith: " " transform: [it]
-    ^ pkgName + "." + name + "<" + genericStr + ">"
+    genericStr = genericArgs isNotEmpty
+                        ifTrue: [ "<" + (genericArgs map: [it name], sortedBy: [it], joinWith: " " transform: [it]) + ">"]
+                        ifFalse: [""]
+
+    ^ pkgName + "." + name + genericStr
   ]
 
 ]
@@ -159,14 +162,14 @@ type NivaMethod
   pkgName: String
 
 extend NivaMethod [
-  on getGenericArgs = 
+  on getGenericArgs =
     args filter: [
       | it typeT
       | UnresolvedGenericT => true
       |=> false
     ]
 
-  
+
   on replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB -> NivaMethod = [
 
     recType = receiverType
@@ -193,17 +196,17 @@ extend NivaMethod [
                 ] do
     ]
 
-    ^ NivaMethod 
-        :name  
+    ^ NivaMethod
+        :name
         receiverType: instantiatedReceiverOrDefaultT
-        args: newArgs 
+        args: newArgs
         returnType: instantiatedReturnOrDefaultT
-        :forMut  
-        :possibleErrors 
-        :kind 
-        :decl 
-        :protocolName  
-        :pkgName 
+        :forMut
+        :possibleErrors
+        :kind
+        :decl
+        :protocolName
+        :pkgName
   ]
 
   on copyWithDifferentReturnType: rt::NivaType =

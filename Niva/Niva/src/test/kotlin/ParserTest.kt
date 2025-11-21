@@ -47,6 +47,23 @@ import kotlin.test.assertTrue
 
 class ParserTest {
 
+
+    @Test
+    fun messageDeclarationForUnit() {
+        val source = "Unit sas = 1"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is LiteralExpression.UnitExpr)
+    }
+
+    @Test
+    fun unitExpr() {
+        val source = "()"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is LiteralExpression.UnitExpr)
+    }
+
     @Test
     fun genericWithRoundBranches() {
         val source = "type Sas x: List(Int)?"

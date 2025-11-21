@@ -53,7 +53,7 @@ constructor IO new -> IO = [
 compilerTry = [
   path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-] 
+]
 
 
 runPTry = [
@@ -125,7 +125,7 @@ resolveMatch = [
 ]
 
 
-resolveGenerics = [
+resolveGenericsDefaultConstructor = [
   fileMain = """
     type Box x: T y: T z: Int
     box = Box x: "sas" y: "42" z: 42
@@ -141,6 +141,29 @@ resolveGenerics = [
   //typedAst debug
   typegAst = result entryPointExpressions
   typegAst debug
+
+
+]
+
+
+
+resolveGenericsMethod = [
+  fileMain = """
+    type Box x: Int
+    box = Box x: 42
+    Box tGeneric::T -> T = [
+        ^ tGeneric
+    ]
+    box tGeneric: "Str"
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  //typedAst = result fileToStatements at: "main", unpackOrPANIC
+  //typedAst debug
+  typedAst = result entryPointExpressions
+  typedAst debug
 
 
 ] do

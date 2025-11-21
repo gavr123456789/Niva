@@ -509,7 +509,7 @@ fun Lexer.next() {
 
         match("=") -> createToken(TokenType.Assign)
         match("`") -> createToken(TokenType.Apostrophe)
-
+        match("()") -> createToken(TokenType.UnitSymbol)
 
         else -> {
             var n = symbolTable.getMaxSymbolSize()

@@ -2,9 +2,9 @@
 
 type TypeInfo t: NivaType isMut: Bool
 extend TypeInfo [
-  on toString = 
+  on toString =
     t toString + (isMut ? " mut" ! "")
-  
+
 ]
 
 NivaType toTypeInfoDefault = TypeInfo t: this isMut: false
@@ -35,7 +35,11 @@ union TypedExpr2 token: Token typeInfo: TypeInfo =
   branches: List::MatchBranchT
   elseBranch: TypedBody? // possible body
 
-
+IdentifierT toString -> String = [
+    pathStr = path unpack: [it toString] or: ""
+    isType = isNameOfTheType ifTrue: [" (Type)"] ifFalse: [""]
+    ^ pathStr + name + isType
+]
 
 type NameAndExprT name: Identifier expr: TypedExpr2
 

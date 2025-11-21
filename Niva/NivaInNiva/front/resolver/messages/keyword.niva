@@ -10,15 +10,18 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     findMsgFromReceiver: receiverTypedExpr
     byName: .getNameFromArgs
     currentPkg: c currentPkg
+  // just replace this mutability with flag
+  // hasGenerics
+  // and at the end if it has then use the new generated kwMsg with instantiated geneircs, if not then use kwMsgDB
 
   Assert that: kwMsgDB args count equals: args count
 
-  
-  
+
+
   // Всю эту часть потом нужно перенести в checkRealArgs: чтобы оно работало и для байнари
-  
+
   // GENERICS
-  
+
   letterToType::mut Map(String, NivaType) = #{}!
 
   typedArgs = args mapIndexed: [ i, kwArg ->
@@ -57,6 +60,13 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     NameAndExprT name: name expr: typedExpr
   ]
 
+  // щас тут логика ветвится
+  // дженерик не дженерик ресивер
+  // дженерик не дженерик конструктор
+  // дженерик не дженерик обычное сообщение
+  //
+  // нужно просто по отдельности - полностью обработать ресивер заменив при надобности его на новый замененный
+  // потом полностью обработать сообщение
 
   // К этому моменту мы проверили обычные типы, и получили таблицу женериков
   // теперь можно сгенерировать Msg с замененными женериками из оригинального, или получить если он уже был сгенерен
@@ -84,24 +94,24 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
             | newReceiverType
             | TypeT => [
               cachedMethodsFromInstGenerics = db instantiatedCache at: receiverType
-          
+
               | cachedMethodsFromInstGenerics
               | null => TO DO: "oh no the map of instantiated methods is null, it should be filled with emptyMap when type is registered"
               |=> [
                 cachedMethodsFromInstGenerics at: newMethod name putIfAbsent: newMethod
-                "Methods: Registrated generic instantiation of method: " + newMethod toString, log 
+                "Methods: Registrated generic instantiation of method: " + newMethod toString, log
               ]
               recId = newReceiverType generateId                             // 100% not needed
               recFromDb = db typesById get: recId orPut: [ newReceiverType ] // same
-              
+
               Unit
             ]
             |=> [TO DO: "Compiler bug, should be TypeT"]
-            // TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"            
+            // TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"
           ]
-          
+
           kwMsgDB <- newMethod
-          //TO DO: "ADD NEW MSG WITH INSTANTIATED PARAMS, we got our new message registered with id, теперь проверь что когда мы вызовем второй раз, замены не произойдет и мы просто достанем его по id" + 
+          //TO DO: "ADD NEW MSG WITH INSTANTIATED PARAMS, we got our new message registered with id, теперь проверь что когда мы вызовем второй раз, замены не произойдет и мы просто достанем его по id" +
           //" и нужно как то организовать подмену kwMsgDB на новый метод, а то сейчас внизу используется старый"
 
       ] |=> [ TO DO: "generic constructor for usual non-TypeT receiver"]
@@ -119,8 +129,8 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
       ]
 
       isThereUnresolvedGenerics unpack: [
-        db addFatalErrorFromTok: receiver token 
-           withMsg: "Receiver has generic param " + it toString + " but I can't infer it via message arguments" 
+        db addFatalErrorFromTok: receiver token
+           withMsg: "Receiver has generic param " + it toString + " but I can't infer it via message arguments"
       ]
     ] |=> []
 
@@ -132,7 +142,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
   // no, probably just replace expected args here with real args, if they are generics
 
   // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "realType compareWith: argTypeFromDb"
-  
+
   newKeyword = KeywordMsgT
     args: typedArgs
     kind: kwMsgDB kind
@@ -142,10 +152,10 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
                   t: kwMsgDB returnType
                   isMut: kwMsgDB forMut)
     dbMsg: kwMsgDB
-    
+
   // receiver stays non instaciated when its constructor, its pretty logical
   // Box t: 42
-  // Box(Box t: T) t: 42(Int) 
-    
+  // Box(Box t: T) t: 42(Int)
+
   ^ newKeyword
 ]
