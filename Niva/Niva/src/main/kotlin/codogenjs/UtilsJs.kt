@@ -23,11 +23,12 @@ internal fun Type.toJsMangledName(): String = when (this) {
 }
 
 internal fun String.ifJsKeywordPrefix(): String = when (this) {
-    "var", "let", "const", "function", "default", "class", "return", "new", "delete" -> "_" + this
+    "var", "let", "const", "function", "default", "class", "return", "new", "delete" -> "_$this"
     else -> this
 }
 
 internal fun String.addIndentationForEachStringJs(indent: Int): String {
     val pref = "    ".repeat(indent)
-    return this.lines().joinToString("\n") { if (it.isEmpty()) it else pref + it }
+    val result = this.lines().joinToString("\n") { if (it.isEmpty()) it else pref + it }
+    return result
 }

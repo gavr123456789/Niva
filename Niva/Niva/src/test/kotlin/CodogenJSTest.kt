@@ -5,20 +5,122 @@ import kotlin.test.assertEquals
 class CodogenJSTest {
 
 
-//    @Test
-//    fun ifff() {
-//        val source = """
-//
-//        """.trimIndent()
-//        val expected = """
-//            ((1) + (2))
-//            (("sas") + ("sas"))
-//            ((true) || (false))
-//        """.trimIndent()
-//        val statements = resolve(source)
-//        val w = codegenJs(statements)
-//        assertEquals(expected, w)
-//    }
+    @Test
+    fun codeBlockLambdaWithArgs() {
+        val source = """
+            x = [x::Int -> x + 2]
+            
+        """.trimIndent()
+        val expected = """
+            let x = (x) => ((x) + (2))
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun codeBlockLambda() {
+        val source = """
+            x = [1 + 2]
+            m = [
+                1 + 2
+                1 + 3
+            ]
+        """.trimIndent()
+        val expected = """
+            let x = () => ((1) + (2))
+            let m = () => {
+                ((1) + (2));
+                return ((1) + (3))
+            }
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun switchExpr() {
+        val source = """
+            x = | 1
+            | 1 => "sas"
+            | 2 => [
+                y = "4"
+                y + "2"
+            ]
+            | 3 => "fpg"
+            |=> "default"
+        """.trimIndent()
+        val expected = """
+            let x = (() => {
+                switch (1) {
+                    case 1:
+                        return ("sas");
+                    case 2:
+                        let y = "4"
+                        return (((y) + ("2")));
+                    case 3:
+                        return ("fpg");
+                    default:
+                        return ("default");
+                }
+            })()
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+
+    @Test
+    fun switchStatement() {
+        val source = """
+            | 1
+            | 1 => "sas"
+            | 2 => [
+                y = "4"
+                y + "2"
+            ]
+            | 3 => "fpg"
+            |=> "default"
+        """.trimIndent()
+
+        val expected = """
+            switch (1) {
+                case 1:
+                    "sas"
+                    break;
+                case 2:
+                    let y = "4"
+                    ((y) + ("2"))
+                    break;
+                case 3:
+                    "fpg"
+                    break;
+                default:
+                    "default"
+            }
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun ifExpr() {
+        val source = """
+            true ? 1 ! [2]
+        """.trimIndent()
+        val expected = """
+         (() => { if (true) return (1); return (2); })()
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+
     @Test
     fun exprSimple() {
         val source = """

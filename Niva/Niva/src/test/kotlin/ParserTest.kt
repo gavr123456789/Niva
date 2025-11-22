@@ -747,6 +747,21 @@ class ParserTest {
     }
 
     @Test
+    fun iff() {
+        val source = """
+        true ? 1 ! [2]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val iF = ast[0] as ControlFlow.If
+        assert(iF.kind == ControlFlowKind.Statement)
+        val elseBranches = iF.elseBranch
+        val ifBranches = iF.ifBranches
+        assert(ifBranches.count() == 1)
+        assert(ifBranches[0] is IfBranch.IfBranchSingleExpr)
+        assert(elseBranches != null && elseBranches.count() == 1)
+    }
+    @Test
     fun ifStatement() {
         val source = """
         _

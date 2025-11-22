@@ -147,7 +147,8 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
             when (sw.kind) {
                 ControlFlowKind.ExpressionTypeMatch -> TODO()
                 ControlFlowKind.StatementTypeMatch -> TODO()
-                ControlFlowKind.Expression -> {append("(() => {\n")
+                ControlFlowKind.Expression -> {
+                    append("(() => {\n")
                     append("    switch (", sw.switch.generateJsExpression(), ") {\n")
 
                     sw.ifBranches.forEach { br ->
@@ -159,12 +160,45 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
 
                         when (br) {
                             is IfBranch.IfBranchSingleExpr -> {
-                                append("            return (", br.thenDoExpression.generateJsExpression(), ");\n")
+                                val expr = br.thenDoExpression
+                                val code = expr.generateJsExpression()
+                                if (expr is BinaryMsg) {
+                                    append("            return ", code, ";\n")
+                                } else {
+                                    append("            return (", code, ");\n")
+                                }
                             }
                             is IfBranch.IfBranchWithBody -> {
-                                val bodyCode = codegenJs(br.body.statements, 2)
-                                if (bodyCode.isNotEmpty()) {
-                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                                val bodyStmts = br.body.statements
+                                if (bodyStmts.isNotEmpty()) {
+                                    val leading = bodyStmts.dropLast(1)
+                                    val last = bodyStmts.last()
+
+                                    // все, кроме последнего — обычные стейтменты
+                                    if (leading.isNotEmpty()) {
+                                        val leadingCode = codegenJs(leading, 2)
+                                        if (leadingCode.isNotEmpty()) {
+                                            append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                        }
+                                    }
+
+                                    // последний Expression должен возвращаться из IIFE
+                                    when (last) {
+                                        is Expression -> {
+                                            val code = last.generateJsExpression()
+                                            if (last is BinaryMsg) {
+                                                append("            return ", code, ";\n")
+                                            } else {
+                                                append("            return (", code, ");\n")
+                                            }
+                                        }
+                                        else -> {
+                                            val lastCode = codegenJs(listOf(last), 2)
+                                            if (lastCode.isNotEmpty()) {
+                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -176,11 +210,38 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
                         append("        default:\n")
                         if (elseBranch.size == 1 && elseBranch[0] is Expression) {
                             val elseExpr = elseBranch[0] as Expression
-                            append("            return (", elseExpr.generateJsExpression(), ");\n")
-                        } else {
-                            val elseCode = codegenJs(elseBranch, 2)
-                            if (elseCode.isNotEmpty()) {
-                                append(elseCode.addIndentationForEachStringJs(1), "\n")
+                            val code = elseExpr.generateJsExpression()
+                            if (elseExpr is BinaryMsg) {
+                                append("            return ", code, ";\n")
+                            } else {
+                                append("            return (", code, ");\n")
+                            }
+                        } else if (elseBranch.isNotEmpty()) {
+                            val leading = elseBranch.dropLast(1)
+                            val last = elseBranch.last()
+
+                            if (leading.isNotEmpty()) {
+                                val leadingCode = codegenJs(leading, 2)
+                                if (leadingCode.isNotEmpty()) {
+                                    append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                }
+                            }
+
+                            when (last) {
+                                is Expression -> {
+                                    val code = last.generateJsExpression()
+                                    if (last is BinaryMsg) {
+                                        append("            return ", code, ";\n")
+                                    } else {
+                                        append("            return (", code, ");\n")
+                                    }
+                                }
+                                else -> {
+                                    val lastCode = codegenJs(listOf(last), 2)
+                                    if (lastCode.isNotEmpty()) {
+                                        append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                    }
+                                }
                             }
                         }
                     }
@@ -190,40 +251,39 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
                 }
                 ControlFlowKind.Statement -> {
                     // Обычный switch-statement без IIFE
-                    buildString {
-                        append("switch (", sw.switch.generateJsExpression(), ") {\n")
+                    append("switch (", sw.switch.generateJsExpression(), ") {\n")
 
-                        sw.ifBranches.forEach { br ->
-                            val allConds = listOf(br.ifExpression) + br.otherIfExpressions
-                            allConds.forEach { cond ->
-                                append("    case ", cond.generateJsExpression(), ":\n")
-                            }
-
-                            when (br) {
-                                is IfBranch.IfBranchSingleExpr -> {
-                                    append("        ", br.thenDoExpression.generateJsExpression(), "\n")
-                                }
-                                is IfBranch.IfBranchWithBody -> {
-                                    val bodyCode = codegenJs(br.body.statements, 1)
-                                    if (bodyCode.isNotEmpty()) {
-                                        append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                    }
-                                }
-                            }
-                            append("        break;\n")
+                    sw.ifBranches.forEach { br ->
+                        val allConds = listOf(br.ifExpression) + br.otherIfExpressions
+                        allConds.forEach { cond ->
+                            append("    case ", cond.generateJsExpression(), ":\n")
                         }
 
-                        val elseBranch = sw.elseBranch
-                        if (elseBranch != null) {
-                            append("    default:\n")
-                            val elseCode = codegenJs(elseBranch, 1)
-                            if (elseCode.isNotEmpty()) {
-                                append(elseCode.addIndentationForEachStringJs(1), "\n")
+                        when (br) {
+                            is IfBranch.IfBranchSingleExpr -> {
+                                append("        ", br.thenDoExpression.generateJsExpression(), "\n")
+                            }
+                            is IfBranch.IfBranchWithBody -> {
+                                val bodyCode = codegenJs(br.body.statements, 1)
+                                if (bodyCode.isNotEmpty()) {
+                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                                }
                             }
                         }
-
-                        append("}")
+                        append("        break;\n")
                     }
+
+                    val elseBranch = sw.elseBranch
+                    if (elseBranch != null) {
+                        append("    default:\n")
+                        val elseCode = codegenJs(elseBranch, 1)
+                        if (elseCode.isNotEmpty()) {
+                            append(elseCode.addIndentationForEachStringJs(1), "\n")
+                        }
+                    }
+
+                    append("}")
+
                 }
             }
 
@@ -240,14 +300,49 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
                 // первый аргумент будет ресивером при вызове, но в определении лямбды он не нужен
                 inputList.drop(1)
             } else inputList
+
             append("(")
             append(argsList.joinToString(", ") { it.name.ifJsKeywordPrefix() })
             append(") => ")
+
+            // Семантика CodeBlock как в котлине: последний Expression возвращается
             if (statements.size == 1 && statements[0] is Expression) {
+                // Краткая форма: () => expr
                 append((statements[0] as Expression).generateJsExpression())
             } else {
                 append("{\n")
-                append(codegenJs(statements, 1))
+
+                val lastIndex = statements.lastIndex
+                statements.forEachIndexed { index, st ->
+                    when {
+                        // Последний Expression → return expr
+                        index == lastIndex && st is Expression -> {
+                            append("    ")
+                            append("return ")
+                            append(st.generateJsExpression())
+                        }
+
+                        // Промежуточные Expression → expr;
+                        st is Expression -> {
+                            append("    ")
+                            append(st.generateJsExpression())
+                            append(";")
+                        }
+
+                        // Остальные стейтменты генерим как есть через общий кодоген
+                        else -> {
+                            val code = codegenJs(listOf(st), 1)
+                            if (code.isNotEmpty()) {
+                                append(code)
+                            }
+                        }
+                    }
+
+                    if (index != lastIndex) {
+                        append("\n")
+                    }
+                }
+
                 append("\n}")
             }
         }

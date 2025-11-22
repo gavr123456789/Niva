@@ -1,6 +1,7 @@
 package main.codogenjs
 
 import main.frontend.parser.types.ast.*
+import java.lang.StringBuilder
 
 private fun buildDeclFuncNameJs(forType: frontend.resolver.Type, name: String, argTypes: List<frontend.resolver.Type>): String {
     val recv = forType.toJsMangledName()
@@ -17,47 +18,35 @@ fun MessageDeclaration.generateJsMessageDeclaration(): String = when (this) {
     is StaticBuilderDeclaration -> this.msgDeclaration.generateJsMessageDeclaration()
 }
 
-private fun MessageDeclarationUnary.generateUnaryJs(): String {
-    val fn = buildDeclFuncNameJs(forType!!, name, emptyList())
-    val params = listOf("receiver")
+private fun MessageDeclaration.generateSingleExpression(fn: String, params: List<String>): String {
     val bodyCode = if (isSingleExpression && body.size == 1 && body[0] is Expression) {
         "return (" + (body[0] as Expression).generateJsExpression() + ")"
     } else codegenJs(body, 1)
-    return buildString {
-        append("function ", fn, "(", params.joinToString(", "), ") {\n")
-        append(bodyCode.addIndentationForEachStringJs(1))
-        if (!(isSingleExpression && body.size == 1 && body[0] is Expression)) append('\n')
-        append("}")
-    }
+
+     return  buildString {
+         append("function ", fn, "(", params.joinToString(", "), ") {\n")
+         append(bodyCode.addIndentationForEachStringJs(1))
+         if (!(isSingleExpression && body.size == 1 && body[0] is Expression)) append('\n')
+         append("}")
+     }
+}
+
+private fun MessageDeclarationUnary.generateUnaryJs(): String {
+    val fn = buildDeclFuncNameJs(forType!!, name, emptyList())
+    val params = listOf("receiver")
+    return generateSingleExpression(fn, params)
 }
 
 private fun MessageDeclarationBinary.generateBinaryJs(): String {
     val argT = arg.type ?: return "/* unresolved arg type for $name */"
     val fn = buildDeclFuncNameJs(forType!!, name, listOf(argT))
-    val argName = arg.name()
-    val params = listOf("receiver", argName)
-    val bodyCode = if (isSingleExpression && body.size == 1 && body[0] is Expression) {
-        "return (" + (body[0] as Expression).generateJsExpression() + ")"
-    } else codegenJs(body, 1)
-    return buildString {
-        append("function ", fn, "(", params.joinToString(", "), ") {\n")
-        append(bodyCode.addIndentationForEachStringJs(1))
-        if (!(isSingleExpression && body.size == 1 && body[0] is Expression)) append('\n')
-        append("}")
-    }
+    val params = listOf("receiver", arg.name())
+    return generateSingleExpression(fn, params)
 }
 
 private fun MessageDeclarationKeyword.generateKeywordJs(): String {
     val types = args.mapNotNull { it.type }
     val fn = buildDeclFuncNameJs(forType!!, name, types)
     val params = listOf("receiver") + args.map { it.name() }
-    val bodyCode = if (isSingleExpression && body.size == 1 && body[0] is Expression) {
-        "return (" + (body[0] as Expression).generateJsExpression() + ")"
-    } else codegenJs(body, 1)
-    return buildString {
-        append("function ", fn, "(", params.joinToString(", "), ") {\n")
-        append(bodyCode.addIndentationForEachStringJs(1))
-        if (!(isSingleExpression && body.size == 1 && body[0] is Expression)) append('\n')
-        append("}")
-    }
+    return generateSingleExpression(fn, params)
 }
