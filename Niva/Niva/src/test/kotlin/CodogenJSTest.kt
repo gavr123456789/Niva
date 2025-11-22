@@ -3,7 +3,41 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CodogenJSTest {
+    @Test
+    fun unionDecl() {
+        val source = """
+            union Figure area: Int =
+            | Rectangle width: Int height: Int
+            | Circle    radius: Int
+        """.trimIndent()
+        val expected = """
+            class Figure {
+                constructor(area) {
+                    this.area = area;
+                }
+            }
+            
+            class Rectangle extends Figure {
+                constructor(width, height, area) {
+                    super(area);
+                    this.width = width;
+                    this.height = height;
+                }
+            }
+            
+            class Circle extends Figure {
+                constructor(radius, area) {
+                    super(area);
+                    this.radius = radius;
+                }
+            }
+        """.trimIndent()
 
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
 
     @Test
     fun typeCreate() {

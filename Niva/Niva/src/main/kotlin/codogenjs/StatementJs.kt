@@ -28,8 +28,8 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             is Assign -> "${statement.name.ifJsKeywordPrefix()} = ${statement.value.generateJsExpression()}"
             is DestructingAssign -> "// destructuring is not implemented in JS codegen yet"
 
-            is UnionRootDeclaration -> "// union ${statement.typeName} not emitted for JS yet"
-            is UnionBranchDeclaration -> "// union branch ${statement.typeName} not emitted for JS yet"
+            is UnionRootDeclaration -> statement.generateJsUnionRootDeclaration()
+            is UnionBranchDeclaration -> statement.generateJsUnionBranchDeclaration()
 
             is EnumDeclarationRoot -> "// enum ${statement.typeName} not emitted for JS yet"
             is EnumBranch -> "// enum branch not emitted for JS yet"
@@ -54,6 +54,63 @@ fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
     append(") {\n")
 
     // field assignments
+    fields.forEach { field ->
+        append("        this.", field.name, " = ", field.name, ";\n")
+    }
+
+    append("    }\n")
+    append("}\n")
+}
+
+fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString {
+    // Класс root union-типа
+    append("class ", typeName, " {\n")
+
+    // конструктор по полям root
+    append("    constructor(")
+    append(fields.joinToString(", ") { it.name })
+    append(") {\n")
+
+    // инициализация только полей root
+    fields.forEach { field ->
+        append("        this.", field.name, " = ", field.name, ";\n")
+    }
+
+    append("    }\n")
+    append("}\n")
+
+    // Для JS-кодогенерации сразу же эмитим и все ветки union-типа
+    if (branches.isNotEmpty()) {
+        append("\n")
+        branches.forEachIndexed { index, branch ->
+            append(branch.generateJsUnionBranchDeclaration())
+            if (index != branches.lastIndex) {
+                append("\n")
+            }
+        }
+    }
+}
+
+fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildString {
+    // Базовый union-тип
+    val rootDecl = root
+    val rootTypeName = rootDecl.typeName
+
+    // Параметры конструктора: сначала поля ветки, потом поля root
+    val branchFieldNames = fields.map { it.name }
+    val rootFieldNames = rootDecl.fields.map { it.name }
+
+    append("class ", typeName, " extends ", rootTypeName, " {\n")
+    append("    constructor(")
+    append((branchFieldNames + rootFieldNames).joinToString(", "))
+    append(") {\n")
+
+    // Вызов super только с полями root (не дублируем инициализацию этих полей в наследнике)
+    append("        super(")
+    append(rootFieldNames.joinToString(", "))
+    append(");\n")
+
+    // Инициализируем только собственные поля ветки
     fields.forEach { field ->
         append("        this.", field.name, " = ", field.name, ";\n")
     }

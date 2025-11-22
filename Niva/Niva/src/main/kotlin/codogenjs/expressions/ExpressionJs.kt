@@ -140,12 +140,150 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
             }
         }
         is ControlFlow.Switch -> {
-            // Switch как выражение → IIFE со switch и return в каждой ветке
+            // Switch для значений и type-match
             val sw = this@generateJsExpression
             when (sw.kind) {
-                ControlFlowKind.ExpressionTypeMatch -> TODO()
-                ControlFlowKind.StatementTypeMatch -> TODO()
+                ControlFlowKind.ExpressionTypeMatch -> {
+                    // type-match как выражение через IIFE и instanceof
+                    append("(() => {\n")
+                    append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
+
+                    sw.ifBranches.forEachIndexed { index, br ->
+                        val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
+                        append(if (index == 0) "    if (" else "    else if (")
+                        append(allTypes.joinToString(" || ") { "__tmp instanceof " + it.generateJsExpression() })
+                        append(") {\n")
+
+                        when (br) {
+                            is IfBranch.IfBranchSingleExpr -> {
+                                val expr = br.thenDoExpression
+                                val code = expr.generateJsExpression()
+                                if (expr is BinaryMsg) {
+                                    append("            return ", code, ";\n")
+                                } else {
+                                    append("            return (", code, ");\n")
+                                }
+                            }
+                            is IfBranch.IfBranchWithBody -> {
+                                val bodyStmts = br.body.statements
+                                if (bodyStmts.isNotEmpty()) {
+                                    val leading = bodyStmts.dropLast(1)
+                                    val last = bodyStmts.last()
+
+                                    if (leading.isNotEmpty()) {
+                                        val leadingCode = codegenJs(leading, 2)
+                                        if (leadingCode.isNotEmpty()) {
+                                            append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                        }
+                                    }
+
+                                    when (last) {
+                                        is Expression -> {
+                                            val code = last.generateJsExpression()
+                                            if (last is BinaryMsg) {
+                                                append("            return ", code, ";\n")
+                                            } else {
+                                                append("            return (", code, ");\n")
+                                            }
+                                        }
+                                        else -> {
+                                            val lastCode = codegenJs(listOf(last), 2)
+                                            if (lastCode.isNotEmpty()) {
+                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        append("    }\n")
+                    }
+
+                    val elseBranch = sw.elseBranch
+                    if (elseBranch != null) {
+                        append("    else {\n")
+                        if (elseBranch.size == 1 && elseBranch[0] is Expression) {
+                            val elseExpr = elseBranch[0] as Expression
+                            val code = elseExpr.generateJsExpression()
+                            if (elseExpr is BinaryMsg) {
+                                append("            return ", code, ";\n")
+                            } else {
+                                append("            return (", code, ");\n")
+                            }
+                        } else if (elseBranch.isNotEmpty()) {
+                            val leading = elseBranch.dropLast(1)
+                            val last = elseBranch.last()
+
+                            if (leading.isNotEmpty()) {
+                                val leadingCode = codegenJs(leading, 2)
+                                if (leadingCode.isNotEmpty()) {
+                                    append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                }
+                            }
+
+                            when (last) {
+                                is Expression -> {
+                                    val code = last.generateJsExpression()
+                                    if (last is BinaryMsg) {
+                                        append("            return ", code, ";\n")
+                                    } else {
+                                        append("            return (", code, ");\n")
+                                    }
+                                }
+                                else -> {
+                                    val lastCode = codegenJs(listOf(last), 2)
+                                    if (lastCode.isNotEmpty()) {
+                                        append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                    }
+                                }
+                            }
+                        }
+                        append("    }\n")
+                    }
+
+                    append("})()")
+                }
+                ControlFlowKind.StatementTypeMatch -> {
+                    // type-match как statement через if/else-if/else с instanceof
+                    append("{")
+                    append("\n")
+                    append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
+
+                    sw.ifBranches.forEachIndexed { index, br ->
+                        val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
+                        append(if (index == 0) "    if (" else "    else if (")
+                        append(allTypes.joinToString(" || ") { "__tmp instanceof " + it.generateJsExpression() })
+                        append(") {\n")
+
+                        when (br) {
+                            is IfBranch.IfBranchSingleExpr -> {
+                                append("        ", br.thenDoExpression.generateJsExpression(), "\n")
+                            }
+                            is IfBranch.IfBranchWithBody -> {
+                                val bodyCode = codegenJs(br.body.statements, 1)
+                                if (bodyCode.isNotEmpty()) {
+                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                                }
+                            }
+                        }
+                        append("    }\n")
+                    }
+
+                    val elseBranch = sw.elseBranch
+                    if (elseBranch != null) {
+                        append("    else {\n")
+                        val elseCode = codegenJs(elseBranch, 1)
+                        if (elseCode.isNotEmpty()) {
+                            append(elseCode.addIndentationForEachStringJs(1), "\n")
+                        }
+                        append("    }\n")
+                    }
+
+                    append("}")
+                }
                 ControlFlowKind.Expression -> {
+                    // Switch как выражение → IIFE со switch и return в каждой ветке
                     append("(() => {\n")
                     append("    switch (", sw.switch.generateJsExpression(), ") {\n")
 
