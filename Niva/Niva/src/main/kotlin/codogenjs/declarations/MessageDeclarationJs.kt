@@ -1,7 +1,6 @@
 package main.codogenjs
 
 import main.frontend.parser.types.ast.*
-import java.lang.StringBuilder
 
 private fun buildDeclFuncNameJs(forType: frontend.resolver.Type, name: String, argTypes: List<frontend.resolver.Type>): String {
     val recv = forType.toJsMangledName()
@@ -19,16 +18,36 @@ fun MessageDeclaration.generateJsMessageDeclaration(): String = when (this) {
 }
 
 private fun MessageDeclaration.generateSingleExpression(fn: String, params: List<String>): String {
-    val bodyCode = if (isSingleExpression && body.size == 1 && body[0] is Expression) {
-        "return (" + (body[0] as Expression).generateJsExpression() + ")"
-    } else codegenJs(body, 1)
+    // Собираем тело функции без отступов, затем добавляем общий отступ в один уровень.
+    val rawBody = buildString {
+        // Неявные локальные переменные для всех полей типа: let field = receiver.field
+        val recvType = forType
+        val userType = recvType as? frontend.resolver.Type.UserLike
+        if (userType != null && userType.fields.isNotEmpty()) {
+            userType.fields.forEach { field ->
+                append("let ", field.name, " = receiver.", field.name, "\n")
+            }
+        }
 
-     return  buildString {
-         append("function ", fn, "(", params.joinToString(", "), ") {\n")
-         append(bodyCode.addIndentationForEachStringJs(1))
-         if (!(isSingleExpression && body.size == 1 && body[0] is Expression)) append('\n')
-         append("}")
-     }
+        // Основное тело метода
+        if (isSingleExpression && body.size == 1 && body[0] is Expression) {
+            append("return (" + (body[0] as Expression).generateJsExpression() + ")")
+        } else {
+            val inner = codegenJs(body, 0)
+            append(inner)
+        }
+    }
+
+    return buildString {
+        append("function ", fn, "(", params.joinToString(", "), ") {\n")
+        if (rawBody.isNotBlank()) {
+            append(rawBody.addIndentationForEachStringJs(1))
+            if (rawBody.contains('\n')) {
+                append('\n')
+            }
+        }
+        append("}\n")
+    }
 }
 
 private fun MessageDeclarationUnary.generateUnaryJs(): String {

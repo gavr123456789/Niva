@@ -6,10 +6,51 @@ class CodogenJSTest {
 
 
     @Test
+    fun typeCreate() {
+        val source = """
+            type Person name: String age: Int
+            
+            Person sas -> Int = [
+                q = age + 1
+                w = this age
+                ^ q
+            ]
+            
+            p = Person name: "Alice" age: 24
+            
+            name = p name 
+            age = p age
+        """.trimIndent()
+        val expected = """
+            class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            function Person__sas(receiver) {
+                let name = receiver.name
+                let age = receiver.age
+                let q = ((age) + (1))
+                let w = receiver.age
+                return (q)
+            }
+            
+            let p = new Person("Alice", 24)
+            let name = p.name
+            let age = p.age
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+    @Test
     fun codeBlockLambdaWithArgs() {
         val source = """
             x = [x::Int -> x + 2]
-            
         """.trimIndent()
         val expected = """
             let x = (x) => ((x) + (2))
@@ -178,6 +219,7 @@ class CodogenJSTest {
         val expected = """
             function Int__sas(receiver) {
                 return (22)}
+            
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -192,6 +234,7 @@ class CodogenJSTest {
         val expected = """
             function Int__fooBar__Int__String(receiver, foo, bar) {
                 return (22)}
+            
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -209,6 +252,7 @@ class CodogenJSTest {
         val expected = """
             function Int__fooBar__Int__String(receiver, foo, bar) {
                 return (22)}
+            
             Int__fooBar__Int__String(((Int__inc(1)) + (2)), 1, "string")
         """.trimIndent()
         val statements = resolve(source)

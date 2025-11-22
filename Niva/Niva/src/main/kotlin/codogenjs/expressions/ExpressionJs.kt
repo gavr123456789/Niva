@@ -2,7 +2,7 @@ package main.codogenjs
 
 import main.frontend.parser.types.ast.*
 
-fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument: Boolean = false): String = buildString {
+fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = buildString {
     when (this@generateJsExpression) {
         is ExpressionInBrackets -> {
             append("(")
@@ -11,8 +11,14 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
         }
         is MessageSend -> append(generateJsMessageCall())
         is IdentifierExpr -> {
-            if (names.count() == 1) append(name.ifJsKeywordPrefix())
-            else append(names.dropLast(1).joinToString("."), ".", name.ifJsKeywordPrefix())
+            // Внутри методов Niva `this` ссылается на ресивер, в JS это параметр `receiver`
+            if (names.count() == 1 && name == "this") {
+                append("receiver")
+            } else if (names.count() == 1) {
+                append(name.ifJsKeywordPrefix())
+            } else {
+                append(names.dropLast(1).joinToString("."), ".", name.ifJsKeywordPrefix())
+            }
         }
 
         is LiteralExpression.FalseExpr -> append("false")
@@ -24,24 +30,23 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
         is LiteralExpression.StringExpr -> append(str)
         is LiteralExpression.CharExpr -> append(str)
         is LiteralExpression.UnitExpr -> append("undefined")
-        is DotReceiver -> append("this")
+        is DotReceiver -> append("receiver")
 
         is ListCollection -> {
             append("[")
-            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true, isArgument = true) })
+            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
             append("]")
         }
         is SetCollection -> {
             append("new Set([")
-            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true, isArgument = true) })
+            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
             append("]) ")
         }
         is MapCollection -> {
             append("new Map([")
             append(initElements.joinToString(", ") { "[" + it.first.generateJsExpression(
-                withNullChecks = true,
-                isArgument = true
-            ) + ", " + it.second.generateJsExpression(withNullChecks = true, isArgument = true) + "]" })
+                withNullChecks = true
+            ) + ", " + it.second.generateJsExpression(withNullChecks = true) + "]" })
             append("]) ")
         }
 
@@ -95,36 +100,29 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, isArgument:
                     // Обычный if-statement без IIFE
                     val ifNode = ifNode
                     buildString {
-                        val first = ifNode.ifBranches.first()
-                        append("if (", first.ifExpression.generateJsExpression(), ") {\n")
-                        when (first) {
-                            is IfBranch.IfBranchSingleExpr -> {
-                                append(first.thenDoExpression.generateJsExpression().addIndentationForEachStringJs(1), "\n")
-                            }
-                            is IfBranch.IfBranchWithBody -> {
-                                val bodyCode = codegenJs(first.body.statements, 1)
-                                if (bodyCode.isNotEmpty()) {
-                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                }
-                            }
-                        }
-                        append("}")
-
-                        // else if ветки
-                        ifNode.ifBranches.drop(1).forEach { br ->
-                            append(" else if (", br.ifExpression.generateJsExpression(), ") {\n")
-                            when (br) {
+                        val generateIfBranch = { ifBranch: IfBranch ->
+                            when (ifBranch) {
                                 is IfBranch.IfBranchSingleExpr -> {
-                                    append(br.thenDoExpression.generateJsExpression().addIndentationForEachStringJs(1), "\n")
+                                    append(ifBranch.thenDoExpression.generateJsExpression().addIndentationForEachStringJs(1), "\n")
                                 }
                                 is IfBranch.IfBranchWithBody -> {
-                                    val bodyCode = codegenJs(br.body.statements, 1)
+                                    val bodyCode = codegenJs(ifBranch.body.statements, 1)
                                     if (bodyCode.isNotEmpty()) {
                                         append(bodyCode.addIndentationForEachStringJs(1), "\n")
                                     }
                                 }
                             }
                             append("}")
+                        }
+                        val first = ifNode.ifBranches.first()
+                        append("if (", first.ifExpression.generateJsExpression(), ") {\n")
+                        generateIfBranch(first)
+                        append("}")
+
+                        // else if ветки
+                        ifNode.ifBranches.drop(1).forEach { br ->
+                            append(" else if (", br.ifExpression.generateJsExpression(), ") {\n")
+                            generateIfBranch(br)
                         }
 
                         // else-ветка

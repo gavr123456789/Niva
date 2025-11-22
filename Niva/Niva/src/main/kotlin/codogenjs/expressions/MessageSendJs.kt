@@ -3,7 +3,7 @@ package main.codogenjs
 import frontend.resolver.Type
 import main.frontend.parser.types.ast.*
 
-private fun normalizeSelectorJs(name: String, token: main.frontend.meta.Token): String = when (name) {
+private fun normalizeSelectorJs(name: String): String = when (name) {
     "+" -> "plus"
     "-" -> "minus"
     "*" -> "times"
@@ -27,7 +27,7 @@ private fun normalizeSelectorJs(name: String, token: main.frontend.meta.Token): 
 
 private fun buildJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
     val recv = receiverType.toJsMangledName()
-    val baseName = normalizeSelectorJs(message.selectorName, message.token)
+    val baseName = normalizeSelectorJs(message.selectorName)
     val suffix = if (argTypes.isNotEmpty()) argTypes.joinToString("__") { it.toJsMangledName() } else ""
     return if (suffix.isEmpty()) "${recv}__${baseName}" else "${recv}__${baseName}__${suffix}"
 }
@@ -82,9 +82,15 @@ fun MessageSend.generateJsMessageCall(): String {
     messages.forEach { msg ->
         when (msg) {
             is UnaryMsg -> {
-                val name = buildJsFuncName(currentType, msg, emptyList())
-                currentExpr = "$name($currentExpr)"
-                currentType = msg.type ?: currentType
+                if (msg.kind == UnaryMsgKind.Getter) {
+                    // доступ к полю: p name  ->  p.name
+                    currentExpr = "$currentExpr.${msg.selectorName}"
+                    currentType = msg.type ?: currentType
+                } else {
+                    val name = buildJsFuncName(currentType, msg, emptyList())
+                    currentExpr = "$name($currentExpr)"
+                    currentType = msg.type ?: currentType
+                }
             }
             is BinaryMsg -> {
                 // применяем унарные сообщения к ресиверу
@@ -119,18 +125,31 @@ fun MessageSend.generateJsMessageCall(): String {
                 currentType = msg.type ?: recvType
             }
             is KeywordMsg -> {
-                val args = msg.args.map { it.keywordArg.generateJsExpression(true, true) }
+                val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
                 val argTypes = msg.args.mapNotNull { it.keywordArg.type }
-                val fn = buildJsFuncName(currentType, msg, argTypes)
-                currentExpr = buildString {
-                    append(fn, "(", currentExpr)
-                    if (args.isNotEmpty()) {
-                        append(", ")
+
+                if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
+                    // вызов конструктора типа: Person name: "Alice" age: 24 -> new Person("Alice", 24)
+                    val recvType = currentType
+                    val typeName = (recvType as? Type.UserLike)?.emitName ?: recvType.name
+                    currentExpr = buildString {
+                        append("new ", typeName, "(")
                         append(args.joinToString(", "))
+                        append(")")
                     }
-                    append(")")
+                    currentType = msg.type ?: currentType
+                } else {
+                    val fn = buildJsFuncName(currentType, msg, argTypes)
+                    currentExpr = buildString {
+                        append(fn, "(", currentExpr)
+                        if (args.isNotEmpty()) {
+                            append(", ")
+                            append(args.joinToString(", "))
+                        }
+                        append(")")
+                    }
+                    currentType = msg.type ?: currentType
                 }
-                currentType = msg.type ?: currentType
             }
             else -> {}
         }
@@ -144,8 +163,12 @@ fun Message.generateJsAsCall(): String {
     var recvType = receiver.type ?: this.type ?: error("Receiver type unknown for message call")
     return when (this) {
         is UnaryMsg -> {
-            val name = buildJsFuncName(recvType, this, emptyList())
-            "$name($recvExpr)"
+            if (this.kind == UnaryMsgKind.Getter) {
+                "$recvExpr.${this.selectorName}"
+            } else {
+                val name = buildJsFuncName(recvType, this, emptyList())
+                "$name($recvExpr)"
+            }
         }
         is BinaryMsg -> {
             // применяем унарные к ресиверу
@@ -175,16 +198,26 @@ fun Message.generateJsAsCall(): String {
             }
         }
         is KeywordMsg -> {
-            val args = args.map { it.keywordArg.generateJsExpression(true, true) }
+            val args = args.map { it.keywordArg.generateJsExpression(true) }
             val argTypes = this.args.mapNotNull { it.keywordArg.type }
-            val fn = buildJsFuncName(recvType, this, argTypes)
-            buildString {
-                append(fn, "(", recvExpr)
-                if (args.isNotEmpty()) {
-                    append(", ")
+
+            if (this.kind == KeywordLikeType.Constructor || this.kind == KeywordLikeType.CustomConstructor) {
+                val typeName = (recvType as? Type.UserLike)?.emitName ?: recvType.name
+                buildString {
+                    append("new ", typeName, "(")
                     append(args.joinToString(", "))
+                    append(")")
                 }
-                append(")")
+            } else {
+                val fn = buildJsFuncName(recvType, this, argTypes)
+                buildString {
+                    append(fn, "(", recvExpr)
+                    if (args.isNotEmpty()) {
+                        append(", ")
+                        append(args.joinToString(", "))
+                    }
+                    append(")")
+                }
             }
         }
         else -> recvExpr

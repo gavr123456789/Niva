@@ -14,7 +14,7 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration() }
             is ManyConstructorDecl -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration() }
 
-            is TypeDeclaration -> "// type ${statement.typeName} not emitted for JS yet"
+            is TypeDeclaration -> statement.generateJsTypeDeclaration()
             is TypeAliasDeclaration -> "// typealias ${statement.typeName} = ${statement.realTypeAST.name}"
 
             is ReturnStatement -> {
@@ -43,4 +43,21 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             is ErrorDomainDeclaration -> "// error domain is not emitted for JS yet"
         }.addIndentationForEachStringJs(indent)
     )
+}
+
+fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
+    append("class ", typeName, " {\n")
+
+    // constructor
+    append("    constructor(")
+    append(fields.joinToString(", ") { it.name })
+    append(") {\n")
+
+    // field assignments
+    fields.forEach { field ->
+        append("        this.", field.name, " = ", field.name, ";\n")
+    }
+
+    append("    }\n")
+    append("}\n")
 }
