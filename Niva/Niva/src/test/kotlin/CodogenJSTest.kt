@@ -3,12 +3,62 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CodogenJSTest {
+
+    @Test
+    fun matchOnType() {
+        val source = """
+            type Person name: String age: Int
+
+            x::Any = true
+            
+            | x
+            | Int => 1
+            | String => 2
+            | Person => 3
+            | Bool => 4
+            |=> 0
+        """.trimIndent()
+        val expected = """
+            class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            let x = true
+            {
+                const __tmp = x;
+                if (typeof __tmp === "number") {
+                    1
+                }
+                else if (typeof __tmp === "string") {
+                    2
+                }
+                else if (__tmp instanceof Person) {
+                    3
+                }
+                else if (typeof __tmp === "boolean") {
+                    4
+                }
+                else {
+                    0
+                }
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
     @Test
     fun unionDecl() {
         val source = """
             union Figure area: Int =
             | Rectangle width: Int height: Int
             | Circle    radius: Int
+            r = Rectangle width: 2 height: 3 area: 6
         """.trimIndent()
         val expected = """
             class Figure {
@@ -31,6 +81,8 @@ class CodogenJSTest {
                     this.radius = radius;
                 }
             }
+            
+            let r = new Rectangle(2, 3, 6)
         """.trimIndent()
 
         val statements = resolve(source)

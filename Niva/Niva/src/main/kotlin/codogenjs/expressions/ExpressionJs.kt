@@ -151,7 +151,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                     sw.ifBranches.forEachIndexed { index, br ->
                         val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
                         append(if (index == 0) "    if (" else "    else if (")
-                        append(allTypes.joinToString(" || ") { "__tmp instanceof " + it.generateJsExpression() })
+                        append(allTypes.joinToString(" || ") { it.generateJsTypeMatchCondition("__tmp") })
                         append(") {\n")
 
                         when (br) {
@@ -253,7 +253,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                     sw.ifBranches.forEachIndexed { index, br ->
                         val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
                         append(if (index == 0) "    if (" else "    else if (")
-                        append(allTypes.joinToString(" || ") { "__tmp instanceof " + it.generateJsExpression() })
+                        append(allTypes.joinToString(" || ") { it.generateJsTypeMatchCondition("__tmp") })
                         append(") {\n")
 
                         when (br) {
@@ -486,4 +486,32 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is StaticBuilder -> append("/* builder call is not supported in JS codegen yet */")
         is MethodReference -> append("/* method reference is not supported in JS codegen yet */")
     }
+}
+
+// Вспомогательная функция для type-match в JS.
+// Принимает выражение-типа (например, Int, String, Bool, Person) и имя временной переменной с значением.
+// Возвращает строку с JS-условием для проверки типа (__tmp).
+private fun Expression.generateJsTypeMatchCondition(tmpVarName: String): String = when (this) {
+    is IdentifierExpr -> {
+        // Имя типа без пакета
+        val typeName = this.name
+
+        when (typeName) {
+            // Числовые типы → typeof === "number"
+            "Int", "Float", "Double", "Long" -> "typeof $tmpVarName === \"number\""
+
+            // Строковые типы (Char в JS тоже строка длины 1)
+            "String", "Char" -> "typeof $tmpVarName === \"string\""
+
+            // Булев тип
+            "Bool" -> "typeof $tmpVarName === \"boolean\""
+
+            // Any/Dynamic — совпадает с любым значением
+            "Any", "Dynamic" -> "true"
+
+            else -> "$tmpVarName instanceof ${typeName.ifJsKeywordPrefix()}"
+        }
+    }
+
+    else -> "$tmpVarName instanceof ${this.generateJsExpression()}"
 }
