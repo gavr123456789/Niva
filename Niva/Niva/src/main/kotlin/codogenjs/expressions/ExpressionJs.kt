@@ -425,9 +425,12 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
 
         }
 
+        // probably never triggered
         is BinaryMsg -> append(generateJsAsCall())
-        is KeywordMsg -> append(generateJsAsCall())
-        is UnaryMsg -> append(generateJsAsCall())
+        is KeywordMsg ->
+            append(generateJsAsCall())
+        is UnaryMsg ->
+            append(generateJsAsCall())
 
         is CodeBlock -> {
             // лямбда → JS-функция

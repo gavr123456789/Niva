@@ -12,11 +12,13 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.*
+import sun.util.locale.provider.LocaleProviderAdapter.forType
 
 sealed class MessageMetadata(
     val name: String,
     var returnType: Type, // need to change in single expression case
     val pkg: String,
+    var forTypeName: String = "",
     val pragmas: MutableList<Pragma> = mutableListOf(),
     val msgSends: MutableList<Message> = mutableListOf(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
@@ -108,12 +110,13 @@ class UnaryMsgMetaData(
     name: String,
     returnType: Type,
     pkg: String,
+    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     val isGetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name -> $returnType"
     }
@@ -124,11 +127,12 @@ class BinaryMsgMetaData(
     val argType: Type,
     returnType: Type,
     pkg: String,
+    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
     }
@@ -140,12 +144,13 @@ class KeywordMsgMetaData(
     val argTypes: List<KeywordArg>,
     returnType: Type,
     pkg: String,
+    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     val isSetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
@@ -165,7 +170,7 @@ class BuilderMetaData(
     val defaultAction: CodeBlock?,
     declaration: MessageDeclaration,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, forType.name, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "builder $args -> $returnType"
@@ -1342,6 +1347,7 @@ fun MessageDeclarationUnary.toMessageData(
         name = this.name,
         returnType = returnType,
         pkg = pkg.packageName,
+        forTypeName = this.forType?.name ?: "",
         pragmas = pragmas,
         isGetter = isGetter,
         declaration = this
@@ -1367,6 +1373,8 @@ fun MessageDeclarationBinary.toMessageData(
         argType = argType,
         returnType = returnType,
         pkg = pkg.packageName,
+        forTypeName = this.forType?.name ?: "",
+
         pragmas = pragmas,
         declaration = this
     )
@@ -1429,6 +1437,7 @@ fun MessageDeclarationKeyword.toMessageData(
         name = this.name,
         argTypes = keywordArgs,
         returnType = returnType,
+        forTypeName = this.forType?.name ?: "",
         pragmas = pragmas,
         pkg = pkg.packageName,
         isSetter = isSetter,
