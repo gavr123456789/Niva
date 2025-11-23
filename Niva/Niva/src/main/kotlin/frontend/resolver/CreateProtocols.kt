@@ -30,7 +30,7 @@ fun createIntProtocols(
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType, ),
+
             createUnary("inc", intType, docComment = "increments the number by 1\n1 inc == 2"),
             createUnary("dec", intType, "1 dec == 0"),
             createUnary("toFloat", floatType),
@@ -122,7 +122,6 @@ fun createFloatProtocols(
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
             createUnary("inc", floatType),
             createUnary("dec", floatType),
             createUnary("toInt", intType),
@@ -240,7 +239,6 @@ fun createStringProtocols(
             createUnary("first", charType, "Returns the first character or panic"),
             createUnary("last", charType, "Returns the last character or panic"),
             createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`
-            createUnary("echo", unitType),
 
             ),
         binaryMsgs = mutableMapOf(
@@ -314,7 +312,6 @@ fun createBoolProtocols(
             createUnary("not", boolType, "true not == false"),
             createUnary("isFalse", boolType),
             createUnary("isTrue", boolType),
-            createUnary("echo", unitType),
 
             ),
         binaryMsgs = mutableMapOf(
@@ -392,7 +389,6 @@ fun createCharProtocols(
 
             createUnary("digitToInt", intType, "'2' digitToInt == 2, or panic"),
 
-            createUnary("echo", unitType)
         ),
         binaryMsgs = mutableMapOf(
             createBinary("+", intType, charType, "a + 2 == c"),
@@ -529,7 +525,6 @@ fun createRangeProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
             createUnary("isEmpty", boolType),
             createUnary("first", itType),
             createUnary("last", itType),
@@ -630,7 +625,6 @@ fun createExceptionProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
             createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
@@ -715,7 +709,6 @@ fun createListProtocols(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
-            createUnary("echo", unitType),
             createUnary("first", itType),
 
             createUnary("last", itType, "last or panic, use lastOrNull for safety"),
@@ -1009,7 +1002,6 @@ fun createSetProtocols(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
-            createUnary("echo", unitType),
             createUnary("clear", unitType, "removes every element"),
             createUnary("first", itType),
             createUnary("last", itType),
@@ -1225,7 +1217,6 @@ fun createMapProtocols(
             createUnary("count", intType),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
-            createUnary("echo", unitType),
             createUnary("keys", setType).emit("$0.keys"),
             createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
             createUnary("toMap", mapType, "Mutable map, elements will be shadow copied"),

@@ -26,6 +26,7 @@ sealed class MessageMetadata(
     val declaration: MessageDeclaration?,
     var docComment: DocComment? = null,
     var forMutableType: Boolean = false,
+    var forType: Type? = null,
 ) {
     val errors: Set<Type.Union>?
         get() = _errors?.toSet()
@@ -160,7 +161,7 @@ class KeywordMsgMetaData(
 class BuilderMetaData(
     name: String,
     val argTypes: List<KeywordArg>,
-    val forType: Type,
+    forType: Type,
     val receiverType: Type?, // Surface(receiverType) builder Card(forType) =[]
     returnType: Type,
     pkg: String,
@@ -170,7 +171,7 @@ class BuilderMetaData(
     val defaultAction: CodeBlock?,
     declaration: MessageDeclaration,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, forType.name, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, forType.name, pragmas, msgSends, declaration = declaration, docComment = docComment, forType = forType) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "builder $args -> $returnType"

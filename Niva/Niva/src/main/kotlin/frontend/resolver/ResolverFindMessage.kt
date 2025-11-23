@@ -40,6 +40,7 @@ fun findAnyMethod(
             if (addImports) {
                 pkg.addImport(msgData.pkg)
             }
+            msgData.forType = receiverType
             return msgData
         }
     }

@@ -1339,6 +1339,17 @@ class Resolver(
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
             val test = defaultTypes[InternalTypes.Test]!!
 
+            intType.parent = anyType
+            stringType.parent = anyType
+            charType.parent = anyType
+            longType.parent = anyType
+            floatType.parent = anyType
+            doubleType.parent = anyType
+            boolType.parent = anyType
+            unitType.parent = anyType
+            intRangeType.parent = anyType
+            charRangeType.parent = anyType
+
             val numProtocol = createIntProtocols(
                 intType = intType,
                 stringType = stringType,

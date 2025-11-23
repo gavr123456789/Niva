@@ -58,8 +58,9 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
  * если функция живёт в другом пакете.
  */
 private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
-    val baseName = buildJsFuncName(receiverType, message, argTypes)
-    val alias = receiverType.jsQualifierFor(JsCodegenContext.currentPackage)
+    val forType = message.msgMetaData?.forType ?: message.declaration?.forType ?: receiverType
+    val baseName = buildJsFuncName(forType, message, argTypes)
+    val alias = forType.jsQualifierFor(JsCodegenContext.currentPackage)
     return if (alias != null) "$alias.$baseName" else baseName
 }
 

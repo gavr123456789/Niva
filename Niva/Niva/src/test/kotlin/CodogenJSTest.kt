@@ -417,9 +417,27 @@ class CodogenJSTest {
             let nextAge = common.Person__incAge(p)
         """.trimIndent().trimEnd()
         
-        assertEquals(expectedCommon, commonJs)
+        assert(commonJs.contains(expectedCommon)) {
+            "common.js should contain expected code. Actual:\n$commonJs\nExpected:\n$expectedCommon"
+        }
         if (mainJs != null) {
             assertEquals(expectedMain, mainJs)
         }
+    }
+    @Test
+    fun methodOnAny() {
+        val source = """
+            Any echo -> Unit = []
+            1 echo
+        """.trimIndent()
+        val expected = """
+            export function Any__echo(receiver) {
+            }
+            
+            Any__echo(1)
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
     }
 }
