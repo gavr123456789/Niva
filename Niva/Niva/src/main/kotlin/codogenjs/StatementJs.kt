@@ -46,7 +46,8 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
 }
 
 fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
-    append("class ", typeName, " {\n")
+	// Все объявляемые типы в JS всегда экспортируются
+	append("export class ", typeName, " {\n")
 
     // constructor
     append("    constructor(")
@@ -63,8 +64,8 @@ fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
 }
 
 fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString {
-    // Класс root union-типа
-    append("class ", typeName, " {\n")
+	// Класс root union-типа всегда экспортируем как модульную сущность
+	append("export class ", typeName, " {\n")
 
     // конструктор по полям root
     append("    constructor(")
@@ -100,7 +101,8 @@ fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildStr
     val branchFieldNames = fields.map { it.name }
     val rootFieldNames = rootDecl.fields.map { it.name }
 
-    append("class ", typeName, " extends ", rootTypeName, " {\n")
+   	// Каждая ветка union-типа тоже экспортируется как отдельный класс
+   	append("export class ", typeName, " extends ", rootTypeName, " {\n")
     append("    constructor(")
     append((branchFieldNames + rootFieldNames).joinToString(", "))
     append(") {\n")

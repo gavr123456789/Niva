@@ -28,6 +28,10 @@ const val OUT_NAME_ARG = "--out-name="
 class ArgsManager(val args: MutableList<String>) {
 
     val compileOnly = "-c" in args // args.find { it == "-c" } != null
+    val js = if ("--js" in args) {
+        args.remove("--js")
+        true
+    } else false
     val verbose = if ("--verbose" in args) {
         args.remove("--verbose")
         true

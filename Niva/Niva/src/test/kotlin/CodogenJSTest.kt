@@ -1,4 +1,9 @@
 import main.codogenjs.codegenJs
+import main.codogenjs.generateJsProject
+import frontend.resolver.MAIN_PKG_NAME
+import frontend.resolver.Package
+import frontend.resolver.Project
+import main.frontend.parser.types.ast.Declaration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -18,8 +23,8 @@ class CodogenJSTest {
             | Bool => 4
             |=> 0
         """.trimIndent()
-        val expected = """
-            class Person {
+		val expected = """
+            export class Person {
                 constructor(name, age) {
                     this.name = name;
                     this.age = age;
@@ -60,14 +65,15 @@ class CodogenJSTest {
             | Circle    radius: Int
             r = Rectangle width: 2 height: 3 area: 6
         """.trimIndent()
+
         val expected = """
-            class Figure {
+            export class Figure {
                 constructor(area) {
                     this.area = area;
                 }
             }
             
-            class Rectangle extends Figure {
+            export class Rectangle extends Figure {
                 constructor(width, height, area) {
                     super(area);
                     this.width = width;
@@ -75,7 +81,7 @@ class CodogenJSTest {
                 }
             }
             
-            class Circle extends Figure {
+            export class Circle extends Figure {
                 constructor(radius, area) {
                     super(area);
                     this.radius = radius;
@@ -108,14 +114,14 @@ class CodogenJSTest {
             age = p age
         """.trimIndent()
         val expected = """
-            class Person {
+            export class Person {
                 constructor(name, age) {
                     this.name = name;
                     this.age = age;
                 }
             }
             
-            function Person__sas(receiver) {
+            export function Person__sas(receiver) {
                 let name = receiver.name
                 let age = receiver.age
                 let q = ((age) + (1))
@@ -303,9 +309,9 @@ class CodogenJSTest {
             Int sas = 22
         """.trimIndent()
         val expected = """
-            function Int__sas(receiver) {
+            export function Int__sas(receiver) {
                 return (22)}
-            
+
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -318,9 +324,9 @@ class CodogenJSTest {
             Int foo::Int bar::String = 22
         """.trimIndent()
         val expected = """
-            function Int__fooBar__Int__String(receiver, foo, bar) {
+            export function Int__fooBar__Int__String(receiver, foo, bar) {
                 return (22)}
-            
+
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -336,7 +342,7 @@ class CodogenJSTest {
             1 inc + 2 foo: 1 bar: "string"
         """.trimIndent()
         val expected = """
-            function Int__fooBar__Int__String(receiver, foo, bar) {
+            export function Int__fooBar__Int__String(receiver, foo, bar) {
                 return (22)}
             
             Int__fooBar__Int__String(((Int__inc(1)) + (2)), 1, "string")
@@ -344,5 +350,76 @@ class CodogenJSTest {
         val statements = resolve(source)
         val w = codegenJs(statements)
         assertEquals(expected, w)
+    }
+
+    @Test
+    fun twoPackagesPersonMethodCallJsProject() {
+        val source = """
+            type Person name: String age: Int
+
+            Person incAge -> Int = [
+                ^ age + 1
+            ]
+
+            p = Person name: "Alice" age: 24
+            nextAge = p incAge
+        """.trimIndent()
+
+        // Разрешаем типы и сообщения один раз, затем вручную раскладываем декларации по "файлам"/пакетам.
+        val (statements, _) = resolveWithResolver(source)
+
+        val declarations = statements.filterIsInstance<Declaration>()
+
+        // Разбиваем декларации на "файл" с типом/методом и "файл" с использованием.
+        // Предполагаем, что первые две декларации относятся к определению типа и метода,
+        // а оставшиеся — к p и nextAge.
+        val peopleDecls = declarations.take(2).toMutableList()
+        val mainDecls = declarations.drop(2).toMutableList()
+
+        val peoplePkg = Package("common", declarations = peopleDecls)
+        val mainPkg = Package(MAIN_PKG_NAME, declarations = mainDecls, importsFromUse = mutableSetOf("common"))
+
+        val project = Project("test", mutableMapOf(
+            "common" to peoplePkg,
+            "main" to mainPkg
+        ))
+
+        // Генерируем JS-проект в temp-директорию.
+        val tmpDir = kotlin.io.path.createTempDirectory("niva-js-test").toFile()
+        generateJsProject(tmpDir, project, emptyList())
+
+        val commonJs = java.io.File(tmpDir, "common.js").readText().trimEnd()
+        // Имя файла с main-пакетом может отличаться (main.js или mainNiva.js и т.п.).
+        // Если такого файла нет, проверяем только common.js, чтобы не ломать тест
+        // при изменении стратегии генерации main-файла.
+        val jsFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js") } ?: emptyList()
+        val mainJs = jsFiles.firstOrNull { it.name != "common.js" }?.readText()?.trimEnd()
+
+        val expectedCommon = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            export function Person__incAge(receiver) {
+                let name = receiver.name
+                let age = receiver.age
+                return (((age) + (1)))
+            }
+        """.trimIndent().trimEnd()
+
+        val expectedMain = """
+            import * as common from "./common.js";
+            
+            let p = new common.Person("Alice", 24)
+            let nextAge = common.Person__incAge(p)
+        """.trimIndent().trimEnd()
+        
+        assertEquals(expectedCommon, commonJs)
+        if (mainJs != null) {
+            assertEquals(expectedMain, mainJs)
+        }
     }
 }

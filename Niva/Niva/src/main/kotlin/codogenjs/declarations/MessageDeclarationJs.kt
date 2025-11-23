@@ -39,7 +39,8 @@ private fun MessageDeclaration.generateSingleExpression(fn: String, params: List
     }
 
     return buildString {
-        append("function ", fn, "(", params.joinToString(", "), ") {\n")
+		// Все сгенерированные функции сообщений должны быть экспортируемыми
+		append("export function ", fn, "(", params.joinToString(", "), ") {\n")
         if (rawBody.isNotBlank()) {
             append(rawBody.addIndentationForEachStringJs(1))
             if (rawBody.contains('\n')) {

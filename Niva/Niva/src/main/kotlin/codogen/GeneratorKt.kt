@@ -421,7 +421,7 @@ fun GeneratorKt.generateKtProject(
     val bindPackagesWithNeededImport = mutableSetOf<String>()
     val pkgNameToNeededImports = mutableMapOf<String, Set<String>>()
 
-    val addImpordsToEachPackage = {
+    val addImportsToEachPackage = {
         mainProject.packages.values.forEach {
             if (it.isBinding) {
                 if (it.neededImports.isNotEmpty()) {
@@ -446,7 +446,7 @@ fun GeneratorKt.generateKtProject(
             }
         }
     }
-    addImpordsToEachPackage()
+    addImportsToEachPackage()
 
     fun generateProj(pathToInfroProj: Path, pathToMainNivaFileFolder: String, generateBuildFile: () -> Unit) {
         val pathToDotNivaFolder = pathToInfroProj
