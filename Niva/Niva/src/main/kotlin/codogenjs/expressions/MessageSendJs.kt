@@ -27,10 +27,23 @@ private fun normalizeSelectorJs(name: String): String = when (name) {
 }
 
 private fun buildJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
-    val recv = receiverType.toJsMangledName()
+    val recv = if (receiverType is Type.UserLike) {
+        buildString {
+            if (receiverType.pkg.isNotEmpty() && receiverType.pkg != "core" && receiverType.pkg != "common") {
+                append(receiverType.pkg.replace('.', '_').replace("::", "_"), "_")
+            }
+            append(receiverType.emitName)
+            if (receiverType.isMutable) append("__mut")
+        }
+    } else {
+        receiverType.toJsMangledName()
+    }
     val baseName = normalizeSelectorJs(message.selectorName)
-    val suffix = if (argTypes.isNotEmpty()) argTypes.joinToString("__") { it.toJsMangledName() } else ""
-    return if (suffix.isEmpty()) "${recv}__${baseName}" else "${recv}__${baseName}__${suffix}"
+    val res = "${recv}__${baseName}"
+    if (message.selectorName == "add") {
+        java.io.File("/tmp/niva_debug.txt").appendText("DEBUG: buildJsFuncName selector=${message.selectorName} recv=$recv res=$res type=${receiverType.name} emit=${(receiverType as? Type.UserLike)?.emitName} mut=${receiverType.isMutable}\n")
+    }
+    return res
 }
 
 /**

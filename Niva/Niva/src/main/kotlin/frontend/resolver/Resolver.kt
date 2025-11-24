@@ -1569,6 +1569,19 @@ class Resolver(
             it.emitName = "MutableList"
         }
 
+        // mutable set
+        val mutableSetType = Type.UserType(
+            name = "Set",
+            typeArgumentList = mutableListOf(genericType),
+            fields = mutableListOf(),
+            pkg = "core",
+            typeDeclaration = null
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableSet"
+            java.io.File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
+        }
+
 
         // also adds protocol to sequence
         addCustomTypeToDb(
@@ -1587,7 +1600,8 @@ class Resolver(
                 pairType = pairType,
                 listType = listType,
                 mutListType = mutableListType,
-                setType = setType
+                setType = setType,
+                mutableSetType = mutableSetType
             ).also {
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
@@ -1613,7 +1627,8 @@ class Resolver(
                 pairType = pairType,
                 listType = listType,
                 mutListType = mutableListType,
-                setType = setType
+                setType = setType,
+                mutableSetType = mutableSetType
             )
         )
         val kw = createMapKeyword(charType, genericType, listType)
@@ -1693,17 +1708,7 @@ class Resolver(
         mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
 
 
-        // mutable set
-        val mutableSetType = Type.UserType(
-            name = "Set",
-            typeArgumentList = mutableListOf(genericType),
-            fields = mutableListOf(),
-            pkg = "core",
-            typeDeclaration = null
-        ).also {
-            it.isMutable = true
-            it.emitName = "MutableSet"
-        }
+
 
         val mutSetTypeOfDifferentGeneric = Type.UserType(
             name = "Set",

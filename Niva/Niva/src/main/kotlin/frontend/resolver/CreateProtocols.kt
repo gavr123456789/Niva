@@ -686,6 +686,7 @@ fun createListProtocols(
     listType: Type.UserType,
     mutListType: Type.UserType,
     setType: Type.UserType,
+    mutableSetType: Type.UserType,
 
     ): MutableMap<String, Protocol> {
     val listOfLists = Type.UserType(
@@ -724,6 +725,7 @@ fun createListProtocols(
             createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
             createUnary("toSet", setType),
+            createUnary("toMutableSet", mutableSetType),
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", listType),
             createUnary("sum", intType, "{1 2 3} sum == 6"),

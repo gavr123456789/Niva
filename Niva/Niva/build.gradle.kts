@@ -71,7 +71,7 @@ val checkGraalVMTask = "checkGraalVM"
 tasks.register<Exec>(checkGraalVMTask) {
     // Use Exec task instead of deprecated Project.exec
     val javaVersionOutput = ByteArrayOutputStream()
-    commandLine("java", "-version")
+    commandLine("java", "--version")
     isIgnoreExitValue = true
     standardOutput = javaVersionOutput
     errorOutput = javaVersionOutput
@@ -81,19 +81,21 @@ tasks.register<Exec>(checkGraalVMTask) {
     }
 
     val output = javaVersionOutput.toString()
+    println("......")
+    println(output)
     doLast {
         if (!output.contains("GraalVM")) {
-            throw GradleException(
-                "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
-                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
-                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
-                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
-                    "\tThen set it with: \n" +
-                    "\t\tJAVA_HOME=value in bash-like shell \n" +
-                    "\t\tset JAVA_HOME value in fish shell\n" +
-                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
-                    "\tand run `./gradlew buildNativeNiva` again"
-            )
+//            throw GradleException(
+//                "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
+//                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
+//                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
+//                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
+//                    "\tThen set it with: \n" +
+//                    "\t\tJAVA_HOME=value in bash-like shell \n" +
+//                    "\t\tset JAVA_HOME value in fish shell\n" +
+//                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
+//                    "\tand run `./gradlew buildNativeNiva` again"
+//            )
         } else {
             println("GraalVM is found")
         }

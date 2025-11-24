@@ -121,6 +121,9 @@ class CodogenJSTest {
                 }
             }
             
+            /**
+             * @param {Person} receiver
+             */
             export function Person__sas(receiver) {
                 let name = receiver.name
                 let age = receiver.age
@@ -309,6 +312,9 @@ class CodogenJSTest {
             Int sas = 22
         """.trimIndent()
         val expected = """
+            /**
+             * @param {Int} receiver
+             */
             export function Int__sas(receiver) {
                 return (22)}
 
@@ -324,7 +330,12 @@ class CodogenJSTest {
             Int foo::Int bar::String = 22
         """.trimIndent()
         val expected = """
-            export function Int__fooBar__Int__String(receiver, foo, bar) {
+            /**
+             * @param {Int} receiver
+             * @param {Int} foo
+             * @param {String} bar
+             */
+            export function Int__fooBar(receiver, foo, bar) {
                 return (22)}
 
         """.trimIndent()
@@ -342,10 +353,15 @@ class CodogenJSTest {
             1 inc + 2 foo: 1 bar: "string"
         """.trimIndent()
         val expected = """
-            export function Int__fooBar__Int__String(receiver, foo, bar) {
+            /**
+             * @param {Int} receiver
+             * @param {Int} foo
+             * @param {String} bar
+             */
+            export function Int__fooBar(receiver, foo, bar) {
                 return (22)}
             
-            Int__fooBar__Int__String(((Int__inc(1)) + (2)), 1, "string")
+            Int__fooBar(((Int__inc(1)) + (2)), 1, "string")
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -403,6 +419,9 @@ class CodogenJSTest {
                 }
             }
             
+            /**
+             * @param {Person} receiver
+             */
             export function Person__incAge(receiver) {
                 let name = receiver.name
                 let age = receiver.age
@@ -431,6 +450,9 @@ class CodogenJSTest {
             1 echo
         """.trimIndent()
         val expected = """
+            /**
+             * @param {Any} receiver
+             */
             export function Any__echo(receiver) {
             }
             
@@ -460,6 +482,62 @@ class CodogenJSTest {
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
+    @Test
+    fun jsDocAndSimpleNames() {
+        val source = """
+            type MyBool x: Int
+            MyBool ifTrue: block::[-> Unit] = 1 echo
+            m = MyBool x: 1
+            m ifTrue: [ 2 echo ]
+        """.trimIndent()
+        val expected = """
+            export class MyBool {
+                constructor(x) {
+                    this.x = x;
+                }
+            }
+            
+            /**
+             * @param {MyBool} receiver
+             * @param {[ -> Unit]} block
+             */
+            export function MyBool__ifTrue(receiver, block) {
+                let x = receiver.x
+                return (Any__echo(1))
+            }
+            
+            let m = new MyBool(1)
+            MyBool__ifTrue(m, () => Any__echo(2))
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun jsCollections() {
+        val source = """
+            l = {1 2 3} toMutableList
+            l add: 4
+            c = l count
+            
+            s = {1 2 3} toMutableSet
+            s add: 4
+            b = s contains: 1
+        """.trimIndent()
+        val expected = """
+            let l = List__toMutableList([1, 2, 3])
+            List__add(l, 4)
+            let c = List__count(l)
+            let s = List__toMutableSet([1, 2, 3])
+            MutableSet__add(s, 4)
+            let b = MutableSet__contains(s, 1)
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        java.io.File("/tmp/niva_test_output.txt").writeText(w)
         assertEquals(expected, w.trim())
     }
 }
