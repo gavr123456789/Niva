@@ -13,6 +13,7 @@ import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
+import main.codogenjs.generateJsProject
 import main.utils.*
 
 const val fakeFileSourceGOOD = """
@@ -119,6 +120,16 @@ fun run(args2: Array<String>) {
     val secondTime = System.currentTimeMillis()
     am.time(secondTime - startTime, false)
 
+    if (am.js) {
+        val outputDir = File(pm.pathWhereToGenerateKtAmper)
+        val mainProject = resolver.projects[resolver.projectName] ?: resolver.projects.values.first()
+        generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
+
+        "bun mainNiva.js".runCommand(outputDir, withOutputCapture = true)
+        am.time(System.currentTimeMillis() - secondTime, true)
+        return
+    }
+
     val inlineRepl = File("inline_repl.txt").absoluteFile
 
     val compiler =
@@ -146,7 +157,23 @@ fun run(args2: Array<String>) {
         MainArgument.BUILD_MILL -> compiler.runMill(Option.BUILD, am.outputRename)
         MainArgument.TEST_MILL -> compiler.runMill(Option.TEST, am.outputRename)
         MainArgument.TEST -> {
-            compiler.runGradleAmperBuildCommand(runTests = true)
+            // 1) niva test FILE TESTNAME  -> --tests "Class.TestName"
+            // 2) niva test TESTNAME       -> --tests "*.TestName"
+            val testFilter = if (args[0] == "test") {
+                when (args.size) {
+                    3 -> {
+                        val cls = File(args[1]).nameWithoutExtension
+                        val testName = args[2]
+                        "*$cls*.$testName"
+                    }
+                    2 -> {
+                        val testName = args[1]
+                        "*.$testName"
+                    }
+                    else -> null
+                }
+            } else null
+            compiler.runGradleAmperBuildCommand(runTests = true, testFilter = testFilter)
         }
         MainArgument.SINGLE_FILE_PATH -> compiler.runGradleAmperBuildCommand(dist = am.compileOnly)
         MainArgument.INFO_ONLY -> compiler.infoPrint(false, specialPkgToInfoPrint)
@@ -166,8 +193,27 @@ enum class Option {
 }
 
 fun getPathToMainOrSingleFile(args: List<String>): String =
-        if (args.count() >= 2) {
-            // niva run/test/build "sas.niva"
+        if (args.isNotEmpty() && args[0] == "test") {
+            // Special handling for `niva test [FILE] [TESTNAME]`:
+            // FILE may be a test class name, not a filesystem path. If args[1] exists as a file, use it;
+            // otherwise, fall back to project root file discovery (main.niva or main.scala).
+            val candidate = if (args.count() >= 2 && File(args[1]).exists()) args[1] else null
+            candidate ?: run {
+                val mainNiva = "main.niva"
+                val mainScala = "main.scala"
+                when {
+                    File(mainNiva).exists() -> mainNiva
+                    File(mainScala).exists() -> mainScala
+                    else -> {
+                        println(
+                            "Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`"
+                        )
+                        exitProcess(-1)
+                    }
+                }
+            }
+        } else if (args.count() >= 2) {
+            // niva run/build "sas.niva"
             val fileNameArg = args[1]
             if (File(fileNameArg).exists()) {
                 fileNameArg
