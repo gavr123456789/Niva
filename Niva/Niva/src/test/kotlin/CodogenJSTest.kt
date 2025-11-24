@@ -440,4 +440,26 @@ class CodogenJSTest {
         val w = codegenJs(statements)
         assertEquals(expected, w.trim())
     }
+    @Test
+    fun fieldAccessInBinaryMsg() {
+        val source = """
+            type Person name: String age: Int
+            p = Person name: "Alice" age: 24
+            answer = p age * 2 - 4
+        """.trimIndent()
+        val expected = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            let p = new Person("Alice", 24)
+            let answer = ((((p.age) * (2))) - (4))
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
 }

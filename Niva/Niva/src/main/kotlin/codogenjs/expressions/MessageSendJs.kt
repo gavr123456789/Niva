@@ -139,8 +139,12 @@ fun MessageSend.generateJsMessageCall(): String {
                 var recvType = currentType
                 if (msg.unaryMsgsForReceiver.isNotEmpty()) {
                     msg.unaryMsgsForReceiver.forEach { u ->
-                        val name = buildQualifiedJsFuncName(recvType, u, emptyList())
-                        recvExpr = "$name($recvExpr)"
+                        if (u.kind == UnaryMsgKind.Getter) {
+                            recvExpr = "$recvExpr.${u.selectorName}"
+                        } else {
+                            val name = buildQualifiedJsFuncName(recvType, u, emptyList())
+                            recvExpr = "$name($recvExpr)"
+                        }
                         recvType = u.type ?: recvType
                     }
                 }
@@ -150,8 +154,12 @@ fun MessageSend.generateJsMessageCall(): String {
                 var argType: Type? = msg.argument.type ?: (msg.declaration as? MessageDeclarationBinary)?.arg?.type
                 if (msg.unaryMsgsForArg.isNotEmpty()) {
                     msg.unaryMsgsForArg.forEach { u ->
-                        val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
-                        argExpr = "$name($argExpr)"
+                        if (u.kind == UnaryMsgKind.Getter) {
+                            argExpr = "$argExpr.${u.selectorName}"
+                        } else {
+                            val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
+                            argExpr = "$name($argExpr)"
+                        }
                         argType = u.type ?: argType
                     }
                 }
@@ -215,8 +223,12 @@ fun Message.generateJsAsCall(): String {
             // применяем унарные к ресиверу
             if (unaryMsgsForReceiver.isNotEmpty()) {
                 unaryMsgsForReceiver.forEach { u ->
-                    val name = buildQualifiedJsFuncName(recvType, u, emptyList())
-                    recvExpr = "$name($recvExpr)"
+                    if (u.kind == UnaryMsgKind.Getter) {
+                        recvExpr = "$recvExpr.${u.selectorName}"
+                    } else {
+                        val name = buildQualifiedJsFuncName(recvType, u, emptyList())
+                        recvExpr = "$name($recvExpr)"
+                    }
                     recvType = u.type ?: recvType
                 }
             }
@@ -226,8 +238,12 @@ fun Message.generateJsAsCall(): String {
             var argType: Type? = argument.type ?: (declaration as? MessageDeclarationBinary)?.arg?.type
             if (unaryMsgsForArg.isNotEmpty()) {
                 unaryMsgsForArg.forEach { u ->
-                    val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
-                    argExpr = "$name($argExpr)"
+                    if (u.kind == UnaryMsgKind.Getter) {
+                        argExpr = "$argExpr.${u.selectorName}"
+                    } else {
+                        val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
+                        argExpr = "$name($argExpr)"
+                    }
                     argType = u.type ?: argType
                 }
             }
