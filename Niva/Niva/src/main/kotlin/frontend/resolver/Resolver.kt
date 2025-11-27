@@ -883,7 +883,7 @@ fun Resolver.changePackage(
         // top level statements and default definitions located in different pkgs,
         // so to add access from top level statements(mainNiva) to this definitions
         // we need to always import it
-        if (isMainFile) {
+        if (isMainFile && pack.declarations.isNotEmpty()) {
             val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
             mainNivaPkg.addImport(newCurrentPackage)
         }

@@ -84,7 +84,7 @@ class ArgsManager(val args: MutableList<String>) {
 fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
     if (isShowTimeArg) {
         if (kotlinPhase)
-            println("${CYAN}Verbose$RESET: Kotlin compilation + exec time: $executionTime ms")
+            println("${CYAN}Verbose$RESET: backend lang compilation + exec time: $executionTime ms")
         else
             println("${CYAN}Verbose$RESET: Niva compilation time: $executionTime ms")
     }

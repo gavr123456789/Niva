@@ -361,7 +361,7 @@ class CodogenJSTest {
             export function Int__fooBar(receiver, foo, bar) {
                 return (22)}
             
-            Int__fooBar(((Int__inc(1)) + (2)), 1, "string")
+            common.Int__fooBar(((Int__inc(1)) + (2)), 1, "string")
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -456,7 +456,7 @@ class CodogenJSTest {
             export function Any__echo(receiver) {
             }
             
-            Any__echo(1)
+            common.Any__echo(1)
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -509,7 +509,7 @@ class CodogenJSTest {
             }
             
             let m = new MyBool(1)
-            MyBool__ifTrue(m, () => Any__echo(2))
+            common.MyBool__ifTrue(m, () => Any__echo(2))
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)

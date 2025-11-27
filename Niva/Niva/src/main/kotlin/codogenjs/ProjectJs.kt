@@ -24,20 +24,21 @@ fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements:
         outputDir.mkdirs()
     }
 
-    // 1. Генерируем файлы для всех обычных пакетов с декларациями.
+    // 1 generate declarations from pkgs
     mainProject.packages.values
         .filter { it.packageName != MAIN_PKG_NAME && it.declarations.isNotEmpty() }
         .forEach { pkg ->
             generateJsFileForPackage(outputDir, pkg, emptyList())
         }
 
-    // 2. Генерируем main.js из пакета MAIN_PKG_NAME и topLevelStatements.
+
+    // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
     val mainPkg = mainProject.packages[MAIN_PKG_NAME]
     if (topLevelStatements.isNotEmpty() && mainPkg != null) {
         generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
     }
 
-    // 3. generate niva std for js
+    // 3 generate niva std for js
     val content = $$"""
 /**
  * @param {Int} self
@@ -563,7 +564,7 @@ export function List__filter(self, block) {
  * @param {List} self
  * @param {Int} index
  */
-export function List__get(self, index) {
+export function List__at(self, index) {
     if (index < 0 || index >= self.length) throw new Error("Index out of bounds");
     return self[index];
 }
@@ -1110,8 +1111,8 @@ export function MutableMap__filter(self, block) {
  * @param {Map} self
  * @param {Any} key
  */
-export function MutableMap__get(self, key) {
-    return self.get(key);
+export function MutableMap__at(self, key) {
+    return self.at(key);
 }
 
 /**
@@ -1174,7 +1175,7 @@ export function MutableMap__set(self, key, value) {
  */
 export function MutableMap__getOrPut(self, key, block) {
     if (self.has(key)) {
-        return self.get(key);
+        return self.at(key);
     }
     const value = block();
     self.set(key, value);
@@ -1215,7 +1216,7 @@ export const MutableList__forEachIndexed = List__forEachIndexed;
 export const MutableList__map = List__map;
 export const MutableList__mapIndexed = List__mapIndexed;
 export const MutableList__filter = List__filter;
-export const MutableList__get = List__get;
+export const MutableList__at = List__at;
 export const MutableList__getOrNull = List__getOrNull;
 export const MutableList__contains = List__contains;
 export const MutableList__drop = List__drop;
@@ -1251,7 +1252,7 @@ export const MutableList__set = List__set;
 private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatements: List<Statement>) {
 	// Для MAIN_PKG_NAME генерируем отдельный файл mainNiva.js только с топ-левел выражениями.
 	// Для обычных пакетов имя файла совпадает с именем пакета.
-	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "mainNiva.js" else "${pkg.packageName}.js"
+	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "$MAIN_PKG_NAME.js" else "${pkg.packageName}.js"
     val file = File(baseDir, fileName)
 
     val code = buildString {
@@ -1283,12 +1284,11 @@ private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatement
  */
 private fun generateJsImports(pkg: Package): String = buildString {
     val allImports = (pkg.imports + pkg.importsFromUse)
-        .filter { it.isNotBlank() && it != pkg.packageName && it != "core" && it != "common" }
+        .filter { it.isNotBlank() && it != pkg.packageName && it != "core" && it != "common"}
         .toSortedSet()
 
    	allImports.forEach { imp ->
 		val alias = imp.replace('.', '_')
-		// Имя файла для main-пакета стабилизируем через MAIN_PKG_NAME -> mainNiva.js
 		val fileName = if (imp == MAIN_PKG_NAME) "mainNiva" else imp
 		append("import * as ")
         append(alias)
@@ -1296,5 +1296,9 @@ private fun generateJsImports(pkg: Package): String = buildString {
         append(fileName)
         append(".js\";\n")
     }
+
+    // for kotlin we can always import main since empty file generated
+    // but in js no empty files are generated, so we need to remove it
+
     append("import * as common from \"./common.js\";")
 }

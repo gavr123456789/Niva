@@ -73,8 +73,15 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
 private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
     val forType = message.msgMetaData?.forType ?: message.declaration?.forType ?: receiverType
     val baseName = buildJsFuncName(forType, message, argTypes)
-    val alias = forType.jsQualifierFor(JsCodegenContext.currentPackage)
-    return if (alias != null) "$alias.$baseName" else baseName
+
+    val alias = message.declaration?.messageData?.pkg ?: forType.jsQualifierFor(JsCodegenContext.currentPackage)
+
+    return if (alias != null) {
+        val realAlias = if (alias == "core") "common" else alias
+        "$realAlias.$baseName"
+    }
+    else
+        baseName
 }
 
 /**
