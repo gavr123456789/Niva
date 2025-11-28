@@ -9,7 +9,10 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
             append(expr.generateJsExpression(withNullChecks))
             append(")")
         }
-        is MessageSend -> append(generateJsMessageCall())
+        is MessageSend -> {
+            append(jsSourceComment())
+            append(generateJsMessageCall())
+        }
         is IdentifierExpr -> {
             // Внутри методов Niva `this` ссылается на ресивер, в JS это параметр `receiver`
             if (names.count() == 1 && name == "this") {
@@ -426,22 +429,50 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         }
 
         // probably never triggered
-        is BinaryMsg -> append(generateJsAsCall())
-        is KeywordMsg ->
+        is BinaryMsg -> {
+            append(jsSourceComment())
             append(generateJsAsCall())
-        is UnaryMsg ->
+        }
+        is KeywordMsg -> {
+            append(jsSourceComment())
             append(generateJsAsCall())
+        }
+        is UnaryMsg -> {
+            append(jsSourceComment())
+            append(generateJsAsCall())
+        }
 
         is CodeBlock -> {
             // лямбда → JS-функция
-            val withTypes = (type as? frontend.resolver.Type.Lambda)
-            val argsList = if (withTypes?.extensionOfType != null) {
-                // первый аргумент будет ресивером при вызове, но в определении лямбды он не нужен
-                inputList.drop(1)
-            } else inputList
+            val lambdaType = type as? frontend.resolver.Type.Lambda
+
+            // Имена параметров лямбды:
+            // 1) сначала пытаемся взять их из AST (inputList), как было раньше;
+            // 2) если AST-параметров нет (синтаксис вида `[ it echo ]`),
+            //    пытаемся восстановить имена из типа лямбды (Type.Lambda.args),
+            //    который уже был построен резолвером (в т.ч. неявный `it`).
+            val argsFromAst: List<String> = when {
+                // расширяющие лямбды: первый аргумент в типе — `this`,
+                // он будет ресивером при вызове и не должен попадать в список параметров функции
+                lambdaType?.extensionOfType != null -> inputList.drop(1).map { it.name }
+                else -> inputList.map { it.name }
+            }
+
+            val finalArgNames: List<String> = if (argsFromAst.isNotEmpty()) {
+                argsFromAst
+            } else if (lambdaType != null) {
+                val argsFromType = if (lambdaType.extensionOfType != null)
+                    lambdaType.args.drop(1) // пропускаем `this`
+                else
+                    lambdaType.args
+
+                argsFromType.map { it.name }
+            } else {
+                emptyList()
+            }
 
             append("(")
-            append(argsList.joinToString(", ") { it.name.ifJsKeywordPrefix() })
+            append(finalArgNames.joinToString(", ") { it.ifJsKeywordPrefix() })
             append(") => ")
 
             // Семантика CodeBlock как в котлине: последний Expression возвращается
@@ -457,8 +488,8 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                         // Последний Expression → return expr
                         index == lastIndex && st is Expression -> {
                             append("    ")
-                            append("return ")
-                            append(st.generateJsExpression())
+                            append("return (")
+                            append(st.generateJsExpression(), ")")
                         }
 
                         // Промежуточные Expression → expr;
@@ -489,6 +520,11 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is StaticBuilder -> append("/* builder call is not supported in JS codegen yet */")
         is MethodReference -> append("/* method reference is not supported in JS codegen yet */")
     }
+}
+
+private fun Expression.jsSourceComment(): String {
+    val t = this.token
+    return "\n\t// ${t.file.name}:${t.line}\n"
 }
 
 // Вспомогательная функция для type-match в JS.

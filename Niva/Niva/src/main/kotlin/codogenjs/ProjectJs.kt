@@ -120,6 +120,8 @@ function prettyPrint(value, indent = 0) {
         return String(value);
     }
 
+
+
     // Массивы
     if (Array.isArray(value)) {
         if (value.length === 0) return "{}";
@@ -130,15 +132,40 @@ function prettyPrint(value, indent = 0) {
         result += space + "}";
         return result;
     }
+    
+        // Set
+    if (value instanceof Set) {
+        if (value.size === 0) return "Set {}";
+        let result = "#(\n";
+        for (const item of value) {
+            result += space + "    " + prettyPrint(item, indent + 1) + ",\n";
+        }
+        result += space + ")";
+        return result;
+    }
 
-    // Объекты
+    // Map
+    if (value instanceof Map) {
+        if (value.size === 0) return "Map {}";
+        let result = "#{\n";
+        for (const [key, val] of value) {
+            result +=
+                space +
+                "    " +
+                `${prettyPrint(key, indent + 1)} => ${prettyPrint(val, indent + 1)},\n`;
+        }
+        result += space + "}";
+        return result;
+    }
+
+    // Обычные объекты
     const entries = Object.entries(value);
 
     let result = "";
-    // Если объект типа Person или CustomClass, показываем имя
     if (value.constructor && value.constructor.name !== "Object") {
         result += value.constructor.name + "\n";
     }
+
     if (entries.length === 0) return result;
 
     result += entries
@@ -154,6 +181,7 @@ function prettyPrint(value, indent = 0) {
 
     return result;
 }
+
 /**
  * @param {Any} obj
  */
@@ -732,7 +760,7 @@ export function List__viewFromTo(self, from, to) {
 /**
  * @param {List} self
  */
-export function List__clear(self) {
+export function List__mut__clear(self) {
     self.length = 0;
 }
 
@@ -741,7 +769,7 @@ export function List__clear(self) {
  * @param {Any|Int} arg1
  * @param {Any} arg2
  */
-export function List__add(self, arg1, arg2) {
+export function List__mut__add(self, arg1, arg2) {
     if (arg2 === undefined) {
         self.push(arg1);
     } else {
@@ -753,7 +781,7 @@ export function List__add(self, arg1, arg2) {
  * @param {List} self
  * @param {Any} item
  */
-export function List__addFirst(self, item) {
+export function List__mut__addFirst(self, item) {
     self.unshift(item);
 }
 
@@ -761,7 +789,7 @@ export function List__addFirst(self, item) {
  * @param {List} self
  * @param {List} other
  */
-export function List__addAll(self, other) {
+export function List__mut__addAll(self, other) {
     self.push(...other);
 }
 
@@ -769,7 +797,7 @@ export function List__addAll(self, other) {
  * @param {List} self
  * @param {Int} index
  */
-export function List__removeAt(self, index) {
+export function List__mut__removeAt(self, index) {
     if (index >= 0 && index < self.length) {
         self.splice(index, 1);
     }
@@ -779,7 +807,7 @@ export function List__removeAt(self, index) {
  * @param {List} self
  * @param {Any} item
  */
-export function List__remove(self, item) {
+export function List__mut__remove(self, item) {
     const index = self.indexOf(item);
     if (index !== -1) {
         self.splice(index, 1);
@@ -793,7 +821,7 @@ export function List__remove(self, item) {
  * @param {Int} index
  * @param {Any} item
  */
-export function List__set(self, index, item) {
+export function List__mut__set(self, index, item) {
     if (index < 0 || index >= self.length) throw new Error("Index out of bounds");
     self[index] = item;
 }
@@ -803,21 +831,21 @@ export function List__set(self, index, item) {
 /**
  * @param {Set} self
  */
-export function MutableSet__count(self) {
+export function Set__count(self) {
     return self.size;
 }
 
 /**
  * @param {Set} self
  */
-export function MutableSet__clear(self) {
+export function Set__mut__clear(self) {
     self.clear();
 }
 
 /**
  * @param {Set} self
  */
-export function MutableSet__first(self) {
+export function Set__first(self) {
     if (self.size === 0) throw new Error("Set is empty");
     return self.values().next().value;
 }
@@ -825,7 +853,7 @@ export function MutableSet__first(self) {
 /**
  * @param {Set} self
  */
-export function MutableSet__last(self) {
+export function Set__last(self) {
     if (self.size === 0) throw new Error("Set is empty");
     return Array.from(self).pop();
 }
@@ -833,28 +861,28 @@ export function MutableSet__last(self) {
 /**
  * @param {Set} self
  */
-export function MutableSet__toList(self) {
+export function Set__toList(self) {
     return Array.from(self);
 }
 
 /**
  * @param {Set} self
  */
-export function MutableSet__toMutableList(self) {
+export function Set__toMutableList(self) {
     return Array.from(self);
 }
 
 /**
  * @param {Set} self
  */
-export function MutableSet__toMutableSet(self) {
+export function Set__toMutableSet(self) {
     return new Set(self);
 }
 
 /**
  * @param {Set} self
  */
-export function MutableSet__toSet(self) {
+export function Set__toSet(self) {
     return new Set(self);
 }
 
@@ -862,7 +890,7 @@ export function MutableSet__toSet(self) {
  * @param {Set} self
  * @param {Set} other
  */
-export function MutableSet__plus(self, other) {
+export function Set__plus(self, other) {
     const result = new Set(self);
     for (const item of other) {
         result.add(item);
@@ -874,7 +902,7 @@ export function MutableSet__plus(self, other) {
  * @param {Set} self
  * @param {Set} other
  */
-export function MutableSet__minus(self, other) {
+export function Set__minus(self, other) {
     const result = new Set(self);
     for (const item of other) {
         result.delete(item);
@@ -886,7 +914,7 @@ export function MutableSet__minus(self, other) {
  * @param {Set} self
  * @param {Fn} block
  */
-export function MutableSet__forEach(self, block) {
+export function Set__forEach(self, block) {
     self.forEach(block);
 }
 
@@ -894,7 +922,7 @@ export function MutableSet__forEach(self, block) {
  * @param {Set} self
  * @param {Fn} block
  */
-export function MutableSet__onEach(self, block) {
+export function Set__onEach(self, block) {
     self.forEach(block);
     return self;
 }
@@ -903,7 +931,7 @@ export function MutableSet__onEach(self, block) {
  * @param {Set} self
  * @param {Fn} block
  */
-export function MutableSet__map(self, block) {
+export function Set__map(self, block) {
     const result = [];
     for (const item of self) {
         result.push(block(item));
@@ -915,7 +943,7 @@ export function MutableSet__map(self, block) {
  * @param {Set} self
  * @param {Fn} block
  */
-export function MutableSet__mapIndexed(self, block) {
+export function Set__mapIndexed(self, block) {
     let index = 0;
     const result = [];
     for (const item of self) {
@@ -928,7 +956,7 @@ export function MutableSet__mapIndexed(self, block) {
  * @param {Set} self
  * @param {Fn} block
  */
-export function MutableSet__filter(self, block) {
+export function Set__filter(self, block) {
     const result = new Set();
     for (const item of self) {
         if (block(item)) {
@@ -942,7 +970,7 @@ export function MutableSet__filter(self, block) {
  * @param {Set} self
  * @param {Any} item
  */
-export function MutableSet__intersect(self, other) {
+export function Set__intersect(self, other) {
     const result = new Set();
     for (const item of self) {
         if (other.has(item)) {
@@ -956,7 +984,7 @@ export function MutableSet__intersect(self, other) {
  * @param {Set} self
  * @param {Any} item
  */
-export function MutableSet__contains(self, item) {
+export function Set__contains(self, item) {
     return self.has(item);
 }
 
@@ -964,7 +992,7 @@ export function MutableSet__contains(self, item) {
  * @param {Set} self
  * @param {Set} other
  */
-export function MutableSet__containsAll(self, other) {
+export function Set__containsAll(self, other) {
     for (const item of other) {
         if (!self.has(item)) return false;
     }
@@ -975,7 +1003,7 @@ export function MutableSet__containsAll(self, other) {
  * @param {Set} self
  * @param {Any} item
  */
-export function MutableSet__add(self, item) {
+export function Set__mut__add(self, item) {
     self.add(item);
 }
 
@@ -983,7 +1011,7 @@ export function MutableSet__add(self, item) {
  * @param {Set} self
  * @param {Any} item
  */
-export function MutableSet__remove(self, item) {
+export function Set__mut__remove(self, item) {
     return self.delete(item);
 }
 
@@ -991,7 +1019,7 @@ export function MutableSet__remove(self, item) {
  * @param {Set} self
  * @param {Set} other
  */
-export function MutableSet__addAll(self, other) {
+export function Set__mut__addAll(self, other) {
     for (const item of other) {
         self.add(item);
     }
@@ -1003,49 +1031,49 @@ export function MutableSet__addAll(self, other) {
 /**
  * @param {Map} self
  */
-export function MutableMap__count(self) {
+export function Map__count(self) {
     return self.size;
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__isEmpty(self) {
+export function Map__isEmpty(self) {
     return self.size === 0;
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__isNotEmpty(self) {
+export function Map__isNotEmpty(self) {
     return self.size !== 0;
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__keys(self) {
+export function Map__keys(self) {
     return new Set(self.keys());
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__values(self) {
+export function Map__values(self) {
     return new Set(self.values());
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__toMap(self) {
+export function Map__toMap(self) {
     return new Map(self);
 }
 
 /**
  * @param {Map} self
  */
-export function MutableMap__toMutableMap(self) {
+export function Map__toMutableMap(self) {
     return new Map(self);
 }
 
@@ -1053,7 +1081,7 @@ export function MutableMap__toMutableMap(self) {
  * @param {Map} self
  * @param {Map} other
  */
-export function MutableMap__plus(self, other) {
+export function Map__plus(self, other) {
     const result = new Map(self);
     for (const [key, value] of other) {
         result.set(key, value);
@@ -1065,7 +1093,7 @@ export function MutableMap__plus(self, other) {
  * @param {Map} self
  * @param {Any} key
  */
-export function MutableMap__minus(self, key) {
+export function Map__minus(self, key) {
     const result = new Map(self);
     result.delete(key);
     return result;
@@ -1075,7 +1103,7 @@ export function MutableMap__minus(self, key) {
  * @param {Map} self
  * @param {Fn} block
  */
-export function MutableMap__forEach(self, block) {
+export function Map__forEach(self, block) {
     for (const [key, value] of self) {
         block(key, value);
     }
@@ -1085,7 +1113,7 @@ export function MutableMap__forEach(self, block) {
  * @param {Map} self
  * @param {Fn} block
  */
-export function MutableMap__map(self, block) {
+export function Map__map(self, block) {
     const result = [];
     for (const [key, value] of self) {
         result.push(block(key, value));
@@ -1097,7 +1125,7 @@ export function MutableMap__map(self, block) {
  * @param {Map} self
  * @param {Fn} block
  */
-export function MutableMap__filter(self, block) {
+export function Map__filter(self, block) {
     const result = new Map();
     for (const [key, value] of self) {
         if (block(key, value)) {
@@ -1111,7 +1139,7 @@ export function MutableMap__filter(self, block) {
  * @param {Map} self
  * @param {Any} key
  */
-export function MutableMap__at(self, key) {
+export function Map__at(self, key) {
     return self.at(key);
 }
 
@@ -1119,7 +1147,7 @@ export function MutableMap__at(self, key) {
  * @param {Map} self
  * @param {Any} key
  */
-export function MutableMap__containsKey(self, key) {
+export function Map__containsKey(self, key) {
     return self.has(key);
 }
 
@@ -1127,17 +1155,18 @@ export function MutableMap__containsKey(self, key) {
  * @param {Map} self
  * @param {Any} value
  */
-export function MutableMap__containsValue(self, value) {
+export function Map__containsValue(self, value) {
     for (const v of self.values()) {
         if (v === value) return true;
     }
     return false;
 }
 
+///// mutable map
 /**
  * @param {Map} self
  */
-export function MutableMap__clear(self) {
+export function Map__mut__clear(self) {
     self.clear();
 }
 
@@ -1145,7 +1174,7 @@ export function MutableMap__clear(self) {
  * @param {Map} self
  * @param {Any} key
  */
-export function MutableMap__remove(self, key) {
+export function Map__mut__remove(self, key) {
     return self.delete(key);
 }
 
@@ -1153,7 +1182,7 @@ export function MutableMap__remove(self, key) {
  * @param {Map} self
  * @param {Map} other
  */
-export function MutableMap__putAll(self, other) {
+export function Map__mut__putAll(self, other) {
     for (const [key, value] of other) {
         self.set(key, value);
     }
@@ -1164,7 +1193,7 @@ export function MutableMap__putAll(self, other) {
  * @param {Any} key
  * @param {Any} value
  */
-export function MutableMap__set(self, key, value) {
+export function Map__mut__atPut(self, key, value) {
     self.set(key, value);
 }
 
@@ -1173,7 +1202,7 @@ export function MutableMap__set(self, key, value) {
  * @param {Any} key
  * @param {Fn} block
  */
-export function MutableMap__getOrPut(self, key, block) {
+export function Map__mut__getOrPut(self, key, block) {
     if (self.has(key)) {
         return self.at(key);
     }
@@ -1187,59 +1216,88 @@ export function MutableMap__getOrPut(self, key, block) {
  * @param {Any} key
  * @param {Any} value
  */
-export function MutableMap__putIfAbsent(self, key, value) {
+export function Map__mut__putIfAbsent(self, key, value) {
     if (!self.has(key)) {
         self.set(key, value);
     }
 }
 
-// --- MutableList Aliases ---
-export const MutableList__count = List__count;
-export const MutableList__first = List__first;
-export const MutableList__last = List__last;
-export const MutableList__firstOrNull = List__firstOrNull;
-export const MutableList__lastOrNull = List__lastOrNull;
-export const MutableList__toList = List__toList;
-export const MutableList__toMutableList = List__toMutableList;
-export const MutableList__shuffled = List__shuffled;
-export const MutableList__asSequence = List__asSequence;
-export const MutableList__isEmpty = List__isEmpty;
-export const MutableList__toSet = List__toSet;
-export const MutableList__isNotEmpty = List__isNotEmpty;
-export const MutableList__reversed = List__reversed;
-export const MutableList__sum = List__sum;
-export const MutableList__plus = List__plus;
-export const MutableList__minus = List__minus;
-export const MutableList__forEach = List__forEach;
-export const MutableList__onEach = List__onEach;
-export const MutableList__forEachIndexed = List__forEachIndexed;
-export const MutableList__map = List__map;
-export const MutableList__mapIndexed = List__mapIndexed;
-export const MutableList__filter = List__filter;
-export const MutableList__at = List__at;
-export const MutableList__getOrNull = List__getOrNull;
-export const MutableList__contains = List__contains;
-export const MutableList__drop = List__drop;
-export const MutableList__dropLast = List__dropLast;
-export const MutableList__chunked = List__chunked;
-export const MutableList__joinToString = List__joinToString;
-export const MutableList__joinWithTransform = List__joinWithTransform;
-export const MutableList__indexOfFirst = List__indexOfFirst;
-export const MutableList__indexOfLast = List__indexOfLast;
-export const MutableList__sortedBy = List__sortedBy;
-export const MutableList__injectInto = List__injectInto;
-export const MutableList__reduce = List__reduce;
-export const MutableList__partition = List__partition;
-export const MutableList__sumOf = List__sumOf;
-export const MutableList__find = List__find;
-export const MutableList__viewFromTo = List__viewFromTo;
-export const MutableList__clear = List__clear;
-export const MutableList__add = List__add;
-export const MutableList__addFirst = List__addFirst;
-export const MutableList__addAll = List__addAll;
-export const MutableList__removeAt = List__removeAt;
-export const MutableList__remove = List__remove;
-export const MutableList__set = List__set;
+// immutable map functions for mutable map
+export const Map__mut__count = Map__count;
+export const Map__mut__isEmpty = Map__isEmpty;
+export const Map__mut__isNotEmpty = Map__isNotEmpty;
+export const Map__mut__keys = Map__keys;
+export const Map__mut__values = Map__values;
+export const Map__mut__toMap = Map__toMap;
+export const Map__mut__toMutableMap = Map__toMutableMap;
+export const Map__mut__plus = Map__plus;
+export const Map__mut__minus = Map__minus;
+export const Map__mut__forEach = Map__forEach;
+export const Map__mut__map = Map__map;
+export const Map__mut__filter = Map__filter;
+export const Map__mut__at = Map__at;
+export const Map__mut__containsKey = Map__containsKey;
+export const Map__mut__containsValue = Map__containsValue;
+
+// immutable set functions for mutable set
+export const Set__mut__count = Set__count;
+export const Set__mut__first = Set__first;
+export const Set__mut__last = Set__last;
+export const Set__mut__toList = Set__toList;
+export const Set__mut__toMutableList = Set__toMutableList;
+export const Set__mut__toMutableSet = Set__toMutableSet;
+export const Set__mut__toSet = Set__toSet;
+export const Set__mut__plus = Set__plus;
+export const Set__mut__minus = Set__minus;
+export const Set__mut__forEach = Set__forEach;
+export const Set__mut__onEach = Set__onEach;
+export const Set__mut__map = Set__map;
+export const Set__mut__mapIndexed = Set__mapIndexed;
+export const Set__mut__filter = Set__filter;
+export const Set__mut__intersect = Set__intersect;
+export const Set__mut__contains = Set__contains;
+export const Set__mut__containsAll = Set__containsAll;
+// list
+export const List__mut__count = List__count;
+export const List__mut__first = List__first;
+export const List__mut__last = List__last;
+export const List__mut__firstOrNull = List__firstOrNull;
+export const List__mut__lastOrNull = List__lastOrNull;
+export const List__mut__toList = List__toList;
+export const List__mut__toMutableList = List__toMutableList;
+export const List__mut__shuffled = List__shuffled;
+export const List__mut__asSequence = List__asSequence;
+export const List__mut__isEmpty = List__isEmpty;
+export const List__mut__toSet = List__toSet;
+export const List__mut__isNotEmpty = List__isNotEmpty;
+export const List__mut__reversed = List__reversed;
+export const List__mut__sum = List__sum;
+export const List__mut__plus = List__plus;
+export const List__mut__minus = List__minus;
+export const List__mut__forEach = List__forEach;
+export const List__mut__onEach = List__onEach;
+export const List__mut__forEachIndexed = List__forEachIndexed;
+export const List__mut__map = List__map;
+export const List__mut__mapIndexed = List__mapIndexed;
+export const List__mut__filter = List__filter;
+export const List__mut__at = List__at;
+export const List__mut__getOrNull = List__getOrNull;
+export const List__mut__contains = List__contains;
+export const List__mut__drop = List__drop;
+export const List__mut__dropLast = List__dropLast;
+export const List__mut__chunked = List__chunked;
+export const List__mut__joinToString = List__joinToString;
+export const List__mut__indexOfFirst = List__indexOfFirst;
+export const List__mut__indexOfLast = List__indexOfLast;
+export const List__mut__sortedBy = List__sortedBy;
+export const List__mut__joinWithTransform = List__joinWithTransform;
+export const List__mut__injectInto = List__injectInto;
+export const List__mut__reduce = List__reduce;
+export const List__mut__partition = List__partition;
+export const List__mut__sumOf = List__sumOf;
+export const List__mut__find = List__find;
+export const List__mut__viewFromTo = List__viewFromTo;
+
 
     """.trimIndent()
 

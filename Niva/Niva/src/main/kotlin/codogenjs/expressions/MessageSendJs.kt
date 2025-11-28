@@ -128,7 +128,7 @@ private fun tryEmitNativeBinary(
             rStr && aStr -> "(($recvExpr) + ($argExpr))"
             else -> null
         }
-        "-", "*", "/" -> if (rNum && aNum) "(($recvExpr) $op ($argExpr))" else null
+        "-", "*", "/", "%" -> if (rNum && aNum) "(($recvExpr) $op ($argExpr))" else null
         ">", "<", ">=", "<=" -> if (rNum && aNum) "(($recvExpr) $op ($argExpr))" else null
         "||", "&&" -> if (rBool && aBool) "(($recvExpr) $op ($argExpr))" else null
         else -> null
