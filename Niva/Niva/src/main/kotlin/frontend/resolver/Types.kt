@@ -12,13 +12,11 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.*
-import sun.util.locale.provider.LocaleProviderAdapter.forType
 
 sealed class MessageMetadata(
     val name: String,
     var returnType: Type, // need to change in single expression case
     val pkg: String,
-    var forTypeName: String = "",
     val pragmas: MutableList<Pragma> = mutableListOf(),
     val msgSends: MutableList<Message> = mutableListOf(),
     var forGeneric: Boolean = false, // if message declarated for generic, we need to know it to resolve it
@@ -34,7 +32,7 @@ sealed class MessageMetadata(
     fun clearErrors(branches: List<Type.Union>) {
         val localErrors = _errors
         if (localErrors != null) {
-            localErrors.removeAll(branches)
+            localErrors.removeAll(branches.toSet())
             if (localErrors.isEmpty()) {
                 _errors = null
             }
@@ -111,13 +109,12 @@ class UnaryMsgMetaData(
     name: String,
     returnType: Type,
     pkg: String,
-    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     val isGetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg,  pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name -> $returnType"
     }
@@ -128,12 +125,11 @@ class BinaryMsgMetaData(
     val argType: Type,
     returnType: Type,
     pkg: String,
-    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg,  pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         return "$name $argType -> $returnType"
     }
@@ -145,13 +141,12 @@ class KeywordMsgMetaData(
     val argTypes: List<KeywordArg>,
     returnType: Type,
     pkg: String,
-    forTypeName: String = "",
     pragmas: MutableList<Pragma> = mutableListOf(),
     msgSends: MutableList<Message> = mutableListOf(),
     val isSetter: Boolean = false,
     declaration: MessageDeclaration?,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, forTypeName, pragmas, msgSends, declaration = declaration, docComment = docComment) {
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "$args -> $returnType"
@@ -171,7 +166,7 @@ class BuilderMetaData(
     val defaultAction: CodeBlock?,
     declaration: MessageDeclaration,
     docComment: DocComment? = null
-) : MessageMetadata(name, returnType, pkg, forType.name, pragmas, msgSends, declaration = declaration, docComment = docComment, forType = forType) {
+) : MessageMetadata(name, returnType, pkg, pragmas, msgSends, declaration = declaration, docComment = docComment, forType = forType) {
     override fun toString(): String {
         val args = argTypes.joinToString(" ") { it.toString() }
         return "builder $args -> $returnType"
@@ -303,16 +298,11 @@ sealed class Type(
     val protocols: MutableMap<String, Protocol> = mutableMapOf(),
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
-    isMutable: Boolean = false,
+    var isMutable: Boolean = false,
     var errors: MutableSet<Union>? = null,
     var isAlias: Boolean = false,
     var isCopy: Boolean = false
 ) {
-
-    var isMutable: Boolean = isMutable
-        set(value) {
-            field = value
-        }
 
     fun cloneAndChangeBeforeGeneric(newValue: String): Type {
         // we need to copy only when its internal type because bug exist only in LSP
@@ -405,7 +395,7 @@ sealed class Type(
     fun toStringWithoutErrors(): String {
         fun removeAfterExclamation(s: String): String {
             val index = s.indexOf('!')
-            return if (index != -1) s.substring(0, index) else s
+            return if (index != -1) s.take(index) else s
         }
         return removeAfterExclamation(this.toString().replace("mut ", ""))
     }
@@ -1348,7 +1338,6 @@ fun MessageDeclarationUnary.toMessageData(
         name = this.name,
         returnType = returnType,
         pkg = pkg.packageName,
-        forTypeName = this.forType?.name ?: "",
         pragmas = pragmas,
         isGetter = isGetter,
         declaration = this
@@ -1374,7 +1363,6 @@ fun MessageDeclarationBinary.toMessageData(
         argType = argType,
         returnType = returnType,
         pkg = pkg.packageName,
-        forTypeName = this.forType?.name ?: "",
 
         pragmas = pragmas,
         declaration = this
@@ -1438,7 +1426,6 @@ fun MessageDeclarationKeyword.toMessageData(
         name = this.name,
         argTypes = keywordArgs,
         returnType = returnType,
-        forTypeName = this.forType?.name ?: "",
         pragmas = pragmas,
         pkg = pkg.packageName,
         isSetter = isSetter,
