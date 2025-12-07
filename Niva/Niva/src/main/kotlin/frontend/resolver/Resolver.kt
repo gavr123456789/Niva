@@ -883,7 +883,7 @@ fun Resolver.changePackage(
         // top level statements and default definitions located in different pkgs,
         // so to add access from top level statements(mainNiva) to this definitions
         // we need to always import it
-        if (isMainFile && pack.declarations.isNotEmpty()) {
+        if (isMainFile ) {// && pack.declarations.isNotEmpty()
             val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
             mainNivaPkg.addImport(newCurrentPackage)
         }
@@ -1579,7 +1579,7 @@ class Resolver(
         ).also {
             it.isMutable = true
             it.emitName = "MutableSet"
-            java.io.File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
+            File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
         }
 
 
@@ -1818,7 +1818,7 @@ class Resolver(
             typeArgumentList = mutableListOf()
         )
 
-        val createDynamicBranchType = { root: Type.UnionRootType, name: String, fieldValueType: Type? ->
+        val createDynamicBranchType = { _: Type.UnionRootType, name: String, fieldValueType: Type? ->
             Type.UnionBranchType(
                 name = name,
                 root = dynamicType,

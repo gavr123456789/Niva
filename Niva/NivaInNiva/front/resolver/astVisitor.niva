@@ -20,6 +20,10 @@ AstVisitor run: statements::List::Statement= [
 ]
 
 PrintingVisitor visit: st::Statement = [
+
+
+
+
   st echo
   "--------------" echo
 ]
