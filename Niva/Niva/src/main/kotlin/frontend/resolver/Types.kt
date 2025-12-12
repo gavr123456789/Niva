@@ -4,6 +4,7 @@ package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
+import frontend.parser.types.ast.SingleWordPragma
 import main.codogen.Pragmas
 
 import main.frontend.meta.Token
@@ -12,6 +13,7 @@ import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.*
+
 
 sealed class MessageMetadata(
     val name: String,
@@ -545,7 +547,8 @@ sealed class Type(
         var isBinding: Boolean = false,
         val typeDeclaration: SomeTypeDeclaration?, // for example List doesn't have type decl
 
-        var needGenerateDynamic: Boolean = false // for backend, need to generate
+        var needGenerateDynamic: Boolean = false, // for backend, need to generate
+        var noGetters: Boolean = false
     ) : Type(name, pkg, protocols) {
 
         var emitName: String
@@ -589,6 +592,8 @@ sealed class Type(
         init {
             val decl = typeDeclaration
             if (decl != null) {
+
+                // RENAME
                 val renamePragmas = decl.pragmas.filterIsInstance<KeyPragma>().filter { it.name == Pragmas.RENAME.v }
                 if (renamePragmas.isNotEmpty()) {
                     if (renamePragmas.size > 1) decl.token.compileError("You can't have more than one rename pragma, its pointless")
@@ -597,6 +602,12 @@ sealed class Type(
                         ?: decl.token.compileError("'rename' pragma value must be a string")
                 } else {
                     emitName = name
+                }
+
+                // NO GETTERS
+                val noGettersPragmas = decl.pragmas.filterIsInstance<SingleWordPragma>().filter { it.name == Pragmas.NO_GETTER.v }
+                if (noGettersPragmas.isNotEmpty()) {
+                    noGetters = true
                 }
             } else {
                 emitName = name
@@ -704,7 +715,7 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
     // Union -> Error, User
     // User -> Root, Branch
@@ -717,7 +728,7 @@ sealed class Type(
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         val isError: Boolean,
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
     class UnionRootType(
         var branches: List<Union>, // can be union or branch
@@ -770,7 +781,7 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
     class EnumBranchType(
         val root: EnumRootType,
@@ -780,7 +791,7 @@ sealed class Type(
         pkg: String,
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: SomeTypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
 
     sealed class GenericType(
@@ -790,7 +801,7 @@ sealed class Type(
         fields: MutableList<KeywordArg> = mutableListOf(),
         protocols: MutableMap<String, Protocol> = mutableMapOf(),
         typeDeclaration: TypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration)
+    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
     class UnknownGenericType(
         name: String,

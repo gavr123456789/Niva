@@ -354,10 +354,7 @@ private fun Resolver.resolveStatement(
 
         is NeedInfo -> {
             if (!GlobalVariables.isLspMode) {
-                val t = statement.expression
-
-
-                when (t) {
+                when (val t = statement.expression) {
                     is MessageSend -> {
                         // resolve receiver
                         val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -1001,9 +998,9 @@ fun Resolver.getTypeForIdentifier(
             } else
                 startsWithSameWord
 
-            val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {
+            val maybeUMeant = orStartsWithFirst2Letters.ifEmpty {
                 ""
-            } else orStartsWithFirst2Letters
+            }
             x.token.compileError("Can't find enum $x, ${if (maybeUMeant.isNotEmpty()) "maybe $maybeUMeant?" else ""}")
         }
 

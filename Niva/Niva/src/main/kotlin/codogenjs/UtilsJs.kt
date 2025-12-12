@@ -23,7 +23,7 @@ internal fun Type.toJsMangledName(): String = when (this) {
 }
 
 internal fun String.ifJsKeywordPrefix(): String = when (this) {
-    "var", "let", "const", "function", "default", "class", "return", "new", "delete" -> "_$this"
+    "var", "let", "const", "function", "default", "class", "return", "new", "delete", "in" -> "_$this"
     else -> this
 }
 

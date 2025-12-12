@@ -1275,7 +1275,7 @@ fun createMapProtocols(
                                 KeywordArg("key", keyType),
                                 KeywordArg("value", valueType),
                             ),
-                            unitType,
+                            boolType,
                             specialFlagForLambdaWithDestruct = true
                         )
                     )

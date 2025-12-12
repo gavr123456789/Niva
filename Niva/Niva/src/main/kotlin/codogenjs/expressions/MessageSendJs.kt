@@ -71,17 +71,30 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
  * если функция живёт в другом пакете.
  */
 private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
-    val forType = message.msgMetaData?.forType ?: message.declaration?.forType ?: receiverType
-    val baseName = buildJsFuncName(forType, message, argTypes)
+    // Если сообщение было найдено через протокол "UnknownGeneric" (в резолвере он InternalType "UnknownGeneric"),
+    // то для имени функции нужно использовать именно имя дженерика из декларации (например, "T"),
+    // потому что декларация экспортируется как `export function T__msg(...)`, а не `UnknownGeneric__msg`.
+    val metaForType = message.msgMetaData?.forType
+    val declForType = message.declaration?.forType
 
-    val alias = message.declaration?.messageData?.pkg ?: forType.jsQualifierFor(JsCodegenContext.currentPackage)
+    fun isDefaultUnknownGeneric(t: Type?): Boolean = t is Type.InternalType && t.name == "UnknownGeneric"
+
+    val pickedForType = when {
+        // Принудительно берём тип из декларации, если в метаданных стоит InternalType("UnknownGeneric")
+        isDefaultUnknownGeneric(metaForType) && declForType is Type.UnknownGenericType -> declForType
+        else -> metaForType ?: declForType ?: receiverType
+    }
+
+    val baseName = buildJsFuncName(pickedForType, message, argTypes)
+
+    val alias = message.declaration?.messageData?.pkg ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
 
     return if (alias != null) {
         val realAlias = if (alias == "core") "common" else alias
         "$realAlias.$baseName"
-    }
-    else
+    } else {
         baseName
+    }
 }
 
 /**

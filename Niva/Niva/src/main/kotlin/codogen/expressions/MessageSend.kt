@@ -159,10 +159,21 @@ fun generateMessages(
 }
 
 enum class Pragmas(val v: String) {
-    RENAME("rename"), EMIT("emit"), NO_PKG_EMIT("noPkgEmit"), CT_NAME("arg"),
+    // rename the emitted name of the class or method
+    RENAME("rename"),
+    // for methods = replace call with kotlin code, takes string arg
+    EMIT("emit"),
+    // NOT IMPLEMENTED, - do not auto-import this method or type, good for methods for default types
+    NO_PKG_EMIT("noPkgEmit"),
+    // ???
+    CT_NAME("arg"),
+    // do not generate getter method
+    NO_GETTER("noGetters")
+
 }
 
-val builtInPragmas = setOf("rename", "emit", "arg", "debug")
+// List of pragmas that wont be generated in kotlin code(all the others will just appear on the same place, even if they do not exist
+val builtInPragmas = setOf("rename", "emit", "arg", "debug", "noGetters")
 
 // adding invisible arg of codeplace
 //fun codePlace(msg: Message, keyPragmas: List<KeyPragma>): List<String>?  {

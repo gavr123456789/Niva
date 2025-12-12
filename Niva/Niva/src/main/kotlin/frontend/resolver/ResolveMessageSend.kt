@@ -80,34 +80,6 @@ fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, re
     }
 }
 
-// нужно идти по дженерикам обоих типов, и когда дженерико в типа type больеш не будет, взять оставшиеся у returnTypeFromDb
-//fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike, returnTypeFromDb: Type.UserLike, result: MutableMap<String, Type>) {
-//    if (type.typeArgumentList.count() > 3) {
-//        throw Exception("Generics with more than 3 params are not supported yet")
-//    }
-//    val genericLetters = listOf("T", "G", "J")
-//
-////    val iter = type.typeArgumentList.listIterator()
-////    val iter2 = returnTypeFromDb.typeArgumentList.listIterator()
-////
-////    while (iter.hasNext()) {
-////        val next1 = iter.next()
-////        val next2 = iter2.next()
-////        if (next1 is Type.UserLike && next2 is Type.UserLike) {
-////            getTableOfLettersFrom_TypeArgumentListOfType(next1, next2, result)
-////        }
-////    }
-//
-//    type.typeArgumentList.forEachIndexed { i, it ->
-//        val k = genericLetters[i]
-//        if (it is Type.UserLike) {
-//
-//        } else if (!it.name.isGeneric() ) //&& !(it is Type.UserLike && it.typeArgumentList.isNotEmpty())
-//            result[k] = it
-//    }
-//
-//}
-
 // 2!
 // 1) выделить отсюда код который рекурсивно собирает все дженерики из аргументов
 // 2) запускать этот код отдельно до резолва боди функции
@@ -161,9 +133,9 @@ fun Resolver.resolveMessage(
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     val (returnType, msgFromDb) = when (statement) {
+        is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is KeywordMsg -> resolveKeywordMsg(statement, previousScope, currentScope)
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
-        is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 

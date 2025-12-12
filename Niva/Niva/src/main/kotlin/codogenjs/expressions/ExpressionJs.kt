@@ -37,12 +37,18 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
 
         is ListCollection -> {
             append("[")
-            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
+            // {Int} means an empty array of ints
+            if (initElements.size != 1 || !(initElements.first() is IdentifierExpr && (initElements.first() as IdentifierExpr).isType)) {
+                append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
+            }
+
             append("]")
         }
         is SetCollection -> {
             append("new Set([")
-            append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
+            if (initElements.size != 1 || !(initElements.first() is IdentifierExpr && (initElements.first() as IdentifierExpr).isType)) {
+                append(initElements.joinToString(", ") { it.generateJsExpression(withNullChecks = true) })
+            }
             append("]) ")
         }
         is MapCollection -> {

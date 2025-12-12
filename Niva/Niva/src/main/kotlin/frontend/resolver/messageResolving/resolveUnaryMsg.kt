@@ -69,19 +69,22 @@ fun Resolver.resolveUnaryMsg(
         return Pair(receiverType.returnType, null)
     }
 
-
     val checkForGetter = {
-        if (receiverType is Type.UserLike) {
-            val fieldWithSameName = receiverType.fields.find { it.name == statement.selectorName }
-            Pair(fieldWithSameName != null, fieldWithSameName)
-        } else Pair(false, null)
+        if (receiverType is Type.UserLike && !receiverType.noGetters) {
+            val field = receiverType.fields.find { it.name == statement.selectorName }
+            (field != null) to field
+        } else {
+            false to null
+        }
     }
+
 
     val (isGetter, field) = checkForGetter()
     if (isGetter) {
         statement.kind = UnaryMsgKind.Getter
         val result = field!!.type
         statement.type = result
+
         return Pair(result, null)
     }
     // usual message or static message
