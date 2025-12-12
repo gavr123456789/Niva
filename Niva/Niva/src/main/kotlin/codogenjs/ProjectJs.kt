@@ -110,7 +110,7 @@ export function Int__downToDo(self, downTo, block) {
     }
 }
 
-function prettyPrint(value, indent = 0) {
+export function Any__toString(value, indent = 0) {
     const space = "    ".repeat(indent);
 
     // Примитивы
@@ -127,7 +127,7 @@ function prettyPrint(value, indent = 0) {
         if (value.length === 0) return "{}";
         let result = "{\n";
         for (const item of value) {
-            result += space + "    " + prettyPrint(item, indent + 1) + ",\n";
+            result += space + "    " + Any__toString(item, indent + 1) + ",\n";
         }
         result += space + "}";
         return result;
@@ -138,7 +138,7 @@ function prettyPrint(value, indent = 0) {
         if (value.size === 0) return "Set {}";
         let result = "#(\n";
         for (const item of value) {
-            result += space + "    " + prettyPrint(item, indent + 1) + ",\n";
+            result += space + "    " + Any__toString(item, indent + 1) + ",\n";
         }
         result += space + ")";
         return result;
@@ -152,7 +152,7 @@ function prettyPrint(value, indent = 0) {
             result +=
                 space +
                 "    " +
-                `${prettyPrint(key, indent + 1)} => ${prettyPrint(val, indent + 1)},\n`;
+                `${Any__toString(key, indent + 1)} => ${Any__toString(val, indent + 1)},\n`;
         }
         result += space + "}";
         return result;
@@ -175,7 +175,7 @@ function prettyPrint(value, indent = 0) {
                 (value.constructor && value.constructor.name !== "Object"
                     ? "    "
                     : "") +
-                `${key}: ${prettyPrint(val, indent + 1)}`,
+                `${key}: ${Any__toString(val, indent + 1)}`,
         )
         .join("\n");
 
@@ -186,7 +186,7 @@ function prettyPrint(value, indent = 0) {
  * @param {Any} obj
  */
 export function Any__echo(obj) {
-    console.log(prettyPrint(obj));
+    console.log(Any__toString(obj));
 }
 
 /**

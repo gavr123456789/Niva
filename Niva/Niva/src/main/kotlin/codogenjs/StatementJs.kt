@@ -7,7 +7,10 @@ import main.frontend.parser.types.ast.*
 fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String = buildString {
     append(
         when (statement) {
-            is Expression -> statement.generateJsExpression()
+            is Expression -> {
+                val expr = statement.generateJsExpression()
+                if (statement is MessageSend) expr + ";" else expr
+            }
             is VarDeclaration -> "let ${statement.name.ifJsKeywordPrefix()} = ${statement.value.generateJsExpression()}"
 
             is MessageDeclaration -> statement.generateJsMessageDeclaration()
