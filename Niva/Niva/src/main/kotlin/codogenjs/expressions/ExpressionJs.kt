@@ -30,7 +30,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is LiteralExpression.FloatExpr -> append(str)
         is LiteralExpression.DoubleExpr -> append(str)
         is LiteralExpression.IntExpr -> append(str)
-        is LiteralExpression.StringExpr -> append(str)
+        is LiteralExpression.StringExpr -> append(emitJsString(this@generateJsExpression))
         is LiteralExpression.CharExpr -> append(str)
         is LiteralExpression.UnitExpr -> append("undefined")
         is DotReceiver -> append("receiver")
@@ -526,6 +526,61 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is StaticBuilder -> append("/* builder call is not supported in JS codegen yet */")
         is MethodReference -> append("/* method reference is not supported in JS codegen yet */")
     }
+}
+
+// Эмиссия строк для JS: обычные строки в двойных кавычках, многострочные — template literal в бэктиках
+private fun emitJsString(node: LiteralExpression.StringExpr): String {
+    val lexeme = node.token.lexeme
+    val isTriple = lexeme.startsWith("\"\"\"")
+    // Сырой контент без внешних кавычек (для тройных — срезаем по 3, для обычных — по 1)
+    val trim = if (isTriple) 3 else 1
+    val raw = if (lexeme.length >= trim * 2) lexeme.substring(trim, lexeme.length - trim) else ""
+
+    val hasNewLine = raw.contains('\n') || isTriple
+    return if (hasNewLine) emitAsTemplateLiteral(raw) else emitAsDoubleQuoted(raw)
+}
+
+private fun emitAsDoubleQuoted(raw: String): String {
+    val sb = StringBuilder()
+    sb.append('"')
+    raw.forEach { ch ->
+        when (ch) {
+            '\\' -> sb.append("\\\\")
+            '"' -> sb.append("\\\"")
+            '\n' -> sb.append("\\n")
+            '\r' -> sb.append("\\r")
+            '\t' -> sb.append("\\t")
+            '\b' -> sb.append("\\b")
+            '\u000C' -> sb.append("\\f") // form feed
+            else -> sb.append(ch)
+        }
+    }
+    sb.append('"')
+    return sb.toString()
+}
+
+private fun emitAsTemplateLiteral(raw: String): String {
+    val sb = StringBuilder()
+    sb.append('`')
+    var i = 0
+    while (i < raw.length) {
+        val ch = raw[i]
+        when (ch) {
+            '`' -> sb.append("\\`")
+            '\\' -> sb.append("\\\\")
+            '$' -> {
+                // экранируем начало интерполяции
+                if (i + 1 < raw.length && raw[i + 1] == '{') {
+                    sb.append("\\") // превратит в \${
+                }
+                sb.append('$')
+            }
+            else -> sb.append(ch)
+        }
+        i++
+    }
+    sb.append('`')
+    return sb.toString()
 }
 
 private fun Expression.jsSourceComment(): String {
