@@ -4,10 +4,16 @@ import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
 import main.frontend.parser.types.ast.Declaration
+import main.utils.GlobalVariables
+import org.junit.jupiter.api.BeforeEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CodogenJSTest {
+    @BeforeEach
+    fun setUp() {
+        GlobalVariables.disableSourceComments()
+    }
 
     @Test
     fun matchOnType() {
@@ -168,7 +174,7 @@ class CodogenJSTest {
             let x = () => ((1) + (2))
             let m = () => {
                 ((1) + (2));
-                return ((1) + (3))
+                return (((1) + (3)))
             }
         """.trimIndent()
         val statements = resolve(source)
@@ -229,7 +235,7 @@ class CodogenJSTest {
                     break;
                 case 2:
                     let y = "4"
-                    ((y) + ("2"))
+                    ((y) + ("2"));
                     break;
                 case 3:
                     "fpg"
@@ -279,9 +285,9 @@ class CodogenJSTest {
             true || false
         """.trimIndent()
         val expected = """
-            ((1) + (2))
-            (("sas") + ("sas"))
-            ((true) || (false))
+            ((1) + (2));
+            (("sas") + ("sas"));
+            ((true) || (false));
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -297,9 +303,9 @@ class CodogenJSTest {
             
         """.trimIndent()
         val expected = """
-            Int__inc(1)
-            Int__dec(Int__inc(Int__inc(1)))
-            ((Int__inc(1)) + (Int__dec(2)))
+            Int__inc(1);
+            Int__dec(Int__inc(Int__inc(1)));
+            ((Int__inc(1)) + (Int__dec(2)));
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -361,7 +367,7 @@ class CodogenJSTest {
             export function Int__fooBar(receiver, foo, bar) {
                 return (22)}
             
-            common.Int__fooBar(((Int__inc(1)) + (2)), 1, "string")
+            common.Int__fooBar(((Int__inc(1)) + (2)), 1, "string");
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -456,7 +462,7 @@ class CodogenJSTest {
             export function Any__echo(receiver) {
             }
             
-            common.Any__echo(1)
+            common.Any__echo(1);
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -505,11 +511,11 @@ class CodogenJSTest {
              */
             export function MyBool__ifTrue(receiver, block) {
                 let x = receiver.x
-                return (Any__echo(1))
+                return (common.Any__echo(1))
             }
             
             let m = new MyBool(1)
-            common.MyBool__ifTrue(m, () => Any__echo(2))
+            common.MyBool__ifTrue(m, () => common.Any__echo(2));
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
@@ -529,15 +535,37 @@ class CodogenJSTest {
         """.trimIndent()
         val expected = """
             let l = List__toMutableList([1, 2, 3])
-            List__add(l, 4)
+            List__add(l, 4);
             let c = List__count(l)
             let s = List__toMutableSet([1, 2, 3])
-            MutableSet__add(s, 4)
-            let b = MutableSet__contains(s, 1)
+            Set__add(s, 4);
+            let b = Set__contains(s, 1)
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)
         java.io.File("/tmp/niva_test_output.txt").writeText(w)
         assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun emitJsPragmaReplacesCall() {
+        val source = """
+            type Box x: Int
+
+            extend Box [
+              @emitJs: "throwWithMessage($1)"
+              on throwWithMessage: msg::String -> Unit = []
+            ]
+
+            b = Box x: 1
+            b throwWithMessage: "sas"
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assert(w.contains("throwWithMessage(\"sas\")")) {
+            "Expected emitJs to replace call with raw JS. Actual:\n$w"
+        }
     }
 }

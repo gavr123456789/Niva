@@ -1,6 +1,7 @@
 package main.codogenjs
 
 import main.frontend.parser.types.ast.*
+import main.utils.GlobalVariables
 
 fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = buildString {
     when (this@generateJsExpression) {
@@ -584,6 +585,7 @@ private fun emitAsTemplateLiteral(raw: String): String {
 }
 
 private fun Expression.jsSourceComment(): String {
+    if (!GlobalVariables.emitSourceComments) return ""
     val t = this.token
     return "\n\t// ${t.file.name}:${t.line}\n"
 }

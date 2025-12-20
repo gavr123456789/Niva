@@ -87,7 +87,15 @@ private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTy
 
     val baseName = buildJsFuncName(pickedForType, message, argTypes)
 
-    val alias = message.declaration?.messageData?.pkg ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
+    val currentPkgName = JsCodegenContext.currentPackage?.packageName
+    val currentPkgAlias = currentPkgName?.replace('.', '_')
+
+    // alias может приходить как имя пакета ("foo.bar") или уже как alias ("foo_bar").
+    // В любом случае, если это текущий пакет, квалификатор добавлять нельзя.
+    val rawAlias = message.declaration?.messageData?.pkg ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
+    val alias = rawAlias
+        ?.replace('.', '_')
+        ?.takeUnless { it == currentPkgAlias || it == currentPkgName }
 
     return if (alias != null) {
         val realAlias = if (alias == "core") "common" else alias
@@ -154,6 +162,15 @@ fun MessageSend.generateJsMessageCall(): String {
     var currentType = receiver.type ?: messageTypeSafe(this)
 
     messages.forEach { msg ->
+        // pragma emitJs полностью заменяет вызов сообщения на произвольный JS-код.
+        // Подстановки в шаблоне: $0 — текущий ресивер, $1..$N — keyword-аргументы.
+        val emitJs = msg.tryEmitJsReplacement(currentExpr)
+        if (emitJs != null) {
+            currentExpr = emitJs
+            currentType = msg.type ?: currentType
+            return@forEach
+        }
+
         when (msg) {
             is UnaryMsg -> {
                 if (msg.kind == UnaryMsgKind.Getter) {
@@ -243,6 +260,12 @@ fun MessageSend.generateJsMessageCall(): String {
 fun Message.generateJsAsCall(): String {
     var recvExpr = receiver.generateJsExpression()
     var recvType = receiver.type ?: this.type ?: error("Receiver type unknown for message call")
+
+    // Если на самом сообщении висит emitJs — он полностью заменяет вызов.
+    // Тут используем исходный ресивер как $0.
+    val emitJs = this.tryEmitJsReplacement(recvExpr)
+    if (emitJs != null) return emitJs
+
     return when (this) {
         is UnaryMsg -> {
             if (this.kind == UnaryMsgKind.Getter) {

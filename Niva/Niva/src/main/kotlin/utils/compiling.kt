@@ -20,6 +20,11 @@ import kotlin.time.TimeSource.Monotonic.markNow
 
 object GlobalVariables {
 
+    var emitSourceComments = true
+        private set
+
+    fun disableSourceComments() { emitSourceComments = false }
+
     var capabilities = false
 
     var needStackTrace = true

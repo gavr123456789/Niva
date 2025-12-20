@@ -93,7 +93,7 @@ fun Resolver.checkForError(receiverType: Type, selectorName: String, pkg: Packag
                 ),
             ),
             returnTypeWithoutErrors2
-        ).emitKw("try {\n    $0\n} catch (it: Throwable) $1"))
+        ).emitKeyword("try {\n    $0\n} catch (it: Throwable) $1"))
     }
 
     val createUnionOfErrorsInCurrentScope = {
@@ -126,7 +126,7 @@ fun Resolver.checkForError(receiverType: Type, selectorName: String, pkg: Packag
                     ),
                 ),
                 returnTypeWithoutErrors
-            ).emitKw("try {\n    $0\n} catch (it: Throwable) {$1}")).second
+            ).emitKeyword("try {\n    $0\n} catch (it: Throwable) {$1}")).second
         }
         "orPANIC" -> {
             val returnTypeWithoutErrors = receiverType.copyAnyType().also { it.errors = null }

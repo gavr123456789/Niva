@@ -3,6 +3,7 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
+import frontend.resolver.emitJs
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -186,12 +187,22 @@ fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null,
         docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
 
 
+fun Pair<String, UnaryMsgMetaData>.emitJs(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createEmitJsAtttribure(str))
+    return this
+}
+fun Pair<String, KeywordMsgMetaData>.emitJsKeyword(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createEmitJsAtttribure(str))
+    return this
+}
+
+
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
 }
 
-fun Pair<String, KeywordMsgMetaData>.emitKw(str: String): Pair<String, KeywordMsgMetaData> {
+fun Pair<String, KeywordMsgMetaData>.emitKeyword(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
 }
@@ -611,7 +622,9 @@ fun createExceptionForCustomErrors(
 }
 
 fun throwWithMessageGenerate(stringType: Type, nothingType: Type) =
-    createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)")
+    createKeyword(KeywordArg("throwWithMessage", stringType), nothingType)
+        .emitKeyword("throwWithMessage($1)")
+        .emitJsKeyword("throw new Error($1);")
 
 fun createExceptionProtocols(
     errorType: Type.UnionBranchType,
@@ -625,7 +638,7 @@ fun createExceptionProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)")//.also { it.second.errors.add() }
+            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)").emitJs("throw &0")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -1195,6 +1208,9 @@ fun createRenameAtttribure(v: String) =
 
 fun createEmitAtttribure(v: String) =
     createStringPragma("emit", v)
+
+fun createEmitJsAtttribure(v: String) =
+    createStringPragma("emitJs", v)
 
 fun createMapProtocols(
     isMutable: Boolean,
