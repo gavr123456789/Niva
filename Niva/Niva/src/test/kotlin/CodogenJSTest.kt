@@ -568,4 +568,39 @@ class CodogenJSTest {
             "Expected emitJs to replace call with raw JS. Actual:\n$w"
         }
     }
+
+    @Test
+    fun boolIfTrueIfFalseNativeJs() {
+        val source = """
+            main = [
+                x = 5
+                x > 3 ifTrue: ["big" echo]
+                x < 3 ifFalse: ["not small" echo]
+                result = x > 10 ifTrue: ["yes"] ifFalse: ["no"]
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        
+        // Проверяем, что ifTrue: генерирует нативный if
+        assert(w.contains("if (((x) > (3))) {")) {
+            "Expected ifTrue: to generate native if statement. Actual:\n$w"
+        }
+        
+        // Проверяем, что ifFalse: генерирует нативный if с отрицанием
+        assert(w.contains("if (!(((x) < (3)))) {")) {
+            "Expected ifFalse: to generate native if with negation. Actual:\n$w"
+        }
+        
+        // Проверяем, что ifTrue:ifFalse: генерирует IIFE с переменной __ifResult
+        assert(w.contains("__ifResult")) {
+            "Expected ifTrue:ifFalse: to generate IIFE with __ifResult variable. Actual:\n$w"
+        }
+        
+        // Проверяем, что не вызывается функция Bool__ifTrue
+        assert(!w.contains("Bool__ifTrue")) {
+            "Expected no Bool__ifTrue function call. Actual:\n$w"
+        }
+    }
 }

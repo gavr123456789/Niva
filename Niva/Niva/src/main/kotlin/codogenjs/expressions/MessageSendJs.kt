@@ -224,30 +224,155 @@ fun MessageSend.generateJsMessageCall(): String {
                 currentType = msg.type ?: recvType
             }
             is KeywordMsg -> {
-                val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
-                val argTypes = msg.args.mapNotNull { it.keywordArg.type }
-
-                if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
-                    // вызов конструктора типа: Person name: "Alice" age: 24 -> new Person("Alice", 24)
-                    val recvType = currentType
-                    val typeName = recvType.constructorJsName()
-                    currentExpr = buildString {
-                        append("new ", typeName, "(")
-                        append(args.joinToString(", "))
-                        append(")")
-                    }
-                    currentType = msg.type ?: currentType
-                } else {
-                    val fn = buildQualifiedJsFuncName(currentType, msg, argTypes)
-                    currentExpr = buildString {
-                        append(fn, "(", currentExpr)
-                        if (args.isNotEmpty()) {
-                            append(", ")
-                            append(args.joinToString(", "))
+                // Специальная обработка для ifTrue:, ifFalse:, ifTrue:ifFalse: (нелокальный возврат из лямбд)
+                val selector = msg.selectorName
+                val isBoolReceiver = isBool(currentType)
+                
+                if (isBoolReceiver && (selector == "ifTrue" || selector == "ifFalse" || selector == "ifTrueIfFalse")) {
+                    // Получаем аргументы-лямбды
+                    val lambdaArgs = msg.args.map { it.keywordArg }
+                    
+                    when (selector) {
+                        "ifTrue" -> {
+                            // true ifTrue: [block] -> if (true) { block }
+                            val lambda = lambdaArgs.firstOrNull()
+                            if (lambda is CodeBlock) {
+                                currentExpr = buildString {
+                                    append("if (", currentExpr, ") {\n")
+                                    val bodyCode = codegenJs(lambda.statements, 1)
+                                    if (bodyCode.isNotEmpty()) {
+                                        append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                                    }
+                                    append("}")
+                                }
+                            } else {
+                                // Если не CodeBlock, генерируем вызов лямбды
+                                val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
+                                currentExpr = "if ($currentExpr) { $lambdaExpr() }"
+                            }
+                            currentType = msg.type ?: currentType
                         }
-                        append(")")
+                        "ifFalse" -> {
+                            // true ifFalse: [block] -> if (!true) { block }
+                            val lambda = lambdaArgs.firstOrNull()
+                            if (lambda is CodeBlock) {
+                                currentExpr = buildString {
+                                    append("if (!(", currentExpr, ")) {\n")
+                                    val bodyCode = codegenJs(lambda.statements, 1)
+                                    if (bodyCode.isNotEmpty()) {
+                                        append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                                    }
+                                    append("}")
+                                }
+                            } else {
+                                val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
+                                currentExpr = "if (!($currentExpr)) { $lambdaExpr() }"
+                            }
+                            currentType = msg.type ?: currentType
+                        }
+                        "ifTrueIfFalse" -> {
+                            // Это expression, возвращает значение
+                            // Генерируем IIFE с переменной
+                            val trueLambda = lambdaArgs.getOrNull(0)
+                            val falseLambda = lambdaArgs.getOrNull(1)
+                            
+                            currentExpr = buildString {
+                                append("(() => {\n")
+                                append("    let __ifResult = undefined;\n")
+                                append("    if (", currentExpr, ") {\n")
+                                
+                                // Обработка true ветки
+                                if (trueLambda is CodeBlock) {
+                                    val stmts = trueLambda.statements
+                                    if (stmts.isNotEmpty()) {
+                                        val leading = stmts.dropLast(1)
+                                        val last = stmts.last()
+                                        
+                                        if (leading.isNotEmpty()) {
+                                            val leadingCode = codegenJs(leading, 2)
+                                            if (leadingCode.isNotEmpty()) {
+                                                append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                        
+                                        if (last is Expression) {
+                                            append("        __ifResult = ", last.generateJsExpression(), ";\n")
+                                        } else {
+                                            val lastCode = codegenJs(listOf(last), 2)
+                                            if (lastCode.isNotEmpty()) {
+                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                    }
+                                } else if (trueLambda != null) {
+                                    val lambdaExpr = trueLambda.generateJsExpression(true)
+                                    append("        __ifResult = ", lambdaExpr, "();\n")
+                                }
+                                
+                                append("    } else {\n")
+                                
+                                // Обработка false ветки
+                                if (falseLambda is CodeBlock) {
+                                    val stmts = falseLambda.statements
+                                    if (stmts.isNotEmpty()) {
+                                        val leading = stmts.dropLast(1)
+                                        val last = stmts.last()
+                                        
+                                        if (leading.isNotEmpty()) {
+                                            val leadingCode = codegenJs(leading, 2)
+                                            if (leadingCode.isNotEmpty()) {
+                                                append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                        
+                                        if (last is Expression) {
+                                            append("        __ifResult = ", last.generateJsExpression(), ";\n")
+                                        } else {
+                                            val lastCode = codegenJs(listOf(last), 2)
+                                            if (lastCode.isNotEmpty()) {
+                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
+                                            }
+                                        }
+                                    }
+                                } else if (falseLambda != null) {
+                                    val lambdaExpr = falseLambda.generateJsExpression(true)
+                                    append("        __ifResult = ", lambdaExpr, "();\n")
+                                }
+                                
+                                append("    }\n")
+                                append("    return __ifResult;\n")
+                                append("})()")
+                            }
+                            currentType = msg.type ?: currentType
+                        }
                     }
-                    currentType = msg.type ?: currentType
+                } else {
+                    // Обычная обработка KeywordMsg
+                    val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
+                    val argTypes = msg.args.mapNotNull { it.keywordArg.type }
+
+                    if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
+                        // вызов конструктора типа: Person name: "Alice" age: 24 -> new Person("Alice", 24)
+                        val recvType = currentType
+                        val typeName = recvType.constructorJsName()
+                        currentExpr = buildString {
+                            append("new ", typeName, "(")
+                            append(args.joinToString(", "))
+                            append(")")
+                        }
+                        currentType = msg.type ?: currentType
+                    } else {
+                        val fn = buildQualifiedJsFuncName(currentType, msg, argTypes)
+                        currentExpr = buildString {
+                            append(fn, "(", currentExpr)
+                            if (args.isNotEmpty()) {
+                                append(", ")
+                                append(args.joinToString(", "))
+                            }
+                            append(")")
+                        }
+                        currentType = msg.type ?: currentType
+                    }
                 }
             }
             else -> {}
