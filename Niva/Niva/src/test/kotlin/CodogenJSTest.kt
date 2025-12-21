@@ -15,6 +15,30 @@ class CodogenJSTest {
         GlobalVariables.disableSourceComments()
     }
 
+
+    @Test
+    fun returnInsideLambdaLastExpr() {
+        val source = """
+            {"a" "b" "c"} forEach: [
+                x = it + "1"
+                x != "" ifTrue: [1]
+            ]
+        """.trimIndent()
+        val expected = """
+            List__forEach(["a", "b", "c"], (it) => {
+                let x = ((it) + ("1"))
+                if (((x) !== (""))) {
+                    1
+                };
+            });
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
     @Test
     fun matchOnType() {
         val source = """

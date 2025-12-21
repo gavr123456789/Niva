@@ -164,9 +164,9 @@ private fun generateIfBranchJs(condition: String, lambda: Expression?, negateCon
             append("if (", conditionExpr, ") {\n")
             val bodyCode = codegenJs(lambda.statements, 1)
             if (bodyCode.isNotEmpty()) {
-                append(bodyCode.addIndentationForEachStringJs(1), "\n")
+                append(bodyCode, "\n")
             }
-            append("}\n")
+            append("}")
         }
     } else {
         val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
@@ -284,12 +284,12 @@ fun MessageSend.generateJsMessageCall(): String {
                     when (selector) {
                         "ifTrue" -> {
                             val lambda = lambdaArgs.firstOrNull()
-                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = false)
+                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = false).addIndentationForEachStringJs(0)
                             currentType = msg.type ?: currentType
                         }
                         "ifFalse" -> {
                             val lambda = lambdaArgs.firstOrNull()
-                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = true)
+                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = true).addIndentationForEachStringJs(0)
                             currentType = msg.type ?: currentType
                         }
                         "ifTrueIfFalse" -> {

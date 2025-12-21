@@ -493,16 +493,13 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                 statements.forEachIndexed { index, st ->
                     when {
                         // Последний Expression → return expr
-                        index == lastIndex && st is Expression -> {
-                            append("    ")
-                            append("return (")
+                        index == lastIndex && st is Expression && lambdaType?.returnType?.name != "Unit" -> {
+                            append("    return (")
                             append(st.generateJsExpression(), ")")
                         }
-
-                        // Промежуточные Expression → expr;
                         st is Expression -> {
-                            append("    ")
-                            append(st.generateJsExpression())
+                            val q = st.generateJsExpression().addIndentationForEachStringJs(1)
+                            append(q)
                             append(";")
                         }
 
