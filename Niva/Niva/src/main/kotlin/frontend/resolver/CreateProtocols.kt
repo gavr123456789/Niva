@@ -3,7 +3,8 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
-import frontend.resolver.emitJs
+import main.codogenjs.EMIT_JS_PRAGMA
+import main.codogenjs.RENAME_JS_PRAGMA
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -187,12 +188,23 @@ fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null,
         docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
 
 
+
+fun Pair<String, UnaryMsgMetaData>.renameJsUnary(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createRenameJsAtttribure(str))
+    return this
+}
+
 fun Pair<String, UnaryMsgMetaData>.emitJs(str: String): Pair<String, UnaryMsgMetaData> {
     this.second.pragmas.add(createEmitJsAtttribure(str))
     return this
 }
 fun Pair<String, KeywordMsgMetaData>.emitJsKeyword(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createEmitJsAtttribure(str))
+    return this
+}
+
+fun Pair<String, KeywordMsgMetaData>.renameJs(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createRenameJsAtttribure(str))
     return this
 }
 
@@ -1210,8 +1222,10 @@ fun createEmitAtttribure(v: String) =
     createStringPragma("emit", v)
 
 fun createEmitJsAtttribure(v: String) =
-    createStringPragma("emitJs", v)
+    createStringPragma(EMIT_JS_PRAGMA, v)
 
+fun createRenameJsAtttribure(v: String) =
+    createStringPragma(RENAME_JS_PRAGMA, v)
 fun createMapProtocols(
     isMutable: Boolean,
     intType: Type.InternalType,

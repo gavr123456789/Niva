@@ -6,7 +6,7 @@ import main.frontend.parser.types.ast.LiteralExpression
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.KeywordMsg
 
-internal const val EMIT_JS_PRAGMA = "emitJs"
+const val EMIT_JS_PRAGMA = "emitJs"
 
 /**
  * Полная замена вызова сообщения на сырой JS-код из pragma `emitJs`.
@@ -14,7 +14,7 @@ internal const val EMIT_JS_PRAGMA = "emitJs"
  *  - $0 — текущий ресивер (выражение)
  *  - $1..$N — аргументы keyword-сообщения (в порядке args)
  */
-internal fun Message.tryEmitJsReplacement(currentReceiverExpr: String): String? {
+fun Message.tryEmitJsReplacement(currentReceiverExpr: String): String? {
     val pragma = pragmas.firstOrNull { it is KeyPragma && it.name == EMIT_JS_PRAGMA } as? KeyPragma ?: return null
     val value = pragma.value as? LiteralExpression.StringExpr
         ?: pragma.value.token.compileError("String literal expected for @emitJs pragma")

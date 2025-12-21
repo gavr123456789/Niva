@@ -802,6 +802,34 @@ class CodogenJSTest {
     }
 
     @Test
+    fun renameJsPragmaRenamesFunctionName() {
+        val source = """
+            type Box x: Int
+
+            extend Box [
+              @renameJs: "customName"
+              on doSomething: msg::String -> Unit = []
+            ]
+
+            b = Box x: 1
+            b doSomething: "test"
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        // Проверяем, что вызов использует переименованное имя (а не Box__doSomething)
+        assert(w.contains("customName(b, \"test\")")) {
+            "Expected renameJs to change call to 'customName(b, \"test\")'. Actual:\n$w"
+        }
+        
+        // Проверяем, что декларация функции остается с оригинальным именем
+        assert(w.contains("export function Box__doSomething(_receiver, msg)")) {
+            "Expected declaration to keep original name 'Box__doSomething'. Actual:\n$w"
+        }
+    }
+
+    @Test
     fun boolIfTrueIfFalseNativeJs() {
         val source = """
             main = [

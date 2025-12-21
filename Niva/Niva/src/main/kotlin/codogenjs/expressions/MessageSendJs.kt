@@ -48,6 +48,19 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
 }
 
 /**
+ * Получает имя функции с учётом rename прагмы.
+ * Если есть pragma rename, возвращает переименованное имя.
+ * Иначе возвращает результат buildQualifiedJsFuncName.
+ */
+private fun getFunctionName(receiverType: Type, message: Message): String {
+    val renamedName = message.tryGetRenamedFunctionName()
+    if (renamedName != null) {
+        return renamedName
+    }
+    return buildQualifiedJsFuncName(receiverType, message)
+}
+
+/**
  * Полное имя функции для вызова: либо просто mangledName, либо alias.mangledName
  * если функция живёт в другом пакете.
  */
@@ -208,7 +221,7 @@ fun MessageSend.generateJsMessageCall(): String {
                     currentExpr = "$currentExpr.${msg.selectorName}"
                     currentType = msg.type ?: currentType
                 } else {
-                    val name = buildQualifiedJsFuncName(currentType, msg)
+                    val name = getFunctionName(currentType, msg)
                     currentExpr = "$name($currentExpr)"
                     currentType = msg.type ?: currentType
                 }
@@ -222,7 +235,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         if (u.kind == UnaryMsgKind.Getter) {
                             recvExpr = "$recvExpr.${u.selectorName}"
                         } else {
-                            val name = buildQualifiedJsFuncName(recvType, u)
+                            val name = getFunctionName(recvType, u)
                             recvExpr = "$name($recvExpr)"
                         }
                         recvType = u.type ?: recvType
@@ -237,7 +250,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         if (u.kind == UnaryMsgKind.Getter) {
                             argExpr = "$argExpr.${u.selectorName}"
                         } else {
-                            val name = buildQualifiedJsFuncName(argType ?: recvType, u)
+                            val name = getFunctionName(argType ?: recvType, u)
                             argExpr = "$name($argExpr)"
                         }
                         argType = u.type ?: argType
@@ -248,7 +261,7 @@ fun MessageSend.generateJsMessageCall(): String {
                 if (native != null) {
                     currentExpr = native
                 } else {
-                    val fn = buildQualifiedJsFuncName(recvType, msg)
+                    val fn = getFunctionName(recvType, msg)
                     currentExpr = "$fn($recvExpr, $argExpr)"
                 }
                 currentType = msg.type ?: recvType
@@ -308,7 +321,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         }
                         currentType = msg.type ?: currentType
                     } else {
-                        val fn = buildQualifiedJsFuncName(currentType, msg)
+                        val fn = getFunctionName(currentType, msg)
                         currentExpr = buildString {
                             append(fn, "(", currentExpr)
                             if (args.isNotEmpty()) {
@@ -342,7 +355,7 @@ fun Message.generateJsAsCall(): String {
             if (this.kind == UnaryMsgKind.Getter) {
                 "$recvExpr.${this.selectorName}"
             } else {
-                val name = buildQualifiedJsFuncName(recvType, this)
+                val name = getFunctionName(recvType, this)
                 "$name($recvExpr)"
             }
         }
@@ -353,7 +366,7 @@ fun Message.generateJsAsCall(): String {
                     if (u.kind == UnaryMsgKind.Getter) {
                         recvExpr = "$recvExpr.${u.selectorName}"
                     } else {
-                        val name = buildQualifiedJsFuncName(recvType, u)
+                        val name = getFunctionName(recvType, u)
                         recvExpr = "$name($recvExpr)"
                     }
                     recvType = u.type ?: recvType
@@ -368,7 +381,7 @@ fun Message.generateJsAsCall(): String {
                     if (u.kind == UnaryMsgKind.Getter) {
                         argExpr = "$argExpr.${u.selectorName}"
                     } else {
-                        val name = buildQualifiedJsFuncName(argType ?: recvType, u)
+                        val name = getFunctionName(argType ?: recvType, u)
                         argExpr = "$name($argExpr)"
                     }
                     argType = u.type ?: argType
@@ -377,7 +390,7 @@ fun Message.generateJsAsCall(): String {
 
             val native = tryEmitNativeBinary(this.selectorName, recvExpr, recvType, argExpr, argType)
             if (native != null) native else {
-                val fn = buildQualifiedJsFuncName(recvType, this)
+                val fn = getFunctionName(recvType, this)
                 "$fn($recvExpr, $argExpr)"
             }
         }
@@ -392,7 +405,7 @@ fun Message.generateJsAsCall(): String {
                     append(")")
                 }
             } else {
-                val fn = buildQualifiedJsFuncName(recvType, this)
+                val fn = getFunctionName(recvType, this)
                 buildString {
                     append(fn, "(", recvExpr)
                     if (args.isNotEmpty()) {
