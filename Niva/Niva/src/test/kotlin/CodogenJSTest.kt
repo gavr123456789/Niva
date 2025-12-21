@@ -17,6 +17,32 @@ class CodogenJSTest {
 
 
     @Test
+    fun op() {
+        val source = """
+            type Sas
+            Sas / x::Sas = 1
+        """.trimIndent()
+        val expected = """
+            export class Sas {
+                constructor() {
+                }
+            }
+            
+            /**
+             * @param {Sas} receiver
+             * @param {Sas} x
+             */
+            export function Sas__div(receiver, x) {
+                return (1)}
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
     fun returnInsideLambdaLastExpr() {
         val source = """
             {"a" "b" "c"} forEach: [

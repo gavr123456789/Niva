@@ -2,31 +2,12 @@ package main.codogenjs
 
 import frontend.resolver.Package
 import frontend.resolver.Type
+import main.codogen.operatorToString
 import main.frontend.parser.types.ast.*
 
-private fun normalizeSelectorJs(name: String): String = when (name) {
-    "+" -> "plus"
-    "-" -> "minus"
-    "*" -> "times"
-    "/" -> "div"
-    "%" -> "rem"
-    ".." -> "rangeTo"
-    "+=" -> "plusAssign"
-    "-=" -> "minusAssign"
-    "*=" -> "timesAssign"
-    "/=" -> "divAssign"
-    "%=" -> "remAssign"
-    "==" -> "equals"
-    "!=" -> "notEquals"
-    ">" -> "gt"
-    "<" -> "lt"
-    ">=" -> "ge"
-    "<=" -> "le"
-    "apply" -> "invoke"
-    else -> name
-}
 
-private fun buildJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
+
+private fun buildJsFuncName(receiverType: Type, message: Message): String {
     val recv = if (receiverType is Type.UserLike) {
         buildString {
             if (receiverType.pkg.isNotEmpty() && receiverType.pkg != "core" && receiverType.pkg != "common") {
@@ -38,7 +19,7 @@ private fun buildJsFuncName(receiverType: Type, message: Message, argTypes: List
     } else {
         receiverType.toJsMangledName()
     }
-    val baseName = normalizeSelectorJs(message.selectorName)
+    val baseName = operatorToString(message.selectorName, message.token)
     val res = "${recv}__${baseName}"
     if (message.selectorName == "add") {
         java.io.File("/tmp/niva_debug.txt").appendText("DEBUG: buildJsFuncName selector=${message.selectorName} recv=$recv res=$res type=${receiverType.name} emit=${(receiverType as? Type.UserLike)?.emitName} mut=${receiverType.isMutable}\n")
@@ -70,7 +51,7 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
  * Полное имя функции для вызова: либо просто mangledName, либо alias.mangledName
  * если функция живёт в другом пакете.
  */
-private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTypes: List<Type>): String {
+private fun buildQualifiedJsFuncName(receiverType: Type, message: Message): String {
     // Если сообщение было найдено через протокол "UnknownGeneric" (в резолвере он InternalType "UnknownGeneric"),
     // то для имени функции нужно использовать именно имя дженерика из декларации (например, "T"),
     // потому что декларация экспортируется как `export function T__msg(...)`, а не `UnknownGeneric__msg`.
@@ -85,7 +66,7 @@ private fun buildQualifiedJsFuncName(receiverType: Type, message: Message, argTy
         else -> metaForType ?: declForType ?: receiverType
     }
 
-    val baseName = buildJsFuncName(pickedForType, message, argTypes)
+    val baseName = buildJsFuncName(pickedForType, message)
 
     val currentPkgName = JsCodegenContext.currentPackage?.packageName
     val currentPkgAlias = currentPkgName?.replace('.', '_')
@@ -227,7 +208,7 @@ fun MessageSend.generateJsMessageCall(): String {
                     currentExpr = "$currentExpr.${msg.selectorName}"
                     currentType = msg.type ?: currentType
                 } else {
-                    val name = buildQualifiedJsFuncName(currentType, msg, emptyList())
+                    val name = buildQualifiedJsFuncName(currentType, msg)
                     currentExpr = "$name($currentExpr)"
                     currentType = msg.type ?: currentType
                 }
@@ -241,7 +222,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         if (u.kind == UnaryMsgKind.Getter) {
                             recvExpr = "$recvExpr.${u.selectorName}"
                         } else {
-                            val name = buildQualifiedJsFuncName(recvType, u, emptyList())
+                            val name = buildQualifiedJsFuncName(recvType, u)
                             recvExpr = "$name($recvExpr)"
                         }
                         recvType = u.type ?: recvType
@@ -256,7 +237,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         if (u.kind == UnaryMsgKind.Getter) {
                             argExpr = "$argExpr.${u.selectorName}"
                         } else {
-                            val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
+                            val name = buildQualifiedJsFuncName(argType ?: recvType, u)
                             argExpr = "$name($argExpr)"
                         }
                         argType = u.type ?: argType
@@ -267,7 +248,7 @@ fun MessageSend.generateJsMessageCall(): String {
                 if (native != null) {
                     currentExpr = native
                 } else {
-                    val fn = buildQualifiedJsFuncName(recvType, msg, listOfNotNull(argType))
+                    val fn = buildQualifiedJsFuncName(recvType, msg)
                     currentExpr = "$fn($recvExpr, $argExpr)"
                 }
                 currentType = msg.type ?: recvType
@@ -315,7 +296,6 @@ fun MessageSend.generateJsMessageCall(): String {
                 } else {
                     // Обычная обработка KeywordMsg
                     val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
-                    val argTypes = msg.args.mapNotNull { it.keywordArg.type }
 
                     if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
                         // вызов конструктора типа: Person name: "Alice" age: 24 -> new Person("Alice", 24)
@@ -328,7 +308,7 @@ fun MessageSend.generateJsMessageCall(): String {
                         }
                         currentType = msg.type ?: currentType
                     } else {
-                        val fn = buildQualifiedJsFuncName(currentType, msg, argTypes)
+                        val fn = buildQualifiedJsFuncName(currentType, msg)
                         currentExpr = buildString {
                             append(fn, "(", currentExpr)
                             if (args.isNotEmpty()) {
@@ -362,7 +342,7 @@ fun Message.generateJsAsCall(): String {
             if (this.kind == UnaryMsgKind.Getter) {
                 "$recvExpr.${this.selectorName}"
             } else {
-                val name = buildQualifiedJsFuncName(recvType, this, emptyList())
+                val name = buildQualifiedJsFuncName(recvType, this)
                 "$name($recvExpr)"
             }
         }
@@ -373,7 +353,7 @@ fun Message.generateJsAsCall(): String {
                     if (u.kind == UnaryMsgKind.Getter) {
                         recvExpr = "$recvExpr.${u.selectorName}"
                     } else {
-                        val name = buildQualifiedJsFuncName(recvType, u, emptyList())
+                        val name = buildQualifiedJsFuncName(recvType, u)
                         recvExpr = "$name($recvExpr)"
                     }
                     recvType = u.type ?: recvType
@@ -388,7 +368,7 @@ fun Message.generateJsAsCall(): String {
                     if (u.kind == UnaryMsgKind.Getter) {
                         argExpr = "$argExpr.${u.selectorName}"
                     } else {
-                        val name = buildQualifiedJsFuncName(argType ?: recvType, u, emptyList())
+                        val name = buildQualifiedJsFuncName(argType ?: recvType, u)
                         argExpr = "$name($argExpr)"
                     }
                     argType = u.type ?: argType
@@ -397,13 +377,12 @@ fun Message.generateJsAsCall(): String {
 
             val native = tryEmitNativeBinary(this.selectorName, recvExpr, recvType, argExpr, argType)
             if (native != null) native else {
-                val fn = buildQualifiedJsFuncName(recvType, this, listOfNotNull(argType))
+                val fn = buildQualifiedJsFuncName(recvType, this)
                 "$fn($recvExpr, $argExpr)"
             }
         }
         is KeywordMsg -> {
             val args = args.map { it.keywordArg.generateJsExpression(true) }
-            val argTypes = this.args.mapNotNull { it.keywordArg.type }
 
             if (this.kind == KeywordLikeType.Constructor || this.kind == KeywordLikeType.CustomConstructor) {
                 val typeName = recvType.constructorJsName()
@@ -413,7 +392,7 @@ fun Message.generateJsAsCall(): String {
                     append(")")
                 }
             } else {
-                val fn = buildQualifiedJsFuncName(recvType, this, argTypes)
+                val fn = buildQualifiedJsFuncName(recvType, this)
                 buildString {
                     append(fn, "(", recvExpr)
                     if (args.isNotEmpty()) {

@@ -435,16 +435,10 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
 
         }
 
+        is StaticBuilder -> append("/* builder call is not supported in JS codegen yet */")
+
         // probably never triggered
-        is BinaryMsg -> {
-            append(jsSourceComment())
-            append(generateJsAsCall())
-        }
-        is KeywordMsg -> {
-            append(jsSourceComment())
-            append(generateJsAsCall())
-        }
-        is UnaryMsg -> {
+        is Message -> {
             append(jsSourceComment())
             append(generateJsAsCall())
         }
@@ -521,7 +515,6 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
             }
         }
 
-        is StaticBuilder -> append("/* builder call is not supported in JS codegen yet */")
         is MethodReference -> append("/* method reference is not supported in JS codegen yet */")
     }
 }
