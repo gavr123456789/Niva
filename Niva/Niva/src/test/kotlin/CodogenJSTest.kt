@@ -582,7 +582,29 @@ class CodogenJSTest {
 
         val statements = resolve(source)
         val w = codegenJs(statements)
-        
+
+        val expected = """
+            let main = () => {
+                let x = 5
+                if (((x) > (3))) {
+                    Any__echo("big");
+            };
+                if (!(((x) < (3)))) {
+                    Any__echo("not small");
+            };
+                let result = (() => {
+                    let __ifResult = undefined;
+                    if (((x) > (10))) {
+                        __ifResult = "yes";
+                    } else {
+                        __ifResult = "no";
+                    }
+                    return __ifResult;
+                })()
+            }
+        """.trimIndent()
+        assertEquals(expected, w.trim())
+
         // Проверяем, что ifTrue: генерирует нативный if
         assert(w.contains("if (((x) > (3))) {")) {
             "Expected ifTrue: to generate native if statement. Actual:\n$w"

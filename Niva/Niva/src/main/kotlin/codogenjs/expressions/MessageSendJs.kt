@@ -156,6 +156,55 @@ private fun tryEmitNativeBinary(
     }
 }
 
+private fun generateIfBranchJs(condition: String, lambda: Expression?, negateCondition: Boolean): String {
+    val conditionExpr = if (negateCondition) "!($condition)" else condition
+    
+    return if (lambda is CodeBlock) {
+        buildString {
+            append("if (", conditionExpr, ") {\n")
+            val bodyCode = codegenJs(lambda.statements, 1)
+            if (bodyCode.isNotEmpty()) {
+                append(bodyCode.addIndentationForEachStringJs(1), "\n")
+            }
+            append("}\n")
+        }
+    } else {
+        val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
+        "if ($conditionExpr) { $lambdaExpr() }"
+    }
+}
+
+private fun generateIfTrueIfFalseBranchJs(lambda: Expression?, resultVarName: String = "__ifResult"): String {
+    return buildString {
+        if (lambda is CodeBlock) {
+            val stmts = lambda.statements
+            if (stmts.isNotEmpty()) {
+                val leading = stmts.dropLast(1)
+                val last = stmts.last()
+                
+                if (leading.isNotEmpty()) {
+                    val leadingCode = codegenJs(leading, 2)
+                    if (leadingCode.isNotEmpty()) {
+                        append(leadingCode.addIndentationForEachStringJs(1), "\n")
+                    }
+                }
+                
+                if (last is Expression) {
+                    append("        ", resultVarName, " = ", last.generateJsExpression(), ";\n")
+                } else {
+                    val lastCode = codegenJs(listOf(last), 2)
+                    if (lastCode.isNotEmpty()) {
+                        append(lastCode.addIndentationForEachStringJs(1), "\n")
+                    }
+                }
+            }
+        } else if (lambda != null) {
+            val lambdaExpr = lambda.generateJsExpression(true)
+            append("        ", resultVarName, " = ", lambdaExpr, "();\n")
+        }
+    }
+}
+
 fun MessageSend.generateJsMessageCall(): String {
     val b = StringBuilder()
     var currentExpr = receiver.generateJsExpression()
@@ -234,40 +283,13 @@ fun MessageSend.generateJsMessageCall(): String {
                     
                     when (selector) {
                         "ifTrue" -> {
-                            // true ifTrue: [block] -> if (true) { block }
                             val lambda = lambdaArgs.firstOrNull()
-                            if (lambda is CodeBlock) {
-                                currentExpr = buildString {
-                                    append("if (", currentExpr, ") {\n")
-                                    val bodyCode = codegenJs(lambda.statements, 1)
-                                    if (bodyCode.isNotEmpty()) {
-                                        append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                    }
-                                    append("}")
-                                }
-                            } else {
-                                // Если не CodeBlock, генерируем вызов лямбды
-                                val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
-                                currentExpr = "if ($currentExpr) { $lambdaExpr() }"
-                            }
+                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = false)
                             currentType = msg.type ?: currentType
                         }
                         "ifFalse" -> {
-                            // true ifFalse: [block] -> if (!true) { block }
                             val lambda = lambdaArgs.firstOrNull()
-                            if (lambda is CodeBlock) {
-                                currentExpr = buildString {
-                                    append("if (!(", currentExpr, ")) {\n")
-                                    val bodyCode = codegenJs(lambda.statements, 1)
-                                    if (bodyCode.isNotEmpty()) {
-                                        append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                    }
-                                    append("}")
-                                }
-                            } else {
-                                val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
-                                currentExpr = "if (!($currentExpr)) { $lambdaExpr() }"
-                            }
+                            currentExpr = generateIfBranchJs(currentExpr, lambda, negateCondition = true)
                             currentType = msg.type ?: currentType
                         }
                         "ifTrueIfFalse" -> {
@@ -280,65 +302,9 @@ fun MessageSend.generateJsMessageCall(): String {
                                 append("(() => {\n")
                                 append("    let __ifResult = undefined;\n")
                                 append("    if (", currentExpr, ") {\n")
-                                
-                                // Обработка true ветки
-                                if (trueLambda is CodeBlock) {
-                                    val stmts = trueLambda.statements
-                                    if (stmts.isNotEmpty()) {
-                                        val leading = stmts.dropLast(1)
-                                        val last = stmts.last()
-                                        
-                                        if (leading.isNotEmpty()) {
-                                            val leadingCode = codegenJs(leading, 2)
-                                            if (leadingCode.isNotEmpty()) {
-                                                append(leadingCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                        
-                                        if (last is Expression) {
-                                            append("        __ifResult = ", last.generateJsExpression(), ";\n")
-                                        } else {
-                                            val lastCode = codegenJs(listOf(last), 2)
-                                            if (lastCode.isNotEmpty()) {
-                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                    }
-                                } else if (trueLambda != null) {
-                                    val lambdaExpr = trueLambda.generateJsExpression(true)
-                                    append("        __ifResult = ", lambdaExpr, "();\n")
-                                }
-                                
+                                append(generateIfTrueIfFalseBranchJs(trueLambda))
                                 append("    } else {\n")
-                                
-                                // Обработка false ветки
-                                if (falseLambda is CodeBlock) {
-                                    val stmts = falseLambda.statements
-                                    if (stmts.isNotEmpty()) {
-                                        val leading = stmts.dropLast(1)
-                                        val last = stmts.last()
-                                        
-                                        if (leading.isNotEmpty()) {
-                                            val leadingCode = codegenJs(leading, 2)
-                                            if (leadingCode.isNotEmpty()) {
-                                                append(leadingCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                        
-                                        if (last is Expression) {
-                                            append("        __ifResult = ", last.generateJsExpression(), ";\n")
-                                        } else {
-                                            val lastCode = codegenJs(listOf(last), 2)
-                                            if (lastCode.isNotEmpty()) {
-                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                    }
-                                } else if (falseLambda != null) {
-                                    val lambdaExpr = falseLambda.generateJsExpression(true)
-                                    append("        __ifResult = ", lambdaExpr, "();\n")
-                                }
-                                
+                                append(generateIfTrueIfFalseBranchJs(falseLambda))
                                 append("    }\n")
                                 append("    return __ifResult;\n")
                                 append("})()")

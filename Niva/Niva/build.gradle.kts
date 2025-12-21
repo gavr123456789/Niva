@@ -7,11 +7,11 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
-    kotlin("jvm") version "2.2.20"
+    kotlin("jvm") version "2.3.0"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("plugin.serialization") version "2.3.0"
 }
 
 group = "org.example"
@@ -21,11 +21,11 @@ version = "1.0-SNAPSHOT"
 repositories { mavenCentral() }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
     //    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
     testImplementation(kotlin("test"))
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
 
 tasks.test { useJUnitPlatform() }
