@@ -338,7 +338,8 @@ fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false, nee
 fun ConstructorDeclaration.generateConstructorDeclaration() =
     this.msgDeclaration.generateMessageDeclaration(true, false)
 
-fun operatorToString(operator: String, token: Token): String {
+// if token null then don't throw (when check call we dont throw, when check declaration we throw)
+fun operatorToString(operator: String, token: Token?): String {
     return when (operator) {
         "+" -> "plus"
         "-" -> "minus"
@@ -355,6 +356,8 @@ fun operatorToString(operator: String, token: Token): String {
         "||" -> "or"
         "&&" -> "and"
         "apply" -> "invoke"
-        else -> token.compileError("Undefined operator: $operator")
+        else -> {
+            token?.compileError("Undefined operator: $operator") ?: operator
+        }
     }
 }

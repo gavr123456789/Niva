@@ -20,23 +20,30 @@ private fun buildDeclFuncNameJs(forType: frontend.resolver.Type, name: String): 
     return "${recv}__${base}"
 }
 
-fun MessageDeclaration.generateJsMessageDeclaration(): String = when (this) {
-    is MessageDeclarationUnary -> generateUnaryJs()
-    is MessageDeclarationBinary -> generateBinaryJs()
-    is MessageDeclarationKeyword -> generateKeywordJs()
-    is ConstructorDeclaration -> this.msgDeclaration.generateJsMessageDeclaration()
-    is StaticBuilderDeclaration -> this.msgDeclaration.generateJsMessageDeclaration()
+fun MessageDeclaration.generateJsMessageDeclaration(isConstructor: Boolean): String = when (this) {
+    is MessageDeclarationUnary -> generateUnaryJs(isConstructor)
+    is MessageDeclarationBinary -> generateBinaryJs(isConstructor)
+    is MessageDeclarationKeyword -> generateKeywordJs(isConstructor)
+    is ConstructorDeclaration -> this.msgDeclaration.generateJsMessageDeclaration(true)
+    is StaticBuilderDeclaration -> this.msgDeclaration.generateJsMessageDeclaration(isConstructor)
 }
 
-private fun MessageDeclaration.generateSingleExpression(fn: String, params: List<String>, doc: String = ""): String {
+private fun MessageDeclaration.generateSingleExpression(
+    fn: String,
+    params: List<String>,
+    doc: String = "",
+    isConstructor: Boolean // so we do not generate extracting of this fields
+): String {
     // Собираем тело функции без отступов, затем добавляем общий отступ в один уровень.
     val rawBody = buildString {
         // Неявные локальные переменные для всех полей типа: let field = receiver.field
         val recvType = forType
         val userType = recvType as? frontend.resolver.Type.UserLike
-        if (userType != null && userType.fields.isNotEmpty()) {
+        if (userType != null && userType.fields.isNotEmpty() && !isConstructor) {
             userType.fields.forEach { field ->
-                append("let ", field.name, " = receiver.", field.name, "\n")
+                // If this function doesn't have param same as the field, to avoid name clashes
+                if (params.all { it != field.name })
+                    append("let ", field.name, " = _receiver" + ".", field.name, "\n")
             }
         }
 
@@ -63,25 +70,25 @@ private fun MessageDeclaration.generateSingleExpression(fn: String, params: List
     }
 }
 
-private fun MessageDeclarationUnary.generateUnaryJs(): String {
+private fun MessageDeclarationUnary.generateUnaryJs(isConstructor: Boolean): String {
     val fn = buildDeclFuncNameJs(forType!!, name)
-    val params = listOf("receiver")
+    val params = listOf("_receiver")
     val doc = "/**\n * @param {${forType!!.name}} receiver\n */\n"
-    return generateSingleExpression(fn, params, doc)
+    return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
-private fun MessageDeclarationBinary.generateBinaryJs(): String {
+private fun MessageDeclarationBinary.generateBinaryJs(isConstructor: Boolean): String {
     val argT = arg.type ?: return "/* unresolved arg type for $name */"
     val safeName = operatorToString(name, token)
     val fn = buildDeclFuncNameJs(forType!!, safeName)
-    val params = listOf("receiver", arg.name())
+    val params = listOf("_receiver", arg.name())
     val doc = "/**\n * @param {${forType!!.name}} receiver\n * @param {${argT.name}} ${arg.name()}\n */\n"
-    return generateSingleExpression(fn, params, doc)
+    return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
-private fun MessageDeclarationKeyword.generateKeywordJs(): String {
+private fun MessageDeclarationKeyword.generateKeywordJs(isConstructor: Boolean): String {
     val fn = buildDeclFuncNameJs(forType!!, name)
-    val params = listOf("receiver") + args.map { it.name() }
+    val params = listOf("_receiver") + args.map { it.name() }
     
     val sb = StringBuilder()
     sb.append("/**\n")
@@ -91,5 +98,5 @@ private fun MessageDeclarationKeyword.generateKeywordJs(): String {
     }
     sb.append(" */\n")
 
-    return generateSingleExpression(fn, params, sb.toString())
+    return generateSingleExpression(fn, params, sb.toString(), isConstructor)
 }

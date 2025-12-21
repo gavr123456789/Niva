@@ -13,9 +13,9 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             }
             is VarDeclaration -> "let ${statement.name.ifJsKeywordPrefix()} = ${statement.value.generateJsExpression()}"
 
-            is MessageDeclaration -> statement.generateJsMessageDeclaration()
-            is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration() }
-            is ManyConstructorDecl -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration() }
+            is MessageDeclaration -> statement.generateJsMessageDeclaration(false)
+            is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration(false) }
+            is ManyConstructorDecl -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration(true) }
 
             is TypeDeclaration -> statement.generateJsTypeDeclaration()
             is TypeAliasDeclaration -> "// typealias ${statement.typeName} = ${statement.realTypeAST.name}"

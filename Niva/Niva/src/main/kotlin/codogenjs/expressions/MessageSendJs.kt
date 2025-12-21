@@ -19,7 +19,7 @@ private fun buildJsFuncName(receiverType: Type, message: Message): String {
     } else {
         receiverType.toJsMangledName()
     }
-    val baseName = operatorToString(message.selectorName, message.token)
+    val baseName = operatorToString(message.selectorName, null)
     val res = "${recv}__${baseName}"
     if (message.selectorName == "add") {
         java.io.File("/tmp/niva_debug.txt").appendText("DEBUG: buildJsFuncName selector=${message.selectorName} recv=$recv res=$res type=${receiverType.name} emit=${(receiverType as? Type.UserLike)?.emitName} mut=${receiverType.isMutable}\n")
