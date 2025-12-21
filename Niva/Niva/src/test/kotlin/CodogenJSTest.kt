@@ -16,6 +16,58 @@ class CodogenJSTest {
     }
 
 
+    @Test
+    fun unionWithUnion() {
+        val source = """
+            union Figure area: Int =
+            | Rectangle width: Int height: Int
+            | ^Something
+            union Something =
+            | Circle    radius: Int
+            | Oval      rrrr: Int
+        """.trimIndent()
+        val expected = """
+            export class Figure {
+                constructor(area) {
+                    this.area = area;
+                }
+            }
+            
+            export class Rectangle extends Figure {
+                constructor(width, height, area) {
+                    super(area);
+                    this.width = width;
+                    this.height = height;
+                }
+            }
+            
+            export class Something extends Figure {
+                constructor(area) {
+                    super(area);
+                }
+            }
+            
+            export class Circle extends Something {
+                constructor(radius) {
+                    super();
+                    this.radius = radius;
+                }
+            }
+            
+            export class Oval extends Something {
+                constructor(rrrr) {
+                    super();
+                    this.rrrr = rrrr;
+                }
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
 
     @Test
     fun lambdaWIthSingleIfIsNotAnExpression() {
@@ -97,7 +149,7 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {Sas} receiver
+             * @param {Sas} _receiver
              */
             export function Sas__new(_receiver) {
                 let sas = "kekk"
@@ -126,10 +178,12 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {Sas} receiver
+             * @param {Sas} _receiver
              * @param {String} sas
              */
             export function Sas__sas(_receiver, sas) {
+                // destruct this sas
+            
             }
         """.trimIndent()
 
@@ -152,7 +206,7 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {Sas} receiver
+             * @param {Sas} _receiver
              * @param {Sas} x
              */
             export function Sas__div(_receiver, x) {
@@ -301,9 +355,10 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {Person} receiver
+             * @param {Person} _receiver
              */
             export function Person__sas(_receiver) {
+                // destruct this name, age
                 let name = _receiver.name
                 let age = _receiver.age
                 let q = ((age) + (1))
@@ -492,7 +547,7 @@ class CodogenJSTest {
         """.trimIndent()
         val expected = """
             /**
-             * @param {Int} receiver
+             * @param {Int} _receiver
              */
             export function Int__sas(_receiver) {
                 return (22)}
@@ -510,7 +565,7 @@ class CodogenJSTest {
         """.trimIndent()
         val expected = """
             /**
-             * @param {Int} receiver
+             * @param {Int} _receiver
              * @param {Int} foo
              * @param {String} bar
              */
@@ -533,7 +588,7 @@ class CodogenJSTest {
         """.trimIndent()
         val expected = """
             /**
-             * @param {Int} receiver
+             * @param {Int} _receiver
              * @param {Int} foo
              * @param {String} bar
              */
@@ -599,9 +654,10 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {Person} receiver
+             * @param {Person} _receiver
              */
             export function Person__incAge(_receiver) {
+                // destruct this name, age
                 let name = _receiver.name
                 let age = _receiver.age
                 return (((age) + (1)))
@@ -630,7 +686,7 @@ class CodogenJSTest {
         """.trimIndent()
         val expected = """
             /**
-             * @param {Any} receiver
+             * @param {Any} _receiver
              */
             export function Any__echo(_receiver) {
             }
@@ -679,17 +735,18 @@ class CodogenJSTest {
             }
             
             /**
-             * @param {MyBool} receiver
+             * @param {MyBool} _receiver
              * @param {[ -> Unit]} block
              */
             export function MyBool__ifTrue(_receiver, block) {
+                // destruct this x
                 let x = _receiver.x
-                return (Any__echo(1))
+                return (common.Any__echo(1))
             }
             
             let m = new MyBool(1)
             common.MyBool__ifTrue(m, () => {
-                Any__echo(2);
+                common.Any__echo(2);
             });
         """.trimIndent()
         val statements = resolve(source)

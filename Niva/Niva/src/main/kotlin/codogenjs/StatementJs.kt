@@ -17,7 +17,8 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             is ExtendDeclaration -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration(false) }
             is ManyConstructorDecl -> statement.messageDeclarations.joinToString("\n") { it.generateJsMessageDeclaration(true) }
 
-            is TypeDeclaration -> statement.generateJsTypeDeclaration()
+            is TypeDeclaration ->
+                statement.generateJsTypeDeclaration()
             is TypeAliasDeclaration -> "// typealias ${statement.typeName} = ${statement.realTypeAST.name}"
 
             is ReturnStatement -> {
@@ -31,8 +32,10 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
             is Assign -> "${statement.name.ifJsKeywordPrefix()} = ${statement.value.generateJsExpression()}"
             is DestructingAssign -> "// destructuring is not implemented in JS codegen yet"
 
-            is UnionRootDeclaration -> statement.generateJsUnionRootDeclaration()
-            is UnionBranchDeclaration -> statement.generateJsUnionBranchDeclaration()
+            is UnionRootDeclaration ->
+                statement.generateJsUnionRootDeclaration()
+            is UnionBranchDeclaration ->
+                statement.generateJsUnionBranchDeclaration()
 
             is EnumDeclarationRoot -> "// enum ${statement.typeName} not emitted for JS yet"
             is EnumBranch -> "// enum branch not emitted for JS yet"
@@ -48,9 +51,9 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
     )
 }
 
-fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
-	// Все объявляемые типы в JS всегда экспортируются
-	append("export class ", typeName, " {\n")
+private fun StringBuilder.appendJsClassWithConstructor(typeName: String, fields: List<TypeFieldAST>) {
+    // Все объявляемые типы в JS всегда экспортируются
+    append("export class ", typeName, " {\n")
 
     // constructor
     append("    constructor(")
@@ -66,36 +69,41 @@ fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
     append("}\n")
 }
 
+fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
+    appendJsClassWithConstructor(typeName, fields)
+}
+
 fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString {
-	// Класс root union-типа всегда экспортируем как модульную сущность
-	append("export class ", typeName, " {\n")
-
-    // конструктор по полям root
-    append("    constructor(")
-    append(fields.joinToString(", ") { it.name })
-    append(") {\n")
-
-    // инициализация только полей root
-    fields.forEach { field ->
-        append("        this.", field.name, " = ", field.name, ";\n")
+    // Если этот union уже был сгенерирован как ветка с isRoot = true другого union,
+    // не генерируем базовый класс повторно, но продолжаем генерировать его ветки
+    val skipBaseClass = typeName in JsCodegenContext.generatedAsIsRootBranches
+    
+    if (!skipBaseClass) {
+        appendJsClassWithConstructor(typeName, fields)
     }
-
-    append("    }\n")
-    append("}\n")
 
     // Для JS-кодогенерации сразу же эмитим и все ветки union-типа
     if (branches.isNotEmpty()) {
-        append("\n")
-        branches.forEachIndexed { index, branch ->
-            append(branch.generateJsUnionBranchDeclaration())
-            if (index != branches.lastIndex) {
-                append("\n")
-            }
+        if (!skipBaseClass) {
+            append("\n")
         }
+        branches
+            .forEachIndexed { index, branch ->
+                append(branch.generateJsUnionBranchDeclaration())
+                if (index != branches.lastIndex) {
+                    append("\n")
+                }
+            }
     }
 }
 
 fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildString {
+    // Если эта ветка является включением другого union (isRoot = true),
+    // отмечаем, что этот тип уже был сгенерирован как ветка
+    if (isRoot) {
+        JsCodegenContext.generatedAsIsRootBranches.add(typeName)
+    }
+    
     // Базовый union-тип
     val rootDecl = root
     val rootTypeName = rootDecl.typeName

@@ -12,12 +12,16 @@ class GeneratorJs
  */
 object JsCodegenContext {
     var currentPackage: Package? = null
+    // Набор типов, которые уже были сгенерированы как ветки с isRoot = true
+    val generatedAsIsRootBranches = mutableSetOf<String>()
 }
 
 fun codegenJs(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
     // Проталкиваем информацию о текущем пакете во все вложенные вызовы
     val prev = JsCodegenContext.currentPackage
     if (pkg != null) JsCodegenContext.currentPackage = pkg
+    // Очищаем набор сгенерированных типов для нового вызова кодогенерации
+    JsCodegenContext.generatedAsIsRootBranches.clear()
     try {
         val g = GeneratorJs()
         statements.forEachIndexed { i, st ->
