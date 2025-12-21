@@ -624,7 +624,7 @@ fun createExceptionForCustomErrors(
 fun throwWithMessageGenerate(stringType: Type, nothingType: Type) =
     createKeyword(KeywordArg("throwWithMessage", stringType), nothingType)
         .emitKeyword("throwWithMessage($1)")
-        .emitJsKeyword("throw new Error($1);")
+        .emitJsKeyword("common.throwWithMessage($1)")
 
 fun createExceptionProtocols(
     errorType: Type.UnionBranchType,

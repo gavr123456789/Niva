@@ -40,6 +40,10 @@ fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements:
 
     // 3 generate niva std for js
     val content = $$"""
+export function throwWithMessage(msg) {
+    throw new Error(msg)
+}        
+        
 /**
  * @param {Int} self
  */

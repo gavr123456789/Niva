@@ -40,10 +40,13 @@ private fun MessageDeclaration.generateSingleExpression(
         val recvType = forType
         val userType = recvType as? frontend.resolver.Type.UserLike
         if (userType != null && userType.fields.isNotEmpty() && !isConstructor) {
-            userType.fields.forEach { field ->
+            val uniqueFields = userType.fields.distinctBy { it.name } // union root and its branches can have general fields with same names
+            append("// destruct this ${uniqueFields.joinToString { it.name }}\n")
+            uniqueFields.forEach { field ->
                 // If this function doesn't have param same as the field, to avoid name clashes
-                if (params.all { it != field.name })
+                if (params.all { it != field.name }) {
                     append("let ", field.name, " = _receiver" + ".", field.name, "\n")
+                }
             }
         }
 
@@ -73,7 +76,7 @@ private fun MessageDeclaration.generateSingleExpression(
 private fun MessageDeclarationUnary.generateUnaryJs(isConstructor: Boolean): String {
     val fn = buildDeclFuncNameJs(forType!!, name)
     val params = listOf("_receiver")
-    val doc = "/**\n * @param {${forType!!.name}} receiver\n */\n"
+    val doc = "/**\n * @param {${forType!!.name}} _receiver\n */\n"
     return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
@@ -82,7 +85,7 @@ private fun MessageDeclarationBinary.generateBinaryJs(isConstructor: Boolean): S
     val safeName = operatorToString(name, token)
     val fn = buildDeclFuncNameJs(forType!!, safeName)
     val params = listOf("_receiver", arg.name())
-    val doc = "/**\n * @param {${forType!!.name}} receiver\n * @param {${argT.name}} ${arg.name()}\n */\n"
+    val doc = "/**\n * @param {${forType!!.name}} _receiver\n * @param {${argT.name}} ${arg.name()}\n */\n"
     return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
@@ -92,7 +95,7 @@ private fun MessageDeclarationKeyword.generateKeywordJs(isConstructor: Boolean):
     
     val sb = StringBuilder()
     sb.append("/**\n")
-    sb.append(" * @param {${forType!!.name}} receiver\n")
+    sb.append(" * @param {${forType!!.name}} _receiver\n")
     args.forEach { arg ->
         sb.append(" * @param {${arg.type?.name ?: "?"}} ${arg.name()}\n")
     }

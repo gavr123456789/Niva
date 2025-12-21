@@ -18,6 +18,28 @@ class CodogenJSTest {
 
 
     @Test
+    fun lambdaWIthSingleIfIsNotAnExpression() {
+        val source = """
+            {1 2} forEach: [
+                1 > 2 ifTrue: [1]
+            ]
+        """.trimIndent()
+        val expected = """
+            List__forEach([1, 2], (it) => {
+                if (((1) > (2))) {
+                    1
+                };
+            });
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+
+    @Test
     fun switchInsideSwitch() {
         val source = """
             result = | 1
@@ -31,7 +53,25 @@ class CodogenJSTest {
             |=> 4
         """.trimIndent()
         val expected = """
-
+            let result = (() => {
+                switch (1) {
+                    case 2:
+                        return (2);
+                    case 3:
+                        return ((() => {
+                switch (3) {
+                    case 4:
+                        return (4);
+                    case 5:
+                        return (5);
+                    default:
+                        return (6);
+                }
+            })());
+                    default:
+                        return (4);
+                }
+            })()
         """.trimIndent()
 
         val statements = resolve(source)
@@ -644,11 +684,13 @@ class CodogenJSTest {
              */
             export function MyBool__ifTrue(_receiver, block) {
                 let x = _receiver.x
-                return (common.Any__echo(1))
+                return (Any__echo(1))
             }
             
             let m = new MyBool(1)
-            common.MyBool__ifTrue(m, () => common.Any__echo(2));
+            common.MyBool__ifTrue(m, () => {
+                Any__echo(2);
+            });
         """.trimIndent()
         val statements = resolve(source)
         val w = codegenJs(statements)

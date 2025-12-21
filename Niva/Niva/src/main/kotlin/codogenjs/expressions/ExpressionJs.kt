@@ -3,11 +3,11 @@ package main.codogenjs
 import main.frontend.parser.types.ast.*
 import main.utils.GlobalVariables
 
-fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = buildString {
+fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpressionContext: Boolean = false): String = buildString {
     when (this@generateJsExpression) {
         is ExpressionInBrackets -> {
             append("(")
-            append(expr.generateJsExpression(withNullChecks))
+            append(expr.generateJsExpression(withNullChecks, forceExpressionContext))
             append(")")
         }
         is MessageSend -> {
@@ -63,7 +63,12 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is ControlFlow.If -> {
             // If как выражение → IIFE, чтобы вернуть значение
             val ifNode = this@generateJsExpression
-            when (ifNode.kind) {
+            val effectiveKind = if (forceExpressionContext && ifNode.kind == ControlFlowKind.Statement) {
+                ControlFlowKind.Expression
+            } else {
+                ifNode.kind
+            }
+            when (effectiveKind) {
                 ControlFlowKind.ExpressionTypeMatch -> TODO()
                 ControlFlowKind.StatementTypeMatch -> TODO()
                 ControlFlowKind.Expression -> {
@@ -152,7 +157,12 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
         is ControlFlow.Switch -> {
             // Switch для значений и type-match
             val sw = this@generateJsExpression
-            when (sw.kind) {
+            val effectiveKind = if (forceExpressionContext && sw.kind == ControlFlowKind.Statement) {
+                ControlFlowKind.Expression
+            } else {
+                sw.kind
+            }
+            when (effectiveKind) {
                 ControlFlowKind.ExpressionTypeMatch -> {
                     // type-match как выражение через IIFE и instanceof
                     append("(() => {\n")
@@ -167,7 +177,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                         when (br) {
                             is IfBranch.IfBranchSingleExpr -> {
                                 val expr = br.thenDoExpression
-                                val code = expr.generateJsExpression()
+                                val code = expr.generateJsExpression(forceExpressionContext = true)
                                 if (expr is BinaryMsg) {
                                     append("            return ", code, ";\n")
                                 } else {
@@ -189,7 +199,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
 
                                     when (last) {
                                         is Expression -> {
-                                            val code = last.generateJsExpression()
+                                            val code = last.generateJsExpression(forceExpressionContext = true)
                                             if (last is BinaryMsg) {
                                                 append("            return ", code, ";\n")
                                             } else {
@@ -213,7 +223,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                     val elseBranch = sw.elseBranch
                     if (elseBranch != null) {
                         append("    else {\n")
-                        appendElseBranchWithReturn(elseBranch)
+                        appendElseBranchWithReturn(elseBranch, forceExpressionContext = true)
                         append("    }\n")
                     }
 
@@ -272,7 +282,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                         when (br) {
                             is IfBranch.IfBranchSingleExpr -> {
                                 val expr = br.thenDoExpression
-                                val code = expr.generateJsExpression()
+                                val code = expr.generateJsExpression(forceExpressionContext = true)
                                 if (expr is BinaryMsg) {
                                     append("            return ", code, ";\n")
                                 } else {
@@ -296,7 +306,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                                     // последний Expression должен возвращаться из IIFE
                                     when (last) {
                                         is Expression -> {
-                                            val code = last.generateJsExpression()
+                                            val code = last.generateJsExpression(forceExpressionContext = true)
                                             if (last is BinaryMsg) {
                                                 append("            return ", code, ";\n")
                                             } else {
@@ -319,7 +329,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                     val elseBranch = sw.elseBranch
                     if (elseBranch != null) {
                         append("        default:\n")
-                        appendElseBranchWithReturn(elseBranch)
+                        appendElseBranchWithReturn(elseBranch, forceExpressionContext = true)
                     }
 
                     append("    }\n")
@@ -393,7 +403,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
                 argsFromAst
             } else if (lambdaType != null) {
                 val argsFromType = if (lambdaType.extensionOfType != null)
-                    lambdaType.args.drop(1) // пропускаем `this`
+                    lambdaType.args.drop(1) // skip `this`
                 else
                     lambdaType.args
 
@@ -406,8 +416,8 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false): String = b
             append(finalArgNames.joinToString(", ") { it.ifJsKeywordPrefix() })
             append(") => ")
 
-            // Семантика CodeBlock как в котлине: последний Expression возвращается
-            if (statements.size == 1 && statements[0] is Expression) {
+            // last expr returns
+            if (statements.size == 1 && statements[0] is Expression && (statements[0] as Expression).type?.name != "Unit") { // remove () => if () {}, since if isn't expression
                 // Краткая форма: () => expr
                 append((statements[0] as Expression).generateJsExpression())
             } else {
@@ -539,10 +549,10 @@ private fun Expression.generateJsTypeMatchCondition(tmpVarName: String): String 
 }
 
 // Вспомогательная функция для генерации elseBranch с return-выражениями
-private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>) {
+private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>, forceExpressionContext: Boolean = false) {
     if (elseBranch.size == 1 && elseBranch[0] is Expression) {
         val elseExpr = elseBranch[0] as Expression
-        val code = elseExpr.generateJsExpression()
+        val code = elseExpr.generateJsExpression(forceExpressionContext = forceExpressionContext)
         if (elseExpr is BinaryMsg) {
             append("            return ", code, ";\n")
         } else {
@@ -561,7 +571,7 @@ private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>
 
         when (last) {
             is Expression -> {
-                val code = last.generateJsExpression()
+                val code = last.generateJsExpression(forceExpressionContext = forceExpressionContext)
                 if (last is BinaryMsg) {
                     append("            return ", code, ";\n")
                 } else {
