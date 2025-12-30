@@ -125,7 +125,12 @@ fun run(args2: Array<String>) {
         val mainProject = resolver.projects[resolver.projectName] ?: resolver.projects.values.first()
         generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
 
-        "bun mainNiva.js".runCommand(outputDir, withOutputCapture = true)
+        val command = if (am.jsRuntime == "gjs") {
+            "gjs -m mainNiva.js"
+        } else {
+            "${am.jsRuntime} mainNiva.js"
+        }
+        command.runCommand(outputDir, withOutputCapture = true)
         am.time(System.currentTimeMillis() - secondTime, true)
         return
     }

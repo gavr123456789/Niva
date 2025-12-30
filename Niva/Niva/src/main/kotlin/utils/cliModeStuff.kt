@@ -42,13 +42,21 @@ class ArgsManager(val args: MutableList<String>) {
     } else false
     val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Gradle
 
-    val outputRename = {
-        val outputRename = args.find { it.startsWith(OUT_NAME_ARG) }
-        if (outputRename != null) {
-            args.remove(outputRename)
-            outputRename.replaceFirst(OUT_NAME_ARG, "")
+    val jsRuntime = run {
+        val jsRuntimeArg1 = this@ArgsManager.args.find { it.startsWith("--js-runtime=") }
+        if (jsRuntimeArg1 != null) {
+            this@ArgsManager.args.remove(jsRuntimeArg1)
+            jsRuntimeArg1.replaceFirst("--js-runtime=", "")
+        } else "bun"
+    }
+
+    val outputRename = run {
+        val outputRename1 = this@ArgsManager.args.find { it.startsWith(OUT_NAME_ARG) }
+        if (outputRename1 != null) {
+            this@ArgsManager.args.remove(outputRename1)
+            outputRename1.replaceFirst(OUT_NAME_ARG, "")
         } else null
-    }()
+    }
     val infoIndex = args.indexOf("-i")
     val isShowTimeArg = verbose
 

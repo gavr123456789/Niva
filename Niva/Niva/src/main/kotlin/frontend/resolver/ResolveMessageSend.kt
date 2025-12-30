@@ -225,7 +225,45 @@ fun replaceAllGenericsToRealTypeRecursive(
             newResolvedTypeArgs2.add(typeArg)
         }
     }
+    
+    val genericLetters = listOf("T", "G")
+    val genericLetterToIndex = mutableMapOf<String, Int>()
+    genericLetters.forEachIndexed { index, letter ->
+        if (index < copyType.typeArgumentList.size) {
+            genericLetterToIndex[letter] = index
+        }
+    }
+    
+    val newResolvedFields = mutableListOf<KeywordArg>()
+    copyType.fields.forEach { field ->
+        val fieldType = field.type
+        val isSingleGeneric = fieldType.name.isGeneric()
+
+        val newFieldType = if (isSingleGeneric) {
+            // First try to get the real type from typeArguments by generic letter order
+            val genericIndex = genericLetterToIndex[fieldType.name]
+            val resolvedLetterType = if (genericIndex != null) {
+                newResolvedTypeArgs2.getOrNull(genericIndex)
+            } else {
+                letterToRealType[fieldType.name] ?: receiverGenericsTable[fieldType.name]
+            }
+            resolvedLetterType?.cloneAndChangeBeforeGeneric(fieldType.name) ?: fieldType
+        } else if (fieldType is Type.UserLike && fieldType.typeArgumentList.isNotEmpty()) {
+            replaceAllGenericsToRealTypeRecursive(
+                fieldType,
+                letterToRealType,
+                receiverGenericsTable
+            )
+        } else {
+            fieldType
+        }
+
+        newResolvedFields.add(KeywordArg(field.name, newFieldType))
+    }
+
     return copyType.also {
         it.replaceTypeArguments(newResolvedTypeArgs2)
+        it.fields.clear()
+        it.fields.addAll(newResolvedFields)
     }
 }

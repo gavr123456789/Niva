@@ -1,2 +1,5 @@
-x = #{1 "sas" 2 null}
-x map: [a, b -> 1]
+//q = {1 2 3}
+//w = q partition: [it > 1]
+//w first
+
+q = {1 2 3} + {1 2 3}
