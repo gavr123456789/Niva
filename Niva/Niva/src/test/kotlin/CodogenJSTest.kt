@@ -788,9 +788,13 @@ class CodogenJSTest {
               @emitJs: "throwWithMessage($1)"
               on throwWithMessage: msg::String -> Unit = []
             ]
+            
+            @emitJs: "sas($1)"
+            constructor Box y::Int = []
 
             b = Box x: 1
             b throwWithMessage: "sas"
+            Box y: 33
         """.trimIndent()
 
         val statements = resolve(source)

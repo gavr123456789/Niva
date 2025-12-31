@@ -398,7 +398,6 @@ fun generateSingleKeyword(
     val receiverType = receiver.type
         ?: receiver.token.compileError("Compiler error: type of receiver: $WHITE$receiver$RESET is unresolved")
 
-
     // args
     when (keywordMsg.kind) {
         KeywordLikeType.Keyword, KeywordLikeType.CustomConstructor -> {
@@ -419,8 +418,39 @@ fun generateSingleKeyword(
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                val recCode = receiverCode()
-                append(recCode)
+                // Special handling for Object
+                val kwReceiver = keywordMsg.receiver
+                val isObjectReceiver = kwReceiver is IdentifierExpr && kwReceiver.name == "Object"
+                
+                if (isObjectReceiver) {
+                    val resultType = keywordMsg.type
+                    // Check if this is anonymous object (Object_xxx) or concrete type (Person)
+                    if (resultType != null && resultType.name.startsWith("Object_")) {
+                        // Generate anonymous Kotlin object { val field = value ... }
+                        append("object {\n")
+                        keywordMsg.args.forEachIndexed { index, arg ->
+                            append("val ${arg.name} = ${arg.keywordArg.generateExpression()}")
+                            if (index < keywordMsg.args.size - 1) {
+                                append("\n")
+                            }
+                        }
+                        append("\n}")
+                        return@buildString
+                    } else if (resultType != null) {
+                        // Generate concrete type constructor: Person(...)
+                        if (!receiverIsDot && resultType.pkg != "core") {
+                            append(resultType.pkg)
+                            append(".")
+                        }
+                        append(resultType.name)
+                    } else {
+                        val recCode = receiverCode()
+                        append(recCode)
+                    }
+                } else {
+                    val recCode = receiverCode()
+                    append(recCode)
+                }
             }
         }
 

@@ -267,6 +267,22 @@ fun MessageSend.generateJsMessageCall(): String {
                 currentType = msg.type ?: recvType
             }
             is KeywordMsg -> {
+                // Special handling for Object type - generate JS object literal
+                if (msg.type?.name?.startsWith("Object_") == true) {
+                    currentExpr = buildString {
+                        append("{ ")
+                        msg.args.forEachIndexed { index, arg ->
+                            append(arg.name, ": ", arg.keywordArg.generateJsExpression(true))
+                            if (index < msg.args.size - 1) {
+                                append(", ")
+                            }
+                        }
+                        append(" }")
+                    }
+                    currentType = msg.type ?: currentType
+                    return@forEach
+                }
+                
                 // Специальная обработка для ifTrue:, ifFalse:, ifTrue:ifFalse: (нелокальный возврат из лямбд)
                 val selector = msg.selectorName
                 val isBoolReceiver = isBool(currentType)
