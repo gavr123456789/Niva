@@ -38,7 +38,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Kotlin/Niva/Niva/Niva/examples/ObjectTest/main.niva")
+//    val args = arrayOf("run","???")
 
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
