@@ -1,15 +1,15 @@
-// Test basic Object usage
 obj1 = Object name: "Bob" age: 42
 obj1 echo
 
-// Test Object assignment to concrete type
 type Person name: String age: Int
 
-p::Person = Object name: "Alice" age: 30
+p::Person = Object
+  name: "Alice"
+  age: 30
+
 p echo
 
-// Test different field order
+// different field order
 p2::Person = Object age: 25 name: "Charlie"
 p2 echo
-
 

@@ -153,7 +153,7 @@ tasks.register(buildJvmNiva) {
         val infroDirFile = targetInfro.toFile()
         if (infroDirFile.exists()) {
             val output = ByteArrayOutputStream()
-            val isWindows = org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.WINDOWS
+            val isWindows = OperatingSystem.current() == OperatingSystem.WINDOWS
             val cmd = if (isWindows) listOf("./gradlew.bat", "build") else listOf("./gradlew", "build")
             try {
                 val pb = ProcessBuilder(cmd)
@@ -188,7 +188,7 @@ tasks.register(buildJvmNiva) {
             Adding to PATH: 
             
         """.trimIndent()) +
-                "\tfish: set -U fish_user_paths ${pathHint} $" + "fish_user_paths\n" +
+                "\tfish: set -U fish_user_paths $pathHint $" + "fish_user_paths\n" +
                 "\tbash: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.bashrc && source ~/.bashrc\n" +
                 "\tzsh: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.zshrc && source ~/.zshrc" +
                 "\twindows: setx PATH \"%PATH%;${pathHint}\""
@@ -219,9 +219,9 @@ fun printNivaWelcome(targetDir: Path, path: String) {
         Adding to PATH: 
         
     """.trimIndent() +
-                    "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
-                    "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
-                    "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc" +
+                    $$"\tfish: set -U fish_user_paths $$path $fish_user_paths\n" +
+                    $$"\tbash: echo 'export PATH=$PATH:$$path' >> ~/.bashrc && source ~/.bashrc\n" +
+                    $$"\tzsh: echo 'export PATH=$PATH:$$path' >> ~/.zshrc && source ~/.zshrc" +
                     "\twindows: setx PATH \"%PATH%;$path\""
     )
 }

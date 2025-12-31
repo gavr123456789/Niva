@@ -179,78 +179,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
     /// Override toString
     if (enumRoot == null) {
-        append("\toverride fun toString(): String")
-
-        val toStringMethod =
-            findAnyMethod(receiverType, "toString", Package(receiverType.pkg), MessageDeclarationType.Unary)
-        if (toStringMethod != null && toStringMethod.declaration != null && toStringMethod.declaration.body.isNotEmpty()) {
-            val returnTypeName = toStringMethod.declaration.returnType?.name
-            if (returnTypeName != "String") {
-                toStringMethod.declaration.token.compileError("${CYAN}toString$RESET methods should return ${YEL}String$RESET but it returns ${CYAN}$returnTypeName$RESET")
-            }
-            // generate body
-            toStringMethod.declaration.body
-            val sb = StringBuilder()
-            generateBody(toStringMethod.declaration, sb)
-
-
-            append(sb)
-            appendLine("\n    companion object {")
-        } else {
-            // toString() : String" {"
-            append(" {\n")
-
-            append("\t\treturn \"\"\"\n")
-            val fields: List<TypeFieldAST> = this@generateTypeDeclaration.collectFields()
-//            val fewFields = fields.count() <= 2
-
-            if (false)
-                append("(", typeName)
-            else
-                append(typeName)
-
-            if (fields.isNotEmpty()) {
-                append(" ")
-            }
-
-
-            val addQuotes = { it: TypeFieldAST ->
-                if (it.type?.name == "String")
-                    "\"$${it.name}\""
-                else "$${it.name}"
-            }
-            val generateSimpleField = { it: TypeFieldAST ->
-                "    " + it.name + ": " + addQuotes(it)
-            }
-
-            val generateComplexField = { it: TypeFieldAST ->
-                "    ${it.name}: (\n" +
-                // we don't need before-spaces here since we already do prepend Indent for the whole string
-                "\${${it.name}.toString().prependIndent(\"        \")}\n" +
-                "    )"
-            }
-
-            val toStringFields = if (false)  //
-//                fields.joinToString(" ") {
-//                    generateSimpleField(it)
-//                } + ")"
-
-                ""
-            else {
-                generateFields(fields, generateSimpleField, generateComplexField)
-            }
-
-
-            append(toStringFields, "\"\"\"")
-            // for static methods like constructor
-            append(
-                """
-    }
-    companion object {
-"""
-            )
-        }
-        //////
+        generateToStringOverride(this@generateTypeDeclaration, receiverType)
     }
 
     // to\from Dynamic
@@ -268,6 +197,76 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
     append("\n}\n")
 }
 
+
+private fun StringBuilder.generateToStringOverride(
+    declaration: SomeTypeDeclaration,
+    receiverType: Type
+) {
+    append("\t" + "override fun toString(): String")
+
+    val toStringMethod =
+        findAnyMethod(receiverType, "toString", Package(receiverType.pkg), MessageDeclarationType.Unary)
+    
+    if (toStringMethod != null && toStringMethod.declaration != null && toStringMethod.declaration.body.isNotEmpty()) {
+        // Custom toString implementation exists
+        val returnTypeName = toStringMethod.declaration.returnType?.name
+        if (returnTypeName != "String") {
+            toStringMethod.declaration.token.compileError(
+                "${CYAN}toString$RESET methods should return ${YEL}String$RESET but it returns ${CYAN}$returnTypeName$RESET"
+            )
+        }
+        
+        val sb = StringBuilder()
+        generateBody(toStringMethod.declaration, sb)
+        append(sb)
+        appendLine("\n    companion object {")
+    } else {
+        // Generate default toString implementation
+        generateDefaultToString(declaration, receiverType)
+    }
+}
+
+private fun StringBuilder.generateDefaultToString(
+    declaration: SomeTypeDeclaration,
+    receiverType: Type
+) {
+    append(" {\n")
+    append("\t\treturn \"\"\"\n")
+    
+    val fields: List<TypeFieldAST> = declaration.collectFields()
+    val typeName = receiverType.name
+
+    append(typeName)
+    if (fields.isNotEmpty()) {
+        append(" ")
+    }
+
+    val addQuotes = { it: TypeFieldAST ->
+        if (it.type?.name == "String")
+            "\"$${it.name}\""
+        else "$${it.name}"
+    }
+    
+    val generateSimpleField = { it: TypeFieldAST ->
+        "    " + it.name + ": " + addQuotes(it)
+    }
+
+    val generateComplexField = { it: TypeFieldAST ->
+        "    ${it.name}: (\n" +
+            "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+            "    )"
+    }
+
+    val toStringFields = generateFields(fields, generateSimpleField, generateComplexField)
+    
+    append(toStringFields, "\"\"\"")
+    append(
+        """
+    }
+    companion object {
+"""
+    )
+}
 
 private fun generateFields(
     fields: List<TypeFieldAST>,

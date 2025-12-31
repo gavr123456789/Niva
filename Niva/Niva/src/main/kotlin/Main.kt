@@ -16,30 +16,6 @@ import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
 
-const val fakeFileSourceGOOD = """
-//Int sas = 1
-
-1 sas
-"""
-
-
-//
-
-//class  AstNode <T> (val v: T)
-//class TypeInfo(val n: Int)
-//typealias TypedAstNode = AstNode<TypeInfo>
-//typealias UntypedAstNode = AstNode<Nothing>
-//
-//fun <T> sas(astNode: AstNode<T>) {
-//    when (astNode) {
-//        is TypedAstNode -> {
-//
-//        }
-//    }
-//}
-//
-
-
 
 fun main(args: Array<String>) {
 //    val ls = LS { println("Niva LS: $it") }
@@ -62,7 +38,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("run","/home/gavr/Documents/Projects/Fun/byLangs/c3/main.niva")
+//    val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Kotlin/Niva/Niva/Niva/examples/ObjectTest/main.niva")
 
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
@@ -80,8 +56,8 @@ fun main(args: Array<String>) {
     //        println(e.scope)
     //    }
 
-//    if (help(args))
-//        return
+    if (help(args))
+        return
     run(args)
 }
 
@@ -125,12 +101,14 @@ fun run(args2: Array<String>) {
         val mainProject = resolver.projects[resolver.projectName] ?: resolver.projects.values.first()
         generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
 
+        val workingDir = File(pm.nivaRootFolder)
+        val mainJsFile = outputDir.resolve("mainNiva.js").absolutePath
         val command = if (am.jsRuntime == "gjs") {
-            "gjs -m mainNiva.js"
+            "gjs -m $mainJsFile"
         } else {
-            "${am.jsRuntime} mainNiva.js"
+            "${am.jsRuntime} $mainJsFile"
         }
-        command.runCommand(outputDir, withOutputCapture = true)
+        command.runCommand(workingDir, withOutputCapture = true)
         am.time(System.currentTimeMillis() - secondTime, true)
         return
     }

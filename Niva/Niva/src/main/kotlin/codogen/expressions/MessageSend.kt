@@ -317,6 +317,36 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
 }
 
 // pragma "arg" Compiler "getName" "getName:"
+// generate anonymous Kotlin object with fields and toString override
+fun generateAnonymousObject(keywordMsg: KeywordMsg): String = buildString {
+    append("object {\n")
+    
+    // Generate fields
+    keywordMsg.args.forEachIndexed { index, arg ->
+        append("val ${arg.name} = ${arg.keywordArg.generateExpression()}")
+        if (index < keywordMsg.args.size - 1) {
+            append("\n")
+        }
+    }
+    
+    // generate toString override
+    append("\n")
+    append("override fun toString(): String {\n")
+    append("return \"\"\"\n")
+    append("Object")
+    if (keywordMsg.args.isNotEmpty()) {
+        append("\n")
+        keywordMsg.args.forEach { arg ->
+            val addQuotes = if (arg.keywordArg.type?.name == "String") "\"" else ""
+            append("    ${arg.name}: $addQuotes\$${arg.name}$addQuotes\n")
+        }
+    }
+    append("\"\"\".trimEnd()\n")
+    append("}\n")
+    
+    append("}")
+}
+
 fun generateSingleKeyword(
     i: Int,
     receiver: Receiver,
@@ -426,15 +456,8 @@ fun generateSingleKeyword(
                     val resultType = keywordMsg.type
                     // Check if this is anonymous object (Object_xxx) or concrete type (Person)
                     if (resultType != null && resultType.name.startsWith("Object_")) {
-                        // Generate anonymous Kotlin object { val field = value ... }
-                        append("object {\n")
-                        keywordMsg.args.forEachIndexed { index, arg ->
-                            append("val ${arg.name} = ${arg.keywordArg.generateExpression()}")
-                            if (index < keywordMsg.args.size - 1) {
-                                append("\n")
-                            }
-                        }
-                        append("\n}")
+                        // Generate anonymous Kotlin object with toString override
+                        append(generateAnonymousObject(keywordMsg))
                         return@buildString
                     } else if (resultType != null) {
                         // Generate concrete type constructor: Person(...)
