@@ -14,6 +14,8 @@ object JsCodegenContext {
     var currentPackage: Package? = null
     // Набор типов, которые уже были сгенерированы как ветки с isRoot = true
     val generatedAsIsRootBranches = mutableSetOf<String>()
+    // Source map builder для текущей генерации (null если source maps отключены)
+    var sourceMapBuilder: SourceMapBuilder? = null
 }
 
 fun codegenJs(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {

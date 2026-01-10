@@ -1,0 +1,21 @@
+union Peano = Zero | Succ self: Peano
+
+extend Peano [
+  on prettyPrint -> String = | this
+    | Zero => ""
+    | Succ => "+" + self prettyPrint
+
+  on double -> Peano = | this
+    | Zero => Zero new
+    | Succ => Succ self: (Succ self: self double)
+
+  on quadruple = this double double
+  on succ = Succ self: this
+]
+
+three = Zero new succ succ succ
+twelve = three quadruple
+
+three echo
+three prettyPrint echo
+twelve prettyPrint echo

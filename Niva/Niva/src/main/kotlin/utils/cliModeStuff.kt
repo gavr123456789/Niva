@@ -32,6 +32,10 @@ class ArgsManager(val args: MutableList<String>) {
         args.remove("--js")
         true
     } else false
+    val jsDist = if ("--jsdist" in args) {
+        args.remove("--jsdist")
+        true
+    } else false
     val verbose = if ("--verbose" in args) {
         args.remove("--verbose")
         true

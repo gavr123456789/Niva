@@ -97,11 +97,16 @@ fun run(args2: Array<String>) {
     am.time(secondTime - startTime, false)
 
     if (am.js) {
-        val outputDir = File(pm.pathWhereToGenerateKtAmper)
+        val workingDir = File(pm.nivaRootFolder)
+        val outputDir = if (am.jsDist) {
+            File(workingDir, "dist")
+        } else {
+            File(pm.pathWhereToGenerateKtAmper)
+        }
+        
         val mainProject = resolver.projects[resolver.projectName] ?: resolver.projects.values.first()
         generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
 
-        val workingDir = File(pm.nivaRootFolder)
         val mainJsFile = outputDir.resolve("mainNiva.js").absolutePath
         val command = if (am.jsRuntime == "gjs") {
             "gjs -m $mainJsFile"

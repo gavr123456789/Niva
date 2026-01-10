@@ -677,6 +677,27 @@ class CodogenJSTest {
         if (mainJs != null) {
             assertEquals(expectedMain, mainJs)
         }
+        
+        // Проверяем, что source map файлы созданы
+        val mapFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js.map") } ?: emptyList()
+        assert(mapFiles.isNotEmpty()) {
+            "Source map files should be generated"
+        }
+        
+        // Проверяем, что JS файлы содержат ссылку на source map
+        assert(commonJs.contains("//# sourceMappingURL=common.js.map")) {
+            "common.js should contain sourceMappingURL comment"
+        }
+        
+        // Проверяем формат source map
+        val commonMapFile = java.io.File(tmpDir, "common.js.map")
+        if (commonMapFile.exists()) {
+            val mapContent = commonMapFile.readText()
+            assert(mapContent.contains("\"version\": 3")) { "Source map should be version 3" }
+            assert(mapContent.contains("\"file\": \"common.js\"")) { "Source map should reference common.js" }
+            assert(mapContent.contains("\"sources\"")) { "Source map should have sources" }
+            assert(mapContent.contains("\"mappings\"")) { "Source map should have mappings" }
+        }
     }
     @Test
     fun methodOnAny() {

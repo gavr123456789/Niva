@@ -1317,8 +1317,15 @@ private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatement
 	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "$MAIN_PKG_NAME.js" else "${pkg.packageName}.js"
     val file = File(baseDir, fileName)
 
+    // Инициализируем source map builder
+    val sourceMapBuilder = SourceMapBuilder(fileName)
+    JsCodegenContext.sourceMapBuilder = sourceMapBuilder
+
     val code = buildString {
-        append(generateJsImports(pkg))
+        val imports = generateJsImports(pkg)
+        append(imports)
+        // Обновляем позицию после imports
+        sourceMapBuilder.advancePosition(imports)
 
         // Для обычных пакетов берём только декларации.
         // Для MAIN_PKG_NAME — только top-level стейтменты (см. generateJsProject выше),
@@ -1332,13 +1339,31 @@ private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatement
 
         val body = codegenJs(bodyStatements, pkg = pkg)
         if (body.isNotBlank()) {
-            if (isNotEmpty()) append('\n')
+            if (isNotEmpty()) {
+                append('\n')
+                sourceMapBuilder.advancePosition("\n")
+            }
             append(body)
+            sourceMapBuilder.advancePosition(body)
             append('\n')
+            sourceMapBuilder.advancePosition("\n")
         }
+        
+        // Добавляем ссылку на source map
+        append("//# sourceMappingURL=")
+        append(fileName)
+        append(".map")
+        // Не обновляем позицию для sourceMappingURL комментария
     }
 
     file.writeText(code)
+    
+    // Записываем source map файл
+    val sourceMapFile = File(baseDir, "$fileName.map")
+    sourceMapFile.writeText(sourceMapBuilder.toJson())
+    
+    // Очищаем context
+    JsCodegenContext.sourceMapBuilder = null
 }
 
 /**
