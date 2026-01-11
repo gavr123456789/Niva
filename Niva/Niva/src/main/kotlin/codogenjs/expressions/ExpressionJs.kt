@@ -168,54 +168,9 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
 
                     sw.ifBranches.forEachIndexed { index, br ->
-                        val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
-                        append(if (index == 0) "    if (" else "    else if (")
-                        append(allTypes.joinToString(" || ") { it.generateJsTypeMatchCondition("__tmp") })
-                        append(") {\n")
+                        appendTypeMatchCondition(index, br, "__tmp")
 
-                        when (br) {
-                            is IfBranch.IfBranchSingleExpr -> {
-                                val expr = br.thenDoExpression
-                                val code = expr.generateJsExpression(forceExpressionContext = true)
-                                if (expr is BinaryMsg) {
-                                    append("            return ", code, ";\n")
-                                } else {
-                                    append("            return (", code, ");\n")
-                                }
-                            }
-                            is IfBranch.IfBranchWithBody -> {
-                                val bodyStmts = br.body.statements
-                                if (bodyStmts.isNotEmpty()) {
-                                    val leading = bodyStmts.dropLast(1)
-                                    val last = bodyStmts.last()
-
-                                    if (leading.isNotEmpty()) {
-                                        val leadingCode = codegenJs(leading, 2)
-                                        if (leadingCode.isNotEmpty()) {
-                                            append(leadingCode.addIndentationForEachStringJs(1), "\n")
-                                        }
-                                    }
-
-                                    when (last) {
-                                        is Expression -> {
-                                            val code = last.generateJsExpression(forceExpressionContext = true)
-                                            if (last is BinaryMsg) {
-                                                append("            return ", code, ";\n")
-                                            } else {
-                                                append("            return (", code, ");\n")
-                                            }
-                                        }
-                                        else -> {
-                                            val lastCode = codegenJs(listOf(last), 2)
-                                            if (lastCode.isNotEmpty()) {
-                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
+                        appendIfBranchWithReturn(br, forceExpressionContext = true)
                         append("    }\n")
                     }
 
@@ -235,22 +190,8 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
 
                     sw.ifBranches.forEachIndexed { index, br ->
-                        val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
-                        append(if (index == 0) "    if (" else "    else if (")
-                        append(allTypes.joinToString(" || ") { it.generateJsTypeMatchCondition("__tmp") })
-                        append(") {\n")
-
-                        when (br) {
-                            is IfBranch.IfBranchSingleExpr -> {
-                                append("        ", br.thenDoExpression.generateJsExpression(), "\n")
-                            }
-                            is IfBranch.IfBranchWithBody -> {
-                                val bodyCode = codegenJs(br.body.statements, 1)
-                                if (bodyCode.isNotEmpty()) {
-                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                }
-                            }
-                        }
+                        appendTypeMatchCondition(index, br, "__tmp")
+                        appendIfBranchNoReturn(br)
                         append("    }\n")
                     }
 
@@ -278,50 +219,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                             append("        case ", cond.generateJsExpression(), ":\n")
                         }
 
-                        when (br) {
-                            is IfBranch.IfBranchSingleExpr -> {
-                                val expr = br.thenDoExpression
-                                val code = expr.generateJsExpression(forceExpressionContext = true)
-                                if (expr is BinaryMsg) {
-                                    append("            return ", code, ";\n")
-                                } else {
-                                    append("            return (", code, ");\n")
-                                }
-                            }
-                            is IfBranch.IfBranchWithBody -> {
-                                val bodyStmts = br.body.statements
-                                if (bodyStmts.isNotEmpty()) {
-                                    val leading = bodyStmts.dropLast(1)
-                                    val last = bodyStmts.last()
-
-                                    // все, кроме последнего — обычные стейтменты
-                                    if (leading.isNotEmpty()) {
-                                        val leadingCode = codegenJs(leading, 2)
-                                        if (leadingCode.isNotEmpty()) {
-                                            append(leadingCode.addIndentationForEachStringJs(1), "\n")
-                                        }
-                                    }
-
-                                    // последний Expression должен возвращаться из IIFE
-                                    when (last) {
-                                        is Expression -> {
-                                            val code = last.generateJsExpression(forceExpressionContext = true)
-                                            if (last is BinaryMsg) {
-                                                append("            return ", code, ";\n")
-                                            } else {
-                                                append("            return (", code, ");\n")
-                                            }
-                                        }
-                                        else -> {
-                                            val lastCode = codegenJs(listOf(last), 2)
-                                            if (lastCode.isNotEmpty()) {
-                                                append(lastCode.addIndentationForEachStringJs(1), "\n")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        appendIfBranchWithReturn(br, forceExpressionContext = true)
                     }
 
                     // default
@@ -344,17 +242,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                             append("    case ", cond.generateJsExpression(), ":\n")
                         }
 
-                        when (br) {
-                            is IfBranch.IfBranchSingleExpr -> {
-                                append("        ", br.thenDoExpression.generateJsExpression(), "\n")
-                            }
-                            is IfBranch.IfBranchWithBody -> {
-                                val bodyCode = codegenJs(br.body.statements, 1)
-                                if (bodyCode.isNotEmpty()) {
-                                    append(bodyCode.addIndentationForEachStringJs(1), "\n")
-                                }
-                            }
-                        }
+                        appendIfBranchNoReturn(br)
                         append("        break;\n")
                     }
 
@@ -559,6 +447,39 @@ private fun Expression.generateJsTypeMatchCondition(tmpVarName: String): String 
     }
 
     else -> "$tmpVarName instanceof ${this.generateJsExpression()}"
+}
+
+private fun StringBuilder.appendTypeMatchCondition(index: Int, br: IfBranch, tmpVarName: String) {
+    val allTypes = listOf(br.ifExpression) + br.otherIfExpressions
+    append(if (index == 0) "    if (" else "    else if (")
+    append(allTypes.joinToString(" || ") { it.generateJsTypeMatchCondition(tmpVarName) })
+    append(") {\n")
+}
+
+private fun StringBuilder.appendIfBranchNoReturn(br: IfBranch) {
+    when (br) {
+        is IfBranch.IfBranchSingleExpr -> {
+            append("        ", br.thenDoExpression.generateJsExpression(), "\n")
+        }
+        is IfBranch.IfBranchWithBody -> {
+            val bodyCode = codegenJs(br.body.statements, 1)
+            if (bodyCode.isNotEmpty()) {
+                append(bodyCode.addIndentationForEachStringJs(1), "\n")
+            }
+        }
+    }
+}
+
+// Вспомогательная функция для генерации веток switch/if в режиме выражения (с return)
+private fun StringBuilder.appendIfBranchWithReturn(br: IfBranch, forceExpressionContext: Boolean = false) {
+    when (br) {
+        is IfBranch.IfBranchSingleExpr -> {
+            appendElseBranchWithReturn(listOf(br.thenDoExpression), forceExpressionContext)
+        }
+        is IfBranch.IfBranchWithBody -> {
+            appendElseBranchWithReturn(br.body.statements, forceExpressionContext)
+        }
+    }
 }
 
 // Вспомогательная функция для генерации elseBranch с return-выражениями
