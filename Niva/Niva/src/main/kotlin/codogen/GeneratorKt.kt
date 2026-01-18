@@ -57,6 +57,13 @@ dependencies {
     //%IMPL%
 }
 
+// for imgui
+tasks.withType<JavaExec>().configureEach {
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+        jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
 }
