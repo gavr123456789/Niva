@@ -2,24 +2,24 @@ constructor NivaProtocol collectionFromDefaultTypes: dtc::DefaultTypesContainer 
   {int str bool char unit} = dtc
 
 
-  collectionProto = NivaProtocol name: "common"
+  collP = NivaProtocol name: "common"
   // unary
-  collectionProto addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
-  collectionProto addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
-  collectionProto addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
+  collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
+  collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
+  collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
   // binary
-  collectionProto addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
+  collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
 
-  collectionProto addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: bool)
-  collectionProto addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: bool)
+  collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: bool)
+  collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: bool)
 
   // keyword
-  collectionProto addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType ) //TODO nullable
-  collectionProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
-  collectionProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
-  collectionProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
+  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType ) //TODO nullable
+  collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
+  collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
+  collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
 
-  ^ collectionProto methods
+  ^ collP methods
 ]
 
 
@@ -123,12 +123,12 @@ constructor NivaMethod singleArgKw: name::String receiverType::NivaType argT::Ni
 
 
 
-constructor NivaMethod manyArgKw::{TypeTField} receiverType::NivaType returnT::NivaType  = 
-  NivaMethod 
+constructor NivaMethod manyArgKw::{TypeTField} receiverType::NivaType returnT::NivaType  =
+  NivaMethod
     name: (manyArgKw joinWith: ":" transform: [it name]) + ":"
     :receiverType
-    args: manyArgKw 
-    returnType: returnT 
-    forMut: false 
-    protocolName: "common" 
+    args: manyArgKw
+    returnType: returnT
+    forMut: false
+    protocolName: "common"
     pkgName: "core"

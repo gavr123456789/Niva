@@ -445,7 +445,8 @@ const val ConstructorExpected = "Constructor expected"
 
 // constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDeclaration {
-    val constructorKeyword = matchAssert(TokenType.Constructor, ConstructorExpected)
+    val isFun = check(TokenType.Fun)
+    val constructorKeyword = if (isFun) matchAssert(TokenType.Fun) else matchAssert(TokenType.Constructor, ConstructorExpected)
 
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)

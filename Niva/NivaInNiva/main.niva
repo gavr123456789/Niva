@@ -71,8 +71,6 @@ codeblockCall = [
 
   db = result db
   typedAst = result entryPointExpressions
-
-
 ]
 
 

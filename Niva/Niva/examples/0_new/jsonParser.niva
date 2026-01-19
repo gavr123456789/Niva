@@ -1,0 +1,114 @@
+union JsonValue =
+    | JObject map: Map(String, JsonValue)
+    | JArray  list: {JsonValue}
+    | JString value: String
+    | JNumber value: Double
+    | JBool   value: Bool
+    | JNull
+
+type JsonParser
+    input: String
+    pos: Int
+
+JsonParser peek -> Char = input at: pos
+mut JsonParser advance = pos <- pos inc
+
+mut JsonParser skipWhitespace = [
+    [(pos < input count) &&
+    (input at: pos, isWhitespace)]
+        whileTrue: [ pos <- pos inc ]
+]
+
+mut JsonParser consume: expected::Char =
+    this peek == expected
+        ifTrue: [ this advance ]
+        ifFalse: [ ("Expected " + expected toString) echo ]
+
+mut JsonParser parseLiteral -> String = [
+    start = pos
+    [ (pos < input count) && (" ,]}" contains: (input at: pos, toString), not) ]
+        whileTrue: [ pos <- pos inc ]
+    ^ input substringFrom: start to: pos
+]
+
+mut JsonParser parseValue -> JsonValue = [
+    .skipWhitespace
+    c = .peek
+
+    res = | c
+    | '{' => .parseObject
+    | '[' => .parseArray
+    | '"' => JString value: .parseString
+    | 't' => [
+        .parseLiteral
+        JBool value: true
+    ]
+    | 'f' => [
+        .parseLiteral
+        JBool value: false
+    ]
+    | 'n' => [
+        .parseLiteral
+        JNull new
+    ]
+    |=> JNumber value: .parseLiteral toDouble
+
+    this skipWhitespace
+    ^ res
+]
+
+mut JsonParser parseString -> String = [
+    this consume: '"'
+    start = pos
+    [ (this peek) != '"' ] whileTrue: [ pos <- pos inc ]
+    str = input substringFrom: start to: pos
+    this consume: '"'
+    ^ str
+]
+
+mut JsonParser parseArray -> JArray = [
+    .consume: '['
+    list::mut List(JsonValue) = {}
+    [ (.peek) != ']' ] whileTrue: [
+        list add: .parseValue
+        .skipWhitespace
+        (.peek == ',') ifTrue: [ .consume: ',' ]
+    ]
+    .consume: ']'
+    ^ JArray list: list
+]
+
+mut JsonParser parseObject -> JObject = [
+    .consume: '{'
+    map::mut Map(String, JsonValue) = #{}
+    [ (.peek) != '}' ] whileTrue: [
+        .skipWhitespace
+        key = .parseString
+        .skipWhitespace
+        .consume: ':'
+        map at: key put: .parseValue
+        .skipWhitespace
+        (.peek == ',') ifTrue: [ .consume: ',' ]
+    ]
+    .consume: '}'
+    ^ JObject map: map
+]
+
+jsonText = """
+{
+  "name": "Niva",
+  "isSimple": true,
+  "version": 0.1,
+  "tags": ["language", "smalltalk"]
+}
+"""
+
+parser::mut JsonParser = JsonParser input: jsonText pos: 0
+result = parser parseValue
+
+| result
+| JObject => [
+  "Parsed object with " + result map count toString + " keys", echo
+  "name is: " + (result map at: "name") toString, echo
+]
+|=> "Parsed something else" echo

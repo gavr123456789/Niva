@@ -46,7 +46,7 @@ fun Lexer.fillSymbolTable() {
         "builder" to TokenType.Builder,
         "enum" to TokenType.Enum,
         "constructor" to TokenType.Constructor,
-        "fun" to TokenType.Constructor,
+        "fun" to TokenType.Fun,
         // "use" to TokenType.Use,
 
         "true" to TokenType.True,
