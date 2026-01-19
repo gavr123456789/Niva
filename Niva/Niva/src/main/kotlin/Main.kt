@@ -16,7 +16,9 @@ import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
 
-
+fun sus() {
+    
+}
 fun main(args: Array<String>) {
 //    val ls = LS { println("Niva LS: $it") }
 //    val fromJson = readFromJson("devModeData.json")
@@ -29,7 +31,6 @@ fun main(args: Array<String>) {
 //                ls.megaStore.addNew(
 //                    s = w,
 //                    scope = mapOf(),
-//                    prepend = false
 //                )
 //            }
 //        }
@@ -38,8 +39,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("run","???")
-
+//    val args = arrayOf("run","")
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {
@@ -56,6 +56,7 @@ fun main(args: Array<String>) {
     //        println(e.scope)
     //    }
 
+    // sasat
     if (help(args))
         return
     run(args)
