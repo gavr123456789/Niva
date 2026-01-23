@@ -45,7 +45,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
                 return messageDeclaration(isItMsgDeclaration, pragmas)
             }
             else {
-                peek().compileError("Parser bug, message declaration for mutable type expected")
+                peek().compileError("Parser bug, variable declaration or message declaration for mutable type expected")
             }
         }
     }
