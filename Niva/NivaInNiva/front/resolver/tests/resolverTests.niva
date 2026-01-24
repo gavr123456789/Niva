@@ -4,7 +4,49 @@
 // ]
 
 
-Test collectionsTesting = mapTry = [
+Test testGenericsReceiverAndKwArg = [
+  fileMain = """
+    type Box x: T
+    box = Box x: 42
+    Box tGeneric::T -> T = [
+        ^ tGeneric
+    ]
+    res = box tGeneric: 1
+  """
+
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  // 1. Check 'box' type
+  boxDecl = typedAst at: 0
+  | boxDecl
+  | VarDeclarationT => [
+      t = boxDecl value typeInfo t
+      Assert that: t name equals: "Box"
+      | t
+      | TypeT => [
+        Assert that: t genericArgs count equals: 1
+        Assert that: t genericArgs first name equals: "Int"
+      ]
+      |=> [ Assert that: false equals: true ]
+  ]
+  |=> [ Assert that: false equals: true ]
+
+  // 2. Check 'res' type
+  resDecl = typedAst at: 1
+  | resDecl
+  | VarDeclarationT => [
+      t = resDecl value typeInfo t
+      Assert that: t name equals: "Int"
+  ]
+  |=> [ Assert that: false equals: true ]
+
+]
+
+
+Test collectionsTestingMapTry = [
   fileMain = """
     {1 2 3}
     #("1" "2" "3")
@@ -241,5 +283,47 @@ Test resolveAFewDeclarations = [
     Assert that: unary typeInfo t name equals: "Int"
     Assert that: binary typeInfo t name equals: "Int"
 
+  ] do
+]
+
+Test checkGenerics = [
+  fileMain = """
+    type Box x: T
+    box = Box x: 42
+    Box tGeneric::T -> T = [
+        ^ tGeneric
+    ]
+    res = box tGeneric: 1
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  typedAst = result entryPointExpressions
+
+  // 1. Check 'box' type
+  checkBox = [
+    boxDecl = typedAst at: 0
+    | boxDecl
+    | VarDeclarationT => [
+        t = boxDecl value typeInfo t
+        Assert that: t name equals: "Box"
+        | t
+        | TypeT => [
+          Assert that: t genericArgs count equals: 1
+          Assert that: t genericArgs first name equals: "Int"
+        ]
+        |=> [ Assert that: false equals: true ]
+    ]
+    |=> [ Assert that: false equals: true ]
+  ] do
+
+  // 2. Check 'res' type
+  checkRes = [
+    resDecl = typedAst at: 1
+    | resDecl
+    | VarDeclarationT => [
+        t = resDecl value typeInfo t
+        Assert that: t name equals: "Int"
+    ]
+    |=> [ Assert that: false equals: true ]
   ] do
 ]

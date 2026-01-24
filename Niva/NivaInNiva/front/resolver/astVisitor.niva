@@ -141,11 +141,7 @@ TypeDeclVisitor
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
 
 
-      | receiverType | TypeT => [
-        receiverType genericArgs isNotEmpty ifTrue: [
-          TO DO: "Ast have generics"
-        ]
-      ]
+      | receiverType | TypeT => []
       |=> []
 
       // get real type for each arg
@@ -276,7 +272,18 @@ MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::Type
     pkg = db packages at: pkgStr, unpackOrPANIC
 
     msgDecl = tuple y
-    msgDecl resolveBodyWithDb: db :pkg
+
+    receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
+    extraTypes::mut Map(String, NivaType) = #{}!
+    | receiverType
+    | TypeT => [
+       receiverType genericArgs forEach: [
+         extraTypes at: it name put: it
+       ]
+    ]
+    |=> []
+
+    msgDecl resolveBodyWithDb: db :pkg :extraTypes
   ]
 ]
 
@@ -287,8 +294,11 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
+MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg extraTypes::mut Map(String, NivaType) = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log
+
+  // put extra types to db
+  db localGenericScope putAll: extraTypes
 
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
@@ -312,6 +322,11 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
   c = createContextWithThisAndArgs do
 
   body resolveBody2: db withContext: c
+
+  // clean up local scope
+  extraTypes keys forEach: [
+    db localGenericScope remove: it
+  ]
 ]
 
 

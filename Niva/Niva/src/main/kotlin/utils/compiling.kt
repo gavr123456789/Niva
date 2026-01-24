@@ -849,11 +849,16 @@ fun putInMainKotlinCode(
                 val padding = 30
                 
                 if (nivaLine != null) {
-                    println(kotlin.text.buildString {
-
-
+                    val methodColWidth = padding - methodLabel.length 
+                    
+                    println(buildString {
                         append(methodLabel)
-                        append(it.methodName.padEnd(padding - methodLabel.length))
+                    
+                        val minWidth = it.methodName.length + 1
+                        val targetWidth = maxOf(methodColWidth, minWidth)
+                    
+                        append(it.methodName.padEnd(targetWidth))
+                    
                         append("\u001B[37m")
                         append(fileLabel)
                         append(nivaLine.file)

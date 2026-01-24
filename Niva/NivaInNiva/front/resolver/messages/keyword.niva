@@ -82,42 +82,87 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     // 1.1) if type does not contains generics but message contains, it seams okay, we can infer them from args
     // 1.2) if type does contains generics but message dont, then its a problem.
     // 2) create a new message, if it contains any generics, current letter to type not empty means it does
-    receiverTypedExpr isIdentifierConstructor ifTrue: [
-      // GENERIC DEFAULT CONSTRUCTOR - register instantiated variant
-      | receiverType
-      | TypeT => [
-          newMethod = kwMsgDB replaceGenericsFromTable: letterToType db: db
 
-          thisIsConstructor = kwMsgDB isConstructorForReceiver: receiverType
-          thisIsConstructor ifTrue: [
-            newReceiverType = newMethod receiverType
-            | newReceiverType
-            | TypeT => [
-              cachedMethodsFromInstGenerics = db instantiatedCache at: receiverType
+    // Instantiate method and its type if needed
+    // replaceGenericsFromTable also instantiates receiver type and registers it in DB
+    dontMangle = | receiverType
+    | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
+    |=> #(String)!
 
-              | cachedMethodsFromInstGenerics
-              | null => TO DO: "oh no the map of instantiated methods is null, it should be filled with emptyMap when type is registered"
-              |=> [
-                cachedMethodsFromInstGenerics at: newMethod name putIfAbsent: newMethod
-                "Methods: Registrated generic instantiation of method: " + newMethod toString, log
-              ]
-              recId = newReceiverType generateId                             // 100% not needed
-              recFromDb = db typesById get: recId orPut: [ newReceiverType ] // same
+    newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle db: db
 
-              Unit
-            ]
-            |=> [TO DO: "Compiler bug, should be TypeT"]
-            // TO DO: "добавить в таблицу хешей получившийся метод, если его там еще нет"
+    // Check if we already have this method instantiation
+    // We look in the instantiated cache of the receiver type (which was just updated/created in replaceGenericsFromTable)
+    // Or if receiver is not generic but method is, we still need to register it somewhere?
+    // Actually replaceGenericsFromTable handles registration of the type.
+
+    // We need to register the method in the receiver type's method table
+    // The receiver type of newMethod IS the instantiated type (or original if no change)
+
+    instReceiverType = newMethod receiverType
+
+    // Add method to cache if not present
+    // But wait, where is the cache for instantiated methods?
+    // It's in db instantiatedCache for instantiated types.
+    // For regular types (if method generic), we should probably put it in typeToMethodNameToMethod?
+    // Or just in generatedMessageDecls is enough for code gen, but for type checking recursion we need it in DB.
+
+    // We can use addMethod:toProtocol:forType: which handles adding to typeToMethodNameToMethod.
+    // But check if it exists first.
+
+    methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr currentPkg: c currentPkg dtc: db dtc
+
+    | methodAlreadyExists
+    | null => [
+       // Method not found, register it
+
+       // 1. Add to DB method cache
+       db addNewMethod: newMethod forType: instReceiverType inProtocol: "generated"
+
+       // 2. Generate MessageDecl for backend
+       originalDecl = kwMsgDB decl
+
+       | originalDecl
+       | null => [] // nothing to generate (e.g. intrinsic or getter without decl)
+       |=> [
+          // Create new MessageDecl
+
+          // create new body with same expressions but empty typed body
+          newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList) typedBody2: {}!
+
+          // create args
+          // args is List<NameAndAstType>
+          // we need to update types to mangled names of resolved types
+          newArgs = originalDecl args mapIndexed: [ i, arg ->
+             // get resolved type from newMethod args
+             resolvedArgType = newMethod args at: i, typeT
+
+             NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: (Token fake))
           ]
+          newDecl = MessageDecl
+            receiver: (AstType name: instReceiverType toMangledName tok: (Token fake))
+            name: newMethod name // mangled name if method was generic
+            args: newArgs
+            returnType: (AstType name: newMethod returnType toMangledName tok: (Token fake))
+            body: newBody
+            isSingleExpr: originalDecl isSingleExpr
+            isConstructor: originalDecl isConstructor
+            token: originalDecl token
+          // Resolve body of the new declaration to ensure types are correct inside
+          newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
-          kwMsgDB <- newMethod
-          //TO DO: "ADD NEW MSG WITH INSTANTIATED PARAMS, we got our new message registered with id, теперь проверь что когда мы вызовем второй раз, замены не произойдет и мы просто достанем его по id" +
-          //" и нужно как то организовать подмену kwMsgDB на новый метод, а то сейчас внизу используется старый"
-
-      ] |=> [ TO DO: "generic constructor for usual non-TypeT receiver"]
-    ] ifFalse: [
-      TO DO: "GENERIC MESSAGE(not constructor) FOR OBJ"
+          // Add to generated list for backend
+          db addGeneratedMessageDecl: newDecl
+       ]
     ]
+    |=> [
+       // already exists, use it
+       // ensure we use the cached one just in case
+       // newMethod <- methodAlreadyExists
+    ]
+
+    kwMsgDB <- newMethod
+
   ] ifFalse: [
     // 1.2) check here
     | receiverType

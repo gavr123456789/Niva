@@ -1,4 +1,4 @@
-Statement toTSFromPkg: currentPkg::String -> String= 
+Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
     | this
     | TypeDecl => [
         // class Person {
@@ -8,12 +8,12 @@ Statement toTSFromPkg: currentPkg::String -> String=
         //     }
         // }
         sb = StringBuilder new
-        
+
         sb append: "export class "
         sb append: this name
         sb append: "{\n"
         sb append: "    constructor("
-        
+
         argsStr = this fields joinWith: "," transform: [it name]
 
         sb append: argsStr
@@ -27,26 +27,31 @@ Statement toTSFromPkg: currentPkg::String -> String=
 
 
         sb append: "    }\n"
-        sb append: "}"   
-        
+        sb append: "}"
+
         // and probably function CLASS_new_C()
         sb toString
     ]
     | EnumDecl => [TO DO]
     | UnionDecl => [TO DO]
     | MessageDecl => [
-        
+
         sb = StringBuilder new
-        methodName = receiver name + "_" + name 
-        
+
+        // resolve receiver type to get mangled name
+        receiverType = db findByTypeName: receiver name inPkg: null
+        mangledReceiverName = receiverType toMangledName
+
+        methodName = mangledReceiverName + "_" + name
+
         sb append: "export function "
         sb append: methodName
 
-        
+
         argsStr = "_this" +
-            (args isNotEmpty ifTrue: [", "] 
+            (args isNotEmpty ifTrue: [", "]
                              ifFalse: [""]) +
-            (args joinWith: ", " 
+            (args joinWith: ", "
                   transform: [it name])
 
 
@@ -54,13 +59,13 @@ Statement toTSFromPkg: currentPkg::String -> String=
         sb append: argsStr
         sb append: ") {\n"
 
-        this body typedBody2 forEach: [expr -> 
+        this body typedBody2 forEach: [expr ->
             sb append: "    "
             sb appendLine: (expr toTSFromPkg: currentPkg)
         ]
 
         sb append: "}"
-        sb toString 
+        sb toString
     ]
     |=> [
         "toTS: skipping top level expr: " + this token toString, log

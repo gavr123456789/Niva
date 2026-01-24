@@ -154,11 +154,23 @@ fun Resolver.resolveMessage(
         }
         //check that it was mutable call for mutable type
         if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
-            val receiverFromScope = previousAndCurrentScope[receiver.name]
-            if (receiverFromScope != null && !receiverFromScope.isMutable) {
-                val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
-                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
+            when (receiver) {
+                is IdentifierExpr -> {
+                    val receiverFromScope = previousAndCurrentScope[receiver.name]
+                    if (receiverFromScope != null && !receiverFromScope.isMutable) {
+                        val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
+                        statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
+                    }
+                }
+                is MessageSend -> {
+                    val receiverType = receiver.receiver.type!!
+                    if (!receiverType.isMutable) {
+                        statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
+                    }
+                }
             }
+
+
         }
         //
 
