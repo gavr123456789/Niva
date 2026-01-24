@@ -287,7 +287,7 @@ extend TyperDB [
     | null => []
     |=> [
        methodsOfGeneric values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle db: this
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
           instMethods at: newM name put: newM
        ]
     ]
@@ -298,7 +298,7 @@ extend TyperDB [
     | null => []
     |=> [
        constructorsOfGeneric values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle db: this
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
           instConstructors at: newM name put: newM
        ]
     ]

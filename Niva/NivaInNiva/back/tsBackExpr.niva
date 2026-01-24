@@ -178,7 +178,11 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
                 selectorFromArgs = args joinWith: "_" transform: [
                     it name name
                 ]
-                dbMsg receiverType toMangledName + "_" + selectorFromArgs
+                suffix = dbMsg name substringAfter: "__"
+                hasSuffix = suffix != dbMsg name
+                suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+
+                dbMsg receiverType toMangledName + "_" + selectorFromArgs + suffixStr
             ] ifTrue: [
                 "new " + dbMsg receiverType name
             ]

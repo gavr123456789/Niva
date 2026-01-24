@@ -188,7 +188,7 @@ extend NivaMethod [
     ]
 
 
-  on replaceGenericsFromTable: letterToType::Map(String, NivaType) dontMangle::Set(String) db::TyperDB -> NivaMethod = [
+  on replaceGenericsFromTable: letterToType::Map(String, NivaType) dontMangle::Set(String) mangle::Bool db::TyperDB -> NivaMethod = [
 
     recType = receiverType
     retType = returnType
@@ -225,7 +225,7 @@ extend NivaMethod [
          dontMangle contains: it typeT name, not
     ]
 
-    newMethodName = genericsToMangle isNotEmpty
+    newMethodName = (mangle and: genericsToMangle isNotEmpty)
       ifTrue: [
         genericMangled = genericsToMangle map: [
           // find what this generic arg resolves to

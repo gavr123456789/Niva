@@ -42,7 +42,16 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
         receiverType = db findByTypeName: receiver name inPkg: null
         mangledReceiverName = receiverType toMangledName
 
-        methodName = mangledReceiverName + "_" + name
+        suffix = name substringAfter: "__"
+        hasSuffix = suffix != name
+        baseName = hasSuffix ifTrue: [name substringBefore: "__"] ifFalse: [name]
+
+        // if keyword (has colons), reconstruct baseName from args
+        finalBaseName = (baseName contains: ":")
+            ifTrue: [args joinWith: "_" transform: [it name]]
+            ifFalse: [baseName]
+
+        methodName = mangledReceiverName + "_" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
 
         sb append: "export function "
         sb append: methodName

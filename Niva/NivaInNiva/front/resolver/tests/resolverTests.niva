@@ -327,3 +327,26 @@ Test checkGenerics = [
     |=> [ Assert that: false equals: true ]
   ] do
 ]
+
+Test testGenericsMethodWithTwoGenerics = [
+  fileMain = """
+    type Box x: T
+    box = Box x: 42
+    Box foo::T bar::G -> T = [
+        ^ foo
+    ]
+    res = box foo: 1 bar: 6
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  typedAst = result entryPointExpressions
+
+  // Check 'res' type
+  resDecl = typedAst last
+  | resDecl
+  | VarDeclarationT => [
+      t = resDecl value typeInfo t
+      Assert that: t name equals: "Int"
+  ]
+  |=> [ Assert that: false equals: true ]
+]

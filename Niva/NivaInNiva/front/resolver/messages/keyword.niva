@@ -89,7 +89,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
     |=> #(String)!
 
-    newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle db: db
+    newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: true db: db
 
     // Check if we already have this method instantiation
     // We look in the instantiated cache of the receiver type (which was just updated/created in replaceGenericsFromTable)
