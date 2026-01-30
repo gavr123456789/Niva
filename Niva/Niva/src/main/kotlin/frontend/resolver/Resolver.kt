@@ -1185,7 +1185,7 @@ class Resolver(
     val projectName: String,
 
     var statements: MutableList<Statement>,
-    var currentResolvingFileName: File,
+    var currentResolvingFileName: File, // useful for lsp
 
     // the paths to files except main
     val otherFilesPaths: MutableList<File> = mutableListOf(),

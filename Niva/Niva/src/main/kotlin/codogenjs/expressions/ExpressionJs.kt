@@ -1,6 +1,7 @@
 package main.codogenjs
 
 import main.frontend.parser.types.ast.*
+import main.utils.GlobalVariables
 
 fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpressionContext: Boolean = false): String = buildString {
     when (this@generateJsExpression) {
@@ -402,23 +403,23 @@ private fun emitAsTemplateLiteral(raw: String): String {
 }
 
 private fun Expression.jsSourceComment(): String {
-    // Если source map builder доступен, записываем mapping
-    val builder = JsCodegenContext.sourceMapBuilder
-    if (builder != null) {
-        val t = this.token
-        // Записываем mapping для текущей позиции
-        // sourceLine в Niva начинается с 1, в source map с 0
-        builder.addMapping(
-            generatedLine = builder.currentGeneratedLine,
-            generatedColumn = builder.currentGeneratedColumn,
-            sourceFile = t.file,
-            sourceLine = t.line - 1,
-            sourceColumn = 0
-        )
-    }
-    
-    // Больше не генерируем комментарии
-    return ""
+//    val builder = JsCodegenContext.sourceMapBuilder
+//    if (builder != null) {
+//        val t = this.token
+//        builder.addMapping(
+//            generatedLine = builder.currentGeneratedLine,
+//            generatedColumn = builder.currentGeneratedColumn,
+//            sourceFile = t.file,
+//            sourceLine = t.line - 1,
+//            sourceColumn = 0
+//        )
+//    }
+//
+//    return ""
+
+    if (!GlobalVariables.emitSourceComments) return ""
+    val t = this.token
+    return "\n\t// ${t.file.name}:${t.line}\n"
 }
 
 // Вспомогательная функция для type-match в JS.

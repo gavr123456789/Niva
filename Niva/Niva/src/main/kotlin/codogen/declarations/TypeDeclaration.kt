@@ -221,7 +221,7 @@ private fun StringBuilder.generateToStringOverride(
         append(sb)
         appendLine("\n    companion object {")
     } else {
-        // Generate default toString implementation
+        // generate default toString implementation
         generateDefaultToString(declaration, receiverType)
     }
 }
@@ -253,7 +253,7 @@ private fun StringBuilder.generateDefaultToString(
 
     val generateComplexField = { it: TypeFieldAST ->
         "    ${it.name}: (\n" +
-            "\${${it.name}.toString().prependIndent(\"        \")}\n" +
+                $$"${$${it.name}.toString().prependIndent(\"        \")}\n" +
             "    )"
     }
 

@@ -83,7 +83,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
         val switch = this@generateSwitch.switch
         val type = switch.type
         if (type is Type.Union && type.isError && this@generateSwitch.kind == ControlFlowKind.ExpressionTypeMatch) {
-            append("    else -> throw Exception(\"Compiler bug, non exhaustive switch on error, got \${$switch}\")")
+            append($$"    else -> throw Exception(\"Compiler bug, non exhaustive switch on error, got ${$$switch}\")")
         }
         // end of when
         append("}\n")

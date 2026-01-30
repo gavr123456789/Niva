@@ -338,7 +338,7 @@ fun generateAnonymousObject(keywordMsg: KeywordMsg): String = buildString {
         append("\n")
         keywordMsg.args.forEach { arg ->
             val addQuotes = if (arg.keywordArg.type?.name == "String") "\"" else ""
-            append("    ${arg.name}: $addQuotes\$${arg.name}$addQuotes\n")
+            append($$"    $${arg.name}: $$addQuotes$$${arg.name}$$addQuotes\n")
         }
     }
     append("\"\"\".trimEnd()\n")

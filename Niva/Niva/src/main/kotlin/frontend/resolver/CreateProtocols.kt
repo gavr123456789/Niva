@@ -1,4 +1,4 @@
-@file:Suppress("UNUSED_PARAMETER", "unused")
+@file:Suppress("UNUSED_PARAMETER", "unused", "EnumEntryName", "EnumEntryName", "EnumEntryName")
 
 package frontend.resolver
 
@@ -767,7 +767,7 @@ fun createListProtocols(
 
             createForEachKeywordIndexed(intType, itType, unitType, """
                 {1 2 3} forEachIndexed: [i, it -> 
-                    "${"\$i"} element is ${"\$it"}" echo
+                    "${$$"$i"} element is ${$$"$it"}" echo
                 ] 
             """.trimIndent()),
             createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),

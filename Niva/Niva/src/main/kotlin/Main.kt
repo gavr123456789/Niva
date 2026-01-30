@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+//@file:Suppress("unused")
 
 package main
 
@@ -20,6 +20,16 @@ fun sus() {
     
 }
 fun main(args: Array<String>) {
+
+    var x: Int = 0
+
+    val n = 4
+    if (n == 1) x = 1
+    else if (n == 2) x = 2
+    else x = 3
+
+    println(x)
+
 //    val ls = LS { println("Niva LS: $it") }
 //    val fromJson = readFromJson("devModeData.json")
 //

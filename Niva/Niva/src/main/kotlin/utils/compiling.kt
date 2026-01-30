@@ -481,7 +481,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         }
     """.trimIndent() else "fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int) {}"
 
-    val nivaStd = """
+    val nivaStd = $$"""
         
         
         import kotlinx.serialization.json.JsonArray
@@ -496,7 +496,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         import java.util.SortedMap // works on desktop target, but not on native!!!
         
         // STD
-        $jvmSpecific
+        $$jvmSpecific
         
         
         object Compiler {
@@ -622,12 +622,12 @@ object NivaDevModeDB {
 //            override fun toString(): String {
 //                val fields = fields.map { (k, v) ->
 //                    val w = if (v is Dynamic) {
-//                        "    ${"$"}k: \n" + v.toString().prependIndent("        ")
-//                    } else "    ${"$"}k: ${"$"}v"
+//                        "    $k: \n" + v.toString().prependIndent("        ")
+//                    } else "    $k: $v"
 //                    w
 //                }.joinToString("\n")
-//                return "Dynamic${"$"}name\n" +
-//                        "${"$"}fields"
+//                return "Dynamic$name\n" +
+//                        "$fields"
 //            }
 //        }
         
@@ -658,7 +658,7 @@ object NivaDevModeDB {
         }
 
 
-        const val INLINE_REPL = $quote$inlineReplPath$quote
+        const val INLINE_REPL = $$quote$$inlineReplPath$$quote
 
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
