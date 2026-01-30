@@ -42,13 +42,13 @@ fun Resolver.resolveKeywordMsg(
         resolveSingle((statement.receiver), previousAndCurrentScope, statement)
         currentLevel--
     }
-    var receiverType = statement.receiver.type
+    val receiverType = statement.receiver.type
         ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
 
     // resolve selectorName (but not for Object, it handles args differently)
     val selectorName = statement.args.map { it.name }.toCamelCase()
 
-    // Special handling for Object type - creates anonymous object with keyword arguments as fields
+    // special handling for Object type - creates anonymous object with keyword arguments as fields
     val receiver = statement.receiver
     if (receiverType.name == "Object" && receiver is IdentifierExpr && receiver.isType) {
         // Object can only accept keyword messages
@@ -553,7 +553,7 @@ fun Resolver.resolveKeywordMsg(
 
             statement.type = returnType//= addErrorEffect(msgTypeFromDB, returnType, statement)
 
-            // Generate dynamic or not
+            // generate dynamic or not
             if ((statement.selectorName == "toDynamic" || statement.selectorName == "fromDynamic") && receiverType is Type.UserLike) {
                 receiverType.needGenerateDynamic = true
             }
@@ -795,8 +795,8 @@ fun resolveReturnTypeIfGeneric(
             realTypeFromTable
         }
         is Type.UserLike if returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty() -> {
-            // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
-            // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
+            // what if a regular keyword's return type has unresolved generic parameters?
+            // we go through each one; if it's unresolved, we add it from the table; if it's resolved, we add it like this
             replaceAllGenericsToRealTypeRecursive(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
         }
 

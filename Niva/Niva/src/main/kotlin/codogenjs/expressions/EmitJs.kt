@@ -8,12 +8,8 @@ import main.frontend.parser.types.ast.KeywordMsg
 
 const val EMIT_JS_PRAGMA = "emitJs"
 
-/**
- * Полная замена вызова сообщения на сырой JS-код из pragma `emitJs`.
- * Подстановки:
- *  - $0 — текущий ресивер (выражение)
- *  - $1..$N — аргументы keyword-сообщения (в порядке args)
- */
+
+// $0 - receiver, $N - argument
 fun Message.tryEmitJsReplacement(currentReceiverExpr: String): String? {
     val pragma = pragmas.firstOrNull { it is KeyPragma && it.name == EMIT_JS_PRAGMA } as? KeyPragma ?: return null
     val value = pragma.value as? LiteralExpression.StringExpr

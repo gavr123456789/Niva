@@ -3,43 +3,11 @@ package main.codogenjs
 import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
+import kotlinx.serialization.json.JsonNull.content
 import main.frontend.parser.types.ast.Statement
 import java.io.File
 
-/**
- * Генерация JS-проекта по аналогии с generateKtProject.
- *
- * Важно понимать устройство проектов Niva:
- *  - ВСЕ пользовательские типы/функции лежат в "обычных" пакетах (часто с именем файла main.niva),
- *  - специальный пакет MAIN_PKG_NAME ("mainNiva") содержит только top-level выражения
- *    (resolver.topLevelStatements) и импорты на пользовательские пакеты.
- *
- * Поэтому для JS мы делаем две вещи:
- *  1) для каждого "обычного" пакета с декларациями генерируем <pkg>.js;
- *  2) для MAIN_PKG_NAME всегда генерируем main.js, в который кладём ТОЛЬКО
- *     topLevelStatements, а не декларации типов.
- */
-fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements: List<Statement>) {
-    if (!outputDir.exists()) {
-        outputDir.mkdirs()
-    }
-
-    // 1 generate declarations from pkgs
-    mainProject.packages.values
-        .filter { it.packageName != MAIN_PKG_NAME && it.declarations.isNotEmpty() }
-        .forEach { pkg ->
-            generateJsFileForPackage(outputDir, pkg, emptyList())
-        }
-
-
-    // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
-    val mainPkg = mainProject.packages[MAIN_PKG_NAME]
-    if (topLevelStatements.isNotEmpty() && mainPkg != null) {
-        generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
-    }
-
-    // 3 generate niva std for js
-    val content = $$"""
+const val content = $$"""
 export function throwWithMessage(msg) {
     throw new Error(msg)
 }        
@@ -117,7 +85,7 @@ export function Int__downToDo(self, downTo, block) {
 export function Any__toString(value, indent = 0) {
     const space = "    ".repeat(indent);
 
-    // Примитивы
+    // primitives
     if (value === null) return "null";
     if (typeof value !== "object") {
         if (typeof value === "string") return `"${value}"`;
@@ -126,7 +94,7 @@ export function Any__toString(value, indent = 0) {
 
 
 
-    // Массивы
+    // arrays
     if (Array.isArray(value)) {
         if (value.length === 0) return "{}";
         let result = "{\n";
@@ -162,7 +130,7 @@ export function Any__toString(value, indent = 0) {
         return result;
     }
 
-    // Обычные объекты
+    // regular objects
     const entries = Object.entries(value);
 
     let result = "";
@@ -1303,7 +1271,45 @@ export const List__mut__find = List__find;
 export const List__mut__viewFromTo = List__viewFromTo;
 
 
-    """.trimIndent()
+"""
+
+
+
+/**
+ * Generates a JS project similarly to generateKtProject.
+ *
+ * It’s important to understand how Niva projects are structured:
+ *  - all user-defined types and functions live in “regular” packages
+ *    (often the ones corresponding to a main.niva file);
+ *  - the special package MAIN_PKG_NAME ("mainNiva") contains only
+ *    top-level expressions (resolver.topLevelStatements) and imports
+ *    of user packages.
+ *
+ * Because of that, JS generation follows two rules:
+ *  1) for every “regular” package that contains declarations, we produce a <pkg>.js file;
+ *  2) for MAIN_PKG_NAME we always generate main.js, and it contains
+ *     only the top-level expressions, not any type declarations.
+ */
+fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements: List<Statement>) {
+    if (!outputDir.exists()) {
+        outputDir.mkdirs()
+    }
+
+    // 1 generate declarations from pkgs
+    mainProject.packages.values
+        .filter { it.packageName != MAIN_PKG_NAME && it.declarations.isNotEmpty() }
+        .forEach { pkg ->
+            generateJsFileForPackage(outputDir, pkg, emptyList())
+        }
+
+
+    // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
+    val mainPkg = mainProject.packages[MAIN_PKG_NAME]
+    if (topLevelStatements.isNotEmpty() && mainPkg != null) {
+        generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
+    }
+
+    // 3 generate niva std for js
 
     val commonFile = File(outputDir, "common.js")
     if (!commonFile.exists()) {
@@ -1312,25 +1318,24 @@ export const List__mut__viewFromTo = List__viewFromTo;
 }
 
 private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatements: List<Statement>) {
-	// Для MAIN_PKG_NAME генерируем отдельный файл mainNiva.js только с топ-левел выражениями.
-	// Для обычных пакетов имя файла совпадает с именем пакета.
+	// generate mainNiva.js for MAIN_PKG_NAME with top-level expressions only
+	// use package name for regular packages
 	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "$MAIN_PKG_NAME.js" else "${pkg.packageName}.js"
     val file = File(baseDir, fileName)
 
-    // Инициализируем source map builder
+    // initialize source map builder
     val sourceMapBuilder = SourceMapBuilder(fileName)
     JsCodegenContext.sourceMapBuilder = sourceMapBuilder
 
     val code = buildString {
         val imports = generateJsImports(pkg)
         append(imports)
-        // Обновляем позицию после imports
+        // update position after imports
         sourceMapBuilder.advancePosition(imports)
 
-        // Для обычных пакетов берём только декларации.
-        // Для MAIN_PKG_NAME — только top-level стейтменты (см. generateJsProject выше),
-        // поэтому extraStatements для него содержит resolver.topLevelStatements, а
-        // pkg.declarations, как правило, пуст.
+        // use declarations for regular packages
+        // for MAIN_PKG_NAME use top-level statements (extraStatements)
+        // since pkg.declarations is usually empty
         val bodyStatements: List<Statement> = when {
             pkg.packageName == MAIN_PKG_NAME -> extraStatements
             extraStatements.isNotEmpty() -> pkg.declarations + extraStatements
@@ -1349,26 +1354,23 @@ private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatement
             sourceMapBuilder.advancePosition("\n")
         }
         
-        // Добавляем ссылку на source map
+        // add reference to source map
         append("//# sourceMappingURL=")
         append(fileName)
         append(".map")
-        // Не обновляем позицию для sourceMappingURL комментария
+        // do not update position for sourceMappingURL comment
     }
 
     file.writeText(code)
     
-    // Записываем source map файл
+    // write source map file
     val sourceMapFile = File(baseDir, "$fileName.map")
     sourceMapFile.writeText(sourceMapBuilder.toJson())
     
-    // Очищаем context
+    // clear context
     JsCodegenContext.sourceMapBuilder = null
 }
 
-/**
- * Генерация import-строк для JS из Package.imports/importsFromUse.
- */
 private fun generateJsImports(pkg: Package): String = buildString {
     val allImports = (pkg.imports + pkg.importsFromUse)
         .filter { it.isNotBlank() && it != pkg.packageName && it != "core" && it != "common"}

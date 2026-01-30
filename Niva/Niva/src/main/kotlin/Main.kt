@@ -21,15 +21,6 @@ fun sus() {
 }
 fun main(args: Array<String>) {
 
-    var x: Int = 0
-
-    val n = 4
-    if (n == 1) x = 1
-    else if (n == 2) x = 2
-    else x = 3
-
-    println(x)
-
 //    val ls = LS { println("Niva LS: $it") }
 //    val fromJson = readFromJson("devModeData.json")
 //
@@ -48,7 +39,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/Kotlin/Niva/Niva/Niva/examples/Main/main.niva")
+//    val args = arrayOf("run","")
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {
@@ -65,7 +56,6 @@ fun main(args: Array<String>) {
     //        println(e.scope)
     //    }
 
-    // sasat
     if (help(args))
         return
     run(args)
@@ -75,7 +65,6 @@ fun main(args: Array<String>) {
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
 
-    //
     // readJar("/home/gavr/.gradle/caches/modules-2/files-2.1/io.github.jwharm.javagi/gtk/0.9.0/2caa1960a0bec1c8ed7127a6804693418441f166/gtk-0.9.0.jar")
 
     val startTime = System.currentTimeMillis()

@@ -15,7 +15,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
             append(generateJsMessageCall())
         }
         is IdentifierExpr -> {
-            // Внутри методов Niva `this` ссылается на ресивер, в JS это параметр `receiver`
+            // replace this with _receiver
             if (names.count() == 1 && name == "this") {
                 append("_receiver")
             } else if (names.count() == 1) {
@@ -61,7 +61,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
         }
 
         is ControlFlow.If -> {
-            // If как выражение → IIFE, чтобы вернуть значение
+            // If expressions to IIFE
             val ifNode = this@generateJsExpression
             val effectiveKind = if (forceExpressionContext && ifNode.kind == ControlFlowKind.Statement) {
                 ControlFlowKind.Expression
@@ -74,7 +74,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                 ControlFlowKind.Expression -> {
                     append("(() => {")
 
-                    // Основные ветки if / else if
+                    // main if / else if branches
                     ifNode.ifBranches.forEach { br ->
                         when (br) {
                             is IfBranch.IfBranchSingleExpr -> {
@@ -94,7 +94,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                         }
                     }
 
-                    // else-ветка (если есть)
+                    // else branch (if any)
                     val elseBranch = ifNode.elseBranch
                     if (elseBranch != null) {
                         if (elseBranch.size == 1 && elseBranch[0] is Expression) {
@@ -112,7 +112,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append(" })()")
                 }
                 ControlFlowKind.Statement -> {
-                    // Обычный if-statement без IIFE
+                    // usual if-statement with no IIFE
                     val ifNode = ifNode
                     buildString {
                         val generateIfBranch = { ifBranch: IfBranch ->
@@ -134,13 +134,13 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                         generateIfBranch(first)
                         append("}")
 
-                        // else if ветки
+                        // else if branches
                         ifNode.ifBranches.drop(1).forEach { br ->
                             append(" else if (", br.ifExpression.generateJsExpression(), ") {\n")
                             generateIfBranch(br)
                         }
 
-                        // else-ветка
+                        // else-branch
                         val elseBranch = ifNode.elseBranch
                         if (elseBranch != null) {
                             append(" else {\n")
@@ -155,7 +155,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
             }
         }
         is ControlFlow.Switch -> {
-            // Switch для значений и type-match
+            // switch for values \ type-match
             val sw = this@generateJsExpression
             val effectiveKind = if (forceExpressionContext && sw.kind == ControlFlowKind.Statement) {
                 ControlFlowKind.Expression
@@ -164,7 +164,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
             }
             when (effectiveKind) {
                 ControlFlowKind.ExpressionTypeMatch -> {
-                    // type-match как выражение через IIFE и instanceof
+                    // type-match as expression via IIFE and instanceof
                     append("(() => {\n")
                     append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
 
@@ -185,7 +185,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append("})()")
                 }
                 ControlFlowKind.StatementTypeMatch -> {
-                    // type-match как statement через if/else-if/else с instanceof
+                    // type-match as statement via if/else-if/else with instanceof
                     append("{")
                     append("\n")
                     append("    const __tmp = ", sw.switch.generateJsExpression(), ";\n")
@@ -209,12 +209,12 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append("}")
                 }
                 ControlFlowKind.Expression -> {
-                    // Switch как выражение → IIFE со switch и return в каждой ветке
+                    // switch as expr → IIFE via switch and return in each branch
                     append("(() => {\n")
                     append("    switch (", sw.switch.generateJsExpression(), ") {\n")
 
                     sw.ifBranches.forEach { br ->
-                        // У одной ветки может быть несколько значений (otherIfExpressions)
+                        // one branch may have multiple values (otherIfExpressions)
                         val allConds = listOf(br.ifExpression) + br.otherIfExpressions
                         allConds.forEach { cond ->
                             append("        case ", cond.generateJsExpression(), ":\n")
@@ -234,7 +234,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     append("})()")
                 }
                 ControlFlowKind.Statement -> {
-                    // Обычный switch-statement без IIFE
+                    // usual switch-statement with no IIFE
                     append("switch (", sw.switch.generateJsExpression(), ") {\n")
 
                     sw.ifBranches.forEach { br ->
@@ -272,17 +272,17 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
         }
 
         is CodeBlock -> {
-            // лямбда → JS-функция
+            // lambda → JS-function
             val lambdaType = type as? frontend.resolver.Type.Lambda
 
-            // Имена параметров лямбды:
-            // 1) сначала пытаемся взять их из AST (inputList), как было раньше;
-            // 2) если AST-параметров нет (синтаксис вида `[ it echo ]`),
-            //    пытаемся восстановить имена из типа лямбды (Type.Lambda.args),
-            //    который уже был построен резолвером (в т.ч. неявный `it`).
+            // lambda parameter names:
+            // 1) try to get them from AST (inputList), as was before;
+            // 2) if AST-parameters are absent (syntax like `[ it echo ]`),
+            //    try to restore names from lambda type (Type.Lambda.args),
+            //    which was already built by resolver (including implicit `it`).
             val argsFromAst: List<String> = when {
-                // расширяющие лямбды: первый аргумент в типе — `this`,
-                // он будет ресивером при вызове и не должен попадать в список параметров функции
+                // extension lambdas: first argument in type is `this`,
+                // it will be receiver on call and should not be in function params list
                 lambdaType?.extensionOfType != null -> inputList.drop(1).map { it.name }
                 else -> inputList.map { it.name }
             }
@@ -306,7 +306,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
 
             // last expr returns
             if (statements.size == 1 && statements[0] is Expression && (statements[0] as Expression).type?.name != "Unit") { // remove () => if () {}, since if isn't expression
-                // Краткая форма: () => expr
+                // short form: () => expr
                 append((statements[0] as Expression).generateJsExpression())
             } else {
                 append("{\n")
@@ -314,7 +314,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                 val lastIndex = statements.lastIndex
                 statements.forEachIndexed { index, st ->
                     when {
-                        // Последний Expression → return expr
+                        // last expr -> return expr
                         index == lastIndex && st is Expression && lambdaType?.returnType?.name != "Unit" -> {
                             append("    return (")
                             append(st.generateJsExpression(), ")")
@@ -325,7 +325,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                             append(";")
                         }
 
-                        // Остальные стейтменты генерим как есть через общий кодоген
+                        // other statements are generated as is via common codegen
                         else -> {
                             val code = codegenJs(listOf(st), 1)
                             if (code.isNotEmpty()) {
@@ -347,11 +347,11 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
     }
 }
 
-// Эмиссия строк для JS: обычные строки в двойных кавычках, многострочные — template literal в бэктиках
+// template literal in backticks
 private fun emitJsString(node: LiteralExpression.StringExpr): String {
     val lexeme = node.token.lexeme
     val isTriple = lexeme.startsWith("\"\"\"")
-    // Сырой контент без внешних кавычек (для тройных — срезаем по 3, для обычных — по 1)
+    // """ means raw string
     val trim = if (isTriple) 3 else 1
     val raw = if (lexeme.length >= trim * 2) lexeme.substring(trim, lexeme.length - trim) else ""
 
@@ -388,9 +388,9 @@ private fun emitAsTemplateLiteral(raw: String): String {
             '`' -> sb.append("\\`")
             '\\' -> sb.append("\\\\")
             '$' -> {
-                // экранируем начало интерполяции
+                // escaping interpolation
                 if (i + 1 < raw.length && raw[i + 1] == '{') {
-                    sb.append("\\") // превратит в \${
+                    sb.append("\\")
                 }
                 sb.append('$')
             }
@@ -402,6 +402,7 @@ private fun emitAsTemplateLiteral(raw: String): String {
     return sb.toString()
 }
 
+// TODO, idk wtf is this, was a comment source map generation
 private fun Expression.jsSourceComment(): String {
 //    val builder = JsCodegenContext.sourceMapBuilder
 //    if (builder != null) {
@@ -422,25 +423,17 @@ private fun Expression.jsSourceComment(): String {
     return "\n\t// ${t.file.name}:${t.line}\n"
 }
 
-// Вспомогательная функция для type-match в JS.
-// Принимает выражение-типа (например, Int, String, Bool, Person) и имя временной переменной с значением.
-// Возвращает строку с JS-условием для проверки типа (__tmp).
 private fun Expression.generateJsTypeMatchCondition(tmpVarName: String): String = when (this) {
     is IdentifierExpr -> {
-        // Имя типа без пакета
         val typeName = this.name
 
         when (typeName) {
-            // Числовые типы → typeof === "number"
             "Int", "Float", "Double", "Long" -> "typeof $tmpVarName === \"number\""
 
-            // Строковые типы (Char в JS тоже строка длины 1)
             "String", "Char" -> "typeof $tmpVarName === \"string\""
 
-            // Булев тип
             "Bool" -> "typeof $tmpVarName === \"boolean\""
 
-            // Any/Dynamic — совпадает с любым значением
             "Any", "Dynamic" -> "true"
 
             else -> "$tmpVarName instanceof ${typeName.ifJsKeywordPrefix()}"
@@ -471,7 +464,6 @@ private fun StringBuilder.appendIfBranchNoReturn(br: IfBranch) {
     }
 }
 
-// Вспомогательная функция для генерации веток switch/if в режиме выражения (с return)
 private fun StringBuilder.appendIfBranchWithReturn(br: IfBranch, forceExpressionContext: Boolean = false) {
     when (br) {
         is IfBranch.IfBranchSingleExpr -> {
@@ -483,7 +475,6 @@ private fun StringBuilder.appendIfBranchWithReturn(br: IfBranch, forceExpression
     }
 }
 
-// Вспомогательная функция для генерации elseBranch с return-выражениями
 private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>, forceExpressionContext: Boolean = false) {
     if (elseBranch.size == 1 && elseBranch[0] is Expression) {
         val elseExpr = elseBranch[0] as Expression

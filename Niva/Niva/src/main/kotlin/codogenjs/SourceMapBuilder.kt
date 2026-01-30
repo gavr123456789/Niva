@@ -2,27 +2,13 @@ package main.codogenjs
 
 import java.io.File
 
-/**
- * Строит Source Map V3 для JS-кодогена Niva.
- * 
- * Source Map формат:
- * {
- *   "version": 3,
- *   "file": "output.js",
- *   "sourceRoot": "",
- *   "sources": ["input.niva"],
- *   "names": [],
- *   "mappings": "AAAA,CAAC,CAAC..."
- * }
- * 
- * mappings — это строка Base64 VLQ, описывающая соответствия между позициями в JS и исходниках.
- */
+
 class SourceMapBuilder(private val generatedFileName: String) {
     private val sources = mutableListOf<String>()
     private val sourceToIndex = mutableMapOf<String, Int>()
     private val mappings = mutableListOf<Mapping>()
     
-    // Текущая позиция в генерируемом JS файле
+    // current position in generated js file
     var currentGeneratedLine = 0
         private set
     var currentGeneratedColumn = 0
@@ -36,31 +22,26 @@ class SourceMapBuilder(private val generatedFileName: String) {
         val sourceColumn: Int
     )
     
-    /**
-     * Добавляет mapping между позицией в сгенерированном JS и исходном Niva файле.
-     */
-    fun addMapping(
-        generatedLine: Int,
-        generatedColumn: Int,
-        sourceFile: File,
-        sourceLine: Int,
-        sourceColumn: Int = 0
-    ) {
-        val sourceIndex = getOrAddSource(sourceFile.name)
-        mappings.add(
-            Mapping(
-                generatedLine = generatedLine,
-                generatedColumn = generatedColumn,
-                sourceIndex = sourceIndex,
-                sourceLine = sourceLine,
-                sourceColumn = sourceColumn
-            )
-        )
-    }
+
+//    fun addMapping(
+//        generatedLine: Int,
+//        generatedColumn: Int,
+//        sourceFile: File,
+//        sourceLine: Int,
+//        sourceColumn: Int = 0
+//    ) {
+//        val sourceIndex = getOrAddSource(sourceFile.name)
+//        mappings.add(
+//            Mapping(
+//                generatedLine = generatedLine,
+//                generatedColumn = generatedColumn,
+//                sourceIndex = sourceIndex,
+//                sourceLine = sourceLine,
+//                sourceColumn = sourceColumn
+//            )
+//        )
+//    }
     
-    /**
-     * Обновляет текущую позицию в генерируемом файле после добавления текста.
-     */
     fun advancePosition(text: String) {
         for (ch in text) {
             if (ch == '\n') {
@@ -80,9 +61,6 @@ class SourceMapBuilder(private val generatedFileName: String) {
         }
     }
     
-    /**
-     * Генерирует JSON source map в формате V3.
-     */
     fun toJson(): String {
         val mappingsString = encodeMappings()
         
@@ -99,20 +77,20 @@ class SourceMapBuilder(private val generatedFileName: String) {
 }
         """.trimIndent()
     }
-    
+
     /**
-     * Кодирует mappings в Base64 VLQ формат.
-     * 
-     * Каждый сегмент содержит:
-     * 1. Колонка в generated файле (относительно предыдущей на той же строке)
-     * 2. Индекс source файла (относительно предыдущего)
-     * 3. Строка в source файле (относительно предыдущей)
-     * 4. Колонка в source файле (относительно предыдущей)
+     * Encodes mappings in the Base64 VLQ format.
+     *
+     * Each segment contains:
+     * 1. The column in the generated file (relative to the previous one on the same line)
+     * 2. The index of the source file (relative to the previous one)
+     * 3. The line in the source file (relative to the previous one)
+     * 4. The column in the source file (relative to the previous one)
      */
     private fun encodeMappings(): String {
         if (mappings.isEmpty()) return ""
         
-        // Сортируем по generated line, потом по generated column
+        // Sort by generated line, then by generated column
         val sorted = mappings.sortedWith(compareBy({ it.generatedLine }, { it.generatedColumn }))
         
         val result = StringBuilder()
@@ -123,32 +101,32 @@ class SourceMapBuilder(private val generatedFileName: String) {
         var prevSourceColumn = 0
         
         for (mapping in sorted) {
-            // Добавляем ; для новых строк
+            // Add ; for new lines
             while (prevGeneratedLine < mapping.generatedLine) {
                 result.append(';')
                 prevGeneratedLine++
                 prevGeneratedColumn = 0
             }
             
-            // Разделитель между сегментами на одной строке
+            // Add , for new segments on the same line
             if (result.isNotEmpty() && result.last() != ';') {
                 result.append(',')
             }
             
-            // Сегмент из 5 значений:
-            // 1. generated column (относительно предыдущего на этой строке)
+            // Segment with 5 values:
+            // 1. generated column (relative to the previous one on the same line)
             result.append(encodeVLQ(mapping.generatedColumn - prevGeneratedColumn))
             prevGeneratedColumn = mapping.generatedColumn
             
-            // 2. source file index (относительно предыдущего)
+            // 2. source file index (relative to the previous one)
             result.append(encodeVLQ(mapping.sourceIndex - prevSourceIndex))
             prevSourceIndex = mapping.sourceIndex
             
-            // 3. source line (относительно предыдущего)
+            // 3. source line (relative to the previous one)
             result.append(encodeVLQ(mapping.sourceLine - prevSourceLine))
             prevSourceLine = mapping.sourceLine
             
-            // 4. source column (относительно предыдущего)
+            // 4. source column (relative to the previous one)
             result.append(encodeVLQ(mapping.sourceColumn - prevSourceColumn))
             prevSourceColumn = mapping.sourceColumn
         }
@@ -157,13 +135,13 @@ class SourceMapBuilder(private val generatedFileName: String) {
     }
     
     /**
-     * Кодирует целое число в Base64 VLQ.
-     * Variable-Length Quantity с основанием 64.
+     * Encodes an integer in Base64 VLQ.
+     * Variable-Length Quantity with base 64.
      */
     private fun encodeVLQ(value: Int): String {
         val result = StringBuilder()
         
-        // Преобразуем в signed VLQ: младший бит = знак
+        // Convert to signed VLQ: least significant bit = sign
         var vlq = if (value < 0) ((-value) shl 1) or 1 else value shl 1
         
         do {

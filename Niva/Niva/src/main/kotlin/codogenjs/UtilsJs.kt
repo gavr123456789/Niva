@@ -2,14 +2,13 @@ package main.codogenjs
 
 import frontend.resolver.Type
 
-// Преобразуем типы в безопасные имена для функций JS
 internal fun Type.toJsMangledName(): String = when (this) {
     is Type.NullableType -> this.realType.toJsMangledName() + "_opt"
     is Type.InternalType -> this.name
     is Type.UnresolvedType -> "Unresolved"
     is Type.Lambda -> "Fn__" + this.args.joinToString("__") { it.type.toJsMangledName() } + "__ret__" + this.returnType.toJsMangledName()
     is Type.UserLike -> buildString {
-        // core/common пакеты опускаем
+        // skip core/common
         if (this@toJsMangledName.pkg.isNotEmpty() && this@toJsMangledName.pkg != "core" && this@toJsMangledName.pkg != "common") {
             append(this@toJsMangledName.pkg.replace('.', '_').replace("::", "_"), "_")
         }

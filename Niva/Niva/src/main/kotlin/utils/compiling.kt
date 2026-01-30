@@ -5,7 +5,6 @@ import frontend.resolver.*
 import inlineReplSystem.inlineReplSystem
 import main.Option
 import main.codogen.BuildSystem
-import main.codogenjs.generateJsProject
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.Statement
 import main.languageServer.DEV_MODE_FILE_NAME
@@ -427,7 +426,6 @@ fun compileProjFromFile(
         val defaultProject = resolver.projects["common"]!!
         val codegenMark = markNow()
 
-        // Пока что Kotlin-проект генерируем всегда, JS-проект — опционально через отдельный флаг/режим.
         resolver.generator.generateKtProject(
             pm.pathWhereToGenerateKtAmper,
             pm.pathToBuildFileGradle,

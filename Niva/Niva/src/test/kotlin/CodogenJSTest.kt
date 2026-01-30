@@ -615,14 +615,10 @@ class CodogenJSTest {
             nextAge = p incAge
         """.trimIndent()
 
-        // Разрешаем типы и сообщения один раз, затем вручную раскладываем декларации по "файлам"/пакетам.
         val (statements, _) = resolveWithResolver(source)
 
         val declarations = statements.filterIsInstance<Declaration>()
 
-        // Разбиваем декларации на "файл" с типом/методом и "файл" с использованием.
-        // Предполагаем, что первые две декларации относятся к определению типа и метода,
-        // а оставшиеся — к p и nextAge.
         val peopleDecls = declarations.take(2).toMutableList()
         val mainDecls = declarations.drop(2).toMutableList()
 
@@ -634,14 +630,10 @@ class CodogenJSTest {
             "main" to mainPkg
         ))
 
-        // Генерируем JS-проект в temp-директорию.
         val tmpDir = kotlin.io.path.createTempDirectory("niva-js-test").toFile()
         generateJsProject(tmpDir, project, emptyList())
 
         val commonJs = java.io.File(tmpDir, "common.js").readText().trimEnd()
-        // Имя файла с main-пакетом может отличаться (main.js или mainNiva.js и т.п.).
-        // Если такого файла нет, проверяем только common.js, чтобы не ломать тест
-        // при изменении стратегии генерации main-файла.
         val jsFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js") } ?: emptyList()
         val mainJs = jsFiles.firstOrNull { it.name != "common.js" }?.readText()?.trimEnd()
 
@@ -678,18 +670,15 @@ class CodogenJSTest {
             assertEquals(expectedMain, mainJs)
         }
         
-        // Проверяем, что source map файлы созданы
         val mapFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js.map") } ?: emptyList()
         assert(mapFiles.isNotEmpty()) {
             "Source map files should be generated"
         }
         
-        // Проверяем, что JS файлы содержат ссылку на source map
         assert(commonJs.contains("//# sourceMappingURL=common.js.map")) {
             "common.js should contain sourceMappingURL comment"
         }
         
-        // Проверяем формат source map
         val commonMapFile = java.io.File(tmpDir, "common.js.map")
         if (commonMapFile.exists()) {
             val mapContent = commonMapFile.readText()
@@ -843,12 +832,10 @@ class CodogenJSTest {
         val statements = resolve(source)
         val w = codegenJs(statements)
 
-        // Проверяем, что вызов использует переименованное имя (а не Box__doSomething)
         assert(w.contains("customName(b, \"test\")")) {
             "Expected renameJs to change call to 'customName(b, \"test\")'. Actual:\n$w"
         }
         
-        // Проверяем, что декларация функции остается с оригинальным именем
         assert(w.contains("export function Box__doSomething(_receiver, msg)")) {
             "Expected declaration to keep original name 'Box__doSomething'. Actual:\n$w"
         }
@@ -890,22 +877,18 @@ class CodogenJSTest {
         """.trimIndent()
         assertEquals(expected, w.trim())
 
-        // Проверяем, что ifTrue: генерирует нативный if
         assert(w.contains("if (((x) > (3))) {")) {
             "Expected ifTrue: to generate native if statement. Actual:\n$w"
         }
         
-        // Проверяем, что ifFalse: генерирует нативный if с отрицанием
         assert(w.contains("if (!(((x) < (3)))) {")) {
             "Expected ifFalse: to generate native if with negation. Actual:\n$w"
         }
         
-        // Проверяем, что ifTrue:ifFalse: генерирует IIFE с переменной __ifResult
         assert(w.contains("__ifResult")) {
             "Expected ifTrue:ifFalse: to generate IIFE with __ifResult variable. Actual:\n$w"
         }
         
-        // Проверяем, что не вызывается функция Bool__ifTrue
         assert(!w.contains("Bool__ifTrue")) {
             "Expected no Bool__ifTrue function call. Actual:\n$w"
         }

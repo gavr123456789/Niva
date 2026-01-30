@@ -167,24 +167,21 @@ fun compare2Types(
     val pkg2 = type2.pkg
     val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
     if (type1OrChildOf2 is Type.UserLike && type2 is Type.UserLike) {
-        // Special handling for Object type assignment: p::Person = Object name: "Bob", age: 42
+        // special handling for Object type assignment: p::Person = Object name: "Bob", age: 42
         // type1OrChildOf2 is the expected type (Person), type2 is a real type (Object_age_name)
         if (type2.name.startsWith("Object_")) {
-            // Check that type1 has all the same fields as type2 with matching types
             val fields1 = type1OrChildOf2.fields
             val fields2 = type2.fields
             
             if (fields1.size != fields2.size) {
                 return false
             }
-            // Create a map of field names to types for type2
             val fields2Map = fields2.associateBy { it.name }
             
-            // Check that all fields in type1 exist in type2 with the same types
             for (field1 in fields1) {
                 val field2 = fields2Map[field1.name] ?: return false
                 
-                // Recursively compare field types
+                // recursively compare field types
                 if (!compare2Types(
                     field1.type,
                     field2.type,

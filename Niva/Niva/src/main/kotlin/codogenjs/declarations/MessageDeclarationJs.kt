@@ -10,7 +10,6 @@ private fun buildDeclFuncNameJs(forType: frontend.resolver.Type, name: String): 
                 append(forType.pkg.replace('.', '_').replace("::", "_"), "_")
             }
             append(forType.emitName)
-            // We don't append generic parameters here to avoid List__Int__count
             if (forType.isMutable) append("__mut")
         }
     } else {
@@ -34,9 +33,8 @@ private fun MessageDeclaration.generateSingleExpression(
     doc: String = "",
     isConstructor: Boolean // so we do not generate extracting of this fields
 ): String {
-    // Собираем тело функции без отступов, затем добавляем общий отступ в один уровень.
     val rawBody = buildString {
-        // Неявные локальные переменные для всех полей типа: let field = receiver.field
+        // implicit local variables for all fields like: let field = receiver.field
         val recvType = forType
         val userType = recvType as? frontend.resolver.Type.UserLike
         if (userType != null && userType.fields.isNotEmpty() && !isConstructor) {
@@ -50,7 +48,7 @@ private fun MessageDeclaration.generateSingleExpression(
             }
         }
 
-        // Основное тело метода
+        // method body
         if (isSingleExpression && body.size == 1 && body[0] is Expression) {
             append("return (" + (body[0] as Expression).generateJsExpression() + ")")
         } else {
@@ -61,7 +59,6 @@ private fun MessageDeclaration.generateSingleExpression(
 
     return buildString {
         append(doc)
-		// Все сгенерированные функции сообщений должны быть экспортируемыми
 		append("export function ", fn, "(", params.joinToString(", ") { it.ifJsKeywordPrefix() }, ") {\n")
         if (rawBody.isNotBlank()) {
             append(rawBody.addIndentationForEachStringJs(1))

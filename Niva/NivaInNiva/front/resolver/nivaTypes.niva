@@ -215,9 +215,10 @@ extend NivaMethod [
                 typeT: (instantiate t: it typeT)
     ]
 
-    // Instantiating the receiver does not change the method name:
-    // the backend combines the receiver’s mangled name with the method name.
-    // If the method itself has generics, the method name must include concrete types
+    // instantiating the receiver does not change the method name:
+    // the backend combines the receiver’s mangled name with the method name
+
+    // if the method itself has generics, the method name must include concrete types
     // tGeneric -> tGeneric__String
 
     methodGenericArgs = .getGenericArgs

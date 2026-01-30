@@ -19,7 +19,7 @@ Test testGenericsReceiverAndKwArg = [
   db = result db
   typedAst = result entryPointExpressions
 
-  // 1. Check 'box' type
+  // 1) check 'box' type
   boxDecl = typedAst at: 0
   | boxDecl
   | VarDeclarationT => [
@@ -34,7 +34,7 @@ Test testGenericsReceiverAndKwArg = [
   ]
   |=> [ Assert that: false equals: true ]
 
-  // 2. Check 'res' type
+  // 2) check 'res' type
   resDecl = typedAst at: 1
   | resDecl
   | VarDeclarationT => [
@@ -88,7 +88,7 @@ Test collectionsTestingMapTry = [
 
 ]
 
-Test  codeblockReturnType = [
+Test codeblockReturnType = [
   fileMain = """
     [
       "sas"
@@ -299,7 +299,7 @@ Test checkGenerics = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   typedAst = result entryPointExpressions
 
-  // 1. Check 'box' type
+  // 1) check 'box' type
   checkBox = [
     boxDecl = typedAst at: 0
     | boxDecl
@@ -316,7 +316,7 @@ Test checkGenerics = [
     |=> [ Assert that: false equals: true ]
   ] do
 
-  // 2. Check 'res' type
+  // 2) check 'res' type
   checkRes = [
     resDecl = typedAst at: 1
     | resDecl
@@ -341,7 +341,7 @@ Test testGenericsMethodWithTwoGenerics = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   typedAst = result entryPointExpressions
 
-  // Check 'res' type
+  // check 'res' type
   resDecl = typedAst last
   | resDecl
   | VarDeclarationT => [

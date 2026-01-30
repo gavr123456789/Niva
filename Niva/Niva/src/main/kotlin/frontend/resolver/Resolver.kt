@@ -1704,9 +1704,6 @@ class Resolver(
 
         mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
 
-
-
-
         val mutSetTypeOfDifferentGeneric = Type.UserType(
             name = "Set",
             typeArgumentList = mutableListOf(differentGenericType),
@@ -1766,20 +1763,6 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
-//        addCustomTypeToDb(
-//            mapTypeMut, createMapProtocols(
-//                isMutable = true,
-//                intType = intType,
-//                unitType = unitType,
-//                boolType = boolType,
-//                mutableMapType = mapTypeMut,
-//                keyType = genericType,
-//                valueType = differentGenericType,
-//                setType = mutableSetType,
-//                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-//                mapType = mapType,
-//            )
-//        )
 
         val listOfDifferentGeneric = createTypeListOfSomeType("List", differentGenericType2, listType)
         val mapProtocols = createMapProtocols(
@@ -1801,8 +1784,6 @@ class Resolver(
         )
 
         // Dynamic
-
-
         val dynamicType = Type.UnionRootType(
             name = "Dynamic",
             fields = mutableListOf(KeywordArg("name", stringType)),
@@ -1895,9 +1876,7 @@ class Resolver(
 
         )
         errorRootType.branches = listOf(errorType)
-
         errorType.isBinding = true
-        ///
 
         addCustomTypeToDb(
             errorType, createExceptionProtocols(
@@ -1912,7 +1891,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
         stringBuilderType.isBinding = true
 
@@ -1930,18 +1908,9 @@ class Resolver(
             )
         )
 
-
-
-
         projects[projectName] = commonProject
     }
 }
-
-//private fun Type.InternalType.copy(): Type.InternalType {
-//    return Type.InternalType(
-//        typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
-//    )
-//}
 
 fun <E> ArrayDeque<E>.pop(): E = this.removeLast()
 fun <E> ArrayDeque<E>.push(e: E) = this.add(e)

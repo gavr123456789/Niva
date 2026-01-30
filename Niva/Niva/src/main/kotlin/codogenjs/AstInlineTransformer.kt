@@ -11,7 +11,7 @@ class AstInlineTransformer(
     fun transformStatement(st: Statement): List<Statement> {
         return when (st) {
             is Expression -> {
-                // Если это вызов лямбды-аргумента, инлайним её тело прямо сюда
+                // If this is a message send to a lambda argument, inline its body directly here
                 if (st is MessageSend) {
                     val newReceiver = transformReceiver(st.receiver)
                     if (newReceiver is CodeBlock && st.messages.size == 1) {
@@ -69,10 +69,7 @@ class AstInlineTransformer(
             }
             is MessageSend -> {
                 val newReceiver = transformReceiver(expr.receiver)
-                // Если мы вызываем лямбду, которая является аргументом, мы могли бы её инлайнить, 
-                // но для этого нужно, чтобы MessageSend мог быть заменен на список стейтментов.
-                // Пока оставим как вызов, но с замененным ресивером.
-                
+
                 val newMessages = expr.messages.map { msg ->
                     when (msg) {
                         is UnaryMsg -> UnaryMsg(
@@ -108,9 +105,9 @@ class AstInlineTransformer(
                     }
                 }
                 when (expr) {
-                    is MessageSendUnary -> MessageSendUnary(newReceiver, newMessages.filterIsInstance<Message>().toMutableList(), expr.type, expr.token)
-                    is MessageSendBinary -> MessageSendBinary(newReceiver, newMessages.filterIsInstance<Message>(), expr.type, expr.token)
-                    is MessageSendKeyword -> MessageSendKeyword(newReceiver, newMessages.filterIsInstance<Message>(), expr.type, expr.token)
+                    is MessageSendUnary -> MessageSendUnary(newReceiver, newMessages.toMutableList(), expr.type, expr.token)
+                    is MessageSendBinary -> MessageSendBinary(newReceiver, newMessages, expr.type, expr.token)
+                    is MessageSendKeyword -> MessageSendKeyword(newReceiver, newMessages, expr.type, expr.token)
                 }
             }
             is CodeBlock -> {
@@ -158,13 +155,8 @@ class AstInlineTransformer(
         return result
     }
 
-    fun transformReceiver(rect: Receiver): Receiver {
-        return when (rect) {
-            is Expression -> transformExpression(rect) as Receiver
-            is DotReceiver -> receiver
-            else -> rect
-        }
-    }
+    fun transformReceiver(receiver: Receiver): Receiver =
+        transformExpression(receiver) as Receiver
 }
 
 fun hasReturn(st: Statement): Boolean = when (st) {
@@ -176,9 +168,9 @@ fun hasReturn(st: Statement): Boolean = when (st) {
                 is IfBranch.IfBranchWithBody -> it.body.statements.any { s -> hasReturn(s) }
             }
         } || st.elseBranch?.any { s -> hasReturn(s) } ?: false
-        is MessageSend -> false // вызовы методов не считаем за нелокальный возврат самого метода
-        is CodeBlock -> false // возврат внутри лямбды - это возврат из неё, если она не инлайнится. 
-        // Но мы тут ищем именно ReturnStatement в текущем скоупе инлайна
+        is MessageSend -> false // call to method is not considered as non-local return of the method itself
+        is CodeBlock -> false // return inside lambda is return from it, if it is not inlined.
+        // we are looking for ReturnStatement specifically in the current inlining scope
         else -> false
     }
     else -> false

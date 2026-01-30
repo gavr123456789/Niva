@@ -27,19 +27,12 @@ private fun buildJsFuncName(receiverType: Type, message: Message): String {
     return res
 }
 
-/**
- * Имя пакета, к которому принадлежит тип (без Nullable-обёртки).
- */
 private fun Type.targetPackageName(): String? = when (val t = unwrapNull()) {
     is Type.UserLike -> t.pkg
     is Type.InternalType -> t.pkg
     else -> null
 }
 
-/**
- * alias для пакета, если он отличается от текущего.
- * Пример: pkg "core.utils" -> alias "core_utils".
- */
 private fun Type.jsQualifierFor(currentPkg: Package?): String? {
     val targetPkg = targetPackageName() ?: return null
     val currentName = currentPkg?.packageName
@@ -47,11 +40,7 @@ private fun Type.jsQualifierFor(currentPkg: Package?): String? {
     return targetPkg.replace('.', '_')
 }
 
-/**
- * Получает имя функции с учётом rename прагмы.
- * Если есть pragma rename, возвращает переименованное имя.
- * Иначе возвращает результат buildQualifiedJsFuncName.
- */
+
 private fun getFunctionName(receiverType: Type, message: Message): String {
     val renamedName = message.tryGetRenamedFunctionName()
     if (renamedName != null) {
@@ -60,21 +49,14 @@ private fun getFunctionName(receiverType: Type, message: Message): String {
     return buildQualifiedJsFuncName(receiverType, message)
 }
 
-/**
- * Полное имя функции для вызова: либо просто mangledName, либо alias.mangledName
- * если функция живёт в другом пакете.
- */
+
 private fun buildQualifiedJsFuncName(receiverType: Type, message: Message): String {
-    // Если сообщение было найдено через протокол "UnknownGeneric" (в резолвере он InternalType "UnknownGeneric"),
-    // то для имени функции нужно использовать именно имя дженерика из декларации (например, "T"),
-    // потому что декларация экспортируется как `export function T__msg(...)`, а не `UnknownGeneric__msg`.
     val metaForType = message.msgMetaData?.forType
     val declForType = message.declaration?.forType
 
     fun isDefaultUnknownGeneric(t: Type?): Boolean = t is Type.InternalType && t.name == "UnknownGeneric"
 
     val pickedForType = when {
-        // Принудительно берём тип из декларации, если в метаданных стоит InternalType("UnknownGeneric")
         isDefaultUnknownGeneric(metaForType) && declForType is Type.UnknownGenericType -> declForType
         else -> metaForType ?: declForType ?: receiverType
     }
@@ -84,8 +66,6 @@ private fun buildQualifiedJsFuncName(receiverType: Type, message: Message): Stri
     val currentPkgName = JsCodegenContext.currentPackage?.packageName
     val currentPkgAlias = currentPkgName?.replace('.', '_')
 
-    // alias может приходить как имя пакета ("foo.bar") или уже как alias ("foo_bar").
-    // В любом случае, если это текущий пакет, квалификатор добавлять нельзя.
     val rawAlias = message.declaration?.messageData?.pkg ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
     val alias = rawAlias
         ?.replace('.', '_')
@@ -99,9 +79,6 @@ private fun buildQualifiedJsFuncName(receiverType: Type, message: Message): Stri
     }
 }
 
-/**
- * Имя класса для конструктора с возможным префиксом alias.
- */
 private fun Type.constructorJsName(): String {
     val baseName = (this as? Type.UserLike)?.emitName ?: this.name
     val alias = jsQualifierFor(JsCodegenContext.currentPackage)
@@ -205,8 +182,8 @@ fun MessageSend.generateJsMessageCall(): String {
     var currentType = receiver.type ?: messageTypeSafe(this)
 
     messages.forEach { msg ->
-        // pragma emitJs полностью заменяет вызов сообщения на произвольный JS-код.
-        // Подстановки в шаблоне: $0 — текущий ресивер, $1..$N — keyword-аргументы.
+        // pragma emitJs replaces message call with custom js
+        // template: $0 = receiver, $1..$N = keyword args
         val emitJs = msg.tryEmitJsReplacement(currentExpr)
         if (emitJs != null) {
             currentExpr = emitJs
@@ -217,7 +194,7 @@ fun MessageSend.generateJsMessageCall(): String {
         when (msg) {
             is UnaryMsg -> {
                 if (msg.kind == UnaryMsgKind.Getter) {
-                    // доступ к полю: p name  ->  p.name
+                    // field access: p name -> p.name
                     currentExpr = "$currentExpr.${msg.selectorName}"
                     currentType = msg.type ?: currentType
                 } else {
@@ -227,7 +204,7 @@ fun MessageSend.generateJsMessageCall(): String {
                 }
             }
             is BinaryMsg -> {
-                // применяем унарные сообщения к ресиверу
+                // apply unary messages to receiver
                 var recvExpr = currentExpr
                 var recvType = currentType
                 if (msg.unaryMsgsForReceiver.isNotEmpty()) {
@@ -242,7 +219,7 @@ fun MessageSend.generateJsMessageCall(): String {
                     }
                 }
 
-                // генерим аргумент и применяем его унарные
+                // generate arg and apply its unaries
                 var argExpr = msg.argument.generateJsExpression()
                 var argType: Type? = msg.argument.type ?: (msg.declaration as? MessageDeclarationBinary)?.arg?.type
                 if (msg.unaryMsgsForArg.isNotEmpty()) {
@@ -267,7 +244,7 @@ fun MessageSend.generateJsMessageCall(): String {
                 currentType = msg.type ?: recvType
             }
             is KeywordMsg -> {
-                // Special handling for Object type - generate JS object literal
+                // special handling for Object type - generate JS object literal
                 if (msg.type?.name?.startsWith("Object_") == true) {
                     currentExpr = buildString {
                         append("{ ")
@@ -283,12 +260,12 @@ fun MessageSend.generateJsMessageCall(): String {
                     return@forEach
                 }
                 
-                // Специальная обработка для ifTrue:, ifFalse:, ifTrue:ifFalse: (нелокальный возврат из лямбд)
+                // special case for ifTrue:, ifFalse:, ifTrue:ifFalse: (for non local return)
                 val selector = msg.selectorName
                 val isBoolReceiver = isBool(currentType)
                 
                 if (isBoolReceiver && (selector == "ifTrue" || selector == "ifFalse" || selector == "ifTrueIfFalse")) {
-                    // Получаем аргументы-лямбды
+                    // get lambda arguments
                     val lambdaArgs = msg.args.map { it.keywordArg }
                     
                     when (selector) {
@@ -303,8 +280,7 @@ fun MessageSend.generateJsMessageCall(): String {
                             currentType = msg.type ?: currentType
                         }
                         "ifTrueIfFalse" -> {
-                            // Это expression, возвращает значение
-                            // Генерируем IIFE с переменной
+                            // IIFE with variable
                             val trueLambda = lambdaArgs.getOrNull(0)
                             val falseLambda = lambdaArgs.getOrNull(1)
                             
@@ -323,11 +299,11 @@ fun MessageSend.generateJsMessageCall(): String {
                         }
                     }
                 } else {
-                    // Обычная обработка KeywordMsg
+                    // usual KeywordMsg
                     val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
 
                     if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
-                        // вызов конструктора типа: Person name: "Alice" age: 24 -> new Person("Alice", 24)
+                        // call type constructor: Person name: "Alice" age: 24 -> new Person("Alice", 24)
                         val recvType = currentType
                         val typeName = recvType.constructorJsName()
                         currentExpr = buildString {
@@ -361,8 +337,6 @@ fun Message.generateJsAsCall(): String {
     var recvExpr = receiver.generateJsExpression()
     var recvType = receiver.type ?: this.type ?: error("Receiver type unknown for message call")
 
-    // Если на самом сообщении висит emitJs — он полностью заменяет вызов.
-    // Тут используем исходный ресивер как $0.
     val emitJs = this.tryEmitJsReplacement(recvExpr)
     if (emitJs != null) return emitJs
 
@@ -376,7 +350,6 @@ fun Message.generateJsAsCall(): String {
             }
         }
         is BinaryMsg -> {
-            // применяем унарные к ресиверу
             if (unaryMsgsForReceiver.isNotEmpty()) {
                 unaryMsgsForReceiver.forEach { u ->
                     if (u.kind == UnaryMsgKind.Getter) {
@@ -389,7 +362,7 @@ fun Message.generateJsAsCall(): String {
                 }
             }
 
-            // аргумент и его унарные
+            // arg and its unaries
             var argExpr = argument.generateJsExpression()
             var argType: Type? = argument.type ?: (declaration as? MessageDeclarationBinary)?.arg?.type
             if (unaryMsgsForArg.isNotEmpty()) {

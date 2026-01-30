@@ -84,7 +84,6 @@ fun Resolver.resolveUnaryMsg(
         statement.kind = UnaryMsgKind.Getter
         val result = field!!.type
         statement.type = result
-//        if (receiverType.)
         return Pair(result, null)
     }
     // usual message or static message

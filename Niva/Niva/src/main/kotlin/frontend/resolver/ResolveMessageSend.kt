@@ -80,11 +80,6 @@ fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, re
     }
 }
 
-// 2!
-// 1) выделить отсюда код который рекурсивно собирает все дженерики из аргументов
-// 2) запускать этот код отдельно до резолва боди функции
-// 3) добавлять результат в type args
-// 4) проверять если type args функции содержат такуюже букву которую мы не можем найти в таблице, то искать нам ее не надо
 fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
     if (receiverType !is Type.UserLike) return receiverType
     // replace every Generic type with real
@@ -154,23 +149,16 @@ fun Resolver.resolveMessage(
         }
         //check that it was mutable call for mutable type
         if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
-            when (receiver) {
-                is IdentifierExpr -> {
-                    val receiverFromScope = previousAndCurrentScope[receiver.name]
-                    if (receiverFromScope != null && !receiverFromScope.isMutable) {
-                        val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
-                        statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
-                    }
-                }
-                is MessageSend -> {
-                    val receiverType = receiver.receiver.type!!
-                    if (!receiverType.isMutable) {
-                        statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
-                    }
-                }
+            val receiverFromScope = previousAndCurrentScope[receiver.name]
+            if (receiverFromScope != null && !receiverFromScope.isMutable) {
+                val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
+                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
             }
-
-
+        } else if (msgFromDb.forMutableType && receiver is MessageSend) {
+            val receiverType = receiver.receiver.type!!
+            if (!receiverType.isMutable) {
+                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
+            }
         }
         //
 

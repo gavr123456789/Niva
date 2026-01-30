@@ -52,7 +52,6 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
 }
 
 private fun StringBuilder.appendJsClassWithConstructor(typeName: String, fields: List<TypeFieldAST>) {
-    // Все объявляемые типы в JS всегда экспортируются
     append("export class ", typeName, " {\n")
 
     // constructor
@@ -74,15 +73,14 @@ fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
 }
 
 fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString {
-    // Если этот union уже был сгенерирован как ветка с isRoot = true другого union,
-    // не генерируем базовый класс повторно, но продолжаем генерировать его ветки
+    // skip base class if generated as isRoot branch, but process branches
     val skipBaseClass = typeName in JsCodegenContext.generatedAsIsRootBranches
     
     if (!skipBaseClass) {
         appendJsClassWithConstructor(typeName, fields)
     }
 
-    // Для JS-кодогенерации сразу же эмитим и все ветки union-типа
+    // emit all union branches immediately for js
     if (branches.isNotEmpty()) {
         if (!skipBaseClass) {
             append("\n")
@@ -98,32 +96,31 @@ fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString 
 }
 
 fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildString {
-    // Если эта ветка является включением другого union (isRoot = true),
-    // отмечаем, что этот тип уже был сгенерирован как ветка
+    // if branch includes another union (isRoot = true), mark as generated
     if (isRoot) {
         JsCodegenContext.generatedAsIsRootBranches.add(typeName)
     }
     
-    // Базовый union-тип
+    // base union type
     val rootDecl = root
     val rootTypeName = rootDecl.typeName
 
-    // Параметры конструктора: сначала поля ветки, потом поля root
+    // constructor params: branch fields first, then root fields
     val branchFieldNames = fields.map { it.name }
     val rootFieldNames = rootDecl.fields.map { it.name }
 
-   	// Каждая ветка union-типа тоже экспортируется как отдельный класс
+   	// export each union branch as separate class
    	append("export class ", typeName, " extends ", rootTypeName, " {\n")
     append("    constructor(")
     append((branchFieldNames + rootFieldNames).joinToString(", "))
     append(") {\n")
 
-    // Вызов super только с полями root (не дублируем инициализацию этих полей в наследнике)
+    // call super with root fields only (avoid duplication)
     append("        super(")
     append(rootFieldNames.joinToString(", "))
     append(");\n")
 
-    // Инициализируем только собственные поля ветки
+    // initialize branch-specific fields only
     fields.forEach { field ->
         append("        this.", field.name, " = ", field.name, ";\n")
     }

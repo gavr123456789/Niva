@@ -317,7 +317,6 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
 }
 
 // pragma "arg" Compiler "getName" "getName:"
-// generate anonymous Kotlin object with fields and toString override
 fun generateAnonymousObject(keywordMsg: KeywordMsg): String = buildString {
     append("object {\n")
     
@@ -448,19 +447,18 @@ fun generateSingleKeyword(
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                // Special handling for Object
+                // special handling for Object
                 val kwReceiver = keywordMsg.receiver
                 val isObjectReceiver = kwReceiver is IdentifierExpr && kwReceiver.name == "Object"
                 
                 if (isObjectReceiver) {
                     val resultType = keywordMsg.type
-                    // Check if this is anonymous object (Object_xxx) or concrete type (Person)
+                    // check if this is anonymous object (Object_xxx) or concrete type (Person)
                     if (resultType != null && resultType.name.startsWith("Object_")) {
-                        // Generate anonymous Kotlin object with toString override
                         append(generateAnonymousObject(keywordMsg))
                         return@buildString
                     } else if (resultType != null) {
-                        // Generate concrete type constructor: Person(...)
+                        // generate concrete type constructor Person(...) instead of obj kek
                         if (!receiverIsDot && resultType.pkg != "core") {
                             append(resultType.pkg)
                             append(".")

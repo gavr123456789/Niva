@@ -5,24 +5,19 @@ import main.frontend.parser.types.ast.Statement
 
 class GeneratorJs
 
-/**
- * Глобальный, но очень простой контекст JS-кодогена.
- * Нужен, чтобы знать «текущий» пакет при генерации вызовов
- * и решать, нужен ли префикс pkgAlias. перед функциями/класcами.
- */
 object JsCodegenContext {
     var currentPackage: Package? = null
-    // Набор типов, которые уже были сгенерированы как ветки с isRoot = true
+    // set of types already generated as isRoot branches
     val generatedAsIsRootBranches = mutableSetOf<String>()
-    // Source map builder для текущей генерации (null если source maps отключены)
+    // Source map builder for the current generation (null if source maps are disabled)
     var sourceMapBuilder: SourceMapBuilder? = null
 }
 
 fun codegenJs(statements: List<Statement>, indent: Int = 0, pkg: Package? = null): String = buildString {
-    // Проталкиваем информацию о текущем пакете во все вложенные вызовы
+    // push information about the current package into all nested calls
     val prev = JsCodegenContext.currentPackage
     if (pkg != null) JsCodegenContext.currentPackage = pkg
-    // Очищаем набор сгенерированных типов для нового вызова кодогенерации
+    // clear set of generated types for a new code generation call
     JsCodegenContext.generatedAsIsRootBranches.clear()
     try {
         val g = GeneratorJs()

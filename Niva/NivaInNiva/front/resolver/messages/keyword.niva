@@ -83,7 +83,7 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
     // 1.2) if type does contains generics but message dont, then its a problem.
     // 2) create a new message, if it contains any generics, current letter to type not empty means it does
 
-    // Instantiate method and its type if needed
+    // instantiate method and its type if needed
     // replaceGenericsFromTable also instantiates receiver type and registers it in DB
     dontMangle = | receiverType
     | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
@@ -91,24 +91,17 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
 
     newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: true db: db
 
-    // Check if we already have this method instantiation
-    // We look in the instantiated cache of the receiver type (which was just updated/created in replaceGenericsFromTable)
-    // Or if receiver is not generic but method is, we still need to register it somewhere?
-    // Actually replaceGenericsFromTable handles registration of the type.
+    // check if this method instantiation already exists
+    // instantiated receiver type is already registered in replaceGenericsFromTable
 
-    // We need to register the method in the receiver type's method table
-    // The receiver type of newMethod IS the instantiated type (or original if no change)
-
+    // register the method in the instantiated receiver type's method table
     instReceiverType = newMethod receiverType
 
-    // Add method to cache if not present
-    // But wait, where is the cache for instantiated methods?
-    // It's in db instantiatedCache for instantiated types.
-    // For regular types (if method generic), we should probably put it in typeToMethodNameToMethod?
-    // Or just in generatedMessageDecls is enough for code gen, but for type checking recursion we need it in DB.
+    // add the method to the cache if missing
+    // instantiated methods go to instantiatedCache
+    // generic methods on non generic types go to typeToMethodNameToMethod
+    // addMethod:toProtocol:forType: handles insertion
 
-    // We can use addMethod:toProtocol:forType: which handles adding to typeToMethodNameToMethod.
-    // But check if it exists first.
 
     methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr currentPkg: c currentPkg dtc: db dtc
 
@@ -148,10 +141,10 @@ KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> Keywor
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
             token: originalDecl token
-          // Resolve body of the new declaration to ensure types are correct inside
+          // resolve body of the new declaration to ensure types are correct inside
           newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
-          // Add to generated list for backend
+          // add to generated list for backend
           db addGeneratedMessageDecl: newDecl
        ]
     ]
