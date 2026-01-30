@@ -1839,19 +1839,6 @@ class Resolver(
 
         addCustomTypeToDb(dynamicType, mutableMapOf())
 
-        // Object - special type for anonymous objects
-        val objectType = Type.UserType(
-            name = "Object",
-            typeArgumentList = mutableListOf(),
-            fields = mutableListOf(),
-            pkg = "core",
-            typeDeclaration = null
-        )
-        addCustomTypeToDb(objectType, mutableMapOf())
-
-//        val kotlinPkg = Package("kotlin", isBinding = true)
-//        commonProject.packages["kotlin"] = kotlinPkg
-
         /// add Error
 
         /// ERROR TYPE

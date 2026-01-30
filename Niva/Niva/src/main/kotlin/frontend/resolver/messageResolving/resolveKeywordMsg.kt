@@ -45,65 +45,7 @@ fun Resolver.resolveKeywordMsg(
     val receiverType = statement.receiver.type
         ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
 
-    // resolve selectorName (but not for Object, it handles args differently)
     val selectorName = statement.args.map { it.name }.toCamelCase()
-
-    // special handling for Object type - creates anonymous object with keyword arguments as fields
-    val receiver = statement.receiver
-    if (receiverType.name == "Object" && receiver is IdentifierExpr && receiver.isType) {
-        // Object can only accept keyword messages
-        if (statement.args.isEmpty()) {
-            statement.token.compileError("Object requires at least one keyword argument")
-        }
-        
-        // Check if there's a parent VarDeclaration with expected type
-        val parentVarDecl = stack.findLast { it is VarDeclaration } as? VarDeclaration
-        val expectedType = parentVarDecl?.valueTypeAst?.toType(typeDB, typeTable)
-        
-        // If expected type exists and is not Object, use it as constructor call
-        if (expectedType != null && expectedType.name != "Object" && expectedType is Type.UserLike) {
-            // Validate that all fields match
-            val providedFields = statement.args.map { it.name }.toSet()
-            val expectedFields = expectedType.fields.map { it.name }.toSet()
-            
-            if (providedFields != expectedFields) {
-                statement.token.compileError("Object fields ${providedFields} don't match expected type ${expectedType.name} fields ${expectedFields}")
-            }
-            
-            // Don't replace receiver - keep it as Object
-            // Just set the result type - codegen will handle it
-            statement.type = expectedType
-            statement.kind = KeywordLikeType.Constructor
-            
-            return Pair(expectedType, null)
-        } else {
-            // Create anonymous object with fields from resolved keyword arguments
-            val fields = statement.args.map { arg ->
-                val argType = arg.keywordArg.type 
-                    ?: statement.token.compileError("Can't infer type for argument ${arg.name}")
-                KeywordArg(arg.name, argType)
-            }.toMutableList()
-            
-            // Create temporary type name from sorted field names
-            val sortedFieldNames = fields.map { it.name }.sorted().joinToString("_")
-            val temporaryTypeName = "Object_$sortedFieldNames"
-            
-            // Create temporary UserType (not registered in DB)
-            val temporaryType = Type.UserType(
-                name = temporaryTypeName,
-                typeArgumentList = mutableListOf(),
-                fields = fields,
-                pkg = "core",
-                typeDeclaration = null
-            )
-            
-            statement.type = temporaryType
-            statement.kind = KeywordLikeType.Constructor
-            
-            return Pair(temporaryType, null)
-        }
-    }
-
     // resolve kw kind
     var foundCustomConstructorDb: MessageMetadata? = null
 
@@ -138,8 +80,6 @@ fun Resolver.resolveKeywordMsg(
             statement.kind = KeywordLikeType.Constructor
             return KeywordLikeType.Constructor
         }
-        // This is Setter or Keyword now
-
         // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
         if (statement.args.count() == 1 && receiverType is Type.UserLike) {
             val keyArgText = statement.args[0].name
@@ -147,8 +87,6 @@ fun Resolver.resolveKeywordMsg(
             val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
             if (receiverArgWithSameName != null) {
                 // this is setter
-
-
                 if (receiverType.isMutable) {
                     statement.type = Resolver.defaultTypes[InternalTypes.Unit]
                     statement.kind = KeywordLikeType.Setter

@@ -12,6 +12,7 @@ import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import java.io.File
+import java.nio.file.Paths
 
 enum class TokenType {
     True, False, Null,
@@ -140,18 +141,18 @@ fun createFakeToken2(name: String, lineNum: Int, start: Int, end: Int, file: Fil
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
+fun Token.prettyCodePlace() = """${Paths.get(System.getProperty("user.dir")).relativize(file.toPath())}:$line:${relPos.start}"""
+
+fun Token.compileError(text: String): Nothing {
+    val fileLine = this.prettyCodePlace()
+    val errorText = "${RED}Error here $fileLine$RESET\n$text$RESET"
+    throw CompilerError(errorText, this, text.removeColors())
+}
+
 class CompilerError(text: String, val token: Token, val noColorsMsg: String) : Exception(text)
 
 fun String.removeColors() =
     this.replace(RED, "").replace(WHITE, "").replace(CYAN, "").replace(YEL, "").replace(PURP, "").replace(RESET, "")
-
-fun Token.prettyCodePlace() = """(${file.name}:$line:${relPos.start})"""
-
-fun Token.compileError(text: String): Nothing {
-    val fileLine = this.prettyCodePlace()
-    val errorText = "${RED}Error: $fileLine$RESET\n$text$RESET"
-    throw CompilerError(errorText, this, text.removeColors())
-}
 
 fun Parser.parsingError(text: String): Nothing {
     val f = peek()

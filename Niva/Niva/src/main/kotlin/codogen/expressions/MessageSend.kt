@@ -316,36 +316,6 @@ fun emitFromPragma(msg: Message, keyPragmas: List<KeyPragma>) {
 
 }
 
-// pragma "arg" Compiler "getName" "getName:"
-fun generateAnonymousObject(keywordMsg: KeywordMsg): String = buildString {
-    append("object {\n")
-    
-    // Generate fields
-    keywordMsg.args.forEachIndexed { index, arg ->
-        append("val ${arg.name} = ${arg.keywordArg.generateExpression()}")
-        if (index < keywordMsg.args.size - 1) {
-            append("\n")
-        }
-    }
-    
-    // generate toString override
-    append("\n")
-    append("override fun toString(): String {\n")
-    append("return \"\"\"\n")
-    append("Object")
-    if (keywordMsg.args.isNotEmpty()) {
-        append("\n")
-        keywordMsg.args.forEach { arg ->
-            val addQuotes = if (arg.keywordArg.type?.name == "String") "\"" else ""
-            append($$"    $${arg.name}: $$addQuotes$$${arg.name}$$addQuotes\n")
-        }
-    }
-    append("\"\"\".trimEnd()\n")
-    append("}\n")
-    
-    append("}")
-}
-
 fun generateSingleKeyword(
     i: Int,
     receiver: Receiver,
@@ -447,31 +417,8 @@ fun generateSingleKeyword(
 
         KeywordLikeType.Constructor -> {
             if (i == 0) {
-                // special handling for Object
-                val kwReceiver = keywordMsg.receiver
-                val isObjectReceiver = kwReceiver is IdentifierExpr && kwReceiver.name == "Object"
-                
-                if (isObjectReceiver) {
-                    val resultType = keywordMsg.type
-                    // check if this is anonymous object (Object_xxx) or concrete type (Person)
-                    if (resultType != null && resultType.name.startsWith("Object_")) {
-                        append(generateAnonymousObject(keywordMsg))
-                        return@buildString
-                    } else if (resultType != null) {
-                        // generate concrete type constructor Person(...) instead of obj kek
-                        if (!receiverIsDot && resultType.pkg != "core") {
-                            append(resultType.pkg)
-                            append(".")
-                        }
-                        append(resultType.name)
-                    } else {
-                        val recCode = receiverCode()
-                        append(recCode)
-                    }
-                } else {
-                    val recCode = receiverCode()
-                    append(recCode)
-                }
+                val recCode = receiverCode()
+                append(recCode)
             }
         }
 
