@@ -212,49 +212,53 @@ fun warning(string: String) {
 //-i pkg  — print info only about specific pkg
 const val HELP = """
 Usage:
-    ${WHITE}FILE$RESET — compile and run single file
-    ${WHITE}run$RESET — compile and run project from "main.niva" file
+    ${WHITE}run$RESET      — compile and run project from "main.niva" file
+    ${WHITE}FILE$RESET     — compile and run single file
     ${WHITE}run FILE$RESET — compile and run project from FILE entry point
 
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
         to rename binary use ${WHITE}niva --out-name=NAME build$RESET
     ${WHITE}distr$RESET — create easy to share jvm distribution
-        
+
+    ${WHITE}test$RESET      — run all tests
+    ${WHITE}test NAME$RESET — run all tests that contains NAME(method)
+    ${WHITE}test PKG$RESET  — run all tests from the PKG(filename)
+
     ${WHITE}dev$RESET — rerun on changed files or input, for faster iteration
     ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
-    
+
     ${WHITE}--verbose$RESET — with verbose printing
-    
+
     ${WHITE}--js$RESET — compile to js and run
     ${WHITE}--js --js-runtime=bun$RESET — use specific js runtime
 
-In code: 
+In code:
     > EXPR  — debug expr value from IDE
               run program at least once
     >? TYPE — print all info about TYPE
 
     > 1 inc
     >? Int
-    
+
     mark method with @debug to debug every expr
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
     ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
     ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
-    
+
     ${CYAN}package: $GREEN"PKG"$RESET   — set package for the definitions in code below
     ${CYAN}protocol: $GREEN"NAME"$RESET — set protocol for the definitions in code below
     ${CYAN}use: $GREEN"PKG"$RESET       — set default pkg, like using namespace in C#/Vala
-    
+
     Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
 
 Kotlin\Java interop:
     Messages for ${YEL}Bind$RESET:
     ${CYAN}package: $GREEN"PKG"$RESET  — bind package
     ${CYAN}content: $WHITE[CODE]$RESET — bindings
-    
+
     Example:
     ${YEL}Bind ${CYAN}package: $GREEN"java.io" ${CYAN}content: $RESET[
         ${RED}type ${YEL}File ${CYAN}pathname: ${YEL}String
@@ -263,7 +267,7 @@ Kotlin\Java interop:
     ]
     ${WHITE}file = ${YEL}File ${CYAN}pathname: $GREEN"path/to/file"
     ${WHITE}text = ${WHITE}file ${CYAN}readText$RESET
-    
+
     Messages for ${YEL}Project$RESET:
     ${CYAN}loadPackages: $RESET{$GREEN"PKG1" "PKG2"$RESET} — load package from Maven Central
     ${CYAN}import: $GREEN"PATH_TO_PKG"$RESET — add direct import to generated code
