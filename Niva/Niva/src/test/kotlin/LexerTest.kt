@@ -153,6 +153,11 @@ class LexerTest {
     }
 
     @Test
+    fun funKeyword() {
+        checkWithEnd("fun", listOf(Constructor))
+    }
+
+    @Test
     fun hardcodedBinarySymbols() {
         checkWithEnd(
             "^ |> | |=> = :: ! . .[ &", listOf(

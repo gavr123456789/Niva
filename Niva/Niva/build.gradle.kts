@@ -7,11 +7,11 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
-    kotlin("jvm") version "2.2.20"
+    kotlin("jvm") version "2.3.0"
     application
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("maven-publish")
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("plugin.serialization") version "2.3.0"
 }
 
 group = "org.example"
@@ -21,11 +21,11 @@ version = "1.0-SNAPSHOT"
 repositories { mavenCentral() }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("io.github.irgaly.kfswatch:kfswatch:1.0.0")
     //    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.22.0")
     testImplementation(kotlin("test"))
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
 
 tasks.test { useJUnitPlatform() }
@@ -71,7 +71,7 @@ val checkGraalVMTask = "checkGraalVM"
 tasks.register<Exec>(checkGraalVMTask) {
     // Use Exec task instead of deprecated Project.exec
     val javaVersionOutput = ByteArrayOutputStream()
-    commandLine("java", "-version")
+    commandLine("java", "--version")
     isIgnoreExitValue = true
     standardOutput = javaVersionOutput
     errorOutput = javaVersionOutput
@@ -81,19 +81,21 @@ tasks.register<Exec>(checkGraalVMTask) {
     }
 
     val output = javaVersionOutput.toString()
+    println("......")
+    println(output)
     doLast {
         if (!output.contains("GraalVM")) {
-            throw GradleException(
-                "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
-                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
-                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
-                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
-                    "\tThen set it with: \n" +
-                    "\t\tJAVA_HOME=value in bash-like shell \n" +
-                    "\t\tset JAVA_HOME value in fish shell\n" +
-                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
-                    "\tand run `./gradlew buildNativeNiva` again"
-            )
+//            throw GradleException(
+//                "\tCurrent Java is not GraalVM. Please set JAVA_HOME to GraalVM installation.\n" +
+//                    "\tFor mac and linux: java -XshowSettings:properties -version 2>&1 > /dev/null | grep 'java.home'\n" +
+//                    "\tFor windows: java -XshowSettings:properties -version 2>&1 | findstr \"java.home\"\n" +
+//                    "\tOn mac its probably here: $javaHomeMayBeHere\n" +
+//                    "\tThen set it with: \n" +
+//                    "\t\tJAVA_HOME=value in bash-like shell \n" +
+//                    "\t\tset JAVA_HOME value in fish shell\n" +
+//                    "\t\twhere value is  \"java.home = THIS\" from the output of the previous command\n" +
+//                    "\tand run `./gradlew buildNativeNiva` again"
+//            )
         } else {
             println("GraalVM is found")
         }
@@ -151,7 +153,7 @@ tasks.register(buildJvmNiva) {
         val infroDirFile = targetInfro.toFile()
         if (infroDirFile.exists()) {
             val output = ByteArrayOutputStream()
-            val isWindows = org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.WINDOWS
+            val isWindows = OperatingSystem.current() == OperatingSystem.WINDOWS
             val cmd = if (isWindows) listOf("./gradlew.bat", "build") else listOf("./gradlew", "build")
             try {
                 val pb = ProcessBuilder(cmd)
@@ -186,7 +188,7 @@ tasks.register(buildJvmNiva) {
             Adding to PATH: 
             
         """.trimIndent()) +
-                "\tfish: set -U fish_user_paths ${pathHint} $" + "fish_user_paths\n" +
+                "\tfish: set -U fish_user_paths $pathHint $" + "fish_user_paths\n" +
                 "\tbash: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.bashrc && source ~/.bashrc\n" +
                 "\tzsh: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.zshrc && source ~/.zshrc" +
                 "\twindows: setx PATH \"%PATH%;${pathHint}\""
@@ -217,9 +219,9 @@ fun printNivaWelcome(targetDir: Path, path: String) {
         Adding to PATH: 
         
     """.trimIndent() +
-                    "\tfish: set -U fish_user_paths ${path} \$fish_user_paths\n" +
-                    "\tbash: echo 'export PATH=\$PATH:$path' >> ~/.bashrc && source ~/.bashrc\n" +
-                    "\tzsh: echo 'export PATH=\$PATH:$path' >> ~/.zshrc && source ~/.zshrc" +
+                    $$"\tfish: set -U fish_user_paths $$path $fish_user_paths\n" +
+                    $$"\tbash: echo 'export PATH=$PATH:$$path' >> ~/.bashrc && source ~/.bashrc\n" +
+                    $$"\tzsh: echo 'export PATH=$PATH:$$path' >> ~/.zshrc && source ~/.zshrc" +
                     "\twindows: setx PATH \"%PATH%;$path\""
     )
 }

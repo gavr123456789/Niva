@@ -6,6 +6,7 @@ import frontend.resolver.MessageMetadata
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.meta.Token
+import main.frontend.meta.TokenType
 import main.frontend.resolver.findAnyMsgType
 import java.util.Stack
 
@@ -172,7 +173,9 @@ class ConstructorDeclaration(
     msgDeclaration.body,
     msgDeclaration.returnTypeAST,
     msgDeclaration.pragmas,
-)
+) {
+    fun isFun() = token.kind == TokenType.Fun
+}
 
 class ManyConstructorDecl(
     val messageDeclarations: List<ConstructorDeclaration>,

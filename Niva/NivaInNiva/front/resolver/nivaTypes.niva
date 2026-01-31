@@ -53,6 +53,24 @@ extend NivaType [
     ]
     ^ result
   ]
+  /// generate unique identifiers for instantiated types (Box__Int)
+  on toMangledName -> String = [
+    result = | this
+    | TypeT => [
+      genericArgsStr = genericArgs isNotEmpty
+                        ifTrue: ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
+                        ifFalse: [""]
+      // TODO check that its not core type
+      pkgName + "_" + name + genericArgsStr
+    ]
+    | UnresolvedGenericT => [name]
+    | NullableT => [this v toMangledName + "__Nullable"] // nullables not supported yet
+    | Unknown => ["Unknown"]
+    |=> [
+      pkgName + "_" + name
+    ]
+    ^ result
+  ]
 
   on instantiateFromTable: table::Map(String, NivaType) -> String = [
 
@@ -170,7 +188,7 @@ extend NivaMethod [
     ]
 
 
-  on replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB -> NivaMethod = [
+  on replaceGenericsFromTable: letterToType::Map(String, NivaType) dontMangle::Set(String) mangle::Bool db::TyperDB -> NivaMethod = [
 
     recType = receiverType
     retType = returnType
@@ -181,6 +199,12 @@ extend NivaMethod [
         db addGenericInstantiationIfAbsent: t
            letterToType: letterToType
       ]
+      | UnresolvedGenericT => [
+          maybe = letterToType at: t name
+          | maybe
+          | null => t
+          |=> maybe
+      ]
       |=> [t]
     ]
     instantiatedReceiverOrDefaultT = instantiate t: recType
@@ -188,16 +212,42 @@ extend NivaMethod [
 
     newArgs = args map: [
       TypeTField name: it name
-                typeT: [
-                    maybe = letterToType at: it typeT name
-                    | maybe
-                    | null => it typeT
-                    |=> maybe
-                ] do
+                typeT: (instantiate t: it typeT)
     ]
 
+    // instantiating the receiver does not change the method name:
+    // the backend combines the receiver’s mangled name with the method name
+
+    // if the method itself has generics, the method name must include concrete types
+    // tGeneric -> tGeneric__String
+
+    methodGenericArgs = .getGenericArgs
+    genericsToMangle = methodGenericArgs filter: [
+         dontMangle contains: it typeT name, not
+    ]
+
+    newMethodName = (mangle and: genericsToMangle isNotEmpty)
+      ifTrue: [
+        genericMangled = genericsToMangle map: [
+          // find what this generic arg resolves to
+          resolvedType = letterToType at: it typeT name
+          | resolvedType
+          | null => [
+             // if not resolved then its probably generic of the receiver, so we ignore it here
+             // or its an error xddd
+             ""
+          ]
+          |=> resolvedType toMangledName
+        ]
+
+        name + "__" + (genericMangled joinWith: "_")
+      ]
+      ifFalse: [name]
+
+
+
     ^ NivaMethod
-        :name
+        name: newMethodName
         receiverType: instantiatedReceiverOrDefaultT
         args: newArgs
         returnType: instantiatedReturnOrDefaultT

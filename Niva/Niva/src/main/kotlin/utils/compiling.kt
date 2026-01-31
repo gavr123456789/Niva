@@ -19,6 +19,11 @@ import kotlin.time.TimeSource.Monotonic.markNow
 
 object GlobalVariables {
 
+    var emitSourceComments = true
+        private set
+
+    fun disableSourceComments() { emitSourceComments = false }
+
     var capabilities = false
 
     var needStackTrace = true
@@ -420,6 +425,7 @@ fun compileProjFromFile(
     if (!dontRunCodegen) {
         val defaultProject = resolver.projects["common"]!!
         val codegenMark = markNow()
+
         resolver.generator.generateKtProject(
             pm.pathWhereToGenerateKtAmper,
             pm.pathToBuildFileGradle,
@@ -434,11 +440,10 @@ fun compileProjFromFile(
             tests,
             buildSystem = buildSystem,
         )
+
         verbosePrinter.print { "BuildSystem = $buildSystem" }
         verbosePrinter.print { "Codegen to ${pm.pathWhereToGenerateKtAmper}" }
         verbosePrinter.print { "Codegen took: ${codegenMark.getMs()} ms" }
-
-
     }
     // printing all >?
     if (!GlobalVariables.isLspMode)
@@ -474,7 +479,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         }
     """.trimIndent() else "fun <T> inlineRepl(x: T, pathToNivaFileAndLine: String, count: Int) {}"
 
-    val nivaStd = """
+    val nivaStd = $$"""
         
         
         import kotlinx.serialization.json.JsonArray
@@ -489,7 +494,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         import java.util.SortedMap // works on desktop target, but not on native!!!
         
         // STD
-        $jvmSpecific
+        $$jvmSpecific
         
         
         object Compiler {
@@ -615,12 +620,12 @@ object NivaDevModeDB {
 //            override fun toString(): String {
 //                val fields = fields.map { (k, v) ->
 //                    val w = if (v is Dynamic) {
-//                        "    ${"$"}k: \n" + v.toString().prependIndent("        ")
-//                    } else "    ${"$"}k: ${"$"}v"
+//                        "    $k: \n" + v.toString().prependIndent("        ")
+//                    } else "    $k: $v"
 //                    w
 //                }.joinToString("\n")
-//                return "Dynamic${"$"}name\n" +
-//                        "${"$"}fields"
+//                return "Dynamic$name\n" +
+//                        "$fields"
 //            }
 //        }
         
@@ -651,7 +656,7 @@ object NivaDevModeDB {
         }
 
 
-        const val INLINE_REPL = $quote$inlineReplPath$quote
+        const val INLINE_REPL = $$quote$$inlineReplPath$$quote
 
         inline fun IntRange.forEach(action: (Int) -> Unit) {
             for (element in this) action(element)
@@ -842,11 +847,16 @@ fun putInMainKotlinCode(
                 val padding = 30
                 
                 if (nivaLine != null) {
-                    println(kotlin.text.buildString {
-
-
+                    val methodColWidth = padding - methodLabel.length 
+                    
+                    println(buildString {
                         append(methodLabel)
-                        append(it.methodName.padEnd(padding - methodLabel.length))
+                    
+                        val minWidth = it.methodName.length + 1
+                        val targetWidth = maxOf(methodColWidth, minWidth)
+                    
+                        append(it.methodName.padEnd(targetWidth))
+                    
                         append("\u001B[37m")
                         append(fileLabel)
                         append(nivaLine.file)

@@ -13,7 +13,7 @@ AstType2 toNivaTypefromDB: db::TyperDB inPkg::String? -> NivaType = [
       | typeT
       | TypeT => [
         Assert that: typeT genericArgs count
-              equals: genericParams count
+             equals: genericParams count
 
 
 
@@ -25,7 +25,7 @@ AstType2 toNivaTypefromDB: db::TyperDB inPkg::String? -> NivaType = [
         ]
 
         idToType debug
-        typeT replaceGenericsFromTable: idToType
+        typeT replaceGenericsFromTable: idToType db: db
       ]
       |=> [TO DO: "only TypeT can have generics"]
     ] ifFalse: [

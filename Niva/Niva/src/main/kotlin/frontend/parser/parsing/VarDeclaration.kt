@@ -70,13 +70,4 @@ fun Parser.varDeclaration(): VarDeclaration? {
 
         val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
         return result
-//    } catch (e: Exception) {
-//        if (e.message?.startsWith("${RED}Error:$RESET Don't use pipe") == true ||
-//            e.message?.startsWith("${RED}Error:$RESET After") == true) {
-//            throw e
-//        }
-//        current = savePoint
-//        return null
-//    }
-
 }

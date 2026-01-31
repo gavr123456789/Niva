@@ -1,0 +1,896 @@
+import main.codogenjs.codegenJs
+import main.codogenjs.generateJsProject
+import frontend.resolver.MAIN_PKG_NAME
+import frontend.resolver.Package
+import frontend.resolver.Project
+import main.frontend.parser.types.ast.Declaration
+import main.utils.GlobalVariables
+import org.junit.jupiter.api.BeforeEach
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class CodogenJSTest {
+    @BeforeEach
+    fun setUp() {
+        GlobalVariables.disableSourceComments()
+    }
+
+
+    @Test
+    fun unionWithUnion() {
+        val source = """
+            union Figure area: Int =
+            | Rectangle width: Int height: Int
+            | ^Something
+            union Something =
+            | Circle    radius: Int
+            | Oval      rrrr: Int
+        """.trimIndent()
+        val expected = """
+            export class Figure {
+                constructor(area) {
+                    this.area = area;
+                }
+            }
+            
+            export class Rectangle extends Figure {
+                constructor(width, height, area) {
+                    super(area);
+                    this.width = width;
+                    this.height = height;
+                }
+            }
+            
+            export class Something extends Figure {
+                constructor(area) {
+                    super(area);
+                }
+            }
+            
+            export class Circle extends Something {
+                constructor(radius) {
+                    super();
+                    this.radius = radius;
+                }
+            }
+            
+            export class Oval extends Something {
+                constructor(rrrr) {
+                    super();
+                    this.rrrr = rrrr;
+                }
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+
+    @Test
+    fun lambdaWIthSingleIfIsNotAnExpression() {
+        val source = """
+            {1 2} forEach: [
+                1 > 2 ifTrue: [1]
+            ]
+        """.trimIndent()
+        val expected = """
+            List__forEach([1, 2], (it) => {
+                if (((1) > (2))) {
+                    1
+                };
+            });
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+
+    @Test
+    fun switchInsideSwitch() {
+        val source = """
+            result = | 1
+            | 2 => 2
+            | 3 => [
+              | 3
+              | 4 => 4
+              | 5 => 5
+              |=> 6
+            ]
+            |=> 4
+        """.trimIndent()
+        val expected = """
+            let result = (() => {
+                switch (1) {
+                    case 2:
+                        return (2);
+                    case 3:
+                        return ((() => {
+                switch (3) {
+                    case 4:
+                        return (4);
+                    case 5:
+                        return (5);
+                    default:
+                        return (6);
+                }
+            })());
+                    default:
+                        return (4);
+                }
+            })()
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun doNotUnpackFieldsForConstructors() {
+        val source = """
+            type Sas sas: String
+            constructor Sas new = [
+              sas = "kekk"
+              ^ Sas sas: sas
+            ]
+        """.trimIndent()
+        val expected = """
+            export class Sas {
+                constructor(sas) {
+                    this.sas = sas;
+                }
+            }
+            
+            /**
+             * @param {Sas} _receiver
+             */
+            export function Sas__new(_receiver) {
+                let sas = "kekk"
+                return (new Sas(sas))
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+
+    @Test
+    fun sameFieldToUnpackFromThisAndParam() {
+        val source = """
+            type Sas sas: String
+            Sas sas::String = []
+        """.trimIndent()
+        val expected = """
+            export class Sas {
+                constructor(sas) {
+                    this.sas = sas;
+                }
+            }
+            
+            /**
+             * @param {Sas} _receiver
+             * @param {String} sas
+             */
+            export function Sas__sas(_receiver, sas) {
+                // destruct this sas
+            
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun op() {
+        val source = """
+            type Sas
+            Sas / x::Sas = 1
+        """.trimIndent()
+        val expected = """
+            export class Sas {
+                constructor() {
+                }
+            }
+            
+            /**
+             * @param {Sas} _receiver
+             * @param {Sas} x
+             */
+            export function Sas__div(_receiver, x) {
+                return (1)}
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun returnInsideLambdaLastExpr() {
+        val source = """
+            {"a" "b" "c"} forEach: [
+                x = it + "1"
+                x != "" ifTrue: [1]
+            ]
+        """.trimIndent()
+        val expected = """
+            List__forEach(["a", "b", "c"], (it) => {
+                let x = ((it) + ("1"))
+                if (((x) !== (""))) {
+                    1
+                };
+            });
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun matchOnType() {
+        val source = """
+            type Person name: String age: Int
+
+            x::Any = true
+            
+            | x
+            | Int => 1
+            | String => 2
+            | Person => 3
+            | Bool => 4
+            |=> 0
+        """.trimIndent()
+		val expected = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            let x = true
+            {
+                const __tmp = x;
+                if (typeof __tmp === "number") {
+                    1
+                }
+                else if (typeof __tmp === "string") {
+                    2
+                }
+                else if (__tmp instanceof Person) {
+                    3
+                }
+                else if (typeof __tmp === "boolean") {
+                    4
+                }
+                else {
+                    0
+                }
+            }
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+    @Test
+    fun unionDecl() {
+        val source = """
+            union Figure area: Int =
+            | Rectangle width: Int height: Int
+            | Circle    radius: Int
+            r = Rectangle width: 2 height: 3 area: 6
+        """.trimIndent()
+
+        val expected = """
+            export class Figure {
+                constructor(area) {
+                    this.area = area;
+                }
+            }
+            
+            export class Rectangle extends Figure {
+                constructor(width, height, area) {
+                    super(area);
+                    this.width = width;
+                    this.height = height;
+                }
+            }
+            
+            export class Circle extends Figure {
+                constructor(radius, area) {
+                    super(area);
+                    this.radius = radius;
+                }
+            }
+            
+            let r = new Rectangle(2, 3, 6)
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun typeCreate() {
+        val source = """
+            type Person name: String age: Int
+            
+            Person sas -> Int = [
+                q = age + 1
+                w = this age
+                ^ q
+            ]
+            
+            p = Person name: "Alice" age: 24
+            
+            name = p name 
+            age = p age
+        """.trimIndent()
+        val expected = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            /**
+             * @param {Person} _receiver
+             */
+            export function Person__sas(_receiver) {
+                // destruct this name, age
+                let name = _receiver.name
+                let age = _receiver.age
+                let q = ((age) + (1))
+                let w = _receiver.age
+                return (q)
+            }
+            
+            let p = new Person("Alice", 24)
+            let name = p.name
+            let age = p.age
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+    @Test
+    fun codeBlockLambdaWithArgs() {
+        val source = """
+            x = [x::Int -> x + 2]
+        """.trimIndent()
+        val expected = """
+            let x = (x) => ((x) + (2))
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun codeBlockLambda() {
+        val source = """
+            x = [1 + 2]
+            m = [
+                1 + 2
+                1 + 3
+            ]
+        """.trimIndent()
+        val expected = """
+            let x = () => ((1) + (2))
+            let m = () => {
+                ((1) + (2));
+                return (((1) + (3)))
+            }
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun switchExpr() {
+        val source = """
+            x = | 1
+            | 1 => "sas"
+            | 2 => [
+                y = "4"
+                y + "2"
+            ]
+            | 3 => "fpg"
+            |=> "default"
+        """.trimIndent()
+        val expected = """
+            let x = (() => {
+                switch (1) {
+                    case 1:
+                        return ("sas");
+                    case 2:
+                        let y = "4"
+                        return (((y) + ("2")));
+                    case 3:
+                        return ("fpg");
+                    default:
+                        return ("default");
+                }
+            })()
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+
+    @Test
+    fun switchStatement() {
+        val source = """
+            | 1
+            | 1 => "sas"
+            | 2 => [
+                y = "4"
+                y + "2"
+            ]
+            | 3 => "fpg"
+            |=> "default"
+        """.trimIndent()
+
+        val expected = """
+            switch (1) {
+                case 1:
+                    "sas"
+                    break;
+                case 2:
+                    let y = "4"
+                    ((y) + ("2"));
+                    break;
+                case 3:
+                    "fpg"
+                    break;
+                default:
+                    "default"
+            }
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun ifExpr() {
+        val source = """
+            true ? 1 ! [2]
+        """.trimIndent()
+        val expected = """
+         (() => { if (true) return (1); return (2); })()
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+
+    @Test
+    fun exprSimple() {
+        val source = """
+            1
+            "sas"
+            true
+            false
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+        val w = codegenJs(statements)
+        assertEquals(source, w)
+    }
+
+    @Test
+    fun binaryExpr() {
+        val source = """
+            1 + 2
+            "sas" + "sas"
+            true || false
+        """.trimIndent()
+        val expected = """
+            ((1) + (2));
+            (("sas") + ("sas"));
+            ((true) || (false));
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun manyExpr() {
+        val source = """
+            1 inc
+            1 inc inc dec
+            1 inc + 2 dec
+            
+        """.trimIndent()
+        val expected = """
+            Int__inc(1);
+            Int__dec(Int__inc(Int__inc(1)));
+            ((Int__inc(1)) + (Int__dec(2)));
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun unaryDecl() {
+        val source = """
+            Int sas = 22
+        """.trimIndent()
+        val expected = """
+            /**
+             * @param {Int} _receiver
+             */
+            export function Int__sas(_receiver) {
+                return (22)}
+
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun keywordDecl() {
+        val source = """
+            Int foo::Int bar::String = 22
+        """.trimIndent()
+        val expected = """
+            /**
+             * @param {Int} _receiver
+             * @param {Int} foo
+             * @param {String} bar
+             */
+            export function Int__fooBar(_receiver, foo, bar) {
+                return (22)}
+
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+
+    @Test
+    fun keywordAfterBinary() {
+        val source = """
+            Int foo::Int bar::String = 22
+           
+            1 inc + 2 foo: 1 bar: "string"
+        """.trimIndent()
+        val expected = """
+            /**
+             * @param {Int} _receiver
+             * @param {Int} foo
+             * @param {String} bar
+             */
+            export function Int__fooBar(_receiver, foo, bar) {
+                return (22)}
+            
+            common.Int__fooBar(((Int__inc(1)) + (2)), 1, "string");
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w)
+    }
+
+    @Test
+    fun twoPackagesPersonMethodCallJsProject() {
+        val source = """
+            type Person name: String age: Int
+
+            Person incAge -> Int = [
+                ^ age + 1
+            ]
+
+            p = Person name: "Alice" age: 24
+            nextAge = p incAge
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+
+        val declarations = statements.filterIsInstance<Declaration>()
+
+        val peopleDecls = declarations.take(2).toMutableList()
+        val mainDecls = declarations.drop(2).toMutableList()
+
+        val peoplePkg = Package("common", declarations = peopleDecls)
+        val mainPkg = Package(MAIN_PKG_NAME, declarations = mainDecls, importsFromUse = mutableSetOf("common"))
+
+        val project = Project("test", mutableMapOf(
+            "common" to peoplePkg,
+            "main" to mainPkg
+        ))
+
+        val tmpDir = kotlin.io.path.createTempDirectory("niva-js-test").toFile()
+        generateJsProject(tmpDir, project, emptyList())
+
+        val commonJs = java.io.File(tmpDir, "common.js").readText().trimEnd()
+        val jsFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js") } ?: emptyList()
+        val mainJs = jsFiles.firstOrNull { it.name != "common.js" }?.readText()?.trimEnd()
+
+        val expectedCommon = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            /**
+             * @param {Person} _receiver
+             */
+            export function Person__incAge(_receiver) {
+                // destruct this name, age
+                let name = _receiver.name
+                let age = _receiver.age
+                return (((age) + (1)))
+            }
+        """.trimIndent().trimEnd()
+
+        val expectedMain = """
+            import * as common from "./common.js";
+            
+            let p = new common.Person("Alice", 24)
+            let nextAge = common.Person__incAge(p)
+        """.trimIndent().trimEnd()
+        
+        assert(commonJs.contains(expectedCommon)) {
+            "common.js should contain expected code. Actual:\n$commonJs\nExpected:\n$expectedCommon"
+        }
+        if (mainJs != null) {
+            assertEquals(expectedMain, mainJs)
+        }
+        
+        val mapFiles = tmpDir.listFiles()?.filter { it.name.endsWith(".js.map") } ?: emptyList()
+        assert(mapFiles.isNotEmpty()) {
+            "Source map files should be generated"
+        }
+        
+        assert(commonJs.contains("//# sourceMappingURL=common.js.map")) {
+            "common.js should contain sourceMappingURL comment"
+        }
+        
+        val commonMapFile = java.io.File(tmpDir, "common.js.map")
+        if (commonMapFile.exists()) {
+            val mapContent = commonMapFile.readText()
+            assert(mapContent.contains("\"version\": 3")) { "Source map should be version 3" }
+            assert(mapContent.contains("\"file\": \"common.js\"")) { "Source map should reference common.js" }
+            assert(mapContent.contains("\"sources\"")) { "Source map should have sources" }
+            assert(mapContent.contains("\"mappings\"")) { "Source map should have mappings" }
+        }
+    }
+    @Test
+    fun methodOnAny() {
+        val source = """
+            Any echo -> Unit = []
+            1 echo
+        """.trimIndent()
+        val expected = """
+            /**
+             * @param {Any} _receiver
+             */
+            export function Any__echo(_receiver) {
+            }
+            
+            common.Any__echo(1);
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
+    @Test
+    fun fieldAccessInBinaryMsg() {
+        val source = """
+            type Person name: String age: Int
+            p = Person name: "Alice" age: 24
+            answer = p age * 2 - 4
+        """.trimIndent()
+        val expected = """
+            export class Person {
+                constructor(name, age) {
+                    this.name = name;
+                    this.age = age;
+                }
+            }
+            
+            let p = new Person("Alice", 24)
+            let answer = ((((p.age) * (2))) - (4))
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
+    @Test
+    fun jsDocAndSimpleNames() {
+        val source = """
+            type MyBool x: Int
+            MyBool ifTrue: block::[-> Unit] = 1 echo
+            m = MyBool x: 1
+            m ifTrue: [ 2 echo ]
+        """.trimIndent()
+        val expected = """
+            export class MyBool {
+                constructor(x) {
+                    this.x = x;
+                }
+            }
+            
+            /**
+             * @param {MyBool} _receiver
+             * @param {[ -> Unit]} block
+             */
+            export function MyBool__ifTrue(_receiver, block) {
+                // destruct this x
+                let x = _receiver.x
+                return (common.Any__echo(1))
+            }
+            
+            let m = new MyBool(1)
+            common.MyBool__ifTrue(m, () => {
+                common.Any__echo(2);
+            });
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun jsCollections() {
+        val source = """
+            l = {1 2 3} toMutableList
+            l add: 4
+            c = l count
+            
+            s = {1 2 3} toMutableSet
+            s add: 4
+            b = s contains: 1
+        """.trimIndent()
+        val expected = """
+            let l = List__toMutableList([1, 2, 3])
+            List__add(l, 4);
+            let c = List__count(l)
+            let s = List__toMutableSet([1, 2, 3])
+            Set__add(s, 4);
+            let b = Set__contains(s, 1)
+        """.trimIndent()
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+        java.io.File("/tmp/niva_test_output.txt").writeText(w)
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun emitJsPragmaReplacesCall() {
+        val source = """
+            type Box x: Int
+
+            extend Box [
+              @emitJs: "throwWithMessage($1)"
+              on throwWithMessage: msg::String -> Unit = []
+            ]
+            
+            @emitJs: "sas($1)"
+            constructor Box y::Int = []
+
+            b = Box x: 1
+            b throwWithMessage: "sas"
+            Box y: 33
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assert(w.contains("throwWithMessage(\"sas\")")) {
+            "Expected emitJs to replace call with raw JS. Actual:\n$w"
+        }
+    }
+
+    @Test
+    fun renameJsPragmaRenamesFunctionName() {
+        val source = """
+            type Box x: Int
+
+            extend Box [
+              @renameJs: "customName"
+              on doSomething: msg::String -> Unit = []
+            ]
+
+            b = Box x: 1
+            b doSomething: "test"
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assert(w.contains("customName(b, \"test\")")) {
+            "Expected renameJs to change call to 'customName(b, \"test\")'. Actual:\n$w"
+        }
+        
+        assert(w.contains("export function Box__doSomething(_receiver, msg)")) {
+            "Expected declaration to keep original name 'Box__doSomething'. Actual:\n$w"
+        }
+    }
+
+    @Test
+    fun boolIfTrueIfFalseNativeJs() {
+        val source = """
+            main = [
+                x = 5
+                x > 3 ifTrue: ["big" echo]
+                x < 3 ifFalse: ["not small" echo]
+                result = x > 10 ifTrue: ["yes"] ifFalse: ["no"]
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        val expected = """
+            let main = () => {
+                let x = 5
+                if (((x) > (3))) {
+                    common.Any__echo("big");
+                };
+                if (!(((x) < (3)))) {
+                    common.Any__echo("not small");
+                };
+                let result = (() => {
+                    let __ifResult = undefined;
+                    if (((x) > (10))) {
+                        __ifResult = "yes";
+                    } else {
+                        __ifResult = "no";
+                    }
+                    return __ifResult;
+                })()
+            }
+        """.trimIndent()
+        assertEquals(expected, w.trim())
+
+        assert(w.contains("if (((x) > (3))) {")) {
+            "Expected ifTrue: to generate native if statement. Actual:\n$w"
+        }
+        
+        assert(w.contains("if (!(((x) < (3)))) {")) {
+            "Expected ifFalse: to generate native if with negation. Actual:\n$w"
+        }
+        
+        assert(w.contains("__ifResult")) {
+            "Expected ifTrue:ifFalse: to generate IIFE with __ifResult variable. Actual:\n$w"
+        }
+        
+        assert(!w.contains("Bool__ifTrue")) {
+            "Expected no Bool__ifTrue function call. Actual:\n$w"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+List::Int qs -> List::Int =
+  .count >= 2
+    ifTrue: [
+      element = .first
+      array = .drop: 1
+      {first, second} = array partition: [it < element]
+      first toList qs + {element} + second toList qs
+    ]
+    ifFalse: [this]

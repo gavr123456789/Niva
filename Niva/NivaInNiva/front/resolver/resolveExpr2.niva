@@ -69,7 +69,6 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
         q = db findByTypeName: name // TODO replace by findMaybe, and dont check for UpperCase
 
         IdentifierT :name :path :token typeInfo: q toTypeInfoDefault isNameOfTheType: true
-        // TypedExpr nivaType: (TypeOfTheType v: q) exprAst: this
       ] ifFalse: [
         contextString = c allKnownVars
         TO DO: "Cant find $this in the current context: \n$contextString"
@@ -105,7 +104,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       | ListLiteral => [
         newType = ListT t: f
         TO DO: "LISTSSSSS"
-        // use addGenericInstantiationIfAbsent        
+        // use addGenericInstantiationIfAbsent
         TO DO: "Добавлять полученный тип в табличку ОРИГИНАЛ "
         ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
@@ -179,7 +178,7 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
   | VarDeclaration  => [
     // "var decl " + c toString, log
     typedExpr = this value toTypedExprFromDb2: db withContext: c
-    
+
     // check that ast type is the same as declared
     this astType unpack: [
       // x::Int = "ars"
@@ -317,5 +316,3 @@ TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField =
   ]
 
 ]
-
-

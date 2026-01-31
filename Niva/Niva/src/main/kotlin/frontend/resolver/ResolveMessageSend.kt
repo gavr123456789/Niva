@@ -80,39 +80,6 @@ fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, re
     }
 }
 
-// нужно идти по дженерикам обоих типов, и когда дженерико в типа type больеш не будет, взять оставшиеся у returnTypeFromDb
-//fun getTableOfLettersFrom_TypeArgumentListOfType(type: Type.UserLike, returnTypeFromDb: Type.UserLike, result: MutableMap<String, Type>) {
-//    if (type.typeArgumentList.count() > 3) {
-//        throw Exception("Generics with more than 3 params are not supported yet")
-//    }
-//    val genericLetters = listOf("T", "G", "J")
-//
-////    val iter = type.typeArgumentList.listIterator()
-////    val iter2 = returnTypeFromDb.typeArgumentList.listIterator()
-////
-////    while (iter.hasNext()) {
-////        val next1 = iter.next()
-////        val next2 = iter2.next()
-////        if (next1 is Type.UserLike && next2 is Type.UserLike) {
-////            getTableOfLettersFrom_TypeArgumentListOfType(next1, next2, result)
-////        }
-////    }
-//
-//    type.typeArgumentList.forEachIndexed { i, it ->
-//        val k = genericLetters[i]
-//        if (it is Type.UserLike) {
-//
-//        } else if (!it.name.isGeneric() ) //&& !(it is Type.UserLike && it.typeArgumentList.isNotEmpty())
-//            result[k] = it
-//    }
-//
-//}
-
-// 2!
-// 1) выделить отсюда код который рекурсивно собирает все дженерики из аргументов
-// 2) запускать этот код отдельно до резолва боди функции
-// 3) добавлять результат в type args
-// 4) проверять если type args функции содержат такуюже букву которую мы не можем найти в таблице, то искать нам ее не надо
 fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
     if (receiverType !is Type.UserLike) return receiverType
     // replace every Generic type with real
@@ -161,9 +128,9 @@ fun Resolver.resolveMessage(
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
     val (returnType, msgFromDb) = when (statement) {
+        is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is KeywordMsg -> resolveKeywordMsg(statement, previousScope, currentScope)
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
-        is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 
@@ -185,6 +152,11 @@ fun Resolver.resolveMessage(
             val receiverFromScope = previousAndCurrentScope[receiver.name]
             if (receiverFromScope != null && !receiverFromScope.isMutable) {
                 val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
+                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
+            }
+        } else if (msgFromDb.forMutableType && receiver is MessageSend) {
+            val receiverType = receiver.receiver.type!!
+            if (!receiverType.isMutable) {
                 statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
             }
         }
@@ -253,7 +225,45 @@ fun replaceAllGenericsToRealTypeRecursive(
             newResolvedTypeArgs2.add(typeArg)
         }
     }
+    
+    val genericLetters = listOf("T", "G")
+    val genericLetterToIndex = mutableMapOf<String, Int>()
+    genericLetters.forEachIndexed { index, letter ->
+        if (index < copyType.typeArgumentList.size) {
+            genericLetterToIndex[letter] = index
+        }
+    }
+    
+    val newResolvedFields = mutableListOf<KeywordArg>()
+    copyType.fields.forEach { field ->
+        val fieldType = field.type
+        val isSingleGeneric = fieldType.name.isGeneric()
+
+        val newFieldType = if (isSingleGeneric) {
+            // First try to get the real type from typeArguments by generic letter order
+            val genericIndex = genericLetterToIndex[fieldType.name]
+            val resolvedLetterType = if (genericIndex != null) {
+                newResolvedTypeArgs2.getOrNull(genericIndex)
+            } else {
+                letterToRealType[fieldType.name] ?: receiverGenericsTable[fieldType.name]
+            }
+            resolvedLetterType?.cloneAndChangeBeforeGeneric(fieldType.name) ?: fieldType
+        } else if (fieldType is Type.UserLike && fieldType.typeArgumentList.isNotEmpty()) {
+            replaceAllGenericsToRealTypeRecursive(
+                fieldType,
+                letterToRealType,
+                receiverGenericsTable
+            )
+        } else {
+            fieldType
+        }
+
+        newResolvedFields.add(KeywordArg(field.name, newFieldType))
+    }
+
     return copyType.also {
         it.replaceTypeArguments(newResolvedTypeArgs2)
+        it.fields.clear()
+        it.fields.addAll(newResolvedFields)
     }
 }

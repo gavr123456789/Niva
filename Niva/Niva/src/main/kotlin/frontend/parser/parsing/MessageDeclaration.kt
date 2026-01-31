@@ -337,8 +337,7 @@ fun Parser.tryKeyword(isConstructor: Boolean): Boolean {
 
 fun Parser.checkTypeOfMessageDeclaration2(
     isConstructor: Boolean = false,
-    parseReceiver: Boolean = true,
-    on: Boolean = false // to skip return value if we have on in the start
+    parseReceiver: Boolean = true
 ): MessageDeclarationType? {
     val savepoint = current
     match(TokenType.Mut)
@@ -410,7 +409,7 @@ fun Parser.onMessageDeclList(
         pragmas.addAll(pragmasForExtend)
         val docComment = parseDocComment()
         matchAssert(TokenType.On)
-        val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false, on = true)
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2(parseReceiver = false)
             ?: peek().compileError("Can't parse message declaration $RED${peek().lexeme}")
 
         val msgDecl = messageDeclaration(isItMsgDeclaration, pragmas, forTypeAst)
@@ -445,7 +444,8 @@ const val ConstructorExpected = "Constructor expected"
 
 // constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDeclaration {
-    val constructorKeyword = matchAssert(TokenType.Constructor, ConstructorExpected)
+    val isFun = check(TokenType.Fun)
+    val constructorKeyword = if (isFun) matchAssert(TokenType.Fun) else matchAssert(TokenType.Constructor, ConstructorExpected)
 
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)

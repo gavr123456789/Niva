@@ -36,9 +36,7 @@ fun Resolver.resolveKeywordMsg(
     // resolve just non-generic types of args
     resolveKwArgs(statement, statement.args, previousAndCurrentScope, filterGenerics = true)
 
-    // resolve receiverType
-    val selectorName = statement.args.map { it.name }.toCamelCase()
-
+    // resolve receiverType first to check for Object
     if (statement.receiver.type == null) {
         currentLevel++
         resolveSingle((statement.receiver), previousAndCurrentScope, statement)
@@ -47,6 +45,7 @@ fun Resolver.resolveKeywordMsg(
     val receiverType = statement.receiver.type
         ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
 
+    val selectorName = statement.args.map { it.name }.toCamelCase()
     // resolve kw kind
     var foundCustomConstructorDb: MessageMetadata? = null
 
@@ -81,8 +80,6 @@ fun Resolver.resolveKeywordMsg(
             statement.kind = KeywordLikeType.Constructor
             return KeywordLikeType.Constructor
         }
-        // This is Setter or Keyword now
-
         // if the amount of keyword's arg is 1, and its name on of the receiver field, then its setter
         if (statement.args.count() == 1 && receiverType is Type.UserLike) {
             val keyArgText = statement.args[0].name
@@ -90,8 +87,6 @@ fun Resolver.resolveKeywordMsg(
             val receiverArgWithSameName = receiverType.fields.find { it.name == keyArgText }
             if (receiverArgWithSameName != null) {
                 // this is setter
-
-
                 if (receiverType.isMutable) {
                     statement.type = Resolver.defaultTypes[InternalTypes.Unit]
                     statement.kind = KeywordLikeType.Setter
@@ -214,7 +209,16 @@ fun Resolver.resolveKeywordMsg(
 
     // resolve generic args types
     resolveKwArgsGenerics(statement, argsTypesFromDb, fromReceiverAndfromArgsTable)
+    // stupid hack to make generics like Pair(T, G) to T, T, when the types are the same
 
+    if (fromReceiverAndfromArgsTable.count() == 1){
+        val returnType = kwFromDB?.returnType
+        if (returnType is Type.UserLike && returnType.typeArgumentList.count() == 2)
+        if ((returnType).typeArgumentList[0] == returnType.typeArgumentList[1]) {
+            fromReceiverAndfromArgsTable["G"] = fromReceiverAndfromArgsTable.values.first()
+        }
+
+    }
     // if receiverType is lambda then we need to check does it have same argument names and types
     if (receiverType is Type.Lambda) {
         val receiverArgs = receiverType.args
@@ -487,7 +491,7 @@ fun Resolver.resolveKeywordMsg(
 
             statement.type = returnType//= addErrorEffect(msgTypeFromDB, returnType, statement)
 
-            // Generate dynamic or not
+            // generate dynamic or not
             if ((statement.selectorName == "toDynamic" || statement.selectorName == "fromDynamic") && receiverType is Type.UserLike) {
                 receiverType.needGenerateDynamic = true
             }
@@ -721,22 +725,20 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
 fun resolveReturnTypeIfGeneric(
     returnTypeFromDb: Type, letterToRealType: MutableMap<String, Type>, receiverGenericsTable: MutableMap<String, Type>
 ): Type {
-    ///
-    val returnTypeOrNullUnwrap = returnTypeFromDb.unpackNull()
+    return when (val returnTypeOrNullUnwrap = returnTypeFromDb.unpackNull()) {
+        is Type.UnknownGenericType -> {
+            val realTypeFromTable =
+                letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
+                ?: returnTypeFromDb
+            realTypeFromTable
+        }
+        is Type.UserLike if returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty() -> {
+            // what if a regular keyword's return type has unresolved generic parameters?
+            // we go through each one; if it's unresolved, we add it from the table; if it's resolved, we add it like this
+            replaceAllGenericsToRealTypeRecursive(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
+        }
 
-
-    return if (returnTypeOrNullUnwrap is Type.UnknownGenericType) {
-        val realTypeFromTable =
-            letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
-            ?: returnTypeFromDb
-//            ?: throw Exception("Cant find generic type $YEL${returnTypeOrNullUnwrap.name}${RESET} in letterToRealType table $YEL$letterToRealType$RESET")
-        realTypeFromTable
-    }
-    // если ретурн тип ту стринг есть среди параметров функции имеющих дженерики
-    else if (returnTypeOrNullUnwrap is Type.UserLike && returnTypeOrNullUnwrap.typeArgumentList.isNotEmpty()) {
-        // что если у обычного кейворда возвращаемый тип имеет нересолвнутые женерик параметры
-        // идем по каждому, если он не резолвнутый, то добавляем из таблицы, если резолвнутый то добавляем так
-        replaceAllGenericsToRealTypeRecursive(returnTypeOrNullUnwrap, letterToRealType, receiverGenericsTable)
-    } else returnTypeFromDb // return without changes
+        else -> returnTypeFromDb
+    } // return without changes
 
 }

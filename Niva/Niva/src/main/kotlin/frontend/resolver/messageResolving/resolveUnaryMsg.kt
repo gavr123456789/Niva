@@ -24,7 +24,6 @@ fun Resolver.resolveUnaryMsg(
     // if a type already has a field with the same name, then this is getter, not unary send
     val receiver = statement.receiver
 
-
     if (receiver.type == null) {
         currentLevel++
         resolveSingle((receiver), previousAndCurrentScope, statement)
@@ -69,13 +68,16 @@ fun Resolver.resolveUnaryMsg(
         return Pair(receiverType.returnType, null)
     }
 
-
     val checkForGetter = {
-        if (receiverType is Type.UserLike) {
-            val fieldWithSameName = receiverType.fields.find { it.name == statement.selectorName }
-            Pair(fieldWithSameName != null, fieldWithSameName)
-        } else Pair(false, null)
+        if (receiverType is Type.UserLike && !receiverType.noGetters) {
+            val field = receiverType.fields.find { it.name == statement.selectorName }
+
+            (field != null) to field
+        } else {
+            false to null
+        }
     }
+
 
     val (isGetter, field) = checkForGetter()
     if (isGetter) {

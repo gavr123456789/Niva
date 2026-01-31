@@ -23,11 +23,6 @@ fun <T> setDiff(x: Set<T>, y: Set<T>): Set<T> {
     return y - x
 }
 
-
-open class Sus (val x: Int)
-class Sas (val t: Int): Sus(56)
-
-
 fun childContainSameFieldsAsParent(
     fieldsChild: MutableList<KeywordArg>,
     fieldsParent: MutableList<KeywordArg>,

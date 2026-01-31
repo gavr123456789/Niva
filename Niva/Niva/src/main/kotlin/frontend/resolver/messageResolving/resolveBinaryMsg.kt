@@ -67,9 +67,33 @@ fun Resolver.resolveBinaryMsg(
         argument.token.compileError("($YEL$argumentType$RESET != $YEL${msgFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$msgFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
     }
 
-    statement.type = msgFromDb.returnType
+    // Resolve generics in return type
+    val receiverGenericsTable = mutableMapOf<String, Type>()
+    if (receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
+        receiverType.typeArgumentList.forEach {
+            val beforeResolveName = it.beforeGenericResolvedName
+            if (beforeResolveName != null) {
+                receiverGenericsTable[beforeResolveName] = it
+            }
+        }
+    }
+
+    val letterToRealType = mutableMapOf<String, Type>()
+    if (msgFromDb is BinaryMsgMetaData && msgFromDb.argType is Type.UnknownGenericType) {
+        letterToRealType[msgFromDb.argType.name] = argumentType
+    }
+
+    val returnTypeFromDb = msgFromDb.returnType
+    val returnType2 = resolveReturnTypeIfGeneric(returnTypeFromDb, letterToRealType, receiverGenericsTable)
+
+    // if return type was unwrapped nullable, we need to wrap it again
+    val returnType = if (returnTypeFromDb is Type.NullableType && returnType2 !is Type.NullableType) 
+        Type.NullableType(realType = returnType2) 
+    else returnType2
+
+    statement.type = returnType
     statement.pragmas = msgFromDb.pragmas
 
 //    addErrorEffect(msgFromDb, msgFromDb.returnType, statement)
-    return Pair(msgFromDb.returnType, msgFromDb)
+    return Pair(returnType, msgFromDb)
 }

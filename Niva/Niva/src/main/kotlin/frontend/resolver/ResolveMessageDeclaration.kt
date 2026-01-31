@@ -25,7 +25,7 @@ fun Resolver.resolveMessageDeclaration(
 ): Boolean {
     val forTypeAst = statement.forTypeAst
 
-    val typeFromDB: Type? = if (forTypeAst is TypeAST.UserType) { //statement.forType ?:
+    val initialTypeFromDB: Type? = if (forTypeAst is TypeAST.UserType) { //statement.forType ?:
         val ident = IdentifierExpr(
             name = forTypeAst.name,
             names = forTypeAst.names,
@@ -42,14 +42,27 @@ fun Resolver.resolveMessageDeclaration(
             Type.UnknownGenericType(forTypeAst.name)
         } else null
 
-
-        if (q == null) {
-            unResolvedMessageDeclarations.add(currentPackageName, statement)
-            currentLevel--
-            return true
-        } else q
-
+        q
     } else typeTable[statement.forTypeAst.name]
+
+    val typeFromDB = if (initialTypeFromDB == null && statement is ConstructorDeclaration && statement.isFun()) {
+        val typeDecl = TypeDeclaration(
+            typeName = forTypeAst.name,
+            fields = emptyList(),
+            token = statement.token
+        )
+        val newType = Type.UserType(
+            name = forTypeAst.name,
+            pkg = currentPackageName,
+            fields = mutableListOf(),
+            protocols = mutableMapOf(),
+            typeDeclaration = typeDecl
+        )
+        typeDecl.receiver = newType
+        addNewType(newType, typeDecl)
+        newType
+    } else initialTypeFromDB
+
     if (typeFromDB == null) {
         unResolvedMessageDeclarations.add(currentPackageName, statement)
         currentLevel--
@@ -210,7 +223,7 @@ fun Resolver.resolveMessageDeclaration(
                     statement.token.compileError("Not all generic arguments were instantiated got ${copyTypeIfGenerics.typeArgumentList} but generic fields are $genericFields")
                 }
                 // match types of args from forType to Generics fields\
-                copyTypeIfGenerics.fields.forEachIndexed { i, it ->
+                copyTypeIfGenerics.fields.forEachIndexed { _, it ->
                     if (it.type.name.isGeneric()) {
 //                        bodyScope[it.name] = copyTypeIfGenerics.typeArgumentList[i].copyAnyType()
                         bodyScope[it.name] = it.type.copyAnyType().also { it.isCopy = true }

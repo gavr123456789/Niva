@@ -1,10 +1,10 @@
 
 
+// type itself + number of flags
 type TypeInfo t: NivaType isMut: Bool
 extend TypeInfo [
   on toString =
-    t toString + (isMut ? " mut" ! "")
-
+    t toString + (| isMut | true => " mut" |=> "")
 ]
 
 NivaType toTypeInfoDefault = TypeInfo t: this isMut: false

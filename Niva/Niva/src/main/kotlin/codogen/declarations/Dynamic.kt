@@ -43,7 +43,7 @@ fun generateDynamicForUnionRoot(b: StringBuilder, receiverType: Type.UnionRootTy
         b.appendLine("                \"$branchName\" -> $branchName.fromDynamic(dyn)")
     }
 
-    b.appendLine("                else -> error(\"Unknown _unionKind: \$kind\")")
+    b.appendLine($$"                else -> error(\"Unknown _unionKind: $kind\")")
     b.appendLine("            }")
     b.appendLine("        }")
 }

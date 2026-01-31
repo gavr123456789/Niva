@@ -354,10 +354,7 @@ private fun Resolver.resolveStatement(
 
         is NeedInfo -> {
             if (!GlobalVariables.isLspMode) {
-                val t = statement.expression
-
-
-                when (t) {
+                when (val t = statement.expression) {
                     is MessageSend -> {
                         // resolve receiver
                         val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
@@ -883,7 +880,7 @@ fun Resolver.changePackage(
         // top level statements and default definitions located in different pkgs,
         // so to add access from top level statements(mainNiva) to this definitions
         // we need to always import it
-        if (isMainFile) {
+        if (isMainFile ) {// && pack.declarations.isNotEmpty()
             val mainNivaPkg = currentProject.packages[MAIN_PKG_NAME]!!
             mainNivaPkg.addImport(newCurrentPackage)
         }
@@ -1001,9 +998,9 @@ fun Resolver.getTypeForIdentifier(
             } else
                 startsWithSameWord
 
-            val maybeUMeant = if (orStartsWithFirst2Letters.isEmpty()) {
+            val maybeUMeant = orStartsWithFirst2Letters.ifEmpty {
                 ""
-            } else orStartsWithFirst2Letters
+            }
             x.token.compileError("Can't find enum $x, ${if (maybeUMeant.isNotEmpty()) "maybe $maybeUMeant?" else ""}")
         }
 
@@ -1188,7 +1185,7 @@ class Resolver(
     val projectName: String,
 
     var statements: MutableList<Statement>,
-    var currentResolvingFileName: File,
+    var currentResolvingFileName: File, // useful for lsp
 
     // the paths to files except main
     val otherFilesPaths: MutableList<File> = mutableListOf(),
@@ -1338,6 +1335,17 @@ class Resolver(
             val anyType = defaultTypes[InternalTypes.Any]!!
             val unknownGenericType = defaultTypes[InternalTypes.UnknownGeneric]!!
             val test = defaultTypes[InternalTypes.Test]!!
+
+            intType.parent = anyType
+            stringType.parent = anyType
+            charType.parent = anyType
+            longType.parent = anyType
+            floatType.parent = anyType
+            doubleType.parent = anyType
+            boolType.parent = anyType
+            unitType.parent = anyType
+            intRangeType.parent = anyType
+            charRangeType.parent = anyType
 
             val numProtocol = createIntProtocols(
                 intType = intType,
@@ -1558,6 +1566,19 @@ class Resolver(
             it.emitName = "MutableList"
         }
 
+        // mutable set
+        val mutableSetType = Type.UserType(
+            name = "Set",
+            typeArgumentList = mutableListOf(genericType),
+            fields = mutableListOf(),
+            pkg = "core",
+            typeDeclaration = null
+        ).also {
+            it.isMutable = true
+            it.emitName = "MutableSet"
+            File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
+        }
+
 
         // also adds protocol to sequence
         addCustomTypeToDb(
@@ -1576,7 +1597,8 @@ class Resolver(
                 pairType = pairType,
                 listType = listType,
                 mutListType = mutableListType,
-                setType = setType
+                setType = setType,
+                mutableSetType = mutableSetType
             ).also {
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
@@ -1602,7 +1624,8 @@ class Resolver(
                 pairType = pairType,
                 listType = listType,
                 mutListType = mutableListType,
-                setType = setType
+                setType = setType,
+                mutableSetType = mutableSetType
             )
         )
         val kw = createMapKeyword(charType, genericType, listType)
@@ -1681,19 +1704,6 @@ class Resolver(
 
         mutListTypeOfDifferentGeneric.protocols.putAll(mutableListType.protocols)
 
-
-        // mutable set
-        val mutableSetType = Type.UserType(
-            name = "Set",
-            typeArgumentList = mutableListOf(genericType),
-            fields = mutableListOf(),
-            pkg = "core",
-            typeDeclaration = null
-        ).also {
-            it.isMutable = true
-            it.emitName = "MutableSet"
-        }
-
         val mutSetTypeOfDifferentGeneric = Type.UserType(
             name = "Set",
             typeArgumentList = mutableListOf(differentGenericType),
@@ -1753,20 +1763,6 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
-//        addCustomTypeToDb(
-//            mapTypeMut, createMapProtocols(
-//                isMutable = true,
-//                intType = intType,
-//                unitType = unitType,
-//                boolType = boolType,
-//                mutableMapType = mapTypeMut,
-//                keyType = genericType,
-//                valueType = differentGenericType,
-//                setType = mutableSetType,
-//                setTypeOfDifferentGeneric = mutSetTypeOfDifferentGeneric,
-//                mapType = mapType,
-//            )
-//        )
 
         val listOfDifferentGeneric = createTypeListOfSomeType("List", differentGenericType2, listType)
         val mapProtocols = createMapProtocols(
@@ -1788,8 +1784,6 @@ class Resolver(
         )
 
         // Dynamic
-
-
         val dynamicType = Type.UnionRootType(
             name = "Dynamic",
             fields = mutableListOf(KeywordArg("name", stringType)),
@@ -1802,7 +1796,7 @@ class Resolver(
             typeArgumentList = mutableListOf()
         )
 
-        val createDynamicBranchType = { root: Type.UnionRootType, name: String, fieldValueType: Type? ->
+        val createDynamicBranchType = { _: Type.UnionRootType, name: String, fieldValueType: Type? ->
             Type.UnionBranchType(
                 name = name,
                 root = dynamicType,
@@ -1845,10 +1839,6 @@ class Resolver(
 
         addCustomTypeToDb(dynamicType, mutableMapOf())
 
-
-//        val kotlinPkg = Package("kotlin", isBinding = true)
-//        commonProject.packages["kotlin"] = kotlinPkg
-
         /// add Error
 
         /// ERROR TYPE
@@ -1873,9 +1863,7 @@ class Resolver(
 
         )
         errorRootType.branches = listOf(errorType)
-
         errorType.isBinding = true
-        ///
 
         addCustomTypeToDb(
             errorType, createExceptionProtocols(
@@ -1890,7 +1878,6 @@ class Resolver(
             fields = mutableListOf(),
             pkg = "core",
             typeDeclaration = null
-
         )
         stringBuilderType.isBinding = true
 
@@ -1908,18 +1895,9 @@ class Resolver(
             )
         )
 
-
-
-
         projects[projectName] = commonProject
     }
 }
-
-//private fun Type.InternalType.copy(): Type.InternalType {
-//    return Type.InternalType(
-//        typeName = InternalTypes.valueOf(name), pkg = this.pkg, isPrivate, protocols
-//    )
-//}
 
 fun <E> ArrayDeque<E>.pop(): E = this.removeLast()
 fun <E> ArrayDeque<E>.push(e: E) = this.add(e)

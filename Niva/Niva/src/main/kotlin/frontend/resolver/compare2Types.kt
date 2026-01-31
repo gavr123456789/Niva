@@ -93,7 +93,8 @@ fun compare2Types(
                 isOut = isOut,
                 compareParentsOfBothTypes = compareParentsOfBothTypes,
                 nullIsFirstOrSecond = nullIsFirstOrSecond,
-
+                compareMutability = compareMutability,
+                unpackNullForFirst = unpackNullForFirst
             )
             if (!isEqual) {
 //                tokenForErrors.compileError("argument ${WHITE}${it.name}${RESET} has type ${YEL}${it.type}${RESET} but ${WHITE}${it2.name}${RESET} has type ${YEL}${it2.type}")
@@ -140,8 +141,8 @@ fun compare2Types(
     }
 
     // if one of them is generic
-    if ((type1OrChildOf2 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType && type2 !is Type.NullableType ||
-                type2 is Type.UnknownGenericType && type1OrChildOf2 !is Type.UnknownGenericType && type1OrChildOf2 !is Type.NullableType)
+    if ((type1OrChildOf2 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType  || //&& type2 !is Type.NullableType
+                type2 is Type.UnknownGenericType && type1OrChildOf2 !is Type.UnknownGenericType ) //&& type1OrChildOf2 !is Type.NullableType // NOW comparing generics with Nullable types is OK
     ) {
         return if (!isOut)
             true // getting T but got Int, is OK
