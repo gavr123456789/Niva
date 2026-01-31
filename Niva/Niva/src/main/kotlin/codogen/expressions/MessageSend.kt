@@ -52,7 +52,6 @@ fun MessageSend.generateMessageCall(withNullChecks: Boolean = false): String {
 
     if (!isThisACascade) b.append("(".repeat(messages.count { it.isPiped }))
 
-
     val fakeReceiver = if (isThisACascade) {
         b.append(receiver.generateExpression())
         b.append(".also { cascade_receiver ->\n") // then generate function calls on this receiver

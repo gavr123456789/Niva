@@ -206,10 +206,9 @@ fun warning(string: String) {
 }
 
 //Flags for single file run:
-//-c      — compile only(creates binary in current folder)
-//-i      — get info about packages(it is usable to pipe it to .md file)
-//-iu     — print info only about user-defined types
-//-i pkg  — print info only about specific pkg
+// Deprecated
+//    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
+//    ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
 const val HELP = """
 Usage:
     ${WHITE}run$RESET      — compile and run project from "main.niva" file
@@ -245,8 +244,6 @@ In code:
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
-    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
-    ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
 
     ${CYAN}package: $GREEN"PKG"$RESET   — set package for the definitions in code below
     ${CYAN}protocol: $GREEN"NAME"$RESET — set protocol for the definitions in code below

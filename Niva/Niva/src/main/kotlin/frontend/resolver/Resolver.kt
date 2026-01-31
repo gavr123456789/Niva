@@ -1502,6 +1502,7 @@ class Resolver(
             typeDeclaration = null
         )
 
+
         ///add collections///
         // List
         val listType = Type.UserType(
@@ -1518,6 +1519,16 @@ class Resolver(
             pkg = "core",
             typeDeclaration = null
         )
+        // int array
+        val intArray = Type.UserType(
+            name = "IntArray",
+            fields = listType.fields,
+            typeArgumentList = mutableListOf(),
+            pkg = "core",
+            protocols = mutableMapOf(),
+            typeDeclaration = null
+        )
+
 
         fun addCustomTypeToDb(type: Type.UserLike, protocols: MutableMap<String, Protocol>) {
             type.protocols.putAll(
@@ -1598,13 +1609,25 @@ class Resolver(
                 listType = listType,
                 mutListType = mutableListType,
                 setType = setType,
-                mutableSetType = mutableSetType
+                mutableSetType = mutableSetType,
+                intArray = intArray
             ).also {
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform") // sequence doesn't have such methods
 
             }
+        )
+
+        // IntArray
+        addCustomTypeToDb(
+            intArray,
+            createIntArrayProtocols(
+                intArrayType = intArray,
+                intType = intType,
+                unitType = unitType,
+                boolType = boolType
+            )
         )
 
         // List
@@ -1625,7 +1648,8 @@ class Resolver(
                 listType = listType,
                 mutListType = mutableListType,
                 setType = setType,
-                mutableSetType = mutableSetType
+                mutableSetType = mutableSetType,
+                intArray = intArray
             )
         )
         val kw = createMapKeyword(charType, genericType, listType)

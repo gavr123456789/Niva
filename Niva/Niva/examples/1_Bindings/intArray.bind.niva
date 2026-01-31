@@ -9,7 +9,7 @@ Bind package: "kotlin" content: [
     on copyOf::Int -> IntArray
   ]
 
-  MutableList::Int toIntArray -> IntArray
+  mut List::Int toIntArray -> IntArray
 ]
 
 
