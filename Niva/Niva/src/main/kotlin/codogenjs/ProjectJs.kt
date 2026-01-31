@@ -6,8 +6,8 @@ import frontend.resolver.Project
 import kotlinx.serialization.json.JsonNull.content
 import main.frontend.parser.types.ast.Statement
 import java.io.File
-
-const val content = $$"""
+// js std
+const val JS_STD = $$"""
 export function throwWithMessage(msg) {
     throw new Error(msg)
 }        
@@ -1277,14 +1277,6 @@ export const List__mut__viewFromTo = List__viewFromTo;
 
 /**
  * Generates a JS project similarly to generateKtProject.
- *
- * It’s important to understand how Niva projects are structured:
- *  - all user-defined types and functions live in “regular” packages
- *    (often the ones corresponding to a main.niva file);
- *  - the special package MAIN_PKG_NAME ("mainNiva") contains only
- *    top-level expressions (resolver.topLevelStatements) and imports
- *    of user packages.
- *
  * Because of that, JS generation follows two rules:
  *  1) for every “regular” package that contains declarations, we produce a <pkg>.js file;
  *  2) for MAIN_PKG_NAME we always generate main.js, and it contains
@@ -1313,7 +1305,7 @@ fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements:
 
     val commonFile = File(outputDir, "common.js")
     if (!commonFile.exists()) {
-        commonFile.writeText(content)
+        commonFile.writeText(JS_STD)
     }
 }
 

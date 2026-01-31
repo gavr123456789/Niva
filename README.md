@@ -363,6 +363,7 @@ p = Point new
 
 ## Project examples
 - [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer, parser, half of resolver)
+- [JSON](https://github.com/gavr123456789/bazar/tree/main/LittleLibs/JSON_parser) - naive parser
 - [eBF](https://github.com/Nadelio/eBF) - Extended Brainfuck implementation
 - [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
 - [tons of small stupid things](https://github.com/gavr123456789/bazar/tree/main/Examples)
@@ -373,15 +374,22 @@ p = Point new
 
 ## Install
 
-```
-git clone https://github.com/gavr123456789/Niva.git
-cd Niva/Niva
-./gradlew buildJvmNiva # takes one min for the first time :(
-# read the instructions from output on how to add compiler binary to PATH for each shell
-# LSP here https://github.com/gavr123456789/niva-vscode-bundle
-```
+Compiler  
+```bash
+git clone https://github.com/gavr123456789/Niva.git &&
+cd Niva/Niva/Niva &&
+./gradlew buildJvmNiva 
 
-More in [Installation](./INSTALL.md)
+# takes one min for the first time, gradle :(
+# read the instructions from output on how to add compiler binary to PATH for each shell
+```
+LSP
+`git clone https://github.com/gavr123456789/vaLSe.git && ./gradlew installDist`
+
+[Zed](https://github.com/gavr123456789/zed-niva)  
+[VSC](https://github.com/gavr123456789/niva-vscode-bundle)  
+[build ur own](https://github.com/gavr123456789/tree-sitter-niva)  
+More in [Installation](./INSTALL.md)  
 
 ## First program
 ```Scala

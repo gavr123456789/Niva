@@ -179,7 +179,7 @@ tasks.register(buildJvmNiva) {
             $green
             niva binary has been installed in $targetInstallDir, you can add it to PATH
             
-            Try to compile file main.niva with \"Hello niva\" echo with `niva main.niva`
+            Try to compile file main.niva with `"Hello niva" echo` with `niva main.niva`
             First compilation will take time, but others are instant
             Read about niva here: https://gavr123456789.github.io/niva-site/reference.html
             Check examples from examples folder(in repo)
