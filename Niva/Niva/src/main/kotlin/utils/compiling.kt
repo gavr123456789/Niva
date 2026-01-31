@@ -289,7 +289,7 @@ class CompilerRunner(
                 } else {
                     val zipName = File("./${fileName}.zip")
                     val pathToNativeExe =
-                        pathToProjectRoot / "build" / "distributions" / "infroProject-SNAPSHOT-1.0.zip"
+                        pathToProjectRoot / "build" / "distributions" / "infroProject-0.0.1.zip"
                     File(pathToNativeExe).copyTo(zipName, true)
                 }
             }

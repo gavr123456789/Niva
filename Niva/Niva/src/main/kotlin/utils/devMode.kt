@@ -29,7 +29,7 @@ fun onCompletionExc(scope: Scope, errorMessage: String? = null, token: Token? = 
 
 
 const val DEV_MODE_INSTRUCTIONS = """
-c then 2 enters - compile
+c - compile
 w - compile on every file change
 e - exit
 """

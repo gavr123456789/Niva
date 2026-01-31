@@ -2,11 +2,6 @@
 
 package main
 
-// import main.languageServer.LS
-// import main.languageServer.OnCompletionException
-// import main.languageServer.onCompletion
-// import main.languageServer.resolveAllFirstTime
-// import main.languageServer.resolveNonIncremental
 
 import java.io.File
 import kotlin.system.exitProcess
@@ -16,9 +11,7 @@ import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
 
-fun sus() {
-    
-}
+
 fun main(args: Array<String>) {
 
 //    val ls = LS { println("Niva LS: $it") }

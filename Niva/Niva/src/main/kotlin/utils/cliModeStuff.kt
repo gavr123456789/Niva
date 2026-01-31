@@ -51,7 +51,14 @@ class ArgsManager(val args: MutableList<String>) {
         if (jsRuntimeArg1 != null) {
             this@ArgsManager.args.remove(jsRuntimeArg1)
             jsRuntimeArg1.replaceFirst("--js-runtime=", "")
-        } else "bun"
+        } else {
+            if (isCommandAvailable("bun")) "bun"
+            else if (isCommandAvailable("node")) "node"
+            else {
+                System.err.println("${RED}Error: neither bun nor node are available. Please install one of them or specify runtime with --js-runtime=")
+                exitProcess(1)
+            }
+        }
     }
 
     val outputRename = run {
@@ -206,19 +213,31 @@ fun warning(string: String) {
 const val HELP = """
 Usage:
     ${WHITE}FILE$RESET — compile and run single file
-    ${WHITE}run$RESET — compile and run project from "main" file
-    ${WHITE}dev$RESET — rerun on changed files or input, for faster iteration
-    ${WHITE}run FILE$RESET — compile and run project from root file
-    ${WHITE}run FILE -v$RESET or ${WHITE}-verbose$RESET — with verbose printing
+    ${WHITE}run$RESET — compile and run project from "main.niva" file
+    ${WHITE}run FILE$RESET — compile and run project from FILE entry point
+
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
-        to rename binary use `niva --out-name=NAME build`
-    ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
+        to rename binary use ${WHITE}niva --out-name=NAME build$RESET
     ${WHITE}distr$RESET — create easy to share jvm distribution
+        
+    ${WHITE}dev$RESET — rerun on changed files or input, for faster iteration
+    ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
+    
+    ${WHITE}--verbose$RESET — with verbose printing
+    
+    ${WHITE}--js$RESET — compile to js and run
+    ${WHITE}--js --js-runtime=bun$RESET — use specific js runtime
 
 In code: 
-    > EXPR  — inline print result of expression in comment above
+    > EXPR  — debug expr value from IDE
+              run program at least once
     >? TYPE — print all info about TYPE
+
+    > 1 inc
+    >? Int
+    
+    mark method with @debug to debug every expr
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
@@ -229,7 +248,7 @@ Project configuration:
     ${CYAN}protocol: $GREEN"NAME"$RESET — set protocol for the definitions in code below
     ${CYAN}use: $GREEN"PKG"$RESET       — set default pkg, like using namespace in C#/Vala
     
-    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET 
+    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
 
 Kotlin\Java interop:
     Messages for ${YEL}Bind$RESET:
@@ -240,8 +259,8 @@ Kotlin\Java interop:
     ${YEL}Bind ${CYAN}package: $GREEN"java.io" ${CYAN}content: $RESET[
         ${RED}type ${YEL}File ${CYAN}pathname: ${YEL}String
         ${YEL}File ${CYAN}exists ${RED}-> ${YEL}Boolean
-        ${YEL}File ${CYAN}readText ${RED}-> ${YEL}String
-    $RESET]
+        ${YEL}File ${CYAN}readText ${RED}-> ${YEL}String$RESET
+    ]
     ${WHITE}file = ${YEL}File ${CYAN}pathname: $GREEN"path/to/file"
     ${WHITE}text = ${WHITE}file ${CYAN}readText$RESET
     
@@ -251,3 +270,15 @@ Kotlin\Java interop:
 
 """
 
+
+
+fun isCommandAvailable(command: String): Boolean =
+    try {
+        val process = ProcessBuilder(command, "--version")
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        process.waitFor() == 0
+    } catch (_: Exception) {
+        false
+    }

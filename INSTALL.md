@@ -1,10 +1,15 @@
-# JAR
+There is native binary version and jar  
+For trying I recommend jar since its 1 command to install  
+For native version you will need [GraalVM](https://www.graalvm.org/)
+
+# JAR version
 ```
 git clone https://github.com/gavr123456789/Niva.git &&
 cd Niva/Niva/Niva &&
 ./gradlew buildJvmNiva
 ```
 binary is created in `~/.niva/niva/bin`  
+
 ## Add niva binary to PATH
 replace $path with `~/.niva/niva/bin`
 - Bash: `echo 'export PATH=$PATH:$path' >> ~/.bashrc && source ~/.bashrc`
@@ -20,6 +25,13 @@ Instructions: https://github.com/gavr123456789/niva-vscode-bundle
 4) install `niva` extension
 5) in ext settings set the path to vaLSe that you copied before
 
+# LSP for Zed
+```bash
+git clone https://github.com/gavr123456789/vaLSe.git && ./gradlew installDist
+
+git clone https://github.com/gavr123456789/zed-niva
+```
+see https://github.com/gavr123456789/zed-niva for continue
 
 # Nix
 To get started with Niva, use the provided shell.nix file.
@@ -36,9 +48,9 @@ If you have graalvm in your JAVA_HOME then run:
 `./gradlew buildNativeNiva` this will create native binary in ~/.niva/bin
 
 ## Install GraalVM
-Arch: `yay -S jdk22-graalvm-bin`
-`archlinux-java status`
-`archlinux-java set <JAVA_ENV_NAME>`
+Arch: `yay -S jdk22-graalvm-bin` or 25
+`archlinux-java status` - list all jvm
+`archlinux-java set <JAVA_ENV_NAME>` - replace with full name of graal
 [select java on arch](https://wiki.archlinux.org/title/Java#Switching_between_JVM)
 
 macOS: `brew install --cask graalvm-jdk`
