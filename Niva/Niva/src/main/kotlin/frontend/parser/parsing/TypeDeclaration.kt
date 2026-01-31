@@ -362,7 +362,6 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed:
                     fields = fields,
                     token = pipeTok,
                     root = root,
-                    names = branchName.names,
                     isRoot = inlineBranch
                 )
             )

@@ -96,7 +96,8 @@ fun Resolver.resolveCodeBlock(
                 MessageDeclarationType.Keyword
             ) as KeywordMsgMetaData
         }()
-        val currentArg = metaDataFromDb.argTypes[currentArgumentNumber]
+        val currentArg = metaDataFromDb.argTypes.getOrNull(currentArgumentNumber)
+            ?: statement.token.compileError("You provided too many arguments for ${metaDataFromDb.name.ifEmpty { rootStatement.selectorName }}")
         // T sas -> T = []
         // 4 sas
         // adding Int as T

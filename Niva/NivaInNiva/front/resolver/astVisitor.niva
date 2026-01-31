@@ -13,7 +13,7 @@ union AstVisitor =
 | MsgDeclVisitor
 | GoBackendVisitor
 
-AstVisitor run: statements::List::Statement= [
+AstVisitor run: statements::List::Statement = [
   statements forEach: [
     this visit: it
   ]
@@ -29,7 +29,8 @@ PrintingVisitor visit: st::Statement = [
 /// not only expr
 TypeDeclVisitor
   visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)
-  entryPointStatements::List::Statement -> List(Tuple(String, MessageDecl)) = [
+  entryPointStatements::List::Statement
+  -> List(Tuple(String, MessageDecl)) = [
 
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
@@ -87,7 +88,6 @@ TypeDeclVisitor
 
         // add fields
 
-
         db
           addNewConstructor: resolvedType generateDefaultConstructor
           forType: resolvedType
@@ -141,11 +141,7 @@ TypeDeclVisitor
       receiverType = msg receiver toNivaTypefromDB: db inPkg: null
 
 
-      | receiverType | TypeT => [
-        receiverType genericArgs isNotEmpty ifTrue: [
-          TO DO: "Ast have generics"
-        ]
-      ]
+      | receiverType | TypeT => []
       |=> []
 
       // get real type for each arg
@@ -276,7 +272,18 @@ MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::Type
     pkg = db packages at: pkgStr, unpackOrPANIC
 
     msgDecl = tuple y
-    msgDecl resolveBodyWithDb: db :pkg
+
+    receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
+    extraTypes::mut Map(String, NivaType) = #{}!
+    | receiverType
+    | TypeT => [
+       receiverType genericArgs forEach: [
+         extraTypes at: it name put: it
+       ]
+    ]
+    |=> []
+
+    msgDecl resolveBodyWithDb: db :pkg :extraTypes
   ]
 ]
 
@@ -287,8 +294,11 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
+MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg extraTypes::mut Map(String, NivaType) = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log
+
+  // put extra types to db
+  db localGenericScope putAll: extraTypes
 
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
@@ -312,6 +322,11 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg= [
   c = createContextWithThisAndArgs do
 
   body resolveBody2: db withContext: c
+
+  // clean up local scope
+  extraTypes keys forEach: [
+    db localGenericScope remove: it
+  ]
 ]
 
 
@@ -333,66 +348,3 @@ AstVisitor visit: st::Statement = [
     this visit: st
   ]
 ]
-
-// todo go deep to call visitor on each child note
-// Statement accept: visitor::AstVisitor =
-// | this
-// | Expr => [
-//   visitor visit: this
-//   this exprAccept: visitor
-// ]
-// | Declaration => this declAccept: visitor
-// | Assign => [
-//   visitor visit: this
-//   this value exprAccept: visitor
-// ]
-// | DestructingAssign => [
-//   visitor visit: this
-//   this value exprAccept: visitor
-// ]
-
-
-// Expr exprAccept: visitor::AstVisitor -> Unit =
-// | this
-// | LiteralExpr | Identifier | ReturnStatement => [visitor visit: this]
-// | ExprInBrackets => [
-//   this value exprAccept: visitor
-// ]
-// | TypedExpr => []
-// | CollectionLiteral => [
-//   this elements forEach: [it exprAccept: visitor]
-// ]
-// | MessageSend => [
-//   | this
-//   | UnaryMsg => [
-//     visitor visit: this
-//   ]
-//   | BinaryMsg => [
-//     this args forEach: [it expr exprAccept: visitor]
-//     visitor visit: this
-//   ]
-//   | KeywordMsg => [
-//     this args forEach: [it expr exprAccept: visitor]
-//     visitor visit: this
-//   ]
-
-// ]
-// | CodeBlock => [
-//   TO DO
-// ]
-// | Match => TO DO
-// | VarDeclaration => TO DO
-
-
-
-// Declaration declAccept: visitor::AstVisitor -> Unit =
-// | this
-// | TypeDecl =>  visitor visit: this
-
-// | EnumDecl => visitor visit: this
-// | UnionDecl => visitor visit: this
-// | MessageDecl => [
-//   // Cant visit receiver type and return types since they are not declarations
-//   visitor visit: this
-//   this body forEach: [it accept: visitor]
-// ]

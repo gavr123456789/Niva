@@ -18,6 +18,12 @@ type TyperDB
   constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
 
+  // generated
+  generatedMessageDecls: mut List::MessageDecl
+
+  // local scope for generic resolution
+  localGenericScope: mut Map(String, NivaType)
+
 
 
 
@@ -42,7 +48,7 @@ constructor TyperDB new -> TyperDB = [
 
   typeToMethodNameToMethod::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
     char tempEmptyProto
-    
+
     int intProtocol
 
     float tempEmptyProto
@@ -72,24 +78,38 @@ constructor TyperDB new -> TyperDB = [
     any tempEmptyProto
     list tempEmptyProto
     map tempEmptyProto
-    set tempEmptyProto 
-  } 
+    set tempEmptyProto
+  }
+
+  typesWithSameNames::mut Map(String, mut Set::NivaType) = #{}!
+  // add core types to typesWithSameNames so they can be found by mangled name (e.g. core_String)
+  corePkg types values forEach: [
+    mangled = it toMangledName
+    set::mut Set::NivaType = #()!
+    set add: it
+    typesWithSameNames at: mangled put: set
+  ]
 
   ^TyperDB
     listOfErrors: {}!
     listOfDeclaredTypes: {}!
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
-    typesWithSameNames: #{}!
+    typesWithSameNames: typesWithSameNames
     typesById: #{}!
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
+    generatedMessageDecls: {}!
+    localGenericScope: #{}!
 
 ]
 
 extend TyperDB [
+  on addGeneratedMessageDecl: m::MessageDecl = [
+    generatedMessageDecls add: m
+  ]
   /// adds method to protocol, if no such protocol - creates it
   on addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
     methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
@@ -115,7 +135,7 @@ extend TyperDB [
     msg = e msg
     "ADDED ERROR $msg" red log
     listOfErrors add: e
-    TO DO: "Error"
+    //TO DO: "Error"
   ]
 
   on addErrorFromTok: tok::Token withMsg: msg::String = [
@@ -184,15 +204,27 @@ extend TyperDB [
     | pkg
     | null => TO DO: "Compiler bug: cant find pkg $pkgName"
     |=> pkg types at: t name put: t
-    
 
-    .addToTypesWithTheSameName: t    
+
+    .addToTypesWithTheSameName: t
+
+    // also add mangled name
+    mangled = t toMangledName
+    // we don't use addToTypesWithTheSameName because it uses t name
+    setMaybe = typesWithSameNames at: mangled
+    | setMaybe
+    | null => [
+      newSet::mut Set::NivaType = #()!
+      newSet add: t
+      typesWithSameNames at: mangled put: newSet
+    ]
+    |=> setMaybe add: t
 
     id = t toIdString
     typesById get: id orPut: [t]
     "addNewType typesById: added new type $t to typesById with id: $id" log
-    
-    
+
+
     // 2 add to methods db
     x = this typeToMethodNameToMethod at: t
     | x
@@ -200,7 +232,7 @@ extend TyperDB [
       "addNewType: added new type $t to methods cache with 0 members" log
       this typeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to methodDB"
-    
+
     // 3 to constructors
     xc = this constructorsTypeToMethodNameToMethod at: t
     | xc
@@ -211,9 +243,9 @@ extend TyperDB [
   ]
 
   on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
-    newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType
+    newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType db: this
     typeId = newTypeWithGenericInstantiated toIdString
-    
+
     // check if it already
     typesById at: typeId, unpack: [
       "already resolved generic $typeId" log
@@ -223,13 +255,54 @@ extend TyperDB [
     typesById at: typeId put: newTypeWithGenericInstantiated
     "added new generic instantiation $typeId" log
 
+    // add to lookup for mangled name (so we can find Box__Int)
+    mangled = newTypeWithGenericInstantiated toMangledName
+    // .addToTypesWithTheSameName: newTypeWithGenericInstantiated // this uses name, which is "Box"
+
+    // manually add mangled name
+    setMaybe = typesWithSameNames at: mangled
+    | setMaybe
+    | null => [
+      newSet::mut Set::NivaType = #()!
+      newSet add: newTypeWithGenericInstantiated
+      typesWithSameNames at: mangled put: newSet
+    ]
+    |=> setMaybe add: newTypeWithGenericInstantiated
+
 
     // we adding type the first time, othervice it would be returned before
     Assert that: (instantiatedCache at: t) equals: null
 
     // add empty method lits to methods and constructors
-    this instantiatedCache at: t put: #{}!
-    this constructorsTypeToMethodNameToMethod at: t put: #{}!
+    this instantiatedCache at: newTypeWithGenericInstantiated put: #{}!
+    instMethods::mut Map(String, NivaMethod) = #{}!
+    this typeToMethodNameToMethod at: newTypeWithGenericInstantiated put: instMethods
+    instConstructors::mut Map(String, NivaMethod) = #{}!
+    this constructorsTypeToMethodNameToMethod at: newTypeWithGenericInstantiated put: instConstructors
+
+    // copy methods
+    dontMangle = letterToType keys toSet
+    methodsOfGeneric = this typeToMethodNameToMethod at: t
+    | methodsOfGeneric
+    | null => []
+    |=> [
+       methodsOfGeneric values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instMethods at: newM name put: newM
+       ]
+    ]
+
+    // copy constructors
+    constructorsOfGeneric = this constructorsTypeToMethodNameToMethod at: t
+    | constructorsOfGeneric
+    | null => []
+    |=> [
+       constructorsOfGeneric values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instConstructors at: newM name put: newM
+       ]
+    ]
+
     ^ newTypeWithGenericInstantiated
   ]
 
@@ -320,7 +393,7 @@ extend TyperDB [
           Assert that: decl isSingleExpr equals: true
 
 
-          decl resolveBodyWithDb: this pkg: pkg
+          decl resolveBodyWithDb: this pkg: pkg extraTypes: #{}!
 
           Assert that: decl body typedBody2 isNotEmpty equals: true
 
@@ -343,6 +416,11 @@ extend TyperDB [
 
     typeName isGeneric ifTrue: [
       ^ UnresolvedGenericT name: typeName
+    ]
+
+    // check local scope
+    localGenericScope at: typeName, unpack: [
+      ^ it
     ]
 
     // if core return from cache
@@ -444,7 +522,7 @@ type ResolverHelper
 
 
 constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
-  fileToStatements::mut Map(String, List::Statement) = #{}!
+  fileToStatements::mut Map(String, mut List::Statement) = #{}!
 
   // parsing
   fileToContent forEach: [ file, content ->
@@ -476,28 +554,41 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     processBodyes: msgDecls
     db: db
 
+  // add generated functions to fileToStatements
+  db generatedMessageDecls forEach: [
+    //mutList::mut List
+    (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+  ]
+
   ^ ResolverHelper
     fileToStatements: fileToStatements
     db: db
     entryPointExpressions: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2
 ]
 
-TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) -> TypeT = [
+TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB -> TypeT = [
+  instantiate = [ t::NivaType ->
+    | t
+    | TypeT => [
+      db addGenericInstantiationIfAbsent: t
+         letterToType: letterToType
+    ]
+    | UnresolvedGenericT => [
+        maybe = letterToType at: t name
+        | maybe
+        | null => t
+        |=> maybe
+    ]
+    |=> [t]
+  ]
+
   newFields = fields map: [
     TypeTField name: it name
-              typeT: [
-                  maybe = letterToType at: it typeT name
-                  | maybe
-                  | null => it typeT
-                  |=> maybe
-              ] do
+              typeT: (instantiate t: it typeT)
   ]
 
   newGenericArgs = genericArgs map: [
-    maybe = letterToType at: it name
-    | maybe
-    | null => it
-    |=> maybe
+    instantiate t: it
   ]
 
   ^TypeT fields: newFields toMutableList

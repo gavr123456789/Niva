@@ -28,6 +28,14 @@ const val OUT_NAME_ARG = "--out-name="
 class ArgsManager(val args: MutableList<String>) {
 
     val compileOnly = "-c" in args // args.find { it == "-c" } != null
+    val js = if ("--js" in args) {
+        args.remove("--js")
+        true
+    } else false
+    val jsDist = if ("--jsdist" in args) {
+        args.remove("--jsdist")
+        true
+    } else false
     val verbose = if ("--verbose" in args) {
         args.remove("--verbose")
         true
@@ -38,13 +46,21 @@ class ArgsManager(val args: MutableList<String>) {
     } else false
     val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Gradle
 
-    val outputRename = {
-        val outputRename = args.find { it.startsWith(OUT_NAME_ARG) }
-        if (outputRename != null) {
-            args.remove(outputRename)
-            outputRename.replaceFirst(OUT_NAME_ARG, "")
+    val jsRuntime = run {
+        val jsRuntimeArg1 = this@ArgsManager.args.find { it.startsWith("--js-runtime=") }
+        if (jsRuntimeArg1 != null) {
+            this@ArgsManager.args.remove(jsRuntimeArg1)
+            jsRuntimeArg1.replaceFirst("--js-runtime=", "")
+        } else "bun"
+    }
+
+    val outputRename = run {
+        val outputRename1 = this@ArgsManager.args.find { it.startsWith(OUT_NAME_ARG) }
+        if (outputRename1 != null) {
+            this@ArgsManager.args.remove(outputRename1)
+            outputRename1.replaceFirst(OUT_NAME_ARG, "")
         } else null
-    }()
+    }
     val infoIndex = args.indexOf("-i")
     val isShowTimeArg = verbose
 
@@ -80,7 +96,7 @@ class ArgsManager(val args: MutableList<String>) {
 fun ArgsManager.time(executionTime: Long, kotlinPhase: Boolean) {
     if (isShowTimeArg) {
         if (kotlinPhase)
-            println("${CYAN}Verbose$RESET: Kotlin compilation + exec time: $executionTime ms")
+            println("${CYAN}Verbose$RESET: backend lang compilation + exec time: $executionTime ms")
         else
             println("${CYAN}Verbose$RESET: Niva compilation time: $executionTime ms")
     }

@@ -338,7 +338,7 @@ fun MessageDeclaration.generateMessageDeclaration(isStatic: Boolean = false, nee
 fun ConstructorDeclaration.generateConstructorDeclaration() =
     this.msgDeclaration.generateMessageDeclaration(true, false)
 
-fun operatorToString(operator: String, token: Token): String {
+fun operatorToString(operator: String, token: Token?): String {
     return when (operator) {
         "+" -> "plus"
         "-" -> "minus"
@@ -346,20 +346,17 @@ fun operatorToString(operator: String, token: Token): String {
         "/" -> "div"
         "%" -> "rem"
         ".." -> "rangeTo"
-        "+=" -> "plusAssign"
-        "-=" -> "minusAssign"
-        "*=" -> "timesAssign"
-        "/=" -> "divAssign"
-        "%=" -> "remAssign"
         "==" -> "equals"
-        "!=" -> "equals"
-        ">" -> "compareTo"
-        "<" -> "compareTo"
-        ">=" -> "compareTo"
-        "<=" -> "compareTo"
-        "<-=" -> "getValue"
-        "=->" -> "setValue"
+        "!=" -> "notEquals"
+        ">" -> "gt"
+        "<" -> "lt"
+        ">=" -> "gte"
+        "<=" -> "lte"
+        "||" -> "or"
+        "&&" -> "and"
         "apply" -> "invoke"
-        else -> token.compileError("Undefined operator: $operator")
+        else -> {
+            token?.compileError("Undefined operator: $operator") ?: operator
+        }
     }
 }

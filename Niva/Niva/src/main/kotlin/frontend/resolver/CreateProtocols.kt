@@ -1,8 +1,10 @@
-@file:Suppress("UNUSED_PARAMETER", "unused")
+@file:Suppress("UNUSED_PARAMETER", "unused", "EnumEntryName", "EnumEntryName", "EnumEntryName")
 
 package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
+import main.codogenjs.EMIT_JS_PRAGMA
+import main.codogenjs.RENAME_JS_PRAGMA
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -30,7 +32,7 @@ fun createIntProtocols(
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType, ),
+
             createUnary("inc", intType, docComment = "increments the number by 1\n1 inc == 2"),
             createUnary("dec", intType, "1 dec == 0"),
             createUnary("toFloat", floatType),
@@ -122,7 +124,6 @@ fun createFloatProtocols(
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
             createUnary("inc", floatType),
             createUnary("dec", floatType),
             createUnary("toInt", intType),
@@ -187,12 +188,33 @@ fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null,
         docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
 
 
+
+fun Pair<String, UnaryMsgMetaData>.renameJsUnary(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createRenameJsAtttribure(str))
+    return this
+}
+
+fun Pair<String, UnaryMsgMetaData>.emitJs(str: String): Pair<String, UnaryMsgMetaData> {
+    this.second.pragmas.add(createEmitJsAtttribure(str))
+    return this
+}
+fun Pair<String, KeywordMsgMetaData>.emitJsKeyword(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createEmitJsAtttribure(str))
+    return this
+}
+
+fun Pair<String, KeywordMsgMetaData>.renameJs(str: String): Pair<String, KeywordMsgMetaData> {
+    this.second.pragmas.add(createRenameJsAtttribure(str))
+    return this
+}
+
+
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
 }
 
-fun Pair<String, KeywordMsgMetaData>.emitKw(str: String): Pair<String, KeywordMsgMetaData> {
+fun Pair<String, KeywordMsgMetaData>.emitKeyword(str: String): Pair<String, KeywordMsgMetaData> {
     this.second.pragmas.add(createEmitAtttribure(str))
     return this
 }
@@ -240,7 +262,6 @@ fun createStringProtocols(
             createUnary("first", charType, "Returns the first character or panic"),
             createUnary("last", charType, "Returns the last character or panic"),
             createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`
-            createUnary("echo", unitType),
 
             ),
         binaryMsgs = mutableMapOf(
@@ -314,7 +335,6 @@ fun createBoolProtocols(
             createUnary("not", boolType, "true not == false"),
             createUnary("isFalse", boolType),
             createUnary("isTrue", boolType),
-            createUnary("echo", unitType),
 
             ),
         binaryMsgs = mutableMapOf(
@@ -392,7 +412,6 @@ fun createCharProtocols(
 
             createUnary("digitToInt", intType, "'2' digitToInt == 2, or panic"),
 
-            createUnary("echo", unitType)
         ),
         binaryMsgs = mutableMapOf(
             createBinary("+", intType, charType, "a + 2 == c"),
@@ -529,7 +548,6 @@ fun createRangeProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
             createUnary("isEmpty", boolType),
             createUnary("first", itType),
             createUnary("last", itType),
@@ -616,7 +634,9 @@ fun createExceptionForCustomErrors(
 }
 
 fun throwWithMessageGenerate(stringType: Type, nothingType: Type) =
-    createKeyword(KeywordArg("throwWithMessage", stringType), nothingType).emitKw("throwWithMessage($1)")
+    createKeyword(KeywordArg("throwWithMessage", stringType), nothingType)
+        .emitKeyword("throwWithMessage($1)")
+        .emitJsKeyword("common.throwWithMessage($1)")
 
 fun createExceptionProtocols(
     errorType: Type.UnionBranchType,
@@ -630,8 +650,7 @@ fun createExceptionProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("echo", unitType),
-            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)")//.also { it.second.errors.add() }
+            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)").emitJs("throw &0")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -692,6 +711,7 @@ fun createListProtocols(
     listType: Type.UserType,
     mutListType: Type.UserType,
     setType: Type.UserType,
+    mutableSetType: Type.UserType,
 
     ): MutableMap<String, Protocol> {
     val listOfLists = Type.UserType(
@@ -715,7 +735,6 @@ fun createListProtocols(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
-            createUnary("echo", unitType),
             createUnary("first", itType),
 
             createUnary("last", itType, "last or panic, use lastOrNull for safety"),
@@ -731,6 +750,7 @@ fun createListProtocols(
             createUnary("asSequence", sequenceType, "All processing methods like filter map, will execute lazy"),
             createUnary("isEmpty", boolType),
             createUnary("toSet", setType),
+            createUnary("toMutableSet", mutableSetType),
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", listType),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
@@ -747,7 +767,7 @@ fun createListProtocols(
 
             createForEachKeywordIndexed(intType, itType, unitType, """
                 {1 2 3} forEachIndexed: [i, it -> 
-                    "${"\$i"} element is ${"\$it"}" echo
+                    "${$$"$i"} element is ${$$"$it"}" echo
                 ] 
             """.trimIndent()),
             createMapKeyword(itType, differentGenericType, listTypeOfDifferentGeneric),
@@ -1009,7 +1029,6 @@ fun createSetProtocols(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
             createUnary("count", intType),
-            createUnary("echo", unitType),
             createUnary("clear", unitType, "removes every element"),
             createUnary("first", itType),
             createUnary("last", itType),
@@ -1202,6 +1221,11 @@ fun createRenameAtttribure(v: String) =
 fun createEmitAtttribure(v: String) =
     createStringPragma("emit", v)
 
+fun createEmitJsAtttribure(v: String) =
+    createStringPragma(EMIT_JS_PRAGMA, v)
+
+fun createRenameJsAtttribure(v: String) =
+    createStringPragma(RENAME_JS_PRAGMA, v)
 fun createMapProtocols(
     isMutable: Boolean,
     intType: Type.InternalType,
@@ -1225,7 +1249,6 @@ fun createMapProtocols(
             createUnary("count", intType),
             createUnary("isEmpty", boolType),
             createUnary("isNotEmpty", boolType),
-            createUnary("echo", unitType),
             createUnary("keys", setType).emit("$0.keys"),
             createUnary("values", setTypeOfDifferentGeneric).emit("$0.values"),
             createUnary("toMap", mapType, "Mutable map, elements will be shadow copied"),
@@ -1282,7 +1305,7 @@ fun createMapProtocols(
                                 KeywordArg("key", keyType),
                                 KeywordArg("value", valueType),
                             ),
-                            unitType,
+                            boolType,
                             specialFlagForLambdaWithDestruct = true
                         )
                     )

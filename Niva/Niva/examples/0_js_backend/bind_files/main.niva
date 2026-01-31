@@ -1,0 +1,10 @@
+Bind package: "node.fs" content: [
+    type File
+    @emitJs: "require('fs').readFileSync($1, 'utf8')"
+    constructor File readText::String -> String
+
+    @emitJs: "require('path').resolve($1)"
+    constructor File fullPath::String -> String
+]
+
+File readText: "test_file.txt", echo

@@ -35,8 +35,8 @@ class GeneratorKt(
                 "import org.gradle.api.tasks.testing.logging.TestLogEvent\n\n"
         const val GRADLE_TEMPLATE = """
 plugins {
-    kotlin("jvm") version "2.2.20"
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("jvm") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     application
 }
 
@@ -55,6 +55,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     //%IMPL%
+}
+
+// for imgui
+tasks.withType<JavaExec>().configureEach {
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+        jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")
+    }
 }
 
 tasks.test {
@@ -421,7 +428,7 @@ fun GeneratorKt.generateKtProject(
     val bindPackagesWithNeededImport = mutableSetOf<String>()
     val pkgNameToNeededImports = mutableMapOf<String, Set<String>>()
 
-    val addImpordsToEachPackage = {
+    val addImportsToEachPackage = {
         mainProject.packages.values.forEach {
             if (it.isBinding) {
                 if (it.neededImports.isNotEmpty()) {
@@ -446,7 +453,7 @@ fun GeneratorKt.generateKtProject(
             }
         }
     }
-    addImpordsToEachPackage()
+    addImportsToEachPackage()
 
     fun generateProj(pathToInfroProj: Path, pathToMainNivaFileFolder: String, generateBuildFile: () -> Unit) {
         val pathToDotNivaFolder = pathToInfroProj

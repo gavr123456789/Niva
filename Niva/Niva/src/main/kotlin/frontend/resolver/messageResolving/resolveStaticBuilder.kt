@@ -85,9 +85,9 @@ fun Resolver.resolveStaticBuilder(
     }
     // add this
     // there are always some this inside builder
-    previousAndCurrentScope["this"] = msgFromDb.forType
+    previousAndCurrentScope["this"] = msgFromDb.forType!!
     // add args of receiver
-    val receiverType = msgFromDb.forType
+    val receiverType = msgFromDb.forType!!
     if (receiverType is Type.UserLike && receiverType.fields.isNotEmpty()) {
         receiverType.fields.forEach {
             previousAndCurrentScope[it.name] = it.type

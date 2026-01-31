@@ -1,0 +1,36 @@
+// TODO use string builders instead of printing to the console, and use pad to have pretty printed html
+union HTML = | Paragraph | None | Div
+
+
+String pad::Int =
+  .split: "\n", joinTransform: [" " repeat: pad, + it]
+
+HTML elem::String tags::#{String, String} content::[->Unit] = [
+  "\n<$elem> " echonnl
+  tags forEach: [k, v ->
+    "$k=$v " echonnl
+  ]
+  content do
+  "\n</$elem>" echo
+]
+
+constructor HTML [
+  on p = Paragraph new
+  on div = Div new
+]
+
+Paragraph tags::#{String, String} content::[->Unit] = [
+  this elem: "p" :tags :content
+]
+Div tags::#{String, String} content::[->Unit] = [
+  this elem: "div" :tags :content
+]
+
+HTML div tags: #{} content: [
+  HTML p tags: #{"style" "bold"} content: [
+    HTML p tags: #{"style" "cursive"} content: []
+  ]
+  HTML p tags: #{"style" "bold"} content: [
+    HTML p tags: #{"style" "cursive"} content: []
+  ]
+]

@@ -208,7 +208,7 @@ fun findSimilar(to: String, forType: Type): Pair<List<String>, String> {
     findRecursive(forType)
 
     // search for fields
-    if (forType is Type.UserLike) {
+    if (forType is Type.UserLike && !forType.noGetters) {
         forType.fields.forEach {
             if (it.name.lowercase().startsWith(to)) {
                 b.appendLine("$foundCounter\tfield $it")

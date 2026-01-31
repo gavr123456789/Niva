@@ -29,7 +29,7 @@ constructor TypeScript  [
             generateImports pkg: pkg sb: sb
 
             statement forEach: [
-                x = it toTSFromPkg: file
+                x = it toTSFromPkg: file db: db
                 x != "" ifTrue: [
                     sb appendLine: x
                     sb appendLine: "\n"
@@ -152,13 +152,13 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
 
         qSelector = isDefaultConstructor ifFalse: [
             // entryPoint.Person2_name_age("sas", 42)
-            dbMsg receiverType name + "_" +  selector name
+            dbMsg receiverType toMangledName + "_" +  selector name
         ] ifTrue: [
             // new Person2("", 23)
             "new " + dbMsg receiverType name
             dbMsg receiverType name + "_" +  selector name
         ]
-        newSelector = dbMsg receiverType name + "_" +  selector name
+        newSelector = dbMsg receiverType toMangledName + "_" +  selector name
         ^ qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
@@ -178,7 +178,11 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
                 selectorFromArgs = args joinWith: "_" transform: [
                     it name name
                 ]
-                dbMsg receiverType name + "_" + selectorFromArgs
+                suffix = dbMsg name substringAfter: "__"
+                hasSuffix = suffix != dbMsg name
+                suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+
+                dbMsg receiverType toMangledName + "_" + selectorFromArgs + suffixStr
             ] ifTrue: [
                 "new " + dbMsg receiverType name
             ]

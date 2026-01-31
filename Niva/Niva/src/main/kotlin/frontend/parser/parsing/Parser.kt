@@ -45,7 +45,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
                 return messageDeclaration(isItMsgDeclaration, pragmas)
             }
             else {
-                peek().compileError("Parser bug, message declaration for mutable type expected")
+                peek().compileError("Parser bug, variable declaration or message declaration for mutable type expected")
             }
         }
     }
@@ -89,7 +89,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
-    if (kind == TokenType.Constructor) {
+    if (kind == TokenType.Constructor || kind == TokenType.Fun) {
         if (check(TokenType.OpenBracket, 2)) {
             return manyConstructorsDecl(pragmas)
         }
@@ -430,7 +430,7 @@ fun Parser.parseDocComment(): DocComment? {
 
         input.split("\n").forEachIndexed { lineNum, line ->
             val matches = regex.findAll(line)
-            matches.forEachIndexed { i, matchResult ->
+            matches.forEachIndexed { _, matchResult ->
                 if (matchResult.groupValues.count() > 1) {
                     val word = matchResult.groupValues[1]
                     val startIndex = matchResult.range.first
@@ -467,7 +467,7 @@ fun Parser.parseDocComment(): DocComment? {
 
         return DocComment(
             text = text,
-            identifiers = if (identifiers.isEmpty()) null else identifiers,
+            identifiers = identifiers.ifEmpty { null },
         )
     }
     return null

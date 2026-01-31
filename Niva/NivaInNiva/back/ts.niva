@@ -1,0 +1,39 @@
+type TSBackend
+  mainStatements: List::Statement
+  sb: StringBuilder
+
+TSBackend generate = [
+  mainStatements forEach: [
+    it debug
+    it generateTS 
+  ]
+]
+Statement generateTS -> String =
+| this
+| CharExpr => [TO DO]
+| IntExpr => [TO DO]
+| FloatExpr => [TO DO]
+| DoubleExpr => [TO DO]
+| StringExpr => [TO DO]
+| BooleanExpr => [TO DO]
+| NullExpr => [TO DO]
+| Identifier => [TO DO]
+| ExprInBrackets => [TO DO]
+| VarDeclaration => [TO DO]
+| Assign => [TO DO]
+| DestructingAssign => [TO DO]
+| ListLiteral => [TO DO]
+| SetLiteral => [TO DO]
+| MapLiteral => [TO DO]
+| UnaryMsg => [TO DO]
+| BinaryMsg => [TO DO]
+| KeywordMsg => [TO DO]
+| ReturnStatement => [TO DO]
+| CodeBlock => [TO DO]
+| Match => [TO DO]
+| TypedExpr => [TO DO]
+| TypeDecl => [TO DO]
+| EnumDecl => [TO DO]
+| UnionDecl => [TO DO]
+| MessageDecl => [TO DO]
+

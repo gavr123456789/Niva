@@ -1,0 +1,52 @@
+@debug
+String binaryToAscii = [
+  result = this
+    split: " ",
+    map: [it toInt: 2, toChar],
+    joinWith: ""
+
+  ^ result]
+
+
+{"01001000" "01101100 01101111" "01100101 01101100 01101100"} forEach: [
+  it binaryToAscii
+]
+1..5 forEach: [
+  it echo
+]
+"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo
+
+
+T log -> T = [
+  this echo
+  ^ this
+]
+
+Test sas -> Unit! = [
+  Error throwWithMessage: "fwf"
+]
+
+enum CurrentOs = Win | Unix
+
+String / x::String = [
+  currentOs = CurrentOs.Unix
+  slash =
+    | currentOs
+    | CurrentOs.Unix => "/"
+    | CurrentOs.Win => "\\"
+  ^ this + slash + x
+]
+| true
+| true => []
+| false => []
+
+("path" / "to" / "folder") echo
+
+
+
+type Person
+  name: String
+  age: Int
+
+
+

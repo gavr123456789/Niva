@@ -1,26 +1,3 @@
-//union NivaType  =
-//| UnitT
-//| IntegerT
-//| FloatT
-//| DoubleT
-//| BoolT
-//| CharT
-//| StringT
-//| AnyT
-//| NothingT
-//// complex
-//| TypeT   genericArgs: mut List::NivaType
-//
-//
-//r = TypeT genericArgs: {}!
-//
-//| r
-//| TypeT => [
-//    1 echo
-//    2 echo
-//    424
-//]
-
-Unit functionCall = "hi!"
-()functionCall echo
-
+list = {1 2 3}
+list toList add: 1
+list add: 1
