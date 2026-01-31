@@ -712,6 +712,7 @@ fun createListProtocols(
     mutListType: Type.UserType,
     setType: Type.UserType,
     mutableSetType: Type.UserType,
+    intArray: Type.UserType,
 
     ): MutableMap<String, Protocol> {
     val listOfLists = Type.UserType(
@@ -743,7 +744,6 @@ fun createListProtocols(
 
             createUnary("toList", listType, "Immutable list, elements will be shadow copied"),
             createUnary("toMutableList", mutListType, "Mutable list, elements will be shadow copied"),
-//            createUnary("m", mutListType, "Mutable list, elements will be shadow copied").renameUnary("toMutableList"),
 
             createUnary("shuffled", listType, "Like in Solitaire"),
 
@@ -754,6 +754,8 @@ fun createListProtocols(
             createUnary("isNotEmpty", boolType),
             createUnary("reversed", listType),
             createUnary("sum", intType, "{1 2 3} sum == 6"),
+            createUnary("toIntArray", intArray, "java is pretty stupid, okay? type erasure, wait for Valhalla Project"),
+
             ),
         binaryMsgs = mutableMapOf(
             createBinary("+", currentType, listType, "new list and all elements of the give"),
@@ -973,6 +975,36 @@ fun createListProtocols(
         collectionProtocol.keywordMsgs.putAll(mutKwMsgs)
 //    }
     return mutableMapOf(collectionProtocol.name to collectionProtocol)
+}
+
+fun createIntArrayProtocols(
+    intArrayType: Type.UserType,
+    intType: Type.InternalType,
+    unitType: Type.InternalType,
+    boolType: Type.InternalType
+): MutableMap<String, Protocol> {
+    val protocol = Protocol(
+        name = "common",
+        unaryMsgs = mutableMapOf(
+            createUnary("count", intType).renameUnary("size"),
+            createUnary("isEmpty", boolType),
+            createUnary("isNotEmpty", boolType),
+        ),
+        binaryMsgs = mutableMapOf(),
+        keywordMsgs = mutableMapOf(
+            createKeyword(KeywordArg("at", intType), intType).rename("get"),
+            createKeyword(
+                "atPut",
+                listOf(
+                    KeywordArg("at", intType),
+                    KeywordArg("put", intType)
+                ),
+                unitType
+            ).rename("set"),
+             createKeyword(KeywordArg("add", intType), intArrayType).rename("plus")
+        )
+    )
+    return mutableMapOf(protocol.name to protocol)
 }
 
 fun createSumOf(itType: Type) =

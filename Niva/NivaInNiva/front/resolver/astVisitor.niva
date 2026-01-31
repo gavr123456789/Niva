@@ -225,6 +225,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
   | typeStub
   | null => [
     db listOfErrors add: (ErrorNoSuchType tok: st token msg: "type $name not found")
+
     ^ null
   ]
   |=> [

@@ -1,5 +1,6 @@
 package main.frontend.typer
 
+import frontend.parser.types.ast.KeyPragma
 import frontend.resolver.*
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -170,6 +171,36 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                     declarations.forEach { decl ->
                         if (decl is Declaration) {
                             val emptyScope: MutableMap<String, Type> = mutableMapOf()
+
+                            // add rename to the first arg to each
+                            when (decl) {
+                                is ManyConstructorDecl -> {
+                                    decl.messageDeclarations
+                                        .asSequence()
+                                        .map { it.msgDeclaration }
+                                        .filterIsInstance<MessageDeclarationKeyword>()
+                                        .filter { it.args.count() > 1 && it.pragmas.find { it.name == "rename" } == null }
+                                        .forEach { kw ->
+                                            kw.pragmas.add(createStringPragma("rename", kw.args.first().name))
+                                        }
+                                }
+
+                                is ExtendDeclaration -> {
+                                    decl.messageDeclarations
+                                        .asSequence()
+                                        .filterIsInstance<MessageDeclarationKeyword>()
+                                        .filter { it.pragmas.find { it.name == "rename" } == null }
+                                        .forEach { kw ->
+                                            kw.pragmas.add(createStringPragma("rename", kw.args.first().name))
+                                        }
+                                }
+
+                                is MessageDeclarationKeyword if decl.pragmas.find { it is KeyPragma && it.name == "rename" } == null -> {
+                                    decl.pragmas.add(createStringPragma("rename", decl.args.first().name))
+                                }
+                                else -> {}
+                            }
+
                             resolveDeclarations(decl, emptyScope, resolveBody = false)
                             onEachStatement?.invoke(decl, emptyScope, emptyScope, decl.token.file) // Bind content
                         } else {

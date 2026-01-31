@@ -51,7 +51,7 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
   | TypeT => [
     | this
     | TypeT => [
-      
+
         this debug
         nivaType debug
         TO DO
@@ -62,49 +62,49 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
       (pkgName == nivaType pkgName) &&
       (genericArgs toString == nivaType genericArgs toString)
     ]
-    |=> false  
+    |=> false
   ]
   | UnionT => [
     | this
     | UnionT => true
-    |=> false  
+    |=> false
   ]
   // compare each arg and return type
   | FuntionT => [
     | this
     | FuntionT => (args toString == nivaType args toString)
-    |=> false  
+    |=> false
   ]
   // compare generics
   | ListT => [
     | this
     | ListT => this t compareWith: nivaType t
-    |=> false  
+    |=> false
   ]
   | SetT => [
     | this
     | SetT => this t compareWith: nivaType t
-    |=> false  
+    |=> false
   ]
   | MapT => [
     | this
     | MapT => [
-      (this k compareWith: nivaType k) && 
+      (this k compareWith: nivaType k) &&
       (this v compareWith: nivaType v)
     ]
-    |=> false  
+    |=> false
   ]
   // ???
   | UnresolvedGenericT => [
     | this
     | UnresolvedGenericT => letter == nivaType letter
-    |=> false  
+    |=> false
   ]
   // ???
   | NullT => [
     | this
     | NullT => true
-    |=> false  
+    |=> false
   ]
   // compare internal types
   | NullableT => [
@@ -112,8 +112,7 @@ NivaType compareWith: nivaType::NivaType -> Bool = [
     | NullableT => [
       this v compareWith: nivaType v
     ]
-    |=> false  
+    |=> false
   ]
 
 ]
-
