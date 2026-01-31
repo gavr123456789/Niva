@@ -178,19 +178,19 @@ tasks.register(buildJvmNiva) {
             ("""
             $green
             niva binary has been installed in $targetInstallDir, you can add it to PATH
-            
+
             Try to compile file main.niva with `"Hello niva" echo` with `niva main.niva`
             First compilation will take time, but others are instant
             Read about niva here: https://gavr123456789.github.io/niva-site/reference.html
             Check examples from examples folder(in repo)
-            
+
             $purple
-            Adding to PATH: 
-            
+            Adding to PATH:
+
         """.trimIndent()) +
                 "\tfish: set -U fish_user_paths $pathHint $" + "fish_user_paths\n" +
                 "\tbash: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.bashrc && source ~/.bashrc\n" +
-                "\tzsh: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.zshrc && source ~/.zshrc" +
+                "\tzsh: echo 'export PATH=$" + "PATH:${pathHint}' >> ~/.zshrc && source ~/.zshrc\n" +
                 "\twindows: setx PATH \"%PATH%;${pathHint}\""
         )
     }
@@ -209,15 +209,15 @@ fun printNivaWelcome(targetDir: Path, path: String) {
             """
         $green
         niva binary has been installed in $targetDir, you can add it to PATH
-        
+
         Try to compile file main.niva with "Hello niva" echo with `niva main.niva`
         First compilation will take time, but others are instant
         Read about niva here: https://gavr123456789.github.io/niva-site/reference.html
         Check examples from examples folder(in repo)
-        
+
         $purple
-        Adding to PATH: 
-        
+        Adding to PATH:
+
     """.trimIndent() +
                     $$"\tfish: set -U fish_user_paths $$path $fish_user_paths\n" +
                     $$"\tbash: echo 'export PATH=$PATH:$$path' >> ~/.bashrc && source ~/.bashrc\n" +

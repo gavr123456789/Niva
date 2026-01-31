@@ -161,21 +161,45 @@ Int fib -> Int = |this
 
 6 fib echo
 ```
-Bottles of beer
-```Scala
-Int bottles = | this
-| 0 => "no more bottles"
-| 1 => "1 bottle"
-|=> "$this bottles"
 
-onTheWall = " of beer on the wall, "
-99 downTo: 1 do: [
-  it bottles + onTheWall + it bottles + " of beer.", echo
-  "Take one down and pass it around, " + it dec bottles + onTheWall, echo
+Binary To Ascii
+```Scala
+String binaryToAscii = [
+  result = this
+    split: " ",
+    map: [it toInt: 2, toChar], 
+    joinWith: ""
+  
+  ^ result
 ]
-"No more bottles of beer on the wall, no more bottles of beer." echo
-"Go to the store and buy some more, 99 bottles of beer on the wall." echo
+
+"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo
 ```
+
+Zero Suck
+```Scala
+union Peano = Zero | Succ self: Peano
+
+extend Peano [
+  on prettyPrint -> String = | this
+    | Zero => ""
+    | Succ => "+" + self prettyPrint
+
+  on double -> Peano = | this
+    | Zero => Zero new
+    | Succ => Succ self: (Succ self: self double)
+
+  on quadruple = this double double
+  on succ = Succ self: this
+]
+
+three = Zero new succ succ succ
+twelve = three quadruple
+
+three echo
+three prettyPrint echo
+twelve prettyPrint echo
+````
 
 </details>
 
