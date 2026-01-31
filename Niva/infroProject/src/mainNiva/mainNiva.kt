@@ -1,3 +1,0 @@
-package mainNiva
-
-import mainNiva.*
