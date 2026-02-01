@@ -4,7 +4,7 @@ import frontend.resolver.resolve
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
 import org.junit.jupiter.api.assertThrows
-import java.io.File
+import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -27,10 +27,20 @@ fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
     statements = statements.toMutableList(),
-    currentResolvingFileName = File("")
+    currentResolvingFileName = Paths.get(System.getProperty("user.dir")).fileName.toFile()
 )
 
 class ResolverTest {
+
+    @Test
+    fun nullable() {
+        val source = """
+            x::Int? = 1
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+
+    }
 
     @Test
     fun noMutabilityCompareBetweenGenericArgs(){
@@ -66,6 +76,7 @@ class ResolverTest {
             Int add2::Int = [
                 ^ this + add2
             ]
+            list = {1 2 3}
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 1)

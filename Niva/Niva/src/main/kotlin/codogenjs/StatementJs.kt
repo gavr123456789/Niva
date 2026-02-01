@@ -30,7 +30,15 @@ fun GeneratorJs.generateJsStatement(statement: Statement, indent: Int): String =
                 }
             }
             is Assign -> "${statement.name.ifJsKeywordPrefix()} = ${statement.value.generateJsExpression()}"
-            is DestructingAssign -> "// destructuring is not implemented in JS codegen yet"
+            is DestructingAssign -> {
+                val valueExpr = statement.value.generateJsExpression()
+                val names = statement.names.joinToString(", ") { nameExpr ->
+                    val rawName = nameExpr.name
+                    val localName = rawName.ifJsKeywordPrefix()
+                    if (localName == rawName) rawName else "$rawName: $localName"
+                }
+                "let { $names } = $valueExpr"
+            }
 
             is UnionRootDeclaration ->
                 statement.generateJsUnionRootDeclaration()
@@ -73,25 +81,11 @@ fun TypeDeclaration.generateJsTypeDeclaration(): String = buildString {
 }
 
 fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString {
-    // skip base class if generated as isRoot branch, but process branches
+    // skip base class if generated as isRoot branch
     val skipBaseClass = typeName in JsCodegenContext.generatedAsIsRootBranches
     
     if (!skipBaseClass) {
         appendJsClassWithConstructor(typeName, fields)
-    }
-
-    // emit all union branches immediately for js
-    if (branches.isNotEmpty()) {
-        if (!skipBaseClass) {
-            append("\n")
-        }
-        branches
-            .forEachIndexed { index, branch ->
-                append(branch.generateJsUnionBranchDeclaration())
-                if (index != branches.lastIndex) {
-                    append("\n")
-                }
-            }
     }
 }
 

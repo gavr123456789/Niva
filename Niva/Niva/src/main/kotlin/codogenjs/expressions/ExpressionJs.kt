@@ -28,7 +28,10 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
         is LiteralExpression.FalseExpr -> append("false")
         is LiteralExpression.TrueExpr -> append("true")
         is LiteralExpression.NullExpr -> append("null")
-        is LiteralExpression.FloatExpr -> append(str)
+        is LiteralExpression.FloatExpr -> {
+            val raw = str
+            append(if (raw.endsWith("f") || raw.endsWith("F")) raw.dropLast(1) else raw)
+        }
         is LiteralExpression.DoubleExpr -> append(str)
         is LiteralExpression.IntExpr -> append(str)
         is LiteralExpression.StringExpr -> append(emitJsString(this@generateJsExpression))
@@ -171,7 +174,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
                     sw.ifBranches.forEachIndexed { index, br ->
                         appendTypeMatchCondition(index, br, "__tmp")
 
-                        appendIfBranchWithReturn(br, forceExpressionContext = true)
+                        appendIfBranchWithReturn(br, forceExpressionContext = true, typeMatchTmpVarName = "__tmp")
                         append("    }\n")
                     }
 
@@ -192,7 +195,7 @@ fun Expression.generateJsExpression(withNullChecks: Boolean = false, forceExpres
 
                     sw.ifBranches.forEachIndexed { index, br ->
                         appendTypeMatchCondition(index, br, "__tmp")
-                        appendIfBranchNoReturn(br)
+                        appendIfBranchNoReturn(br, typeMatchTmpVarName = "__tmp")
                         append("    }\n")
                     }
 
@@ -450,12 +453,19 @@ private fun StringBuilder.appendTypeMatchCondition(index: Int, br: IfBranch, tmp
     append(") {\n")
 }
 
-private fun StringBuilder.appendIfBranchNoReturn(br: IfBranch) {
+private fun StringBuilder.appendIfBranchNoReturn(br: IfBranch, typeMatchTmpVarName: String? = null) {
+    val typeMatchPrelude = typeMatchTmpVarName?.let { br.typeMatchPreludeLines(it) }.orEmpty()
     when (br) {
         is IfBranch.IfBranchSingleExpr -> {
+            typeMatchPrelude.forEach { line ->
+                append("        ", line, "\n")
+            }
             append("        ", br.thenDoExpression.generateJsExpression(), "\n")
         }
         is IfBranch.IfBranchWithBody -> {
+            typeMatchPrelude.forEach { line ->
+                append("        ", line, "\n")
+            }
             val bodyCode = codegenJs(br.body.statements, 1)
             if (bodyCode.isNotEmpty()) {
                 append(bodyCode.addIndentationForEachStringJs(1), "\n")
@@ -464,18 +474,30 @@ private fun StringBuilder.appendIfBranchNoReturn(br: IfBranch) {
     }
 }
 
-private fun StringBuilder.appendIfBranchWithReturn(br: IfBranch, forceExpressionContext: Boolean = false) {
+private fun StringBuilder.appendIfBranchWithReturn(
+    br: IfBranch,
+    forceExpressionContext: Boolean = false,
+    typeMatchTmpVarName: String? = null
+) {
+    val typeMatchPrelude = typeMatchTmpVarName?.let { br.typeMatchPreludeLines(it) }.orEmpty()
     when (br) {
         is IfBranch.IfBranchSingleExpr -> {
-            appendElseBranchWithReturn(listOf(br.thenDoExpression), forceExpressionContext)
+            appendElseBranchWithReturn(listOf(br.thenDoExpression), forceExpressionContext, typeMatchPrelude)
         }
         is IfBranch.IfBranchWithBody -> {
-            appendElseBranchWithReturn(br.body.statements, forceExpressionContext)
+            appendElseBranchWithReturn(br.body.statements, forceExpressionContext, typeMatchPrelude)
         }
     }
 }
 
-private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>, forceExpressionContext: Boolean = false) {
+private fun StringBuilder.appendElseBranchWithReturn(
+    elseBranch: List<Statement>,
+    forceExpressionContext: Boolean = false,
+    typeMatchPrelude: List<String> = emptyList()
+) {
+    typeMatchPrelude.forEach { line ->
+        append("            ", line, "\n")
+    }
     if (elseBranch.size == 1 && elseBranch[0] is Expression) {
         val elseExpr = elseBranch[0] as Expression
         val code = elseExpr.generateJsExpression(forceExpressionContext = forceExpressionContext)
@@ -512,4 +534,11 @@ private fun StringBuilder.appendElseBranchWithReturn(elseBranch: List<Statement>
             }
         }
     }
+}
+
+private fun IfBranch.typeMatchPreludeLines(tmpVarName: String): List<String> {
+    val userType = this.ifExpression.type as? frontend.resolver.Type.UserLike ?: return emptyList()
+    val uniqueFields = userType.fields.distinctBy { it.name }
+    if (uniqueFields.isEmpty()) return emptyList()
+    return uniqueFields.map { field -> "let ${field.name} = $tmpVarName.${field.name}" }
 }

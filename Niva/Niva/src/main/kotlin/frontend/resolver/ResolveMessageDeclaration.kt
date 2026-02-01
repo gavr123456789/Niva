@@ -145,6 +145,7 @@ fun Resolver.resolveMessageDeclaration(
                 val astType = it.typeAST
 
                 val typeFromAst = astType.toType(typeDB, typeTable, resolver = this)
+                it.type = typeFromAst
                 if (typeFromAst is Type.InternalType && typeFromAst.isMutable) {
                     astType.token.compileError("Can't make internal type mutable: ${RED}mut ${YEL}$typeFromAst")
                 }
@@ -178,6 +179,7 @@ fun Resolver.resolveMessageDeclaration(
                 val arg = statement.arg
                 val argType = arg.typeAST?.toType(typeDB, typeTable)
                     ?: statement.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `${YEL}${statement.forTypeAst.name} ${CYAN}${statement.name}`")
+                arg.type = argType
                 bodyScope[arg.name] = argType
             }
 

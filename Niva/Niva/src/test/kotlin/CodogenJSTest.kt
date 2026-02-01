@@ -16,6 +16,74 @@ class CodogenJSTest {
     }
 
 
+
+    @Test
+    fun constructors2() {
+        val source = """
+            type Point x: Int y: Int
+            constructor Point y::Int = Point x: 0 y: y
+            p3 = Point y: 20 // x: 0 y: 20
+        """.trimIndent()
+        val expected = """
+            export class Point {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+
+            /**
+             * @param {Int} y
+             */
+            export function Point__y(y) {
+                return (new Point(0, y))}
+
+            let p3 = common.Point__y(20)
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+    @Test
+    fun constructors() {
+        val source = """
+            constructor Float pi = 3.14
+            x = Float pi // 3.14
+        """.trimIndent()
+        val expected = """
+            /**
+             */
+            export function Float__pi() {
+                return (3.14)}
+            
+            let x = common.Float__pi()
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
+
+    @Test
+    fun floatWithoutF() {
+        val source = """
+            x = 123.0f
+        """.trimIndent()
+        val expected = """
+            let x = 123.0
+        """.trimIndent()
+
+        val statements = resolve(source)
+        val w = codegenJs(statements)
+
+        assertEquals(expected, w.trim())
+    }
+
     @Test
     fun unionWithUnion() {
         val source = """
