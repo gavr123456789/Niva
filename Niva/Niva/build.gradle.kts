@@ -30,10 +30,12 @@ dependencies {
 
 tasks.test { useJUnitPlatform() }
 
-kotlin { jvmToolchain(21) }
+//kotlin { jvmToolchain(21) }
 // tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
 //    compilerOptions.freeCompilerArgs.addAll(listOf("-Xcontext-receivers"))
 // }
+
+
 
 graalvmNative {
     binaries {
