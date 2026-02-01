@@ -3,7 +3,6 @@ package main.codogenjs
 import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
-import kotlinx.serialization.json.JsonNull.content
 import main.frontend.parser.types.ast.Statement
 import java.io.File
 // js std
@@ -80,6 +79,82 @@ export function Int__downToDo(self, downTo, block) {
     for (let i = self; i >= downTo; i--) {
         block(i);
     }
+}
+
+/**
+ * @param {Int} self
+ * @param {Int} to
+ */
+export function Int__rangeTo(self, to) {
+    const result = [];
+    for (let i = self; i <= to; i++) {
+        result.push(i);
+    }
+    return result;
+}
+
+/**
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__forEach(self, block) {
+    self.forEach(block);
+}
+
+/****
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__map(self, block) {
+    return self.map(block);
+}
+
+/**
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__filter(self, block) {
+    return self.filter(block);
+}
+
+/**
+ * @param {Nullable} self
+ */
+export function Nullable__unpackOrPANIC(self) {
+    if (self == null) {
+        throwWithMessage("Nullable__unpackOrPANIC on null");
+    }
+    return self;
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Fn} block
+ */
+export function Nullable__unpack(self, block) {
+    if (self != null) {
+        block(self);
+    }
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Fn} block
+ * @param {Any} or
+ */
+export function Nullable__unpackOr(self, block, or) {
+    if (self != null) {
+        return block(self);
+    }
+    return or;
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Any} v
+ */
+export function Nullable__unpackOrValue(self, v) {
+    return self != null ? self : v;
 }
 
 export function Any__toString(value, indent = 0) {
@@ -270,11 +345,41 @@ export function String__at(str, index) {
 
 /**
  * @param {String} str
+ * @param {Int} index
+ */
+export function String__get(str, index) {
+    return String(str)[index];
+}
+
+/**
+ * @param {String} str
  * @param {Int} start
  * @param {Int} end
  */
 export function String__substring(str, start, end) {
     return String(str).substring(start, end);
+}
+
+/**
+ * @param {String} str
+ * @param {Int} count
+ */
+export function String__drop(str, count) {
+    const s = String(str);
+    if (count <= 0) return s;
+    if (count >= s.length) return "";
+    return s.slice(count);
+}
+
+/**
+ * @param {String} str
+ * @param {Int} count
+ */
+export function String__dropLast(str, count) {
+    const s = String(str);
+    if (count <= 0) return s;
+    if (count >= s.length) return "";
+    return s.slice(0, s.length - count);
 }
 
 /**
@@ -1296,10 +1401,8 @@ fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements:
 
 
     // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
-    val mainPkg = mainProject.packages[MAIN_PKG_NAME]
-    if (topLevelStatements.isNotEmpty() && mainPkg != null) {
-        generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
-    }
+    val mainPkg = mainProject.packages[MAIN_PKG_NAME] ?: Package(MAIN_PKG_NAME)
+    generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
 
     // 3 generate niva std for js
 
@@ -1378,8 +1481,7 @@ private fun generateJsImports(pkg: Package): String = buildString {
         append(".js\";\n")
     }
 
-    // for kotlin we can always import main since empty file generated
-    // but in js no empty files are generated, so we need to remove it
+    // mainNiva.js is always generated, so importing it is safe
 
     append("import * as common from \"./common.js\";")
 }

@@ -8,16 +8,16 @@ import main.frontend.parser.types.ast.*
 
 
 private fun buildJsFuncName(receiverType: Type, message: Message): String {
-    val recv = if (receiverType is Type.UserLike) {
-        buildString {
+    val recv = when (receiverType) {
+        is Type.UserLike -> buildString {
             if (receiverType.pkg.isNotEmpty() && receiverType.pkg != "core" && receiverType.pkg != "common") {
                 append(receiverType.pkg.replace('.', '_').replace("::", "_"), "_")
             }
             append(receiverType.emitName)
             if (receiverType.isMutable) append("__mut")
         }
-    } else {
-        receiverType.toJsMangledName()
+        is Type.NullableType -> "Nullable"
+        else -> receiverType.toJsMangledName()
     }
     val baseName = operatorToString(message.selectorName, null)
     val res = "${recv}__${baseName}"
@@ -66,7 +66,9 @@ private fun buildQualifiedJsFuncName(receiverType: Type, message: Message): Stri
     val currentPkgName = JsCodegenContext.currentPackage?.packageName
     val currentPkgAlias = currentPkgName?.replace('.', '_')
 
-    val rawAlias = message.declaration?.messageData?.pkg ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
+    val rawAlias = message.declaration?.messageData?.pkg
+        ?: message.msgMetaData?.pkg
+        ?: pickedForType.jsQualifierFor(JsCodegenContext.currentPackage)
     val alias = rawAlias
         ?.replace('.', '_')
         ?.takeUnless { it == currentPkgAlias || it == currentPkgName }
@@ -176,6 +178,28 @@ private fun generateIfTrueIfFalseBranchJs(lambda: Expression?, resultVarName: St
     }
 }
 
+private fun generateWhileBranchJs(conditionExpr: String, lambda: Expression?): String {
+    return if (lambda is CodeBlock) {
+        buildString {
+            append("while (", conditionExpr, ") {\n")
+            val bodyCode = codegenJs(lambda.statements, 1)
+            if (bodyCode.isNotEmpty()) {
+                append(bodyCode, "\n")
+            }
+            append("}")
+        }
+    } else {
+        val lambdaExpr = lambda?.generateJsExpression(true) ?: "undefined"
+        "while ($conditionExpr) { $lambdaExpr() }"
+    }
+}
+
+private fun generateWhileConditionExpr(conditionExpr: String, conditionType: Type?): String {
+    return if (conditionType is Type.Lambda) "($conditionExpr)()" else conditionExpr
+}
+
+private fun Message.isConstructorCall(): Boolean = declaration is ConstructorDeclaration
+
 fun MessageSend.generateJsMessageCall(): String {
     val b = StringBuilder()
     var currentExpr = receiver.generateJsExpression()
@@ -199,7 +223,7 @@ fun MessageSend.generateJsMessageCall(): String {
                     currentType = msg.type ?: currentType
                 } else {
                     val name = getFunctionName(currentType, msg)
-                    currentExpr = "$name($currentExpr)"
+                    currentExpr = if (msg.isConstructorCall()) "$name()" else "$name($currentExpr)"
                     currentType = msg.type ?: currentType
                 }
             }
@@ -239,7 +263,7 @@ fun MessageSend.generateJsMessageCall(): String {
                     currentExpr = native
                 } else {
                     val fn = getFunctionName(recvType, msg)
-                    currentExpr = "$fn($recvExpr, $argExpr)"
+                    currentExpr = if (msg.isConstructorCall()) "$fn($argExpr)" else "$fn($recvExpr, $argExpr)"
                 }
                 currentType = msg.type ?: recvType
             }
@@ -282,16 +306,30 @@ fun MessageSend.generateJsMessageCall(): String {
                             currentType = msg.type ?: currentType
                         }
                     }
+                } else if (selector == "whileTrue" || selector == "whileFalse") {
+                    val lambda = msg.args.firstOrNull()?.keywordArg
+                    val conditionExpr = generateWhileConditionExpr(currentExpr, currentType)
+                    val finalConditionExpr = if (selector == "whileFalse") "!($conditionExpr)" else conditionExpr
+                    currentExpr = generateWhileBranchJs(finalConditionExpr, lambda).addIndentationForEachStringJs(0)
+                    currentType = msg.type ?: currentType
                 } else {
                     // usual KeywordMsg
                     val args = msg.args.map { it.keywordArg.generateJsExpression(true) }
 
-                    if (msg.kind == KeywordLikeType.Constructor || msg.kind == KeywordLikeType.CustomConstructor) {
+                    if (msg.kind == KeywordLikeType.Constructor) {
                         // call type constructor: Person name: "Alice" age: 24 -> new Person("Alice", 24)
                         val recvType = currentType
                         val typeName = recvType.constructorJsName()
                         currentExpr = buildString {
                             append("new ", typeName, "(")
+                            append(args.joinToString(", "))
+                            append(")")
+                        }
+                        currentType = msg.type ?: currentType
+                    } else if (msg.kind == KeywordLikeType.CustomConstructor) {
+                        val fn = getFunctionName(currentType, msg)
+                        currentExpr = buildString {
+                            append(fn, "(")
                             append(args.joinToString(", "))
                             append(")")
                         }
@@ -330,7 +368,7 @@ fun Message.generateJsAsCall(): String {
                 "$recvExpr.${this.selectorName}"
             } else {
                 val name = getFunctionName(recvType, this)
-                "$name($recvExpr)"
+                if (this.isConstructorCall()) "$name()" else "$name($recvExpr)"
             }
         }
         is BinaryMsg -> {
@@ -364,16 +402,31 @@ fun Message.generateJsAsCall(): String {
             val native = tryEmitNativeBinary(this.selectorName, recvExpr, recvType, argExpr, argType)
             if (native != null) native else {
                 val fn = getFunctionName(recvType, this)
-                "$fn($recvExpr, $argExpr)"
+                if (this.isConstructorCall()) "$fn($argExpr)" else "$fn($recvExpr, $argExpr)"
             }
         }
         is KeywordMsg -> {
+            val selector = this.selectorName
+            if (selector == "whileTrue" || selector == "whileFalse") {
+                val lambda = this.args.firstOrNull()?.keywordArg
+                val conditionExpr = generateWhileConditionExpr(recvExpr, recvType)
+                val finalConditionExpr = if (selector == "whileFalse") "!($conditionExpr)" else conditionExpr
+                return generateWhileBranchJs(finalConditionExpr, lambda)
+            }
+
             val args = args.map { it.keywordArg.generateJsExpression(true) }
 
-            if (this.kind == KeywordLikeType.Constructor || this.kind == KeywordLikeType.CustomConstructor) {
+            if (this.kind == KeywordLikeType.Constructor) {
                 val typeName = recvType.constructorJsName()
                 buildString {
                     append("new ", typeName, "(")
+                    append(args.joinToString(", "))
+                    append(")")
+                }
+            } else if (this.kind == KeywordLikeType.CustomConstructor) {
+                val fn = getFunctionName(recvType, this)
+                buildString {
+                    append(fn, "(")
                     append(args.joinToString(", "))
                     append(")")
                 }

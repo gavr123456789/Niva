@@ -443,7 +443,7 @@ fun compileProjFromFile(
         )
 
         verbosePrinter.print { "BuildSystem = $buildSystem" }
-        verbosePrinter.print { "Codegen to ${pm.pathWhereToGenerateKtAmper}" }
+//        verbosePrinter.print { "Codegen to ${pm.pathWhereToGenerateKtAmper}" }
         verbosePrinter.print { "Codegen took: ${codegenMark.getMs()} ms" }
     }
     // printing all >?

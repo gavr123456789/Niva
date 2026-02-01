@@ -57,7 +57,7 @@ dependencies {
     //%IMPL%
 }
 
-// for imgui
+// for imgui on mac
 tasks.withType<JavaExec>().configureEach {
     if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
         jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")

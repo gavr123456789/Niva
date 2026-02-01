@@ -4,16 +4,16 @@ import main.codogen.operatorToString
 import main.frontend.parser.types.ast.*
 
 private fun buildDeclFuncNameJs(forType: frontend.resolver.Type, name: String): String {
-    val recv = if (forType is frontend.resolver.Type.UserLike) {
-        buildString {
+    val recv = when (forType) {
+        is frontend.resolver.Type.UserLike -> buildString {
             if (forType.pkg.isNotEmpty() && forType.pkg != "core" && forType.pkg != "common") {
                 append(forType.pkg.replace('.', '_').replace("::", "_"), "_")
             }
             append(forType.emitName)
             if (forType.isMutable) append("__mut")
         }
-    } else {
-        forType.toJsMangledName()
+        is frontend.resolver.Type.NullableType -> "Nullable"
+        else -> forType.toJsMangledName()
     }
     val base = name
     return "${recv}__${base}"
@@ -72,8 +72,8 @@ private fun MessageDeclaration.generateSingleExpression(
 
 private fun MessageDeclarationUnary.generateUnaryJs(isConstructor: Boolean): String {
     val fn = buildDeclFuncNameJs(forType!!, name)
-    val params = listOf("_receiver")
-    val doc = "/**\n * @param {${forType!!.name}} _receiver\n */\n"
+    val params = if (isConstructor) emptyList() else listOf("_receiver")
+    val doc = if (isConstructor) "/**\n */\n" else "/**\n * @param {${forType!!.name}} _receiver\n */\n"
     return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
@@ -81,18 +81,20 @@ private fun MessageDeclarationBinary.generateBinaryJs(isConstructor: Boolean): S
     val argT = arg.type ?: return "/* unresolved arg type for $name */"
     val safeName = operatorToString(name, token)
     val fn = buildDeclFuncNameJs(forType!!, safeName)
-    val params = listOf("_receiver", arg.name())
-    val doc = "/**\n * @param {${forType!!.name}} _receiver\n * @param {${argT.name}} ${arg.name()}\n */\n"
+    val params = if (isConstructor) listOf(arg.name()) else listOf("_receiver", arg.name())
+    val doc = if (isConstructor) "/**\n * @param {${argT.name}} ${arg.name()}\n */\n" else "/**\n * @param {${forType!!.name}} _receiver\n * @param {${argT.name}} ${arg.name()}\n */\n"
     return generateSingleExpression(fn, params, doc, isConstructor)
 }
 
 private fun MessageDeclarationKeyword.generateKeywordJs(isConstructor: Boolean): String {
     val fn = buildDeclFuncNameJs(forType!!, name)
-    val params = listOf("_receiver") + args.map { it.name() }
+    val params = if (isConstructor) args.map { it.name() } else listOf("_receiver") + args.map { it.name() }
     
     val sb = StringBuilder()
     sb.append("/**\n")
-    sb.append(" * @param {${forType!!.name}} _receiver\n")
+    if (!isConstructor) {
+        sb.append(" * @param {${forType!!.name}} _receiver\n")
+    }
     args.forEach { arg ->
         sb.append(" * @param {${arg.type?.name ?: "?"}} ${arg.name()}\n")
     }
