@@ -141,7 +141,17 @@ fun createFakeToken2(name: String, lineNum: Int, start: Int, end: Int, file: Fil
 fun Token.isIdentifier() = this.kind == TokenType.Identifier || this.kind == TokenType.NullableIdentifier
 fun Token.isNullable() = this.kind == TokenType.NullableIdentifier
 
-fun Token.prettyCodePlace() = """${Paths.get(System.getProperty("user.dir")).relativize(file.toPath())}:$line:${relPos.start}"""
+fun Token.prettyCodePlace(): String {
+    val cwd = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize()
+    val filePath = file.toPath()
+    val absoluteFile = if (filePath.isAbsolute) filePath else cwd.resolve(filePath).normalize()
+    val relative = try {
+        cwd.relativize(absoluteFile)
+    } catch (e: IllegalArgumentException) {
+        absoluteFile
+    }
+    return "${relative}:$line:${relPos.start}"
+}
 
 fun Token.compileError(text: String): Nothing {
     val fileLine = this.prettyCodePlace()

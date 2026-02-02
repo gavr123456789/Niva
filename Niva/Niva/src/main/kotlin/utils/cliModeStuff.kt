@@ -3,12 +3,14 @@ package main.utils
 import main.codogen.BuildSystem
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
+import java.io.BufferedInputStream
 import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.util.zip.ZipInputStream
 import kotlin.system.exitProcess
 
 enum class MainArgument {
@@ -191,27 +193,60 @@ private fun ensureInfroProjectFromResources(targetDir: Path): Boolean {
         Files.createDirectories(parentDir)
     }
     return try {
-        copyResourceDirectory("infroProject", targetDir)
-        makeGradleWrapperExecutable(targetDir)
-        Files.exists(targetDir)
+        val extracted = extractZipResource("infroProject.zip", targetDir) ||
+            copyResourceDirectory("infroProject", targetDir)
+        if (extracted) {
+            makeGradleWrapperExecutable(targetDir)
+        }
+        extracted && Files.exists(targetDir)
     } catch (_: Exception) {
         false
     }
 }
 
-private fun copyResourceDirectory(resourceRoot: String, targetDir: Path) {
+private fun extractZipResource(resourceName: String, targetDir: Path): Boolean {
+    val classLoader = Thread.currentThread().contextClassLoader ?: PathManager::class.java.classLoader
+    val stream = classLoader.getResourceAsStream(resourceName) ?: return false
+    ZipInputStream(BufferedInputStream(stream)).use { zis ->
+        var entry = zis.nextEntry
+        while (entry != null) {
+            val entryPath = targetDir.resolve(entry.name).normalize()
+            if (!entryPath.startsWith(targetDir)) {
+                throw IllegalStateException("Zip entry outside target dir: ${entry.name}")
+            }
+            if (entry.isDirectory) {
+                Files.createDirectories(entryPath)
+            } else {
+                Files.createDirectories(entryPath.parent)
+                Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING)
+            }
+            zis.closeEntry()
+            entry = zis.nextEntry
+        }
+    }
+    return true
+}
+
+private fun copyResourceDirectory(resourceRoot: String, targetDir: Path): Boolean {
     val classLoader = Thread.currentThread().contextClassLoader ?: PathManager::class.java.classLoader
     val resourceUrl = classLoader.getResource(resourceRoot)
-        ?: throw IllegalStateException("Resource $resourceRoot not found")
+        ?: return false
     val uri = resourceUrl.toURI()
-    if (uri.scheme == "jar") {
-        FileSystems.newFileSystem(uri, emptyMap<String, Any>()).use { fs ->
-            val sourcePath = fs.getPath("/$resourceRoot")
+    return if (uri.scheme == "jar") {
+        val fs = try {
+            FileSystems.newFileSystem(uri, emptyMap<String, Any>())
+        } catch (_: Exception) {
+            FileSystems.getFileSystem(uri)
+        }
+        fs.use {
+            val sourcePath = it.getPath("/$resourceRoot")
             copyRecursively(sourcePath, targetDir)
         }
+        true
     } else {
         val sourcePath = Paths.get(uri)
         copyRecursively(sourcePath, targetDir)
+        true
     }
 }
 
