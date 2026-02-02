@@ -2,7 +2,7 @@ program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++
 
 
 mut ip = 0
-mut buf::MutableList::Int = {}
+mut buf::mut List::Int = {}
 mut ptr = 0
 
 
@@ -16,7 +16,7 @@ mut ptr = 0
   | '<' => ptr <- ptr dec
   | '+' => buf at: ptr put: bufAtPtr inc
   | '-' => buf at: ptr put: bufAtPtr dec
-  | '.' => buf viewFrom: ptr to: ptr inc |> at: 0 |> toChar echonnl
+  | '.' => buf viewFrom: ptr to: ptr inc, at: 0, toChar echonnl
   | ',' => "readln needed" echo
   | '[' =>
     bufAtPtr == 0 => [
@@ -51,4 +51,3 @@ mut ptr = 0
 
   ip <- ip inc
 ]
-

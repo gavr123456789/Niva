@@ -35,7 +35,7 @@ x = 5
 
 x > 5 => 1 echo |=>
 x < 7 => 2 echo |=>
-x + 42 |> echo
+x + 42, echo
 
 
 

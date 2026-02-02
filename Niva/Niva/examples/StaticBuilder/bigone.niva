@@ -1,6 +1,6 @@
 union Node =
-| Sub nodes: MutableList::Node
-| Add nodes: MutableList::Node
+| Sub nodes: mut List::Node
+| Add nodes: mut List::Node
 | Value v: Int
 
 Add walkAdd: init::Int -> Int = [
@@ -42,7 +42,7 @@ Node walk: init::Int -> Int = [
 ]
 
 type NodeList
-    list: MutableList::Node
+    list: mut List::Node
 
 builder NodeList node -> Int = [
     n = NodeList list: {}

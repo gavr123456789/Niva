@@ -1,0 +1,30 @@
+Project loadPackages: {"org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2"}
+
+Bind package: "kotlinx.coroutines" content: [
+  type Job
+  type CoroutineContext
+
+  builder CoroutineContext runBlocking -> Unit = []
+
+  /// Delays coroutine for at least the given time without blocking a thread and resumes it after a specified time using Millis
+  @emit: "delay($1)"
+  CoroutineContext delay::Long -> Unit
+
+  /// Delays coroutine for at least the given time without blocking a thread and resumes it after a specified time using Millis
+  @emit: "delay($1)"
+  constructor CoroutineContext delay::Long -> Unit
+
+
+  type  Deferred::T
+  Deferred::T await -> T
+
+  /// Creates a coroutine and returns its future result as an implementation.
+  /// Send await to get the result
+  CoroutineContext async::[ -> T] -> Deferred::T
+
+
+  /// Launches a new coroutine without blocking the current thread and returns a reference to the coroutine as a @Job
+  CoroutineContext launch::CoroutineContext[ -> ] -> Unit
+
+
+]

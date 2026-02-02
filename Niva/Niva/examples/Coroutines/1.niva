@@ -1,5 +1,5 @@
 // simple
-Int sec = this * 1000 |> toLong
+Int sec = this * 1000, toLong
 
 
 runBlocking [

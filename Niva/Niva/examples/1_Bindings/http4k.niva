@@ -49,4 +49,4 @@ app = [request::Request ->
     response body: "Hello, " + query
 ]
 
-app asServer: (SunHttp port: 8080) |> start
+app asServer: (SunHttp port: 8080), start

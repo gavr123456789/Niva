@@ -2,8 +2,8 @@ type Pair
     x: T
     y: G
 
-Pair(MutableList::T, MutableList::T) forEach: block::[T, T -> Unit] = [
-    iterate = [x::MutableList::T, y::MutableList::T ->
+Pair(List::T, List::T) forEach: block::[T, T -> Unit] = [
+    iterate = [x::List::T, y::List::T ->
         x forEachIndexed: [ i, first ->
             second = y at: i
             block T: first T: second
@@ -17,14 +17,14 @@ Pair(MutableList::T, MutableList::T) forEach: block::[T, T -> Unit] = [
 list1 = {1 2 3 4}
 list2 = {5 6 7}
 
-Pair x: list1 y: list2 |> forEach: [a, b ->
+Pair x: list1 y: list2, forEach: [a, b ->
     "$a + $b = ${a + b}" echo
 ]
 
 
-MutableList::T forEachBreak::[T -> Boolean] -> Unit = [
+List::T forEachBreak::[T -> Boolean] -> Unit = [
  this forEach: [
-   forEachBreak T: it |> not => ^
+   forEachBreak T: it, not => ^
  ]
 ]
 

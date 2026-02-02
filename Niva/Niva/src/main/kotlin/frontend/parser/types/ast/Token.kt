@@ -111,7 +111,7 @@ private class FakeToken {
     companion object {
         val fakeToken = Token(
             TokenType.Identifier, "Fake Token", 0, Position(0, 1),
-            Position(0, 1), File("Fake File")
+            Position(0, 1), File(".")
         )
     }
 }

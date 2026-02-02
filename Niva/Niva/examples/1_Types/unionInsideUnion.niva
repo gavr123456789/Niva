@@ -33,4 +33,4 @@ Int car::Car = | car
 | Toyota => 1
 | SomeBadCar => 3
 
-3 car: (Corola x: 5) |> echo
+3 car: (Corola x: 5), echo

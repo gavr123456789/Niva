@@ -1,5 +1,5 @@
-type Node v: T next: Node?
-constructor Node v::T = Node v: v next: null
+type Node v: Int next: Node?
+constructor Node v::Int = Node v: v next: null
 
 Node str -> String =
     next unpack: [ "$v, " + it str] or: "$v"
@@ -9,8 +9,8 @@ Node
     v: 545
     next: (
         Node
-            v: "sas"
-            next: (Node v: true)
+            v: 123
+            next: (Node v: 345)
     )
 
 nodeInt str echo
@@ -19,19 +19,19 @@ nodeInt str echo
 
 type LinkedList head: Node? tail: Node? size: Int
 
-constructor LinkedList::T empty =
-    LinkedList::T head: null tail: null size: 0
+constructor LinkedList empty =
+    LinkedList head: null tail: null size: 0
 
 LinkedList isEmpty = size == 0
 LinkedList str = this isEmpty => "Empty!" |=> head unpackOrPANIC str
-LinkedList push: v::T -> LinkedList = [
+mut LinkedList push: v::Int -> LinkedList = [
     head <- Node v: v next: head
     tail == null => tail <- head
     size <- size inc
     ^this
 ]
 
-LinkedList add: v::T -> LinkedList =
+mut LinkedList add: v::Int -> mut LinkedList =
   this isEmpty => [
     this push: v
     this
@@ -53,26 +53,29 @@ LinkedList at: i::Int -> Node? = [
   ^curr
 ]
 
-LinkedList forEach::[T -> Unit] =
-  0..<size forEach: [
-    forEach T: (this at: it |> unpackOrPANIC v)
+LinkedList forEach::[Int -> Unit] =
+  0..<(size - 1) forEach: [
+    forEach it: (this at: it, unpackOrPANIC v)
   ]
 
 
-LinkedList map::[T -> G] -> LinkedList::G = [
-   newLinkedList = LinkedList::G empty
+LinkedList map::[Int -> Int] -> LinkedList = [
+   newLinkedList::mut LinkedList = LinkedList empty
    this forEach: [
-     newLinkedList add: (map T: it)
+     newLinkedList add: (map it: it)
    ]
   ^newLinkedList
 ]
 
 
-list = LinkedList::Int empty
-list push: 1 |> push: 2 |> push: 3
-list add: -1 |> add: -2 |> add: -3
-"element 4" echo
-list at: 4 |> unpackOrPANIC v echo
+list::mut LinkedList = LinkedList empty
+list push: 1, push: 2, push: 3
+list add: -1, add: -2, add: -3
+
+list forEach: [it echo]
+
+"element 2" echo
+list at: 2, unpackOrPANIC v echo
 "full list" echo
 list str echo
-list map: [it + 9] |> str echo
+list map: [it + 9], str echo

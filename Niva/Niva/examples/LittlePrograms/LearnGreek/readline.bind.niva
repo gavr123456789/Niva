@@ -1,5 +1,0 @@
-Bind package: "kotlin.io" content: [
-    type Console
-    @emit: "kotlin.io.readln()"
-    Console readln -> String
-]

@@ -16,7 +16,7 @@ mappedList2 = mappedList map: [(it at: 0) digitToInt + 1]
 > mappedList2
 
 
-emptyList::MutableList::Int = {}
+emptyList::mut List::Int = {}
 emptyList add: 5
 //> [5]
 > emptyList
