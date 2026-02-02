@@ -3,6 +3,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import org.gradle.api.tasks.bundling.Zip
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
@@ -30,6 +31,16 @@ dependencies {
 
 tasks.test { useJUnitPlatform() }
 
+val zipInfroProject = tasks.register<Zip>("zipInfroProject") {
+    from(layout.projectDirectory.dir("src/main/resources/infroProject"))
+    archiveFileName.set("infroProject.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("generated-resources"))
+}
+
+tasks.processResources {
+    from(zipInfroProject)
+}
+
 //kotlin { jvmToolchain(21) }
 // tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
 //    compilerOptions.freeCompilerArgs.addAll(listOf("-Xcontext-receivers"))
@@ -47,6 +58,7 @@ graalvmNative {
     binaries.all {
         imageName.set("niva")
         //        buildArgs.add("-O3")
+        buildArgs.add("-H:IncludeResources=infroProject\\.zip")
 
         // temp solution
         //        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
