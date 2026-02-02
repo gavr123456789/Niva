@@ -33,7 +33,7 @@
 
 // name сделать просто через функцию с пм
 
-union TagWithText children: MutableList::Element attributes: MutableMap(String, String) =
+union TagWithText children: mut List::Element attributes: MutableMap(String, String) =
 | HTML
 | Head
 | Title
@@ -48,7 +48,7 @@ union BodyTag =
 union Element =
 | ^Tag
 
-union Tag children: MutableList::Element attributes: MutableMap(String, String) =
+union Tag children: mut List::Element attributes: MutableMap(String, String) =
 | ^TagWithText
 
 

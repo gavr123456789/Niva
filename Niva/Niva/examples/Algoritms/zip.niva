@@ -1,7 +1,7 @@
 a = {1 2 3}
 b = {4 5 6}
 
-makeIter = [arr::MutableList::Int ->
+makeIter = [arr::mut List::Int ->
   mut b = 0
   [
     x = arr at: (b)

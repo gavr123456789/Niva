@@ -8,7 +8,7 @@ String red = COLOR RED + this + COLOR RESET
 String yel = COLOR YEL + this + COLOR RESET 
 String cyan = COLOR CYAN + this + COLOR RESET 
 
-// "Hello"yel + " World"red + "!"cyan |> echo
+// "Hello"yel + " World"red + "!"cyan, echo
 
 
 type Assert 

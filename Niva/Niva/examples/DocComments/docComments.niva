@@ -5,4 +5,4 @@ type Person name: String age: Int
 name echo
 age echo
 
-type Success captures: MutableList::String
+type Success captures: mut List::String

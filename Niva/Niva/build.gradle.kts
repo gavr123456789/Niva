@@ -112,7 +112,7 @@ tasks.register(buildJvmNiva) {
     // Precompute all values during configuration to avoid accessing Task.project at execution time
     val userHome = System.getProperty("user.home")
     val projectDirPath: Path = layout.projectDirectory.asFile.toPath()
-    val sourceInfro: Path = projectDirPath.resolve("../infroProject").normalize()
+    val sourceInfro: Path = projectDirPath.resolve("src/main/resources/infroProject").normalize()
     val nivaHomeDir: Path = File("$userHome/.niva").toPath()
     val nivaJvmBinary: Path = layout.buildDirectory.dir("install/niva").get().asFile.toPath()
     val targetInstallDir: Path = nivaHomeDir.resolve("niva")
@@ -142,6 +142,9 @@ tasks.register(buildJvmNiva) {
             }
             Files.createDirectories(nivaHomeDir)
             copyRecursivelyLocal(sourceInfro, targetInfro)
+            if (OperatingSystem.current() != OperatingSystem.WINDOWS) {
+                targetInfro.resolve("gradlew").toFile().setExecutable(true)
+            }
             println("$userHome/.niva created")
         } else {
             println("Can't find: $sourceInfro, please run buildNativeNiva from Niva/Niva/Niva dir of the repo")
@@ -201,7 +204,7 @@ tasks.register(buildJvmNiva) {
 val green = "\u001B[32m"
 val purple = "\u001B[35m"
 
-val sourceDir = file("${layout.projectDirectory}/../infroProject")
+val sourceDir = file("${layout.projectDirectory}/src/main/resources/infroProject")
 val nivaBinary: Path = file("${layout.buildDirectory.get()}/native/nativeCompile/niva").toPath()
 val isWindows = OperatingSystem.current() == OperatingSystem.WINDOWS
 
@@ -291,6 +294,9 @@ fun moveInfroDir() {
 
         Files.createDirectories(nivaDir.toPath())
         copyRecursively(sourceDir.toPath(), targetDir.toPath())
+        if (!isWindows) {
+            targetDir.toPath().resolve("gradlew").toFile().setExecutable(true)
+        }
         println("$userHome/.niva created")
     } else {
         println(

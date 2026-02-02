@@ -1,4 +1,4 @@
-MutableList::Int isSorted =
+mut List::Int isSorted =
     this count < 2 => true
     |=> [
         1..<this count forEach: [
@@ -7,9 +7,9 @@ MutableList::Int isSorted =
         true
     ]
 
-MutableList::Int shuffle = [
+mut List::Int shuffle = [
     n = this count
-    swap = [ a::MutableList::Int, b::Int, c::Int ->
+    swap = [ a::mut List::Int, b::Int, c::Int ->
         temp = a at: b
         a at: b put: (a at: c)
         a at: c put: temp
@@ -20,7 +20,7 @@ MutableList::Int shuffle = [
     ]
 ]
 
-MutableList::Int bogosort = [
+mut List::Int bogosort = [
     mut i = 0
     [this isSorted] whileFalse: [
         this shuffle

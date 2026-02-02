@@ -51,9 +51,9 @@ constructor IO new -> IO = [
 
 
 compilerTry = [
-  path = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/entryPoint.niva"
+  path = "/Users/gavriil.maksyutenko/Documents/Fun/niva_demo/main.niva"
   NivaCompiler runArgs: {"build" path} withIO: IO new
-]
+] do
 
 
 
@@ -71,6 +71,6 @@ testGenerics = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
   typedAst = result entryPointExpressions last
-  typedAst echo
+  typedAst
 
-] do
+]

@@ -1,6 +1,6 @@
-MutableList::Int selectionSort = [
+mut List::Int selectionSort = [
 
-    swap = [a::MutableList::Int, b::Int, c::Int ->
+    swap = [a::mut List::Int, b::Int, c::Int ->
         temp = a at: b
         a at: b put: (a at: c)
         a at: c put: temp

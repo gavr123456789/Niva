@@ -4,6 +4,11 @@ import main.codogen.BuildSystem
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import java.io.File
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import kotlin.system.exitProcess
 
 enum class MainArgument {
@@ -155,21 +160,84 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
 
     init {
         val codegenProjFolder = File(pathToInfroProject)
-        val isBuildFileExist = codegenProjFolder.exists()
         val isMillBuild = mainArg.mainArgIsMill()
-        if (!isBuildFileExist) {
+        if (!codegenProjFolder.exists() && !isMillBuild) {
+            val extracted = ensureInfroProjectFromResources(codegenProjFolder.toPath())
+            if (!extracted) {
+                createFakeToken().compileError(
+                    "Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist and infroProject resource could not be extracted"
+                )
+            }
+        }
+        if (!codegenProjFolder.exists()) {
             if (isMillBuild) {
                 // we don't need to create dir here, because later we this is a trigger to generate .bat file
 //                codegenProjFolder.mkdirs()
             }
             else {
-                createFakeToken().compileError("Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please move the infroProject there from ${WHITE}`/Niva/infroProject`${RED} there or run compile.sh")
+                createFakeToken().compileError(
+                    "Path ${WHITE}`$pathToInfroProject`${RESET} doesn't exist, please copy infroProject there or reinstall niva"
+                )
             }
         }
 
     }
 }
 
+private fun ensureInfroProjectFromResources(targetDir: Path): Boolean {
+    if (Files.exists(targetDir)) return true
+    val parentDir = targetDir.parent
+    if (parentDir != null) {
+        Files.createDirectories(parentDir)
+    }
+    return try {
+        copyResourceDirectory("infroProject", targetDir)
+        makeGradleWrapperExecutable(targetDir)
+        Files.exists(targetDir)
+    } catch (_: Exception) {
+        false
+    }
+}
+
+private fun copyResourceDirectory(resourceRoot: String, targetDir: Path) {
+    val classLoader = Thread.currentThread().contextClassLoader ?: PathManager::class.java.classLoader
+    val resourceUrl = classLoader.getResource(resourceRoot)
+        ?: throw IllegalStateException("Resource $resourceRoot not found")
+    val uri = resourceUrl.toURI()
+    if (uri.scheme == "jar") {
+        FileSystems.newFileSystem(uri, emptyMap<String, Any>()).use { fs ->
+            val sourcePath = fs.getPath("/$resourceRoot")
+            copyRecursively(sourcePath, targetDir)
+        }
+    } else {
+        val sourcePath = Paths.get(uri)
+        copyRecursively(sourcePath, targetDir)
+    }
+}
+
+private fun copyRecursively(source: Path, target: Path) {
+    Files.walk(source).use { paths ->
+        paths.forEach { path ->
+            val relative = source.relativize(path).toString()
+            val targetPath = target.resolve(relative)
+            if (Files.isDirectory(path)) {
+                Files.createDirectories(targetPath)
+            } else {
+                Files.createDirectories(targetPath.parent)
+                Files.copy(path, targetPath, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
+}
+
+private fun makeGradleWrapperExecutable(targetDir: Path) {
+    val osName = System.getProperty("os.name").lowercase()
+    if (osName.contains("win")) return
+    val gradlew = targetDir.resolve("gradlew").toFile()
+    if (gradlew.exists()) {
+        gradlew.setExecutable(true)
+    }
+}
 
 fun help(args: Array<String>): Boolean {
     if (args.isEmpty())

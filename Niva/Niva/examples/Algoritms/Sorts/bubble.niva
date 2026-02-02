@@ -1,6 +1,6 @@
 
 
-MutableList::Int bubble = [
+mut List::Int bubble = [
     array = this
     0 to: array count do: [ i ->
         0 to: array count - 2 - i do: [ j ->

@@ -12,7 +12,7 @@ constructor Float pi = 3.14
 
 Shape getArea -> Float =
     | this
-    | Rectangle => width * height |> toFloat
+    | Rectangle => width * height, toFloat
     | Circle => Float pi * (radius * radius) toFloat
 
 
