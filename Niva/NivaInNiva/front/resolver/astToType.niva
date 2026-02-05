@@ -18,14 +18,20 @@ AstType2 toNivaTypefromDB: db::TyperDB inPkg::String? -> NivaType = [
 
 
         idToType:: mut Map(String, NivaType) = #{}!
+        mut hasConcreteGeneric = false
 
         typeT genericArgs forEachIndexed: [ i, it ->
           sas = genericParams at: i, toNivaTypefromDB: db inPkg: inPkg
+          | sas
+          | UnresolvedGenericT => []
+          |=> [hasConcreteGeneric <- true]
           idToType at: it name put: sas
         ]
 
         idToType debug
-        typeT replaceGenericsFromTable: idToType db: db
+        hasConcreteGeneric
+          ifTrue: [db addGenericInstantiationIfAbsent: typeT letterToType: idToType]
+          ifFalse: [typeT]
       ]
       | ListT => [
         genericParams count != 1 ifTrue: [

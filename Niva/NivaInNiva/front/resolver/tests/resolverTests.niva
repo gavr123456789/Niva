@@ -8,7 +8,7 @@ Test genericsReceiverAndKwArg = [
   fileMain = """
     type Box x: T
     box = Box x: 42
-    Box tGeneric::T -> T = [
+    Box(T) tGeneric::T -> T = [
         ^ tGeneric
     ]
     res = box tGeneric: 1
@@ -40,7 +40,21 @@ Test genericsReceiverAndKwArg = [
       Assert that: t name equals: "Int"
   ]
   |=> [ Assert that: false equals: true ]
-  123
+
+]
+
+Test genericReceiverMissingParams = [
+  fileMain = """
+    type Box x: T
+    Box tGeneric::T -> T = [
+      ^ tGeneric
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
 ]
 
 
