@@ -312,6 +312,8 @@ fun warning(string: String) {
 // Deprecated
 //    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
 //    ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
+//    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
+
 const val HELP = """
 Usage:
     ${WHITE}run$RESET      — compile and run project from "main.niva" file
@@ -352,7 +354,6 @@ Project configuration:
     ${CYAN}protocol: $GREEN"NAME"$RESET — set protocol for the definitions in code below
     ${CYAN}use: $GREEN"PKG"$RESET       — set default pkg, like using namespace in C#/Vala
 
-    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
 
 Kotlin\Java interop:
     Messages for ${YEL}Bind$RESET:

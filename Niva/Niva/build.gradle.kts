@@ -10,7 +10,7 @@ import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 plugins {
     kotlin("jvm") version "2.3.0"
     application
-    id("org.graalvm.buildtools.native") version "0.10.4"
+    id("org.graalvm.buildtools.native") version "0.11.1"
     id("maven-publish")
     kotlin("plugin.serialization") version "2.3.0"
 }
@@ -30,6 +30,31 @@ dependencies {
 }
 
 tasks.test { useJUnitPlatform() }
+
+val compactObjectJvmArgs =
+    listOf(
+        "-XX:+UnlockExperimentalVMOptions",
+        "-XX:+UseCompactObjectHeaders",
+//        "-XX:+UseShenandoahGC", //  jdk.graal.compiler.debug.GraalError: Shenandoah garbage collector is not supported by Graal
+//        "-XX:ShenandoahGCMode=generational",
+    )
+
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs(compactObjectJvmArgs)
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs(compactObjectJvmArgs)
+}
+
+// set emitting java bytecode version for current JVM
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        val currentJavaVersion = "25"//JavaVersion.current().majorVersion
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(currentJavaVersion))
+    }
+}
+
 
 val zipInfroProject = tasks.register<Zip>("zipInfroProject") {
     from(layout.projectDirectory.dir("src/main/resources/infroProject"))
@@ -51,29 +76,30 @@ tasks.processResources {
 graalvmNative {
     binaries {
         named("main") {
-            buildArgs.add("-O3")
             mainClass.set("main.MainKt")
         }
     }
     binaries.all {
         imageName.set("niva")
-        //        buildArgs.add("-O3")
+                buildArgs.add("-Ob")
         buildArgs.add("-H:IncludeResources=infroProject\\.zip")
 
         // temp solution
         //        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
-        //            buildArgs.add("--static")
-        //            buildArgs.add("--libc=musl")
+//                    buildArgs.add("--static")
+//                    buildArgs.add("--libc=musl")
         //        }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")
-        //        buildArgs.add("-march=native") // temp until
-        // https://github.com/oracle/graal/pull/10050 gets upstream
+                buildArgs.add("-march=native") // temp until
         buildArgs.add("--initialize-at-build-time")
     }
 }
 
-application { mainClass = "main.MainKt" }
+application {
+    mainClass = "main.MainKt"
+    applicationDefaultJvmArgs = compactObjectJvmArgs
+}
 
 val checkAndBuildNativeTask = "checkAndBuildNative"
 val buildNativeNiva = "buildNativeNiva"

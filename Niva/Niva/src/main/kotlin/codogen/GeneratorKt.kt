@@ -31,8 +31,10 @@ class GeneratorKt(
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
         const val TARGET = "%TARGET%"
-        const val GRADLE_IMPORTS = "import org.gradle.api.tasks.testing.logging.TestExceptionFormat\n" +
-                "import org.gradle.api.tasks.testing.logging.TestLogEvent\n\n"
+        const val GRADLE_IMPORTS = "import org.gradle.api.file.DuplicatesStrategy\n" +
+                "import org.gradle.api.tasks.testing.logging.TestExceptionFormat\n" +
+                "import org.gradle.api.tasks.testing.logging.TestLogEvent\n" +
+                "import org.gradle.jvm.tasks.Jar\n\n"
         const val GRADLE_TEMPLATE = """
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -57,8 +59,14 @@ dependencies {
     //%IMPL%
 }
 
+val compactObjectJvmArgs = listOf(
+    "-XX:+UnlockExperimentalVMOptions",
+    "-XX:+UseCompactObjectHeaders",
+)
+
 // for imgui on mac
 tasks.withType<JavaExec>().configureEach {
+    jvmArgs(compactObjectJvmArgs)
     if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
         jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")
     }
@@ -66,14 +74,16 @@ tasks.withType<JavaExec>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    //jvmArgs(compactObjectJvmArgs)
 }
 
 kotlin {
-    jvmToolchain(22)
+    //jvmToolchain(22)
 }
 
 application {
     mainClass.set("mainNiva.MainKt")
+    applicationDefaultJvmArgs = compactObjectJvmArgs
 }
 
 """
@@ -100,32 +110,24 @@ settings:
     }
 
     fun GRADLE_FAT_JAR_TEMPLATE(jarName: String) = """
-kotlin {
-//    jvm {
-//        compilations {
-//            val main = getByName("main")
-//            tasks {
-//                register<Jar>("fatJar") {
-//                    group = "application"
-//                    manifest {
-//                        attributes["Main-Class"] = "mainNiva.MainKt"
-//                    }
-//                    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-//                    archiveBaseName.set("$jarName")
-//                    archiveVersion.set("")
-//
-//                    from(main.output.classesDirs)
-//                    dependsOn(configurations.runtimeClasspath)
-//                    from({
-//                        configurations.runtimeClasspath.get()
-//                            .filter { it.name.endsWith("jar") }
-//                            .map { zipTree(it) }
-//                    })
-//                    with(jar.get() as CopySpec)
-//                }
-//            }
-//        }
-//    }
+plugins.withId("org.jetbrains.kotlin.jvm") {
+    tasks.register<Jar>("fatJar") {
+        group = "application"
+        manifest {
+            attributes["Main-Class"] = "mainNiva.MainKt"
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        archiveBaseName.set("$jarName")
+        archiveVersion.set("")
+
+        from(sourceSets.main.get().output)
+        dependsOn(configurations.runtimeClasspath)
+        from({
+            configurations.runtimeClasspath.get()
+                .filter { it.name.endsWith("jar") }
+                .map { zipTree(it) }
+        })
+    }
 }
 """
 
@@ -571,4 +573,3 @@ import kotlin.test.assertTrue
         }
 
     }
-
