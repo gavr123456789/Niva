@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("run","")
+//    val args = arrayOf("build","/Users/gavriil.maksyutenko/Documents/Fun/niva_demo/main.niva")
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {
