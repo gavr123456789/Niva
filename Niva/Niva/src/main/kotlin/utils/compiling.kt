@@ -155,10 +155,18 @@ class CompilerRunner(
     private val mainNivaFileName: String,
     private val resolver: Resolver,
     private val watch: Boolean = false,
+    private val nativeImageGradleProperty: String? = null,
 ) {
+    private val useNativeImage: Boolean = !nativeImageGradleProperty.isNullOrBlank()
+
     // all false = run code, dist = zip, buildFatJar = single jar
     private fun gradleCmd(dist: Boolean = false, buildFatJar: Boolean = false, runTests: Boolean = false): String =
-        (if (!dist)
+        (if (useNativeImage &&
+            (dist || buildFatJar) &&
+            (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose)
+        ) {
+            "nativeCompile"
+        } else if (!dist)
             if (runTests)
                 "test"
             else
@@ -238,6 +246,9 @@ class CompilerRunner(
             val escaped = testFilter.replace("\"", "\\\"")
             cmd += " --tests \"$escaped\""
         }
+        if (!nativeImageGradleProperty.isNullOrBlank()) {
+            cmd += " $nativeImageGradleProperty"
+        }
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
         runFinalCommand("./gradlew","cmd.exe /c gradlew.bat", defaultArgs, cmd, file, runTests)
         // 4 inline repl
@@ -279,6 +290,20 @@ class CompilerRunner(
 
     // move the build jar into current folder and rename it
     fun buildJarOrDistGradle(buildFatJar: Boolean, fileName: String) {
+        if (useNativeImage &&
+            (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose)
+        ) {
+            val binName = if (getOSType() == CurrentOS.WINDOWS) "niva.exe" else "niva"
+            val destinationName =
+                if (getOSType() == CurrentOS.WINDOWS && !fileName.endsWith(".exe")) "$fileName.exe"
+                else fileName
+            val pathToNativeExe =
+                pathToProjectRoot / "build" / "native" / "nativeCompile" / binName
+            val destination = File("./$destinationName")
+            File(pathToNativeExe).copyTo(destination, true)
+            destination.setExecutable(true)
+            return
+        }
         when (compilationTarget) {
             CompilationTarget.jvm, CompilationTarget.jvmCompose -> {
 

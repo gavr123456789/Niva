@@ -39,6 +39,12 @@ val compactObjectJvmArgs =
 //        "-XX:ShenandoahGCMode=generational",
     )
 
+val nativeOptimizationArg = when {
+    project.hasProperty("nativeDebug") -> "-Ob"
+    project.hasProperty("nativeRelease") -> "-O3"
+    else -> "-O3"
+}
+
 tasks.withType<JavaExec>().configureEach {
     jvmArgs(compactObjectJvmArgs)
 }
@@ -81,7 +87,7 @@ graalvmNative {
     }
     binaries.all {
         imageName.set("niva")
-                buildArgs.add("-Ob")
+        buildArgs.add(nativeOptimizationArg)
         buildArgs.add("-H:IncludeResources=infroProject\\.zip")
 
         // temp solution
@@ -91,7 +97,7 @@ graalvmNative {
         //        }
         this.runtimeArgs()
         buildArgs.add("--no-fallback")
-                buildArgs.add("-march=native") // temp until
+        buildArgs.add("-march=native")
         buildArgs.add("--initialize-at-build-time")
     }
 }

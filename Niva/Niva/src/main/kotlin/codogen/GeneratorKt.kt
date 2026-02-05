@@ -40,6 +40,7 @@ plugins {
     kotlin("jvm") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
     application
+    id("org.graalvm.buildtools.native") version "0.11.1"
 }
 
 group = "org.example"
@@ -64,6 +65,12 @@ val compactObjectJvmArgs = listOf(
     "-XX:+UseCompactObjectHeaders",
 )
 
+val nativeOptimizationArg = when {
+    project.hasProperty("nativeDebug") -> "-Ob"
+    project.hasProperty("nativeRelease") -> "-O3"
+    else -> "-O3"
+}
+
 // for imgui on mac
 tasks.withType<JavaExec>().configureEach {
     jvmArgs(compactObjectJvmArgs)
@@ -84,6 +91,30 @@ kotlin {
 application {
     mainClass.set("mainNiva.MainKt")
     applicationDefaultJvmArgs = compactObjectJvmArgs
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            mainClass.set("mainNiva.MainKt")
+        }
+    }
+    binaries.all {
+        imageName.set("niva")
+        buildArgs.add(nativeOptimizationArg)
+        buildArgs.add("-H:IncludeResources=infroProject\\.zip")
+
+        // temp solution
+        //        if (DefaultNativePlatform.getCurrentOperatingSystem().isLinux) {
+//                    buildArgs.add("--static")
+//                    buildArgs.add("--libc=musl")
+        //        }
+        this.runtimeArgs()
+        buildArgs.add("--no-fallback")
+        buildArgs.add("-march=native") // temp until
+        // https://github.com/oracle/graal/pull/10050 gets upstream
+        buildArgs.add("--initialize-at-build-time")
+    }
 }
 
 """
