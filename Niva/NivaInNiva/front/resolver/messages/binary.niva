@@ -5,42 +5,30 @@ BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> Bi
 
   typeOfReceiver = receiverTypedExpr typeInfo t
   mut lastType = typeOfReceiver
-  mut lastReceiver = receiverTypedExpr
+  mut lastReceiverExpr = receiver
   mut lastDbMsg::NivaMethod? = null
 
-  typedArgs = args map: [ binary ->
-    // 1 + (2 inc)
-    // find the message
-    // resolce type of arg
-    // compare that found message has arg with same type
-    binaryName = binary name name
-    dbMsg = db findMsgFromReceiver: lastReceiver  byName: binaryName currentPkg: c currentPkg
-    lastDbMsg <- dbMsg
+  typedArgs::mut List::NameAndExprT = {}!
 
-    (dbMsg args count != 1) ifTrue: [TO DO: "Compiler bug, binary $dbMsg args != 1 in db"]
-    dbArg = dbMsg args first
-    // resolve type of arg
-    resolvedArg = binary expr toTypedExprFromDb2: db withContext: c
+  args forEach: [ binary ->
+    kw = KeywordMsg
+      args: {binary}
+      receiver: lastReceiverExpr
+      token: token
+      kind: MessageSendKind.Call
 
+    kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: binary name name
+    lastDbMsg <- kwResolved dbMsg
+    lastType <- kwResolved typeInfo t
+    lastReceiverExpr <- binary expr
 
-    (resolvedArg typeInfo t compareWith: dbArg typeT) ifFalse: [
-      expected = dbMsg args first typeT
-      butGot = resolvedArg typeInfo t
-      currentBinary = lastType toString + " " + binaryName + " "
-      TO DO: "In binary $currentBinary arg of type $expected expected, but got $butGot"
-    ]
-
-    // create typed expr with return type of dbMsg in db message
-    typed = resolvedArg
-
-    lastType <- dbMsg returnType // 2 + 2 ^(Int)+ 2
-    lastReceiver <- resolvedArg // 2 + ^2 + 2
-    NameAndExprT name: binary name expr: resolvedArg
+    typedArg = kwResolved args first
+    typedArgs add: (NameAndExprT name: typedArg name expr: typedArg expr)
   ]
 
   //
   newBinaryT = BinaryMsgT
-    args: typedArgs
+    args: typedArgs toList
     receiver: receiverTypedExpr
     token: token
     typeInfo: lastType toTypeInfoDefault

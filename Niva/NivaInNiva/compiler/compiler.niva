@@ -1,14 +1,14 @@
 /// takes main file and collects all the files for compilation
 type NivaBuildSystem
 constructor NivaBuildSystem [
-    on findAllWilesFrom: path::String? withIO: io::IO -> Map(String, String) = [
+    on findAllWilesFrom: path::String? withIO: io::IO_Container -> Map(String, String) = [
         // path is to main.niva, need to get its paret to start search
-        p = path unpack: [str -> io getParent path: str] 
+        p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
 
         files = io walkDir path: p,
             filter: [it path endsWith: ".niva"]
-        
+
 
         pathToContent::mut Map(String, String) = #{}!
         files forEach: [
@@ -23,38 +23,50 @@ constructor NivaBuildSystem [
 
 
 /// takes fileNames to Content
-type NivaCompiler 
+type NivaCompiler
 
 constructor NivaCompiler [
-    on runArgs: args::List(String) withIO: io::IO = [
+    on runArgs: args::List(String) withIO: io::IO_Container = [
 
         argsParsed = ArgParser args: args
-        pathToContent = NivaBuildSystem findAllWilesFrom: argsParsed path withIO: io
-        result = ResolverHelper resolve: pathToContent 
-                                entryPoint: "entryPoint"
-        
-        realJSPath = "/home/gavr/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/1_compilerTest/realJS"
-        
-        transpileToSources = [
-            fileToJSCOntent = TypeScript fullFromResolver: result
+        {option path} = argsParsed
 
-            fileToJSCOntent forEach: [file, jsContent -> 
+        realJSPath = io currentDir + "/.niva_js"
+
+        buildFromResolver = [res::ResolverHelper ->
+            FileSystem createDirectories: (realJSPath toPath)
+            fileToJSCOntent = TypeScript fullFromResolver: res
+
+            fileToJSCOntent forEach: [file, jsContent ->
                 destanation = realJSPath + "/" + file + ".js"
                 io writeFile file: destanation content: jsContent
             ]
         ]
 
-        {option} = argsParsed
         | option
         | CompilerOption.Run => [
-            transpileToSources do
-            pathToEntryPoint = realJSPath + "/" + "entryPoint.js"
+            rootFile = path unpackOrValue: "main.niva"
+            entryPoint = rootFile toPath name substringBeforeLast: "."
+            pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
+            result = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+
+            buildFromResolver res: result
+            pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
             io runProgram args: {"bun" pathToEntryPoint}
         ]
         | CompilerOption.Build => [
-            transpileToSources do
+            | path
+            | null => [Unit]
+            |=> [
+                filePath = path
+                entryPoint = filePath toPath name substringBeforeLast: "."
+                content = io readFile path: filePath
+                pathToContent::mut Map(String, String) = #{}!
+                pathToContent at: entryPoint put: content
 
-            Unit
+                result = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+                buildFromResolver res: result
+            ]
         ]
         | CompilerOption.Help => []
         | CompilerOption.Daemon => []

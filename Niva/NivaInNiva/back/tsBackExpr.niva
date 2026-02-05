@@ -41,12 +41,13 @@ constructor TypeScript  [
 
 
 
+        entryPointName = rh entryPointName
         generateMain = [
-            x = outputFileToJS at: "entryPoint", unpackOrPANIC
-            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTSFromPkg: "entryPoint"])
+            x = outputFileToJS at: entryPointName, unpackOrPANIC
+            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTSFromPkg: entryPointName])
         ]
 
-        outputFileToJS at: "entryPoint" put: generateMain do
+        outputFileToJS at: entryPointName put: generateMain do
         ^ outputFileToJS
     ]
 ]
@@ -63,9 +64,9 @@ TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | VarDeclarationT => .varDeclToTSFromPkg: currentPkg
 | AssignT => "let " + name + " = " + (value toTSFromPkg: currentPkg)
 | DestructingAssignT => TO DO
-| CollectionLiteralT => TO DO
+| CollectionLiteralT => .toTSFromPkg: currentPkg
 | MessageSendT => .msgSendToTSFromPkg: currentPkg
-| ReturnStatementT => TO DO
+| ReturnStatementT => .returnToTSFromPkg: currentPkg
 | CodeBlockT => .codeBlockToTSFromPkg: currentPkg
 | MatchT => TO DO
 
@@ -93,6 +94,11 @@ CollectionLiteralT toTSFromPkg: currentPkg::String -> String = [
     ]
 
   ^ ""
+]
+
+ReturnStatementT returnToTSFromPkg: currentPkg::String -> String = [
+  exprStr = value unpack: [it toTSFromPkg: currentPkg] or: ""
+  ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
 ]
 
 CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
@@ -140,6 +146,10 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
 
     | this
     | UnaryMsgT => [
+
+        dbMsg kind == MessageSendKind.Getter ifTrue: [
+            ^ (receiver toTSFromPkg: currentPkg) + "." + selector name
+        ]
 
         | rec
         | CodeBlockT => [

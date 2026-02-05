@@ -103,9 +103,6 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       | this
       | ListLiteral => [
         newType = ListT t: f
-        TO DO: "LISTSSSSS"
-        // use addGenericInstantiationIfAbsent
-        TO DO: "Добавлять полученный тип в табличку ОРИГИНАЛ "
         ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
       | SetLiteral => [

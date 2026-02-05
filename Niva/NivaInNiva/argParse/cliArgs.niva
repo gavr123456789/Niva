@@ -13,11 +13,9 @@ constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help 
 constructor ArgParser args::List::String -> ArgsParsed = [
   help = """
     Usage:
-      FILE — compile and run single file
-      run — compile and run project from "main" file
-      run FILE — compile and run project from root file
-      run FILE
-      build — compile only(creates jar binary in current folder)
+      run — compile and run project from main.niva (recursive)
+      run FILE — compile and run project from root file (recursive)
+      build FILE — compile only the given file
   """ trimIndent
 
   args contains: "--help", ifTrue: [
@@ -50,8 +48,14 @@ constructor ArgParser args::List::String -> ArgsParsed = [
   ]
 
   ^ | args count
-    | 1 => 
-      ArgsParsed path: null option: getFirstArg do verbose: verbose lsp: lsp
+    | 1 => [
+      arg0 = args at: 0
+      | arg0
+      | "run" => ArgsParsed path: null option: CompilerOption.Run verbose: verbose lsp: lsp
+      | "build" => ArgsParsed help
+      | "info" => ArgsParsed path: null option: CompilerOption.Info verbose: verbose lsp: lsp
+      |=> ArgsParsed help
+    ]
     | 2 => [
       arg1 = getFirstArg do
       arg2 = args at: 1
