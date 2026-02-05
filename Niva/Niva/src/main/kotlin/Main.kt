@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
 //    println(fromJson)
 ///////////////////////
 
-//    val args = arrayOf("build","/Users/gavriil.maksyutenko/Documents/Fun/niva_demo/main.niva")
+//    val args = arrayOf("build","")
     //    val qqq =
     // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
     //    try {
@@ -119,7 +119,8 @@ fun run(args2: Array<String>) {
                     resolver.compilationTarget,
                     resolver.compilationMode,
                     pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
-                    resolver
+                    resolver,
+                    nativeImageGradleProperty = am.nativeImageGradleProperty
             )
 
     val specialPkgToInfoPrint = getSpecialInfoArg(args, am.infoIndex)

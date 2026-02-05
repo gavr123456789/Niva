@@ -51,7 +51,26 @@ class ArgsManager(val args: MutableList<String>) {
         args.remove("--mill")
         true
     } else false
+    val nativeRelease = if ("--nativeRelease" in args) {
+        args.remove("--nativeRelease")
+        true
+    } else false
+    val nativeDebug = if ("--nativeDebug" in args) {
+        args.remove("--nativeDebug")
+        true
+    } else false
     val buildSystem = if (mill) BuildSystem.Mill else BuildSystem.Gradle
+    val nativeImageGradleProperty = run {
+        when {
+            nativeDebug && nativeRelease -> {
+                System.err.println("Both --nativeRelease and --nativeDebug are set; using --nativeDebug")
+                "-PnativeDebug"
+            }
+            nativeDebug -> "-PnativeDebug"
+            nativeRelease -> "-PnativeRelease"
+            else -> null
+        }
+    }
 
     val jsRuntime = run {
         val jsRuntimeArg1 = this@ArgsManager.args.find { it.startsWith("--js-runtime=") }
@@ -336,6 +355,8 @@ Usage:
 
     ${WHITE}--js$RESET — compile to js and run
     ${WHITE}--js --js-runtime=bun$RESET — use specific js runtime
+    ${WHITE}--nativeRelease$RESET — native build with -O3
+    ${WHITE}--nativeDebug$RESET — native build with -Ob
 
 In code:
     > EXPR  — debug expr value from IDE
