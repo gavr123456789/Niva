@@ -49,6 +49,11 @@ tasks.withType<JavaExec>().configureEach {
     jvmArgs(compactObjectJvmArgs)
 }
 
+tasks.named<JavaExec>("run") {
+    // always execute run even if nothing changed
+    outputs.upToDateWhen { false }
+}
+
 tasks.withType<Test>().configureEach {
     jvmArgs(compactObjectJvmArgs)
 }

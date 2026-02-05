@@ -138,11 +138,27 @@ TypeDeclVisitor
 
       // get real type for receiver
 
-      receiverType = msg receiver toNivaTypefromDB: db inPkg: null
+      receiverAst = msg receiver
+      receiverType = receiverAst toNivaTypefromDB: db inPkg: null
 
 
       | receiverType | TypeT => []
       |=> []
+
+      receiverNeedsGenerics = | receiverType
+      | TypeT => receiverType genericArgs isNotEmpty
+      |=> false
+
+      receiverDeclaresGenerics = | receiverAst
+      | AstType => receiverAst genericParams isNotEmpty
+      |=> false
+
+      receiverNeedsGenerics ifTrue: [
+        receiverDeclaresGenerics ifFalse: [
+          db addErrorFromTok: receiverAst tok
+            withMsg: "Receiver type " + receiverType name + " requires generic params"
+        ]
+      ]
 
       // get real type for each arg
       argsT = msg args map: [ arg ->
