@@ -1,5 +1,5 @@
 type Program
-  io: IO
+  io: IO_Container
 
 
 type FilePath = String
@@ -9,7 +9,7 @@ type NivaSourceFile
   path: String
   nameWithoutExt: String
 
-type IO
+type IO_Container
   readFile: [FilePath -> String]
   writeFile: [FilePath, FileContent -> Unit]
   walkDir: [FilePath -> List::NivaSourceFile]
@@ -17,10 +17,11 @@ type IO
   currentDir: String
   runProgram: [List::String -> ]
 
-constructor IO new -> IO = [
+constructor IO_Container new -> IO_Container = [
   readFile::[FilePath -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
+
 
   writeFile = [path::String , fileContent::FileContent->
     FileSystem write: path toPath
@@ -36,7 +37,7 @@ constructor IO new -> IO = [
     ]
   ]
 
-  getParent = [path::String -> path toPath parent unpackOrPANIC name]
+  getParent = [path::String -> path toPath parent unpackOrPANIC toString]
 
   runProgram = [args::List::String ->
     processBuilder = ProcessBuilder command: args
@@ -44,7 +45,7 @@ constructor IO new -> IO = [
     Unit
   ]
 
-  ^ IO :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
+  ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
 ]
 
 
@@ -52,7 +53,7 @@ constructor IO new -> IO = [
 
 compilerTry = [
   path = "/Users/gavriil.maksyutenko/Documents/Fun/niva_demo/main.niva"
-  NivaCompiler runArgs: {"build" path} withIO: IO new
+  NivaCompiler runArgs: {"build" path} withIO: IO_Container new
 ] do
 
 
@@ -72,5 +73,48 @@ testGenerics = [
   db = result db
   typedAst = result entryPointExpressions last
   typedAst
+
+]
+
+
+collectionsTestingMapTry = [
+  fileMain = """
+    {1 2 3}
+    #("1" "2" "3")
+    #{1 "a" 2 "b"}
+  //{"a" 1 "b" 2}
+  """
+  result = ResolverHelper
+    resolve: #{"main" fileMain}
+    entryPoint: "main"
+
+  db = result db
+  typedAst = result entryPointExpressions
+
+  checkFirstList = [
+    t = typedAst at: 0, typeInfo t
+    | t
+    | ListT => Assert that: t t name equals: "Int"
+    |=> [TO DO: "list expected"]
+  ] do
+
+  checkSecondSet = [
+    t = typedAst at: 1, typeInfo t
+    | t
+    | SetT => Assert that: t t name equals: "String"
+    |=> [TO DO: "set expected"]
+  ] do
+
+  checkThirdMap = [
+    t = typedAst at: 2, typeInfo t
+    | t
+    | MapT => [
+      keyType = t k
+      valueType = t v
+      Assert that: keyType name equals: "Int"
+      Assert that: valueType name equals: "String"
+    ]
+    |=> [TO DO: "map expected but got: $t"]
+  ] do
 
 ]

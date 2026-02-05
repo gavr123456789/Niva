@@ -1,17 +1,20 @@
 
 UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT = [
-  resolvedReceiver = receiver toTypedExprFromDb2: db withContext: c
-  typeOfReceiver = resolvedReceiver typeInfo t
-  dbMsg = db findMsgFromReceiver: resolvedReceiver byName: selector name currentPkg: c currentPkg
+  kw = KeywordMsg
+    args: {}
+    receiver: receiver
+    token: token
+    kind: kind
 
-  typeInfo = TypeInfo t: dbMsg returnType isMut: dbMsg forMut
+  kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: selector name
+
   newUnary2 = UnaryMsgT
     selector: selector
-    kind: dbMsg kind
-    receiver: resolvedReceiver
+    kind: kwResolved kind
+    receiver: kwResolved receiver
     token: token
-    typeInfo: typeInfo
-    dbMsg: dbMsg
+    typeInfo: kwResolved typeInfo
+    dbMsg: kwResolved dbMsg
 
   ^ newUnary2
 ]

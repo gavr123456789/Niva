@@ -1,14 +1,20 @@
 
 KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> KeywordMsgT = [
+  ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null
+]
+
+KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context nameOverride::String?  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
   receiverType = receiverTypedExpr typeInfo t
   argTypesAndExprs :: mut List::CheckMethodArg = {}!
 
 
-  // так стоп, а как мы храним кейворды? вмеесте с :, потому что в этой реализации мы не разделяем сообщения по видам в базе
+  msgName = | nameOverride
+  | null => .getNameFromArgs
+  |=> nameOverride
   mut kwMsgDB = db
     findMsgFromReceiver: receiverTypedExpr
-    byName: .getNameFromArgs
+    byName: msgName
     currentPkg: c currentPkg
   // just replace this mutability with flag
   // hasGenerics

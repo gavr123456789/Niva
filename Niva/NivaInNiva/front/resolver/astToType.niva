@@ -27,7 +27,32 @@ AstType2 toNivaTypefromDB: db::TyperDB inPkg::String? -> NivaType = [
         idToType debug
         typeT replaceGenericsFromTable: idToType db: db
       ]
-      |=> [TO DO: "only TypeT can have generics"]
+      | ListT => [
+        genericParams count != 1 ifTrue: [
+          db addErrorFromTok: tok withMsg: "List expects 1 generic param, got " + genericParams count toString
+          ^ typeT
+        ]
+        inner = genericParams first, toNivaTypefromDB: db inPkg: inPkg
+        ListT t: inner
+      ]
+      | SetT => [
+        genericParams count != 1 ifTrue: [
+          db addErrorFromTok: tok withMsg: "Set expects 1 generic param, got " + genericParams count toString
+          ^ typeT
+        ]
+        inner = genericParams first, toNivaTypefromDB: db inPkg: inPkg
+        SetT t: inner
+      ]
+      | MapT => [
+        genericParams count != 2 ifTrue: [
+          db addErrorFromTok: tok withMsg: "Map expects 2 generic params, got " + genericParams count toString
+          ^ typeT
+        ]
+        keyType = genericParams at: 0, toNivaTypefromDB: db inPkg: inPkg
+        valType = genericParams at: 1, toNivaTypefromDB: db inPkg: inPkg
+        MapT k: keyType v: valType
+      ]
+      |=> [TO DO: "only TypeT/ListT/SetT/MapT can have generics"]
     ] ifFalse: [
       typeT
     ]

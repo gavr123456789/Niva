@@ -248,7 +248,7 @@ extend TyperDB [
 
     // check if it already
     typesById at: typeId, unpack: [
-      "already resolved generic $typeId" log
+      //"already resolved generic $typeId" log
       ^it
     ]
 
@@ -332,7 +332,7 @@ extend TyperDB [
       ]
     ]
 
-    typeToMethodNameToMethod keys debug
+    typeToMethodNameToMethod //keys debug
     x = this typeToMethodNameToMethod at: forType
     y::mut Map(String, NivaMethod) =
       | x
@@ -518,6 +518,7 @@ type ResolverHelper
   fileToStatements: Map(String, List::Statement)  // по сути это список аст деклараций типов и методов, в которых боди теперь типизированы
   db: TyperDB
   entryPointExpressions: List::TypedExpr2
+  entryPointName: String
   // entryPointStatements: List::TypedExpr
 
 
@@ -564,6 +565,7 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     fileToStatements: fileToStatements
     db: db
     entryPointExpressions: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2
+    entryPointName: entryPoint
 ]
 
 TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB -> TypeT = [

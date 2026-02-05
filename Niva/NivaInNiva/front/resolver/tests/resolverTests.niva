@@ -4,7 +4,7 @@
 // ]
 
 
-Test testGenericsReceiverAndKwArg = [
+Test genericsReceiverAndKwArg = [
   fileMain = """
     type Box x: T
     box = Box x: 42
@@ -14,12 +14,10 @@ Test testGenericsReceiverAndKwArg = [
     res = box tGeneric: 1
   """
 
-
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
   typedAst = result entryPointExpressions
 
-  // 1) check 'box' type
   boxDecl = typedAst at: 0
   | boxDecl
   | VarDeclarationT => [
@@ -30,9 +28,9 @@ Test testGenericsReceiverAndKwArg = [
         Assert that: t genericArgs count equals: 1
         Assert that: t genericArgs first name equals: "Int"
       ]
-      |=> [ Assert that: false equals: true ]
+      |=> Assert that: false equals: true
   ]
-  |=> [ Assert that: false equals: true ]
+  |=> Assert that: false equals: true
 
   // 2) check 'res' type
   resDecl = typedAst at: 1
@@ -42,7 +40,7 @@ Test testGenericsReceiverAndKwArg = [
       Assert that: t name equals: "Int"
   ]
   |=> [ Assert that: false equals: true ]
-
+  123
 ]
 
 
@@ -84,6 +82,92 @@ Test collectionsTestingMapTry = [
       Assert that: valueType name equals: "String"
     ]
     |=> [TO DO: "map expected but got: $t"]
+  ] do
+
+]
+
+    Test resolveUnaryBinaryKeywordMessages = [
+  fileMain = """
+    type Counter value: Int
+
+    Counter get -> Int = [
+      this value
+    ]
+
+    Counter + amount::Int -> Counter = [
+      ^ this
+    ]
+
+    Counter add::Int -> Int = [
+      ^ this value + add
+    ]
+
+    c = Counter value: 1
+    u = c get
+    b = c + 2
+    k = c add: 2
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  typedAst = result entryPointExpressions
+
+  checkConstructor = [
+    cDecl = typedAst at: 0
+    | cDecl
+    | VarDeclarationT => [
+      cVal = cDecl value
+      | cVal
+      | KeywordMsgT => [
+        Assert that: cVal kind equals: MessageSendKind.DefaultConstructor
+      ]
+      |=> [TO DO: "constructor call expected"]
+    ]
+    |=> [TO DO: "VarDeclarationT expected for constructor"]
+  ] do
+
+  checkUnary = [
+    uDecl = typedAst at: 1
+    | uDecl
+    | VarDeclarationT => [
+      uVal = uDecl value
+      | uVal
+      | UnaryMsgT => [
+        Assert that: uVal dbMsg name equals: "get"
+        Assert that: uVal typeInfo t name equals: "Int"
+      ]
+      |=> [TO DO: "UnaryMsgT expected"]
+    ]
+    |=> [TO DO: "VarDeclarationT expected for unary"]
+  ] do
+
+  checkBinary = [
+    bDecl = typedAst at: 2
+    | bDecl
+    | VarDeclarationT => [
+      bVal = bDecl value
+      | bVal
+      | BinaryMsgT => [
+        Assert that: bVal dbMsg name equals: "+"
+        Assert that: bVal typeInfo t name equals: "Counter"
+      ]
+      |=> [TO DO: "BinaryMsgT expected"]
+    ]
+    |=> [TO DO: "VarDeclarationT expected for binary"]
+  ] do
+
+  checkKeyword = [
+    kDecl = typedAst at: 3
+    | kDecl
+    | VarDeclarationT => [
+      kVal = kDecl value
+      | kVal
+      | KeywordMsgT => [
+        Assert that: kVal dbMsg name equals: "add:"
+        Assert that: kVal typeInfo t name equals: "Int"
+      ]
+      |=> [TO DO: "KeywordMsgT expected"]
+    ]
+    |=> [TO DO: "VarDeclarationT expected for keyword"]
   ] do
 
 ]
