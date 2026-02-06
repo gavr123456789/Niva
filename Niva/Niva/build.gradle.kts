@@ -54,6 +54,12 @@ tasks.named<JavaExec>("run") {
     outputs.upToDateWhen { false }
 }
 
+// IntelliJ/Gradle creates per-main run tasks like "main.MainKt.main()" that are up-to-date by default.
+// Force them to execute so debugger always starts and hits breakpoints.
+tasks.matching { it.name.endsWith(".main()") }.configureEach {
+    outputs.upToDateWhen { false }
+}
+
 tasks.withType<Test>().configureEach {
     jvmArgs(compactObjectJvmArgs)
 }

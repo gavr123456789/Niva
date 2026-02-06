@@ -1,6 +1,6 @@
 
-mut Parser 
-  messageDeclarationOrExpression: tok::Token 
+mut Parser
+  messageDeclarationOrExpression: tok::Token
   savedPosition: savePosition::Int
   isConstructor::Bool -> Statement = [
 
@@ -14,7 +14,6 @@ mut Parser
   // change current position back to parse receiver
   .stepBack
   receiverType = .parseType
-
   // Int^ inc =
   // Int^ a::Int b::Int =
   // Int^ a: q::Int b::Int =
@@ -23,25 +22,25 @@ mut Parser
   result = | tok2 kind
   | TokenType.Identifier => [
     // Int inc^ ->? = []
-    
-    returnType = getReturnType do 
+
+    returnType = getReturnType do
     name = tok2 lexeme
 
     .match: TokenType.Assign, ifFalse: [
       .restoreFrom: savePosition
       ^ .nextExperssion: .step
-    ] 
+    ]
     // Int inc ->? = ^[]
     isSingleExpr = .peek kind != TokenType.OpenBracket
     body = .parseBodyOrSingleExpr
 
-    msgDecl = MessageDecl 
+    msgDecl = MessageDecl
       receiver: receiverType
       name: name
       args: {}
       returnType: returnType
       token: tok
-      body: body       
+      body: body
       isSingleExpr: isSingleExpr
       isConstructor: isConstructor
 
@@ -49,12 +48,12 @@ mut Parser
   ]
   | TokenType.IdentifierDoubleColon => [
     // Int inc^::Int b::Int =
-    
+
     kwArgs = .parseNameDoubleColonAstTypePair: tok2 separatedBy: null
 
-    returnType = getReturnType do 
+    returnType = getReturnType do
     name = tok2 lexeme
-    
+
     .matchAssert: TokenType.Assign
     // Int a::Int b::Int ->? = ^[]
 
@@ -63,13 +62,13 @@ mut Parser
     kwName = kwArgs joinWith: ":" transform: [
       it name
     ], + ":"
-    msgDecl = MessageDecl 
+    msgDecl = MessageDecl
       receiver: receiverType
       name: kwName
       args: kwArgs toList//{(NameAndAstType name: arg lexeme astType: argType)}
       returnType: returnType
       token: tok
-      body: body 
+      body: body
       isSingleExpr: isSingleExpr
       isConstructor: isConstructor
 
@@ -87,23 +86,23 @@ mut Parser
     argType = .parseType
 
 
-    returnType = getReturnType do 
+    returnType = getReturnType do
     name = tok2 lexeme
-    
+
     .matchAssert: TokenType.Assign
     // Int inc ->? = ^[]
 
     isSingleExpr = .peek kind != TokenType.OpenBracket
     body = .parseBodyOrSingleExpr
 
-    msgDecl = MessageDecl 
+    msgDecl = MessageDecl
       receiver: receiverType
       name: name
       args: {(NameAndAstType name: arg lexeme astType: argType)}
       returnType: returnType
       token: tok
-      body: body   
-      isSingleExpr: isSingleExpr     
+      body: body
+      isSingleExpr: isSingleExpr
       isConstructor: isConstructor
 
     // statements add: msgDecl
@@ -115,4 +114,4 @@ mut Parser
   ]
 
   ^ result
-] 
+]

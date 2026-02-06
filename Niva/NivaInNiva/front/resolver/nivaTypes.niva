@@ -7,6 +7,8 @@ TypeTField toString -> String =
 constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
 
 union NivaType name: String pkgName: String =
+// complex
+| ^Complex
 | UnitT
 | IntegerT
 | FloatT
@@ -16,13 +18,7 @@ union NivaType name: String pkgName: String =
 | StringT
 | AnyT
 | NothingT
-// complex
-| TypeT    fields: mut List::TypeTField genericArgs: mut List::NivaType
-| UnionT   branches: List::UnionTBranch
-| FuntionT
-  args: List::TypeTField
-  genericArgs: List::NivaType
-  returnType: NivaType// method or lambda
+
 // collections
 | ListT t: NivaType
 | SetT t: NivaType
@@ -32,6 +28,18 @@ union NivaType name: String pkgName: String =
 | NullT // usually x = null, should be resolved to x::Nothing = null
 | NullableT v: NivaType
 | Unknown // Special type for
+
+
+union Complex
+  name: String
+  pkgName: String
+  fields: mut List::TypeTField
+  genericArgs: mut List::NivaType =
+| TypeT
+| FuntionT
+  args: List::TypeTField
+  returnType: NivaType // method or lambda
+| UnionT  branches: List::UnionTBranch
 
 extend NivaType [
   on generateId -> String = [
@@ -90,6 +98,13 @@ extend NivaType [
       pkgName + "." + name
     ]
     ^ result
+  ]
+
+  on findField: fieldName::String -> TypeTField? = [
+    field = | this
+            | Complex => fields find: [it name == fieldName]
+            |=> null
+    ^ field
   ]
 ]
 

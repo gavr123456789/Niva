@@ -149,7 +149,6 @@ fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilation
 
 class CompilerRunner(
     private val pathToProjectRoot: String,
-    private val inlineReplPath: File = File("inline_repl.txt").absoluteFile,
     private val compilationTarget: CompilationTarget,
     private val compilationMode: CompilationMode,
     private val mainNivaFileName: String,

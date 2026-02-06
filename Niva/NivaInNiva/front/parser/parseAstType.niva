@@ -4,6 +4,7 @@ extend mut Parser [
   /// identifier ("(" | "::")
   on parseGenericType -> AstType = [
     
+    isMut = .match: TokenType.Mut
     identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
@@ -16,11 +17,13 @@ extend mut Parser [
     isListLike ifTrue: [
       recursiveGenerics = .parseGenericType
       // errors = .parseErrors
-      ^ AstType 
+      result::mut AstType = AstType 
         name: name 
         nullable: isNullable
         genericParams: {recursiveGenerics}
         tok: identifier
+      result setMutable: isMut
+      ^ result
 
 
     ]
@@ -35,19 +38,23 @@ extend mut Parser [
       ]
 
       .matchAssert: TokenType.CloseParen
-      ^ AstType 
+      result::mut AstType = AstType 
         name: name 
         nullable: isNullable
         genericParams: typeArgumentList toList
         tok: identifier
+      result setMutable: isMut
+      ^ result
     ]
 
     // no Map() no List::
-    ^ AstType 
+    result::mut AstType = AstType 
       name: name 
       nullable: isNullable
       genericParams: {}
       tok: identifier
+    result setMutable: isMut
+    ^ result
   ]
   
   on parseType -> AstType2 = [

@@ -1,24 +1,24 @@
-type TestParse 
+type TestParse
 constructor TestParse withInput::String expectedCount::Int -> mut List::Statement = [
   tokens = Lexer newLex: withInput
   // tokens debug
   // {statements} = Parser newParseTokens: tokens
   parser = Parser newParseTokens: tokens
   statements::mut List::Statement = parser statements //::mut List::Statement
-  
+
   expectedCount > 0 ifTrue: [
     Assert that: statements count equals: expectedCount
   ]
-  
+
   ^statements
 ]
 
 constructor TestParse expression::String -> Expr = [
   expr = Parser newParseTokens: (Lexer newLex: expression), statements at: 0
-  
-  ^| expr
-  | Expr=> expr
-  |=> [TO DO: "It should be Expr, but it " + expr toString]
+
+  ^ | expr
+    | Expr => expr
+    |=> [TO DO: "It should be Expr, but it " + expr toString]
 ]
 
 Test varDeclarationWithAstType -> Unit! = [
@@ -68,10 +68,10 @@ Test parseNumber -> Unit! = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
-  | intExpr 
-  | IntExpr => 
-    Assert 
-      that: intExpr num  
+  | intExpr
+  | IntExpr =>
+    Assert
+      that: intExpr num
       equals: 123
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
@@ -81,9 +81,9 @@ Test parseString -> Unit! = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
-  | stringExpr 
-  | StringExpr => 
-    Assert 
+  | stringExpr
+  | StringExpr =>
+    Assert
       that: stringExpr token lexeme
       equals: "\"sas\""
   |=> [TO DO: "It should be int, but it " + stringExpr toString]
@@ -140,5 +140,5 @@ Test parseAstTypeMap -> Unit! = [
     |=> TO DO: "Wrong type"
   ]
   |=> [TO DO: "It should be Map, but it " + astType toString]
-  
-] 
+
+]

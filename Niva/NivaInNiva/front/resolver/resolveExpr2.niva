@@ -48,7 +48,8 @@ NivaType compareWithMany: types::List::NivaType -> Int? = [
 ]
 
 Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
-
+  x = db dtc list toTypeInfoDefault
+  db dtc char toTypeInfoDefault
   // todo optimize by adding core pkg to the TyperDB
   result = | this
   | CharExpr    => CharExprT :token typeInfo: db dtc char toTypeInfoDefault
@@ -199,7 +200,20 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       typeInfo: db dtc unit toTypeInfoDefault
 
   ]
-  | Assign => AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
+  | Assign => [
+      method_receiver = c lookupForVar: "this"
+      // if this has fienld of the same name
+      kind = | method_receiver
+              | null => AssignKind.TO_LOCAL_MUT
+              |=> [
+                  found_field = method_receiver findField: name
+                  | found_field
+                  | null => AssignKind.TO_LOCAL_MUT
+                  |=>       AssignKind.TO_THIS_FIELD
+              ]
+
+      AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault :kind
+  ]
   | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
   | ReturnStatement =>[
     valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
@@ -243,8 +257,9 @@ Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
       :token
       typeInfo: (FuntionT
                   args: typeTFields
+                  fields: typeTFields toMutableList
                   returnType: returnType
-                  genericArgs: genericList
+                  genericArgs: genericList toMutableList
                   name: name
                   pkgName: c currentPkg name) toTypeInfoDefault
   ]

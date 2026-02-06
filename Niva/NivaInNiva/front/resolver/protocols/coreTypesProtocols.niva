@@ -88,7 +88,7 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
 
   // keyword
-  noArgs = FuntionT args: {} name: "noFields" genericArgs: {}! pkgName: "core" returnType: unit
+  noArgs = FuntionT args: {} fields: {}! name: "noFields" genericArgs: {}! pkgName: "core" returnType: unit
   boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgs returnT: unit )
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgs returnT: unit )
 

@@ -9,13 +9,13 @@ extend mut Parser [
     [c] whileTrue: [
       tok = .peek
       tok kind == TokenType.IdentifierColon ifTrue: [
-        .step // skip 
+        .step // skip
 
         astType = .parseType
-        type_field = TypeField name: (tok lexeme) astType: astType 
+        type_field = TypeField name: (tok lexeme) astType: astType
         result add: (type_field)
         // need continue?
-        c <- .peek kind == TokenType.IdentifierColon 
+        c <- .peek kind == TokenType.IdentifierColon
       ] ifFalse: [
         c <- false
       ]
@@ -27,7 +27,7 @@ extend mut Parser [
   /// type ^name (field1: astType)*
   on typeDeclaration: tok::Token -> TypeDecl = [
 
-    res = TypeDecl 
+    res = TypeDecl
       name: (.step lexeme)
       fields: (.typeFields)
       token: tok
@@ -40,13 +40,13 @@ extend mut Parser [
   /// union Car genericField = Foo field1: Int | Bar field2: Int
   on unionTypeDeclaration: tok::Token -> UnionDecl = [
     name = .step lexeme
-    generalFields = .typeFields
+    commonUnionFields = .typeFields
 
     .matchAssert: TokenType.Assign
     .matchString: "|" // first optional pipe
 
     branches:: mut List::TypeDecl = {}
-    // branchesParse 
+    // branchesParse
     mut c = true
     [c] whileTrue: [
       .peek kind == TokenType.Identifier ifTrue: [
@@ -60,7 +60,7 @@ extend mut Parser [
 
 
 
-    res = UnionDecl name: name generalFields: generalFields branches: branches token: tok 
+    res = UnionDecl name: name commonUnionFields: commonUnionFields branches: branches token: tok
 
 
     ^ res
