@@ -327,6 +327,7 @@ fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDecl
 fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed: Token? = null): UnionRootDeclaration {
     val unionTok = firstTokAlreadyParsed ?: step()
     val unionName = dotSeparatedIdentifiers() ?: unionTok.compileError("name of the union expected")
+    skipNewLinesAndComments()
     val localFields = if (check(TokenType.Assign)) emptyList() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
 

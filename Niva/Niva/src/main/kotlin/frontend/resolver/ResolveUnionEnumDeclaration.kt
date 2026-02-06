@@ -34,6 +34,17 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         currentType.protocols["dynamic"] = dynamicProtocol
     }
 
+    val missingIncludedUnion = statement.branches.firstOrNull { branch ->
+        if (!branch.isRoot) return@firstOrNull false
+        val pkg = getCurrentPackage(branch.token)
+        typeAlreadyRegisteredInCurrentPkg(branch.typeName, pkg, branch.token) == null
+    }
+    if (missingIncludedUnion != null) {
+        val pkg = getCurrentPackage(missingIncludedUnion.token)
+        unResolvedTypeDeclarations.add(pkg.packageName, statement)
+        return
+    }
+
     val branches = mutableListOf<Type.Union>()
 //    val genericsOfBranches = mutableSetOf<Type>()
     statement.branches.forEach {
@@ -42,15 +53,6 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         val tok = it.token
         val pkg = getCurrentPackage(tok)
         val alreadyRegisteredType = typeAlreadyRegisteredInCurrentPkg(it.typeName, pkg, tok)
-
-        if (alreadyRegisteredType == null && it.isRoot) { //
-            // this is forward declaration of included union!
-            // and it's not resolved, yet
-            // otherwise it's a usual branch
-            unResolvedTypeDeclarations.add(pkg.packageName, statement)
-            return
-        }
-
 
         val branchType = (if (alreadyRegisteredType is Type.Union && it.isRoot) {
             if (!childContainSameFieldsAsParent(alreadyRegisteredType.fields, rootType.fields, statement.token)) {

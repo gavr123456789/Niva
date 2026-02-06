@@ -47,13 +47,25 @@ import kotlin.test.assertTrue
 
 class ParserTest {
 
+    @Test
+    fun unionWithFieldsOnNewLine() {
+        val source = """
+            union Complex 
+                fields: Int
+                kek: String
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        assert(ast[0] is UnionRootDeclaration)
+    }
+
 
     @Test
     fun messageDeclarationForUnit() {
         val source = "Unit sas = 1"
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-        assert(ast[0] is LiteralExpression.UnitExpr)
+        assert(ast[0] is MessageDeclarationUnary)
     }
 
     @Test

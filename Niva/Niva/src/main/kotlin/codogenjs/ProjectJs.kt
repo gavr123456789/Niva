@@ -5,6 +5,115 @@ import frontend.resolver.Package
 import frontend.resolver.Project
 import main.frontend.parser.types.ast.Statement
 import java.io.File
+
+
+/**
+ * Generates a JS project similarly to generateKtProject.
+ * Because of that, JS generation follows two rules:
+ *  1) for every “regular” package that contains declarations, we produce a <pkg>.js file;
+ *  2) for MAIN_PKG_NAME we always generate main.js, and it contains
+ *     only the top-level expressions, not any type declarations.
+ */
+fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements: List<Statement>) {
+    if (!outputDir.exists()) {
+        outputDir.mkdirs()
+    }
+
+    // 1 generate declarations from pkgs
+    mainProject.packages.values
+        .filter { it.packageName != MAIN_PKG_NAME && it.declarations.isNotEmpty() }
+        .forEach { pkg ->
+            generateJsFileForPackage(outputDir, pkg, emptyList())
+        }
+
+
+    // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
+    val mainPkg = mainProject.packages[MAIN_PKG_NAME] ?: Package(MAIN_PKG_NAME)
+    generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
+
+    // 3 generate niva std for js
+
+    val commonFile = File(outputDir, "common.js")
+    if (!commonFile.exists()) {
+        commonFile.writeText(JS_STD)
+    }
+}
+
+private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatements: List<Statement>) {
+	// generate mainNiva.js for MAIN_PKG_NAME with top-level expressions only
+	// use package name for regular packages
+	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "$MAIN_PKG_NAME.js" else "${pkg.packageName}.js"
+    val file = File(baseDir, fileName)
+
+    // initialize source map builder
+    val sourceMapBuilder = SourceMapBuilder(fileName)
+    JsCodegenContext.sourceMapBuilder = sourceMapBuilder
+
+    val code = buildString {
+        val imports = generateJsImports(pkg)
+        append(imports)
+        // update position after imports
+        sourceMapBuilder.advancePosition(imports)
+
+        // use declarations for regular packages
+        // for MAIN_PKG_NAME use top-level statements (extraStatements)
+        // since pkg.declarations is usually empty
+        val bodyStatements: List<Statement> = when {
+            pkg.packageName == MAIN_PKG_NAME -> extraStatements
+            extraStatements.isNotEmpty() -> pkg.declarations + extraStatements
+            else -> pkg.declarations
+        }
+
+        val body = codegenJs(bodyStatements, pkg = pkg)
+        if (body.isNotBlank()) {
+            if (isNotEmpty()) {
+                append('\n')
+                sourceMapBuilder.advancePosition("\n")
+            }
+            append(body)
+            sourceMapBuilder.advancePosition(body)
+            append('\n')
+            sourceMapBuilder.advancePosition("\n")
+        }
+        
+        // add reference to source map
+        append("//# sourceMappingURL=")
+        append(fileName)
+        append(".map")
+        // do not update position for sourceMappingURL comment
+    }
+
+    file.writeText(code)
+    
+    // write source map file
+    val sourceMapFile = File(baseDir, "$fileName.map")
+    sourceMapFile.writeText(sourceMapBuilder.toJson())
+    
+    // clear context
+    JsCodegenContext.sourceMapBuilder = null
+}
+
+private fun generateJsImports(pkg: Package): String = buildString {
+    val allImports = (pkg.imports + pkg.importsFromUse)
+        .filter { it.isNotBlank() && it != pkg.packageName && it != "core" && it != "common"}
+        .toSortedSet()
+
+   	allImports.forEach { imp ->
+		val alias = imp.replace('.', '_')
+		val fileName = if (imp == MAIN_PKG_NAME) "mainNiva" else imp
+		append("import * as ")
+        append(alias)
+        append(" from \"./")
+        append(fileName)
+        append(".js\";\n")
+    }
+
+    // mainNiva.js is always generated, so importing it is safe
+
+    append("import * as common from \"./common.js\";")
+}
+
+
 // js std
 const val JS_STD = $$"""
 export function throwWithMessage(msg) {
@@ -1378,110 +1487,3 @@ export const List__mut__viewFromTo = List__viewFromTo;
 
 """
 
-
-
-/**
- * Generates a JS project similarly to generateKtProject.
- * Because of that, JS generation follows two rules:
- *  1) for every “regular” package that contains declarations, we produce a <pkg>.js file;
- *  2) for MAIN_PKG_NAME we always generate main.js, and it contains
- *     only the top-level expressions, not any type declarations.
- */
-fun generateJsProject(outputDir: File, mainProject: Project, topLevelStatements: List<Statement>) {
-    if (!outputDir.exists()) {
-        outputDir.mkdirs()
-    }
-
-    // 1 generate declarations from pkgs
-    mainProject.packages.values
-        .filter { it.packageName != MAIN_PKG_NAME && it.declarations.isNotEmpty() }
-        .forEach { pkg ->
-            generateJsFileForPackage(outputDir, pkg, emptyList())
-        }
-
-
-    // 2 generate mainNiva.js from MAIN_PKG_NAME with topLevelStatements.
-    val mainPkg = mainProject.packages[MAIN_PKG_NAME] ?: Package(MAIN_PKG_NAME)
-    generateJsFileForPackage(outputDir, mainPkg, topLevelStatements)
-
-    // 3 generate niva std for js
-
-    val commonFile = File(outputDir, "common.js")
-    if (!commonFile.exists()) {
-        commonFile.writeText(JS_STD)
-    }
-}
-
-private fun generateJsFileForPackage(baseDir: File, pkg: Package, extraStatements: List<Statement>) {
-	// generate mainNiva.js for MAIN_PKG_NAME with top-level expressions only
-	// use package name for regular packages
-	val fileName = if (pkg.packageName == MAIN_PKG_NAME) "$MAIN_PKG_NAME.js" else "${pkg.packageName}.js"
-    val file = File(baseDir, fileName)
-
-    // initialize source map builder
-    val sourceMapBuilder = SourceMapBuilder(fileName)
-    JsCodegenContext.sourceMapBuilder = sourceMapBuilder
-
-    val code = buildString {
-        val imports = generateJsImports(pkg)
-        append(imports)
-        // update position after imports
-        sourceMapBuilder.advancePosition(imports)
-
-        // use declarations for regular packages
-        // for MAIN_PKG_NAME use top-level statements (extraStatements)
-        // since pkg.declarations is usually empty
-        val bodyStatements: List<Statement> = when {
-            pkg.packageName == MAIN_PKG_NAME -> extraStatements
-            extraStatements.isNotEmpty() -> pkg.declarations + extraStatements
-            else -> pkg.declarations
-        }
-
-        val body = codegenJs(bodyStatements, pkg = pkg)
-        if (body.isNotBlank()) {
-            if (isNotEmpty()) {
-                append('\n')
-                sourceMapBuilder.advancePosition("\n")
-            }
-            append(body)
-            sourceMapBuilder.advancePosition(body)
-            append('\n')
-            sourceMapBuilder.advancePosition("\n")
-        }
-        
-        // add reference to source map
-        append("//# sourceMappingURL=")
-        append(fileName)
-        append(".map")
-        // do not update position for sourceMappingURL comment
-    }
-
-    file.writeText(code)
-    
-    // write source map file
-    val sourceMapFile = File(baseDir, "$fileName.map")
-    sourceMapFile.writeText(sourceMapBuilder.toJson())
-    
-    // clear context
-    JsCodegenContext.sourceMapBuilder = null
-}
-
-private fun generateJsImports(pkg: Package): String = buildString {
-    val allImports = (pkg.imports + pkg.importsFromUse)
-        .filter { it.isNotBlank() && it != pkg.packageName && it != "core" && it != "common"}
-        .toSortedSet()
-
-   	allImports.forEach { imp ->
-		val alias = imp.replace('.', '_')
-		val fileName = if (imp == MAIN_PKG_NAME) "mainNiva" else imp
-		append("import * as ")
-        append(alias)
-        append(" from \"./")
-        append(fileName)
-        append(".js\";\n")
-    }
-
-    // mainNiva.js is always generated, so importing it is safe
-
-    append("import * as common from \"./common.js\";")
-}

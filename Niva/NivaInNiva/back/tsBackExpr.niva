@@ -6,7 +6,7 @@ constructor TypeScript  [
     on fullFromResolver: rh::ResolverHelper -> Map(String, String) = [
         db = rh db
         packages = db packages
-        "\n" + db structureInfo, debug
+        //"\n" + db structureInfo, debug
 
         generateImports = [pkg::NivaPkg sb::StringBuilder->
             pkg imports forEach: [
@@ -62,15 +62,23 @@ TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | IdentifierT => .identToTS
 | ExprInBracketsT => "(" + (value toTSFromPkg: currentPkg) + ")"
 | VarDeclarationT => .varDeclToTSFromPkg: currentPkg
-| AssignT => "let " + name + " = " + (value toTSFromPkg: currentPkg)
+| AssignT => .generateTSAssignFromPkg: currentPkg
 | DestructingAssignT => TO DO
-| CollectionLiteralT => .toTSFromPkg: currentPkg
+| CollectionLiteralT => .collectionToTSFromPkg: currentPkg
 | MessageSendT => .msgSendToTSFromPkg: currentPkg
 | ReturnStatementT => .returnToTSFromPkg: currentPkg
 | CodeBlockT => .codeBlockToTSFromPkg: currentPkg
 | MatchT => TO DO
 
-CollectionLiteralT toTSFromPkg: currentPkg::String -> String = [
+/// checks if it a field of receiver than generates _this.field = ...
+AssignT generateTSAssignFromPkg: currentPkg::String -> String = [
+  need_this = | kind
+              | AssignKind.TO_LOCAL_MUT  => ""
+              | AssignKind.TO_THIS_FIELD => "_this."
+  ^ need_this + name + " = " + (value toTSFromPkg: currentPkg)
+]
+
+CollectionLiteralT collectionToTSFromPkg: currentPkg::String -> String = [
   sb = StringBuilder new
   elementsStr = elements v joinWith: ", " transform: [
     it toTSFromPkg: currentPkg

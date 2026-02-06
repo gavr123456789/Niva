@@ -1,3 +1,4 @@
+
 Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
     | this
     | TypeDecl => [
@@ -11,7 +12,7 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
 
         sb append: "export class "
         sb append: this name
-        sb append: "{\n"
+        sb append: " {\n"
         sb append: "    constructor("
 
         argsStr = this fields joinWith: "," transform: [it name]
@@ -36,10 +37,21 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
     | UnionDecl => [TO DO]
     | MessageDecl => [
 
+        //export function main_Person__withAge(_receiver, withAge) {
+        //  //destruct this age, name
+        //  let age = _receiver.age
+        //  let name = _receiver.name
+        //  age = withAge
+        //}
+
         sb = StringBuilder new
 
         // resolve receiver type to get mangled name
         receiverType = db findByTypeName: receiver name inPkg: null
+        receiverFields =
+            | receiverType
+            | Complex => [receiverType fields]
+            |=> {TypeTField}
         mangledReceiverName = receiverType toMangledName
 
         suffix = name substringAfter: "__"
@@ -67,6 +79,23 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
         sb append: "("
         sb append: argsStr
         sb append: ") {\n"
+
+        // add receiver destructing
+        //  let age = _this.age
+        //  let name = _this.name
+        generateDestruct = [
+            // let fieldName = _this.fieldName
+            > receiverFields
+            receiverFields forEach: [
+               > it name
+               sb append: "    "
+               sb append: "let "
+               sb append: it name
+               sb append: " = _this."
+               sb append: it name
+               sb append: "\n"
+            ]
+        ] do
 
         this body typedBody2 forEach: [expr ->
             sb append: "    "

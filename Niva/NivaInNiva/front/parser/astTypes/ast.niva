@@ -1,5 +1,5 @@
 // type NonEmptyList = List::T
-// constructor NonEmptyList first::T -> List::T = 
+// constructor NonEmptyList first::T -> List::T =
 //   {first}
 
 union Statement token: Token =
@@ -7,24 +7,27 @@ union Statement token: Token =
 | ^Declaration
 
 // TODO maybe replace with union
-// union Body2 = 
-// | TypedBody v: List::TypedExpr 
-// | UntypedBody v: List::Expr 
+// union Body2 =
+// | TypedBody v: List::TypedExpr
+// | UntypedBody v: List::Expr
 
-type Body 
+type Body
   // typedBody: mut List::TypedExpr
   unTypedBody: mut List::Expr
   typedBody2: mut List::TypedExpr2
 
 
 
-union Declaration token: Token = 
+union Declaration token: Token =
 | TypeDecl name: String fields: List::TypeField
-| EnumDecl 
-| UnionDecl name: String generalFields: List::TypeField branches: List::TypeDecl
-| MessageDecl 
+| EnumDecl
+| UnionDecl
+  name: String
+  commonUnionFields: List::TypeField
+  branches: List::TypeDecl
+| MessageDecl
   receiver: AstType2
-  name: String 
+  name: String
   args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
   returnType: AstType2?
   body: Body
@@ -86,7 +89,7 @@ KeywordMsg toString -> String = [
 ]
 
 
-type MatchBranch 
+type MatchBranch
   condition: Expr
   conditions: Body
   body: Body
@@ -94,11 +97,11 @@ type MatchBranch
 
 
 // Expressions
-union Expr token: Token = 
-| ^LiteralExpr 
+union Expr token: Token =
+| ^LiteralExpr
 | Identifier     name: String path: {String}?
 | ExprInBrackets value: Expr
-| VarDeclaration    name: String value: Expr astType: AstType2?
+| VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
 | Assign            name: String value: Expr
 | DestructingAssign names: List::String value: Expr // {name} = person
 
@@ -107,23 +110,23 @@ union Expr token: Token =
 | ReturnStatement value: Expr?
 // only one of the lists can be non empty
 | CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: Body
-| Match 
-  subject: Expr 
-  branches: List::MatchBranch 
+| Match
+  subject: Expr
+  branches: List::MatchBranch
   elseBranch: Body? // possible body
-| TypedExpr 
+| TypedExpr
   exprAst: Expr
   nivaType: NivaType
   isMutable: Bool
 
 
-constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr 
+constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr
   exprAst: exprAst
   nivaType: nivaType
   isMutable: isMutable
   token: exprAst token
 
-constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr 
+constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr
   exprAst: exprAst
   nivaType: nivaType
   isMutable: false
@@ -133,9 +136,9 @@ Identifier toString = "$name"
 
 
 /// path will be empty when
-constructor Identifier fromToken::Token = 
+constructor Identifier fromToken::Token =
   Identifier name: (fromToken lexeme) token: fromToken path: null
-  
+
 ExprInBrackets toString = "($value)"
 
 
@@ -147,16 +150,16 @@ NameAndAstType toString = [
 ]
 
 // Types
-union AstType2 tok: Token name: String = 
-| AstType 
-  nullable: Bool 
+union AstType2 tok: Token name: String =
+| AstType
+  nullable: Bool
   genericParams: List::AstType2
-  isMut: Bool 
-| AstLambdaType 
+  isMut: Bool
+| AstLambdaType
   args: List::AstType2
   returnType: AstType2
 
-constructor AstType2 unitType -> AstType2 = 
+constructor AstType2 unitType -> AstType2 =
   AstType name: "Unit" tok: (Token fake)
 
 AstType toString = [
@@ -164,15 +167,15 @@ AstType toString = [
   ^ "$name$genericParamsStr"
 ]
 
-constructor AstType name::String nullable::Bool genericParams::List::AstType tok::Token = AstType 
-  name: name 
+constructor AstType name::String nullable::Bool genericParams::List::AstType tok::Token = AstType
+  name: name
   nullable: nullable
   genericParams: genericParams
   isMut: false
   tok: tok
 
-constructor AstType name::String tok::Token = AstType 
-  name: name 
+constructor AstType name::String tok::Token = AstType
+  name: name
   nullable: false
   genericParams: {}
   isMut: false
@@ -184,12 +187,12 @@ extend mut AstType [
 
 
 
-union CollectionLiteral token: Token elements: Body = 
+union CollectionLiteral token: Token elements: Body =
 | ListLiteral
 | SetLiteral
 | MapLiteral
 
-union LiteralExpr token: Token = 
+union LiteralExpr token: Token =
 | CharExpr
 | IntExpr num: Int
 | FloatExpr
@@ -218,18 +221,18 @@ IntExpr     toString = "IntExpr $num"
 // List::Set::Int
 // name: List
 // genericParams: {
-//    (name: Set, 
+//    (name: Set,
 //     genericParams: {
 //       name: Int, ...
 //     }
 //    )
 //}
 
-// union Type = 
+// union Type =
 // | UserType name: String fields: Map(String, Type)
 // | ^InternalType
 
-// union InternalType = 
+// union InternalType =
 // | StringAstType
 // | IntAstType
 // | BooleanAstType
@@ -245,7 +248,7 @@ IntExpr     toString = "IntExpr $num"
 // ]
 
 // y = 1 ses inc
-// y 
+// y
 
 
 
@@ -266,13 +269,13 @@ IntExpr     toString = "IntExpr $num"
 // 1 inc dec + 2 inc dec
 // unary1 = UnaryMsg args: {"inc", "dec"} receiver: 1
 // unary2 = UnaryMsg args: {"inc", "dec"} receiver: 2
-// BinaryMsg 
-//   receiver: unary1 
-//   args: {(name: "+" expr: unary2)} 
+// BinaryMsg
+//   receiver: unary1
+//   args: {(name: "+" expr: unary2)}
 
 // Simple Keyword
 // 1 from: 2 to: 3
-// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: 1 
+// KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: 1
 
 // 1 inc from: 2 to: 3
 // KeywordMsg args: {{"from" 2}, {"to" 3}} receiver: (UnaryMsg args: {"inc"} receiver: 1)
@@ -286,4 +289,3 @@ IntExpr     toString = "IntExpr $num"
 //     args: {{"+" 2}, {"+" 4}}
 //     receiver: UnaryMsg
 //       args: {"inc"}
-

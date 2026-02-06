@@ -61,7 +61,6 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
                             if (!gradleWatcherIsAlreadyRunning) {
                                 val compiler = CompilerRunner(
                                     pm.pathToInfroProject,
-                                    File("inline_repl.txt").absoluteFile,
                                     resolver.compilationTarget,
                                     resolver.compilationMode,
                                     pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
@@ -104,7 +103,6 @@ fun daemon(pm: PathManager, mainArg: MainArgument, am: ArgsManager) = runBlockin
 
             val compiler = CompilerRunner(
                 pm.pathToInfroProject,
-                File("inline_repl.txt").absoluteFile,
                 resolver.compilationTarget,
                 resolver.compilationMode,
                 pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,

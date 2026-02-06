@@ -13,7 +13,7 @@ Test expressionWithDots -> Unit! = [
     Assert that: path count equals: 3
   ]
   |=> []
-  
+
 ]
 
 Test varDeclarationExpr -> Unit! = [
@@ -24,7 +24,14 @@ Test varDeclarationExpr -> Unit! = [
     ]
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 2
-  
+]
+
+Test mutVarDeclarationExpr -> Unit! = [
+  input = """
+    mut x = 56
+    x <- 2
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 2
 ]
 
 
@@ -36,7 +43,7 @@ Test matchExpr -> Unit! = [
     |=> 5
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 1
-  
+
 ]
 
 Test listLiterals -> Unit! = [
@@ -50,15 +57,15 @@ Test listLiterals -> Unit! = [
   map = statements at: 1
   set = statements at: 2
 
-  | list 
+  | list
   | ListLiteral => [Assert that: list elements unTypedBody count equals: 3]
   |=> [TO DO: "$list is not list literal"]
 
-  | map 
+  | map
   | MapLiteral => [Assert that: map elements unTypedBody count equals: 4]
   |=> [TO DO: "$list is not map literal"]
 
-  | set 
+  | set
   | SetLiteral => [Assert that: set elements unTypedBody count equals: 3]
   |=> [TO DO: "$list is not set literal"]
 
@@ -77,13 +84,13 @@ Test returnStatement -> Unit! = [
 
 Test codeBlockStatement -> Unit! = [
   input = """
-  
+
     [
       sas
     ]
 
     // typed args
-    [ x::Int, y::String -> 
+    [ x::Int, y::String ->
       x + y
     ]
 
@@ -119,4 +126,3 @@ Test failingComment = [
 
 
 ]
-
