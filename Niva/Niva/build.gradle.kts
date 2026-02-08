@@ -67,7 +67,7 @@ tasks.withType<Test>().configureEach {
 // set emitting java bytecode version for current JVM
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
-        val currentJavaVersion = "25"//JavaVersion.current().majorVersion
+        val currentJavaVersion = JavaVersion.current().majorVersion
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(currentJavaVersion))
     }
 }
