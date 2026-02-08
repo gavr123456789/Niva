@@ -31,13 +31,13 @@ dependencies {
 
 tasks.test { useJUnitPlatform() }
 
-val compactObjectJvmArgs =
-    listOf(
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:+UseCompactObjectHeaders",
+//val compactObjectJvmArgs =
+//    listOf(
+//        "-XX:+UnlockExperimentalVMOptions",
+//        "-XX:+UseCompactObjectHeaders",
 //        "-XX:+UseShenandoahGC", //  jdk.graal.compiler.debug.GraalError: Shenandoah garbage collector is not supported by Graal
 //        "-XX:ShenandoahGCMode=generational",
-    )
+//    )
 
 val nativeOptimizationArg = when {
     project.hasProperty("nativeDebug") -> "-Ob"
@@ -45,9 +45,9 @@ val nativeOptimizationArg = when {
     else -> "-O3"
 }
 
-tasks.withType<JavaExec>().configureEach {
-    jvmArgs(compactObjectJvmArgs)
-}
+//tasks.withType<JavaExec>().configureEach {
+//    jvmArgs(compactObjectJvmArgs)
+//}
 
 tasks.named<JavaExec>("run") {
     // always execute run even if nothing changed
@@ -60,9 +60,9 @@ tasks.matching { it.name.endsWith(".main()") }.configureEach {
     outputs.upToDateWhen { false }
 }
 
-tasks.withType<Test>().configureEach {
-    jvmArgs(compactObjectJvmArgs)
-}
+//tasks.withType<Test>().configureEach {
+//    jvmArgs(compactObjectJvmArgs)
+//}
 
 // set emitting java bytecode version for current JVM
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -115,7 +115,7 @@ graalvmNative {
 
 application {
     mainClass = "main.MainKt"
-    applicationDefaultJvmArgs = compactObjectJvmArgs
+//    applicationDefaultJvmArgs = compactObjectJvmArgs
 }
 
 val checkAndBuildNativeTask = "checkAndBuildNative"
