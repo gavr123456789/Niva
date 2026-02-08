@@ -60,10 +60,10 @@ dependencies {
     //%IMPL%
 }
 
-val compactObjectJvmArgs = listOf(
-    "-XX:+UnlockExperimentalVMOptions",
-    "-XX:+UseCompactObjectHeaders",
-)
+//val compactObjectJvmArgs = listOf(
+//    "-XX:+UnlockExperimentalVMOptions",
+//    "-XX:+UseCompactObjectHeaders",
+//)
 
 val nativeOptimizationArg = when {
     project.hasProperty("nativeDebug") -> "-Ob"
@@ -73,11 +73,11 @@ val nativeOptimizationArg = when {
 
 // for imgui on mac
 tasks.withType<JavaExec>().configureEach {
-    jvmArgs(compactObjectJvmArgs)
+//    jvmArgs(compactObjectJvmArgs)
     if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
         jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")
     }
-    
+
     // always execute run even if nothing changed
     outputs.upToDateWhen { false }
 }
@@ -93,7 +93,7 @@ kotlin {
 
 application {
     mainClass.set("mainNiva.MainKt")
-    applicationDefaultJvmArgs = compactObjectJvmArgs
+//    applicationDefaultJvmArgs = compactObjectJvmArgs
 }
 
 graalvmNative {
