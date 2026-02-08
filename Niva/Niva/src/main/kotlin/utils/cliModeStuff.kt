@@ -25,7 +25,7 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DEV_MODE, TEST, LSP
+    DEV_MODE, TEST, LSP, GRAPHVIZ
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -113,6 +113,7 @@ class ArgsManager(val args: MutableList<String>) {
                 "dev" -> MainArgument.DEV_MODE
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
+                "graphviz" -> MainArgument.GRAPHVIZ
                 else -> {
                     if (!File(firstArg).exists()) {
                         println("There are no such command or File \"$firstArg\" is not exist, to run all files starting from main.niva run ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
@@ -157,6 +158,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         MainArgument.DISRT,
         MainArgument.DEV_MODE,
         MainArgument.TEST,
+        MainArgument.GRAPHVIZ,
 
         MainArgument.RUN_MILL,
         MainArgument.BUILD_MILL,
@@ -350,6 +352,10 @@ Usage:
     ${WHITE}dev$RESET — rerun on changed files or input, for faster iteration
     ${WHITE}info$RESET or ${WHITE}i$RESET — get info about packages
     ${WHITE}infoUserOnly$RESET or ${WHITE}iu$RESET — get info about user defined packages
+    
+    ${WHITE}graphviz$RESET — output graphviz representation of package dependencies
+    ${WHITE}graphviz FILE$RESET — from FILE as root of the graph
+    ${WHITE}graphviz FILE NUM$RESET — with NUM as max depth of the graph
 
     ${WHITE}--verbose$RESET — with verbose printing
 

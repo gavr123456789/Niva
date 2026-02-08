@@ -3,6 +3,7 @@
 package main
 
 
+import frontend.resolver.Resolver
 import java.io.File
 import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
@@ -10,45 +11,12 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
+import utils.testingLS
 
 
 fun main(args: Array<String>) {
-
-//    val ls = LS { println("Niva LS: $it") }
-//    val fromJson = readFromJson("devModeData.json")
-//
-//    fromJson.data.forEach { (fileName, value) ->
-//        val file = File(fileName)
-//        value.forEach { (lineNum, values) ->
-//            values.forEach {
-//                val w = it.toIdentifierExpr(file, lineNum)
-//                ls.megaStore.addNew(
-//                    s = w,
-//                    scope = mapOf(),
-//                )
-//            }
-//        }
-//    }
-//    println(fromJson)
-///////////////////////
-
-//    val args = arrayOf("build","")
-    //    val qqq =
-    // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
-    //    try {
-    //        val ls = LS()
-    //        val resolver = ls.resolveAllFirstTime(qqq, true, null)
-    //
-    //        // 1 file to decl не содержит main
-    //        val resolver3 =  ls.resolveNonIncremental(qqq, fakeFileSourceGOOD)
-    ////        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
-    //        val q = ls.onCompletion(qqq, line = 9, character = 17)
-    //        println(q)
-    //    }
-    //    catch (e: OnCompletionException) {
-    //        println(e.scope)
-    //    }
-
+    //    val args = arrayOf("build","")
+//    testingLS()
     if (help(args))
         return
     run(args)
@@ -75,7 +43,7 @@ fun run(args2: Array<String>) {
             try {
                 compileProjFromFile(
                     pm,
-                    dontRunCodegen = false,
+                    dontRunCodegen = mainArg == MainArgument.GRAPHVIZ,
                     compileOnlyOneFile = mainArg == MainArgument.SINGLE_FILE_PATH,
                     tests = mainArg == MainArgument.TEST,
                     verbose = am.verbose,
@@ -100,22 +68,17 @@ fun run(args2: Array<String>) {
         generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
 
         val mainJsFile = outputDir.resolve("mainNiva.js").absolutePath
-        val command = if (am.jsRuntime == "gjs") {
-            "gjs -m $mainJsFile"
-        } else {
-            "${am.jsRuntime} $mainJsFile"
-        }
+        val command = if (am.jsRuntime == "gjs") "gjs -m $mainJsFile" else "${am.jsRuntime} $mainJsFile"
+
         command.runCommand(workingDir, withOutputCapture = true)
         am.time(System.currentTimeMillis() - secondTime, true)
         return
     }
 
-    val inlineRepl = File("inline_repl.txt").absoluteFile
 
     val compiler =
             CompilerRunner(
                     pm.pathToInfroProject,
-                    inlineRepl,
                     resolver.compilationTarget,
                     resolver.compilationMode,
                     pm.mainNivaFileWhileDevFromIdea.nameWithoutExtension,
@@ -161,6 +124,9 @@ fun run(args2: Array<String>) {
         MainArgument.USER_DEFINED_INFO_ONLY -> compiler.infoPrint(true, specialPkgToInfoPrint)
         MainArgument.RUN_FROM_IDEA -> compiler.runGradleAmperBuildCommand(dist = false)
         MainArgument.DEV_MODE -> daemon(pm, mainArg, am)
+        MainArgument.GRAPHVIZ -> {
+            graphviz(pm, args, resolver)
+        }
         MainArgument.LSP -> TODO()
     }
 
@@ -196,8 +162,22 @@ fun getPathToMainOrSingleFile(args: List<String>): String =
         } else if (args.count() >= 2) {
             // niva run/build "sas.niva"
             val fileNameArg = args[1]
+            if (args[0] == "graphviz") {
+                val mainNiva = "main.niva"
+                val mainScala = "main.scala"
+                if (File(mainNiva).exists()) return mainNiva
+                if (File(mainScala).exists()) return mainScala
+            }
             if (File(fileNameArg).exists()) {
                 fileNameArg
+            } else if (args[0] == "graphviz") {
+                val mainNiva = "main.niva"
+                val mainScala = "main.scala"
+                if (File(mainNiva).exists()) mainNiva
+                else if (File(mainScala).exists()) mainScala
+                else {
+                    createFakeToken().compileError("File $fileNameArg doesn't exist and default main.niva not found")
+                }
             } else {
                 createFakeToken().compileError("File $fileNameArg doesn't exist")
             }
