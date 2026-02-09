@@ -1284,8 +1284,8 @@ fun createMapProtocols(
 //            createUnary("m", mutableMapType, "Mutable map, elements will be shadow copied").renameUnary("toMutableMap")
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("+", mutableMapType, mutableMapType, "new map containing keys and values of both maps"),
-            createBinary("-", valueType, mutableMapType, "new map containing all entries of the original map except the entry with the given key")
+            createBinary("+", mapType, mapType, "new map containing keys and values of both maps"),
+            createBinary("-", valueType, mapType, "new map containing all entries of the original map except the entry with the given key")
         ),
         keywordMsgs = mutableMapOf(
             createKeyword(
