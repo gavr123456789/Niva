@@ -46,17 +46,24 @@ fun compare2Types(
 
     if (type1OrChildOf2 is Type.Lambda && type2 is Type.Lambda) {
 
-        // and type 2
-        val type1IsExt = type1OrChildOf2.extensionOfType != null
-        val type2IsExt = type2.extensionOfType != null
+        fun stripUnitArgForComparison(type: Type.Lambda): List<KeywordArg> {
+            val args = type.args
+            if (args.isEmpty()) return args
+            val isUnitType = { t: Type ->
+                t is Type.InternalType && t.name == InternalTypes.Unit.name
+            }
+            val ext = type.extensionOfType
+            if (ext != null) {
+                if (isUnitType(ext) && args.first().name == "this") {
+                    return args.drop(1)
+                }
+                return args
+            }
+            return if (args.size == 1 && isUnitType(args.first().type)) emptyList() else args
+        }
 
-        val argsOf1 = if (type1IsExt && (!type2IsExt && type1OrChildOf2.args.count() - 1 == type2.args.count()))
-            type1OrChildOf2.args.drop(1)
-        else type1OrChildOf2.args
-
-        val argsOf2 = if (type2IsExt && (!type1IsExt && type1OrChildOf2.args.count() == type2.args.count() - 1))
-            type2.args.drop(1)
-        else type2.args
+        val argsOf1 = stripUnitArgForComparison(type1OrChildOf2)
+        val argsOf2 = stripUnitArgForComparison(type2)
 
         if (type1OrChildOf2.extensionOfType != null && type2.extensionOfType != null) {
             if (!compare2Types(type1OrChildOf2.extensionOfType, type2.extensionOfType, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
@@ -67,10 +74,8 @@ fun compare2Types(
         }
 
         if (argsOf1.count() != argsOf2.count()) {
-            val itsNotAUnitType = !(argsOf1.isNotEmpty() && argsOf1.first().type is Type.InternalType && argsOf1.first().type.name == InternalTypes.Unit.name)
-            if (itsNotAUnitType)
-//                tokenForErrors.compileError("Codeblock `${YEL}${type1OrChildOf2.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
-                return false
+//            tokenForErrors.compileError("Codeblock `${YEL}${type1OrChildOf2.name}${RESET}` has ${CYAN}${argsOf1.count()}${RESET} arguments but `${YEL}${type2.name}${RESET}` has ${CYAN}${argsOf2.count()}")
+            return false
         }
 
         // temp for adding "(k,v)" for map, filter for hash maps
