@@ -31,10 +31,11 @@ fun findAnyMethod(
     pkg: Package,
     kind: MessageDeclarationType,
     addImports: Boolean = true,
+    lookInStatic: Boolean = true
 ): MessageMetadata? {
     receiverType.protocols.forEach { (_, v) ->
         val msgData = lens(v, selectorName, kind)
-            ?: v.staticMsgs[selectorName]
+            ?: if (lookInStatic) v.staticMsgs[selectorName] else null
 
         if (msgData != null) {
             // method can be declared in different package than it's receiver type
@@ -254,19 +255,20 @@ fun Resolver.findAnyMsgType(
     receiverType: Type,
     selectorName: String,
     token: Token,
-    msgType: MessageDeclarationType
+    msgType: MessageDeclarationType,
+    lookInStatic: Boolean = true
 ): MessageMetadata {
 
     val pkg = getCurrentPackage(token)
 
 
-    findAnyMethod(receiverType, selectorName, pkg, msgType)?.let {
+    findAnyMethod(receiverType, selectorName, pkg, msgType, lookInStatic = lookInStatic)?.let {
         return it
     }
     if (receiverType.protocols.isEmpty() && receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
         typeDB.userTypes[receiverType.name]?.let {
             it.find {it.pkg == receiverType.pkg}?.let {
-                findAnyMethod(it, selectorName, pkg, msgType)?.let {
+                findAnyMethod(it, selectorName, pkg, msgType, lookInStatic = lookInStatic)?.let {
                     return it
                 }
             }
