@@ -238,6 +238,7 @@ fun Resolver.resolveMessageDeclaration(
                 }
         }
         wasThereReturn = null
+        wasThereTopLevelReturn = false
         resolvingMessageDeclaration = statement
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
         // check that errors that returns and stack are the same
@@ -319,6 +320,9 @@ fun Resolver.resolveMessageDeclaration(
 
         if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
             statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
+        }
+        if (!statement.isSingleExpression && wasThereReturn != null && !wasThereTopLevelReturn) {
+            statement.token.compileError("Return(^) used inside codeblock, but there is no return at the top level")
         }
         resolvingMessageDeclaration = null
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated

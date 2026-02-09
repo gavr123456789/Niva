@@ -1,12 +1,18 @@
 package frontend.resolver
 
 import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.CodeBlock
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.ReturnStatement
 import main.utils.RESET
 import main.utils.YEL
 
 fun Resolver.resolveReturnStatement(statement: ReturnStatement, previousAndCurrentScope: MutableMap<String, Type>) {
+    val isInsideLambdaCodeBlock = stack.any { it is CodeBlock && !it.isStatement }
+    if (!isInsideLambdaCodeBlock) {
+        wasThereTopLevelReturn = true
+    }
+
     val expr = statement.expression
     if (expr != null) {
         resolveSingle((expr), previousAndCurrentScope, statement)

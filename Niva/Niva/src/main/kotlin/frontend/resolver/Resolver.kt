@@ -1220,6 +1220,7 @@ class Resolver(
 
     // set to null before body resolve, set to real inside body, check after to know was there return or not
     var wasThereReturn: Type? = null,
+    var wasThereTopLevelReturn: Boolean = false,
     var resolvingMessageDeclaration: MessageDeclaration? = null,
 
 
@@ -1246,6 +1247,8 @@ class Resolver(
         currentArgumentNumber = -1
         currentLevel = 0
         topLevelStatements.clear()
+        wasThereReturn = null
+        wasThereTopLevelReturn = false
     }
 
     fun createFakeMsg(token: Token, type: Type): Message {
