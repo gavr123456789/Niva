@@ -41,7 +41,9 @@ fun Resolver.resolveBinaryMsg(
 
     // 1 < (this at: 0)
     val argument = statement.argument
-    resolveSingle((argument), previousAndCurrentScope)
+    currentLevel++
+    resolveSingle((argument), previousAndCurrentScope, statement)
+    currentLevel--
     val argumentType = if (isUnaryForArg) statement.unaryMsgsForArg.last().type else argument.type
     if (argumentType == null) {
         argument.token.compileError("Compiler bug: binary arg: $argument has no type resolved")
