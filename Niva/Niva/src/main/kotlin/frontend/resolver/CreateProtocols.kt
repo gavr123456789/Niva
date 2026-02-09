@@ -1057,6 +1057,7 @@ fun createSetProtocols(
     setType: Type.UserType,
     listOfDifferentGeneric: Type.UserType,
 ): MutableMap<String, Protocol> {
+
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
@@ -1075,10 +1076,8 @@ fun createSetProtocols(
         binaryMsgs = mutableMapOf(
             createBinary("==", mutableSetType, boolType),
             createBinary("!=", mutableSetType, boolType),
-            createBinary("+", mutableSetType, mutableSetType),
-            createBinary("+", itType, mutableSetType),
-            createBinary("-", mutableSetType, mutableSetType),
-            createBinary("-", itType, mutableSetType),
+            createBinary("+", mutableSetType, setType),
+            createBinary("-", mutableSetType, setType),
 
             ),
         keywordMsgs = mutableMapOf(
