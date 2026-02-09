@@ -84,8 +84,9 @@ fun UnionRootDeclaration.generateJsUnionRootDeclaration(): String = buildString 
     // skip base class if generated as isRoot branch
     val skipBaseClass = typeName in JsCodegenContext.generatedAsIsRootBranches
     
-    if (!skipBaseClass) {
+    if (!skipBaseClass && typeName !in JsCodegenContext.generatedUnionRoots) {
         appendJsClassWithConstructor(typeName, fields)
+        JsCodegenContext.generatedUnionRoots.add(typeName)
     }
 }
 
@@ -98,6 +99,14 @@ fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildStr
     // base union type
     val rootDecl = root
     val rootTypeName = rootDecl.typeName
+    if (rootTypeName !in JsCodegenContext.generatedUnionRoots &&
+        rootTypeName !in JsCodegenContext.generatedAsIsRootBranches
+    ) {
+        val rootCode = rootDecl.generateJsUnionRootDeclaration()
+        if (rootCode.isNotEmpty()) {
+            append(rootCode)
+        }
+    }
 
     // constructor params: branch fields first, then root fields
     val branchFieldNames = fields.map { it.name }
@@ -121,4 +130,7 @@ fun UnionBranchDeclaration.generateJsUnionBranchDeclaration(): String = buildStr
 
     append("    }\n")
     append("}\n")
+    if (isRoot) {
+        JsCodegenContext.generatedUnionRoots.add(typeName)
+    }
 }

@@ -110,7 +110,8 @@ fun Resolver.resolveUnaryMsg(
             receiverType,
             statement.selectorName,
             statement.token,
-            MessageDeclarationType.Unary
+            MessageDeclarationType.Unary,
+            lookInStatic = false
         ) as UnaryMsgMetaData
         statement.kind = if (msgType.isGetter) UnaryMsgKind.Getter else UnaryMsgKind.Unary
         msgType
