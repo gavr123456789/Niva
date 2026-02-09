@@ -37,11 +37,11 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
     | UnionDecl => [TO DO]
     | MessageDecl => [
 
-        //export function main_Person__withAge(_receiver, withAge) {
+        //export function main_Person__withAge(_this, withAge) {
         //  //destruct this age, name
-        //  let age = _receiver.age
-        //  let name = _receiver.name
-        //  age = withAge
+        //  let age = _this.age
+        //  let name = _this.name
+        //  _this.age = withAge
         //}
 
         sb = StringBuilder new
@@ -60,7 +60,7 @@ Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
 
         // if keyword (has colons), reconstruct baseName from args
         finalBaseName = (baseName contains: ":")
-            ifTrue: [args joinWith: "_" transform: [it name]]
+            ifTrue:  [args joinWith: "_" transform: [it name]]
             ifFalse: [baseName]
 
         methodName = mangledReceiverName + "_" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])

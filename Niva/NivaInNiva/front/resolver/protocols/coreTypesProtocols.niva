@@ -40,6 +40,11 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
   intProtocol addMethod: (NivaMethod binary: "/" receiverType: int argT: int  returnT: int)
   intProtocol addMethod: (NivaMethod binary: "%" receiverType: int argT: int  returnT: int)
 
+  intProtocol addMethod: (NivaMethod binary: "<" receiverType: int argT: int  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">" receiverType: int argT: int  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: int argT: int  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: int argT: int  returnT: bool)
+
   intProtocol addMethod: (NivaMethod binary: "==" receiverType: int argT: bool  returnT: int)
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: int argT: bool  returnT: int)
 

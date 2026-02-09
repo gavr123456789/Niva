@@ -26,7 +26,7 @@ constructor TypeScript  [
 
             pkg = packages at: file, unpackOrPANIC
 
-            generateImports pkg: pkg sb: sb
+            generateImports :pkg :sb
 
             statement forEach: [
                 x = it toTSFromPkg: file db: db
@@ -54,7 +54,7 @@ constructor TypeScript  [
 
 
 // currentPkg is basically a file name from which this expr is
-// this is needed to remove qualifiers from calls from the same file, like
+// this is needed to remove pkg_qualifiers from calls from the same file, like
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
 TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | this
@@ -141,23 +141,22 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
 
     getReceiverTs = [
         // we dont need to send receiver as first argument when its a constructor(its just a typeName identifier in such cases)
-        isDefaultConstructor ifFalse: [
-            receiver toTSFromPkg: currentPkg
-        ] ifTrue: [
-            ""
-        ]
+        isDefaultConstructor
+            ifFalse: [receiver toTSFromPkg: currentPkg]
+            ifTrue:  [""]
     ]
 
 
-    // we dont need to generate qualifier in the same pkg
-    qualifier = currentPkg == dbMsg pkgName ifFalse: [dbMsg pkgName + "."] ifTrue: [""]
+    // we dont need to generate pkg_qualifier in the same pkg
+    pkg_qualifier = currentPkg == dbMsg pkgName ifFalse: [dbMsg pkgName + "."] ifTrue: [""]
 
     | this
     | UnaryMsgT => [
 
-        dbMsg kind == MessageSendKind.Getter ifTrue: [
-            ^ (receiver toTSFromPkg: currentPkg) + "." + selector name
-        ]
+        dbMsg kind == MessageSendKind.Getter
+            ifTrue: [
+                ^ (receiver toTSFromPkg: currentPkg) + "." + selector name
+            ]
 
         | rec
         | CodeBlockT => [
@@ -170,14 +169,14 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
 
         qSelector = isDefaultConstructor ifFalse: [
             // entryPoint.Person2_name_age("sas", 42)
-            dbMsg receiverType toMangledName + "_" +  selector name
+            dbMsg receiverType toMangledName + "__" +  selector name
         ] ifTrue: [
             // new Person2("", 23)
             "new " + dbMsg receiverType name
-            dbMsg receiverType name + "_" +  selector name
+            //dbMsg receiverType name + "__" +  selector name
         ]
         newSelector = dbMsg receiverType toMangledName + "_" +  selector name
-        ^ qualifier + newSelector + "(" + getReceiverTs do + ")"
+        ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
         q = args joinWith: " " transform: [
@@ -188,9 +187,7 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
         ^ getReceiverTs do + " " + q
     ]
     | KeywordMsgT => [
-
-
-    // selector
+        // selector
         newSelector = isDefaultConstructor
             ifFalse: [
                 selectorFromArgs = args joinWith: "_" transform: [
@@ -200,7 +197,7 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
                 hasSuffix = suffix != dbMsg name
                 suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
 
-                dbMsg receiverType toMangledName + "_" + selectorFromArgs + suffixStr
+                dbMsg receiverType toMangledName + "__" + selectorFromArgs + suffixStr
             ] ifTrue: [
                 "new " + dbMsg receiverType name
             ]
@@ -214,7 +211,7 @@ MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
         ]
         args = receiverWithComma + (argsExprStr joinWith: ", ")
 
-        ^ qualifier + newSelector + "(" + args + ")"
+        ^ pkg_qualifier + newSelector + "(" + args + ")"
     ]
 
 
