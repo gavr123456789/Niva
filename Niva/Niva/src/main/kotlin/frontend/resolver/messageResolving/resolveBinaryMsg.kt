@@ -65,21 +65,32 @@ fun Resolver.resolveBinaryMsg(
     statement.declaration = msgFromDb.declaration
     statement.msgMetaData = msgFromDb
 
-    if (msgFromDb is BinaryMsgMetaData && !compare2Types(argumentType, msgFromDb.argType, argument.token)) {
-        argument.token.compileError("($YEL$argumentType$RESET != $YEL${msgFromDb.argType}$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$msgFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
-    }
-
-    // Resolve generics in return type
     val receiverGenericsTable = mutableMapOf<String, Type>()
     if (receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
-        receiverType.typeArgumentList.forEach {
-            val beforeResolveName = it.beforeGenericResolvedName
+        val uninitializedType =
+            receiverType.replaceInitializedGenericToUnInitialized(this, statement.token) as? Type.UserLike
+                ?: statement.token.compileError("Bug, generics can be only inside userLike types")
+        getTableOfLettersFromType(receiverType, uninitializedType, receiverGenericsTable)
+        receiverType.typeArgumentList.forEach { typeArg ->
+            val beforeResolveName = typeArg.beforeGenericResolvedName
             if (beforeResolveName != null) {
-                receiverGenericsTable[beforeResolveName] = it
+                receiverGenericsTable.putIfAbsent(beforeResolveName, typeArg)
             }
         }
     }
 
+    if (msgFromDb is BinaryMsgMetaData) {
+        val expectedArgType = resolveReturnTypeIfGeneric(
+            msgFromDb.argType,
+            mutableMapOf(),
+            receiverGenericsTable
+        )
+        if (!compare2Types(expectedArgType, argumentType, argument.token)) {
+            argument.token.compileError("($YEL$argumentType$RESET != $YEL$expectedArgType$RESET)\nBinary msg $WHITE$statement$RESET has type: $YEL$msgFromDb$RESET, but argument\n           $WHITE$argument$RESET has type $YEL$argumentType")
+        }
+    }
+
+    // Resolve generics in return type
     val letterToRealType = mutableMapOf<String, Type>()
     if (msgFromDb is BinaryMsgMetaData && msgFromDb.argType is Type.UnknownGenericType) {
         letterToRealType[msgFromDb.argType.name] = argumentType
