@@ -1057,7 +1057,6 @@ fun createSetProtocols(
     setType: Type.UserType,
     listOfDifferentGeneric: Type.UserType,
 ): MutableMap<String, Protocol> {
-
     val collectionProtocol = Protocol(
         name = "collectionProtocol",
         unaryMsgs = mutableMapOf(
@@ -1086,13 +1085,11 @@ fun createSetProtocols(
 
             createMapKeyword(itType, differentGenericType, listOfDifferentGeneric),
             createMapKeywordIndexed(intType, itType, differentGenericType, listOfDifferentGeneric),
-
-
-            createFilterKeyword(itType, boolType, mutableSetType),
+            createFilterKeyword(itType, boolType, listType),
 
             createKeyword(KeywordArg("plus", itType), setType, "Returns a new set with given element"),
             createKeyword(KeywordArg("minus", itType), setType, "Returns a new set without given element"),
-            createKeyword(KeywordArg("intersect", mutableSetType), mutableSetType),
+            createKeyword(KeywordArg("intersect", mutableSetType), setType),
             createKeyword(KeywordArg("contains", itType), boolType),
             createKeyword(KeywordArg("containsAll", mutableSetType), boolType, "Checks if all elements in the specified collection are contained in this set"),
         )
