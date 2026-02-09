@@ -53,6 +53,7 @@ constructor IO_Container new -> IO_Container = [
 
 compilerTry = [
   path = Compiler cliArgs debug //"~/Documents/Fun/niva_demo/main.niva"
+  > path
   NivaCompiler runArgs: path withIO: IO_Container new
 ]
 
@@ -62,11 +63,13 @@ compilerTry2 = [
 ]
 
 
-mutVarDeclarationExpr = [
-  input = """
-    mut Int inc = 1 echo
-    1
-  """ trimIndent
-  statements = TestParse withInput: input expectedCount: 2
-  > statements
+genericsReceiverAndKwArg = [
+  fileMain = """
+    {1 2 3} map: [it inc]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
 ] do
