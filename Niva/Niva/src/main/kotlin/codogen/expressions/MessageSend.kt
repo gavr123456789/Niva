@@ -134,14 +134,20 @@ fun generateMessages(
         )
     )
 
-    is BinaryMsg -> b.append(
-        generateSingleBinary(
-            i,
-            receiver,
-            msg,
-            newInvisibleArgs,
+    is BinaryMsg -> {
+        if (i > 0 && msg.customEqualityMethodName() != null) {
+            b.insert(0, "(")
+            b.append(")")
+        }
+        b.append(
+            generateSingleBinary(
+                i,
+                receiver,
+                msg,
+                newInvisibleArgs,
+            )
         )
-    )
+    }
 
     is KeywordMsg -> b.append(
         generateSingleKeyword(
@@ -619,32 +625,54 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
     }
 }
 
+private fun BinaryMsg.customEqualityMethodName(): String? {
+    val customName = nivaEqualityMethodName(selectorName) ?: return null
+    return if (declaration != null || msgMetaData?.declaration != null) customName else null
+}
+
 fun generateSingleBinary(
     i: Int,
     receiver: Receiver,
-    it: BinaryMsg,
+    binaryMsg: BinaryMsg,
     @Suppress("UNUSED_PARAMETER") invisibleArgs: List<String>? = null,
 ) = buildString {
 
-    if (i == 0) {
+    binaryMsg.customEqualityMethodName()?.also { customEqualityName ->
+        if (i == 0) {
+            if (receiver !is DotReceiver) {
+                append(
+                    generateUnarySends(
+                        receiver, binaryMsg.unaryMsgsForReceiver
+                    )
+                )
+            } else {
+                append("this")
+            }
+        }
+        append(".", customEqualityName, "(")
+        append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
+        append(")")
+        return@buildString
+    }
 
+    if (i == 0) {
         // 1 inc + 2 dec + 3 sas
         // 1 inc^ + 2 dec + 3 sas
         if (receiver !is DotReceiver) {
             append(
                 generateUnarySends(
-                    receiver, it.unaryMsgsForReceiver
+                    receiver, binaryMsg.unaryMsgsForReceiver
                 )
             )
         } else {
             append("this")
         }
 
-        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
-        append(generateUnarySends(it.argument, it.unaryMsgsForArg))
+        append(" ${binaryMsg.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
     } else {
-        append(" ${it.selectorName.ifKtKeywordAddBackTicks()} ")
-        append(generateUnarySends(it.argument, it.unaryMsgsForArg))
+        append(" ${binaryMsg.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
     }
 
 }

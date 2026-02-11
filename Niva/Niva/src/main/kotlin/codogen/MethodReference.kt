@@ -16,7 +16,8 @@ fun MethodReference.generateMethodReference() = buildString {
             append(name)
         }
         is MethodReference.Binary -> {
-            append(operatorToString(name, token))
+            val customName = if (method?.declaration != null) nivaEqualityMethodName(name) else null
+            append(customName ?: operatorToString(name, token))
         }
         is MethodReference.Keyword -> {
             val methodName = keys.first() + keys.drop(1).joinToString("") { it.capitalizeFirstLetter() }

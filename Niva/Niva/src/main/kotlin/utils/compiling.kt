@@ -5,6 +5,7 @@ import frontend.resolver.*
 import main.Option
 import main.codogen.BuildSystem
 import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.Statement
 import main.languageServer.DEV_MODE_FILE_NAME
 import utils.devMode_JVM_dependant
@@ -436,7 +437,7 @@ fun compileProjFromFile(
 
 
     if (resolver.otherFilesPaths.count() != otherAst.count()) {
-        val tok = mainAst.first().token
+        val tok = mainAst.firstOrNull()?.token ?: createFakeToken("")
         tok.compileError("resolver.otherFilesPaths = ${resolver.otherFilesPaths}, otherAst = $otherAst, customAST = $customAst")
     }
     resolver.resolveWithBackTracking(
