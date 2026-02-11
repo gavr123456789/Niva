@@ -137,11 +137,14 @@ fun MessageDeclarationUnary.generateUnaryDeclaration(isStatic: Boolean = false) 
 
 fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false) = buildString {
 
-    append("operator ")
+    val nivaEqualityName = nivaEqualityMethodName(name)
+    if (nivaEqualityName == null) {
+        append("operator ")
+    }
     append(funGenerateReceiver(isStatic))
 
     // receiver type end
-    val operatorName = operatorToString(name, token)
+    val operatorName = nivaEqualityName ?: operatorToString(name, token)
     append(".", operatorName, "(", arg.name)
     // operator fun Int.plus^(x: Int) {}
 
@@ -360,3 +363,10 @@ fun operatorToString(operator: String, token: Token?): String {
         }
     }
 }
+
+fun nivaEqualityMethodName(operator: String): String? =
+    when (operator) {
+        "==" -> "equal_niva"
+        "!=" -> "not_equal_niva"
+        else -> null
+    }

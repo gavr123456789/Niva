@@ -15,8 +15,10 @@ import utils.testingLS
 
 
 fun main(args: Array<String>) {
+//    setOf(1).filter { it == 1 }
+
     //    val args = arrayOf("build","")
-//    testingLS()
+    //    testingLS()
     if (help(args))
         return
     run(args)
@@ -139,66 +141,62 @@ enum class Option {
     TEST
 }
 
-fun getPathToMainOrSingleFile(args: List<String>): String =
-        if (args.isNotEmpty() && args[0] == "test") {
-            // Special handling for `niva test [FILE] [TESTNAME]`:
-            // FILE may be a test class name, not a filesystem path. If args[1] exists as a file, use it;
-            // otherwise, fall back to project root file discovery (main.niva or main.scala).
-            val candidate = if (args.count() >= 2 && File(args[1]).exists()) args[1] else null
-            candidate ?: run {
-                val mainNiva = "main.niva"
-                val mainScala = "main.scala"
-                when {
-                    File(mainNiva).exists() -> mainNiva
-                    File(mainScala).exists() -> mainScala
-                    else -> {
-                        println(
-                            "Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`"
-                        )
-                        exitProcess(-1)
-                    }
-                }
-            }
-        } else if (args.count() >= 2) {
-            // niva run/build "sas.niva"
-            val fileNameArg = args[1]
-            if (args[0] == "graphviz") {
-                val mainNiva = "main.niva"
-                val mainScala = "main.scala"
-                if (File(mainNiva).exists()) return mainNiva
-                if (File(mainScala).exists()) return mainScala
-            }
-            if (File(fileNameArg).exists()) {
-                fileNameArg
-            } else if (args[0] == "graphviz") {
-                val mainNiva = "main.niva"
-                val mainScala = "main.scala"
-                if (File(mainNiva).exists()) mainNiva
-                else if (File(mainScala).exists()) mainScala
-                else {
-                    createFakeToken().compileError("File $fileNameArg doesn't exist and default main.niva not found")
-                }
-            } else {
-                createFakeToken().compileError("File $fileNameArg doesn't exist")
-            }
-        } else if (args.count() == 1 && args[0].contains(".")) {
-            // Single arg "niva sas.niva"
-            args[0]
-        } else if (args.count() == 0) {
-            File("examples/Main/main.niva").absolutePath
-        } else {
-            // niva run\test\build...
-            val mainNiva = "main.niva"
-            val mainScala = "main.scala"
+const val MAIN_NIVA = "main.niva"
+fun getPathToMainOrSingleFile(args: List<String>): String {
+    fun fileExists(path: String) = File(path).exists()
 
-            if (File(mainNiva).exists()) mainNiva
-            else if (File(mainScala).exists()) mainScala
-            else {
-                println(
-                        "Can't find `main.niva` or `main.scala` please specify the file after run line `niva run file.niva`"
-                )
-                exitProcess(-1)
-                //                createFakeToken().compileError("Can't find `main.niva` or
-                // `main.scala` please specify the file after run line `niva run file.niva`")
+    fun findMainNivaOrDie(): String {
+        val main = MAIN_NIVA
+        if (fileExists(main)) return main
+
+        println("Can't find `$MAIN_NIVA` please specify the file after run line `niva run file.niva`")
+        exitProcess(-1)
+    }
+
+    fun findMainNivaOrCompileError(message: String): String {
+        val main = MAIN_NIVA
+        return if (fileExists(main)) main else createFakeToken().compileError(message)
+    }
+
+    val cmd = args.firstOrNull()
+
+    return when {
+        // niva (no args)
+        args.isEmpty() ->
+            File("examples/Main/$MAIN_NIVA").absolutePath
+
+        // Special: `niva test [FILE] [TESTNAME]`
+        cmd == "test" -> {
+            val candidate = args.getOrNull(1)?.takeIf { fileExists(it) }
+            candidate ?: findMainNivaOrDie()
+        }
+
+        // niva run/build/graphviz <file>
+        args.size >= 2 -> {
+            val fileNameArg = args[1]
+
+            when {
+                cmd == "graphviz" && fileExists(MAIN_NIVA) ->
+                    MAIN_NIVA
+
+                fileExists(fileNameArg) ->
+                    fileNameArg
+
+                cmd == "graphviz" ->
+                    findMainNivaOrCompileError("File $fileNameArg doesn't exist and default $MAIN_NIVA not found")
+
+                else ->
+                    createFakeToken().compileError("File $fileNameArg doesn't exist")
             }
         }
+
+        // Single arg "niva sas.niva"
+        args.size == 1 && args[0].contains(".") ->
+            args[0]
+
+        // niva run/test/build... (без файла)
+        else ->
+            findMainNivaOrDie()
+    }
+}
+
