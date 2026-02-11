@@ -361,8 +361,8 @@ Usage:
 
     ${WHITE}--js$RESET — compile to js and run
     ${WHITE}--js --js-runtime=bun$RESET — use specific js runtime
-    ${WHITE}--nativeRelease$RESET — native build with -O3
-    ${WHITE}--nativeDebug$RESET — native build with -Ob
+    ${WHITE}--nativeRelease$RESET — native Graal build with -O3
+    ${WHITE}--nativeDebug$RESET   — native Graal build with -Ob
 
 In code:
     > EXPR  — debug expr value from IDE
@@ -373,6 +373,11 @@ In code:
     >? Int
 
     mark method with @debug to debug every expr
+    
+Native KT compilation:
+    ${WHITE}target: ${GREEN}TARGET$RESET — target to jvm/linux/macos/windows
+    ${WHITE}mode: ${GREEN}MODE$RESET     — debug/release only for native targets, use debug for faster compilation
+    Example: ${YEL}Project ${CYAN}target: $GREEN"linux"$CYAN mode: $GREEN"debug"$RESET
 
 Project configuration:
     Messages for ${YEL}Project$RESET:
