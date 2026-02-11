@@ -7,6 +7,8 @@ import frontend.resolver.MAIN_PKG_NAME
 import frontend.resolver.Package
 import frontend.resolver.Project
 import frontend.resolver.Resolver
+import frontend.resolver.isJvm
+import frontend.resolver.isNative
 import main.codogen.GeneratorKt.Companion.GRADLE_IMPORTS
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.InternalTypes
@@ -31,10 +33,85 @@ class GeneratorKt(
     companion object {
         const val DEPENDENCIES_TEMPLATE = "//%IMPL%"
         const val TARGET = "%TARGET%"
-        const val GRADLE_IMPORTS = "import org.gradle.api.file.DuplicatesStrategy\n" +
-                "import org.gradle.api.tasks.testing.logging.TestExceptionFormat\n" +
-                "import org.gradle.api.tasks.testing.logging.TestLogEvent\n" +
-                "import org.gradle.jvm.tasks.Jar\n\n"
+        const val GRADLE_IMPORTS = """
+            import org.gradle.api.file.DuplicatesStrategy
+            import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+            import org.gradle.api.tasks.testing.logging.TestLogEvent
+            import org.gradle.jvm.tasks.Jar
+            import org.gradle.internal.os.OperatingSystem
+            
+            """
+
+        const val GRADLE_TEMPLATE_NATIVE = """
+plugins {
+    kotlin("multiplatform") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
+}
+
+group = "org.example"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+}
+
+
+kotlin {
+    val hostOs = System.getProperty("os.name")
+    val isArm64 = System.getProperty("os.arch") == "aarch64"
+    val isMingwX64 = hostOs.startsWith("Windows")
+    val nativeTarget = when {
+        hostOs == "Mac OS X" && isArm64 -> macosArm64("native")
+        hostOs == "Mac OS X" && !isArm64 -> macosX64("native")
+        hostOs == "Linux" && isArm64 -> linuxArm64("native")
+        hostOs == "Linux" && !isArm64 -> linuxX64("native")
+        isMingwX64 -> mingwX64("native")
+        else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
+    }
+
+    nativeTarget.apply {
+        binaries {
+            executable {
+                entryPoint = "mainNiva.main"
+            }
+        }
+    }
+
+    sourceSets {
+        nativeMain.get().dependsOn(commonMain.get())
+
+        nativeMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+            //%IMPL%
+        }
+    }
+}
+
+
+repositories {
+    maven(url = "https://jitpack.io")
+}
+
+
+allprojects {
+    tasks.withType(Test::class.java) {
+        testLogging {
+            exceptionFormat = TestExceptionFormat.FULL
+            showCauses = true
+
+            showExceptions = true
+            showStackTraces = false
+            showStandardStreams = true
+            events = setOf(TestLogEvent.PASSED , TestLogEvent.SKIPPED, TestLogEvent.FAILED, TestLogEvent.STANDARD_OUT, TestLogEvent.STANDARD_ERROR)
+        }
+    }
+}
+
+
+
+        """
+
         const val GRADLE_TEMPLATE = """
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -60,11 +137,6 @@ dependencies {
     //%IMPL%
 }
 
-//val compactObjectJvmArgs = listOf(
-//    "-XX:+UnlockExperimentalVMOptions",
-//    "-XX:+UseCompactObjectHeaders",
-//)
-
 val nativeOptimizationArg = when {
     project.hasProperty("nativeDebug") -> "-Ob"
     project.hasProperty("nativeRelease") -> "-O3"
@@ -73,7 +145,6 @@ val nativeOptimizationArg = when {
 
 // for imgui on mac
 tasks.withType<JavaExec>().configureEach {
-//    jvmArgs(compactObjectJvmArgs)
     if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
         jvmArgs("-XstartOnFirstThread", "-Djava.awt.headless=true")
     }
@@ -84,7 +155,6 @@ tasks.withType<JavaExec>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
-    //jvmArgs(compactObjectJvmArgs)
 }
 
 kotlin {
@@ -93,7 +163,6 @@ kotlin {
 
 application {
     mainClass.set("mainNiva.MainKt")
-//    applicationDefaultJvmArgs = compactObjectJvmArgs
 }
 
 graalvmNative {
@@ -239,8 +308,11 @@ fun GeneratorKt.regenerateGoodOldGradle(
 
     val newGradle = buildString {
         append(GRADLE_IMPORTS)
-        append(GeneratorKt.GRADLE_TEMPLATE)
-        if (compilationTarget == CompilationTarget.jvm || compilationTarget == CompilationTarget.jvmCompose) {
+        if (compilationTarget.isNative()) {
+            append(GeneratorKt.GRADLE_TEMPLATE_NATIVE)
+        }
+        if (compilationTarget.isJvm()) {
+            append(GeneratorKt.GRADLE_TEMPLATE)
             append(GRADLE_FAT_JAR_TEMPLATE(jarName))
         }
         append(GRADLE_OPTIONS(File(".").absolutePath))
@@ -357,9 +429,14 @@ fun GeneratorKt.addStdAndPutInMain(
     }
 
 
-fun GeneratorKt.generatePackages(pathToSource: Path, notBindedPackages: List<Package>, isTestsRun: Boolean) {
+fun GeneratorKt.generatePackages(
+    pathToSource: Path,
+    notBindedPackages: List<Package>,
+    isTestsRun: Boolean,
+    isJvmTarget: Boolean
+) {
 //    val builder = StringBuilder()
-    val src = pathToSource / "src" / "main" / "kotlin"
+    val src = pathToSource / "src" / (if(isJvmTarget) "main" else "commonMain") / "kotlin"
 
     val pkgs1 = notBindedPackages.filter { it.declarations.isNotEmpty() }
 
@@ -493,8 +570,8 @@ fun GeneratorKt.generateKtProject(
 
     fun generateProj(pathToInfroProj: Path, pathToMainNivaFileFolder: String, generateBuildFile: () -> Unit) {
         val pathToDotNivaFolder = pathToInfroProj
-        val pathToSrc = File("$pathToDotNivaFolder/src/main/kotlin")
-        val pathToTests = File("$pathToDotNivaFolder/src/test/kotlin")
+        val pathToSrc = File("$pathToDotNivaFolder/src/" + (if(compilationTarget.isJvm()) "main" else "commonMain") + "/kotlin")
+        val pathToTests = File("$pathToDotNivaFolder/src/" + (if(compilationTarget.isJvm()) "test" else "commonTest") + "/kotlin")
         // 1 recreate pathToSrcKtFolder
         deleteAndRecreateFolder(pathToSrc)
         deleteAndRecreateFolder(pathToTests)
@@ -510,7 +587,7 @@ fun GeneratorKt.generateKtProject(
         )
         createCodeKtFile(pathToSrc, "Main.kt", mainCode)
         // 3 generate every package like folders with code
-        generatePackages(pathToInfroProj, notBindPackages.toList(), isTestsRun)
+        generatePackages(pathToInfroProj, notBindPackages.toList(), isTestsRun, compilationTarget.isJvm())
         generateBuildFile()
     }
 

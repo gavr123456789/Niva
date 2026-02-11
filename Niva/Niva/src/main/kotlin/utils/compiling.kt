@@ -143,9 +143,10 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 
 fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
     CompilationTarget.jvm -> "run -DmainClass=mainNiva.MainKt --quiet" // in amper it was jvmRun
-    CompilationTarget.linux -> "runLinuxX64DebugExecutableLinuxX64"
-    CompilationTarget.macos -> "runMacosArm64DebugExecutableMacosArm64"
     CompilationTarget.jvmCompose -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
+    CompilationTarget.linux -> "runDebugExecutableNative"
+    CompilationTarget.macos -> "runDebugExecutableNative"
+    CompilationTarget.windows -> "runDebugExecutableNative"
 }
 
 class CompilerRunner(
@@ -175,8 +176,8 @@ class CompilerRunner(
             // not run, but build or dist
             when (compilationTarget) {
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> if (buildFatJar) "fatJar" else "distZip"
-                CompilationTarget.linux -> compilationMode.toCompileOnlyTask(compilationTarget)
-                CompilationTarget.macos -> compilationMode.toCompileOnlyTask(compilationTarget)
+                CompilationTarget.linux, CompilationTarget.macos, CompilationTarget.windows ->
+                    compilationMode.toCompileOnlyTask(compilationTarget)
             }) + " --build-cache --parallel " + if (watch) " -t" else ""
 
 
@@ -320,14 +321,12 @@ class CompilerRunner(
                 }
             }
 
-            CompilationTarget.linux -> {
+            CompilationTarget.linux, CompilationTarget.macos, CompilationTarget.windows -> {
                 val execName = File("./$fileName")
                 val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
                 File(pathToNativeExe).copyTo(execName, true)
                 execName.setExecutable(true)
             }
-
-            CompilationTarget.macos -> {}
         }
     }
 
@@ -355,8 +354,7 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
 
 fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): MutableList<File> {
     val fileList = mutableListOf<File>()
-    val filesAndDirs = directory.listFiles()
-    if (filesAndDirs == null) return mutableListOf()
+    val filesAndDirs = directory.listFiles() ?: return mutableListOf()
 
     for (file in filesAndDirs) {
         if (file.isFile && (file.extension == ext)) {
