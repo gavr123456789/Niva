@@ -1,4 +1,2 @@
-q = 1
-
-q
-x: Int = 3
+q = List val: {1 2 3}
+q echo

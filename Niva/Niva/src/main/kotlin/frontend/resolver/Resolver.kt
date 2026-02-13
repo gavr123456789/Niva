@@ -1442,6 +1442,10 @@ class Resolver(
                 )
             )
 
+            listOf(intType, stringType, charType, longType, floatType, doubleType, boolType, unitType).forEach {
+                addSelfConstructor(it)
+            }
+
         }
 
     }
@@ -1802,6 +1806,16 @@ class Resolver(
         addCustomTypeToDb(
             mapType, mapProtocols
         )
+
+        listOf(
+            intRangeType,
+            charRangeType,
+            listType,
+            sequenceType,
+            setType,
+            mapType,
+            intArray
+        ).forEach { addSelfConstructor(it) }
 
         // Dynamic
         val dynamicType = Type.UnionRootType(

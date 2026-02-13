@@ -187,6 +187,17 @@ fun createKeyword(arg: KeywordArg, returnType: Type, docComment: String? = null,
     arg.name to KeywordMsgMetaData(arg.name, listOf(arg), returnType, "core", declaration = null,
         docComment = docComment?.createDocComment()).also { it.forMutableType = forMutable }
 
+fun addSelfConstructor(type: Type, protocolName: String = "common") {
+    val protocol = type.protocols.getOrPut(protocolName) { Protocol(protocolName) }
+    if (protocol.staticMsgs.containsKey("val")) return
+
+    val argType = type.copyAnyType()
+    val returnType = type.copyAnyType()
+    protocol.staticMsgs["val"] = createKeyword(KeywordArg("val", argType), returnType)
+        .emitKeyword("\$1")
+        .second
+}
+
 
 
 fun Pair<String, UnaryMsgMetaData>.renameJsUnary(str: String): Pair<String, UnaryMsgMetaData> {
