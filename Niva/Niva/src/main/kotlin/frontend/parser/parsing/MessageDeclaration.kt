@@ -264,7 +264,7 @@ fun Parser.tryUnary(isConstructor: Boolean): Boolean {
     if (check(TokenType.Identifier) && (!check(TokenType.DoubleColon, 1) && !check(TokenType.Identifier, 1) && !check(
             TokenType.Colon,
             1
-        ))
+        ) && !check(TokenType.OpenParen, 1))
     ) {
         match(TokenType.Identifier)
         val isThereEndOfMsgDecl = isThereEndOfMessageDeclaration(isConstructor)
