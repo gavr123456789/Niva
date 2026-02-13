@@ -12,6 +12,7 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
+import main.frontend.typer.replaceCollectionWithMutable
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDestruction
 import main.frontend.typer.resolveVarDeclaration
@@ -325,15 +326,51 @@ private fun Resolver.resolveStatement(
                 if (fieldOfThis == null && !q.isVarMutable) {
                     statement.token.compileError("Variable ${statement.name} is immutable, can't assign with `<-`")
                 }
-                // this is <-, not =
-                val w = statement.value.type!!
+                // this is <- reassignment
+                var w = statement.value.type!!
+                val valueOfVarDecl = statement.value
+
+                // If left side is mutable collection, make right side mutable too
+                if (q.isMutable && q is Type.UserLike) {
+                    if (valueOfVarDecl is CollectionAst) {
+                        valueOfVarDecl.isMutableCollection = true
+                    } else if (valueOfVarDecl is MapCollection) {
+                        valueOfVarDecl.isMutable = true
+                    }
+                    if (w is Type.UserLike) {
+                        val mutableType = w.copy()
+                        mutableType.emitName = replaceCollectionWithMutable(w.emitName)
+                        mutableType.isMutable = true
+                        w = mutableType
+                        statement.value.type = w
+                    }
+                }
+
                 if (!compare2Types(q, w, statement.token, unpackNullForFirst = true)) {
                     compare2Types(q, w, statement.token, unpackNullForFirst = true)
                     statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
-                val w = statement.value.type!!
-                currentScope[statement.name] = w.copyAnyType().also { it.isVarMutable = true }
+                val valueOfVarDecl = statement.value
+
+
+                if (valueOfVarDecl is CollectionAst) {
+                    valueOfVarDecl.isMutableCollection = true
+                } else if (valueOfVarDecl is MapCollection) {
+                    valueOfVarDecl.isMutable = true
+                }
+
+                val currentType = valueOfVarDecl.type!!
+                val finalType = if (currentType is Type.UserLike) {
+                    val mutableType = currentType.copy()
+                    mutableType.emitName = replaceCollectionWithMutable(currentType.emitName)
+                    mutableType.isMutable = true
+                    mutableType
+                } else {
+                    currentType
+                }
+
+                currentScope[statement.name] = finalType.copyAnyType().also { it.isVarMutable = true }
                 statement.isDeclaration = true
             }
             addToTopLevelStatements(statement)
@@ -549,7 +586,7 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
         findGeneralRoot(parent1, type2)?.let { return it }
         findGeneralRoot(type1, parent2)?.let { return it }
         findGeneralRoot(parent1, parent2)?.let { return it }
-    } else if (parent1 != null && parent2 == null) {
+    } else if (parent1 != null) {
         findGeneralRoot(parent1, type2)?.let { return it }
     } else if (parent2 != null ) { //&& parent1 == null
         findGeneralRoot(type1, parent2)?.let { return it }
@@ -1113,9 +1150,9 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
-val createTypeListOfSomeType = { name: String, elementType: Type, listTypeProtocolDonor: Type.UserType ->
+fun createTypeListOfSomeType(name: String, elementType: Type, listTypeProtocolDonor: Type.UserType): Type.UserType {
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
-    Type.UserType(
+    return Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
@@ -1127,9 +1164,9 @@ val createTypeListOfSomeType = { name: String, elementType: Type, listTypeProtoc
         it.emitName = listTypeProtocolDonor.emitName
     }
 }
-val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, listTypeProtocolDonor: Type.UserType ->
+fun createTypeListOfUserLikeType(name: String, elementType: Type.UserLike, listTypeProtocolDonor: Type.UserType): Type.UserType {
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
-    Type.UserType(
+    return Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
