@@ -44,8 +44,8 @@ fun Parser.varDeclaration(): VarDeclaration? {
 //                }
 
             }
-            // ::^int or :^int
-            TokenType.DoubleColon, TokenType.Colon -> {
+            // ::^int
+            TokenType.DoubleColon -> {
                 try {
                     valueType = parseTypeAST()
                     // x::int^ = or x:int^ =

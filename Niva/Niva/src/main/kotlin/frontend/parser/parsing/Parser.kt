@@ -193,7 +193,10 @@ fun Parser.isVarDeclarationStart(): Boolean {
             try {
                 parseTypeAST()
                 skipNewLinesAndComments()
-                match(TokenType.Assign)
+                if (match(TokenType.Assign)) {
+                    peek(-1).compileError("Use `::` for type annotation in variable declaration")
+                }
+                false
             } catch (_: Exception) {
                 false
             }

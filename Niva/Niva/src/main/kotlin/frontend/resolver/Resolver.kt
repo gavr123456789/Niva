@@ -304,19 +304,17 @@ private fun Resolver.resolveStatement(
 
         is Assign -> {
             stack.push(statement)
+            val hasLocalBinding = currentScope.containsKey(statement.name)
+            val thiz = previousScope["this"] as? Type.UserLike
+            val fieldOfThis = if (!hasLocalBinding) thiz?.fields?.find { it.name == statement.name } else null
             // change field inside method for non mut type
-            val checkIfThisIsMut = {
-                val thiz = previousScope["this"]
+            if (fieldOfThis != null) {
                 val methodDecl = this.resolvingMessageDeclaration
-                if (methodDecl != null && thiz != null && thiz is Type.UserLike) {
-                    val fieldOfThis = thiz.fields.find { it.name == statement.name }
-                    if (fieldOfThis != null && !methodDecl.forTypeAst.isMutable) {
-                        // check is this is mutable
-                        statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
-                    }
+                if (methodDecl != null && !methodDecl.forTypeAst.isMutable) {
+                    // check is this is mutable
+                    statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
                 }
             }
-            checkIfThisIsMut()
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             currentLevel++
@@ -324,6 +322,9 @@ private fun Resolver.resolveStatement(
             currentLevel--
             val q = previousAndCurrentScope[statement.name]
             if (q != null) {
+                if (fieldOfThis == null && !q.isVarMutable) {
+                    statement.token.compileError("Variable ${statement.name} is immutable, can't assign with `<-`")
+                }
                 // this is <-, not =
                 val w = statement.value.type!!
                 if (!compare2Types(q, w, statement.token, unpackNullForFirst = true)) {
@@ -331,7 +332,9 @@ private fun Resolver.resolveStatement(
                     statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
-                statement.token.compileError("Can't find ${statement.name} in the scope")
+                val w = statement.value.type!!
+                currentScope[statement.name] = w.copyAnyType().also { it.isVarMutable = true }
+                statement.isDeclaration = true
             }
             addToTopLevelStatements(statement)
 
