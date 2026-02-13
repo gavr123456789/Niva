@@ -1,4 +1,4 @@
-TypedExpr2 prettyPrintWithIndent: indent::String isLast::Bool -> String = [
+TypedExpr2 prettyPrintWithIndent(indent): String isLast::Bool -> String = [
     branch = isLast ifTrue: ["└── "] ifFalse: ["├── "]
     indent + branch + token kind toString, echo
     childIndent = indent + (isLast ifTrue: ["    "] ifFalse: ["│   "])

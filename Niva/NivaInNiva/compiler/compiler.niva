@@ -1,7 +1,7 @@
 /// takes main file and collects all the files for compilation
 type NivaBuildSystem
 constructor NivaBuildSystem [
-    on findAllWilesFrom: path::String? withIO: io::IO_Container -> Map(String, String) = [
+    on findAllWilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
         // path is to main.niva, need to get its paret to start search
         p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
@@ -26,7 +26,7 @@ constructor NivaBuildSystem [
 type NivaCompiler
 
 constructor NivaCompiler [
-    on runArgs: args::List(String) withIO: io::IO_Container = [
+    on runArgs(args): List(String) withIO(io): IO_Container = [
 
         argsParsed = ArgParser args: args
         {option path} = argsParsed

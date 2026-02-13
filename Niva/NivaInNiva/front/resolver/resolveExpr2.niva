@@ -1,5 +1,5 @@
 /// used only for resolving body insied expressions, not for resolve body from message declarations
-Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody = [
+Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody = [
   // StackTrace get log
   // Compiler getPlace log
 
@@ -37,7 +37,7 @@ Body resolveBody2: db::TyperDB withContext: upperContext::Context -> TypedBody =
 ]
 
 // returns the number of wrong type element, if all good returns null
-NivaType compareWithMany: types::List::NivaType -> Int? = [
+NivaType compareWithMany(types): List::NivaType -> Int? = [
   types forEachIndexed: [i, it ->
     x = this compareWith: it
     x ifFalse: [
@@ -47,7 +47,7 @@ NivaType compareWithMany: types::List::NivaType -> Int? = [
   ^ null
 ]
 
-Expr toTypedExprFromDb2: db::TyperDB withContext: c::Context -> TypedExpr2 = [
+Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
   x = db dtc list toTypeInfoDefault
   db dtc char toTypeInfoDefault
   // todo optimize by adding core pkg to the TyperDB
@@ -310,7 +310,7 @@ type CheckMethodArg nivaType: NivaType expr: Expr argName: String
 
 // both for binary and keywords
 /// checks that args from db and real args are the same
-TyperDB checkRealArgs::List::CheckMethodArg withExpectedArgs::List::TypeTField = [
+TyperDB checkRealArgs(checkRealArgs): List::CheckMethodArg withExpectedArgs(withExpectedArgs): List::TypeTField = [
   Assert that: checkRealArgs count equals: withExpectedArgs count
 
   withExpectedArgs forEachIndexed: [ i, it ->

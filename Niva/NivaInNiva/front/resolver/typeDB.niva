@@ -107,11 +107,11 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 extend TyperDB [
-  on addGeneratedMessageDecl: m::MessageDecl = [
+  on addGeneratedMessageDecl(m): MessageDecl = [
     generatedMessageDecls add: m
   ]
   /// adds method to protocol, if no such protocol - creates it
-  on addMethod: m::NivaMethod toProtocol: protocolName::String forType::NivaType= [
+  on addMethod(m): NivaMethod toProtocol(protocolName): String forType(forType): NivaType = [
     methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
     methodNameToMethodMap containsKey: m name,
       ifTrue: [TO DO: "Type $forType already has method $m"]
@@ -124,26 +124,26 @@ extend TyperDB [
 
 
   /// adds ne method for db, if protocol is null then adds to "common"
-  on addNewMethod: m::NivaMethod forType::NivaType inProtocol::String? = [
+  on addNewMethod(m): NivaMethod forType::NivaType inProtocol::String? = [
     this
       addMethod: m
       toProtocol: (inProtocol unpackOrValue: "common")
       forType: forType
   ]
 
-  on addErrorMessage: e::ResolveErrors = [
+  on addErrorMessage(e): ResolveErrors = [
     msg = e msg
     "ADDED ERROR $msg" red log
     listOfErrors add: e
     //TO DO: "Error"
   ]
 
-  on addErrorFromTok: tok::Token withMsg: msg::String = [
+  on addErrorFromTok(tok): Token withMsg(msg): String = [
     "\n!!!!! ADDED ERROR $msg !!!!!\n" red log
     listOfErrors add: (LazyError :tok :msg)
   ]
 
-  on addFatalErrorFromTok: tok::Token withMsg: msg::String = [
+  on addFatalErrorFromTok(tok): Token withMsg(msg): String = [
     "\n!!!!! ADDED ERROR $msg !!!!!\n" red log
     listOfErrors add: (LazyError :tok :msg)
     TO DO: "FATAL"
@@ -160,7 +160,7 @@ extend TyperDB [
     ]
   ]
 
-  on addNewConstructor: m::NivaMethod forType::NivaType = [
+  on addNewConstructor(m): NivaMethod forType::NivaType = [
     Assert that: m kind equals: MessageSendKind.DefaultConstructor andSay: "add New DefaultConstructor, but its kind is " + m kind toString
 
     x::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
@@ -169,7 +169,7 @@ extend TyperDB [
     "addNewConstructor: added constructor " + m name + " for type " + forType name, log
   ]
 
-  on addNewPkgIfNotExists: pkgName::String -> NivaPkg = [
+  on addNewPkgIfNotExists(pkgName): String -> NivaPkg = [
     result = packages at: pkgName
     p = | result
         | null => [
@@ -184,7 +184,7 @@ extend TyperDB [
     ^ p
   ]
 
-  on addToTypesWithTheSameName: t::TypeT = [
+  on addToTypesWithTheSameName(t): TypeT = [
     setMaybe = typesWithSameNames at: t name
 
     | setMaybe
@@ -197,7 +197,7 @@ extend TyperDB [
     |=> setMaybe add: t
 
   ]
-  on addNewType: t::TypeT inPkg: pkgName::String = [
+  on addNewType(t): TypeT inPkg(pkgName): String = [
     // 1 add to pkg
     // find the pkg
     pkg = packages at: pkgName
@@ -242,7 +242,7 @@ extend TyperDB [
     ] |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
   ]
 
-  on addGenericInstantiationIfAbsent: t::TypeT letterToType::Map(String, NivaType) -> TypeT = [
+  on addGenericInstantiationIfAbsent(t): TypeT letterToType::Map(String, NivaType) -> TypeT = [
     newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType db: this
     typeId = newTypeWithGenericInstantiated toIdString
 
@@ -307,7 +307,7 @@ extend TyperDB [
   ]
 
   /// we use this for replacing an old method with Unknown return type with new one with resolved rt
-  on replaceMethod: m::NivaMethod inType::NivaType = [
+  on replaceMethod(m): NivaMethod inType::NivaType = [
     x::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: inType, unpackOrPANIC
     x at: m name put: m
   ]
@@ -319,7 +319,7 @@ extend TyperDB [
 // методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
 // как ни крути походу лучше всего хранить пакет в самом методе
 
-  on findMethodInAllProtocols: name::String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
+  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
 
     // constructorsTypeToMethodNameToMethod keys debug
 
@@ -343,8 +343,8 @@ extend TyperDB [
     ^ y at: name
   ]
 
-  on findMsgFromReceiver: receiver::TypedExpr2
-    byName: name::String
+  on findMsgFromReceiver(receiver): TypedExpr2
+    byName(name): String
     currentPkg::NivaPkg -> NivaMethod = [
 
     receiverType = receiver typeInfo t
@@ -409,10 +409,10 @@ extend TyperDB [
     ^ result
   ]
 
-  on findByTypeName: typeName::String = .findByTypeName: typeName inPkg: null
+  on findByTypeName(typeName): String = .findByTypeName: typeName inPkg: null
 
 
-  on findByTypeName: typeName::String inPkg: pkgName::String? -> NivaType = [
+  on findByTypeName(typeName): String inPkg(pkgName): String? -> NivaType = [
 
     typeName isGeneric ifTrue: [
       ^ UnresolvedGenericT name: typeName
@@ -522,7 +522,7 @@ type ResolverHelper
   // entryPointStatements: List::TypedExpr
 
 
-constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoint::String -> ResolverHelper  = [
+constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint(entryPoint): String -> ResolverHelper  = [
   fileToStatements::mut Map(String, mut List::Statement) = #{}!
 
   // parsing
@@ -568,7 +568,7 @@ constructor ResolverHelper resolve: fileToContent::Map(String, String) entryPoin
     entryPointName: entryPoint
 ]
 
-TypeT replaceGenericsFromTable: letterToType::Map(String, NivaType) db::TyperDB -> TypeT = [
+TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): TyperDB -> TypeT = [
   instantiate = [ t::NivaType ->
     | t
     | TypeT => [

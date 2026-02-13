@@ -1,32 +1,32 @@
-type LexTest 
+type LexTest
 constructor LexTest input::String -> List::Token = [
   l = Lexer input: input
   tokens = l lex dropLast: 1  // drop EOF
   ^ tokens
 ]
 
-constructor LexTest 
-  checkThat: input::String 
-  equals: list::List::TokenType 
+constructor LexTest
+  checkThat(input): String
+  equals(list): List(TokenType)
   -> List::Token! = [
 
   y = LexTest input: input
   x = y map: [it kind]
 
-  Assert 
-    that: x count 
+  Assert
+    that: x count
     equals: list count
-       
-  x forEachIndexed: [i, it -> 
-    Assert 
-      that: it 
+
+  x forEachIndexed: [i, it ->
+    Assert
+      that: it
       equals: (list at: i)
   ]
   ^ y
 ]
 
 Test integers = [
-  tokens = LexTest input: "11 22 33 -44" 
+  tokens = LexTest input: "11 22 33 -44"
 
   expectedKinds = {TokenType.Integer TokenType.Integer TokenType.Integer, TokenType.Integer}
   expectedStarts = {1 4 7 10}
@@ -42,7 +42,7 @@ Test integers = [
 ]
 // skiping spaces should append `pos` so tokens have correct start
 Test parseFromSpace = [
-  tokens = LexTest input: "   1  " 
+  tokens = LexTest input: "   1  "
 
   expectedKinds = {TokenType.Integer}
   expectedStarts = {4}
@@ -56,7 +56,7 @@ Test parseFromSpace = [
 ]
 
 Test words = [
-  tokens = LexTest input: "niva nim vala42" 
+  tokens = LexTest input: "niva nim vala42"
 
   expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Identifier}
   expectedStarts = {1 6 10}
@@ -70,7 +70,7 @@ Test words = [
 ]
 
 // Test genericType = [
-//   tokens = LexTest input: "List::Int" 
+//   tokens = LexTest input: "List::Int"
 
 //   expectedKinds = {TokenType.IdentifierDoubleColon TokenType.Identifier}
 //   // expectedStarts = {1 6 10}
@@ -107,16 +107,16 @@ Test multiLine = [
 
 Test delOp = [
   expectedKinds = {TokenType.Integer TokenType.BinarySymbol TokenType.Integer}
-  LexTest 
-    checkThat: "11 / 20" 
+  LexTest
+    checkThat: "11 / 20"
     equals: expectedKinds
 ]
 
 Test operators = [
   binSym = {TokenType.BinarySymbol}!
   11 repeat: [binSym add: TokenType.BinarySymbol]
-  LexTest 
-    checkThat: "== <= && || != + - * / >= < >" 
+  LexTest
+    checkThat: "== <= && || != + - * / >= < >"
     equals: binSym toList
 ]
 
@@ -148,22 +148,22 @@ Test identifierNullable = [
 ]
 
 Test strings = [
-  LexTest checkThat: """ "" "sas" "sus" """ 
+  LexTest checkThat: """ "" "sas" "sus" """
           equals: {TokenType.String TokenType.String TokenType.String}
 ]
 
 Test keywords = [
   LexTest checkThat: "type union constructor enum builder mut errordomain true false null Unit on"
-          equals: {TokenType.Type 
-                   TokenType.Union 
-                   TokenType.Constructor 
-                   TokenType.Enum 
-                   TokenType.Builder 
-                   TokenType.Mut 
-                   TokenType.ErrorDomain 
-                   TokenType.True 
-                   TokenType.False 
-                   TokenType.Null 
+          equals: {TokenType.Type
+                   TokenType.Union
+                   TokenType.Constructor
+                   TokenType.Enum
+                   TokenType.Builder
+                   TokenType.Mut
+                   TokenType.ErrorDomain
+                   TokenType.True
+                   TokenType.False
+                   TokenType.Null
                    TokenType.Identifier
                    TokenType.On}
 ]
@@ -181,28 +181,27 @@ Test singleNum = [
 
 
 Test controlFlow = [
-  LexTest checkThat: "| => |=> ^ -> <- . ," 
-          equals: {TokenType.If 
-                   TokenType.Then 
-                   TokenType.Else 
-                   TokenType.Return 
-                   TokenType.ReturnArrow 
-                   TokenType.AssignArrow 
+  LexTest checkThat: "| => |=> ^ -> <- . ,"
+          equals: {TokenType.If
+                   TokenType.Then
+                   TokenType.Else
+                   TokenType.Return
+                   TokenType.ReturnArrow
+                   TokenType.AssignArrow
                    TokenType.Dot
                    TokenType.Comma
                   }
 ]
 
 Test enumDeclaration = [
-  LexTest checkThat: "enum MessageKind = Unary | Binary | Keyword" 
-          equals: {TokenType.Enum 
-                   TokenType.Identifier 
-                   TokenType.Assign 
-                   TokenType.Identifier 
-                   TokenType.If 
-                   TokenType.Identifier 
+  LexTest checkThat: "enum MessageKind = Unary | Binary | Keyword"
+          equals: {TokenType.Enum
+                   TokenType.Identifier
+                   TokenType.Assign
+                   TokenType.Identifier
+                   TokenType.If
+                   TokenType.Identifier
                    TokenType.If
                    TokenType.Identifier
                   }
 ]
-

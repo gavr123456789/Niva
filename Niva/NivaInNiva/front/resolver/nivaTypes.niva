@@ -4,7 +4,7 @@ TypeTField toString -> String =
   "$name: $typeT"
 
 /// no name provided
-constructor TypeTField binary: t::NivaType = TypeTField name: "" typeT: t
+constructor TypeTField binary(t): NivaType = TypeTField name: "" typeT: t
 
 union NivaType name: String pkgName: String =
 // complex
@@ -80,7 +80,7 @@ extend NivaType [
     ^ result
   ]
 
-  on instantiateFromTable: table::Map(String, NivaType) -> String = [
+  on instantiateFromTable(table): Map(String, NivaType) -> String = [
 
     result = | this
     | TypeT => [
@@ -100,7 +100,7 @@ extend NivaType [
     ^ result
   ]
 
-  on findField: fieldName::String -> TypeTField? = [
+  on findField(fieldName): String -> TypeTField? = [
     field = | this
             | Complex => fields find: [it name == fieldName]
             |=> null
@@ -108,7 +108,7 @@ extend NivaType [
   ]
 ]
 
-constructor TypeT noFieldsWithName: name::String pkgName::String  = TypeT
+constructor TypeT noFieldsWithName(name): String pkgName: String  = TypeT
   :name :pkgName fields: {}! genericArgs: {}!
 
 extend TypeT [
@@ -160,7 +160,7 @@ extend TypeT [
 ]
 
 
-constructor UnresolvedGenericT name::String = UnresolvedGenericT name: name letter: name pkgName: "core"
+constructor UnresolvedGenericT name: String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
 constructor IntegerT new = IntegerT name: "Int" pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
@@ -185,10 +185,10 @@ constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgNa
 type NivaMethod
   name: String
   receiverType: NivaType
-  args: List::TypeTField
+  args: List(TypeTField)
   returnType: NivaType
   forMut: Bool // can be called only on mutable types
-  possibleErrors: List::UnionT
+  possibleErrors: List(UnionT)
   kind: MessageSendKind
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
@@ -203,7 +203,7 @@ extend NivaMethod [
     ]
 
 
-  on replaceGenericsFromTable: letterToType::Map(String, NivaType) dontMangle::Set(String) mangle::Bool db::TyperDB -> NivaMethod = [
+  on replaceGenericsFromTable(letterToType): Map(String, NivaType) dontMangle: Set(String) mangle: Bool db: TyperDB -> NivaMethod = [
 
     recType = receiverType
     retType = returnType
@@ -274,11 +274,11 @@ extend NivaMethod [
         :pkgName
   ]
 
-  on copyWithDifferentReturnType: rt::NivaType =
+  on copyWithDifferentReturnType(rt): NivaType =
     NivaMethod :name  :receiverType :args returnType: rt :forMut :possibleErrors :kind :decl :protocolName :pkgName
 
   /// sort args and checks them with fields, so any arg order should work probably
-  on isConstructorForReceiver: receiver::TypeT -> Bool = [
+  on isConstructorForReceiver(receiver): TypeT -> Bool = [
     {fields} = receiver
     argsSorted = args map: [it name], sortedBy: [it], joinWith: ", "
     fieldsSorted = fields map: [it name], sortedBy: [it], joinWith: ", "
@@ -295,7 +295,7 @@ extend NivaMethod [
 
 constructor NivaMethod [
   /// Create CALL
-  on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool decl::MessageDecl? protocolName::String pkgName::String= NivaMethod
+  on name: String receiverType: NivaType args: List::TypeTField returnType: NivaType forMut: Bool decl: MessageDecl? protocolName: String pkgName: String = NivaMethod
     name: name
     receiverType: receiverType
     args: args
@@ -319,21 +319,20 @@ constructor NivaMethod [
     protocolName: protocolName
     :pkgName
 
-  on defaultConstructorWithName: name::String receiverType::NivaType args::List::TypeTField returnType::NivaType decl::MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod
-    name: name
+  on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod
+    :name
     :receiverType
-    args: args
-    returnType: returnType
+    :args
+    :returnType
     forMut: false
     possibleErrors: {}
     kind: MessageSendKind.DefaultConstructor
-    decl: decl
-    protocolName: protocolName
+    :decl
+    :protocolName
     :pkgName
 
 ]
 
-// Удалить, но позже
 type NivaProtocol
   name: String
   methods: mut Map(String, NivaMethod)
@@ -341,7 +340,7 @@ type NivaProtocol
 constructor NivaProtocol [
   on common = NivaProtocol name: "common" methods: #{}!
   on constructors = NivaProtocol name: "constructors" methods: #{}!
-  on name::String = NivaProtocol name: name methods: #{}!
+  on name: String = NivaProtocol name: name methods: #{}!
 ]
 
 extend NivaProtocol [
@@ -359,7 +358,7 @@ type NivaPkg
 
 constructor NivaPkg name::String = NivaPkg name: name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()!
 extend NivaPkg [
-  on addImport: pkgName::String = [
+  on addImport(pkgName): String = [
     pkgName != this name ifTrue: [
       "Imports: added import of $pkgName to $name pkg" log
       imports add: pkgName

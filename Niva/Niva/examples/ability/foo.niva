@@ -1,6 +1,6 @@
 Program foo(io): IO = [
   // call via io
-  str: String = io read text: "a/b/c"
+  str::String = io read text: "a/b/c"
   // direct call
   File path: "it", readText
 ]
