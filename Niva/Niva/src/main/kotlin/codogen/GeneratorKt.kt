@@ -8,8 +8,8 @@ import frontend.resolver.Package
 import frontend.resolver.Project
 import frontend.resolver.Resolver
 import frontend.resolver.isJvm
-import frontend.resolver.isNative
 import main.codogen.GeneratorKt.Companion.GRADLE_IMPORTS
+import main.codogen.GeneratorKt.Companion.KOTLIN_MULTIPLATFORM_NATIVE
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.MessageDeclaration
@@ -42,21 +42,17 @@ class GeneratorKt(
             
             """
 
-        const val GRADLE_TEMPLATE_NATIVE = """
-plugins {
-    kotlin("multiplatform") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
-}
 
-group = "org.example"
-version = "0.0.1"
-
-repositories {
-    mavenCentral()
-}
-
-
-kotlin {
+        const val KOTLIN_MULTIPLATFORM_JSNODE = """
+            kotlin {
+                js {
+                    nodejs()
+                    binaries.executable()
+                }
+            }
+        """
+        const val KOTLIN_MULTIPLATFORM_NATIVE = """
+            kotlin {
     val hostOs = System.getProperty("os.name")
     val isArm64 = System.getProperty("os.arch") == "aarch64"
     val isMingwX64 = hostOs.startsWith("Windows")
@@ -87,6 +83,23 @@ kotlin {
         }
     }
 }
+        """
+        // DONT FORGET TO REPLACE //KOTLIN_IMPL WITH KOTLIN_MULTIPLATFORM_*
+        const val GRADLE_TEMPLATE_MULTIPLATFORM = """
+plugins {
+    kotlin("multiplatform") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
+}
+
+group = "org.example"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+}
+
+
+//KOTLIN_IMPL
 
 
 repositories {
@@ -308,8 +321,10 @@ fun GeneratorKt.regenerateGoodOldGradle(
 
     val newGradle = buildString {
         append(GRADLE_IMPORTS)
-        if (compilationTarget.isNative()) {
-            append(GeneratorKt.GRADLE_TEMPLATE_NATIVE)
+        if (compilationTarget == CompilationTarget.native) {
+            append(GeneratorKt.GRADLE_TEMPLATE_MULTIPLATFORM.replace("//KOTLIN_IMPL", KOTLIN_MULTIPLATFORM_NATIVE))
+        } else if (compilationTarget == CompilationTarget.js) {
+            append(GeneratorKt.GRADLE_TEMPLATE_MULTIPLATFORM.replace("//KOTLIN_IMPL", GeneratorKt.KOTLIN_MULTIPLATFORM_JSNODE))
         }
         if (compilationTarget.isJvm()) {
             append(GeneratorKt.GRADLE_TEMPLATE)

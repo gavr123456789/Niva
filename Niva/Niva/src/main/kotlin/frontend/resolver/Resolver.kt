@@ -898,11 +898,12 @@ fun Resolver.usePackage(packageName: String) {
 }
 
 enum class CompilationTarget(val targetName: String) {
-    jvm("jvm"), linux("linux"), macos("macos"), windows("windows"), jvmCompose("jvm")
-//    windows,
+    jvm("jvm"),
+    native("native"),
+    js("js"),
+    jvmCompose("jvm")
 }
 
-fun CompilationTarget.isNative() = this == CompilationTarget.windows || this == CompilationTarget.linux || this == CompilationTarget.macos
 fun CompilationTarget.isJvm() = this == CompilationTarget.jvm || this == CompilationTarget.jvmCompose
 
 enum class CompilationMode(val modeName: String) {
@@ -913,11 +914,10 @@ enum class CompilationMode(val modeName: String) {
 fun Resolver.changeTarget(target: String, token: Token) {
     fun targetFromString(target: String, token: Token): CompilationTarget = when (target) {
         "jvm" -> CompilationTarget.jvm
-        "linux" -> CompilationTarget.linux
-        "macos" -> CompilationTarget.macos
+        "native" -> CompilationTarget.native
+        "linux", "macos", "windows" -> CompilationTarget.native
         "jvmCompose" -> CompilationTarget.jvmCompose
-        "windows" -> CompilationTarget.windows
-        "js" -> token.compileError("js target not supported yet")
+        "js" -> CompilationTarget.js
         else -> token.compileError("There is no such target as ${WHITE}$target${RESET}, supported targets are ${WHITE}${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
     }
 
@@ -926,15 +926,17 @@ fun Resolver.changeTarget(target: String, token: Token) {
 }
 
 
-fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String {
-    if (target.isJvm()) return "dist"
-    if (target.isNative()) return "link${this.modeName}ExecutableNative"
-    if (target == CompilationTarget.jvm) return "dist"
-    TODO("wrong native target $target")
+fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String = when (target) {
+    CompilationTarget.jvm, CompilationTarget.jvmCompose -> "dist"
+    CompilationTarget.native -> "link${this.modeName}ExecutableNative"
+    CompilationTarget.js -> when (this) {
+        CompilationMode.release -> "compileProductionExecutableKotlinJs"
+        CompilationMode.debug -> "compileDevelopmentExecutableKotlinJs"
+    }
 }
 
 fun CompilationMode.toBinaryPath(target: CompilationTarget, pathToProjectRoot: String): String {
-    if (target.isJvm()) TODO("Compiler bug, its JVM, not native target")
+    if (target != CompilationTarget.native) TODO("Compiler bug, its JVM/JS, not native target")
     val compMode = when (this) {
         CompilationMode.release -> "releaseExecutable"
         CompilationMode.debug -> "debugExecutable"

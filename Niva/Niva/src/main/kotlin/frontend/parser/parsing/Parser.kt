@@ -38,23 +38,17 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
 
     // mut Person birthday = []
     // not "mut x = 5" not "mut x::Int = 5"
-    if (kind == TokenType.Mut && peek(2).kind != TokenType.Assign  && peek(2).kind != TokenType.DoubleColon) {
-        if (parseMsgDecls) {
-            val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
-            if (isItMsgDeclaration != null) {
-                return messageDeclaration(isItMsgDeclaration, pragmas)
-            }
-            else {
-                peek().compileError("Parser bug, variable declaration or message declaration for mutable type expected")
-            }
+    if (kind == TokenType.Mut && parseMsgDecls && !isVarDeclarationStart()) {
+        val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
+        if (isItMsgDeclaration != null) {
+            return messageDeclaration(isItMsgDeclaration, pragmas)
+        } else {
+            peek().compileError("Parser bug, variable declaration or message declaration for mutable type expected")
         }
     }
 
-    if (tok.isIdentifier() &&
-        check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1)
-        || kind == TokenType.Mut
-    ) {
-        val q =  varDeclaration()
+    if (isVarDeclarationStart()) {
+        val q = varDeclaration()
         if (q != null) return q
     }
 
@@ -186,7 +180,31 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
     return IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, null, x)
 }
 
+fun Parser.isVarDeclarationStart(): Boolean {
+    val savePoint = current
+    match(TokenType.Mut)
 
+    val isVarDeclaration = when {
+        !peek().isIdentifier() -> false
+        check(TokenType.Assign, 1) || check(TokenType.DoubleColon, 1) -> true
+        check(TokenType.Colon, 1) -> {
+            step() // identifier
+            step() // colon
+            try {
+                parseTypeAST()
+                skipNewLinesAndComments()
+                match(TokenType.Assign)
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        else -> false
+    }
+
+    current = savePoint
+    return isVarDeclaration
+}
 
 
 // if inside var decl with type, then we're getting type from it

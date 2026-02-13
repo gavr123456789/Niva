@@ -1,17 +1,4 @@
-union NivaType name: String =
-| NothingT
-| NullT
-| ^Complex
-| NullableT v: NivaType
-| Unknown
+q = 1
 
-union Complex name: String =
-| TypeT
-| UnionT
-
-NivaType sas = [1 echo]
-
-
-nullT = NullT name: "Ast"
-
-nullT sas
+q
+x: Int = 3

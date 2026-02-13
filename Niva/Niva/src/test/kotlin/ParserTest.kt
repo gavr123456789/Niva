@@ -96,6 +96,17 @@ class ParserTest {
     }
 
     @Test
+    fun varDeclarationWithColonType() {
+        val source = "x: Int = 1"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val declaration: VarDeclaration = ast[0] as VarDeclaration
+        assert(declaration.name == "x")
+        assert(declaration.value.str == "1")
+    }
+
+    @Test
     fun varDeclWithTypeInfer() {
 
         val source = "x = 1"
@@ -595,7 +606,7 @@ class ParserTest {
     @Test
     fun keywordMessageDeclaration() {
         val source = """
-            Person noTypeLocalName: q typeAndLocalName: w::int noLocalNameButType::int = [
+            Person noTypeLocalName(q): int typeAndLocalName(w): int noLocalNameButType: int = [
               x = 1
               x sas
             ]
@@ -629,9 +640,45 @@ class ParserTest {
     }
 
     @Test
+    fun keywordMessageDeclarationColonTypes() {
+        val source = """
+            Int foo: Int bar: Int = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val msgDecl = (ast[0] as MessageDeclarationKeyword)
+        assert(msgDecl.name == "fooBar")
+        assert(msgDecl.args.count() == 2)
+        assert(msgDecl.args[0].name == "foo")
+        assert(msgDecl.args[0].localName == null)
+        assert(msgDecl.args[0].typeAST?.name == "Int")
+        assert(msgDecl.args[1].name == "bar")
+        assert(msgDecl.args[1].localName == null)
+        assert(msgDecl.args[1].typeAST?.name == "Int")
+    }
+
+    @Test
+    fun keywordMessageDeclarationColonTypesWithLocalNames() {
+        val source = """
+            Int foo(localA): Int bar(localB): Int = 1
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val msgDecl = (ast[0] as MessageDeclarationKeyword)
+        assert(msgDecl.name == "fooBar")
+        assert(msgDecl.args.count() == 2)
+        assert(msgDecl.args[0].name == "foo")
+        assert(msgDecl.args[0].localName == "localA")
+        assert(msgDecl.args[0].typeAST?.name == "Int")
+        assert(msgDecl.args[1].name == "bar")
+        assert(msgDecl.args[1].localName == "localB")
+        assert(msgDecl.args[1].typeAST?.name == "Int")
+    }
+
+    @Test
     fun keywordMessageDeclarationWithReturnType() {
         val source = """
-            int from: x::int -> int = [
+            int from(x): int -> int = [
               x = 1
               y sas
             ]
@@ -643,7 +690,7 @@ class ParserTest {
     @Test
     fun keywordMessageDeclarationNoLocalName() {
         val source = """
-            int from::int -> int = [
+            int from: int -> int = [
               x = 1
               y sas
             ]
@@ -655,7 +702,7 @@ class ParserTest {
     @Test
     fun keywordMessageDeclarationNoLocalNameLambda() {
         val source = """
-            Int x::[Int, Int -> Int] = [
+            Int x: [Int, Int -> Int] = [
                 1 echo
             ]
         """.trimIndent()
@@ -1526,7 +1573,7 @@ class ParserTest {
         assert(ast3.count() == 1)
 
         val source4 = """
-            Person withLocalName: x::Int = 1 echo
+            Person withLocalName(x): Int = 1 echo
         """.trimIndent()
 
         val ast4 = getAstTest(source4)
@@ -1541,7 +1588,7 @@ class ParserTest {
               on unary -> Int = 1 echo
               on + binary::Int = 1 echo
               on key::Int word::String = 1 echo
-              on withLocalName: x::Int = 1 echo
+              on withLocalName(x): Int = 1 echo
             ]
         """.trimIndent()
 
@@ -1686,7 +1733,7 @@ class ParserTest {
     @Test
     fun constructorKeywordWithLocalName() {
         val source = """
-            constructor Person from: q::Int = q echo
+            constructor Person from(q): Int = q echo
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -1932,7 +1979,7 @@ class ParserTest {
               w: [ -> ] // lambda
               on unary = 1 inc
               on + n::Int = 45
-              on from: x::Int = []
+              on from(x): Int = []
         """.trimIndent()
         val ast = getAstTest(source)
         println(ast.count())
@@ -2331,7 +2378,7 @@ class ParserTest {
 
         val source = """
             type Cond = [ -> Boolean] 
-            Cond whileLoop: block::[ -> Boolean] -> Unit = 
+            Cond whileLoop(block): [ -> Boolean] -> Unit = 
               this do => [
                 block do => [this whileLoop: block]
               ] |=> Unit

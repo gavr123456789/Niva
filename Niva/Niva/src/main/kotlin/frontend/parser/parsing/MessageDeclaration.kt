@@ -105,8 +105,8 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
 
     do {
         // it can be no type no local name :key
-        // type, no local name key::int      key2::string
-        // type and local name: to: x::int   from: y::int
+        // type, no local name key: int      key2: string (key::int also works)
+        // type and local name: to(x): int   from(y): int
         skipNewLinesAndComments()
         args.add(keyArg())
         skipNewLinesAndComments()
@@ -156,12 +156,10 @@ fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
     return result
 }
 
-// x::int or x: local::int or x: local or :x
+// x::int or x: int or x(local): int or :x
 private fun Parser.keyArg(): KeywordDeclarationArg {
-    val noLocalNameNoType = check(TokenType.Colon)
-    val noLocalName = check(TokenType.Identifier) && check(TokenType.DoubleColon, 1)
     // :foo
-    if (noLocalNameNoType) {
+    if (check(TokenType.Colon)) {
         step() //skip colon
         val argName = step()
         if (argName.kind != TokenType.Identifier) {
@@ -169,33 +167,28 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         }
         return (KeywordDeclarationArg(name = argName.lexeme, argName))
     }
-    // arg::int
-    else if (noLocalName) {
-        val argName = step()
-        if (argName.kind != TokenType.Identifier) {
-            error("You tried to declare keyword message with arg without local name, identifier expected before double colon foobar::type")
-        }
-        match(TokenType.DoubleColon)
+
+    val key = matchAssert(TokenType.Identifier)
+
+    if (match(TokenType.OpenParen)) {
+        val local = matchAssert(TokenType.Identifier, "Local name identifier expected in keyword arg")
+        matchAssert(TokenType.CloseParen, "Closing ) expected after local name")
+        matchAssert(TokenType.Colon, "Colon expected after local name in keyword arg")
         val type = parseTypeAST()
-        return (KeywordDeclarationArg(name = argName.lexeme, argName, typeAST = type))
+        return KeywordDeclarationArg(name = key.lexeme, key, localName = local.lexeme, typeAST = type)
     }
 
-    // key: localName(::int)?
-    else {
-        val key = matchAssert(TokenType.Identifier)
-        match(TokenType.Colon)
-        val local = step()
-        val type: TypeAST? = if (check(TokenType.DoubleColon)) {
-            step()// skip doubleColon
-            parseTypeAST()
-        } else {
-            null
-        }
-
-        val result = KeywordDeclarationArg(name = key.lexeme, key, localName = local.lexeme, typeAST = type)
-        return result
-
+    if (match(TokenType.DoubleColon)) {
+        val type = parseTypeAST()
+        return KeywordDeclarationArg(name = key.lexeme, key, typeAST = type)
     }
+
+    if (match(TokenType.Colon)) {
+        val type = parseTypeAST()
+        return KeywordDeclarationArg(name = key.lexeme, key, typeAST = type)
+    }
+
+    key.compileError("Keyword argument must have type after ':' or '::'")
 }
 
 
@@ -304,8 +297,10 @@ fun Parser.kwArgsAndEndOfMessageDeclaration(isConstructor: Boolean): Boolean {
     while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow))) {
         try {
             skipNewLinesAndComments()
-            if ((checkMany(TokenType.Identifier, TokenType.DoubleColon)) ||
-                (checkMany(TokenType.Identifier, TokenType.Colon, TokenType.Identifier))
+            if (check(TokenType.Colon) ||
+                checkMany(TokenType.Identifier, TokenType.DoubleColon) ||
+                checkMany(TokenType.Identifier, TokenType.Colon) ||
+                checkMany(TokenType.Identifier, TokenType.OpenParen)
             ) {
                 keyArg()
                 keyArgsCounter++
@@ -499,7 +494,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     val builderKeyword = matchAssert(TokenType.Builder)
     val receiverTypeOrName = parseTypeAST()
     // if next is not arguments and this is not builder with receiver
-    // builder StringBuilder^ (arg::Int)? (buildStr)? -> String = []
+    // builder StringBuilder^ (arg: Int)? (buildStr)? -> String = []
 
     val withReceiver = receiver != null || check(TokenType.DoubleColon, 1)
     val name = if (withReceiver)
@@ -528,7 +523,7 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
     val x = MessageDeclarationKeyword(
         name = name,
         forType = receiver
-            ?: receiverTypeOrName, // if this is builder with receiver "Type builder name from::Int = []", then use Type as receiver, not name(`receiverType`)
+            ?: receiverTypeOrName, // if this is builder with receiver "Type builder name from: Int = []", then use Type as receiver, not name(`receiverType`)
         returnType = returnType,
         args = args,
         body = body,

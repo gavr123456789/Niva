@@ -115,7 +115,7 @@ class MessageDeclarationBinary(
 )
 
 
-// key: localName::type
+// key(localName): type
 class KeywordDeclarationArg(
     val name: String,
     val tok: Token,
