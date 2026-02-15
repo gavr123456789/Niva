@@ -19,7 +19,7 @@ mut JsonParser skipWhitespace = [
         whileTrue: [ pos <- pos inc ]
 ]
 
-mut JsonParser consume: expected::Char =
+mut JsonParser consume(expected): Char =
     this peek == expected
         ifTrue: [ this advance ]
         ifFalse: [ ("Expected " + expected toString) echo ]

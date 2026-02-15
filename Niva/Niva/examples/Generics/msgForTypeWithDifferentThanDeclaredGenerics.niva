@@ -2,7 +2,7 @@ type Pair
     x: T
     y: G
 
-Pair(mut List::T, mut List::T) forEach: block::[T, T -> Unit] = [
+Pair(mut List::T, mut List::T) forEach(block): [T, T -> Unit] = [
     iterate = [x::mut List::T, y::mut List::T ->
         x forEachIndexed: [ i, first ->
             second = y at: i

@@ -22,7 +22,7 @@ TypeField toString -> String =  "$name: $astType"
 
 extend mut Parser [
   // maybe collections are missing
-  on isLiteralExpr: tok::Token -> Bool = [
+  on isLiteralExpr(tok): Token -> Bool = [
    ^| tok kind
     | TokenType.Integer
     | TokenType.String
@@ -35,7 +35,7 @@ extend mut Parser [
     |=> false
   ]
 
-  on parseReturnExpr: tok::Token -> ReturnStatement = [
+  on parseReturnExpr(tok): Token -> ReturnStatement = [
     tok kind == TokenType.Return ifFalse: [TO DO: "^ expected"]
 
     // is that `^ value` or just `^`
@@ -51,7 +51,7 @@ extend mut Parser [
 
   /// tok is identifier
   /// pasre: x = expr
-  on parseVarDeclExpr: token::Token name::String isMut::Bool -> VarDeclaration = [
+  on parseVarDeclExpr(token): Token name::String isMut::Bool -> VarDeclaration = [
     astType = token kind == TokenType.IdentifierDoubleColon ifTrue: [
       .parseType
     ] ifFalse: [null]
@@ -63,7 +63,7 @@ extend mut Parser [
   ]
 
   /// a^.b.c
-  on parseDotSeparatedIdentifier: tok::Token -> Identifier = [
+  on parseDotSeparatedIdentifier(tok): Token -> Identifier = [
     ^ .match: TokenType.Dot, ifTrue: [
 
       path = {(tok lexeme)}!
@@ -80,7 +80,7 @@ extend mut Parser [
   ]
 
   /// "", 1, 1.1, true, []
-  on literalExprFrom: tok::Token -> LiteralExpr? = [
+  on literalExprFrom(tok): Token -> LiteralExpr? = [
     mut isAdded = false
 
     x = | tok kind
@@ -114,7 +114,7 @@ extend mut Parser [
 
   /// if starts from { #{ #(, then return collection
   /// tok already eaten outside
-  on parseCollection: tok::Token -> CollectionLiteral? = [
+  on parseCollection(tok): Token -> CollectionLiteral? = [
 
     manyPrimary = [
       body::mut List::Expr = {}!
@@ -165,7 +165,7 @@ extend mut Parser [
   /// lambda
   /// or identifier | nullableIdentifier
   /// simple literal 1 "" '' true false 1.1 1.1f
-  on primary: tok::Token -> Expr? = [
+  on primary(tok): Token -> Expr? = [
 
     .literalExprFrom: tok, unpack: [
       ^it
@@ -187,7 +187,7 @@ extend mut Parser [
   ]
 
   // `[` already eaten
-  on parseCodeBlock: tok::Token -> CodeBlock = [
+  on parseCodeBlock(tok): Token -> CodeBlock = [
     mut args:: List::NameAndAstType = {}   // [a::Int -> a inc]
     mut untypedArgs:: List::Identifier = {} // [a, b -> a + b]
 
@@ -227,7 +227,7 @@ extend mut Parser [
   ]
 
 
-  on parseManyExprUntilTok: until::TokenType split::TokenType? -> Body = [
+  on parseManyExprUntilTok(until): TokenType split: TokenType? -> Body = [
     body::mut List::Expr = {}!
 
     mut c = true
@@ -250,7 +250,7 @@ extend mut Parser [
 
     ^ result
   ]
-  on parseManyExprSplitBy: split::TokenType -> List::Expr = [
+  on parseManyExprSplitBy(split): TokenType -> List::Expr = [
     body::mut List::Expr = {}!
 
     mut c = true
@@ -280,7 +280,7 @@ extend mut Parser [
   ]
 
   /// a::Int (sep)? b::String
-  on parseNameDoubleColonAstTypePair: tok::Token separatedBy: sep::TokenType? -> List::NameAndAstType = [
+  on parseNameDoubleColonAstTypePair(tok): Token separatedBy(sep): TokenType? -> List::NameAndAstType = [
 
     firstArg = NameAndAstType name: tok lexeme astType: .parseType
     sep unpack: [.match: it]
@@ -304,7 +304,7 @@ extend mut Parser [
     ^ kwArgs
   ]
 
-  on restoreFrom: position::Int = [
+  on restoreFrom(position): Int = [
     current <- position
   ]
 
@@ -314,7 +314,7 @@ extend mut Parser [
     ]
   ]
 
-  on parseMatch: tok::Token -> Match = [
+  on parseMatch(tok): Token -> Match = [
     branches::mut List::MatchBranch = {}!
     mut elseBranch::Body? = null
     subject = .nextExperssion: .step
@@ -415,7 +415,7 @@ extend mut Parser [
   ]
 
   /// `^ expr` | `expr`
-  on nextExperssion: tok::Token -> Expr = [
+  on nextExperssion(tok): Token -> Expr = [
     // return expr
    ^| tok kind
     | TokenType.Return => [
@@ -462,7 +462,7 @@ extend mut Parser [
     ]
   ]
 
-  on nextExperssion2: tok::Token receiver::Expr? -> Expr = [
+  on nextExperssion2(tok): Token receiver: Expr? -> Expr = [
     // return expr
     tok kind == TokenType.Return ifTrue: [
       ^ .parseReturnExpr: tok
@@ -509,8 +509,8 @@ extend mut Parser [
   // Primary
   // UnaryMsg
   // BinaryMsg
-  on parsePrimaryOrUnaryOrBinary: tok::Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
-  on parsePrimaryOrUnaryOrBinary: tok::Token receiver::Expr? -> Expr = [
+  on parsePrimaryOrUnaryOrBinary(tok): Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
+  on parsePrimaryOrUnaryOrBinary(tok): Token receiver::Expr? -> Expr = [
     maybePrimary = | receiver
     | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
     |=> receiver
@@ -662,7 +662,7 @@ extend mut Parser [
   ]
 
   /// match Identifier|Nullable|Error
-  on matchAssertAnyIdent: error::String -> Token = [
+  on matchAssertAnyIdent(error): String -> Token = [
     tok = .peek
 
     ^ tok isIdentifier ifTrue: [
@@ -679,7 +679,7 @@ extend mut Parser [
       ^ .step
     ]
     kind = peek kind
-    TO DO: "$matchAssert expected but got $peek"
+    ^ TO DO: "$matchAssert expected but got $peek"
   ]
 
   on matchString::String -> Bool = [
@@ -691,7 +691,7 @@ extend mut Parser [
     ^ false
   ]
 
-  on check: kind::TokenType = .peek kind == kind
+  on check(kind): TokenType = .peek kind == kind
 
   on done = .check: TokenType.EndOfFile
 
@@ -718,7 +718,7 @@ extend mut Parser [
 
     ^tokens at: current
   ]
-  on peekAt: distance::Int -> Token = [
+  on peekAt(distance): Int -> Token = [
     realDistance = current + distance
     ^tokens at: realDistance
   ]

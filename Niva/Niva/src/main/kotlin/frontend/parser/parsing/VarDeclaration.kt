@@ -48,7 +48,7 @@ fun Parser.varDeclaration(): VarDeclaration? {
             TokenType.DoubleColon -> {
                 try {
                     valueType = parseTypeAST()
-                    // x::int^ =
+                    // x::int^ = or x:int^ =
                     matchAssert(TokenType.Assign)
                     skipNewLinesAndComments()
                     val isNextReceiver = isNextSimpleReceiver()

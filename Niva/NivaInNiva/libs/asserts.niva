@@ -21,13 +21,13 @@ constructor Assert that::Any? equals::Any? andSay::String -> Unit = [
 ]
 
 /// If thats false - ends the program with message
-Bool assert: msg::String = [
+Bool assert(msg): String = [
   x = Compiler getName: 0
-  this == false => 
+  this == false =>
     Error throwWithMessage: x + "\n" + msg, orPANIC
 ]
 
-Int clampFrom: min::Int to: max::Int = 
+Int clampFrom(min): Int to(max): Int =
   | true
   | (this < min) => min
   | (this > max) => max

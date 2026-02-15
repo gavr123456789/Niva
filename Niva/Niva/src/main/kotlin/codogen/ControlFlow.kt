@@ -45,7 +45,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     append("when (")
     append(switch.generateExpression())
     append(") {\n")
-    ifBranches.forEach { it ->
+    ifBranches.forEach {
         append("    ")
 
         if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
@@ -104,6 +104,28 @@ inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Uni
 private fun isReceiverATypeItself(x: Receiver): Boolean =
     x is IdentifierExpr && x.isType
 
+private fun StringBuilder.appendGenericIfNeeded(
+    shouldAddGeneric: Boolean,
+    wasTypesInsideCollection: Boolean,
+    initElements: List<Receiver>,
+    type: Type?
+) {
+    if (!shouldAddGeneric) return
+
+    val typeArg = if (wasTypesInsideCollection && initElements.isNotEmpty()) {
+        initElements.first().type!!
+    } else if (type is Type.UserLike) {
+        type.typeArgumentList.firstOrNull()
+    } else null
+
+    // Only add generic if it's not an unresolved generic type like T
+    if (typeArg != null && typeArg !is Type.UnknownGenericType) {
+        append("<")
+        append(typeArg.toKotlinString(false))
+        append(">")
+    }
+}
+
 fun ListCollection.generateList() = buildString {
     val filteredInitElements = initElements.filter { !isReceiverATypeItself(it) }
     // x = {Int}
@@ -114,11 +136,13 @@ fun ListCollection.generateList() = buildString {
     else
         append("mutableListOf")
 
-    if (wasTypesInsideCollection && initElements.isNotEmpty()){
-        append("<")
-        append(initElements.first().type!!.toKotlinString(false))
-        append(">")
-    }
+    // add generic parameter if:
+    // types were inside collection like Int
+    // OR collection is empty but has type like List::Int val: {}
+    val shouldAddGeneric = wasTypesInsideCollection && initElements.isNotEmpty() ||
+                          filteredInitElements.isEmpty() //&& type is Type.UserLike
+
+    appendGenericIfNeeded(shouldAddGeneric, wasTypesInsideCollection, initElements, type)
 
     append("(")
 
@@ -136,19 +160,37 @@ fun MapCollection.generateMap() = buildString {
     // x = {Int}
     val wasTypesInsideCollection = filteredInitElements.count() < initElements.count()
 
-
-
     if (!isMutable)
         append("mapOf")
     else
         append("mutableMapOf")
 
-    if (wasTypesInsideCollection && initElements.isNotEmpty()){
-        append("<")
-        append(initElements.first().first.type!!.toKotlinString(false))
-        append(", ")
-        append(initElements.first().second.type!!.toKotlinString(false))
-        append(">")
+    val shouldAddGeneric = wasTypesInsideCollection && initElements.isNotEmpty() ||
+                          filteredInitElements.isEmpty() && type is Type.UserLike
+
+    if (shouldAddGeneric) {
+        val (keyType, valueType) = if (wasTypesInsideCollection && initElements.isNotEmpty()) {
+            initElements.first().first.type!! to initElements.first().second.type!!
+        } else if (type is Type.UserLike) {
+            val typeArgs = (type as Type.UserLike).typeArgumentList
+            if (typeArgs.size >= 2) {
+                typeArgs[0] to typeArgs[1]
+            } else {
+                null to null
+            }
+        } else {
+            null to null
+        }
+
+        // add generics onlyif they are not unresolved generic types like T
+        if (keyType != null && valueType != null &&
+            keyType !is Type.UnknownGenericType && valueType !is Type.UnknownGenericType) {
+            append("<")
+            append(keyType.toKotlinString(false))
+            append(", ")
+            append(valueType.toKotlinString(false))
+            append(">")
+        }
     }
 
     append("(")
@@ -171,11 +213,10 @@ fun SetCollection.generateSet() = buildString {
     else
         append("mutableSetOf")
 
-    if (wasTypesInsideCollection && initElements.isNotEmpty()){
-        append("<")
-        append(initElements.first().type!!.toKotlinString(false))
-        append(">")
-    }
+    val shouldAddGeneric = wasTypesInsideCollection && initElements.isNotEmpty() ||
+                          filteredInitElements.isEmpty() && type is Type.UserLike
+
+    appendGenericIfNeeded(shouldAddGeneric, wasTypesInsideCollection, initElements, type)
 
     append("(")
 

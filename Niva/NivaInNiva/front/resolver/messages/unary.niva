@@ -1,5 +1,5 @@
 
-UnaryMsg resolveUnaryFromDb2:  db::TyperDB withContext: c::Context -> UnaryMsgT = [
+UnaryMsg resolveUnaryFromDb2(db): TyperDB withContext(c): Context -> UnaryMsgT = [
   kw = KeywordMsg
     args: {}
     receiver: receiver

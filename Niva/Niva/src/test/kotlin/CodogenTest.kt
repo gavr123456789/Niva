@@ -2,6 +2,8 @@
 
 import frontend.resolver.Resolver
 import frontend.resolver.resolve
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import main.codogen.codegenKt
 import java.io.File
 
@@ -27,7 +29,33 @@ fun generateKotlinWithoutResolve(source: String): String {
     return codogenerator
 }
 
+fun generateMainKotlin(source: String): String {
+    val ast = getAstTest(source)
+    val resolver = Resolver(
+        projectName = "common", statements = ast.toMutableList(), currentResolvingFileName = File("")
+    )
+    resolver.resolvingMainFile = true
+    resolver.resolve(resolver.statements, mutableMapOf())
+    return codegenKt(resolver.topLevelStatements)
+}
+
 class CodogenTest {
+    @Test
+    fun pipedBinaryDoesNotEmitExtraReceiver() {
+        val source = """
+            q = 1
+            q + q, echo
+        """.trimIndent()
+        val ktCode = generateMainKotlin(source)
+        val expected = "\n" + """
+            //@ Niva.iml:::1
+            val q = 1
+
+            //@ Niva.iml:::2
+            (q + q).echo()
+        """.trimIndent() + "\n"
+        assertEquals(expected, ktCode)
+    }
 //
 //    @Test
 //    fun stringLiteral() {
@@ -485,5 +513,3 @@ class CodogenTest {
 //    }
 
 }
-
-

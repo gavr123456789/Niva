@@ -2,7 +2,7 @@ type Pair
     x: T
     y: G
 
-Pair(List::T, List::T) forEach: block::[T, T -> Unit] = [
+Pair(List::T, List::T) forEach(block): [T, T -> Unit] = [
     iterate = [x::List::T, y::List::T ->
         x forEachIndexed: [ i, first ->
             second = y at: i

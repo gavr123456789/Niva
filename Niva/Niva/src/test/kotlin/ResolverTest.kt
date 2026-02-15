@@ -399,7 +399,7 @@ class ResolverTest {
     fun codeblockArgument() {
 
         val source = """
-            Int to: x::Int doo::[Int -> Int] = [
+            Int to(x): Int doo: [Int -> Int] = [
               1 echo
             ]
             1 to: 2 doo: [5 + 5]
@@ -481,7 +481,7 @@ class ResolverTest {
     fun keyWordDeclaration() {
 
         val source = """
-            Int from::Int to: x::Int = [
+            Int from: Int to(x): Int = [
               from echo
               x echo
             ]
@@ -495,7 +495,7 @@ class ResolverTest {
     fun keyWordNamedOnlyDeclaration() {
 
         val source = """
-            Int from: y::Int to: x::Int = [
+            Int from(y): Int to(x): Int = [
               y echo
               x echo
             ]
@@ -1140,7 +1140,7 @@ class ResolverTest {
           on unary = 1 echo
           on + binary::Int = binary echo
           on key::Int word::String = key echo
-          on withLocalName: x::Int = x echo
+          on withLocalName(x): Int = x echo
         ]
         
         p = Person new
@@ -2617,7 +2617,7 @@ class ResolverTest {
         val source = """
             type ArgParser
             constructor ArgParser [
-              on parse: args::MutableList::String = [
+              on parse(args): MutableList::String = [
                 1 echo
               ]
             ]
@@ -2630,7 +2630,7 @@ class ResolverTest {
         val source = """
             type ArgParser
             constructor ArgParser [
-              on parse: args::MutableList::String = [
+              on parse(args): MutableList::String = [
                 1 echo
               ]
             ]
