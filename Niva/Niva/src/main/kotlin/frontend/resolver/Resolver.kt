@@ -351,26 +351,8 @@ private fun Resolver.resolveStatement(
                     statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
-                val valueOfVarDecl = statement.value
-
-
-                if (valueOfVarDecl is CollectionAst) {
-                    valueOfVarDecl.isMutableCollection = true
-                } else if (valueOfVarDecl is MapCollection) {
-                    valueOfVarDecl.isMutable = true
-                }
-
-                val currentType = valueOfVarDecl.type!!
-                val finalType = if (currentType is Type.UserLike) {
-                    val mutableType = currentType.copy()
-                    mutableType.emitName = replaceCollectionWithMutable(currentType.emitName)
-                    mutableType.isMutable = true
-                    mutableType
-                } else {
-                    currentType
-                }
-
-                currentScope[statement.name] = finalType.copyAnyType().also { it.isVarMutable = true }
+                val currentType = statement.value.type!!
+                currentScope[statement.name] = currentType.copyAnyType().also { it.isVarMutable = true }
                 statement.isDeclaration = true
             }
             addToTopLevelStatements(statement)

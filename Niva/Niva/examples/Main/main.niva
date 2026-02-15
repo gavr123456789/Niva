@@ -1,13 +1,4 @@
-// Test mutable variable with mutable type using <-
-list <- {1 2 3}
-list add: 4       // works because type is mutable
-list echo
-
-list <- {10 20}   // works because variable is mutable
-list add: 30      // works because type is still mutable
-list echo
-
-// Test with map
-map <- #{1 "one" 2 "two"}
-map at: 3 put: "three"
-map echo
+empty = List::Int val: {}, toMut
+empty add: 1
+empty add: 2
+empty echo
