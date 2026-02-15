@@ -1,6 +1,6 @@
 
 /// every [] have a context
-type Context 
+type Context
   parent: Context?
   vars: mut Map(String, NivaType)
   currentPkg: NivaPkg
@@ -9,8 +9,8 @@ type Context
 
 constructor Context [
   /// no parents no vars(yet)
-  on rootWithPkg: currentPkg::NivaPkg = Context parent: null vars: #{}! :currentPkg
-  on fromParent::Context = 
+  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! :currentPkg
+  on fromParent::Context =
     Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg
 ]
 
@@ -20,19 +20,19 @@ extend Context [
   // TODO or add new TypeFlags type and store it inside typedExpr, to be more flexible(not always we have typedExpr, for example for kw msg params)
 
 
-  // TODO need to store 
-  on defineVar: name::String withType::NivaType = [
+  // TODO need to store
+  on defineVar(name): String withType: NivaType = [
     varType = vars at: name
     | varType
     | null => vars at: name put: withType
-    |=> [ TO DO: "variable $name with type $varType was already declared, declare it with mut and use <- instead of = for mutation" ]    
+    |=> [ TO DO: "variable $name with type $varType was already declared, declare it with mut and use <- instead of = for mutation" ]
   ]
-  
+
   /// if not found, try to search in the parent
-  on lookupForVar: name::String -> NivaType? = [
+  on lookupForVar(name): String -> NivaType? = [
     result = vars at: name
     localP = parent
-   ^| result 
+   ^| result
     | null => [
         | localP
         | null => null
@@ -47,7 +47,7 @@ extend Context [
     ]
 
     result::{String}! = {(compute c: this)}!
-    
+
     mut p = parent
     [p != null] whileTrue: [
       nonNullP = p unpackOrPANIC
@@ -57,7 +57,7 @@ extend Context [
       p <- nonNullP parent
     ]
     mut level = -1
-    ^result reversed joinWith: "\n" transform: [      
+    ^result reversed joinWith: "\n" transform: [
       level <- level inc
       levelStr = "  " repeat: level
       levelStr + it

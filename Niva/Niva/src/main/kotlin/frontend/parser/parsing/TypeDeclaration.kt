@@ -200,8 +200,8 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
     val checker: () -> KindOfTypeDecl = {
         // 0 qq: mut Q -> Field
         // 1 qq: Q -> Field
-        // 4 qq::    -> Kw
-        // 5 qq: q:: -> Kw
+        // 4 qq: Type -> Kw
+        // 5 qq(local): Type -> Kw
         // 2 aa -> = -> Unary
         // 3 + -> Binary
         when {
@@ -227,12 +227,8 @@ fun Parser.typeFieldsAndMessageDecl(typeName: Token): TypeFieldsAndMessageDecl {
 
             check(TokenType.On) -> {
                 if (check(TokenType.Identifier, 1)) {
-                    // 5
-                    if (checkMany(TokenType.Colon, TokenType.Identifier, TokenType.DoubleColon, distance = 2)) {
-                        KindOfTypeDecl.Keyword
-                    }
-                    // 4
-                    else if (check(TokenType.DoubleColon, 2)) {
+                    // 4, 5
+                    if (check(TokenType.Colon, 2) || check(TokenType.DoubleColon, 2) || check(TokenType.OpenParen, 2)) {
                         KindOfTypeDecl.Keyword
                     }
                     // 2

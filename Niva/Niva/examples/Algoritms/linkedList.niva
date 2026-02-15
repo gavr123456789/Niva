@@ -1,5 +1,5 @@
 type Node v: Int next: Node?
-constructor Node v::Int = Node v: v next: null
+constructor Node v: Int = Node v: v next: null
 
 Node str -> String =
     next unpack: [ "$v, " + it str] or: "$v"
@@ -24,14 +24,14 @@ constructor LinkedList empty =
 
 LinkedList isEmpty = size == 0
 LinkedList str = this isEmpty => "Empty!" |=> head unpackOrPANIC str
-mut LinkedList push: v::Int -> LinkedList = [
+mut LinkedList push(v): Int -> LinkedList = [
     head <- Node v: v next: head
     tail == null => tail <- head
     size <- size inc
     ^this
 ]
 
-mut LinkedList add: v::Int -> mut LinkedList =
+mut LinkedList add(v): Int -> mut LinkedList =
   this isEmpty => [
     this push: v
     this
@@ -45,7 +45,7 @@ mut LinkedList add: v::Int -> mut LinkedList =
   ]
 
 
-LinkedList at: i::Int -> Node? = [
+LinkedList at(i): Int -> Node? = [
   mut curr = head
   0..<i forEach: [
     curr unpack: [curr <- it next]
@@ -53,14 +53,14 @@ LinkedList at: i::Int -> Node? = [
   ^curr
 ]
 
-LinkedList forEach::[Int -> Unit] =
+LinkedList forEach: [Int -> Unit] =
   0..<(size - 1) forEach: [
     forEach it: (this at: it, unpackOrPANIC v)
   ]
 
 
-LinkedList map::[Int -> Int] -> LinkedList = [
-   newLinkedList::mut LinkedList = LinkedList empty
+LinkedList map: [Int -> Int] -> LinkedList = [
+   newLinkedList: mut LinkedList = LinkedList empty
    this forEach: [
      newLinkedList add: (map it: it)
    ]
@@ -68,7 +68,7 @@ LinkedList map::[Int -> Int] -> LinkedList = [
 ]
 
 
-list::mut LinkedList = LinkedList empty
+list: mut LinkedList = LinkedList empty
 list push: 1, push: 2, push: 3
 list add: -1, add: -2, add: -3
 

@@ -1,4 +1,4 @@
-NivaType compareWith: nivaType::NivaType -> Bool = [
+NivaType compareWith(nivaType): NivaType -> Bool = [
 
 
 

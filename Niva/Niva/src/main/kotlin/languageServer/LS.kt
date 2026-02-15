@@ -30,6 +30,8 @@ fun Statement.unpackMessage() = if (this is VarDeclaration) {
     } else this
 } else this
 
+fun Token.toPositionKey(): String = "${file.absolutePath}:${line}:${relPos.start}"
+
 
 typealias Line = Int
 typealias Scope = Map<String, Type>
@@ -73,6 +75,14 @@ class LS(val info: ((String) -> Unit)? = null) {
     /// file to line to set of statements of that line
     val megaStore: MegaStore = MegaStore(info)
     var pm: PathManager? = null
+
+    // from the variable usage identifier to its declaration token
+    // keys: "file:line:char" values: VarDeclaration tokens
+    val varUsageToDeclaration: MutableMap<String, Token> = mutableMapOf()
+
+    // from variable name + file to its declaration token
+    // keys: "file:varName" values: VarDeclaration tokens
+    val varNameToDeclarationToken: MutableMap<String, Token> = mutableMapOf()
 
     fun runDevModeWatching(scope: CoroutineScope, info: ((String) -> Unit)?) {
         val pm = pm ?: return
@@ -234,7 +244,7 @@ class LS(val info: ((String) -> Unit)? = null) {
                     LspResult.ScopeSuggestion(scope)
                 }
             } else {
-                return LspResult.NotFoundFile()
+                LspResult.NotFoundFile()
             }
         }
     }
@@ -504,6 +514,8 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
     megaStore.data.clear()
     fileToDecl.clear()
+    varUsageToDeclaration.clear()
+    varNameToDeclarationToken.clear()
 
     clearNonIncrementalStoreFromTypes(nonIncrementalStore)
     //    0) clear AST from types
@@ -595,6 +607,8 @@ fun LS.resolveAllFirstTime(
 ): Resolver {
     GlobalVariables.enableLspMode()
     megaStore.data.clear()
+    varUsageToDeclaration.clear()
+    varNameToDeclarationToken.clear()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))

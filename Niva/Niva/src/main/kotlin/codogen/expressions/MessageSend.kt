@@ -530,6 +530,14 @@ fun generateSingleUnary(
     invisibleArgs: List<String>? = null,
 ) = buildString {
 
+    // toMut is a ct only message, skip code generation
+    if (it.selectorName == "toMut") {
+        if (i == 0) {
+            append(receiver.generateExpression())
+        }
+        return@buildString
+    }
+
     if (i == 0) {
         val receiverCode = receiver.generateExpression()
         if (receiver.token.lexeme == "Compiler") {

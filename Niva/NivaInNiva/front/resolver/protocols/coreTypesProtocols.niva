@@ -1,4 +1,4 @@
-constructor NivaProtocol collectionFromDefaultTypes: dtc::DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
+constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
   {int str bool char unit} = dtc
 
 
@@ -23,7 +23,7 @@ constructor NivaProtocol collectionFromDefaultTypes: dtc::DefaultTypesContainer 
 ]
 
 
-constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+constructor NivaProtocol intArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
   {int str bool unit} = dtc
 
   intProtocol = NivaProtocol name: "arithmetic"
@@ -52,7 +52,7 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes: dtc::DefaultTypesContai
   // ^intProtocol
 ]
 
-constructor NivaProtocol stringFromDefaultTypes: dtc::DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {int str bool char unit} = dtc
 
   strProto = NivaProtocol name: "common"
@@ -77,7 +77,7 @@ constructor NivaProtocol stringFromDefaultTypes: dtc::DefaultTypesContainer  -> 
 ]
 
 
-constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit} = dtc
 
   boolProto = NivaProtocol name: "common"
@@ -100,7 +100,7 @@ constructor NivaProtocol boolFromDefaultTypes: dtc::DefaultTypesContainer  -> mu
   ^boolProto methods
 ]
 
-constructor NivaProtocol anyFromDefaultTypes: dtc::DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit any} = dtc
 
   anyProto = NivaProtocol name: "common"
@@ -117,18 +117,18 @@ constructor NivaProtocol anyFromDefaultTypes: dtc::DefaultTypesContainer  -> mut
 ]
 
 // helpers
-constructor NivaMethod unary: name::String receiverType::NivaType returnT::NivaType =
+constructor NivaMethod unary(name): String receiverType: NivaType returnT: NivaType =
   NivaMethod name: name :receiverType args: {} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
-constructor NivaMethod binary: name::String receiverType::NivaType argT::NivaType returnT::NivaType  =
+constructor NivaMethod binary(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
   NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
-constructor NivaMethod singleArgKw: name::String receiverType::NivaType argT::NivaType returnT::NivaType  =
+constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
   NivaMethod name: name + ":" :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 
 
-constructor NivaMethod manyArgKw::{TypeTField} receiverType::NivaType returnT::NivaType  =
+constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: NivaType  =
   NivaMethod
     name: (manyArgKw joinWith: ":" transform: [it name]) + ":"
     :receiverType

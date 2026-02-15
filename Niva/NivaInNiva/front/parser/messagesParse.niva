@@ -1,14 +1,14 @@
 extend mut Parser [
 
   /// inc inc inc
-  on parseManyIdentSeparated: sep::TokenType? -> mut List::Identifier = [
-    result::mut List::Identifier = {}!
-    
+  on parseManyIdentSeparated(sep): TokenType? -> mut List(Identifier) = [
+    result::mut List(Identifier) = {}!
+
     mut c = true
     [c] whileTrue: [
       tok = .peek
 
-      | tok kind 
+      | tok kind
       | TokenType.Identifier => [
         // stop if new unary on new line
         result isNotEmpty && (tok line > result last token line), ifTrue: [
@@ -38,7 +38,7 @@ extend mut Parser [
         // tok lexeme echo
         // this is double check for binary, we already did it on the call side
         // ... but we still need it for "recursion" to get the next +
-        | tok kind 
+        | tok kind
         | TokenType.BinarySymbol => [
           binarySymbol = .step
           // binarySymbol kind echo
@@ -58,17 +58,17 @@ extend mut Parser [
             args = unaryList map: [
               NameAndExpr name: it expr: it
             ]
-            mut tempUnary = UnaryMsg 
+            mut tempUnary = UnaryMsg
               selector: unaryList first
-              kind: MessageSendKind.Call 
-              receiver: receiver 
+              kind: MessageSendKind.Call
+              receiver: receiver
               token: tok
 
             unaryList drop: 1, forEach: [
-              newUnary = UnaryMsg 
+              newUnary = UnaryMsg
                 selector: it
-                kind: MessageSendKind.Call 
-                receiver: tempUnary 
+                kind: MessageSendKind.Call
+                receiver: tempUnary
                 token: tok
               tempUnary <- newUnary
             ]
@@ -90,4 +90,3 @@ extend mut Parser [
       ^ result toList
     ]
 ]
-

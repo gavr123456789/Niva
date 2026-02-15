@@ -7,7 +7,7 @@ Int fizzbuzz -> String = _
 30 fizzbuzz echo // FizzBuzz
 "----" echo
 
-Int fizzbuzzTo: x::Int = this to: x do: [
+Int fizzbuzzTo(x): Int = this to: x do: [
   it fizzbuzz echo
 ]
 

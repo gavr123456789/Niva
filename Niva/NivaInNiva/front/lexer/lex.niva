@@ -1,7 +1,7 @@
 
 /// abcd
 /// __^
-/// pos = 2, 
+/// pos = 2,
 /// readPos = 3, because it one step ahead
 /// ch = 'c'
 type Lexer
@@ -12,15 +12,15 @@ type Lexer
   line: Int
   posOnLine: Int
 
-constructor Lexer input::String = [
+constructor Lexer input: String = [
   l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0
-  l step 
-  ^l 
-] 
+  l step
+  ^l
+]
 
-constructor Lexer newLex: input::String -> List::Token = [
+constructor Lexer newLex(input): String -> List::Token = [
   ^ Lexer input: input, lex toList
-] 
+]
 
 extend mut Lexer [
   on printState = [
@@ -49,36 +49,36 @@ extend mut Lexer [
 
 
   on step = [
-    readPos >= input count 
-      ifTrue: [ch <- '\u0000'] 
-      ifFalse: [ch <- input at: readPos] 
-      
+    readPos >= input count
+      ifTrue: [ch <- '\u0000']
+      ifFalse: [ch <- input at: readPos]
+
     readPos >= 1000 => Error throwWithMessage: "readPos >= 1000, $readPos", orPANIC
     pos       <- readPos
     readPos   <- readPos inc
     posOnLine <- posOnLine inc // resets to 0 on \n
   ]
 
-  on peekChar = readPos == input count 
+  on peekChar = readPos == input count
     ifTrue:  ['\u0000']
     ifFalse: [input at: (.readPos)]
-  
-  on match: char::Char -> Bool = 
-    .ch == char 
+
+  on match(char): Char -> Bool =
+    .ch == char
       ifTrue: [
         .step
         true
       ] ifFalse: [
         false
       ]
-  
-  on stepMatch: char::Char -> Bool = [
+
+  on stepMatch(char): Char -> Bool = [
     // input count debug
-    .step 
+    .step
     ^.match: char
   ]
 
-  on createToken: kind::TokenType lexeme::String -> Token = [
+  on createToken(kind): TokenType lexeme: String -> Token = [
     // posOnLine - lexeme count, debug
     // posOnLine debug
     // line debug
@@ -87,7 +87,7 @@ extend mut Lexer [
       lexeme: lexeme
       line: line
       start: posOnLine - lexeme count end: posOnLine//lexeme count
-    
+
     // tok debug
     pos <- readPos
     ^ tok
@@ -99,11 +99,11 @@ extend mut Lexer [
 
 
     // |ch
-    // | '/' => .stepMatch: '/', 
+    // | '/' => .stepMatch: '/',
     //   ifTrue:  [
     //     "skipped line $line" echo
     //     .skipCurrentLine
-    //   ] 
+    //   ]
     //   ifFalse: [
     //     ^.createToken: TokenType.BinarySymbol lexeme: "/"
     //     Unit
@@ -113,12 +113,12 @@ extend mut Lexer [
     l = ch toString
 
 
-    tok = | ch 
+    tok = | ch
     | '\u0000' => [
       ^.createToken: TokenType.EndOfFile lexeme: l]
     | '=' => [
       .step
-      | ch 
+      | ch
       | '=' => .createToken: TokenType.BinarySymbol lexeme: "=="
       | '>' => .createToken: TokenType.Then lexeme: "=>"
       |=> .createToken: TokenType.Assign lexeme: "="
@@ -126,9 +126,9 @@ extend mut Lexer [
 
     | '|' => [
       .step
-      | ch 
+      | ch
       | '=' => [
-        .step 
+        .step
         | ch
         | '>' => .createToken: TokenType.Else lexeme: "|=>"
         |=> Error throwWithMessage: "expected |=>"
@@ -142,24 +142,24 @@ extend mut Lexer [
       ^ .createToken: TokenType.String lexeme: result
     ]
     | '\'' => [
-      result = .parseStringLike: '\'' 
+      result = .parseStringLike: '\''
       ^ .createToken: TokenType.Char lexeme: result
     ]
-    // | '/' => .stepMatch: '/', 
+    // | '/' => .stepMatch: '/',
     //   ifTrue:  [
     //     .skipCurrentLine
     //     .createToken: TokenType.Comment lexeme: "//"
-    //   ] 
+    //   ]
     //   ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
 
     | '/' => .createToken: TokenType.BinarySymbol lexeme: l
 
 
-    | '!' => .stepMatch: '=', 
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="] 
+    | '!' => .stepMatch: '=',
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="]
       ifFalse: [.createToken: TokenType.Bang lexeme: "!"]
-    | '&' => .stepMatch: '&', 
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "&&"] 
+    | '&' => .stepMatch: '&',
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "&&"]
       ifFalse: [.createToken: TokenType.Ampersand lexeme: "&"]
 
     // parens
@@ -171,7 +171,7 @@ extend mut Lexer [
     | '}' => .createToken: TokenType.CloseBrace  lexeme: l
     | '#' => [
       .step
-      | ch 
+      | ch
       | '{' => .createToken: TokenType.OpenBraceHash lexeme: "#{"
       | '(' => .createToken: TokenType.OpenParenHash lexeme: "#("
       |=> Error throwWithMessage: "only { or ( can be after #"
@@ -184,32 +184,32 @@ extend mut Lexer [
       lit = "-" + .parseNumber
       .createToken: TokenType.Integer lexeme: lit
     ] ifFalse: [
-      .stepMatch: '>', 
-        ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"] 
+      .stepMatch: '>',
+        ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"]
         ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
     ]
 
-    |'<' => .stepMatch: '=', 
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="] 
+    |'<' => .stepMatch: '=',
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="]
       ifFalse: [
-        .match: '-', 
-          ifTrue:  [.createToken: TokenType.AssignArrow lexeme: "<-"] 
+        .match: '-',
+          ifTrue:  [.createToken: TokenType.AssignArrow lexeme: "<-"]
           ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "<"]
 
-      
+
       ]
 
-    |'>' => .stepMatch: '=', 
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="] 
+    |'>' => .stepMatch: '=',
+      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="]
       ifFalse: [.createToken: TokenType.BinarySymbol lexeme: ">"]
 
-    
+
     |'+'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
     | '.' =>     .createToken: TokenType.Dot lexeme: l
     | '^' => .createToken: TokenType.Return  lexeme: l
-    
+
     |=> [
       // identifier
       ch isLetter || (ch == '_') ifTrue: [
@@ -227,16 +227,16 @@ extend mut Lexer [
 
         // colon after identifier
 
-        ^| ch 
+        ^| ch
         | ':' => [
           .step
-          | ch 
+          | ch
           | ':' => [
             .step
             .createToken: TokenType.IdentifierDoubleColon lexeme: lit
           ]
-          |=> .createToken: TokenType.IdentifierColon lexeme: lit 
-        ] 
+          |=> .createToken: TokenType.IdentifierColon lexeme: lit
+        ]
         | '?' => [
           .step
           .createToken: TokenType.NullableIdentifier lexeme: lit
@@ -250,7 +250,7 @@ extend mut Lexer [
         lit = .parseNumber
         ^ .createToken: TokenType.Integer lexeme: lit
       ]
-      
+
       // fail
       .createToken: TokenType.Invalid lexeme: l
     ]
@@ -277,7 +277,7 @@ extend mut Lexer [
     ]
     .match: '\n', ifTrue: [
       line <- line inc
-      posOnLine <- 0 
+      posOnLine <- 0
     ]
   ]
 ]
@@ -286,7 +286,7 @@ extend mut Lexer [
 enum StrMode = Single | Multi
 
 /// assume that delimiter was already eaten
-mut Lexer parseStringLike: delimiter::Char -> String = [
+mut Lexer parseStringLike(delimiter): Char -> String = [
   mut mode = StrMode.Single
   localPos = pos
 
@@ -296,13 +296,13 @@ mut Lexer parseStringLike: delimiter::Char -> String = [
     .step
   ]
   .match: delimiter // eat the last "
-  
+
   ^ input slice: localPos..<pos
 ]
 
 mut Lexer readIdentifier -> String = [
   localPos = pos
-  
+
   [ch isLetter] whileTrue: [
     .step
   ]
@@ -312,7 +312,7 @@ mut Lexer readIdentifier -> String = [
 ]
 
 mut Lexer parseNumber -> String = [
-  localPos = pos 
+  localPos = pos
   [ch isDigit] whileTrue: [
     .step
   ]
@@ -326,17 +326,17 @@ mut Lexer skipWhiteSpaces = [
 
     ch == '\n' ifTrue: [
       line <- line inc
-      posOnLine <- 0 
+      posOnLine <- 0
     ]
     .step
-    
+
   ]
- 
+
 ]
 
 mut Lexer skipComments = [
   mut c = true
-  
+
   [c] whileTrue: [
     .skipWhiteSpaces
 
@@ -346,7 +346,7 @@ mut Lexer skipComments = [
       .peekChar == '/',
         ifTrue: [
           .skipCurrentLine
-        ] 
+        ]
         ifFalse: [
           c <- false
         ]
@@ -356,4 +356,3 @@ mut Lexer skipComments = [
     ]
   ]
 ]
-

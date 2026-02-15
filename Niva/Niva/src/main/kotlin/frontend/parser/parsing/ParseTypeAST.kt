@@ -59,7 +59,7 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     // #{int: string} - map
     // Person - identifier
     // List::Map::(int, string)
-    // Person from: x::List::Map::(int, string)
+    // Person from(x): List::Map::(int, string)
     // x::int?
     // x::Int!ErrorType
 

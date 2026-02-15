@@ -169,7 +169,9 @@ fun Resolver.resolveVarDeclaration(
         }
 
     }
-    currentScope[statement.name] = copyType ?: typeOfValueInVarDecl
+    currentScope[statement.name] = (copyType ?: typeOfValueInVarDecl).copyAnyType().also {
+        it.isVarMutable = statement.mutable
+    }
 
     // DevMode
 //    devModeSetInlineRepl(valueOfVarDecl, resolvingMessageDeclaration)
@@ -221,4 +223,3 @@ fun Resolver.resolveDestruction(
 
 
 }
-

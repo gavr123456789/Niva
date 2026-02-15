@@ -3,7 +3,7 @@ union Node =
 | Add nodes: mut List::Node
 | Value v: Int
 
-Add walkAdd: init::Int -> Int = [
+Add walkAdd(init): Int -> Int = [
     // no fold variant
     mut acc = init
     nodes forEach: [
@@ -16,7 +16,7 @@ Add walkAdd: init::Int -> Int = [
     ^ acc
 ]
 
-Sub walkSub: init::Int -> Int = [
+Sub walkSub(init): Int -> Int = [
     // no fold variant
     mut acc = init
     nodes forEachIndexed: [ i, it ->
@@ -31,7 +31,7 @@ Sub walkSub: init::Int -> Int = [
     ^ acc
 ]
 
-Node walk: init::Int -> Int = [
+Node walk(init): Int -> Int = [
 
     x = | this
     | Add => this walkAdd: init

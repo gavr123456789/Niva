@@ -27,19 +27,19 @@ Bind package: "org.http4k.core" content: [
     type Request
     Request query::String -> String //TODODODODO String?
     @rename:"query"
-    Request query::String value::String -> String //TODODODODO String?
-    Request queries::String -> List::String
+    Request query: String value: String -> String //TODODODODO String?
+    Request queries: String -> List::String
     Request method -> Method
-    Request uri::Uri -> Method
-    Request body::String -> Request
+    Request uri: Uri -> Method
+    Request body: String -> Request
     Request toMessage -> String
-    Request header: name::String value::String? -> Request
+    Request header(name): String value: String? -> Request
 
     type Response status: Status
-    Response body::String -> Response
+    Response body: String -> Response
 
     type HttpHandler = [Request -> Response]
-    HttpHandler asServer: config::ServerConfig -> Http4kServer
+    HttpHandler asServer(config): ServerConfig -> Http4kServer
 
 ]
 

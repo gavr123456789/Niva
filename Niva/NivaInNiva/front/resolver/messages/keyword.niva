@@ -1,9 +1,9 @@
 
-KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> KeywordMsgT = [
   ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null
 ]
 
-KeywordMsg resolveKeywordFromDb2: db::TyperDB withContext: c::Context nameOverride::String?  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String?  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
   receiverType = receiverTypedExpr typeInfo t
   argTypesAndExprs :: mut List::CheckMethodArg = {}!

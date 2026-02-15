@@ -12,6 +12,7 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
+import main.frontend.typer.replaceCollectionWithMutable
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDestruction
 import main.frontend.typer.resolveVarDeclaration
@@ -304,19 +305,17 @@ private fun Resolver.resolveStatement(
 
         is Assign -> {
             stack.push(statement)
+            val hasLocalBinding = currentScope.containsKey(statement.name)
+            val thiz = previousScope["this"] as? Type.UserLike
+            val fieldOfThis = if (!hasLocalBinding) thiz?.fields?.find { it.name == statement.name } else null
             // change field inside method for non mut type
-            val checkIfThisIsMut = {
-                val thiz = previousScope["this"]
+            if (fieldOfThis != null) {
                 val methodDecl = this.resolvingMessageDeclaration
-                if (methodDecl != null && thiz != null && thiz is Type.UserLike) {
-                    val fieldOfThis = thiz.fields.find { it.name == statement.name }
-                    if (fieldOfThis != null && !methodDecl.forTypeAst.isMutable) {
-                        // check is this is mutable
-                        statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
-                    }
+                if (methodDecl != null && !methodDecl.forTypeAst.isMutable) {
+                    // check is this is mutable
+                    statement.token.compileError("$methodDecl is declared for immutable $thiz, declare it like mut $methodDecl")
                 }
             }
-            checkIfThisIsMut()
 
             val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
             currentLevel++
@@ -324,14 +323,37 @@ private fun Resolver.resolveStatement(
             currentLevel--
             val q = previousAndCurrentScope[statement.name]
             if (q != null) {
-                // this is <-, not =
-                val w = statement.value.type!!
+                if (fieldOfThis == null && !q.isVarMutable) {
+                    statement.token.compileError("Variable ${statement.name} is immutable, can't assign with `<-`")
+                }
+                // this is <- reassignment
+                var w = statement.value.type!!
+                val valueOfVarDecl = statement.value
+
+                // If left side is mutable collection, make right side mutable too
+                if (q.isMutable && q is Type.UserLike) {
+                    if (valueOfVarDecl is CollectionAst) {
+                        valueOfVarDecl.isMutableCollection = true
+                    } else if (valueOfVarDecl is MapCollection) {
+                        valueOfVarDecl.isMutable = true
+                    }
+                    if (w is Type.UserLike) {
+                        val mutableType = w.copy()
+                        mutableType.emitName = replaceCollectionWithMutable(w.emitName)
+                        mutableType.isMutable = true
+                        w = mutableType
+                        statement.value.type = w
+                    }
+                }
+
                 if (!compare2Types(q, w, statement.token, unpackNullForFirst = true)) {
                     compare2Types(q, w, statement.token, unpackNullForFirst = true)
                     statement.token.compileError("Wrong assign types: In $WHITE$statement $YEL$q$RESET != $YEL$w")
                 }
             } else {
-                statement.token.compileError("Can't find ${statement.name} in the scope")
+                val currentType = statement.value.type!!
+                currentScope[statement.name] = currentType.copyAnyType().also { it.isVarMutable = true }
+                statement.isDeclaration = true
             }
             addToTopLevelStatements(statement)
 
@@ -546,7 +568,7 @@ fun findGeneralRoot(type1: Type, type2: Type): Type? {
         findGeneralRoot(parent1, type2)?.let { return it }
         findGeneralRoot(type1, parent2)?.let { return it }
         findGeneralRoot(parent1, parent2)?.let { return it }
-    } else if (parent1 != null && parent2 == null) {
+    } else if (parent1 != null) {
         findGeneralRoot(parent1, type2)?.let { return it }
     } else if (parent2 != null ) { //&& parent1 == null
         findGeneralRoot(type1, parent2)?.let { return it }
@@ -898,11 +920,12 @@ fun Resolver.usePackage(packageName: String) {
 }
 
 enum class CompilationTarget(val targetName: String) {
-    jvm("jvm"), linux("linux"), macos("macos"), windows("windows"), jvmCompose("jvm")
-//    windows,
+    jvm("jvm"),
+    native("native"),
+    js("js"),
+    jvmCompose("jvm")
 }
 
-fun CompilationTarget.isNative() = this == CompilationTarget.windows || this == CompilationTarget.linux || this == CompilationTarget.macos
 fun CompilationTarget.isJvm() = this == CompilationTarget.jvm || this == CompilationTarget.jvmCompose
 
 enum class CompilationMode(val modeName: String) {
@@ -913,11 +936,10 @@ enum class CompilationMode(val modeName: String) {
 fun Resolver.changeTarget(target: String, token: Token) {
     fun targetFromString(target: String, token: Token): CompilationTarget = when (target) {
         "jvm" -> CompilationTarget.jvm
-        "linux" -> CompilationTarget.linux
-        "macos" -> CompilationTarget.macos
+        "native" -> CompilationTarget.native
+        "linux", "macos", "windows" -> CompilationTarget.native
         "jvmCompose" -> CompilationTarget.jvmCompose
-        "windows" -> CompilationTarget.windows
-        "js" -> token.compileError("js target not supported yet")
+        "js" -> CompilationTarget.js
         else -> token.compileError("There is no such target as ${WHITE}$target${RESET}, supported targets are ${WHITE}${CompilationTarget.entries.map { it.name }}${RESET}, default: ${WHITE}jvm")
     }
 
@@ -926,15 +948,17 @@ fun Resolver.changeTarget(target: String, token: Token) {
 }
 
 
-fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String {
-    if (target.isJvm()) return "dist"
-    if (target.isNative()) return "link${this.modeName}ExecutableNative"
-    if (target == CompilationTarget.jvm) return "dist"
-    TODO("wrong native target $target")
+fun CompilationMode.toCompileOnlyTask(target: CompilationTarget): String = when (target) {
+    CompilationTarget.jvm, CompilationTarget.jvmCompose -> "dist"
+    CompilationTarget.native -> "link${this.modeName}ExecutableNative"
+    CompilationTarget.js -> when (this) {
+        CompilationMode.release -> "compileProductionExecutableKotlinJs"
+        CompilationMode.debug -> "compileDevelopmentExecutableKotlinJs"
+    }
 }
 
 fun CompilationMode.toBinaryPath(target: CompilationTarget, pathToProjectRoot: String): String {
-    if (target.isJvm()) TODO("Compiler bug, its JVM, not native target")
+    if (target != CompilationTarget.native) TODO("Compiler bug, its JVM/JS, not native target")
     val compMode = when (this) {
         CompilationMode.release -> "releaseExecutable"
         CompilationMode.debug -> "debugExecutable"
@@ -1108,9 +1132,9 @@ fun <T> PkgToUnresolvedDecl<T>.remove(pkg: String, decl: T) {
     this[pkg]?.remove(decl)
 }
 
-val createTypeListOfSomeType = { name: String, elementType: Type, listTypeProtocolDonor: Type.UserType ->
+fun createTypeListOfSomeType(name: String, elementType: Type, listTypeProtocolDonor: Type.UserType): Type.UserType {
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
-    Type.UserType(
+    return Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
@@ -1122,9 +1146,9 @@ val createTypeListOfSomeType = { name: String, elementType: Type, listTypeProtoc
         it.emitName = listTypeProtocolDonor.emitName
     }
 }
-val createTypeListOfUserLikeType = { name: String, elementType: Type.UserLike, listTypeProtocolDonor: Type.UserType ->
+fun createTypeListOfUserLikeType(name: String, elementType: Type.UserLike, listTypeProtocolDonor: Type.UserType): Type.UserType {
     assert(listTypeProtocolDonor.protocols.isNotEmpty())
-    Type.UserType(
+    return Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
         fields = mutableListOf(),
@@ -1439,6 +1463,10 @@ class Resolver(
                     any = anyType,
                 )
             )
+
+            listOf(intType, stringType, charType, longType, floatType, doubleType, boolType, unitType).forEach {
+                addSelfConstructor(it)
+            }
 
         }
 
@@ -1800,6 +1828,16 @@ class Resolver(
         addCustomTypeToDb(
             mapType, mapProtocols
         )
+
+        listOf(
+            intRangeType,
+            charRangeType,
+            listType,
+            sequenceType,
+            setType,
+            mapType,
+            intArray
+        ).forEach { addSelfConstructor(it) }
 
         // Dynamic
         val dynamicType = Type.UnionRootType(

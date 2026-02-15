@@ -4,8 +4,8 @@ type Person
 extend Person [
   on unary = 1 echo
   on + binary::Int = binary echo
-  on key::Int word::String = key echo
-  on withLocalName: x::Int = x echo
+  on key: Int word: String = key echo
+  on withLocalName(x): Int = x echo
 ]
 
 p = Person new
@@ -18,12 +18,12 @@ p withLocalName: 1
 // many constructors for same type
 constructor Person [
   on unary = 1 echo
-  on key::Int word::String = key echo
-  on withLocalName: x::Int = x echo
+  on key: Int word: String = key echo
+  on withLocalName(x): Int = x echo
 ]
 constructor Person [
   on sas = 1 echo
-  on sus::Int = sus echo
+  on sus: Int = sus echo
 ]
 
 Person sas

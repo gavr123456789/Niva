@@ -331,9 +331,9 @@ fun warning(string: String) {
 
 //Flags for single file run:
 // Deprecated
-//    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/linux/macos/windows(not supported yet)
+//    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/native/js/jvmCompose(not supported yet)
 //    ${CYAN}mode: $GREEN"MODE"$RESET     — debug/release only for native targets, use debug for faster compilation
-//    Example: ${YEL}Project ${CYAN}target: $GREEN"linux" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
+//    Example: ${YEL}Project ${CYAN}target: $GREEN"native" ${CYAN}mode: $GREEN"debug"$RESET (worked before, not now)
 
 const val HELP = """
 Usage:
@@ -375,9 +375,9 @@ In code:
     mark method with @debug to debug every expr
     
 Native KT compilation:
-    ${WHITE}target: ${GREEN}TARGET$RESET — target to jvm/linux/macos/windows
+    ${WHITE}target: ${GREEN}TARGET$RESET — target to jvm/native/js/jvmCompose
     ${WHITE}mode: ${GREEN}MODE$RESET     — debug/release only for native targets, use debug for faster compilation
-    Example: ${YEL}Project ${CYAN}target: $GREEN"linux"$CYAN mode: $GREEN"debug"$RESET
+    Example: ${YEL}Project ${CYAN}target: $GREEN"native"$CYAN mode: $GREEN"debug"$RESET
 
 Project configuration:
     Messages for ${YEL}Project$RESET:

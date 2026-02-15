@@ -25,7 +25,7 @@ extend mut Parser [
   ]
 
   /// type ^name (field1: astType)*
-  on typeDeclaration: tok::Token -> TypeDecl = [
+  on typeDeclaration(tok): Token -> TypeDecl = [
 
     res = TypeDecl
       name: (.step lexeme)
@@ -38,7 +38,7 @@ extend mut Parser [
   /// union name = (| (field1: astType)*)*
   /// union Color = Red | Blue | Green
   /// union Car genericField = Foo field1: Int | Bar field2: Int
-  on unionTypeDeclaration: tok::Token -> UnionDecl = [
+  on unionTypeDeclaration(tok): Token -> UnionDecl = [
     name = .step lexeme
     commonUnionFields = .typeFields
 

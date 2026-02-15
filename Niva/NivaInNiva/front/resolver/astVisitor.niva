@@ -13,13 +13,13 @@ union AstVisitor =
 | MsgDeclVisitor
 | GoBackendVisitor
 
-AstVisitor run: statements::List::Statement = [
+AstVisitor run(statements): List::Statement = [
   statements forEach: [
     this visit: it
   ]
 ]
 
-PrintingVisitor visit: st::Statement = [
+PrintingVisitor visit(st): Statement = [
   st echo
   "--------------" echo
 ]
@@ -28,7 +28,7 @@ PrintingVisitor visit: st::Statement = [
 /// entryPointStatements just all statements from the main.niva
 /// not only expr
 TypeDeclVisitor
-  visitAllTypesThenTypesAndMethods: fileToStatements::Map(String, List::Statement)
+  visitAllTypesThenTypesAndMethods(fileToStatements): Map(String, List::Statement)
   entryPointStatements::List::Statement
   -> List(Tuple(String, MessageDecl)) = [
 
@@ -219,7 +219,7 @@ TypeDeclVisitor
 
 /// if no return type and has body then its Unit
 /// if no return type and isSingleExpr then its unknown
-MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
+MessageDecl getReturnTypeFromDb(db): TyperDB -> NivaType = [
 
   rt = returnType
  ^| rt
@@ -234,7 +234,7 @@ MessageDecl getReturnTypeFromDb: db::TyperDB -> NivaType = [
 /// returns a type with fields filled with real types, ready to add to db
 /// returns null if such type was not found in knownTypeNames or db
 /// and adds that as error to listOfErrors
-TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> TypeT? = [
+TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> TypeT? = [
   name = st name
   typeStub = knownTypes at: name
 
@@ -283,7 +283,7 @@ TypeDeclVisitor fillFields: st::TypeDecl knownTypes::mut Map(String, TypeT) -> T
   ]
 ]
 
-MsgDeclVisitor processBodyes: pkg2Msg::List(Tuple(String, MessageDecl)) db::TyperDB = [
+MsgDeclVisitor processBodyes(pkg2Msg): List(Tuple(String, MessageDecl)) db::TyperDB = [
   pkg2Msg forEach: [tuple ->
     pkgStr = tuple x
     pkg = db packages at: pkgStr, unpackOrPANIC
@@ -311,7 +311,7 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg extraTypes::mut Map(String, NivaType) = [
+MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log
 
   // put extra types to db
@@ -349,7 +349,7 @@ MessageDecl resolveBodyWithDb: db::TyperDB pkg::NivaPkg extraTypes::mut Map(Stri
 
 
 
-AstVisitor visit: st::Statement = [
+AstVisitor visit(st): Statement = [
   | this
   | PrintingVisitor => this visit: st
   | TypeDeclVisitor => [

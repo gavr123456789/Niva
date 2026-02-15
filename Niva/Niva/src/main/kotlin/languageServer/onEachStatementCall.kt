@@ -2,14 +2,21 @@ package main.languageServer
 
 import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Type
+import main.frontend.parser.types.ast.BinaryMsg
+import main.frontend.parser.types.ast.CodeBlock
+import main.frontend.parser.types.ast.CollectionAst
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.ManyConstructorDecl
+import main.frontend.parser.types.ast.MapCollection
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.MessageSend
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
 import java.io.File
@@ -32,13 +39,78 @@ fun LS.onEachStatementCall(
         )
     }
 
+    // recursively register all IdentifierExpr usages within an expression
+    fun registerIdentifierUsages(expr: Expression) {
+        val scope =
+            if (currentScope != null && previousScope != null)
+                currentScope + previousScope
+            else
+                mutableMapOf()
+        when (expr) {
+            is IdentifierExpr -> {
+                if (!expr.isType && scope.containsKey(expr.name)) {
+                    val key = "${expr.token.file.absolutePath}:${expr.name}"
+                    val declarationToken = varNameToDeclarationToken[key]
+                    if (declarationToken != null) {
+                        info?.invoke("---Found usage of ${expr.name} at ${expr.token.toPositionKey()}")
+                        varUsageToDeclaration[expr.token.toPositionKey()] = declarationToken
+                    }
+                }
+            }
+            is Message -> {
+                registerIdentifierUsages(expr.receiver)
+                when (expr) {
+                    is BinaryMsg -> {
+                        registerIdentifierUsages(expr.argument)
+                        expr.unaryMsgsForReceiver.forEach { registerIdentifierUsages(it) }
+                        expr.unaryMsgsForArg.forEach { registerIdentifierUsages(it) }
+                    }
+                    is KeywordMsg -> {
+                        expr.args.forEach { arg ->
+                            registerIdentifierUsages(arg.keywordArg)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+            is MessageSend -> {
+                registerIdentifierUsages(expr.receiver)
+                expr.messages.forEach { registerIdentifierUsages(it) }
+            }
+            is CodeBlock -> {
+                expr.statements.forEach { stmt ->
+                    if (stmt is Expression) {
+                        registerIdentifierUsages(stmt)
+                    }
+                }
+            }
+            is CollectionAst -> {
+                expr.initElements.forEach { registerIdentifierUsages(it) }
+            }
+            is MapCollection -> {
+                expr.initElements.forEach { (key, value) ->
+                    registerIdentifierUsages(key)
+                    registerIdentifierUsages(value)
+                }
+            }
+            else -> {}
+        }
+    }
+
     when (st) {
         is Expression, is VarDeclaration -> {
             addStToMegaStore(st)
 
-            if (st is Message) {
-                st.declaration?.messageData?.msgSends?.add(st)
+            when (st) {
+                is Message -> st.declaration?.messageData?.msgSends?.add(st)
+                is VarDeclaration -> {
+                    val key = "${st.token.file.absolutePath}:${st.name}"
+                    varNameToDeclarationToken[key] = st.token
+                    registerIdentifierUsages(st.value)
+                }
+                is Expression -> registerIdentifierUsages(st)
             }
+
         }
 
         is Declaration -> {

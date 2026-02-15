@@ -1,8 +1,8 @@
 
 mut Parser
-  messageDeclarationOrExpression: tok::Token
-  savedPosition: savePosition::Int
-  isConstructor::Bool -> Statement = [
+  messageDeclarationOrExpression(tok): Token
+  savedPosition(savePosition): Int
+  isConstructor: Bool -> Statement = [
 
   // message declaration or exprassion
   getReturnType = [

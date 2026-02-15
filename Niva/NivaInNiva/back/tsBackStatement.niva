@@ -1,5 +1,5 @@
 
-Statement toTSFromPkg: currentPkg::String db::TyperDB -> String=
+Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
     | this
     | TypeDecl => [
         // class Person {

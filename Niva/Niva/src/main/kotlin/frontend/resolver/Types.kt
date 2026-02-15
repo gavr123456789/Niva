@@ -301,6 +301,7 @@ sealed class Type(
     var parent: Type? = null,
     var beforeGenericResolvedName: String? = null,
     var isMutable: Boolean = false,
+    var isVarMutable: Boolean = false,
     var errors: MutableSet<Union>? = null,
     var isAlias: Boolean = false,
     var isCopy: Boolean = false
@@ -363,6 +364,7 @@ sealed class Type(
             it.errors = errors
             it.parent = parent
             it.isMutable = isMutable
+            it.isVarMutable = isVarMutable
             it.isAlias = isAlias
         }
 
@@ -705,6 +707,7 @@ sealed class Type(
                 it.errors = this.errors?.toMutableSet()
                 it.emitName = this.emitName
                 it.isMutable = isMutable
+                it.isVarMutable = isVarMutable
             }
     }
 

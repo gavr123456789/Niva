@@ -34,6 +34,9 @@ fun fillGenericsWithLettersByOrder(type: Type.UserLike) {
 // found that T is List::Int
 fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, result: MutableMap<String, Type>) {
     fun addToResultIfItsGeneric(next1: Type, next2: Type) {
+        if (next1 is Type.UnknownGenericType && next2 is Type.UnknownGenericType && next1.name == next2.name) {
+            return
+        }
         if (next1 is Type.UnknownGenericType) {
             result[next1.name] = next2
         }
@@ -70,12 +73,16 @@ fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, re
     }
     if (type1Count == 0) {
         if (type is Type.UnknownGenericType) {
-            result[type.name] = typeFromDb
+            if (typeFromDb !is Type.UnknownGenericType || typeFromDb.name != type.name) {
+                result[type.name] = typeFromDb
+            }
         }
     }
     if (type2Count == 0) {
         if (typeFromDb is Type.UnknownGenericType) {
-            result[typeFromDb.name] = type
+            if (type !is Type.UnknownGenericType || type.name != typeFromDb.name) {
+                result[typeFromDb.name] = type
+            }
         }
     }
 }

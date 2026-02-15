@@ -801,7 +801,7 @@ class CodogenJSTest {
     fun jsDocAndSimpleNames() {
         val source = """
             type MyBool x: Int
-            MyBool ifTrue: block::[-> Unit] = 1 echo
+            MyBool ifTrue(block): [-> Unit] = 1 echo
             m = MyBool x: 1
             m ifTrue: [ 2 echo ]
         """.trimIndent()
@@ -864,7 +864,7 @@ class CodogenJSTest {
 
             extend Box [
               @emitJs: "throwWithMessage($1)"
-              on throwWithMessage: msg::String -> Unit = []
+              on throwWithMessage(msg): String -> Unit = []
             ]
             
             @emitJs: "sas($1)"
@@ -890,7 +890,7 @@ class CodogenJSTest {
 
             extend Box [
               @renameJs: "customName"
-              on doSomething: msg::String -> Unit = []
+              on doSomething(msg): String -> Unit = []
             ]
 
             b = Box x: 1

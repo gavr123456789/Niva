@@ -1,6 +1,6 @@
 
 // rework - instead of replacing - make the receiver typed
-BinaryMsg replaceArgsWithTypedfromDb2: db::TyperDB withContext: c::Context -> BinaryMsgT = [
+BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> BinaryMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
 
   typeOfReceiver = receiverTypedExpr typeInfo t

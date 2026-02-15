@@ -9,12 +9,19 @@ import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.compileError
+import main.frontend.parser.types.ast.CollectionAst
+import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.KeywordLikeType
+import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.MapCollection
+import main.frontend.parser.types.ast.MessageSendKeyword
 import main.frontend.parser.types.ast.Receiver
 import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnaryMsgKind
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
+import main.frontend.typer.replaceCollectionWithMutable
 import kotlin.Pair
 
 fun Resolver.resolveUnaryMsg(
@@ -30,6 +37,114 @@ fun Resolver.resolveUnaryMsg(
         currentLevel--
         receiver.type
             ?: statement.token.compileError("Can't resolve type of $CYAN${statement.selectorName}${RESET} unary msg: $YEL${receiver.str}")
+    }
+
+    if (statement.selectorName == "toMut") {
+        val actualReceiver = if (receiver is ExpressionInBrackets) receiver.expr else receiver
+
+        // TODO maybe custom constructors should be forbidden
+        val isConstructorCall = when (actualReceiver) {
+            is KeywordMsg -> {
+                actualReceiver.kind == KeywordLikeType.Constructor || actualReceiver.kind == KeywordLikeType.CustomConstructor
+            }
+            is MessageSendKeyword -> {
+                // check if the first message in the chain is a constructor
+                val firstMsg = actualReceiver.messages.firstOrNull()
+                if (firstMsg is KeywordMsg) {
+                    firstMsg.kind == KeywordLikeType.Constructor || firstMsg.kind == KeywordLikeType.CustomConstructor
+                } else {
+                    false
+                }
+            }
+            else -> false
+        }
+
+        if (!isConstructorCall) {
+            statement.token.compileError("toMut can only be used on constructor calls, not on ${actualReceiver.str}")
+        }
+
+        fun markCollectionsAsMutable(expr: Receiver) {
+            when (expr) {
+                is CollectionAst -> expr.isMutableCollection = true
+                is MapCollection -> expr.isMutable = true
+                is ExpressionInBrackets -> markCollectionsAsMutable(expr.expr as Receiver)
+                is MessageSendKeyword -> {
+                    markCollectionsAsMutable(expr.receiver)
+                    expr.messages.forEach { msg ->
+                        when (msg) {
+                            is KeywordMsg -> msg.args.forEach { arg ->
+                                if (arg.keywordArg is Receiver) {
+                                    markCollectionsAsMutable(arg.keywordArg)
+                                }
+                            }
+                            is UnaryMsg -> markCollectionsAsMutable(msg.receiver)
+                            else -> {}
+                        }
+                    }
+                }
+                is KeywordMsg -> {
+                    markCollectionsAsMutable(expr.receiver)
+                    expr.args.forEach { arg ->
+                        if (arg.keywordArg is Receiver) {
+                            markCollectionsAsMutable(arg.keywordArg)
+                        }
+                    }
+                }
+                else -> {}
+            }
+        }
+
+        markCollectionsAsMutable(receiver)
+
+        val receiverType = receiver.type!!
+        if (receiverType is Type.UserLike) {
+            val mutableType = receiverType.copy()
+            mutableType.emitName = replaceCollectionWithMutable(receiverType.emitName)
+            mutableType.isMutable = true
+
+            receiver.type = mutableType
+
+            fun updateCollectionTypes(expr: Receiver, newType: Type) {
+                when (expr) {
+                    is CollectionAst -> expr.type = newType
+                    is MapCollection -> expr.type = newType
+
+                    is ExpressionInBrackets ->
+                        if (expr.expr is Receiver) {
+                            updateCollectionTypes(expr.expr, newType)
+                        }
+
+                    is MessageSendKeyword -> {
+                        expr.messages.forEach { msg ->
+                            when (msg) {
+                                is KeywordMsg -> msg.args.forEach { arg ->
+                                    if (arg.keywordArg is Receiver) {
+                                        updateCollectionTypes(arg.keywordArg, newType)
+                                    }
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+                    is KeywordMsg -> {
+                        expr.args.forEach { arg ->
+                            if (arg.keywordArg is Receiver) {
+                                updateCollectionTypes(arg.keywordArg, newType)
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+            }
+
+            updateCollectionTypes(receiver, mutableType)
+
+            statement.type = mutableType
+            statement.kind = UnaryMsgKind.Unary
+            return Pair(mutableType, null)
+        } else {
+            statement.token.compileError("toMut can only be used on user types, not on $receiverType")
+        }
     }
 
     fun checkForStatic(receiver: Receiver): Boolean =

@@ -1,17 +1,4 @@
-union NivaType name: String =
-| NothingT
-| NullT
-| ^Complex
-| NullableT v: NivaType
-| Unknown
-
-union Complex name: String =
-| TypeT
-| UnionT
-
-NivaType sas = [1 echo]
-
-
-nullT = NullT name: "Ast"
-
-nullT sas
+empty = List::Int val: {}, toMut
+empty add: 1
+empty add: 2
+empty echo

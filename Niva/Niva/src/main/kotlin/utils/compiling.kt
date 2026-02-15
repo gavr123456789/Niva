@@ -144,9 +144,8 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
 fun targetToRunCommand(compilationTarget: CompilationTarget) = when (compilationTarget) {
     CompilationTarget.jvm -> "run -DmainClass=mainNiva.MainKt --quiet" // in amper it was jvmRun
     CompilationTarget.jvmCompose -> "jvmRun -DmainClass=mainNiva.MainKt --quiet"
-    CompilationTarget.linux -> "runDebugExecutableNative"
-    CompilationTarget.macos -> "runDebugExecutableNative"
-    CompilationTarget.windows -> "runDebugExecutableNative"
+    CompilationTarget.native -> "runDebugExecutableNative"
+    CompilationTarget.js -> "jsNodeDevelopmentRun"
 }
 
 class CompilerRunner(
@@ -176,8 +175,7 @@ class CompilerRunner(
             // not run, but build or dist
             when (compilationTarget) {
                 CompilationTarget.jvm, CompilationTarget.jvmCompose -> if (buildFatJar) "fatJar" else "distZip"
-                CompilationTarget.linux, CompilationTarget.macos, CompilationTarget.windows ->
-                    compilationMode.toCompileOnlyTask(compilationTarget)
+                CompilationTarget.native, CompilationTarget.js -> compilationMode.toCompileOnlyTask(compilationTarget)
             }) + " --build-cache --parallel " + if (watch) " -t" else ""
 
 
@@ -321,11 +319,29 @@ class CompilerRunner(
                 }
             }
 
-            CompilationTarget.linux, CompilationTarget.macos, CompilationTarget.windows -> {
+            CompilationTarget.native -> {
                 val execName = File("./$fileName")
                 val pathToNativeExe = compilationMode.toBinaryPath(compilationTarget, pathToProjectRoot)
                 File(pathToNativeExe).copyTo(execName, true)
                 execName.setExecutable(true)
+            }
+            CompilationTarget.js -> {
+                val modeDir =
+                    if (compilationMode == CompilationMode.release) "productionExecutable" else "developmentExecutable"
+                val candidates = listOf(
+                    pathToProjectRoot / "build" / "bin" / "js" / modeDir / "infroProject.js",
+                    pathToProjectRoot / "build" / "bin" / "js" / modeDir / "infroProject.mjs",
+                    pathToProjectRoot / "build" / "js" / "packages" / "infroProject" / "kotlin" / "infroProject.js",
+                    pathToProjectRoot / "build" / "js" / "packages" / "infroProject" / "kotlin" / "infroProject.mjs"
+                )
+                val sourcePath = candidates.firstOrNull { File(it).exists() }
+                    ?: throw Exception("JS output not found. Searched: ${candidates.joinToString()}")
+                val sourceFile = File(sourcePath)
+                val outputName = if (fileName.endsWith(".js") || fileName.endsWith(".mjs"))
+                    fileName
+                else
+                    "$fileName.${sourceFile.extension.ifEmpty { "js" }}"
+                sourceFile.copyTo(File("./$outputName"), true)
             }
         }
     }

@@ -87,14 +87,13 @@ class Assign(
     token: Token,
     val name: String,
     val value: Expression,
-    pragmas: MutableList<Pragma> = mutableListOf()
+    pragmas: MutableList<Pragma> = mutableListOf(),
+    var isDeclaration: Boolean = false
 ) : Statement(token, pragmas) {
     override fun toString(): String {
         return "$name <- $value"
     }
 }
-
-
 
 
 

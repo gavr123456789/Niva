@@ -17,7 +17,9 @@ fun Resolver.resolveBinaryMsg(
     val receiver = statement.receiver
 
     if (receiver.type == null) {
-        resolveSingle((receiver), previousAndCurrentScope, statement)
+        currentLevel++
+        resolveSingle(receiver, previousAndCurrentScope, statement)
+        currentLevel--
     }
 
     val receiverType = receiver.type

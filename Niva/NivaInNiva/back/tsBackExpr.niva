@@ -3,7 +3,7 @@ type TypeScript
 
 constructor TypeScript  [
 
-    on fullFromResolver: rh::ResolverHelper -> Map(String, String) = [
+    on fullFromResolver(rh): ResolverHelper -> Map(String, String) = [
         db = rh db
         packages = db packages
         //"\n" + db structureInfo, debug
@@ -56,7 +56,7 @@ constructor TypeScript  [
 // currentPkg is basically a file name from which this expr is
 // this is needed to remove pkg_qualifiers from calls from the same file, like
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
-TypedExpr2 toTSFromPkg: currentPkg::String -> String =
+TypedExpr2 toTSFromPkg(currentPkg): String -> String =
 | this
 | LiteralExprT => .literalToTS
 | IdentifierT => .identToTS
@@ -71,14 +71,14 @@ TypedExpr2 toTSFromPkg: currentPkg::String -> String =
 | MatchT => TO DO
 
 /// checks if it a field of receiver than generates _this.field = ...
-AssignT generateTSAssignFromPkg: currentPkg::String -> String = [
+AssignT generateTSAssignFromPkg(currentPkg): String -> String = [
   need_this = | kind
               | AssignKind.TO_LOCAL_MUT  => ""
               | AssignKind.TO_THIS_FIELD => "_this."
   ^ need_this + name + " = " + (value toTSFromPkg: currentPkg)
 ]
 
-CollectionLiteralT collectionToTSFromPkg: currentPkg::String -> String = [
+CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
   sb = StringBuilder new
   elementsStr = elements v joinWith: ", " transform: [
     it toTSFromPkg: currentPkg
@@ -104,12 +104,12 @@ CollectionLiteralT collectionToTSFromPkg: currentPkg::String -> String = [
   ^ ""
 ]
 
-ReturnStatementT returnToTSFromPkg: currentPkg::String -> String = [
+ReturnStatementT returnToTSFromPkg(currentPkg): String -> String = [
   exprStr = value unpack: [it toTSFromPkg: currentPkg] or: ""
   ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
 ]
 
-CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
+CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
     argsStr = args joinWith: ", " transform: [
         it name
     ]
@@ -121,7 +121,7 @@ CodeBlockT codeBlockToTSFromPkg: currentPkg::String -> String = [
 ]
 
 
-VarDeclarationT varDeclToTSFromPkg: currentPkg::String =
+VarDeclarationT varDeclToTSFromPkg(currentPkg): String =
     "const " + name  + " = " + (value toTSFromPkg: currentPkg)
 
 
@@ -135,7 +135,7 @@ LiteralExprT literalToTS -> String =
     token lexeme
 
 
-MessageSendT msgSendToTSFromPkg: currentPkg::String -> String = [
+MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
     rec = receiver
     isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
 

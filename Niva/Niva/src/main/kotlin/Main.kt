@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
 //    setOf(1).filter { it == 1 }
 
     //    val args = arrayOf("build","")
-    //    testingLS()
+//        testingLS()
     if (help(args))
         return
     run(args)

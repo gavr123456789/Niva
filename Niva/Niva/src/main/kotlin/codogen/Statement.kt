@@ -32,7 +32,10 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
             }
 
             is Assign ->
-                "${statement.name.ifKtKeywordAddBackTicks()} = ${statement.value.generateExpression()}"
+                if (statement.isDeclaration)
+                    "var ${statement.name.ifKtKeywordAddBackTicks()} = ${statement.value.generateExpression()}"
+                else
+                    "${statement.name.ifKtKeywordAddBackTicks()} = ${statement.value.generateExpression()}"
             is DestructingAssign -> {
                 statement.generateDestruction()
             }
@@ -59,7 +62,6 @@ fun GeneratorKt.generateKtStatement(statement: Statement, indent: Int): String =
         }.addIndentationForEachString(indent)
     )
 }
-
 
 
 
