@@ -24,8 +24,8 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
     // builder
     if (checkMany(TokenType.Identifier, TokenType.OpenBracket))
         return staticBuilder()
-    if (checkMany(TokenType.Identifier, TokenType.OpenParen))
-        return staticBuilderWithArgs()
+//    if (checkMany(TokenType.Identifier, TokenType.OpenParen))
+//        return staticBuilderWithArgs()
 
 
 
@@ -55,14 +55,12 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
             }
 
 
-            else -> null
+            else -> {
+                step(-2)
+                this.parsingError("Primary was expected but received '$WHITE${peek(0).lexeme} ${peek(1).lexeme}$RESET'")
+            }
         }
 
-    }
-
-    if (tryPrimary == null) {
-        step(-2)
-        this.parsingError("Primary was expected but received '$WHITE${peek(0).lexeme} ${peek(1).lexeme}$RESET'")
     }
     return tryPrimary
 }

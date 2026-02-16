@@ -1,4 +1,2 @@
-empty = List::Int val: {}, toMut
-empty add: 1
-empty add: 2
-empty echo
+empty = Map(Int, String) val: #{}, toMut
+emptyList = List(Int) val: {}, toMut

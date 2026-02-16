@@ -33,7 +33,6 @@ fun Resolver.resolveCollection(
     typeName: String,
     previousAndCurrentScope: MutableMap<String, Type>,
 ) {
-
     val nearVarDecl = findNearestVarDeclInStack()
     val nearVarDeclType = nearVarDecl?.valueTypeAst
     if (statement.initElements.isNotEmpty()) {
@@ -83,8 +82,23 @@ fun Resolver.resolveCollection(
         }
 
         statement.type = typeFromAstDecl
-    }
-    else {
+    } else {
+        // check if this collection is inside a collection constructor like List(Int) val: {}
+        val nearConstructor = findNearestCollectionConstructorInStack()
+        if (nearConstructor != null) {
+            // use type arguments from constructor
+            val constructorType = when (val receiver = nearConstructor.receiver) {
+                is IdentifierExpr -> receiver.type as? Type.UserLike
+                    ?: (receiver.typeAST as? TypeAST.UserType)?.toType(typeDB, typeTable, resolver = this) as? Type.UserLike
+                else -> nearConstructor.receiver.type as? Type.UserLike
+            }
+            val genericTypes = constructorType?.typeArgumentList
+            if (!genericTypes.isNullOrEmpty()) {
+                setTypeForCollection(genericTypes.toMutableList(), statement, typeName)
+                return
+            }
+        }
+
         setTypeForCollection(mutableListOf(Type.UnknownGenericType("T")), statement, typeName)
     }
 
@@ -95,6 +109,21 @@ fun Resolver.findNearestVarDeclInStack(): VarDeclaration? =
 
 fun Resolver.findNearestCodeBlockInStack(): CodeBlock? =
     stack.reversed().find { it is CodeBlock } as CodeBlock?
+
+fun Resolver.findNearestCollectionConstructorInStack(): KeywordMsg? {
+    val kwMsg = stack.reversed().find { it is KeywordMsg } as? KeywordMsg ?: return null
+    // check if this is a collection constructor like List(Int) val: {}
+    val receiver = kwMsg.receiver
+    val receiverType = receiver.type as? Type.UserLike
+    val receiverTypeAst = (receiver as? IdentifierExpr)?.typeAST as? TypeAST.UserType
+    val receiverName = receiverType?.name ?: receiverTypeAst?.name ?: return null
+    val lastArg = kwMsg.args.lastOrNull()?.keywordArg ?: return null
+    val isCollectionConstructor = kwMsg.kind == KeywordLikeType.Constructor &&
+        isCollection(receiverName) &&
+        (receiverType?.fields?.isEmpty() ?: true) &&
+        (lastArg is CollectionAst || lastArg is MapCollection)
+    return if (isCollectionConstructor) kwMsg else null
+}
 
 fun Resolver.resolveSet(
     statement: SetCollection,
@@ -146,9 +175,24 @@ fun Resolver.resolveMap2(
         }
         return type
     }
-    val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"
+//    val collectionName = "Map"//if(!statement.isMutable) "Map" else "MutableMap"
     if (statement.initElements.isEmpty()) {
-        return setTypeForCollection(mutableListOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, collectionName)
+        // check if this map is inside a collection constructor like Map(Int, String) val: #{}
+        val nearConstructor = findNearestCollectionConstructorInStack()
+        if (nearConstructor != null) {
+            // use type arguments from constructor
+            val constructorType = when (val receiver = nearConstructor.receiver) {
+                is IdentifierExpr -> receiver.type as? Type.UserLike
+                    ?: (receiver.typeAST as? TypeAST.UserType)?.toType(typeDB, typeTable, resolver = this) as? Type.UserLike
+                else -> nearConstructor.receiver.type as? Type.UserLike
+            }
+            val genericTypes = constructorType?.typeArgumentList
+            if (genericTypes != null && genericTypes.size >= 2) {
+                return setTypeForCollection(genericTypes.toMutableList(), statement, "Map")
+            }
+        }
+
+        return setTypeForCollection(mutableListOf(Type.UnknownGenericType("T"), Type.UnknownGenericType("G")), statement, "Map")
     }
     val (key, value) = statement.initElements[0]
     currentLevel++
@@ -163,7 +207,7 @@ fun Resolver.resolveMap2(
     val valueType = value.type ?: value.token.compileError("Can't resolve type of value: ${WHITE}${value.str}")
 
     val mapTypeFromDb =
-        this.projects["common"]!!.packages["core"]!!.types[collectionName] as Type.UserType
+        this.projects["common"]!!.packages["core"]!!.types["Map"] as Type.UserType
 
     val unifiedValueType = if (statement.initElements.count() > 1) {
         val type1 = statement.initElements[0].second.type!!

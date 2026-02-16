@@ -136,7 +136,14 @@ fun Resolver.resolveMessage(
 
     val (returnType, msgFromDb) = when (statement) {
         is UnaryMsg -> resolveUnaryMsg(statement, previousAndCurrentScope)
-        is KeywordMsg -> resolveKeywordMsg(statement, previousScope, currentScope)
+        is KeywordMsg -> {
+            stack.push(statement)
+            try {
+                resolveKeywordMsg(statement, previousScope, currentScope)
+            } finally {
+                stack.pop()
+            }
+        }
         is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }

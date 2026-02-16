@@ -236,6 +236,9 @@ fun Parser.checkForKeyword(): Boolean {
     val savePoint = current
     var result = false
     skipNewLinesAndComments()
+    if (match(TokenType.OpenParen)) {
+        this.skipUntilOnLineInclusive(TokenType.CloseParen)
+    }
     val identTok = match(TokenType.Identifier)
     if (identTok) {
         val dot = match(TokenType.Dot)
@@ -267,17 +270,13 @@ fun Parser.messageSend(
 ): MessageSend {
 
     // 1 from: 2 // 1 is receiver without unary\binary messages
+    // List(Int) var: {1 2 3}
     val keywordOnReceiverWithoutMessages = if (dontParseKeywords) false else {
-        if (check(TokenType.OpenParen))
-            false
-        else {
             val savepoint = current
             dotSeparatedIdentifiers()
             val result = checkForKeyword()
             current = savepoint
             result
-        }
-
     }
 
     val receiver = when {

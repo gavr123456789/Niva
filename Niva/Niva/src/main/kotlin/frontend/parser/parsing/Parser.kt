@@ -247,7 +247,14 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
     }
 
     val isTyped = match(TokenType.DoubleColon)
-    return if (isTyped) {
+    val hasGenericParen = match(TokenType.OpenParen)
+
+
+    return if (hasGenericParen) {
+        step(-2) // from `Map(^Int`, to `^Map(Int,`
+        val type = parseTypeAST()
+        IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
+    } else if (isTyped) {
         val type = parseTypeAST()
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
     } else {
@@ -327,7 +334,8 @@ fun Parser.isNextSimpleReceiver(): Boolean {
             check(TokenType.EndOfLine, 1) || check(TokenType.EndOfFile, 1) -> return true
             // x = [code]
             check(TokenType.OpenBracket, 1) -> return true
-            check(TokenType.OpenParen, 1) -> return true
+//            check(TokenType.OpenParen, 1) -> return true
+            // x = {} // array
             check(TokenType.OpenBrace, 1) -> return true
         }
     }
@@ -546,6 +554,21 @@ fun Parser.statements(): List<Statement> {
     return this.tree
 }
 
+// Skips tokens on the current line until it matches [target], consuming it as well
+fun Parser.skipUntilOnLineInclusive(target: TokenType): Boolean {
+    while (true) {
+        // dont go outside of the line
+        if (check(TokenType.EndOfFile) || check(TokenType.EndOfLine) || check(TokenType.Comment)) {
+            return false
+        }
+
+        if (match(target)) {
+            return true
+        }
+
+        step(1)
+    }
+}
 
 fun Parser.checkEndOfLineOrFile(i: Int = 0) =
     check(TokenType.EndOfLine, i) || check(TokenType.EndOfFile, i) || check(TokenType.Comment)
