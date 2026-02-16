@@ -1,2 +1,5 @@
-empty = Map(Int, String) val: #{}, toMut
-emptyList = List(Int) val: {}, toMut
+type Sas = [ -> Int]
+Sas kek = 1 echo
+
+x = kek[42]
+

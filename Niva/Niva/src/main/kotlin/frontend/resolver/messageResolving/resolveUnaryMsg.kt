@@ -43,7 +43,8 @@ fun Resolver.resolveUnaryMsg(
         val actualReceiver = if (receiver is ExpressionInBrackets) receiver.expr else receiver
 
         // TODO maybe custom constructors should be forbidden
-        val isConstructorCall = when (actualReceiver) {
+        val isAllowedReceiver = when (actualReceiver) {
+            is CollectionAst, is MapCollection -> true
             is KeywordMsg -> {
                 actualReceiver.kind == KeywordLikeType.Constructor || actualReceiver.kind == KeywordLikeType.CustomConstructor
             }
@@ -59,8 +60,8 @@ fun Resolver.resolveUnaryMsg(
             else -> false
         }
 
-        if (!isConstructorCall) {
-            statement.token.compileError("toMut can only be used on constructor calls, not on ${actualReceiver.str}")
+        if (!isAllowedReceiver) {
+            statement.token.compileError("toMut can only be used on constructor calls or collection literals, not on ${actualReceiver.str}")
         }
 
         fun markCollectionsAsMutable(expr: Receiver) {
