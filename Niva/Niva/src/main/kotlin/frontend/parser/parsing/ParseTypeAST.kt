@@ -58,8 +58,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     // {int} - list of int
     // #{int: string} - map
     // Person - identifier
-    // List::Map::(int, string)
-    // Person from(x): List::Map::(int, string)
+    // List::Map(int, string)
+    // Person from(x): List::Map(int, string)
     // x::int?
     // x::Int!ErrorType
 
@@ -85,8 +85,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
             errors = null
         ).also { it.isMutable = isMutable }
     }
-//     list
-    if (match(TokenType.OpenBrace)) {
+//     list::{}
+    else if (match(TokenType.OpenBrace)) {
         val token = peek(-1)
         // {^Int}
         val typeArg = parseTypeAST()
@@ -104,8 +104,8 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
             errors = null
         ).also { it.isMutable = isMutable }
     }
-    // set
-    if (match(TokenType.OpenParenHash)) {
+    // set::#()
+    else if (match(TokenType.OpenParenHash)) {
         val token = peek(-1)
         // #(^Int)
         val typeArg = parseTypeAST()
@@ -128,9 +128,11 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
     val mutableType = match(TokenType.Mut)
     val tok = peek()
 
+    // ::[]
     if (match(TokenType.OpenBracket)) {
         return parseLambda(tok)
     }
+
 
 
     // check for basic type

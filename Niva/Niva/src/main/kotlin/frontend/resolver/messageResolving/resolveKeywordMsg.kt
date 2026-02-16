@@ -33,9 +33,6 @@ fun Resolver.resolveKeywordMsg(
 ): Pair<Type, MessageMetadata?> {
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
 
-    // resolve just non-generic types of args
-    resolveKwArgs(statement, statement.args, previousAndCurrentScope, filterGenerics = true)
-
     // resolve receiverType first to check for Object
     if (statement.receiver.type == null) {
         currentLevel++
@@ -44,6 +41,9 @@ fun Resolver.resolveKeywordMsg(
     }
     val receiverType = statement.receiver.type
         ?: statement.token.compileError("Can't infer receiver $YEL${statement.receiver.str}${RESET} type")
+
+    // resolve just non-generic types of args
+    resolveKwArgs(statement, statement.args, previousAndCurrentScope, filterGenerics = true)
 
     val selectorName = statement.args.map { it.name }.toCamelCase()
     // resolve kw kind
@@ -104,6 +104,18 @@ fun Resolver.resolveKeywordMsg(
     }
 
     var kind: KeywordLikeType = resolveKindOfKeyword(statement, receiverType)
+
+    // for collection constructors like List(Int) val: {}, we need to resolve type arguments early
+    if (kind == KeywordLikeType.Constructor && receiverType is Type.UserLike && receiverType.fields.isEmpty()) {
+        // resolve type arguments (like Int in List(Int))
+        statement.args.dropLast(1).forEach { arg ->
+            if (arg.keywordArg.type == null) {
+                currentLevel++
+                resolveSingle(arg.keywordArg, previousAndCurrentScope, statement)
+                currentLevel--
+            }
+        }
+    }
 
 
 
@@ -362,30 +374,45 @@ fun Resolver.resolveKeywordMsg(
                 }
 
                 val receiverFields = receiverType.fields //+ listOfAllParentsFields
-                // check that amount of arguments if right
-                if (statement.args.count() != receiverFields.count()) { // && !thisIsCustomConstructor
 
-                    val setOfHaveFields = statement.args.map { it.name }.toSet()
-                    val setOfNeededFields = receiverFields.map { it.name }.toSet()
-                    val extraOrMissed = statement.args.count() > receiverFields.count()
-                    val whatIsMissingOrExtra =
-                        if (extraOrMissed) (setOfHaveFields - setOfNeededFields).joinToString(", ") { it }
-                        else (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
+                // check if this is a collection constructor with generic type parameters like List(Int) val: {}
+                // collections have no fields, so all arguments except the last one (collection literal) are type parameters
+                val isCollectionWithGenericParams = receiverFields.isEmpty() &&
+                    statement.args.size >= 2 &&  // minimum one type param + one value
+                    (statement.args.last().keywordArg is CollectionAst || statement.args.last().keywordArg is MapCollection)
+
+                if (isCollectionWithGenericParams) {
+                    val genericTypes = statement.args.dropLast(1).map { arg ->
+                        arg.keywordArg.type ?: arg.keywordArg.token.compileError("Can't resolve type of generic parameter: ${arg.name}")
+                    }
+                    receiverType.replaceTypeArguments(genericTypes)
+                    receiverType
+                } else {
+                    // check that amount of arguments if right
+                    if (statement.args.count() != receiverFields.count()) { // && !thisIsCustomConstructor
+
+                        val setOfHaveFields = statement.args.map { it.name }.toSet()
+                        val setOfNeededFields = receiverFields.map { it.name }.toSet()
+                        val extraOrMissed = statement.args.count() > receiverFields.count()
+                        val whatIsMissingOrExtra =
+                            if (extraOrMissed) (setOfHaveFields - setOfNeededFields).joinToString(", ") { it }
+                            else (setOfNeededFields - setOfHaveFields).joinToString(", ") { it }
 
 
-                    val errorText =
-                        "$YEL${statement.receiver} $CYAN${statement.args.joinToString(": ") { it.name }}:${RESET}"
-                    val text =
-                        if (extraOrMissed) "For $errorText constructor call, extra fields are listed: $CYAN$whatIsMissingOrExtra"
-                        else "For $errorText constructor call, not all fields are listed, you missed: $CYAN$whatIsMissingOrExtra"
-                    statement.token.compileError(text)
+                        val errorText =
+                            "$YEL${statement.receiver} $CYAN${statement.args.joinToString(": ") { it.name }}:${RESET}"
+                        val text =
+                            if (extraOrMissed) "For $errorText constructor call, extra fields are listed: $CYAN$whatIsMissingOrExtra"
+                            else "For $errorText constructor call, not all fields are listed, you missed: $CYAN$whatIsMissingOrExtra"
+                        statement.token.compileError(text)
+                    }
+
+                    checkThatKwArgsAreTypeFields(receiverFields)
+
+                    // array add: 5
+                    // array is Array::T
+                    resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
                 }
-
-                checkThatKwArgsAreTypeFields(receiverFields)
-
-                // array add: 5
-                // array is Array::T
-                resolveReceiverGenericsFromArgs(receiverType, statement.args, statement.token)
 
             } else receiverType
             statement.type = result

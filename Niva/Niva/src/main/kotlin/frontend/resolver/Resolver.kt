@@ -1024,16 +1024,26 @@ fun Resolver.getTypeForIdentifier(
 
 
     // replace the JSON::T with JSON::Person
-    val typeWithGenericResolved =
-        if (x.typeAST != null && !x.typeAST.name.isGeneric() && typeFromDB is Type.UserLike && typeFromDB.typeArgumentList.count() == 1) {
-            // replace Generic from typeAst with sas
-            val e = getAnyType(x.typeAST.name, currentScope, previousScope, kw, x.token)
-                ?: x.token.compileError("Cant find type ${x.typeAST.name} that is a generic param for $x")
+    val typeWithGenericResolved = when {
+        x.typeAST is TypeAST.UserType &&
+            x.typeAST.typeArgumentList.isNotEmpty() &&
+            x.typeAST.token === x.token -> {
+            x.typeAST.toType(typeDB, typeTable, resolver = this)
+        }
+
+        x.typeAST != null &&
+            !x.typeAST.name.isGeneric() &&
+            typeFromDB is Type.UserLike &&
+            typeFromDB.typeArgumentList.count() == 1 -> {
+            val e = x.typeAST.toType(typeDB, typeTable, resolver = this)
             val copy = typeFromDB.copy()
 //            copy.typeArgumentList = mutableListOf(e)
             copy.replaceTypeArguments(mutableListOf(e))
             copy
-        } else typeFromDB
+        }
+
+        else -> typeFromDB
+    }
 //    x.type = type
     return typeWithGenericResolved
 }

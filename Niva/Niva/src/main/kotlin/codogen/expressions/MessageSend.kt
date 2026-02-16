@@ -6,6 +6,7 @@ import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.CompilerMessages
 import frontend.resolver.Type
+import frontend.resolver.isCollection
 import main.frontend.meta.compileError
 import main.frontend.meta.prettyCodePlace
 import main.frontend.parser.types.ast.*
@@ -421,6 +422,24 @@ fun generateSingleKeyword(
         }
 
         KeywordLikeType.Constructor -> {
+            // This is pretty stupid replacing messages like List(Int) val: {} to listOf<Int>()
+            // it would be much better to just generate real functions-static collections and internal
+            // type constructors, to the Std and call them, they can be inline then its free.
+
+            // ACCCCtualy, this worked with List::Int, why did it stopped with List(Int)?
+            // probably its shoul be just replaced on the very first level of resolvign with usual Literals AST
+            val lastArg = keywordMsg.args.lastOrNull()?.keywordArg
+            val isCollectionConstructor = receiverType is Type.UserLike &&
+                receiverType.fields.isEmpty() &&
+                isCollection(receiverType.name) &&
+                lastArg != null &&
+                (lastArg is CollectionAst || lastArg is MapCollection)
+
+            if (isCollectionConstructor) {
+                append(lastArg.generateExpression(isArgument = true))
+                return@buildString
+            }
+
             if (i == 0) {
                 val recCode = receiverCode()
                 append(recCode)
