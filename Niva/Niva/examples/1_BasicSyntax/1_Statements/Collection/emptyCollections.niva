@@ -1,0 +1,2 @@
+empty = Map(Int, String) val: #{}, toMut
+emptyList = List(Int) val: {}, toMut

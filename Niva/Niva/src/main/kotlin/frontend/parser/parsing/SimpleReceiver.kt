@@ -21,9 +21,32 @@ fun Parser.simpleReceiver(typeAst: TypeAST? = null): Receiver {
         return bracketsExpr
     }
 
-    // builder
-    if (checkMany(TokenType.Identifier, TokenType.OpenBracket))
-        return staticBuilder()
+    // syntax sugar for [...] kek == kek[...]
+    if (checkMany(TokenType.Identifier, TokenType.OpenBracket)) {
+        val identifier = identifierMayBeTyped()
+        if (identifier.typeAST != null) {
+            identifier.token.compileError("syntax error: You can't put type on a unary message send")
+        }
+        if (check(TokenType.Colon)) {
+            identifier.token.compileError("syntax error: This is not unary, but a keyword with path")
+        }
+
+        val receiver = codeBlock()
+        val unaryMsg = UnaryMsg(
+            receiver,
+            identifier.name,
+            identifier.names,
+            null,
+            identifier.token,
+            declaration = null
+        )
+        return MessageSendUnary(
+            receiver,
+            messages = mutableListOf(unaryMsg),
+            type = null,
+            token = unaryMsg.token
+        )
+    }
 //    if (checkMany(TokenType.Identifier, TokenType.OpenParen))
 //        return staticBuilderWithArgs()
 
