@@ -30,9 +30,7 @@ fun Parser.unaryDeclaration(forTypeAst: TypeAST): MessageDeclarationUnary {
     val isInline = match(TokenType.Return)
     val isSuspend = match(">>") // Int sas >>= []
 
-    val pair = methodBody() // (body, is single expression)
-    val messagesOrVarDeclarations = pair.first
-    val isSingleExpression = pair.second
+    val (messagesOrVarDeclarations, isSingleExpression) = methodBody() // (body, is single expression)
     // end of body parsing
 
     if (!isSingleExpression) {
@@ -194,12 +192,12 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 
 // returns true if it's single expression
 fun Parser.methodBody(
-    parseOnlyOneLineIfNoBody: Boolean = false // methodBody also used in control flow, where `=` is not needed
+    doNotExpectEqual: Boolean = false // methodBody also used in control flow, where `=` is not needed
 ): Pair<MutableList<Statement>, Boolean> {
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    val isThereAssignOrThen = match(TokenType.Assign) || parseOnlyOneLineIfNoBody
+    val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual
     if (!isThereAssignOrThen) {
         return Pair(mutableListOf(), false)
     }
@@ -210,7 +208,7 @@ fun Parser.methodBody(
 
         skipNewLinesAndComments()
         while (!match(TokenType.CloseBracket)) {
-            messagesOrVarStatements.add(statementWithEndLine())
+            messagesOrVarStatements.add(statementWithEndLine(false))
         }
     } else {
         isSingleExpression = true
@@ -223,7 +221,7 @@ fun Parser.methodBody(
         if (peek().kind == TokenType.EndOfFile) {
             peek(-1).compileError("body expected")
         }
-        if (parseOnlyOneLineIfNoBody) {
+        if (doNotExpectEqual) {
             messagesOrVarStatements.add(statementWithEndLine(false)) // expression(parseSingleIf = true)
         } else {
             val docComment = parseDocComment()
@@ -346,7 +344,7 @@ fun Parser.checkTypeOfMessageDeclaration2(
     // parse complex receiver like Map(Int, Int)
         if (check(TokenType.OpenParen, 1) && !check(TokenType.Colon, 3))
             parseTypeAST()
-        else identifierMayBeTyped() // simple List::Int
+        else identifierMayBeTyped() // simple List::Int or List(Int)
 
     if (tryUnary(isConstructor)) {
         current = savepoint

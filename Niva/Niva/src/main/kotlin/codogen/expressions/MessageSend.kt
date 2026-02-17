@@ -484,26 +484,31 @@ fun generateSingleKeyword(
         }
 
         KeywordLikeType.ForCodeBlock -> {
-
             // when its arg type like [Int -> Int] Int: 1 then we generate lambda(1)
             // when its real message extension for lambda then lambda.at(1)
-            val receiverType2 = keywordMsg.receiver.type as Type.Lambda
-            val isExtensionForLambda = receiverType2.alias != null
-            // printingClient Request: request // here we dont need to generate .Request()
-            // type Filter = [HttpHandler -> HttpHandler]
-            // we use "Request:" in niva just because we don't have real name for arg, and it still can be alias
-            val firstArgIsSelectorName =
-                receiverType2.args.isNotEmpty() && receiverType2.args[0].name == keywordMsg.selectorName
-            // generate receiver for keyword if this is first msg in a row
-            if (keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse" || (isExtensionForLambda && !firstArgIsSelectorName)) {
-                if (i == 0)
-                    append(receiverCode())
-                append(".", keywordMsg.selectorName)
-            } else {
+
+            // Check if this is a real extension method
+            // msgMetaData != null means there's an actual method declaration for this lambda alias
+            val hasRealExtensionMethod = keywordMsg.msgMetaData != null
+            val isKnownExtension = keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse"
+
+            // Direct lambda call: no extension method AND not a known extension
+            // In Niva, lambdas can be called with ANY argument names, not just the ones in declaration
+            // So if there's no extension method, it's always a direct call
+            val isDirectLambdaCall = !hasRealExtensionMethod && !isKnownExtension
+
+            if (isDirectLambdaCall) {
+                // direct lambda call - generate just receiver() without method name
                 if (i == 0) {
                     val receiverCode2 = receiverCode()
                     append(receiverCode2)
                 }
+                // don't append selector name for direct lambda calls
+            } else {
+                // extension method - generate receiver.methodName
+                if (i == 0)
+                    append(receiverCode())
+                append(".", keywordMsg.selectorName)
             }
         }
     }

@@ -8,9 +8,15 @@ import main.frontend.parser.types.ast.*
 
 private fun Parser.statementsUntilCloseBracket(bracketType: TokenType, parseMsgDecls: Boolean = true): List<Statement> {
     val result = mutableListOf<Statement>()
-    do {
-        result.add(statementWithEndLine(parseMsgDecls))
-    } while (!match(bracketType))
+//    do {
+//        val (a, _) = methodBody()
+//        result.addAll(a)
+//        result.add(statementWithEndLine(parseMsgDecls))
+//    } while (!match(bracketType))
+
+    while (!match(TokenType.CloseBracket)) {
+        result.add(statementWithEndLine(parseMsgDecls = false))
+    }
 
     return result
 }
@@ -44,6 +50,7 @@ fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType):
 private fun Parser.codeBlockArgs(): List<IdentifierExpr> {
     val isThereBeforeStatementPart =
         checkMany(TokenType.Identifier, TokenType.DoubleColon) ||
+        checkMany(TokenType.Identifier, TokenType.Colon) ||
         checkMany(TokenType.Identifier, TokenType.Comma) ||
         checkMany(TokenType.Identifier, TokenType.ReturnArrow)
 
@@ -59,9 +66,9 @@ private fun Parser.codeBlockArgs(): List<IdentifierExpr> {
 private fun Parser.beforeStatementsPart(): List<IdentifierExpr> {
     val result = mutableListOf<IdentifierExpr>()
 
-    // ^a, b, c ->
+    // ^a: Int, b: String, c: Bool ->
     do {
-        val identifier = identifierMayBeTyped()
+        val identifier = identifierMayBeTyped(useSingleColumn = true)
         result.add(identifier)
     } while (match(TokenType.Comma) || check(TokenType.Identifier))
 
