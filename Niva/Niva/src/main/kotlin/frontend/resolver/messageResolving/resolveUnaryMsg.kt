@@ -19,6 +19,7 @@ import main.frontend.parser.types.ast.MessageSendKeyword
 import main.frontend.parser.types.ast.Receiver
 import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnaryMsgKind
+import main.frontend.resolver.findAnyMethod
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
 import main.frontend.typer.replaceCollectionWithMutable
@@ -163,11 +164,23 @@ fun Resolver.resolveUnaryMsg(
                 return Pair(resolveUnaryAliasLambda(statement, receiverType, receiver.token), null)
             }
             // try to find same signature in the lambdaTypes
-            val w = typeDB.lambdaTypes.values.find { compare2Types(it, receiverType, statement.token) }
-            if (w != null) {
-                statement.type = w
-                statement.kind = UnaryMsgKind.Unary
-                return Pair(w, null)
+            val aliasCandidates = typeDB.lambdaTypes.values
+                .filter { compare2Types(it, receiverType, statement.token) }
+            if (aliasCandidates.isNotEmpty()) {
+                val pkg = getCurrentPackage(statement.token)
+                val aliasWithMsg = aliasCandidates.firstOrNull {
+                    findAnyMethod(
+                        it,
+                        statement.selectorName,
+                        pkg,
+                        MessageDeclarationType.Unary,
+                        addImports = false,
+                        lookInStatic = false
+                    ) != null
+                } ?: aliasCandidates.first()
+                val receiverAlias = receiverType.copyAnyType() as Type.Lambda
+                receiverAlias.alias = aliasWithMsg.alias
+                return Pair(resolveUnaryAliasLambda(statement, receiverAlias, receiver.token), null)
             }
 
             if (receiverType.args.isNotEmpty())

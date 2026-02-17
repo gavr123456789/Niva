@@ -239,6 +239,9 @@ fun Parser.checkForKeyword(): Boolean {
     if (match(TokenType.OpenParen)) {
         this.skipUntilOnLineInclusive(TokenType.CloseParen)
     }
+    if (check(TokenType.OpenBracket, -1)) {
+        this.skipUntilOnLineInclusive(TokenType.CloseBracket)
+    }
     val identTok = match(TokenType.Identifier)
     if (identTok) {
         val dot = match(TokenType.Dot)

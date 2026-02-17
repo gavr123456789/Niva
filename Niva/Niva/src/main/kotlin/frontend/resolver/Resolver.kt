@@ -1387,11 +1387,23 @@ class Resolver(
                 charType = charType,
                 longType = longType
             )
+            val longProtocol = createIntProtocols(
+                intType = longType,
+                stringType = stringType,
+                unitType = unitType,
+                boolType = boolType,
+                floatType = floatType,
+                doubleType = doubleType,
+                intRangeType = intRangeType,
+                anyType = anyType,
+                charType = charType,
+                longType = longType
+            )
             intType.protocols.putAll(
                 numProtocol
             )
             longType.protocols.putAll(
-                numProtocol
+                longProtocol
             )
 
             floatType.protocols.putAll(

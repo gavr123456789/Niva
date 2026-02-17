@@ -211,7 +211,7 @@ fun Parser.isVarDeclarationStart(): Boolean {
 
 
 // if inside var decl with type, then we're getting type from it
-fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
+fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null, useSingleColumn: Boolean = false): IdentifierExpr {
     val matchDotIfItsNotOnNewLine = { lastLine: Int ->
         val tok = step()
         if (tok.kind != TokenType.Dot) {
@@ -246,7 +246,9 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null): IdentifierExpr {
         x.relPos.end = lastTokenDotSeparated.relPos.end
     }
 
-    val isTyped = match(TokenType.DoubleColon)
+    // [x^: Int -> ]
+    val isTyped = match(TokenType.DoubleColon) || if (useSingleColumn) match(TokenType.Colon) else false
+    // [x: List^(Int) -> ] ??? wait, where is List matching, wtf
     val hasGenericParen = match(TokenType.OpenParen)
 
 
