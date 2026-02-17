@@ -70,7 +70,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
 
 
         argsStr = "_this" +
-            (args isNotEmpty ifTrue: [", "]
+            (args isNotEmpty ifTrue:  [", "]
                              ifFalse: [""]) +
             (args joinWith: ", "
                   transform: [it name])
@@ -85,9 +85,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
         //  let name = _this.name
         generateDestruct = [
             // let fieldName = _this.fieldName
-            > receiverFields
             receiverFields forEach: [
-               > it name
                sb append: "    "
                sb append: "let "
                sb append: it name

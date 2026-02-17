@@ -208,6 +208,7 @@ extend mut Lexer [
     // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
     | '.' =>     .createToken: TokenType.Dot lexeme: l
+    | ':' =>     .createToken: TokenType.Colon lexeme: l
     | '^' => .createToken: TokenType.Return  lexeme: l
 
     |=> [

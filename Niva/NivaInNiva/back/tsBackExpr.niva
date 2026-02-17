@@ -169,13 +169,18 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
 
         qSelector = isDefaultConstructor ifFalse: [
             // entryPoint.Person2_name_age("sas", 42)
-            dbMsg receiverType toMangledName + "__" +  selector name
+            > dbMsg receiverType toMangledName
+            dbMsg receiverType name + "__" +  selector name
         ] ifTrue: [
             // new Person2("", 23)
             "new " + dbMsg receiverType name
             //dbMsg receiverType name + "__" +  selector name
         ]
-        newSelector = dbMsg receiverType toMangledName + "_" +  selector name
+
+        newSelector = dbMsg receiverType name + "__" +  selector name
+        //qSelector debug
+        //newSelector debug
+
         ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [

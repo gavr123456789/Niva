@@ -1,4 +1,12 @@
 
+type KeywordDeclParts
+  args: List::NameAndAstType
+  nameParts: List::String
+
+type KeywordDeclArg
+  arg: NameAndAstType
+  namePart: String
+
 mut Parser
   messageDeclarationOrExpression(tok): Token
   savedPosition(savePosition): Int
@@ -22,50 +30,87 @@ mut Parser
   result = | tok2 kind
   | TokenType.Identifier => [
     // Int inc^ ->? = []
+    kwSavePoint = current
+    kwParts = .parseKeywordDeclArgsFrom: tok2
+    kwParts == null ifTrue: [
+      .restoreFrom: kwSavePoint
+      returnType = getReturnType do
+      name = tok2 lexeme
+
+      .match: TokenType.Assign, ifFalse: [
+        .restoreFrom: savePosition
+        ^ .nextExperssion: .step
+      ]
+      // Int inc ->? = ^[]
+      isSingleExpr = .peek kind != TokenType.OpenBracket
+      body = .parseBodyOrSingleExpr
+
+      msgDecl = MessageDecl
+        receiver: receiverType
+        name: name
+        args: {}
+        returnType: returnType
+        token: tok
+        body: body
+        isSingleExpr: isSingleExpr
+        isConstructor: isConstructor
+
+      msgDecl
+    ] ifFalse: [
+      kwParts2 = kwParts unpackOrPANIC
+      returnType = getReturnType do
+
+      .match: TokenType.Assign, ifFalse: [
+        .restoreFrom: savePosition
+        ^ .nextExperssion: .step
+      ]
+
+      isSingleExpr = .peek kind != TokenType.OpenBracket
+      body = .parseBodyOrSingleExpr
+      kwName = kwParts2 nameParts joinWith: ":" transform: [
+        it
+      ], + ":"
+      msgDecl = MessageDecl
+        receiver: receiverType
+        name: kwName
+        args: kwParts2 args
+        returnType: returnType
+        token: tok
+        body: body
+        isSingleExpr: isSingleExpr
+        isConstructor: isConstructor
+
+      msgDecl
+    ]
+  ]
+  | TokenType.IdentifierDoubleColon|TokenType.IdentifierColon => [
+    // Int inc^::Int b::Int =
+    // Int inc^: Int b: Int =
+
+    kwParts = .parseKeywordDeclArgsFrom: tok2
+    kwParts == null ifTrue: [
+      .restoreFrom: savePosition
+      ^ .nextExperssion: .step
+    ]
+    kwParts2 = kwParts unpackOrPANIC
 
     returnType = getReturnType do
-    name = tok2 lexeme
 
     .match: TokenType.Assign, ifFalse: [
       .restoreFrom: savePosition
       ^ .nextExperssion: .step
     ]
-    // Int inc ->? = ^[]
-    isSingleExpr = .peek kind != TokenType.OpenBracket
-    body = .parseBodyOrSingleExpr
-
-    msgDecl = MessageDecl
-      receiver: receiverType
-      name: name
-      args: {}
-      returnType: returnType
-      token: tok
-      body: body
-      isSingleExpr: isSingleExpr
-      isConstructor: isConstructor
-
-    msgDecl
-  ]
-  | TokenType.IdentifierDoubleColon => [
-    // Int inc^::Int b::Int =
-
-    kwArgs = .parseNameDoubleColonAstTypePair: tok2 separatedBy: null
-
-    returnType = getReturnType do
-    name = tok2 lexeme
-
-    .matchAssert: TokenType.Assign
     // Int a::Int b::Int ->? = ^[]
 
     isSingleExpr = .peek kind != TokenType.OpenBracket
     body = .parseBodyOrSingleExpr
-    kwName = kwArgs joinWith: ":" transform: [
-      it name
+    kwName = kwParts2 nameParts joinWith: ":" transform: [
+      it
     ], + ":"
     msgDecl = MessageDecl
       receiver: receiverType
       name: kwName
-      args: kwArgs toList//{(NameAndAstType name: arg lexeme astType: argType)}
+      args: kwParts2 args
       returnType: returnType
       token: tok
       body: body
@@ -114,4 +159,129 @@ mut Parser
   ]
 
   ^ result
+]
+
+extend mut Parser [
+  on isTypeStartToken(tok): Token -> Bool = [
+    ^| tok kind
+    | TokenType.Identifier
+    | TokenType.IdentifierDoubleColon
+    | TokenType.NullableIdentifier
+    | TokenType.Mut
+    | TokenType.OpenBracket => true
+    |=> false
+  ]
+
+  on parseKeywordDeclArgsFrom(firstTok): Token -> KeywordDeclParts? = [
+    args::mut List::NameAndAstType = {}!
+    nameParts::mut List::String = {}!
+
+    firstArg = .parseKeywordDeclArgFrom: firstTok
+    firstArg == null ifTrue: [^ null]
+    firstArg2 = firstArg unpackOrPANIC
+    args add: firstArg2 arg
+    nameParts add: firstArg2 namePart
+
+    mut c = true
+    [c] whileTrue: [
+      nextArg = .tryParseKeywordDeclArg
+      nextArg == null ifTrue: [
+        c <- false
+      ] ifFalse: [
+        nextArg2 = nextArg unpackOrPANIC
+        args add: nextArg2 arg
+        nameParts add: nextArg2 namePart
+      ]
+    ]
+
+    ^ KeywordDeclParts args: args toList nameParts: nameParts toList
+  ]
+
+  on tryParseKeywordDeclArg -> KeywordDeclArg? = [
+    savePoint = current
+    tok = .step
+    arg = .parseKeywordDeclArgFrom: tok
+    | arg
+    | null => [
+      .restoreFrom: savePoint
+      ^ null
+    ]
+    |=> [^ arg]
+  ]
+
+  on parseKeywordDeclArgFrom(tok): Token -> KeywordDeclArg? = [
+    ^| tok kind
+    | TokenType.IdentifierDoubleColon => [
+      externalName = tok lexeme
+      isTypeStart = .isTypeStartToken: .peek
+      isTypeStart ifTrue: [
+        argType = .parseType
+        KeywordDeclArg
+          arg: (NameAndAstType name: externalName astType: argType)
+          namePart: externalName
+      ] ifFalse: [
+        null
+      ]
+    ]
+    | TokenType.IdentifierColon => [
+      externalName = tok lexeme
+      nextTok = .peek
+      mut isOldRename = false
+      nextTok kind == TokenType.IdentifierDoubleColon ifTrue: [
+        localName = nextTok lexeme
+        firstChar = localName first
+        isOldRename <- (firstChar isLowerCase) || (firstChar == '_')
+      ]
+
+      isOldRename ifTrue: [
+        localTok = .step
+        isTypeStart = .isTypeStartToken: .peek
+        isTypeStart ifTrue: [
+          argType = .parseType
+          KeywordDeclArg
+            arg: (NameAndAstType name: localTok lexeme astType: argType)
+            namePart: externalName
+        ] ifFalse: [
+          null
+        ]
+      ] ifFalse: [
+        isTypeStart = .isTypeStartToken: nextTok
+        isTypeStart ifTrue: [
+          argType = .parseType
+          KeywordDeclArg
+            arg: (NameAndAstType name: externalName astType: argType)
+            namePart: externalName
+        ] ifFalse: [
+          null
+        ]
+      ]
+    ]
+    | TokenType.Identifier => [
+      externalName = tok lexeme
+
+      mut ok = .match: TokenType.OpenParen
+      mut localTok = Token eof
+      ok ifTrue: [
+        localTok <- .peek
+        ok <- (localTok kind == TokenType.Identifier)
+        ok ifTrue: [
+          .step
+          ok <- (.match: TokenType.CloseParen) && (.match: TokenType.Colon)
+          ok <- ok && (.isTypeStartToken: .peek)
+        ]
+      ]
+
+      ok ifTrue: [
+        argType = .parseType
+        KeywordDeclArg
+          arg: (NameAndAstType name: localTok lexeme astType: argType)
+          namePart: externalName
+      ] ifFalse: [
+        null
+      ]
+    ]
+    |=> [
+      null
+    ]
+  ]
 ]
