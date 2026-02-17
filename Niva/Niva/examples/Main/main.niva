@@ -1,5 +1,2 @@
-type Sas = [ -> Int]
-Sas kek = 1 echo
-
-x = kek[42]
-
+cb = [ x: Int -> x ]
+cb x: 31, echo

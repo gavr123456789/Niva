@@ -29,8 +29,6 @@ type TyperDB
 
 
 constructor TyperDB new -> TyperDB = [
-  // for now I wont add core types to typesWithSameNames db
-  // just inside search method check if its name from core, then return from core cache
   tuple = NivaPkg core
   corePkg = tuple x
   dtc = tuple y
@@ -85,6 +83,7 @@ constructor TyperDB new -> TyperDB = [
   // add core types to typesWithSameNames so they can be found by mangled name (e.g. core_String)
   corePkg types values forEach: [
     mangled = it toMangledName
+
     set::mut Set::NivaType = #()!
     set add: it
     typesWithSameNames at: mangled put: set
@@ -173,8 +172,8 @@ extend TyperDB [
     result = packages at: pkgName
     p = | result
         | null => [
-          newPkg = NivaPkg name: pkgName
-          packages at: pkgName put: (newPkg)
+          newPkg = NivaPkg withCoreImportednamed: pkgName
+          packages at: pkgName put: newPkg
           newPkg
         ]
         |=> [

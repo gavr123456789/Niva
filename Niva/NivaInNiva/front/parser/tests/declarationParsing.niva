@@ -11,21 +11,21 @@ Test parseType -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   typeDecl = statements at: 0
 
-  | typeDecl 
+  | typeDecl
   | TypeDecl => [
-      Assert 
+      Assert
         that: typeDecl name
         equals: "Person"
       Assert
         that: typeDecl fields count
         equals: 5
-      
+
       name = typeDecl fields at: 0
       age = typeDecl fields at: 1
       intList = typeDecl fields at: 2
       nullableInt = typeDecl fields at: 3
       lambda = typeDecl fields at: 4
-      
+
       Assert that: name name equals: "name"
       Assert that: age name  equals: "age"
       Assert that: intList name  equals: "intList"
@@ -33,13 +33,13 @@ Test parseType -> Unit! = [
 
       type1 = name astType
       | type1
-      | AstType => 
+      | AstType =>
         Assert that: type1 name equals: "String"
       |=> TO DO: "It should be AstType, but it " + type1 toString
 
       type2 = age astType
       | type2
-      | AstType => 
+      | AstType =>
         Assert that: type2 name equals: "Int"
       |=> TO DO: "It should be AstType, but it " + type2 toString
 
@@ -55,7 +55,7 @@ Test parseType -> Unit! = [
         |=> TO DO: "int expected"
         ]
       |=> TO DO: "It should be AstType, but it " + type3 toString
-      
+
       type4 = nullableInt astType
       | type4
       | AstType => [
@@ -84,9 +84,9 @@ Test parseTypeWithNoFields -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   typeDecl = statements at: 0
 
-  | typeDecl 
+  | typeDecl
   | TypeDecl => [
-      Assert 
+      Assert
         that: typeDecl name
         equals: "Person"
       Assert
@@ -100,10 +100,10 @@ Test parseUnion -> Unit! = [
   input = """
     union Color = Red | Blue | Green
 
-    union Figure size: Int = 
+    union Figure size: Int =
     | Circle r: Int
     | Rectangle width: Int heigth: Int
-    
+
 
   """ trimIndent
 
@@ -129,7 +129,7 @@ Test parseUnaryConstructor -> Unit! = [
 
 Test parseUnaryDecl -> Unit! = [
   input = """
-    Int inc -> Bool = [ 
+    Int inc -> Bool = [
       1
     ]
   """ trimIndent
@@ -137,23 +137,23 @@ Test parseUnaryDecl -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   unaryDecl = statements at: 0
 
-  | unaryDecl 
+  | unaryDecl
   | MessageDecl => [
-      Assert 
+      Assert
         that: unaryDecl name
         equals: "inc"
       Assert
         that: unaryDecl args count
         equals: 0
-      
+
       {receiver returnType} = unaryDecl
       | receiver
       | AstType => [
-        Assert 
-          that: receiver name 
+        Assert
+          that: receiver name
           equals: "Int"
 
-        Assert 
+        Assert
           that: returnType toString
           equals: "Bool"
 
@@ -173,28 +173,28 @@ Test parseBinaryDecl -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   binary = statements at: 0
 
-  | binary 
+  | binary
   | MessageDecl => [
-    Assert 
+    Assert
       that: binary name
       equals: "+"
     Assert
       that: binary args count
       equals: 1
-    
+
     {receiver returnType} = binary
     | receiver
     | AstType => [
-      Assert 
-        that: receiver name 
+      Assert
+        that: receiver name
         equals: "Int"
 
-      Assert 
+      Assert
         that: returnType toString
         equals: "Bool"
     ]
     |=> TO DO: "It should be AstType, but it " + receiver toString
-  
+
     ]
   |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
 ]
@@ -209,23 +209,23 @@ Test parseKeywordDecl -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   keyword = statements at: 0
 
-  | keyword 
+  | keyword
   | MessageDecl => [
-    Assert 
+    Assert
       that: keyword name
       equals: "from:to:"
     Assert
       that: keyword args count
       equals: 2
-    
+
     {receiver returnType} = keyword
       | receiver
       | AstType => [
-        Assert 
-          that: receiver name 
+        Assert
+          that: receiver name
           equals: "Int"
 
-        Assert 
+        Assert
           that: returnType toString
           equals: "Bool"
       ]
@@ -238,7 +238,7 @@ Test parseRealWorldExample -> Unit! = [
   input = """
 
     type Person name: String age: Int
-    Person sleep = "hii" echo 
+    Person sleep = "hii" echo
 
   """ trimIndent
 
@@ -249,7 +249,7 @@ Test parseRealWorldExample -> Unit! = [
 
 Test parseKeywordDeclWithBody -> Unit! = [
   input = """
-    Money make::Int sas::String -> Int = [
+    Money make: Int sas: String -> Int = [
       x = 42
       1 inc
       2 dec
@@ -259,17 +259,17 @@ Test parseKeywordDeclWithBody -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
   kwDecl = statements at: 0
 
-  | kwDecl 
+  | kwDecl
   | MessageDecl => [
-      
+
     {receiver returnType body} = kwDecl
     | receiver
     | AstType => [
-      Assert 
-        that: receiver name 
+      Assert
+        that: receiver name
         equals: "Money"
 
-      Assert 
+      Assert
         that: returnType toString
         equals: "Int"
 

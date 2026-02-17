@@ -66,7 +66,7 @@ extend NivaType [
     result = | this
     | TypeT => [
       genericArgsStr = genericArgs isNotEmpty
-                        ifTrue: ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
+                        ifTrue:  ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
                         ifFalse: [""]
       // TODO check that its not core type
       pkgName + "_" + name + genericArgsStr
@@ -77,6 +77,7 @@ extend NivaType [
     |=> [
       pkgName + "_" + name
     ]
+    > this
     ^ result
   ]
 
@@ -356,7 +357,12 @@ type NivaPkg
   imports: mut Set::String
 
 
-constructor NivaPkg name::String = NivaPkg name: name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()!
+constructor NivaPkg name: String = NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()!
+
+/// create a package with "core" pkg imported, I think there is no case when pkg doesn't import core
+constructor NivaPkg withCoreImportednamed(name): String =
+  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")!
+
 extend NivaPkg [
   on addImport(pkgName): String = [
     pkgName != this name ifTrue: [

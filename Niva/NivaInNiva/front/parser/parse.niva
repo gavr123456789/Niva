@@ -371,8 +371,6 @@ extend mut Parser [
       ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
     ]
     | TokenType.Mut => [
-      > .peek
-      > tokens
       ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
     ]
     | TokenType.If => [
