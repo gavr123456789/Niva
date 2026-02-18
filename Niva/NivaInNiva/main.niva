@@ -23,7 +23,7 @@ constructor IO_Container new -> IO_Container = [
   ]
 
 
-  writeFile = [path::String , fileContent::FileContent->
+  writeFile = [path::String , fileContent::FileContent ->
     FileSystem write: path toPath
                content: fileContent
     Unit
@@ -58,11 +58,11 @@ compilerTry = [
 
 compilerTry2 = [
   path = {"build" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
-  t1 = System currentTimeMillis
-  t1 echo
+  //t1 = System currentTimeMillis
+  //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
-  diff = System currentTimeMillis - t1
-  diff echo // 60 toLong / 1000 toLong, echo
+  //diff = System currentTimeMillis - t1
+  //diff echo // 60 toLong / 1000 toLong, echo
 ]
 
 

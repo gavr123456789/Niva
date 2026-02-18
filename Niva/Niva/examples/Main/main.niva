@@ -8,3 +8,7 @@ Person-Teacher name-trimmed = name trim
 p-t = Person-Teacher name: "   John   "
 
 p-t name-trimmed echo
+
+x = 1
+y = 2
+x - y, echo

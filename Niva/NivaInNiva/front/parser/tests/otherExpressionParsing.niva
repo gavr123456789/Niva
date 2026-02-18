@@ -108,9 +108,14 @@ Test codeBlockStatement -> Unit! = [
 
     // call with args
     [x::Int, y::Int -> x + y] x: 1 y: 2
+
+    // call with new syntax args
+    [x: Int, y: Int -> x + y] x: 1 y: 2
   """ trimIndent
-  statements = TestParse withInput: input expectedCount: 7
+  statements = TestParse withInput: input expectedCount: 8
 ]
+
+
 
 
 Test failingComment = [

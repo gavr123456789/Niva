@@ -11,8 +11,7 @@ import main.utils.isGeneric
 
 
 fun String.ifKtKeywordAddBackTicks(): String {
-    val withDashReplaced = this.replace("-", "_dash_")
-    return when (withDashReplaced) {
+    return when (val withDashReplaced = this.replace("-", "_dash_")) {
         "do", "val", "var", "class", "in", "for", "throw", "continue" -> "`$withDashReplaced`"
         else -> withDashReplaced
     }

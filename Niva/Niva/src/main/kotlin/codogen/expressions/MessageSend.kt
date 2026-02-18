@@ -700,10 +700,10 @@ fun generateSingleBinary(
             append("this")
         }
 
-        append(" ${binaryMsg.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(" ${binaryMsg.selectorName} ")
         append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
     } else {
-        append(" ${binaryMsg.selectorName.ifKtKeywordAddBackTicks()} ")
+        append(" ${binaryMsg.selectorName} ")
         append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
     }
 

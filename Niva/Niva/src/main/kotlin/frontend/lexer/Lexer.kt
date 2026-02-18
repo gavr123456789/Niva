@@ -134,7 +134,7 @@ fun Lexer.match(args: Array<String>): Boolean {
 fun Lexer.createToken(tokenType: TokenType, endPositionMinus: Int = 0, addToLexeme: String? = null, customLine: Int? = null) {
     try {
         val line = customLine ?: line
-        val lexeme2 = source.slice(start..current)// better replace to view
+        val lexeme2 = source.slice(start until current)// better replace to view
         val lexeme3 = if (addToLexeme == null) lexeme2 else lexeme2 + addToLexeme
         val lexeme = lexeme3.dropLast(endPositionMinus)
         val end = current - 1 - endPositionMinus
@@ -311,7 +311,7 @@ fun Lexer.parseNumber() {
 
 fun Lexer.parseIdentifier() {
     stepWhileAlphaNumeric()
-    val name = source.slice(start..current)
+    val name = source.slice(start until current)
     if (symbolTable.existsKeyword(name)) {
         symbolTable.keywords[name]?.let { createToken(it) }
     } else {
@@ -365,7 +365,7 @@ fun Lexer.next() {
         }
         val result = Token(
             kind = kind,
-            lexeme = source.slice(start..current),
+            lexeme = source.slice(start until current),
             line = line,
             pos = Position(start, current - 1),
             relPos = Position(linePos - lexeme.lastIndex - 1, linePos - 1),

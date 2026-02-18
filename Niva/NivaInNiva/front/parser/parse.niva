@@ -188,14 +188,13 @@ extend mut Parser [
 
   // `[` already eaten
   on parseCodeBlock(tok): Token -> CodeBlock = [
-    mut args:: List::NameAndAstType = {}   // [a::Int -> a inc]
-    mut untypedArgs:: List::Identifier = {} // [a, b -> a + b]
-
+    args <- List(NameAndAstType) val: {} // [a::Int -> a inc]
+    untypedArgs <- List(Identifier) val: {} // [a, b -> a + b]
     savePoint = current
 
     | .peek kind
-    | TokenType.IdentifierDoubleColon => [
-      identsWithAst = .parseNameDoubleColonAstTypePair: .step separatedBy: TokenType.Comma
+    | TokenType.IdentifierDoubleColon | TokenType.IdentifierColon => [
+      identsWithAst = .parseNameSingleOrDoubleColonAstTypePair: .step separatedBy: TokenType.Comma
       args <- identsWithAst
     ]
     | TokenType.Identifier => [
@@ -280,7 +279,7 @@ extend mut Parser [
   ]
 
   /// a::Int (sep)? b::String
-  on parseNameDoubleColonAstTypePair(tok): Token separatedBy(sep): TokenType? -> List::NameAndAstType = [
+  on parseNameSingleOrDoubleColonAstTypePair(tok): Token separatedBy(sep): TokenType? -> List::NameAndAstType = [
 
     firstArg = NameAndAstType name: tok lexeme astType: .parseType
     sep unpack: [.match: it]
@@ -290,7 +289,8 @@ extend mut Parser [
     mut c = true
     [c] whileTrue: [
       tok = .peek
-      tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+      singleOrDoubleColon = tok kind == TokenType.IdentifierDoubleColon || (tok kind == TokenType.IdentifierColon)
+      singleOrDoubleColon ifTrue: [
         arg = NameAndAstType name: .step lexeme astType: .parseType
         sep unpack: [.match: it]
 
@@ -300,7 +300,6 @@ extend mut Parser [
         c <- false
       ]
     ]
-
     ^ kwArgs
   ]
 
