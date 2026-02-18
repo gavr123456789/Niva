@@ -16,17 +16,16 @@ Test tsGetterCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
+  js debug
 
   Assert that: (js contains: "export class Person") equals: true
   Assert that: (js contains: "constructor(age)") equals: true
   Assert that: (js contains: "this.age = age") equals: true
-  Assert that: (js contains: "export function core_Int_twice") equals: true
+  Assert that: (js contains: "export function Int__twice") equals: true
   Assert that: (js contains: "return _this + _this") equals: true
 
   Assert that: (js contains: "const x = 5") equals: true
-  Assert that: (js contains: "const y = core_Int_twice(x)") equals: true
+  Assert that: (js contains: "const y = Int__twice(x)") equals: true
   Assert that: (js contains: "const p = new Person(21)") equals: true
   Assert that: (js contains: "const z = p.age") equals: true
-
-  Assert that: (js contains: "core.main_Person_age") equals: false
 ]

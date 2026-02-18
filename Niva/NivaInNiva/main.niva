@@ -53,16 +53,16 @@ constructor IO_Container new -> IO_Container = [
 
 compilerTry = [
   path = Compiler cliArgs debug //"~/Documents/Fun/niva_demo/main.niva"
-  > path
   NivaCompiler runArgs: path withIO: IO_Container new
 ]
 
 compilerTry2 = [
-  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"build" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
   t1 = System currentTimeMillis
+  t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
   diff = System currentTimeMillis - t1
-
+  diff echo // 60 toLong / 1000 toLong, echo
 ]
 
 
@@ -86,38 +86,13 @@ parseKeywordDeclWithBody = [
 
   statements = TestParse withInput: input expectedCount: 1
   kwDecl = statements at: 0
-  > kwDecl
 ]
 
-
-tsGetterCodegen = [
-  fileMain = """
-    type Person age: Int
-
-    Int twice -> Int = [
-      ^ this + this
-    ]
-
-    x = 5
-    y = x twice
-
-    p = Person age: 21
-    z = p age
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  fileToJs = TypeScript fullFromResolver: result
-  js = fileToJs at: "main", unpackOrPANIC
-
-  Assert that: (js contains: "export class Person") equals: true
-  Assert that: (js contains: "constructor(age)") equals: true
-  Assert that: (js contains: "this.age = age") equals: true
-  Assert that: (js contains: "export function core_Int_twice") equals: true
-  Assert that: (js contains: "return _this + _this") equals: true
-
-  Assert that: (js contains: "const x = 5") equals: true
-  Assert that: (js contains: "const y = Int_twice(x)") equals: true
-  Assert that: (js contains: "const p = new Person(21)") equals: true
-  Assert that: (js contains: "const z = p.age") equals: true
-  Assert that: (js contains: "core.main_Person_age") equals: false
+codeBlockStatementWithNewSyntax = [
+  input = """
+    // call with args
+    [x: Int, y: Int -> x + y] x: 1 y: 2
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  > statements
 ] do

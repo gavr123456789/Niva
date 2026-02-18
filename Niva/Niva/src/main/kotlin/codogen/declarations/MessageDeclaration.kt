@@ -10,11 +10,13 @@ import main.utils.appendnl
 import main.utils.isGeneric
 
 
-fun String.ifKtKeywordAddBackTicks(): String =
-    when (this) {
-        "do", "val", "var", "class", "in", "for", "throw", "continue" -> "`$this`"
-        else -> this
+fun String.ifKtKeywordAddBackTicks(): String {
+    val withDashReplaced = this.replace("-", "_dash_")
+    return when (withDashReplaced) {
+        "do", "val", "var", "class", "in", "for", "throw", "continue" -> "`$withDashReplaced`"
+        else -> withDashReplaced
     }
+}
 
 fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     // return type can be generic

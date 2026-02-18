@@ -37,7 +37,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
     | UnionDecl => [TO DO]
     | MessageDecl => [
 
-        //export function main_Person__withAge(_this, withAge) {
+        //export function Person__withAge(_this, withAge) {
         //  //destruct this age, name
         //  let age = _this.age
         //  let name = _this.name
@@ -52,7 +52,6 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
             | receiverType
             | Complex => [receiverType fields]
             |=> {TypeTField}
-        mangledReceiverName = receiverType toMangledName
 
         suffix = name substringAfter: "__"
         hasSuffix = suffix != name
@@ -60,10 +59,10 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
 
         // if keyword (has colons), reconstruct baseName from args
         finalBaseName = (baseName contains: ":")
-            ifTrue:  [args joinWith: "_" transform: [it name]]
+            ifTrue:  [args joinWith: "__" transform: [it name]]
             ifFalse: [baseName]
 
-        methodName = mangledReceiverName + "_" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
+        methodName = receiverType name + "__" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
 
         sb append: "export function "
         sb append: methodName
