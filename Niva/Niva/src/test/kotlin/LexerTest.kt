@@ -113,6 +113,15 @@ class LexerTest {
     }
 
     @Test
+    fun kebabCaseIdentifierSpacing() {
+        checkWithEnd("a-b", listOf(Identifier))
+        checkWithEnd("a-b-c", listOf(Identifier))
+        checkWithEnd("a - b", listOf(Identifier, BinarySymbol, Identifier))
+        checkWithEnd("a- b", listOf(Identifier, BinarySymbol, Identifier))
+        checkWithEnd("a -b", listOf(Identifier, BinarySymbol, Identifier))
+    }
+
+    @Test
     fun rawString() {
         checkWithEnd(rawString, listOf(Identifier, Assign, TokenType.String))
     }

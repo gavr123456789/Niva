@@ -320,7 +320,7 @@ constructor NivaMethod [
     protocolName: protocolName
     :pkgName
 
-  on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String-> NivaMethod = NivaMethod
+  on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String -> NivaMethod = NivaMethod
     :name
     :receiverType
     :args

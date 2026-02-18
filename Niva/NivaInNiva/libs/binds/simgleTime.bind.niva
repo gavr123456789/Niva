@@ -1,0 +1,7 @@
+Bind package: "java.lang" content: [
+  type System
+  constructor System currentTimeMillis -> Long
+  constructor System nanoTime -> Long
+]
+
+//System currentTimeMillis echo

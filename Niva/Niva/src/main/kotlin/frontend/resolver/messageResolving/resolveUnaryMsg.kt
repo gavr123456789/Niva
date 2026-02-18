@@ -65,37 +65,6 @@ fun Resolver.resolveUnaryMsg(
             statement.token.compileError("toMut can only be used on constructor calls or collection literals, not on ${actualReceiver.str}")
         }
 
-        fun markCollectionsAsMutable(expr: Receiver) {
-            when (expr) {
-                is CollectionAst -> expr.isMutableCollection = true
-                is MapCollection -> expr.isMutable = true
-                is ExpressionInBrackets -> markCollectionsAsMutable(expr.expr as Receiver)
-                is MessageSendKeyword -> {
-                    markCollectionsAsMutable(expr.receiver)
-                    expr.messages.forEach { msg ->
-                        when (msg) {
-                            is KeywordMsg -> msg.args.forEach { arg ->
-                                if (arg.keywordArg is Receiver) {
-                                    markCollectionsAsMutable(arg.keywordArg)
-                                }
-                            }
-                            is UnaryMsg -> markCollectionsAsMutable(msg.receiver)
-                            else -> {}
-                        }
-                    }
-                }
-                is KeywordMsg -> {
-                    markCollectionsAsMutable(expr.receiver)
-                    expr.args.forEach { arg ->
-                        if (arg.keywordArg is Receiver) {
-                            markCollectionsAsMutable(arg.keywordArg)
-                        }
-                    }
-                }
-                else -> {}
-            }
-        }
-
         markCollectionsAsMutable(receiver)
 
         val receiverType = receiver.type!!

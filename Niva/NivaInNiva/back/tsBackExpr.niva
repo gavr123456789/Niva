@@ -8,7 +8,7 @@ constructor TypeScript  [
         packages = db packages
         //"\n" + db structureInfo, debug
 
-        generateImports = [pkg::NivaPkg sb::StringBuilder->
+        generateImports = [pkg::NivaPkg sb::StringBuilder ->
             pkg imports forEach: [
                 // import * as core from "./core.js"
                 sb append: "import * as "
