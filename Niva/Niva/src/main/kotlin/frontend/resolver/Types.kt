@@ -603,7 +603,7 @@ sealed class Type(
                     emitName = (value as? LiteralExpression.StringExpr)?.toString()
                         ?: decl.token.compileError("'rename' pragma value must be a string")
                 } else {
-                    emitName = name
+                    emitName = name.replace("-", "_dash_")
                 }
 
                 // NO GETTERS
@@ -612,7 +612,7 @@ sealed class Type(
                     noGetters = true
                 }
             } else {
-                emitName = name
+                emitName = name.replace("-", "_dash_")
             }
         }
 

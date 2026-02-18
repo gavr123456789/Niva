@@ -1,2 +1,10 @@
-cb = [ x: Int -> x ]
-cb x: 31, echo
+empty-list = List(Int) val: {}
+
+empty-list echo
+
+type Person-Teacher name: String
+Person-Teacher name-trimmed = name trim
+
+p-t = Person-Teacher name: "   John   "
+
+p-t name-trimmed echo

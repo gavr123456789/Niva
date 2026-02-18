@@ -209,6 +209,29 @@ fun Resolver.resolveKeywordMsg(
 
     val fromReceiverAndfromArgsTable = (letterToTypeFromReceiver + letterToTypeFromArgs).toMutableMap()//.replaceAllInternalTypesWithItsCopies()
 
+
+    // Fix for collection literals arguments when receiver is generic
+    // e.g. List(Int) val: {}
+    if (receiverType is Type.UserLike && receiverType.typeArgumentList.isNotEmpty()) {
+        statement.args.forEachIndexed { i, kwArg ->
+            val argTypeFromDb = argsTypesFromDb.getOrNull(i)
+            if (argTypeFromDb != null && argTypeFromDb is Type.UserLike && argTypeFromDb.typeArgumentList.isNotEmpty()) {
+                val argExpr = kwArg.keywordArg
+                val isCollectionLiteral = argExpr is CollectionAst || argExpr is MapCollection
+                val currentArgType = argExpr.type
+                val hasUnknownGenerics = currentArgType is Type.UserLike && currentArgType.typeArgumentList.any { it is Type.UnknownGenericType }
+
+                if (isCollectionLiteral && hasUnknownGenerics) {
+                    val resolvedArgType = resolveReturnTypeIfGeneric(argTypeFromDb, mutableMapOf(), fromReceiverAndfromArgsTable)
+
+                    if (resolvedArgType is Type.UserLike && !resolvedArgType.typeArgumentList.any { it is Type.UnknownGenericType }) {
+                        updateCollectionTypes(argExpr, resolvedArgType)
+                    }
+                }
+            }
+        }
+    }
+
     // resolve args types
     resolveKwArgs(
         statement,
