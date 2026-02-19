@@ -22,6 +22,7 @@ mut Parser
   // change current position back to parse receiver
   .stepBack
   receiverType = .parseType
+
   // Int^ inc =
   // Int^ a::Int b::Int =
   // Int^ a: q::Int b::Int =

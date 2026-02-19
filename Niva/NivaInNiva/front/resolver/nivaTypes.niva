@@ -81,6 +81,48 @@ extend NivaType [
     ^ result
   ]
 
+  on replaceGenericsFromTableDeep(letterToType): Map(String, NivaType) db: TyperDB -> NivaType = [
+    ^| this
+    | TypeT => [
+      db addGenericInstantiationIfAbsent: this
+         letterToType: letterToType
+    ]
+    | UnresolvedGenericT => [
+      maybe = letterToType at: this name
+      | maybe
+      | null => this
+      |=> maybe
+    ]
+    | ListT => [
+      ListT t: (this t replaceGenericsFromTableDeep: letterToType db: db)
+    ]
+    | SetT => [
+      SetT t: (this t replaceGenericsFromTableDeep: letterToType db: db)
+    ]
+    | MapT => [
+      MapT k: (this k replaceGenericsFromTableDeep: letterToType db: db)
+           v: (this v replaceGenericsFromTableDeep: letterToType db: db)
+    ]
+    | FuntionT => [
+      newFields = fields map: [
+        TypeTField name: it name
+                  typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
+      ]
+      newGenericArgs = genericArgs map: [it replaceGenericsFromTableDeep: letterToType db: db]
+      newReturnType = returnType replaceGenericsFromTableDeep: letterToType db: db
+      FuntionT
+        fields: newFields toMutableList
+        name: name
+        genericArgs: newGenericArgs toMutableList
+        pkgName: pkgName
+        returnType: newReturnType
+    ]
+    | NullableT => [
+      NullableT v: (this v replaceGenericsFromTableDeep: letterToType db: db)
+    ]
+    |=> this
+  ]
+
   on instantiateFromTable(table): Map(String, NivaType) -> String = [
 
     result = | this
@@ -208,27 +250,12 @@ extend NivaMethod [
 
     recType = receiverType
     retType = returnType
-
-    instantiate = [ t::NivaType ->
-      | t
-      | TypeT => [
-        db addGenericInstantiationIfAbsent: t
-           letterToType: letterToType
-      ]
-      | UnresolvedGenericT => [
-          maybe = letterToType at: t name
-          | maybe
-          | null => t
-          |=> maybe
-      ]
-      |=> [t]
-    ]
-    instantiatedReceiverOrDefaultT = instantiate t: recType
-    instantiatedReturnOrDefaultT = instantiate t: retType
+    instantiatedReceiverOrDefaultT = recType replaceGenericsFromTableDeep: letterToType db: db
+    instantiatedReturnOrDefaultT = retType replaceGenericsFromTableDeep: letterToType db: db
 
     newArgs = args map: [
       TypeTField name: it name
-                typeT: (instantiate t: it typeT)
+                typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
     ]
 
     // instantiating the receiver does not change the method name:

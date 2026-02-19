@@ -6,6 +6,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> Keywor
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String?  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
   receiverType = receiverTypedExpr typeInfo t
+  db addCollectionInstantiationIfAbsent: receiverType
   argTypesAndExprs :: mut List::CheckMethodArg = {}!
 
 
@@ -32,14 +33,22 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
 
   typedArgs = args mapIndexed: [ i, kwArg ->
     {name expr} = kwArg
-    typedExpr = expr toTypedExprFromDb2: db withContext: c
+    argTypeFromDb = kwMsgDB args at: i, typeT
+    typedExpr =
+      | expr
+      | CodeBlock => [
+        | argTypeFromDb
+        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: argTypeFromDb
+        |=> expr toTypedExprFromDb2: db withContext: c
+      ]
+      |=> expr toTypedExprFromDb2: db withContext: c
+
     realType = typedExpr typeInfo t
     argTypesAndExprs add: (CheckMethodArg
                             nivaType: typedExpr typeInfo t
                             expr: expr
                             argName: name name)
 
-    argTypeFromDb = kwMsgDB args at: i, typeT
     | argTypeFromDb | UnresolvedGenericT => [
       // Check if we already resolved same letter to different type
       letterToType at: argTypeFromDb letter, unpack: [ alreadyResolvedTo::NivaType ->

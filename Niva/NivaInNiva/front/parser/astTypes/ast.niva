@@ -163,7 +163,7 @@ constructor AstType2 unitType -> AstType2 =
   AstType name: "Unit" tok: (Token fake)
 
 AstType toString = [
-  genericParamsStr = genericParams joinWith: "::" transform: [it toString]
+  genericParamsStr = genericParams joinWith: ": " transform: [it toString]
   ^ "$name$genericParamsStr"
 ]
 

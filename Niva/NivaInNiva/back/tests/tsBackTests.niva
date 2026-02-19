@@ -16,7 +16,6 @@ Test tsGetterCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  js debug
 
   Assert that: (js contains: "export class Person") equals: true
   Assert that: (js contains: "constructor(age)") equals: true

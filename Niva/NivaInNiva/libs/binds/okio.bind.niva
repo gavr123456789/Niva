@@ -1,24 +1,24 @@
 Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
 
 Bind package: "okio"  imports: {"okio.Path.Companion.toPath" "okio.Path.*"}  content: [
-  type Path 
-    name: String 
-    parent: Path? 
-    root: Path? 
-    segments: List::String 
+  type Path
+    name: String
+    parent: Path?
+    root: Path?
+    segments: List::String
     volumeLetter: Char?
-  
-  String toPath -> Path 
+
+  String toPath -> Path
   Path normalized -> Path
   Path toString -> String
-  Path / x::String -> Path
-  Path == x::Path -> Bool
-  Path != x::Path -> Bool
-] 
+  Path / x: String -> Path
+  Path == x: Path -> Bool
+  Path != x: Path -> Bool
+]
 
 Bind package: "okio" content: [
   type FileSystem
-  type FileMetadata 
+  type FileMetadata
     isRegularFile: Bool
     isDirectory: Bool
     symlinkTarget: Path?
@@ -35,7 +35,7 @@ Bind package: "okio" content: [
 
   @emit: "okio.FileSystem.SYSTEM.metadata($1)"
   constructor FileSystem metadata::Path -> FileMetadata
- 
+
   @emit: "okio.FileSystem.SYSTEM.exists($1)"
   constructor FileSystem exists::Path -> Bool
   // list
@@ -50,7 +50,7 @@ Bind package: "okio" content: [
   constructor FileSystem delete::Path -> Unit
   @emit: "okio.FileSystem.SYSTEM.deleteRecursively($1)"
   constructor FileSystem deleteRecursively::Path -> Unit
-  
+
   // fails if on of roots not exists
   @emit: "okio.FileSystem.SYSTEM.createDirectory($1)"
   constructor FileSystem createDirectory::Path -> Unit

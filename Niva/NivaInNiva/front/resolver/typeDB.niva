@@ -305,6 +305,81 @@ extend TyperDB [
     ^ newTypeWithGenericInstantiated
   ]
 
+  on addCollectionInstantiationIfAbsent(collectionType): NivaType -> NivaType = [
+    ^| collectionType
+    | ListT => [
+      existing = typeToMethodNameToMethod at: collectionType
+      | existing
+      | null => [
+        baseType = dtc list
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: baseType t name put: collectionType t
+
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        instMethods::mut Map(String, NivaMethod) = #{}!
+        dontMangle = letterToType keys toSet
+
+        baseMethods values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instMethods at: newM name put: newM
+        ]
+
+        typeToMethodNameToMethod at: collectionType put: instMethods
+        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      ]
+      |=> []
+      collectionType
+    ]
+    | SetT => [
+      existing = typeToMethodNameToMethod at: collectionType
+      | existing
+      | null => [
+        baseType = dtc set
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: baseType t name put: collectionType t
+
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        instMethods::mut Map(String, NivaMethod) = #{}!
+        dontMangle = letterToType keys toSet
+
+        baseMethods values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instMethods at: newM name put: newM
+        ]
+
+        typeToMethodNameToMethod at: collectionType put: instMethods
+        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      ]
+      |=> []
+      collectionType
+    ]
+    | MapT => [
+      existing = typeToMethodNameToMethod at: collectionType
+      | existing
+      | null => [
+        baseType = dtc map
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: baseType k name put: collectionType k
+        letterToType at: baseType v name put: collectionType v
+
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        instMethods::mut Map(String, NivaMethod) = #{}!
+        dontMangle = letterToType keys toSet
+
+        baseMethods values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instMethods at: newM name put: newM
+        ]
+
+        typeToMethodNameToMethod at: collectionType put: instMethods
+        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      ]
+      |=> []
+      collectionType
+    ]
+    |=> collectionType
+  ]
+
   /// we use this for replacing an old method with Unknown return type with new one with resolved rt
   on replaceMethod(m): NivaMethod inType::NivaType = [
     x::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: inType, unpackOrPANIC
@@ -570,28 +645,13 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
 ]
 
 TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): TyperDB -> TypeT = [
-  instantiate = [ t::NivaType ->
-    | t
-    | TypeT => [
-      db addGenericInstantiationIfAbsent: t
-         letterToType: letterToType
-    ]
-    | UnresolvedGenericT => [
-        maybe = letterToType at: t name
-        | maybe
-        | null => t
-        |=> maybe
-    ]
-    |=> [t]
-  ]
-
   newFields = fields map: [
     TypeTField name: it name
-              typeT: (instantiate t: it typeT)
+              typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
   ]
 
   newGenericArgs = genericArgs map: [
-    instantiate t: it
+    it replaceGenericsFromTableDeep: letterToType db: db
   ]
 
   ^TypeT fields: newFields toMutableList
