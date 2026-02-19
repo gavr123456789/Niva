@@ -36,8 +36,8 @@ union Complex
   fields: mut List::TypeTField
   genericArgs: mut List::NivaType =
 | TypeT
+   // args: List::TypeTField
 | FuntionT
-  args: List::TypeTField
   returnType: NivaType // method or lambda
 | UnionT  branches: List::UnionTBranch
 
@@ -290,7 +290,7 @@ extend NivaMethod [
     possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name])
     p2 = possibleErrorsStr == "" ifTrue: [""] ifFalse: [" with possible errors: (" + possibleErrorsStr + ")!"]
     argsStr = args joinWith: " " transform: [it toString]
-    ^ "NivaMethod " + isMut + " name: " +  name + "\nargs: (" + argsStr + ")" + p2 + "\n -> \n" + returnType toString
+    ^ "(NivaMethod " + isMut + " " + name + "(" + argsStr + ")" + p2 + " -> " + returnType toString + ")"
   ]
 ]
 
@@ -386,13 +386,20 @@ type DefaultTypesContainer
   nothing: NothingT
   any: AnyT
   t: UnresolvedGenericT
+  g: UnresolvedGenericT
   // create collections
   list: ListT
+  list2: ListT
   map: MapT
+  map2: MapT
   set: SetT
+  set2: SetT
 
 constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   t = (UnresolvedGenericT name: "T")
+  g = (UnresolvedGenericT name: "G")
+  q = (UnresolvedGenericT name: "Q")
+  w = (UnresolvedGenericT name: "W")
   dtc = DefaultTypesContainer
     char: CharT new
     int: IntegerT new
@@ -405,10 +412,32 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     nothing: NothingT new
     any: AnyT new
     t: t
+    g: g
     list: (ListT t: t)
-    map: (MapT k: t v: t)
+    list2: (ListT t: q)
+    map: (MapT k: t v: g)
+    map2: (MapT k: q v: w)
     set: (SetT t: t)
+    set2: (SetT t: q)
   ^ dtc
+]
+
+DefaultTypesContainer collection-with-different-generic(collection): NivaType -> NivaType = [
+  ^ | collection
+    | ListT => list2
+    | SetT => set2
+    | MapT => map2
+    |=> [TO DO: "Compiler bug, use collectionm got $collection"]
+]
+
+constructor DefaultTypesContainer new-collection-with-different-generic(collection): NivaType -> NivaType = [
+  t = (UnresolvedGenericT name: "Q")
+  g = (UnresolvedGenericT name: "W")
+  ^ | collection
+    | ListT => ListT t: t
+    | SetT => SetT t: t
+    | MapT => MapT k: t v: g
+    |=> [TO DO: "Compiler bug, use collectionm got $collection"]
 ]
 
 

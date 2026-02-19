@@ -1,11 +1,5 @@
-    type Person age: Int
+list = {1 2 3}
 
-    Int twice -> Int = [
-      ^ this + this
-    ]
-
-    x = 5
-    y = x twice
-
-    p = Person age: 21
-    z = p age
+list forEach: [
+  it echo
+]

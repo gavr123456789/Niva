@@ -1,6 +1,7 @@
 constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
-  {int str bool char unit} = dtc
+  {int str bool char unit t g} = dtc
 
+  collectionWithDifferentGenericType = UnresolvedGenericT name: "G"
 
   collP = NivaProtocol name: "common"
   // unary
@@ -18,6 +19,42 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
   collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
   collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
+  //collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
+  /////
+  // lambdas (map/foreach/filter)
+
+  collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
+  // foreach: (item) -> unit
+  itArg = TypeTField name: "it" typeT: itemType
+  foreachBlock = FuntionT
+                  fields: { itArg }!
+                  name: "foreach"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: unit
+  collP addMethod: (NivaMethod singleArgKw: "foreach" receiverType: collectionType argT: foreachBlock returnT: unit)
+
+  // filter: (item) -> bool
+  filterBlock = FuntionT
+                  fields: { itArg }!
+                  name: "filter"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: bool
+  collP addMethod: (NivaMethod singleArgKw: "filter" receiverType: collectionType argT: filterBlock returnT: collectionType)
+
+  // map: (item) -> t
+  mapBlock = FuntionT
+              fields: { itArg }!
+              name: "map"
+              genericArgs: {}!
+              pkgName: "core"
+              returnType: t
+
+  collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
+
+  /////
+
 
   ^ collP methods
 ]
@@ -93,7 +130,7 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
 
   // keyword
-  noArgs = FuntionT args: {} fields: {}! name: "noFields" genericArgs: {}! pkgName: "core" returnType: unit
+  noArgs = FuntionT fields: {}! name: "noFields" genericArgs: {}! pkgName: "core" returnType: unit
   boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgs returnT: unit )
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgs returnT: unit )
 

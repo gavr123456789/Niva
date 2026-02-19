@@ -332,6 +332,8 @@ extend TyperDB [
     ]
 
     typeToMethodNameToMethod //keys debug
+    > forType
+    > typeToMethodNameToMethod
     x = this typeToMethodNameToMethod at: forType
     y::mut Map(String, NivaMethod) =
       | x
@@ -356,10 +358,7 @@ extend TyperDB [
       ] ifFalse: [
         // check that it has args
         // then compare them
-        receiverType debug
-
-        receiverType args
-        NivaMethod manyArgKw: receiverType args receiverType: receiverType returnT: receiverType returnType
+        NivaMethod manyArgKw: receiverType fields receiverType: receiverType returnT: receiverType returnType
     ]
 
       ^ result
@@ -521,7 +520,10 @@ type ResolverHelper
   // entryPointStatements: List::TypedExpr
 
 
-constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint(entryPoint): String -> ResolverHelper  = [
+String resolveNivaCode =
+  ResolverHelper resolve: #{"main" this} entryPoint: "main"
+
+constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
   fileToStatements::mut Map(String, mut List::Statement) = #{}!
 
   // parsing

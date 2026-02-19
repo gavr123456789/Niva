@@ -100,7 +100,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")
     ]
 
-    resultType =
+    astType =
       | this
       | ListLiteral => [
         newType = ListT t: f
@@ -111,8 +111,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
         SetLiteralT :token elements: typedBody typeInfo: typeInfo
       ]
       |=> [TO DO]
+      actualType = astType typeInfo t
+      > actualType
+      > db typeToMethodNameToMethod at: actualType
+      //TO DO: "вспомнить как там обычно находятся методы от инстанциированных типов, и как нам сейчас сохранить этот newType в базу чтобы он находился"
+      //TO DO: "we should register new instantiated type here, or make sure its registered and searchable from db"
 
-      resultType
+      astType
   ]
   | MapLiteral     => [
     this elements unTypedBody count % 2 != 0 ? [
@@ -256,7 +261,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       body: typedBody2
       :token
       typeInfo: (FuntionT
-                  args: typeTFields
                   fields: typeTFields toMutableList
                   returnType: returnType
                   genericArgs: genericList toMutableList
