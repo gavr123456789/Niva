@@ -127,7 +127,7 @@ Test parseUnaryConstructor -> Unit! = [
   |=> []
 ]
 
-Test parseUnaryDecl -> Unit! = [
+Test parseUnaryDecl -> Unit = [
   input = """
     Int inc -> Bool = [
       1

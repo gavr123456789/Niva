@@ -3,7 +3,7 @@ extend mut Parser [
   /// Map(String, Int)
   /// identifier ("(" | "::")
   on parseGenericType -> AstType = [
-    
+
     isMut = .match: TokenType.Mut
     identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString
     isNullable = identifier kind == TokenType.NullableIdentifier
@@ -11,14 +11,14 @@ extend mut Parser [
 
     isListLike = identifier kind == TokenType.IdentifierDoubleColon
     isMapLike = .match: TokenType.OpenParen
-    
-    
+
+
 
     isListLike ifTrue: [
       recursiveGenerics = .parseGenericType
       // errors = .parseErrors
-      result::mut AstType = AstType 
-        name: name 
+      result::mut AstType = AstType
+        name: name
         nullable: isNullable
         genericParams: {recursiveGenerics}
         tok: identifier
@@ -31,15 +31,15 @@ extend mut Parser [
     isMapLike ifTrue: [
       typeArgumentList::mut List::AstType = {}!
 
-      mut continue = true 
+      mut continue = true
       [continue] whileTrue: [
         typeArgumentList add: .parseGenericType
         continue <- .match: TokenType.Comma
       ]
 
       .matchAssert: TokenType.CloseParen
-      result::mut AstType = AstType 
-        name: name 
+      result::mut AstType = AstType
+        name: name
         nullable: isNullable
         genericParams: typeArgumentList toList
         tok: identifier
@@ -48,29 +48,33 @@ extend mut Parser [
     ]
 
     // no Map() no List::
-    result::mut AstType = AstType 
-      name: name 
+    result::mut AstType = AstType
+      name: name
       nullable: isNullable
       genericParams: {}
       tok: identifier
     result setMutable: isMut
     ^ result
   ]
-  
+
   on parseType -> AstType2 = [
 
     isMut = .match: TokenType.Mut
     itLambda = .match: TokenType.OpenBracket, ifTrue: [
       // [Int, String -> Int]
       // [ -> ]
-      
-      mut c = true 
+
+      mut c = true
       mut args::mut List::AstType2 = {}!
       [c] whileTrue: [
         argType = .parseGenericType
         args add: argType
         c <- .match: TokenType.Comma
       ]
+      > this
+      //.match: TokenType.ReturnArrow, ifTrue: [
+
+      //]
 
       .matchAssert: TokenType.ReturnArrow
 

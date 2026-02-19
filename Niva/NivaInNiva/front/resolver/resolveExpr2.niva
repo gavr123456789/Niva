@@ -47,6 +47,84 @@ NivaType compareWithMany(types): List::NivaType -> Int? = [
   ^ null
 ]
 
+CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT -> CodeBlockT = [
+  c = Context fromParent: upperContext
+
+  expectedFields = expectedType fields
+
+  typeTFields = args isNotEmpty
+    ifTrue: [
+      args map: [
+        {name astType} = it
+        t = astType toNivaTypefromDB: db inPkg: null
+        c defineVar: name withType: t
+        TypeTField name: name typeT: t
+      ]
+    ]
+    ifFalse: [
+      untypedArgs isNotEmpty
+        ifTrue: [
+          expectedFields count != untypedArgs count ifTrue: [
+            db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Wrong number of block args, expected " + expectedFields count toString)
+          ]
+
+          expectedFields count != untypedArgs count
+            ifTrue: [{}]
+            ifFalse: [
+              untypedArgs mapIndexed: [i, ident ->
+                expectedField = expectedFields at: i
+                c defineVar: ident name withType: expectedField typeT
+                TypeTField name: ident name typeT: expectedField typeT
+              ]
+            ]
+        ]
+        ifFalse: [
+          expectedFields count == 1
+            ifTrue: [
+              expectedField = expectedFields first
+              c defineVar: expectedField name withType: expectedField typeT
+              { expectedField }
+            ]
+            ifFalse: [
+              expectedFields isNotEmpty ifTrue: [
+                db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Block has no args, but expected " + expectedFields count toString)
+              ]
+              {}
+            ]
+        ]
+    ]
+
+  genericList = typeTFields
+                  filter: [
+                    {typeT} = it
+                    | typeT
+                    | UnresolvedGenericT => [true]
+                    |=> [false]
+                  ],
+                  map: [it typeT]
+
+  typedBody2 = body resolveBody2: db withContext: c
+  returnType = typedBody2 t
+
+  name = args isNotEmpty
+    ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
+    ifFalse: [
+      untypedArgs isNotEmpty
+        ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+        ifFalse: [expectedType name]
+    ]
+
+  ^ CodeBlockT :args :untypedArgs
+    body: typedBody2
+    :token
+    typeInfo: (FuntionT
+                fields: typeTFields toMutableList
+                returnType: returnType
+                genericArgs: genericList toMutableList
+                name: name
+                pkgName: c currentPkg name) toTypeInfoDefault
+]
+
 Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
   x = db dtc list toTypeInfoDefault
   db dtc char toTypeInfoDefault
@@ -104,18 +182,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       | this
       | ListLiteral => [
         newType = ListT t: f
+        db addCollectionInstantiationIfAbsent: newType
         ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
       | SetLiteral => [
-        typeInfo = SetT t: f, toTypeInfoDefault
-        SetLiteralT :token elements: typedBody typeInfo: typeInfo
+        newType = SetT t: f
+        db addCollectionInstantiationIfAbsent: newType
+        SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
       |=> [TO DO]
-      actualType = astType typeInfo t
-      > actualType
-      > db typeToMethodNameToMethod at: actualType
-      //TO DO: "вспомнить как там обычно находятся методы от инстанциированных типов, и как нам сейчас сохранить этот newType в базу чтобы он находился"
-      //TO DO: "we should register new instantiated type here, or make sure its registered and searchable from db"
 
       astType
   ]
@@ -162,10 +237,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     // if they all equal take first and second as k and v types
 
 
+    mapType = MapT k: first v: second
+    db addCollectionInstantiationIfAbsent: mapType
+
     MapLiteralT
       :token
       elements: typedBody
-      typeInfo: (MapT k: first v: second) toTypeInfoDefault
+      typeInfo: mapType toTypeInfoDefault
   ]
 
   | UnaryMsg   => .resolveUnaryFromDb2: db withContext: c
@@ -235,12 +313,26 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
   | CodeBlock => [
     c = Context fromParent: c
 
-    typeTFields = args map: [
-      {name astType} = it
-      t = astType toNivaTypefromDB: db inPkg: null
-      c defineVar: name withType: t
-      TypeTField name: name typeT: t
-    ]
+    typeTFields = args isNotEmpty
+      ifTrue: [
+        args map: [
+          {name astType} = it
+          t = astType toNivaTypefromDB: db inPkg: null
+          c defineVar: name withType: t
+          TypeTField name: name typeT: t
+        ]
+      ]
+      ifFalse: [
+        untypedArgs isNotEmpty
+          ifTrue: [
+            untypedArgs map: [ident ->
+              unresolvedT = UnresolvedGenericT name: ident name
+              c defineVar: ident name withType: unresolvedT
+              TypeTField name: ident name typeT: unresolvedT
+            ]
+          ]
+          ifFalse: [{}]
+      ]
 
     genericList = typeTFields
                     filter: [
@@ -255,7 +347,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     typedBody2 = body resolveBody2: db withContext: c
     returnType = typedBody2 t
 
-    name = args joinWith: ":" transform: [it astType name], + ":"
+    name = args isNotEmpty
+      ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
+      ifFalse: [
+        untypedArgs isNotEmpty
+          ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+          ifFalse: [""]
+      ]
 
     CodeBlockT :args :untypedArgs
       body: typedBody2

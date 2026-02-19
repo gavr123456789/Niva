@@ -41,60 +41,60 @@ fun LS.onEachStatementCall(
 
     // recursively register all IdentifierExpr usages within an expression
     fun registerIdentifierUsages(expr: Expression) {
-        val scope =
-            if (currentScope != null && previousScope != null)
-                currentScope + previousScope
-            else
-                mutableMapOf()
-        when (expr) {
-            is IdentifierExpr -> {
-                if (!expr.isType && scope.containsKey(expr.name)) {
-                    val key = "${expr.token.file.absolutePath}:${expr.name}"
-                    val declarationToken = varNameToDeclarationToken[key]
-                    if (declarationToken != null) {
-                        info?.invoke("---Found usage of ${expr.name} at ${expr.token.toPositionKey()}")
-                        varUsageToDeclaration[expr.token.toPositionKey()] = declarationToken
-                    }
-                }
-            }
-            is Message -> {
-                registerIdentifierUsages(expr.receiver)
-                when (expr) {
-                    is BinaryMsg -> {
-                        registerIdentifierUsages(expr.argument)
-                        expr.unaryMsgsForReceiver.forEach { registerIdentifierUsages(it) }
-                        expr.unaryMsgsForArg.forEach { registerIdentifierUsages(it) }
-                    }
-                    is KeywordMsg -> {
-                        expr.args.forEach { arg ->
-                            registerIdentifierUsages(arg.keywordArg)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-            is MessageSend -> {
-                registerIdentifierUsages(expr.receiver)
-                expr.messages.forEach { registerIdentifierUsages(it) }
-            }
-            is CodeBlock -> {
-                expr.statements.forEach { stmt ->
-                    if (stmt is Expression) {
-                        registerIdentifierUsages(stmt)
-                    }
-                }
-            }
-            is CollectionAst -> {
-                expr.initElements.forEach { registerIdentifierUsages(it) }
-            }
-            is MapCollection -> {
-                expr.initElements.forEach { (key, value) ->
-                    registerIdentifierUsages(key)
-                    registerIdentifierUsages(value)
-                }
-            }
-            else -> {}
-        }
+//        val scope =
+//            if (currentScope != null && previousScope != null)
+//                currentScope + previousScope
+//            else
+//                mutableMapOf()
+//        when (expr) {
+//            is IdentifierExpr -> {
+//                if (!expr.isType && scope.containsKey(expr.name)) {
+//                    val key = "${expr.token.file.absolutePath}:${expr.name}"
+//                    val declarationToken = varNameToDeclarationToken[key]
+//                    if (declarationToken != null) {
+//                        info?.invoke("---Found usage of ${expr.name} at ${expr.token.toPositionKey()}")
+//                        varUsageToDeclaration[expr.token.toPositionKey()] = declarationToken
+//                    }
+//                }
+//            }
+//            is Message -> {
+//                registerIdentifierUsages(expr.receiver)
+//                when (expr) {
+//                    is BinaryMsg -> {
+//                        registerIdentifierUsages(expr.argument)
+//                        expr.unaryMsgsForReceiver.forEach { registerIdentifierUsages(it) }
+//                        expr.unaryMsgsForArg.forEach { registerIdentifierUsages(it) }
+//                    }
+//                    is KeywordMsg -> {
+//                        expr.args.forEach { arg ->
+//                            registerIdentifierUsages(arg.keywordArg)
+//                        }
+//                    }
+//                    else -> {}
+//                }
+//            }
+//            is MessageSend -> {
+//                registerIdentifierUsages(expr.receiver)
+//                expr.messages.forEach { registerIdentifierUsages(it) }
+//            }
+//            is CodeBlock -> {
+//                expr.statements.forEach { stmt ->
+//                    if (stmt is Expression) {
+//                        registerIdentifierUsages(stmt)
+//                    }
+//                }
+//            }
+//            is CollectionAst -> {
+//                expr.initElements.forEach { registerIdentifierUsages(it) }
+//            }
+//            is MapCollection -> {
+//                expr.initElements.forEach { (key, value) ->
+//                    registerIdentifierUsages(key)
+//                    registerIdentifierUsages(value)
+//                }
+//            }
+//            else -> {}
+//        }
     }
 
     when (st) {
@@ -106,7 +106,7 @@ fun LS.onEachStatementCall(
                 is VarDeclaration -> {
                     val key = "${st.token.file.absolutePath}:${st.name}"
                     varNameToDeclarationToken[key] = st.token
-                    registerIdentifierUsages(st.value)
+//                    registerIdentifierUsages(st.value)
                 }
                 is Expression -> registerIdentifierUsages(st)
             }

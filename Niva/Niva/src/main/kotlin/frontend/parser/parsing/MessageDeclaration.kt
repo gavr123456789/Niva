@@ -194,10 +194,13 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
 fun Parser.methodBody(
     doNotExpectEqual: Boolean = false // methodBody also used in control flow, where `=` is not needed
 ): Pair<MutableList<Statement>, Boolean> {
+
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
     val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual
+//    skipNewLinesAndComments() // `[` on the new line
+
     if (!isThereAssignOrThen) {
         return Pair(mutableListOf(), false)
     }

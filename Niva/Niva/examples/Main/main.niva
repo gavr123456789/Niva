@@ -1,6 +1,12 @@
 type Sas
 
-Sas + x: Sas = 1
+Sas + x: Sas =
+1
 
+Sas sas =
+[
+    1
+    ^ this
+]
 
-Sas new + Sas new, echo
+Sas new sas + Sas new, echo

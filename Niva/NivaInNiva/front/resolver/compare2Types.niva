@@ -72,7 +72,20 @@ NivaType compareWith(nivaType): NivaType -> Bool = [
   // compare each arg and return type
   | FuntionT => [
     | this
-    | FuntionT => (fields toString == nivaType fields toString)
+    | FuntionT => [
+      fields count != nivaType fields count
+        ifTrue: [^ false]
+
+      fieldsMatch <- true
+      fields forEachIndexed: [i, f1 ->
+        f2 = nivaType fields at: i
+        f1 typeT compareWith: f2 typeT, ifFalse: [
+          fieldsMatch <- false
+        ]
+      ]
+      returnTypeMatch = returnType compareWith: nivaType returnType
+      fieldsMatch && returnTypeMatch
+    ]
     |=> false
   ]
   // compare generics

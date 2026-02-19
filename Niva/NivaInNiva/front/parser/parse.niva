@@ -676,7 +676,8 @@ extend mut Parser [
       ^ .step
     ]
     kind = peek kind
-    ^ TO DO: "$matchAssert expected but got $peek"
+    {line start} = peek
+    ^ TO DO: "$matchAssert expected but got $peek at: $line:$start"
   ]
 
   on matchString::String -> Bool = [
