@@ -1,14 +1,6 @@
-empty-list = List(Int) val: {}
+type Sas
 
-empty-list echo
+Sas + x: Sas = 1
 
-type Person-Teacher name: String
-Person-Teacher name-trimmed = name trim
 
-p-t = Person-Teacher name: "   John   "
-
-p-t name-trimmed echo
-
-x = 1
-y = 2
-x - y, echo
+Sas new + Sas new, echo

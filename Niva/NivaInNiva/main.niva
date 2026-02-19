@@ -71,22 +71,15 @@ genericsReceiverAndKwArg = [
     {1 2 3} map: [it inc]
   """
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  //result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = fileMain resolveNivaCode
+
   db = result db
   typedAst = result entryPointExpressions
 
-]
+] do
 
-parseKeywordDeclWithBody = [
-  input = """
-    Money make(local1): Int sas(local2): String -> Int = [
-      ^ 1
-    ]
-  """ trimIndent
 
-  statements = TestParse withInput: input expectedCount: 1
-  kwDecl = statements at: 0
-]
 
 codeBlockStatementWithNewSyntax = [
   input = """
@@ -95,4 +88,4 @@ codeBlockStatementWithNewSyntax = [
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 1
   > statements
-] do
+]

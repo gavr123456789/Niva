@@ -62,7 +62,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 
     val argName = matchAssertAnyIdent("in binary message identifier after operator expected")
     val typeName =
-        if (match(TokenType.DoubleColon))
+        if (match(TokenType.DoubleColon) || match(TokenType.Colon))
             parseTypeAST()
         else null
     val arg = (KeywordDeclarationArg(name = argName.lexeme, argName, typeAST = typeName))
@@ -278,7 +278,7 @@ fun Parser.tryBinary(isConstructor: Boolean): Boolean {
 
     if (match(TokenType.BinarySymbol) && check(TokenType.Identifier)) {
         // + ^x::Type
-        identifierMayBeTyped()
+        identifierMayBeTyped(useSingleColumn = true)
         // + x::Type^
         if (isThereEndOfMessageDeclaration(isConstructor))
             return true
