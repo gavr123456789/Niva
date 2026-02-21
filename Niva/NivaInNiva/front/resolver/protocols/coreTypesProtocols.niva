@@ -28,11 +28,11 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   itArg = TypeTField name: "it" typeT: itemType
   foreachBlock = FuntionT
                   fields: { itArg }!
-                  name: "foreach"
+                  name: "forEach"
                   genericArgs: {}!
                   pkgName: "core"
                   returnType: unit
-  collP addMethod: (NivaMethod singleArgKw: "foreach" receiverType: collectionType argT: foreachBlock returnT: unit)
+  collP addMethod: (NivaMethod singleArgKw: "forEach" receiverType: collectionType argT: foreachBlock returnT: unit)
 
   // filter: (item) -> bool
   filterBlock = FuntionT

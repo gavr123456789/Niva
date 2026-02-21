@@ -25,6 +25,11 @@ constructor LexTest
   ^ y
 ]
 
+Test unitTypeLex = [
+  LexTest checkThat: "()"
+          equals: {TokenType.UnitTok}
+]
+
 Test integers = [
   tokens = LexTest input: "11 22 33 -44"
 

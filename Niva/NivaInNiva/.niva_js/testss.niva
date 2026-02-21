@@ -1,5 +1,8 @@
 list = {1 2 3}
 
-list forEach: [
-  it echo
-]
+list map: [it * 2], filter: [it > 2], forEach: [it echo]
+
+//list forEach: [
+//  it echo
+//  //Unit
+//]

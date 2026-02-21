@@ -367,10 +367,29 @@ extend mut Parser [
       ^ .messageDeclarationOrExpression: .step savedPosition: savePosition isConstructor: true
     ]
     | TokenType.Identifier => [
-      ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+      firstChar = tok lexeme first
+      isTypeName = firstChar isUpperCase
+      isTypeName ifTrue: [
+        ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+      ] ifFalse: [
+        ^ .nextExperssion: tok
+      ]
     ]
     | TokenType.Mut => [
-      ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+      nextTok = .peek
+      isTypeName = | nextTok kind
+                  | TokenType.Identifier
+                  | TokenType.NullableIdentifier
+                  | TokenType.IdentifierDoubleColon => [
+                    firstChar = nextTok lexeme first
+                    firstChar isUpperCase
+                  ]
+                  |=> false
+      isTypeName ifTrue: [
+        ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+      ] ifFalse: [
+        ^ .nextExperssion: tok
+      ]
     ]
     | TokenType.If => [
       ^.parseMatch: tok
@@ -432,9 +451,11 @@ extend mut Parser [
 
       // assign
       primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+      > primaryReceiver
       .peek kind == TokenType.Assign, ifTrue: [
         ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
       ]
+      //TO DO: "ТАк посмотреть по истории как тут было последний раз в этом месте, весто праймари пробовать еще и запятую а потом уже выбрасывать и добавить тест с замятыми всех мастей"
       .peek kind == TokenType.AssignArrow, ifTrue: [
         .step
         value = .nextExperssion: .step

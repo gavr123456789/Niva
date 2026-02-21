@@ -555,12 +555,11 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
 // if we have changed content then replace the read from disc with it, to not to read the old one
 fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: String?): Pair<File, MutableSet<File>> {
     fun getNivaFilesInSameDirectory(file: File): Set<File> {
-        val directory = file.parentFile
-        return if (directory.isDirectory) {
+        val directory: File? = file.parentFile
+        return if (directory?.isDirectory == true) {
             val q = directory.listFiles()
-            if (q != null) {
-                q.asSequence().filter { it.extension == "niva" }.toSet() // || it.extension == "scala"
-            } else TODO("Cant find files in the $directory")
+            q?.asSequence()?.filter { it.extension == "niva" }?.toSet() // || it.extension == "scala"
+                ?: emptySet() //TO DO("Cant find files in the $directory")
         } else {
             emptySet()
         }
@@ -571,19 +570,29 @@ fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: Str
     // returns path to main.niva and set of all files
     // Doesn't search inside folders, only goes outside
     fun findMainUpRecursively(a: File, listOfNivaFiles: MutableSet<File>): Pair<File, MutableSet<File>> {
-        val filesFromTheUpperDir = getNivaFilesInSameDirectory(a)
-        listOfNivaFiles.addAll(filesFromTheUpperDir)
+        var current: File? = a
+        var depth = 0
+        val filesInStartDir = getNivaFilesInSameDirectory(a)
+        val fallbackInStartDir = filesInStartDir.firstOrNull()
 
-        // actually there can be a folder with only folders and no niva files
-//        if (filesFromTheUpperDir.count() == 0) throw Exception("There is no main.niva file")
+        while (current != null && depth < 5) {
+            val filesFromTheUpperDir = getNivaFilesInSameDirectory(current)
+            listOfNivaFiles.addAll(filesFromTheUpperDir)
 
-        // find if there is main.niva
-        val nivaMain = listOfNivaFiles.find { it.nameWithoutExtension == "main" }
-        return if (nivaMain != null) {
-            Pair(nivaMain, listOfNivaFiles)
-        } else {
-            findMainUpRecursively(a.parentFile, listOfNivaFiles)
+            // find if there is main.niva
+            val nivaMain = listOfNivaFiles.find { it.nameWithoutExtension == "main" }
+            if (nivaMain != null) {
+                return Pair(nivaMain, listOfNivaFiles)
+            }
+
+            val next = current.parentFile
+            if (next == null) break
+            current = next
+            depth++
         }
+
+        val fallback = fallbackInStartDir ?: if (a.extension == "niva") a else null
+        return Pair(fallback ?: a, listOfNivaFiles)
     }
 
     val collectFiles = {
@@ -695,5 +704,3 @@ fun LS.fillNonIncrementalStore(
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
 
 }
-
-
