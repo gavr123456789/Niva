@@ -210,21 +210,19 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     typesOfElems = elems map: [it typeInfo t]
 
     // Compare every first with first, every second with second
-    first = typesOfElems first debug
-    second = typesOfElems at: 1, debug
+    first = typesOfElems first
+    second = typesOfElems at: 1
 
 
-    (typesOfElems drop: 2) debug forEachIndexed: [i, it ->
+    (typesOfElems drop: 2), forEachIndexed: [i, it ->
       i % 2 == 0 ? [
-        i debug
-        it debug compareWith: first, ifFalse: [
+        it compareWith: first, ifFalse: [
           db addErrorMessage: (ErrorWrongArgType
                                 tok: this token
                                 msg: "Wront type of $it element, $second value type expected")
         ]
       ] ! [
-      i debug
-        it debug compareWith: second, ifFalse: [
+        it compareWith: second, ifFalse: [
           db addErrorMessage: (ErrorWrongArgType
                                 tok: this token
                                 msg: "Wront type of $it element, $first key type expected")

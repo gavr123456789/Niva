@@ -163,7 +163,11 @@ extend mut Lexer [
       ifFalse: [.createToken: TokenType.Ampersand lexeme: "&"]
 
     // parens
-    | '(' => .createToken: TokenType.OpenParen   lexeme: l
+    | '(' => [
+      ^.stepMatch: ')',
+          ifTrue:  [.createToken: TokenType.UnitTok lexeme: "()"]
+          ifFalse: [.createToken: TokenType.OpenParen lexeme: "("]
+    ]
     | ')' => .createToken: TokenType.CloseParen  lexeme: l
     | '[' => .createToken: TokenType.OpenBracket   lexeme: l
     | ']' => .createToken: TokenType.CloseBracket  lexeme: l
@@ -209,7 +213,7 @@ extend mut Lexer [
     | ',' =>     .createToken: TokenType.Comma lexeme: l
     | '.' =>     .createToken: TokenType.Dot lexeme: l
     | ':' =>     .createToken: TokenType.Colon lexeme: l
-    | '^' => .createToken: TokenType.Return  lexeme: l
+    | '^' =>     .createToken: TokenType.Return  lexeme: l
 
     |=> [
       // identifier

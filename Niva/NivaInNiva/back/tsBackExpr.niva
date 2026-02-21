@@ -58,17 +58,17 @@ constructor TypeScript  [
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
 TypedExpr2 toTSFromPkg(currentPkg): String -> String =
 | this
-| LiteralExprT => .literalToTS
-| IdentifierT => .identToTS
-| ExprInBracketsT => "(" + (value toTSFromPkg: currentPkg) + ")"
-| VarDeclarationT => .varDeclToTSFromPkg: currentPkg
-| AssignT => .generateTSAssignFromPkg: currentPkg
+| LiteralExprT       => .literalToTS
+| IdentifierT        => .identToTS
+| ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg) + ")"
+| VarDeclarationT    => .varDeclToTSFromPkg: currentPkg
+| AssignT            => .generateTSAssignFromPkg: currentPkg
 | DestructingAssignT => TO DO
 | CollectionLiteralT => .collectionToTSFromPkg: currentPkg
-| MessageSendT => .msgSendToTSFromPkg: currentPkg
-| ReturnStatementT => .returnToTSFromPkg: currentPkg
-| CodeBlockT => .codeBlockToTSFromPkg: currentPkg
-| MatchT => TO DO
+| MessageSendT       => .msgSendToTSFromPkg: currentPkg
+| ReturnStatementT   => .returnToTSFromPkg: currentPkg
+| CodeBlockT         => .codeBlockToTSFromPkg: currentPkg
+| MatchT             => TO DO
 
 /// checks if it a field of receiver than generates _this.field = ...
 AssignT generateTSAssignFromPkg(currentPkg): String -> String = [
@@ -101,7 +101,7 @@ CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
       "new Map([" + elementsStr + "])"
     ]
 
-  ^ ""
+
 ]
 
 ReturnStatementT returnToTSFromPkg(currentPkg): String -> String = [
@@ -110,12 +110,56 @@ ReturnStatementT returnToTSFromPkg(currentPkg): String -> String = [
 ]
 
 CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
-    argsStr = args joinWith: ", " transform: [
-        it name
-    ]
-    bodyStr = body v joinWith: "\n" transform: [
-        it toTSFromPkg: currentPkg
-    ]
+    argsStr = args isNotEmpty
+      ifTrue: [
+        args joinWith: ", " transform: [
+          it name
+        ]
+      ] ifFalse: [
+        untypedArgs isNotEmpty
+          ifTrue: [
+            untypedArgs joinWith: ", " transform: [
+              it name
+            ]
+          ] ifFalse: [
+              p = typeInfo t
+            implicitArg = | p
+              | FuntionT => [
+                p fields count == 1
+                  ifTrue: [
+                    fieldName = p fields first name
+                    fieldName == "" ifTrue: ["it"] ifFalse: [fieldName]
+                  ]
+                  ifFalse: [""]
+              ]
+              |=> ""
+            implicitArg
+          ]
+      ]
+    bodyExprs = body v
+    bodyStr = bodyExprs isEmpty
+      ifTrue: [""]
+      ifFalse: [
+        lastIndex = bodyExprs count - 1
+        bodyExprs mapIndexed: [i, expr ->
+          isLast = i == lastIndex
+          isLast
+            ifTrue: [
+              | expr
+              | ReturnStatementT =>
+                expr toTSFromPkg: currentPkg
+              | VarDeclarationT
+              | AssignT
+              | DestructingAssignT =>
+                (expr toTSFromPkg: currentPkg) + "\nreturn"
+              |=> [
+                "return " + (expr toTSFromPkg: currentPkg)
+              ]
+            ] ifFalse: [
+              expr toTSFromPkg: currentPkg
+            ]
+        ], joinWith: "\n"
+      ]
 
     ^ "(" + argsStr + ") => {" + bodyStr + "}"
 ]
@@ -202,7 +246,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
                 hasSuffix = suffix != dbMsg name
                 suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
 
-                dbMsg receiverType toMangledName + "__" + selectorFromArgs + suffixStr
+                dbMsg receiverType name + "__" + selectorFromArgs + suffixStr
             ] ifTrue: [
                 "new " + dbMsg receiverType name
             ]

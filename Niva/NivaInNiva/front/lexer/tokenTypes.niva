@@ -1,4 +1,4 @@
-enum TokenType = 
+enum TokenType =
   |EndOfFile
 
 
@@ -35,6 +35,8 @@ enum TokenType =
   |OpenBraceHash // #{
   |OpenParenHash // #(
 
+  |UnitTok // ()
+
   // punctuation
   |Dot| Cascade| Comma| Colon| Apostrophe// . : `
   |DotOpenBracket // .[
@@ -62,27 +64,27 @@ type Token
 
 Token toString = "$kind($lexeme)"
 
-constructor Token fake = Token 
-  kind: TokenType.Identifier 
-  lexeme: "FakeToken" 
-  line: 1 
+constructor Token fake = Token
+  kind: TokenType.Identifier
+  lexeme: "FakeToken"
+  line: 1
   start: 0 end: 1
 
-constructor Token eof = Token 
-  kind: TokenType.EndOfFile 
-  lexeme: "" 
-  line: 1 
+constructor Token eof = Token
+  kind: TokenType.EndOfFile
+  lexeme: ""
+  line: 1
   start: 0 end: 1
 
 extend Token [
-  on isIdentifier = 
+  on isIdentifier =
     (kind == TokenType.Identifier) ||
     (kind == TokenType.NullableIdentifier) ||
-    (kind == TokenType.IdentifierDoubleColon) 
-  on isNullOrIdentifier = 
+    (kind == TokenType.IdentifierDoubleColon)
+  on isNullOrIdentifier =
     (kind == TokenType.Identifier) ||
     (kind == TokenType.NullableIdentifier)
- 
+
 ]
 
 /// gets keyword name outputs token type, or identifier if its not kw

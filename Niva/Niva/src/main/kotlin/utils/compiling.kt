@@ -452,7 +452,9 @@ fun compileProjFromFile(
 
     if (resolver.otherFilesPaths.count() != otherAst.count()) {
         val tok = mainAst.firstOrNull()?.token ?: createFakeToken("")
-        tok.compileError("resolver.otherFilesPaths = ${resolver.otherFilesPaths}, otherAst = $otherAst, customAST = $customAst")
+        val q = resolver.otherFilesPaths.count()
+        val w = otherAst.count()
+        tok.compileError("resolver.otherFilesPaths.count($q) != otherAst.count($w)") //otherAst = $otherAst, customAST = $customAst
     }
     resolver.resolveWithBackTracking(
         mainAst,

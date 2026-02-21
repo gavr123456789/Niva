@@ -57,13 +57,31 @@ compilerTry = [
 ]
 
 compilerTry2 = [
-  path = {"build" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
   //t1 = System currentTimeMillis
   //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
+]
+
+pipesAgain = [
+
+  input = """
+    1 to: 2, to: 3
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  > statements at: 0
 ] do
+
+// strange bug
+//rarar = [
+//  LexTest checkThat: "()"
+//          equals: {
+//                   TokenType.Comma
+//                  }
+//] do
 
 
 genericsReceiverAndKwArg = [
@@ -130,10 +148,6 @@ sas = [
 ]
 
 
-
-
-
-
 codeBlockStatementWithNewSyntax = [
   input = """
     // call with args
@@ -141,4 +155,21 @@ codeBlockStatementWithNewSyntax = [
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 1
   > statements
+]
+
+
+
+odin = [
+  program = "+ + * ) - /"
+  acc <- 0
+  program forEach: [
+    | it
+    | '+' => acc <- acc inc
+    | '-' => acc <- acc dec
+    | '*' => acc <- acc * 2
+    | '/' => acc <- acc / 2
+    | ')'=> acc <- acc * acc
+    |=> []
+  ]
+  "The program $program calculates the value $acc" echo
 ]

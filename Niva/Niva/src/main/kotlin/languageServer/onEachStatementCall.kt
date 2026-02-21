@@ -2,21 +2,14 @@ package main.languageServer
 
 import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Type
-import main.frontend.parser.types.ast.BinaryMsg
-import main.frontend.parser.types.ast.CodeBlock
-import main.frontend.parser.types.ast.CollectionAst
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.Expression
-import main.frontend.parser.types.ast.IdentifierExpr
-import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.ManyConstructorDecl
-import main.frontend.parser.types.ast.MapCollection
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
-import main.frontend.parser.types.ast.MessageSend
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
 import java.io.File
