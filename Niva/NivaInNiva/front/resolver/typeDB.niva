@@ -133,6 +133,7 @@ extend TyperDB [
   on addErrorMessage(e): ResolveErrors = [
     msg = e msg
     "ADDED ERROR $msg" red log
+    TO DO
     listOfErrors add: e
     //TO DO: "Error"
   ]
@@ -407,14 +408,13 @@ extend TyperDB [
     ]
 
     typeToMethodNameToMethod //keys debug
-    > forType
-    > typeToMethodNameToMethod
     x = this typeToMethodNameToMethod at: forType
     y::mut Map(String, NivaMethod) =
       | x
       | null => [TO DO: "cant find type $forType in db typeToMethodNameToMethod"]
       |=> [ x ]
 
+    //StackTrace get echo
     "Methods: found method $name in $forType" log
     ^ y at: name
   ]

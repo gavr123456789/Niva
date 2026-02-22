@@ -30,6 +30,16 @@ Test unitTypeLex = [
           equals: {TokenType.UnitTok}
 ]
 
+Test parenStringLex = [
+  tokens = LexTest input: """("123456")"""
+
+  Assert that: tokens count equals: 3
+  Assert that: (tokens at: 0) kind equals: TokenType.OpenParen
+  Assert that: (tokens at: 1) kind equals: TokenType.String
+  Assert that: (tokens at: 1) lexeme equals: "\"123456\""
+  Assert that: (tokens at: 2) kind equals: TokenType.CloseParen
+]
+
 Test integers = [
   tokens = LexTest input: "11 22 33 -44"
 

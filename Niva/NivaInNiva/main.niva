@@ -63,17 +63,17 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
+] do
 
 pipesAgain = [
 
   input = """
-    list map: [it * 2], filter: [it > 2], forEach: [it echo]
+    ("123456" drop: 1) dropLast: 2
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
   > statements at: 0
-] do
+]
 
 // strange bug
 //rarar = [

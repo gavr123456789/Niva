@@ -164,9 +164,13 @@ extend mut Lexer [
 
     // parens
     | '(' => [
-      ^.stepMatch: ')',
-          ifTrue:  [.createToken: TokenType.UnitTok lexeme: "()"]
-          ifFalse: [.createToken: TokenType.OpenParen lexeme: "("]
+      // avoid consuming the next char unless it's a unit "()"
+      .peekChar == ')', ifTrue: [
+        .step // move to ')'
+        .createToken: TokenType.UnitTok lexeme: "()"
+      ] ifFalse: [
+        .createToken: TokenType.OpenParen lexeme: "("
+      ]
     ]
     | ')' => .createToken: TokenType.CloseParen  lexeme: l
     | '[' => .createToken: TokenType.OpenBracket   lexeme: l
@@ -208,7 +212,7 @@ extend mut Lexer [
       ifFalse: [.createToken: TokenType.BinarySymbol lexeme: ">"]
 
 
-    |'+'|'*' => .createToken: TokenType.BinarySymbol lexeme: l
+    |'+'|'*'|'%' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
     | '.' =>     .createToken: TokenType.Dot lexeme: l
