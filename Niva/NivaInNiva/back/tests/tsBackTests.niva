@@ -45,3 +45,22 @@ Test tsDestructAssignCodegen = [
 
   Assert that: (js contains: "const {age, name} = alice") equals: true
 ]
+
+Test tsSingleExprReturnCodegen = [
+  fileMain = """
+    type Square side: Int
+
+    Square perimeter = side inc
+
+    square = Square side: 42
+    square perimeter echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "export function Square__perimeter") equals: true
+  Assert that: (js contains: "let side = _this.side") equals: true
+  Assert that: (js contains: "return core.Int__inc(side)") equals: true
+]

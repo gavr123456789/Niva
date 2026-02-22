@@ -94,41 +94,10 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
             ]
         ] do
 
-        bodyExprs = this body typedBody2
-        isSingleExpr
-            ifTrue: [
-                lastIndex = bodyExprs count - 1
-                // we should add return only for valid types of exprs
-                bodyExprs forEachIndexed: [i, expr ->
-                    isLast = i == lastIndex
-                    isLast
-                        ifTrue: [
-                            | expr
-                            | ReturnStatementT => [
-                                sb append: "    "
-                                sb appendLine: (expr toTSFromPkg: currentPkg)
-                            ]
-                            | VarDeclarationT | AssignT | DestructingAssignT => [
-                                sb append: "    "
-                                sb appendLine: (expr toTSFromPkg: currentPkg)
-                                sb append: "    "
-                                sb appendLine: "return"
-                            ]
-                            |=> [
-                                sb append: "    "
-                                sb appendLine: "return " + (expr toTSFromPkg: currentPkg)
-                            ]
-                        ] ifFalse: [
-                            sb append: "    "
-                            sb appendLine: (expr toTSFromPkg: currentPkg)
-                        ]
-                ]
-            ] ifFalse: [
-                bodyExprs forEach: [expr ->
-                    sb append: "    "
-                    sb appendLine: (expr toTSFromPkg: currentPkg)
-                ]
-            ]
+        this body typedBody2 forEach: [expr ->
+            sb append: "    "
+            sb appendLine: (expr toTSFromPkg: currentPkg)
+        ]
 
         sb append: "}"
         sb toString

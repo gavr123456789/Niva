@@ -349,6 +349,32 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
   body resolveBody2: db withContext: c
 
+  isSingleExpr ifTrue: [
+    bodyExprs = body typedBody2
+    bodyExprs isNotEmpty ifTrue: [
+      lastExpr = bodyExprs last
+      | lastExpr
+      | ReturnStatementT => []
+      | VarDeclarationT
+      | AssignT
+      | DestructingAssignT => [
+        bodyExprs add: (ReturnStatementT
+                          value: null
+                          token: lastExpr token
+                          typeInfo: db dtc unit toTypeInfoDefault)
+      ]
+      |=> [
+        newBody = (bodyExprs dropLast: 1, toMutableList)
+        newBody add: (ReturnStatementT
+                        value: lastExpr
+                        token: lastExpr token
+                        typeInfo: lastExpr typeInfo)
+        bodyExprs clear
+        bodyExprs addAll: newBody
+      ]
+    ]
+  ]
+
   // clean up local scope
   extraTypes keys forEach: [
     db localGenericScope remove: it
