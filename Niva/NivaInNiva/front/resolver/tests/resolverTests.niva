@@ -306,6 +306,24 @@ Test scopeVariables = [
   typedAst = result fileToStatements at: "main", unpackOrPANIC
 ]
 
+Test destructAssignDefinesVars = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+    age echo
+    name echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
 
 Test constructorCall = [
   fileMain = """

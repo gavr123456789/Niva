@@ -278,6 +278,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       value: typedExpr
       :astType
       :token
+      :isMut
       typeInfo: db dtc unit toTypeInfoDefault
 
   ]
@@ -295,7 +296,30 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
 
       AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault :kind
   ]
-  | DestructingAssign => DestructingAssignT :names value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault
+  | DestructingAssign => [
+    typedValue = value toTypedExprFromDb2: db withContext: c
+    valueType = typedValue typeInfo t
+
+    names forEach: [fieldName ->
+      field = valueType findField: fieldName
+      | field
+      | null => [
+        errMsg = | valueType
+                 | Complex => "Type " + valueType name + " has no field " + fieldName
+                 |=> "Destructing assign expects complex type, got " + valueType name
+        db addErrorMessage: (LazyError tok: token msg: errMsg)
+      ]
+      |=> [
+        c defineVar: fieldName withType: field typeT
+      ]
+    ]
+
+    DestructingAssignT
+      :names
+      value: typedValue
+      :token
+      typeInfo: db dtc unit toTypeInfoDefault
+  ]
   | ReturnStatement =>[
     valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
     returnType =

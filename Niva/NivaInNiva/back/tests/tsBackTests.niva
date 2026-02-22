@@ -28,3 +28,20 @@ Test tsGetterCodegen = [
   Assert that: (js contains: "const p = new Person(21)") equals: true
   Assert that: (js contains: "const z = p.age") equals: true
 ]
+
+Test tsDestructAssignCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "const {age, name} = alice") equals: true
+]

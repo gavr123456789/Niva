@@ -63,7 +63,7 @@ TypedExpr2 toTSFromPkg(currentPkg): String -> String =
 | ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg) + ")"
 | VarDeclarationT    => .varDeclToTSFromPkg: currentPkg
 | AssignT            => .generateTSAssignFromPkg: currentPkg
-| DestructingAssignT => TO DO
+| DestructingAssignT => .destructToTSFromPkg: currentPkg
 | CollectionLiteralT => .collectionToTSFromPkg: currentPkg
 | MessageSendT       => .msgSendToTSFromPkg: currentPkg
 | ReturnStatementT   => .returnToTSFromPkg: currentPkg
@@ -173,8 +173,15 @@ CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
 ]
 
 
-VarDeclarationT varDeclToTSFromPkg(currentPkg): String =
-    "const " + name  + " = " + (value toTSFromPkg: currentPkg)
+VarDeclarationT varDeclToTSFromPkg(currentPkg): String -> String = [
+    declKw = isMut ifTrue: ["let "] ifFalse: ["const "]
+    ^ declKw + name  + " = " + (value toTSFromPkg: currentPkg)
+]
+
+DestructingAssignT destructToTSFromPkg(currentPkg): String -> String = [
+    fieldsStr = names joinWith: ", "
+    ^ "const {" + fieldsStr + "} = " + (value toTSFromPkg: currentPkg)
+]
 
 
 IdentifierT identToTS -> String =
@@ -244,6 +251,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
         ^ getReceiverTs do + " " + q
     ]
     | KeywordMsgT => [
+        dbMsg name == "whileTrue:" ifTrue: [
+            condStr = receiver toTSFromPkg: currentPkg
+            bodyStr = (args first expr) toTSFromPkg: currentPkg
+            ^ "while (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
+        ]
+
         // selector
         newSelector = isDefaultConstructor
             ifFalse: [
