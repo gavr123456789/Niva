@@ -49,27 +49,28 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
                             expr: expr
                             argName: name name)
 
-    | argTypeFromDb | UnresolvedGenericT => [
-      // Check if we already resolved same letter to different type
-      letterToType at: argTypeFromDb letter, unpack: [ alreadyResolvedTo::NivaType ->
-        alreadyResolvedTo compareWith: typedExpr typeInfo t, ifFalse: [
-          l = argTypeFromDb letter
-          to = typedExpr typeInfo t
-          TO DO: "Cant resolve $l to $to, it was already resolved to $alreadyResolvedTo"
+    // infer generics from nested types (function return types)
+    argTypeFromDb collectGenericMappingsFrom: realType into: letterToType
+
+    argTypeFromDb containsUnresolvedGeneric
+      ifTrue: [
+        expectedResolved = argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db
+        expectedResolved containsUnresolvedGeneric ifFalse: [
+          realType compareWith: expectedResolved, ifFalse: [
+            db addErrorMessage: (ErrorWrongArgType
+                                  tok: expr token
+                                  msg: "Expected " + expectedResolved toString + " but got " + realType toString)
+          ]
         ]
       ]
-
-      letterToType
-        at: argTypeFromDb letter
-        put: realType
-    ] |=> [
-      // вот, если это не женерик то сравниваем с тем шо в дб
-      realType compareWith: argTypeFromDb, ifFalse: [
-        db addErrorMessage: (ErrorWrongArgType
-                              tok: expr token
-                              msg: "Expected " + argTypeFromDb toString + " but got " + realType toString)
+      ifFalse: [
+        // вот, если это не женерик то сравниваем с тем шо в дб
+        realType compareWith: argTypeFromDb, ifFalse: [
+          db addErrorMessage: (ErrorWrongArgType
+                                tok: expr token
+                                msg: "Expected " + argTypeFromDb toString + " but got " + realType toString)
+        ]
       ]
-    ]
     // Да тут можно сразу и проверять тип чеуж там
 
     NameAndExprT name: name expr: typedExpr
@@ -111,6 +112,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
 
     // register the method in the instantiated receiver type's method table
     instReceiverType = newMethod receiverType
+    db addCollectionInstantiationIfAbsent: instReceiverType
 
     // add the method to the cache if missing
     // instantiated methods go to instantiatedCache
