@@ -418,9 +418,6 @@ extend mut Parser [
       //"Warning: Parser: fallback to expr parsing with tok: $tok" echo
       ^ .nextExperssion: tok
     ]
-
-
-
     .peek kind != TokenType.EndOfFile, ifTrue: [
       .step // just to evade infinity loop
     ]
@@ -441,6 +438,28 @@ extend mut Parser [
     | TokenType.Mut => [
         name = .step // tok is mut here, so we need name
         ^ .parseVarDeclExpr: name name: name lexeme isMut: true
+    ]
+    | TokenType.OpenParen => [
+        inner = .nextExperssion: .step
+        .matchAssert: TokenType.CloseParen
+
+        exprInBrackets = ExprInBrackets value: inner token: tok
+
+        firstExpr = .nextExperssion2: tok receiver: exprInBrackets
+
+        // не уверен что тут нужна обработка запятой
+        mut expr = firstExpr
+        mut c = true
+        [c] whileTrue: [
+          .peek kind == TokenType.Comma, ifTrue: [
+            commaTok = .step // skip comma
+            expr <- .nextExperssion2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
+          ] ifFalse: [
+            c <- false
+          ]
+        ]
+
+        ^ expr
     ]
     |=> [
 

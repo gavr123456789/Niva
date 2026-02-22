@@ -6,6 +6,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
   typeOfReceiver = receiverTypedExpr typeInfo t
   mut lastType = typeOfReceiver
   mut lastReceiverExpr = receiver
+  mut lastReceiverTypedExpr = receiverTypedExpr
   mut lastDbMsg::NivaMethod? = null
 
   typedArgs::mut List::NameAndExprT = {}!
@@ -17,13 +18,14 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
       token: token
       kind: MessageSendKind.Call
 
-    kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: binary name name
+    kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: lastReceiverTypedExpr nameOverride: binary name name
     lastDbMsg <- kwResolved dbMsg
     lastType <- kwResolved typeInfo t
     lastReceiverExpr <- binary expr
 
     typedArg = kwResolved args first
     typedArgs add: (NameAndExprT name: typedArg name expr: typedArg expr)
+    lastReceiverTypedExpr <- typedArg expr
   ]
 
   //

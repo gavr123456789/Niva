@@ -5,6 +5,11 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> Keywor
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String?  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
+  ^ .resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride
+]
+
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped::TypedExpr2 nameOverride: String?  -> KeywordMsgT = [
+  receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
   argTypesAndExprs :: mut List::CheckMethodArg = {}!
@@ -66,9 +71,10 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
       ifFalse: [
         // вот, если это не женерик то сравниваем с тем шо в дб
         realType compareWith: argTypeFromDb, ifFalse: [
+          kwName = kwArg name
           db addErrorMessage: (ErrorWrongArgType
                                 tok: expr token
-                                msg: "Expected " + argTypeFromDb toString + " but got " + realType toString)
+                                msg: "wrong arg type for $kwName Expected " + argTypeFromDb toString + " but got " + realType toString)
         ]
       ]
     // Да тут можно сразу и проверять тип чеуж там

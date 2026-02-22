@@ -98,7 +98,15 @@ CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
       //   [42, "answer"],
       //   [{ id: 1 }, "object as key"]
       // ]);
-      "new Map([" + elementsStr + "])"
+      elems = elements v
+      elems count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
+      pairs = elems asSequence
+                chunked: 2, joinTransform: [
+                  key = it at: 0
+                  value = it at: 1
+                  "[" + (key toTSFromPkg: currentPkg) + ", " + (value toTSFromPkg: currentPkg) + "]"
+                ]
+      "new Map([" + (pairs) + "])"
     ]
 
 

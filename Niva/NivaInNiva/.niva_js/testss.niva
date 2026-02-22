@@ -1,8 +1,2 @@
-list = {1 2 3}
 
-list map: [it * 2], filter: [it > 2], forEach: [it echo]
-
-//list forEach: [
-//  it echo
-//  //Unit
-//]
+1 inc + 3 dec - "abc" count
