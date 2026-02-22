@@ -832,6 +832,13 @@ fun createListProtocols(
             ),
             createKeyword(
                 KeywordArg(
+                    "any",
+                    Type.Lambda(mutableListOf(KeywordArg("any", itType)), boolType)
+                ),
+                boolType
+            ),
+            createKeyword(
+                KeywordArg(
                     "indexOfLast",
                     Type.Lambda(mutableListOf(KeywordArg("indexOfLast", itType)), boolType)
                 ),

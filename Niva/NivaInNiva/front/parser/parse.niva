@@ -470,13 +470,19 @@ extend mut Parser [
       // any expr
       firstExpr = .nextExperssion2: tok receiver: primaryReceiver
 
-      // expr, expr
-     ^| .peek kind
-      | TokenType.Comma => [
-        .step // skip comma
-        .nextExperssion2: tok receiver: (ExprInBrackets value: firstExpr token: tok)
+      // expr, expr (allow chaining)
+      mut expr = firstExpr
+      mut c = true
+      [c] whileTrue: [
+        .peek kind == TokenType.Comma, ifTrue: [
+          commaTok = .step // skip comma
+          expr <- .nextExperssion2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
+        ] ifFalse: [
+          c <- false
+        ]
       ]
-      |=> firstExpr
+
+      ^ expr
     ]
   ]
 

@@ -123,6 +123,91 @@ extend NivaType [
     |=> this
   ]
 
+  on containsUnresolvedGeneric -> Bool = [
+    ^| this
+    | UnresolvedGenericT => true
+    | ListT => this t containsUnresolvedGeneric
+    | SetT => this t containsUnresolvedGeneric
+    | MapT => (this k containsUnresolvedGeneric) || (this v containsUnresolvedGeneric)
+    | FuntionT => [
+      hasGenericInFields = fields any: [ it typeT containsUnresolvedGeneric ]
+      hasGenericInReturn = returnType containsUnresolvedGeneric
+
+      hasGenericInFields || hasGenericInReturn
+    ]
+    | TypeT => [
+      genericArgs any: [ it containsUnresolvedGeneric ]
+    ]
+    | NullableT => this v containsUnresolvedGeneric
+    |=> false
+  ]
+
+  on collectGenericMappingsFrom(actual): NivaType into: mut Map(String, NivaType) = [
+    | this
+    | UnresolvedGenericT => [
+      existing = into at: letter
+      | existing
+      | null => into at: letter put: actual
+
+      |=> [
+        existing compareWith: actual, ifFalse: [
+          l = letter
+          to = actual
+          TO DO: "Cant resolve $l to $to, it was already resolved to $existing"
+        ]
+      ]
+    ]
+    | ListT => [
+      | actual
+      | ListT => this t collectGenericMappingsFrom: actual t into: into
+      |=> []
+    ]
+    | SetT => [
+      | actual
+      | SetT => this t collectGenericMappingsFrom: actual t into: into
+      |=> []
+    ]
+    | MapT => [
+      | actual
+      | MapT => [
+        this k collectGenericMappingsFrom: actual k into: into
+        this v collectGenericMappingsFrom: actual v into: into
+      ]
+      |=> []
+    ]
+    | FuntionT => [
+      | actual
+      | FuntionT => [
+        fields count == actual fields count ifTrue: [
+          fields forEachIndexed: [i, fExp ->
+            fAct = actual fields at: i
+            fExp typeT collectGenericMappingsFrom: fAct typeT into: into
+          ]
+        ]
+        returnType collectGenericMappingsFrom: actual returnType into: into
+      ]
+      |=> []
+    ]
+    | TypeT => [
+      | actual
+      | TypeT => [
+        (name == actual name) && (pkgName == actual pkgName), ifTrue: [
+          genericArgs forEachIndexed: [i, gExp ->
+            gAct = actual genericArgs at: i
+            gExp collectGenericMappingsFrom: gAct into: into
+          ]
+        ]
+      ]
+      |=> []
+    ]
+    | NullableT => [
+      | actual
+      | NullableT => this v collectGenericMappingsFrom: actual v into: into
+      |=> []
+    ]
+    |=> []
+  ]
+
   on instantiateFromTable(table): Map(String, NivaType) -> String = [
 
     result = | this

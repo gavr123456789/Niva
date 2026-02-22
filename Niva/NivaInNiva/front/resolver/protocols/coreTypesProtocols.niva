@@ -1,8 +1,6 @@
 constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
   {int str bool char unit t g} = dtc
 
-  collectionWithDifferentGenericType = UnresolvedGenericT name: "G"
-
   collP = NivaProtocol name: "common"
   // unary
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
@@ -43,13 +41,19 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                   returnType: bool
   collP addMethod: (NivaMethod singleArgKw: "filter" receiverType: collectionType argT: filterBlock returnT: collectionType)
 
-  // map: (item) -> t
+  // map: (item) -> different generic
+  mapReturnGeneric = | collWithDiffferentGeneric
+    | ListT => collWithDiffferentGeneric t
+    | SetT => collWithDiffferentGeneric t
+    | MapT => collWithDiffferentGeneric v
+    |=> [TO DO: "Compiler bug, collection type expected, got $collWithDiffferentGeneric"]
+
   mapBlock = FuntionT
               fields: { itArg }!
               name: "map"
               genericArgs: {}!
               pkgName: "core"
-              returnType: t
+              returnType: mapReturnGeneric
 
   collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
 
