@@ -1,2 +1,6 @@
+type Square side: Int
 
-1 inc + 3 dec - "abc" count
+Square perimeter = side inc
+
+square = Square side: 42
+square perimeter echo// call

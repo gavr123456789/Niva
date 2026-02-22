@@ -74,7 +74,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           kwName = kwArg name
           db addErrorMessage: (ErrorWrongArgType
                                 tok: expr token
-                                msg: "wrong arg type for $kwName Expected " + argTypeFromDb toString + " but got " + realType toString)
+                                msg: "wrong arg type for $kwName expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
         ]
       ]
     // Да тут можно сразу и проверять тип чеуж там

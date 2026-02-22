@@ -144,6 +144,30 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   ^boolProto methods
 ]
 
+constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+  {unit bool} = dtc
+
+  blockProto = NivaProtocol name: "block"
+
+  condBlock = FuntionT
+                fields: {}!
+                name: "whileTrueCond"
+                genericArgs: {}!
+                pkgName: "core"
+                returnType: bool
+
+  bodyBlock = FuntionT
+                fields: {}!
+                name: "whileTrueBody"
+                genericArgs: {}!
+                pkgName: "core"
+                returnType: unit
+
+  blockProto addMethod: (NivaMethod singleArgKw: "whileTrue" receiverType: condBlock argT: bodyBlock returnT: unit)
+
+  ^ blockProto methods
+]
+
 constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit any} = dtc
 

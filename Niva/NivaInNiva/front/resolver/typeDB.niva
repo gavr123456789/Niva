@@ -132,8 +132,10 @@ extend TyperDB [
 
   on addErrorMessage(e): ResolveErrors = [
     msg = e msg
-    "ADDED ERROR $msg" red log
-    TO DO
+    e tok line
+    e tok start
+    {line start} = e tok
+    "ADDED ERROR testss.niva:$line:$start $msg" red log
     listOfErrors add: e
     //TO DO: "Error"
   ]
@@ -427,6 +429,20 @@ extend TyperDB [
     // resolve do if this is message for a codeblock
     | receiverType
     | FuntionT => [
+      name == "whileTrue:" ifTrue: [
+        {unit bool} = dtc
+
+        receiverType returnType compareWith: bool, ifFalse: [
+          TO DO: "whileTrue receiver must return Bool"
+        ]
+
+        whileTrueProto = NivaProtocol whileTrueFromDefaultTypes: dtc
+        whileTrueMethod = whileTrueProto at: "whileTrue:", unpackOrPANIC
+        bodyArgType = whileTrueMethod args first typeT
+
+        ^ NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit
+      ]
+
       // check that its Do or any arg names
       result = name == "do" ifTrue: [
         NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType

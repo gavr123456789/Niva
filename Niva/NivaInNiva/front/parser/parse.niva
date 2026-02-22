@@ -62,6 +62,50 @@ extend mut Parser [
     ^ result
   ]
 
+  /// {a b} = expr
+  on tryParseDestructingAssign(tok): Token -> Expr? = [
+    tok kind != TokenType.OpenBrace ifTrue: [^ null]
+
+    savePosition = current
+
+    names::mut List::String = {}!
+    mut c = true
+    [c] whileTrue: [
+      nextTok = .peek
+      | nextTok kind
+      | TokenType.Identifier
+      | TokenType.NullableIdentifier => [
+        names add: (.step lexeme)
+        .match: TokenType.Comma
+        Unit
+      ]
+      | TokenType.CloseBrace => [
+        c <- false
+      ]
+      |=> [
+        c <- false
+      ]
+    ]
+
+    .match: TokenType.CloseBrace, ifFalse: [
+      .restoreFrom: savePosition
+      ^ null
+    ]
+
+    names isEmpty ifTrue: [
+      .restoreFrom: savePosition
+      ^ null
+    ]
+
+    .match: TokenType.Assign, ifFalse: [
+      .restoreFrom: savePosition
+      ^ null
+    ]
+
+    value = .nextExperssion: .step
+    ^ DestructingAssign names: names toList value: value token: tok
+  ]
+
   /// a^.b.c
   on parseDotSeparatedIdentifier(tok): Token -> Identifier = [
     ^ .match: TokenType.Dot, ifTrue: [
@@ -462,6 +506,10 @@ extend mut Parser [
         ^ expr
     ]
     |=> [
+
+      tok kind == TokenType.OpenBrace ifTrue: [
+        .tryParseDestructingAssign: tok, unpack: [^ it]
+      ]
 
       // VarDeclaration: `x::Int`
       tok kind == TokenType.IdentifierDoubleColon ifTrue: [
