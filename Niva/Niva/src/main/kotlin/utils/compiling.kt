@@ -376,7 +376,9 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): Muta
         if (file.isFile && (file.extension == ext)) {
             fileList.add(file)
         } else if (file.isDirectory) {
-            fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
+            if (!file.name.startsWith(".")) {
+                fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
+            }
         }
     }
 
