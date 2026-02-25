@@ -221,7 +221,7 @@ x do echo // 3
 [x * 2] // capture
 
 // to run block with args send their names
-add2nums = [a::Int, b::Int -> a + b]
+add2nums = [a: Int, b: Int -> a + b]
 result = add2nums a: 21 b: 21 // 42
 ```
 
@@ -268,7 +268,7 @@ Shape getArea -> Double = | this
 Bind package: "java.io" content: [
   type File path: String
   File readText -> String
-  File writeText::String -> Unit
+  File writeText: String -> Unit
   File exists -> Boolean
 ]
 // use
@@ -278,10 +278,10 @@ File path: "newFile.txt", writeText
 
 Bind package: "java.math" content: [
   type BigDecimal value: String
-  BigDecimal + x::BigDecimal -> BigDecimal
-  BigDecimal - x::BigDecimal -> BigDecimal
-  BigDecimal * x::BigDecimal -> BigDecimal
-  BigDecimal / x::BigDecimal -> BigDecimal
+  BigDecimal + x: BigDecimal -> BigDecimal
+  BigDecimal - x: BigDecimal -> BigDecimal
+  BigDecimal * x: BigDecimal -> BigDecimal
+  BigDecimal / x: BigDecimal -> BigDecimal
 ]
 
 x = BigDecimal value: "123456789123435"
@@ -342,7 +342,7 @@ Swift\Kotlin:
 `person fooBar(foo = 1, bar = 2)`
 Niva:
 `person foo: 1 bar: 2`
-So names of the args and method signature are the same thing.
+By default keyword parts are arg names; use `key(name): Type` to set a different local name.
 
 ```Scala
 // declare type with 2 fields
@@ -357,7 +357,7 @@ Person hi = "Hi! my name is $name" echo
 person hi // unary call
 
 // method with args
-Person foo::Int bar::Int = [
+Person foo: Int bar: Int = [
   age + foo + bar, echo // same as
   (age + foo + bar) echo
 ]
@@ -435,7 +435,7 @@ Try to create new file and put the foo:bar: method in it:
 ```Scala
 //foobar.niva
 type FooBar
-FooBar foo::Int bar::Int = [
+FooBar foo: Int bar: Int = [
   foo echo
   bar echo
   ^ foo + bar
@@ -571,7 +571,7 @@ Create `io.simple.bind.niva` in the same folder
 Bind package: "java.io" content: [
   type File path: String
   File readText -> String
-  File writeText::String -> Unit
+  File writeText: String -> Unit
   File exists -> Boolean
 ]
 ```

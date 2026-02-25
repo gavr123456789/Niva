@@ -297,6 +297,13 @@ fun Resolver.resolveKeywordMsg(
         }
         val kw: KeywordMsgMetaData? = findKwForLambda()
 
+        if (kw != null) {
+            statement.declaration = kw.declaration
+            statement.msgMetaData = kw
+            statement.pragmas = kw.pragmas
+            currentPkg.addImport(kw.pkg)
+        }
+
         val realArgs =
             if (aliasToLambda != null && receiverArgs.isNotEmpty() && statement.args.isNotEmpty() && statement.args.first().name == aliasToLambda.args.first().name) // aliasToLambda.args.isNotEmpty() && receiverArgs.first().name
                 aliasToLambda.args // message to lambda type itself, like [Int -> Int] Int: ...
@@ -332,7 +339,7 @@ fun Resolver.resolveKeywordMsg(
         val result = kw?.returnType ?: receiverType.returnType
         statement.type = result
         statement.kind = KeywordLikeType.ForCodeBlock
-        return Pair(result, kwFromDB)
+        return Pair(result, kw)
     }
 
     val receiverGenericsTable = mutableMapOf<String, Type>()

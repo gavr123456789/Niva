@@ -489,7 +489,10 @@ fun generateSingleKeyword(
 
             // Check if this is a real extension method
             // msgMetaData != null means there's an actual method declaration for this lambda alias
-            val hasRealExtensionMethod = keywordMsg.msgMetaData != null
+            val hasRealExtensionMethod =
+                keywordMsg.msgMetaData != null ||
+                (receiverType is Type.Lambda &&
+                    receiverType.protocols.values.any { it.keywordMsgs.containsKey(keywordMsg.selectorName) })
             val isKnownExtension = keywordMsg.selectorName == "whileTrue" || keywordMsg.selectorName == "whileFalse"
 
             // Direct lambda call: no extension method AND not a known extension
