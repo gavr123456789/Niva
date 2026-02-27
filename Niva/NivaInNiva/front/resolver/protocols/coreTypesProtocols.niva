@@ -57,6 +57,10 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
 
+  listOfCollection = ListT t: collectionType
+  collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
+  collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
+
   /////
 
 
@@ -93,12 +97,14 @@ constructor NivaProtocol intArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
 ]
 
 constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {int str bool char unit} = dtc
+  {int str bool char unit list} = dtc
 
   strProto = NivaProtocol name: "common"
   // unary
   strProto addMethod: (NivaMethod unary: "toString" receiverType: str returnT: str)
   strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
+  strProto addMethod: (NivaMethod unary: "reversed" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "lowercase" receiverType: str returnT: str)
   strProto addMethod: (NivaMethod unary: "isEmpty" receiverType: str returnT: bool)
   // binary
   strProto addMethod: (NivaMethod binary: "+" receiverType: str argT: str returnT: str)
@@ -111,6 +117,28 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: str argT: str returnT: bool )
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
+
+  itArg = TypeTField name: "it" typeT: char
+  foreachBlock = FuntionT
+                  fields: { itArg }!
+                  name: "forEach"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: unit
+  strProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: str argT: foreachBlock returnT: unit)
+
+  filterBlock = FuntionT
+                  fields: { itArg }!
+                  name: "filter"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: bool
+  strProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: str argT: filterBlock returnT: str)
+
+  args = {(TypeTField name: "replace" typeT: str)
+          (TypeTField name: "with" typeT: str)}
+  strProto addMethod: (NivaMethod manyArgKw: args receiverType: str returnT: str )
 
   ^ strProto methods
 ]
@@ -138,7 +166,7 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   no-args-to-t = FuntionT fields: {}! name: "ifTrueOrIfFalse" genericArgs: {}! pkgName: "core" returnType: t
   args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t)
           (TypeTField name: "ifFalse" typeT: no-args-to-t)}
-  boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: bool )
+  boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
 
 
   ^boolProto methods

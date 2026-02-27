@@ -44,7 +44,9 @@ constructor TypeScript  [
         entryPointName = rh entryPointName
         generateMain = [
             x = outputFileToJS at: entryPointName, unpackOrPANIC
-            x + (rh entryPointExpressions joinWith: "\n" transform: [it toTSFromPkg: entryPointName])
+            exprs = rh entryPointExpressions joinWith: ";\n" transform: [it toTSFromPkg: entryPointName]
+            entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs + ";"]
+            x + entryPointExprs
         ]
 
         outputFileToJS at: entryPointName put: generateMain do
@@ -68,7 +70,7 @@ TypedExpr2 toTSFromPkg(currentPkg): String -> String =
 | MessageSendT       => .msgSendToTSFromPkg: currentPkg
 | ReturnStatementT   => .returnToTSFromPkg: currentPkg
 | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg
-| MatchT             => TO DO
+| MatchT             => .matchToTSFromPkg: currentPkg
 
 /// checks if it a field of receiver than generates _this.field = ...
 AssignT generateTSAssignFromPkg(currentPkg): String -> String = [
@@ -170,6 +172,70 @@ CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
       ]
 
     ^ "(" + argsStr + ") => {" + bodyStr + "}"
+]
+
+MatchT matchToTSFromPkg(currentPkg): String -> String = [
+    subjectStr = subject toTSFromPkg: currentPkg
+
+    buildBody = [body::TypedBody ->
+      bodyExprs = body v
+      bodyExprs isEmpty
+        ifTrue: [""]
+        ifFalse: [
+          lastIndex = bodyExprs count - 1
+          bodyExprs mapIndexed: [i, expr ->
+            isLast = i == lastIndex
+            isLast
+              ifTrue: [
+                | expr
+                | ReturnStatementT =>
+                  expr toTSFromPkg: currentPkg
+                | VarDeclarationT
+                | AssignT
+                | DestructingAssignT =>
+                  (expr toTSFromPkg: currentPkg) + "\nreturn"
+                |=> [
+                  "return " + (expr toTSFromPkg: currentPkg)
+                ]
+              ] ifFalse: [
+                expr toTSFromPkg: currentPkg
+              ]
+          ], joinWith: "\n"
+        ]
+    ]
+
+    conditionToTS = [branch::MatchBranchT ->
+      conds::mut List::String = {}!
+      conds add: "(" + subjectStr + " == " + (branch condition toTSFromPkg: currentPkg) + ")"
+      branch conditions v forEach: [
+        conds add: "(" + (it toTSFromPkg: currentPkg) + ")"
+      ]
+      conds joinWith: " && "
+    ]
+
+    sb = StringBuilder new
+    lastIndex = branches count - 1
+    branches forEachIndexed: [i, branch ->
+      prefix = i == 0 ifTrue: ["if"] ifFalse: ["else if"]
+      condStr = conditionToTS branch: branch
+      bodyStr = buildBody body: branch body
+      sb append: prefix
+      sb append: " ("
+      sb append: condStr
+      sb append: ") { "
+      sb append: bodyStr
+      sb append: " }"
+      i != lastIndex ifTrue: [sb append: " "]
+    ]
+
+    elseBranch unpack: [
+      elseBodyStr = buildBody body: it
+      sb append: " else { "
+      sb append: elseBodyStr
+      sb append: " }"
+    ]
+
+    ^ "(() => { " + (sb toString) + " })()"
 ]
 
 
