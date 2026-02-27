@@ -483,7 +483,7 @@ extend mut Parser [
         name = .step // tok is mut here, so we need name
         ^ .parseVarDeclExpr: name name: name lexeme isMut: true
     ]
-    | TokenType.OpenParen => [
+   | TokenType.OpenParen => [
         inner = .nextExperssion: .step
         .matchAssert: TokenType.CloseParen
 
@@ -504,6 +504,9 @@ extend mut Parser [
         ]
 
         ^ expr
+    ]
+    | TokenType.If => [
+      ^ .parseMatch: tok
     ]
     |=> [
 
@@ -655,10 +658,6 @@ extend mut Parser [
             args: binaryList toList
             receiver: unary
             token: maybePrimary token
-          .peek kind == TokenType.IdentifierColon, ifTrue: [
-            // 1 inc from: 2
-            TO DO: "parse keyword after binary2"
-          ]
           ^binary
         ]
 

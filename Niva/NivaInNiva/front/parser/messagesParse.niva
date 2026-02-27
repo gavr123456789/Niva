@@ -43,7 +43,17 @@ extend mut Parser [
           binarySymbol = .step
           // binarySymbol kind echo
           // + ^1 inc inc + 2
-          receiver = (.primary: .step) unpackOrMsg: "Cant find primary" // TODO тут может быть не праймари, а унари, или в скобках что угодно поэтому парсить нужно не праймари, не, надо просто добавить в парсинг праймари скобочных выражений
+          rhsTok = .step
+          receiver =
+            | rhsTok kind
+            | TokenType.OpenParen => [
+              inner = .nextExperssion: .step
+              .matchAssert: TokenType.CloseParen
+              ExprInBrackets value: inner token: rhsTok
+            ]
+            |=> [
+              (.primary: rhsTok) unpackOrMsg: "Cant find primary"
+            ]
           // + 1^ inc inc + 2
           unaryList = .peek line == receiver token line, ifTrue: [
             .parseManyIdentSeparated: null
@@ -52,7 +62,7 @@ extend mut Parser [
 
           unaryList isEmpty, ifTrue: [
             // + 1 + 2
-            binSymbol = Identifier fromToken: tok
+            binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: receiver)
           ] ifFalse: [
             args = unaryList map: [
@@ -76,7 +86,7 @@ extend mut Parser [
             unary = tempUnary
 
             // + 1 inc inc + 2
-            binSymbol = Identifier fromToken: tok
+            binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: unary)
           ]
 

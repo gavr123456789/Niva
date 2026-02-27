@@ -1,6 +1,6 @@
-type Square side: Int
+Int fib -> Int = | this
+| 0 => 1
+| 1 => 1
+|=> (this - 2) fib + (this - 1) fib
 
-Square perimeter = side inc
-
-square = Square side: 42
-square perimeter echo// call
+6 fib echo

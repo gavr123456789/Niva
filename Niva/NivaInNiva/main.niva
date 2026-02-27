@@ -72,8 +72,8 @@ pipesAgain = [
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  > statements at: 0
-]
+  statements at: 0
+] 
 
 // strange bug
 //rarar = [
@@ -101,20 +101,19 @@ genericsReceiverAndKwArg = [
   boxDecl = typedAst at: 0
 ]
 
-//"\n\n--------\n--------\n\n" echo
 
 mapCollection = [
   fileMain = """
-    {1 2 3} map: [it inc]
+    Int from(local): Int = []
   """
 
   //result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   result = fileMain resolveNivaCode
 
   db = result db
-  typedAst = result entryPointExpressions
-
-]
+  typedAst = result fileToStatements
+  typedAst debug
+] 
 
 untypedArgsResolve = [
   fileMain = """
