@@ -62,6 +62,11 @@ TypeDeclVisitor
         msgDecls2 add: (Tuple x: pkgName y: it)
         Unit
       ]
+      | ExtendDecl => [
+        it messages forEach: [
+          msgDecls2 add: (Tuple x: pkgName y: it)
+        ]
+      ]
       // msgDecls at: pkgName put: it debug
       | UnionDecl => TO DO: "UnionDecl"
       | EnumDecl => TO DO: "EnumDecl"

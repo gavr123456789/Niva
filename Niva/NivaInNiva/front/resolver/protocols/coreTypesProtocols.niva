@@ -61,22 +61,44 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
   collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
 
-  /////
+  // joinTransform: [T -> String]   (джойнит через ", ")
+  joinTransformBlock = FuntionT
+                        fields: { itArg }!
+                        name: "joinTransform"
+                        genericArgs: {}!
+                        pkgName: "core"
+                        returnType: str
+  collP addMethod: (NivaMethod singleArgKw: "joinTransform"
+                    receiverType: collectionType
+                    argT: joinTransformBlock
+                    returnT: str)
 
+  // joinWith: String   (просто джойнит)
+  collP addMethod: (NivaMethod singleArgKw: "joinWith"
+                    receiverType: collectionType
+                    argT: str
+                    returnT: str)
+
+  // joinWith: String transform: [T -> String]
+  joinArgs = {(TypeTField name: "joinWith"  typeT: str)
+              (TypeTField name: "transform" typeT: joinTransformBlock)}
+  collP addMethod: (NivaMethod manyArgKw: joinArgs
+                    receiverType: collectionType
+                    returnT: str)
 
   ^ collP methods
 ]
 
 
 constructor NivaProtocol intArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
-  {int str bool unit} = dtc
+  {int str bool unit char} = dtc
 
   intProtocol = NivaProtocol name: "arithmetic"
 
   // unary
   intProtocol addMethod: (NivaMethod unary: "inc" receiverType: int returnT: int)
   intProtocol addMethod: (NivaMethod unary: "dec" receiverType: int returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "toString" receiverType: int returnT: str)
+  intProtocol addMethod: (NivaMethod unary: "toChar" receiverType: int returnT: char)
   // binary
   intProtocol addMethod: (NivaMethod binary: "+" receiverType: int argT: int  returnT: int)
   intProtocol addMethod: (NivaMethod binary: "-" receiverType: int argT: int  returnT: int)
@@ -101,7 +123,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
 
   strProto = NivaProtocol name: "common"
   // unary
-  strProto addMethod: (NivaMethod unary: "toString" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "toInt" receiverType: str returnT: int)
   strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
   strProto addMethod: (NivaMethod unary: "reversed" receiverType: str returnT: str)
   strProto addMethod: (NivaMethod unary: "lowercase" receiverType: str returnT: str)
@@ -118,6 +140,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
+  strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
 
   itArg = TypeTField name: "it" typeT: char
   foreachBlock = FuntionT
@@ -135,6 +158,18 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
                   pkgName: "core"
                   returnType: bool
   strProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: str argT: filterBlock returnT: str)
+
+  mapBlock = FuntionT
+             fields: { (TypeTField name: "it" typeT: char) }!
+             name: "map"
+             genericArgs: {}!
+             pkgName: "core"
+             returnType: str
+
+  strProto addMethod: (NivaMethod singleArgKw: "map"
+                        receiverType: str
+                        argT: mapBlock
+                        returnT: str)
 
   args = {(TypeTField name: "replace" typeT: str)
           (TypeTField name: "with" typeT: str)}
@@ -210,6 +245,58 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
 
   // keyword
   ^anyProto methods
+]
+
+constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+  {str bool unit t int char} = dtc
+
+  charProto = NivaProtocol name: "common"
+
+  // ===== unary (Kotlin-style) =====
+  // fun Char.code: Int   (в Kotlin это property; тут оформим как unary-метод)
+  charProto addMethod: (NivaMethod unary: "code" receiverType: char returnT: int)
+
+  // operator fun Char.inc(): Char
+  charProto addMethod: (NivaMethod unary: "inc" receiverType: char returnT: char)
+
+  // operator fun Char.dec(): Char
+  charProto addMethod: (NivaMethod unary: "dec" receiverType: char returnT: char)
+
+  // fun Char.isDigit(): Boolean
+  charProto addMethod: (NivaMethod unary: "isDigit" receiverType: char returnT: bool)
+
+  // fun Char.isLetter(): Boolean
+  charProto addMethod: (NivaMethod unary: "isLetter" receiverType: char returnT: bool)
+
+  // fun Char.isLetterOrDigit(): Boolean
+  charProto addMethod: (NivaMethod unary: "isLetterOrDigit" receiverType: char returnT: bool)
+
+  // fun Char.isLowerCase(): Boolean
+  charProto addMethod: (NivaMethod unary: "isLowerCase" receiverType: char returnT: bool)
+
+  // fun Char.isUpperCase(): Boolean
+  charProto addMethod: (NivaMethod unary: "isUpperCase" receiverType: char returnT: bool)
+
+  // fun Char.isWhitespace(): Boolean
+  charProto addMethod: (NivaMethod unary: "isWhitespace" receiverType: char returnT: bool)
+
+  // fun Char.lowercaseChar(): Char
+  charProto addMethod: (NivaMethod unary: "lowercaseChar" receiverType: char returnT: char)
+
+  // fun Char.uppercaseChar(): Char
+  charProto addMethod: (NivaMethod unary: "uppercaseChar" receiverType: char returnT: char)
+
+  // operator fun Char.equals(other: Char): Boolean  (в Kotlin это ==)
+  charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
+  charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
+
+  // operator fun Char.plus(other: Int): Char
+  //charProto addMethod: (NivaMethod binary: "+" receiverType: char argT: int returnT: char)
+
+  // operator fun Char.minus(other: Int): Char
+  //charProto addMethod: (NivaMethod binary: "-" receiverType: char argT: int returnT: char)
+
+  ^charProto methods
 ]
 
 // helpers
