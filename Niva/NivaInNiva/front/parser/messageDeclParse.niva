@@ -125,7 +125,10 @@ mut Parser
 
     // if its not binary declaration then parse expression
     arg = .step
-    arg kind == TokenType.IdentifierDoubleColon, ifFalse: [
+    isArgName =
+      (arg kind == TokenType.IdentifierDoubleColon) ||
+      (arg kind == TokenType.IdentifierColon)
+    isArgName ifFalse: [
       .restoreFrom: savePosition
       ^.nextExperssion: .step
     ]
@@ -163,15 +166,125 @@ mut Parser
 ]
 
 extend mut Parser [
-  on isTypeStartToken(tok): Token -> Bool = [
-    ^| tok kind
+  on parseExtendBlock(tok): Token -> ExtendDecl = [
+    receiverType = .parseType
+
+    .matchAssert: TokenType.OpenBracket
+
+    decls = List(MessageDecl) val: {}, toMut
+    mut c = true
+    [c] whileTrue: [
+      .peek kind == TokenType.CloseBracket ifTrue: [
+        .step
+        c <- false
+      ] ifFalse: [
+        onTok = .matchAssert: TokenType.On
+        decls add: (.parseMessageDeclForReceiver: receiverType token: onTok isConstructor: false)
+      ]
+    ]
+
+    ^ ExtendDecl receiver: receiverType messages: decls toList token: tok
+  ]
+
+  on parseMessageDeclForReceiver(receiverType): AstType2 token: Token isConstructor: Bool -> MessageDecl = [
+    getReturnType = [
+      .match: TokenType.ReturnArrow, ifTrue: [
+        .parseType
+      ] ifFalse: [null]
+    ]
+
+    tok2 = .step
+    result = | tok2 kind
+    | TokenType.Identifier => [
+      kwSavePoint = current
+      kwParts = .parseKeywordDeclArgsFrom: tok2
+
+      | kwParts
+      | null => [
+        .restoreFrom: kwSavePoint
+        returnType = getReturnType do
+        name = tok2 lexeme
+
+        .matchAssert: TokenType.Assign
+        isSingleExpr = .peek kind != TokenType.OpenBracket
+        body = .parseBodyOrSingleExpr
+
+        MessageDecl
+          receiver: receiverType :name args: {} :returnType :token :body :isSingleExpr :isConstructor
+
+      ]
+      |=> [
+        returnType = getReturnType do
+
+        .matchAssert: TokenType.Assign
+
+        isSingleExpr = .peek kind != TokenType.OpenBracket
+        body = .parseBodyOrSingleExpr
+        kwName = kwParts nameParts joinWith: ":" transform: [
+          it
+        ], + ":"
+
+        MessageDecl
+          receiver: receiverType name: kwName args: kwParts args :returnType :token :body :isSingleExpr :isConstructor
+      ]
+    ]
+    | TokenType.IdentifierDoubleColon | TokenType.IdentifierColon => [
+      kwParts = .parseKeywordDeclArgsFrom: tok2
+      kwParts == null ifTrue: [
+        ^ TO DO: "keyword message declaration expected after `on`"
+      ]
+      kwParts2 = kwParts unpackOrPANIC
+
+      returnType = getReturnType do
+
+      .matchAssert: TokenType.Assign
+
+      isSingleExpr = .peek kind != TokenType.OpenBracket
+      body = .parseBodyOrSingleExpr
+      kwName = kwParts2 nameParts joinWith: ":" transform: [
+        it
+      ], + ":"
+      MessageDecl
+          receiver: receiverType name: kwName args: kwParts2 args :returnType :token :body :isSingleExpr :isConstructor
+    ]
+    | TokenType.BinarySymbol => [
+      arg = .step
+      isArgName =
+        (arg kind == TokenType.IdentifierDoubleColon) ||
+        (arg kind == TokenType.IdentifierColon)
+      isArgName ifFalse: [
+        ^ TO DO: "binary message declaration expected after `on`"
+      ]
+      argType = .parseType
+
+      returnType = getReturnType do
+      name = tok2 lexeme
+
+      .matchAssert: TokenType.Assign
+
+      isSingleExpr = .peek kind != TokenType.OpenBracket
+      body = .parseBodyOrSingleExpr
+      args = {(NameAndAstType name: arg lexeme astType: argType)}
+
+      MessageDecl
+          receiver: receiverType :name :args :returnType :token :body :isSingleExpr :isConstructor
+    ]
+    |=> [
+      TO DO: "message declaration expected after `on`"
+    ]
+
+    ^ result
+  ]
+
+  on isTypeStartToken(tok): Token -> Bool =
+    | tok kind
     | TokenType.Identifier
     | TokenType.IdentifierDoubleColon
     | TokenType.NullableIdentifier
     | TokenType.Mut
     | TokenType.OpenBracket => true
     |=> false
-  ]
+
 
   on parseKeywordDeclArgsFrom(firstTok): Token -> KeywordDeclParts? = [
     args::mut List::NameAndAstType = {}!

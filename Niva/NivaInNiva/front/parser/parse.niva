@@ -407,6 +407,9 @@ extend mut Parser [
     | tok kind
     | TokenType.Type => [^ .typeDeclaration: tok]
     | TokenType.Union => [^ .unionTypeDeclaration: tok]
+    | TokenType.Extend => [
+      ^ .parseExtendBlock: tok
+    ]
     | TokenType.Constructor => [
       ^ .messageDeclarationOrExpression: .step savedPosition: savePosition isConstructor: true
     ]
@@ -606,7 +609,15 @@ extend mut Parser [
   on parsePrimaryOrUnaryOrBinary(tok): Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
   on parsePrimaryOrUnaryOrBinary(tok): Token receiver::Expr? -> Expr = [
     maybePrimary = | receiver
-    | null => .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+    | null => [
+      tok kind == TokenType.OpenParen ifTrue: [
+        inner = .nextExperssion: .step
+        .matchAssert: TokenType.CloseParen
+        ExprInBrackets value: inner token: tok
+      ] ifFalse: [
+        .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+      ]
+    ]
     |=> receiver
 
     next = .peek

@@ -12,7 +12,7 @@ enum TokenType =
 //    Binary| Octal| Hex|
 
   // Keywords
-  |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain
+  |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain|Extend
   |True|False|Null
   |On // on for many messages declarations
 
@@ -96,6 +96,7 @@ constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
 | "builder" => TokenType.Builder
 | "constructor" => TokenType.Constructor
 | "errordomain" => TokenType.ErrorDomain
+| "extend" => TokenType.Extend
 | "on" => TokenType.On
 
 | "true" => TokenType.True

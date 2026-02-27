@@ -142,3 +142,34 @@ Test parseAstTypeMap -> Unit! = [
   |=> [TO DO: "It should be Map, but it " + astType toString]
 
 ]
+
+Test parseExtendMessageDeclarations -> Unit! = [
+  input = """
+    extend FooBar [
+      on foo: Int bar: Int = []
+      on foo = []
+      on + x: Int = []
+    ]
+  """
+
+  statements = TestParse withInput: input expectedCount: 1
+  extendDecl = statements at: 0
+
+  | extendDecl
+  | ExtendDecl => [
+    Assert that: extendDecl receiver name equals: "FooBar"
+    Assert that: extendDecl messages count equals: 3
+
+    first = extendDecl messages at: 0
+    second = extendDecl messages at: 1
+    third = extendDecl messages at: 2
+
+    Assert that: first receiver name equals: "FooBar"
+    Assert that: first name equals: "foo:bar:"
+    Assert that: second receiver name equals: "FooBar"
+    Assert that: second name equals: "foo"
+    Assert that: third receiver name equals: "FooBar"
+    Assert that: third name equals: "+"
+  ]
+  |=> [TO DO: "ExtendDecl expected"]
+]

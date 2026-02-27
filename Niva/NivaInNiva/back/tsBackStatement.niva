@@ -1,5 +1,5 @@
 
-Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
+Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
     | this
     | TypeDecl => [
         // class Person {
@@ -102,7 +102,16 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String=
         sb append: "}"
         sb toString
     ]
+    | ExtendDecl => [
+      sb = StringBuilder new
+      sb appendLine: "// extend declaration"
+      this messages forEach: [
+        sb appendLine: (it toTSFromPkg: currentPkg :db)
+      ]
+      sb toString
+    ]
     |=> [
         "toTS: skipping top level expr: " + this token toString, log
+        TO DO: "why are we skipping this one?"
         ""
     ]

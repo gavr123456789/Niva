@@ -25,6 +25,9 @@ union Declaration token: Token =
   name: String
   commonUnionFields: List::TypeField
   branches: List::TypeDecl
+| ExtendDecl
+  receiver: AstType2
+  messages: List::MessageDecl
 | MessageDecl
   receiver: AstType2
   name: String

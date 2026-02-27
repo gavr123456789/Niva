@@ -5,7 +5,7 @@ type TSBackend
 TSBackend generate = [
   mainStatements forEach: [
     it debug
-    it generateTS 
+    it generateTS
   ]
 ]
 Statement generateTS -> String =
@@ -36,4 +36,4 @@ Statement generateTS -> String =
 | EnumDecl => [TO DO]
 | UnionDecl => [TO DO]
 | MessageDecl => [TO DO]
-
+| ExtendDecl => [TO DO]
