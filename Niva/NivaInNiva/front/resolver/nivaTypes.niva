@@ -39,7 +39,7 @@ union Complex
    // args: List::TypeTField
 | FuntionT
   returnType: NivaType // method or lambda
-| UnionT  branches: List::UnionTBranch
+//| UnionT  branches: List::UnionTBranch
 
 extend NivaType [
   on generateId -> String = [
@@ -316,7 +316,7 @@ type NivaMethod
   args: List(TypeTField)
   returnType: NivaType
   forMut: Bool // can be called only on mutable types
-  possibleErrors: List(UnionT)
+  possibleErrors: List(TypeT)//List(UnionT)
   kind: MessageSendKind
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
@@ -570,7 +570,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "String" str
     "Int" int
     "Float" float
-    "Dobule" double
+    "Double" double
 
     "Null" nill
     "Nothing" nothing

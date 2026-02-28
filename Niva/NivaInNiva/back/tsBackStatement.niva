@@ -168,6 +168,6 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
       sb toString
     ]
     |=> [
-        "toTS: skipping top level expr: " + this token toString, log
+        //"toTS: skipping top level expr: " + this token toString, log
         ""
     ]

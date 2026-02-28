@@ -38,11 +38,12 @@ constructor TyperDB new -> TyperDB = [
   {char int float double str bool nill unit nothing any t list map set} = dtc
 
 
-  listProtocol = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
-  intProtocol  = NivaProtocol intArithmeticsFromDefaultTypes: dtc
-  strProtocol  = NivaProtocol stringFromDefaultTypes: dtc
-  boolProtocol = NivaProtocol boolFromDefaultTypes: dtc
-  anyProtocol  = NivaProtocol anyFromDefaultTypes: dtc
+  listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
+  intProtocol     = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc int
+  doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
+  strProtocol     = NivaProtocol stringFromDefaultTypes: dtc
+  boolProtocol    = NivaProtocol boolFromDefaultTypes: dtc
+  anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
 
   tempEmptyProto::mut Map(mut String, mut NivaMethod) = #{}!
 
@@ -50,9 +51,9 @@ constructor TyperDB new -> TyperDB = [
     char tempEmptyProto
 
     int intProtocol
+    double doubleProtocol
 
     float tempEmptyProto
-    double tempEmptyProto
 
     str strProtocol
     bool boolProtocol
@@ -73,7 +74,6 @@ constructor TyperDB new -> TyperDB = [
     double tempEmptyProto
     str tempEmptyProto
     bool tempEmptyProto
-    //nill
     unit tempEmptyProto
     any tempEmptyProto
     list tempEmptyProto
@@ -86,7 +86,7 @@ constructor TyperDB new -> TyperDB = [
   corePkg types values forEach: [
     mangled = it toMangledName
 
-    set::mut Set::NivaType = #()!
+    set = Set(NivaType) val: #(), toMut
     set add: it
     typesWithSameNames at: mangled put: set
   ]
@@ -113,7 +113,7 @@ extend TyperDB [
     generatedMessageDecls add: m
   ]
 
-  on registerUnion(rootName): String inPkg(pkgName): String branches: List::String = [
+  on registerUnion(rootName): String inPkg(pkgName): String branches: List(String) = [
     rootId = pkgName + "." + rootName
     set::mut Set::String = #()!
     branches forEach: [
@@ -183,10 +183,8 @@ extend TyperDB [
 
   on addErrorMessage(e): ResolveErrors = [
     msg = e msg
-    e tok line
-    e tok start
-    {line start} = e tok
-    "ADDED ERROR testss.niva:$line:$start $msg" red log
+    pos = e tok toPosition
+    "ADDED ERROR $pos $msg" red log
     listOfErrors add: e
     //TO DO: "Error"
   ]
@@ -282,7 +280,7 @@ extend TyperDB [
     x = this typeToMethodNameToMethod at: t
     | x
     | null => [
-      "addNewType: added new type $t to methods cache with 0 members" log
+      //"addNewType: added new type $t to methods cache with 0 members" log
       this typeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to methodDB"
 
@@ -290,7 +288,7 @@ extend TyperDB [
     xc = this constructorsTypeToMethodNameToMethod at: t
     | xc
     | null => [
-      "addNewType: added new type $t to constructor cache with 0 members" log
+      //"addNewType: added new type $t to constructor cache with 0 members" log
       this constructorsTypeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
   ]

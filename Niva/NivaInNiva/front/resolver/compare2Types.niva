@@ -57,11 +57,11 @@ NivaType compareWith(nivaType): NivaType -> Bool = [
     ]
     |=> false
   ]
-  | UnionT => [
-    | this
-    | UnionT => true
-    |=> false
-  ]
+  //| UnionT => [
+  //  | this
+  //  | UnionT => true
+  //  |=> false
+  //]
   // compare each arg and return type
   | FuntionT => [
     | this

@@ -189,8 +189,7 @@ extend mut Lexer [
       // binary symbols and negative digits
     | '-' => ^ .peekChar isDigit ifTrue: [
       .step // skip minus
-      lit = "-" + .parseNumber
-      .createToken: TokenType.Integer lexeme: lit
+      .numberTokenWithPrefix: "-"
     ] ifFalse: [
       .stepMatch: '>',
         ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"]
@@ -256,8 +255,7 @@ extend mut Lexer [
       ]
       // digit
       ch isDigit ifTrue: [
-        lit = .parseNumber
-        ^ .createToken: TokenType.Integer lexeme: lit
+        ^ .numberTokenWithPrefix: ""
       ]
 
       // fail
@@ -328,6 +326,29 @@ mut Lexer parseNumber -> String = [
 
   result = input slice: localPos..<pos // readPos dec
   ^result
+]
+
+mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
+  intPart = .parseNumber
+  full <- prefix + intPart
+
+  ch == '.', ifTrue: [
+    .peekChar isDigit ifTrue: [
+      .step // consume '.'
+      frac = .parseNumber
+      full <- full + "." + frac
+      | ch
+      | 'f' => [
+        .step
+        ^ .createToken: TokenType.Float lexeme: full + "f"
+      ]
+      |=> [
+        ^ .createToken: TokenType.Double lexeme: full
+      ]
+    ]
+  ]
+
+  ^ .createToken: TokenType.Integer lexeme: full
 ]
 
 mut Lexer skipWhiteSpaces = [

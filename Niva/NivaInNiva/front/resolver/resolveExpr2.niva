@@ -47,6 +47,63 @@ NivaType compareWithMany(types): List::NivaType -> Int? = [
   ^ null
 ]
 
+extend TyperDB [
+  on checkUnionMatchExhaustiveness(subjectType): NivaType branches: List::MatchBranchT elseBranch: TypedBody? token: Token = [
+    | subjectType
+    | TypeT => [
+      unionBranches = unionRootToBranches at: subjectType toIdString
+      | unionBranches
+      | null => []
+      |=> [
+        // if else exists, it's a catch-all
+        elseBranch == null ifTrue: [
+          checkedBranches::mut Set::String = #()!
+
+          addCheckedBranch = [expr::TypedExpr2 ->
+            | expr
+            | IdentifierT => [
+              expr isNameOfTheType ifTrue: [
+                branchType = expr typeInfo t
+                | branchType
+                | TypeT => [
+                  this isUnionBranch: branchType ofRoot: subjectType, ifTrue: [
+                    checkedBranches add: branchType toIdString
+                  ]
+                ]
+                |=> []
+              ]
+            ]
+            |=> []
+          ]
+
+          branches forEach: [branch ->
+            addCheckedBranch expr: branch condition
+            branch conditions v forEach: [cond ->
+              addCheckedBranch expr: cond
+            ]
+          ]
+
+          missing::mut List::String = {}!
+          unionBranches forEach: [branchId ->
+            checkedBranches contains: branchId, ifFalse: [
+              branchType = typesById at: branchId
+              name = branchType unpack: [it name] or: branchId
+              missing add: name
+            ]
+          ]
+
+          missing isNotEmpty ifTrue: [
+            missingSorted = missing sortedBy: [it]
+            msg = "Not all possible variants have been checked (" + (missingSorted joinWith: ", " transform: [it]) + ")"
+            this addErrorMessage: (LazyError tok: token msg: msg)
+          ]
+        ]
+      ]
+    ]
+    |=> []
+  ]
+]
+
 CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT -> CodeBlockT = [
   c = Context fromParent: upperContext
 
@@ -490,6 +547,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
 
 
     newAst = MatchT subject: subjectT branches: branchesT elseBranch: elseBranchT token: token typeInfo: matchType toTypeInfoDefault
+
+    // union exhaustiveness check
+    db checkUnionMatchExhaustiveness: (subjectT typeInfo t) branches: branchesT elseBranch: elseBranchT token: token
+
     ^ newAst
   ]
   | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"

@@ -1,4 +1,4 @@
-/// takes main file and collects all the files for compilation
+/// takes main/entry file and collects all the files for compilation
 type NivaBuildSystem
 constructor NivaBuildSystem [
     on findAllWilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
@@ -10,7 +10,7 @@ constructor NivaBuildSystem [
             filter: [it path endsWith: ".niva"]
 
 
-        pathToContent::mut Map(String, String) = #{}!
+        pathToContent = Map(String, String) val: #{}, toMut
         files forEach: [
             content = io readFile path: it path
             pathToContent at: it nameWithoutExt put: content
@@ -44,28 +44,22 @@ constructor NivaCompiler [
         ]
 
         | option
-        | CompilerOption.Run => [
+        | CompilerOption.Run | CompilerOption.Build => [
             rootFile = path unpackOrValue: "main.niva"
             entryPoint = rootFile toPath name substringBeforeLast: "."
             pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
-            result = ResolverHelper resolve: pathToContent entryPoint: entryPoint
 
-            buildFromResolver res: result
-            pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
-            io runProgram args: {"bun" pathToEntryPoint}
-        ]
-        | CompilerOption.Build => [
-            | path
-            | null => [Unit]
-            |=> [
-                filePath = path
-                entryPoint = filePath toPath name substringBeforeLast: "."
-                content = io readFile path: filePath
-                pathToContent::mut Map(String, String) = #{}!
-                pathToContent at: entryPoint put: content
+            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+            resolver db listOfErrors isNotEmpty ifTrue: [
+              resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
+              TO DO: "Resolver errors: " + resolver_errors
+            ]
 
-                result = ResolverHelper resolve: pathToContent entryPoint: entryPoint
-                buildFromResolver res: result
+            buildFromResolver res: resolver
+            option == CompilerOption.Run ifTrue: [
+              // run with bun
+              pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
+              io runProgram args: {"bun" pathToEntryPoint}
             ]
         ]
         | CompilerOption.Help => []
