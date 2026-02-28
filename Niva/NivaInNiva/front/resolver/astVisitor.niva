@@ -5,7 +5,10 @@ union ResolveErrors tok: Token msg: String =
 | ErrorWrongArgCount
 | LazyError
 
-
+ResolveErrors toConsoleMsg = [
+  pos = tok toPosition
+  ^ pos + " " + msg
+]
 
 union AstVisitor =
 | PrintingVisitor //sb: StringBuilder

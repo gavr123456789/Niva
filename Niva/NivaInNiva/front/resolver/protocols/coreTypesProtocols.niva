@@ -90,29 +90,31 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 ]
 
 
-constructor NivaProtocol intArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
-  {int str bool unit char} = dtc
+constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
+  {str bool unit char} = dtc
 
   intProtocol = NivaProtocol name: "arithmetic"
 
   // unary
-  intProtocol addMethod: (NivaMethod unary: "inc" receiverType: int returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "dec" receiverType: int returnT: int)
-  intProtocol addMethod: (NivaMethod unary: "toChar" receiverType: int returnT: char)
+  intProtocol addMethod: (NivaMethod unary: "inc" receiverType: num returnT: num)
+  intProtocol addMethod: (NivaMethod unary: "dec" receiverType: num returnT: num)
+  intProtocol addMethod: (NivaMethod unary: "toChar" receiverType: num returnT: char)
+  // kinda temp, adding this for both int and double
+  intProtocol addMethod: (NivaMethod unary: "toDouble" receiverType: num returnT: char)
   // binary
-  intProtocol addMethod: (NivaMethod binary: "+" receiverType: int argT: int  returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "-" receiverType: int argT: int  returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "*" receiverType: int argT: int  returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "/" receiverType: int argT: int  returnT: int)
-  intProtocol addMethod: (NivaMethod binary: "%" receiverType: int argT: int  returnT: int)
+  intProtocol addMethod: (NivaMethod binary: "+" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "-" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "*" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "/" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "%" receiverType: num argT: num  returnT: num)
 
-  intProtocol addMethod: (NivaMethod binary: "<" receiverType: int argT: int  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: ">" receiverType: int argT: int  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: int argT: int  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: int argT: int  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "<" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
 
-  intProtocol addMethod: (NivaMethod binary: "==" receiverType: int argT: int  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: "!=" receiverType: int argT: int  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
 
   ^ intProtocol methods
   // ^intProtocol

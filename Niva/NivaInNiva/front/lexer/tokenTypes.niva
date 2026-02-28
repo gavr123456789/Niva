@@ -63,6 +63,7 @@ type Token
   start: Int end: Int // at line
 
 Token toString = "$kind($lexeme)"
+Token toPosition = "testss.niva:" + line toString + ":" + start toString // TODO add file path
 
 constructor Token fake = Token
   kind: TokenType.Identifier

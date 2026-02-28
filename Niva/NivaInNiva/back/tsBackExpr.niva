@@ -59,18 +59,18 @@ constructor TypeScript  [
 // this is needed to remove pkg_qualifiers from calls from the same file, like
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
 TypedExpr2 toTSFromPkg(currentPkg): String -> String =
-| this
-| LiteralExprT       => .literalToTS
-| IdentifierT        => .identToTS
-| ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg) + ")"
-| VarDeclarationT    => .varDeclToTSFromPkg: currentPkg
-| AssignT            => .generateTSAssignFromPkg: currentPkg
-| DestructingAssignT => .destructToTSFromPkg: currentPkg
-| CollectionLiteralT => .collectionToTSFromPkg: currentPkg
-| MessageSendT       => .msgSendToTSFromPkg: currentPkg
-| ReturnStatementT   => .returnToTSFromPkg: currentPkg
-| CodeBlockT         => .codeBlockToTSFromPkg: currentPkg
-| MatchT             => .matchToTSFromPkg: currentPkg
+  | this
+  | LiteralExprT       => .literalToTS
+  | IdentifierT        => .identToTS
+  | ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg) + ")"
+  | VarDeclarationT    => .varDeclToTSFromPkg: currentPkg
+  | AssignT            => .generateTSAssignFromPkg: currentPkg
+  | DestructingAssignT => .destructToTSFromPkg: currentPkg
+  | CollectionLiteralT => .collectionToTSFromPkg: currentPkg
+  | MessageSendT       => .msgSendToTSFromPkg: currentPkg
+  | ReturnStatementT   => .returnToTSFromPkg: currentPkg
+  | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg
+  | MatchT             => .matchToTSFromPkg: currentPkg
 
 /// checks if it a field of receiver than generates _this.field = ...
 AssignT generateTSAssignFromPkg(currentPkg): String -> String = [
@@ -110,8 +110,6 @@ CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
                 ]
       "new Map([" + (pairs) + "])"
     ]
-
-
 ]
 
 ReturnStatementT returnToTSFromPkg(currentPkg): String -> String = [
