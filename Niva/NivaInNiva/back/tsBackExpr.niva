@@ -206,7 +206,18 @@ MatchT matchToTSFromPkg(currentPkg): String -> String = [
 
     conditionToTS = [branch::MatchBranchT ->
       conds::mut List::String = {}!
-      conds add: "(" + subjectStr + " == " + (branch condition toTSFromPkg: currentPkg) + ")"
+      condExpr = branch condition
+      condStr =
+        | condExpr
+        | IdentifierT => [
+          condExpr isNameOfTheType
+            ifTrue: ["(" + subjectStr + " instanceof " + (condExpr toTSFromPkg: currentPkg) + ")"]
+            ifFalse: ["(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg) + ")"]
+        ]
+        |=> [
+          "(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg) + ")"
+        ]
+      conds add: condStr
       branch conditions v forEach: [
         conds add: "(" + (it toTSFromPkg: currentPkg) + ")"
       ]
@@ -292,20 +303,11 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
         |=> []
 
 
-        qSelector = isDefaultConstructor ifFalse: [
-            // entryPoint.Person2_name_age("sas", 42)
-            > dbMsg receiverType toMangledName
-            dbMsg receiverType name + "__" +  selector name
-        ] ifTrue: [
-            // new Person2("", 23)
-            "new " + dbMsg receiverType name
-            //dbMsg receiverType name + "__" +  selector name
+        isDefaultConstructor ifTrue: [
+            ^ "new " + dbMsg receiverType name + "(" + getReceiverTs do + ")"
         ]
 
         newSelector = dbMsg receiverType name + "__" +  selector name
-        //qSelector debug
-        //newSelector debug
-
         ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [

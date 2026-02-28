@@ -35,6 +35,7 @@ TypeDeclVisitor
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
   msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
+  unionNameToBranchNames::mut Map(String, List::String) = #{}!
 
   // expressions of the main file
   entryPointExpressions:: mut List::Expr = {}!
@@ -68,7 +69,38 @@ TypeDeclVisitor
         ]
       ]
       // msgDecls at: pkgName put: it debug
-      | UnionDecl => TO DO: "UnionDecl"
+      | UnionDecl => [
+        common = it commonUnionFields
+
+        rootDecl = TypeDecl
+          name: it name
+          fields: common
+          token: it token
+        rootStub = TypeT noFieldsWithName: rootDecl name pkgName: pkgName
+        noFieldsTypes at: rootDecl name put: rootStub
+        pkgTotypeDecls2 add: (Tuple x: pkgName y: rootDecl)
+
+        branchNames::mut List::String = {}!
+        it branches forEach: [branch ->
+          branchNames add: branch name
+          fields::mut List::TypeField = {}!
+          common forEach: [fields add: it]
+          branch fields forEach: [fields add: it]
+
+          fullDecl = TypeDecl
+            name: branch name
+            fields: fields toList
+            token: branch token
+
+          noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
+          noFieldsTypes at: fullDecl name put: noFieldsType
+          pkgTotypeDecls2 add: (Tuple x: pkgName y: fullDecl)
+        ]
+
+        rootId = pkgName + "." + it name
+        unionNameToBranchNames at: rootId put: branchNames toList
+        db registerUnion: it name inPkg: pkgName branches: branchNames toList
+      ]
       | EnumDecl => TO DO: "EnumDecl"
       |=> []
     ]
@@ -129,6 +161,46 @@ TypeDeclVisitor
       ]
     ]
 
+
+  // copy methods from union root to its branches
+  extraMsgDecls::mut List(Tuple(String, MessageDecl)) = {}!
+  msgDecls2 forEach: [tuple ->
+    pkg = tuple x
+    msg = tuple y
+    receiverAst = msg receiver
+    | receiverAst
+    | AstType => [
+      rootId = pkg + "." + receiverAst name
+      branchNames = unionNameToBranchNames at: rootId
+      | branchNames
+      | null => []
+      |=> [
+        branchNames forEach: [branchName ->
+          newReceiver::mut AstType = AstType
+            name: branchName
+            nullable: receiverAst nullable
+            genericParams: {}
+            tok: receiverAst tok
+          newReceiver setMutable: receiverAst isMut
+
+          newMsgDecl = MessageDecl
+            receiver: newReceiver
+            name: msg name
+            args: msg args
+            returnType: msg returnType
+            body: msg body
+            isSingleExpr: msg isSingleExpr
+            isConstructor: msg isConstructor
+            token: msg token
+
+          extraMsgDecls add: (Tuple x: pkg y: newMsgDecl)
+          db addGeneratedMessageDecl: newMsgDecl
+        ]
+      ]
+    ]
+    |=> []
+  ]
+  msgDecls2 addAll: extraMsgDecls
 
   // msg decls resolving
   // here we should have all the types resolved

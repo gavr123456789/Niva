@@ -149,8 +149,80 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
 
         IdentifierT :name :path :token typeInfo: q toTypeInfoDefault isNameOfTheType: true
       ] ifFalse: [
-        contextString = c allKnownVars
-        TO DO: "Cant find $this in the current context: \n$contextString"
+        thisType = c lookupForVar: "this"
+        | thisType
+        | null => [
+          contextString = c allKnownVars
+          TO DO: "Cant find $this in the current context: \n$contextString"
+        ]
+        |=> [
+          thisIdent = IdentifierT
+            name: "this"
+            path: null
+            token: token
+            typeInfo: thisType toTypeInfoDefault
+            isNameOfTheType: false
+
+          methodMaybe = db
+            findMethodInAllProtocols: name
+            forType: thisType
+            receiver: thisIdent
+            currentPkg: c currentPkg
+            dtc: db dtc
+
+          | methodMaybe
+          | null => [
+            // try to resolve union branch field
+            | thisType
+            | TypeT => [
+              unionField = db findUnionField: thisType fieldName: name
+              | unionField
+              | null => [
+                contextString = c allKnownVars
+                TO DO: "Cant find $this in the current context: \n$contextString"
+              ]
+              |=> [
+                getter = NivaMethod
+                  name: name
+                  receiverType: thisType
+                  args: {}
+                  returnType: unionField typeT
+                  forMut: false
+                  possibleErrors: {}
+                  kind: MessageSendKind.Getter
+                  decl: null
+                  protocolName: "getters"
+                  pkgName: thisType pkgName
+
+                UnaryMsgT
+                  selector: (Identifier name: name token: token path: null)
+                  kind: getter kind
+                  receiver: thisIdent
+                  token: token
+                  typeInfo: getter returnType toTypeInfoDefault
+                  dbMsg: getter
+              ]
+            ]
+            |=> [
+              contextString = c allKnownVars
+              TO DO: "Cant find $this in the current context: \n$contextString"
+            ]
+          ]
+          |=> [
+            methodMaybe kind != MessageSendKind.Getter ifTrue: [
+              contextString = c allKnownVars
+              TO DO: "Cant find $this in the current context: \n$contextString"
+            ]
+
+            UnaryMsgT
+              selector: (Identifier name: name token: token path: null)
+              kind: methodMaybe kind
+              receiver: thisIdent
+              token: token
+              typeInfo: methodMaybe returnType toTypeInfoDefault
+              dbMsg: methodMaybe
+          ]
+        ]
       ]
     ]
     |=> IdentifierT :name :path :token typeInfo: varType toTypeInfoDefault isNameOfTheType: false
@@ -262,7 +334,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     this astType unpack: [
       // x::Int = "ars"
       nivaType = db findByTypeName: it name
-      typedExpr typeInfo t compareWith: nivaType, ifFalse: [
+      db isAssignable: typedExpr typeInfo t toExpected: nivaType, ifFalse: [
         valName = name
         astTypeName = it name
         realTypeName = typedExpr typeInfo t name
@@ -440,7 +512,7 @@ TyperDB checkRealArgs(checkRealArgs): List::CheckMethodArg withExpectedArgs(with
   withExpectedArgs forEachIndexed: [ i, it ->
     {nivaType, expr, argName} = checkRealArgs at: i
 
-    it typeT compareWith: nivaType, ifFalse: [
+    this isAssignable: nivaType toExpected: it typeT, ifFalse: [
       expected = it typeT toString
       sended = nivaType toString
       exprStr = expr toString

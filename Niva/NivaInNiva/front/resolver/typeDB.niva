@@ -9,6 +9,8 @@ type TyperDB
   // caches
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
+  // key = typeId ("pkg.Type"), value = branch typeIds
+  unionRootToBranches: mut Map(String, mut Set::String)
 
   typesById: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
@@ -95,6 +97,7 @@ constructor TyperDB new -> TyperDB = [
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: typesWithSameNames
+    unionRootToBranches: #{}!
     typesById: #{}!
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
@@ -108,6 +111,54 @@ constructor TyperDB new -> TyperDB = [
 extend TyperDB [
   on addGeneratedMessageDecl(m): MessageDecl = [
     generatedMessageDecls add: m
+  ]
+
+  on registerUnion(rootName): String inPkg(pkgName): String branches: List::String = [
+    rootId = pkgName + "." + rootName
+    set::mut Set::String = #()!
+    branches forEach: [
+      branchId = pkgName + "." + it
+      set add: branchId
+    ]
+    unionRootToBranches at: rootId put: set
+  ]
+
+  on isUnionBranch(branch): TypeT ofRoot(root): TypeT -> Bool = [
+    set = unionRootToBranches at: root toIdString
+    ^ | set
+      | null => false
+      |=> set contains: branch toIdString
+  ]
+
+  on isAssignable(actual): NivaType toExpected(expected): NivaType -> Bool = [
+    actual compareWith: expected, ifTrue: [^ true]
+
+    ^ | expected
+      | TypeT => [
+        | actual
+        | TypeT => [
+          .isUnionBranch: actual ofRoot: expected
+        ]
+        |=> false
+      ]
+      |=> false
+  ]
+
+  // TODO replace with nullmatch + find
+  on findUnionField(rootType): TypeT fieldName: String -> TypeTField? = [
+    rootId = rootType toIdString
+    ^ unionRootToBranches at: rootId, unpack: [branches ->
+      branches forEach: [branchId ->
+        branchType = typesById at: branchId
+        | branchType
+        | null => []
+        |=> [
+          field = branchType findField: fieldName
+          field != null ifTrue: [^ field]
+        ]
+      ]
+      null
+    ] or: null
   ]
   /// adds method to protocol, if no such protocol - creates it
   on addMethod(m): NivaMethod toProtocol(protocolName): String forType(forType): NivaType = [
@@ -649,8 +700,14 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
 
   // add generated functions to fileToStatements
   db generatedMessageDecls forEach: [
-    //mutList::mut List
-    (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+    receiverType = db findByTypeName: it receiver name inPkg: null
+    pkgName = receiverType pkgName
+    listMaybe = fileToStatements at: pkgName
+    | listMaybe
+    | null => [
+      (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+    ]
+    |=> listMaybe add: it
   ]
 
   ^ ResolverHelper
