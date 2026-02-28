@@ -34,7 +34,64 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb toString
     ]
     | EnumDecl => [TO DO]
-    | UnionDecl => [TO DO]
+    | UnionDecl => [
+        sb = StringBuilder new
+
+        commonFields = this commonUnionFields
+
+        // root class
+        sb append: "export class "
+        sb append: this name
+        sb append: " {\n"
+        sb append: "    constructor("
+
+        commonArgsStr = commonFields joinWith: "," transform: [it name]
+        sb append: commonArgsStr
+        sb append: ") {\n"
+
+        commonFields forEach: [
+            name = it name
+            sb append: "        this.$name = $name;\n"
+        ]
+
+        sb append: "    }\n"
+        sb append: "}\n\n"
+
+        // branches
+        this branches forEach: [branch ->
+            branchFields = branch fields
+            commonArgsStr2 = commonFields joinWith: "," transform: [it name]
+            branchArgsStr = branchFields joinWith: "," transform: [it name]
+            allArgsStr =
+              (commonArgsStr2 != "") && (branchArgsStr != "")
+                ifTrue: [commonArgsStr2 + "," + branchArgsStr]
+                ifFalse: [commonArgsStr2 + branchArgsStr]
+
+            sb append: "export class "
+            sb append: branch name
+            sb append: " extends "
+            sb append: this name
+            sb append: " {\n"
+            sb append: "    constructor("
+            sb append: allArgsStr
+            sb append: ") {\n"
+
+            superArgsStr = commonFields joinWith: ", " transform: [it name]
+            sb append: "        super("
+            sb append: superArgsStr
+            sb append: ");\n"
+
+            branchFields forEach: [
+                name = it name
+                sb append: "        this.$name = $name;\n"
+            ]
+
+            sb append: "    }\n"
+            sb append: "}\n\n"
+        ]
+
+        sb toString
+    ]
     | MessageDecl => [
 
         //export function Person__withAge(_this, withAge) {
@@ -112,6 +169,5 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
     ]
     |=> [
         "toTS: skipping top level expr: " + this token toString, log
-        TO DO: "why are we skipping this one?"
         ""
     ]

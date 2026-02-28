@@ -1,28 +1,21 @@
-type FooBar
-   extend FooBar [
-      on foo: Int bar: Int = []
-      on foo = []
-      //on + x: Int = []
-    ]
+union Peano = Zero | Succ self: Peano
 
-//union Peano = Zero | Succ self: Peano
+extend Peano [
+  on prettyPrint -> String = | this
+    | Zero => ""
+    | Succ => "+" + self prettyPrint
 
-//extend Peano [
-//  on prettyPrint -> String = | this
-//    | Zero => ""
-//    | Succ => "+" + self prettyPrint
+  on double -> Peano = | this
+    | Zero => Zero new
+    | Succ => Succ self: (Succ self: self double)
 
-//  on double -> Peano = | this
-//    | Zero => Zero new
-//    | Succ => Succ self: (Succ self: self double)
+  on quadruple = this double double
+  on succ = Succ self: this
+]
 
-//  on quadruple = this double double
-//  on succ = Succ self: this
-//]
+three = Zero new succ succ succ
+twelve = three quadruple
 
-//three = Zero new succ succ succ
-//twelve = three quadruple
-
-//three echo
-//three prettyPrint echo
-//twelve prettyPrint echo
+three echo
+three prettyPrint echo
+twelve prettyPrint echo

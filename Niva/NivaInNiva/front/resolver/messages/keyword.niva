@@ -61,7 +61,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
       ifTrue: [
         expectedResolved = argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db
         expectedResolved containsUnresolvedGeneric ifFalse: [
-          realType compareWith: expectedResolved, ifFalse: [
+          db isAssignable: realType toExpected: expectedResolved, ifFalse: [
             db addErrorMessage: (ErrorWrongArgType
                                   tok: expr token
                                   msg: "Expected " + expectedResolved toString + " but got " + realType toString)
@@ -70,14 +70,13 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
       ]
       ifFalse: [
         // вот, если это не женерик то сравниваем с тем шо в дб
-        realType compareWith: argTypeFromDb, ifFalse: [
+        db isAssignable: realType toExpected: argTypeFromDb, ifFalse: [
           kwName = kwArg name
           db addErrorMessage: (ErrorWrongArgType
                                 tok: expr token
                                 msg: "wrong arg type for $kwName expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
         ]
       ]
-    // Да тут можно сразу и проверять тип чеуж там
 
     NameAndExprT name: name expr: typedExpr
   ]

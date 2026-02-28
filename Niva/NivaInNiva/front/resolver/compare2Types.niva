@@ -51,13 +51,6 @@ NivaType compareWith(nivaType): NivaType -> Bool = [
   | TypeT => [
     | this
     | TypeT => [
-
-        this debug
-        nivaType debug
-        TO DO
-      // this genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
-      // nivaType genericArgs isNotEmpty ifTrue: [TO DO: "compare generics"]
-      // (isConstructorForReceiver == nivaType isConstructorForReceiver) &&
       (name == nivaType name) &&
       (pkgName == nivaType pkgName) &&
       (genericArgs toString == nivaType genericArgs toString)
