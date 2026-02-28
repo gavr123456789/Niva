@@ -361,6 +361,37 @@ Test constructorCall = [
 
 ]
 
+Test constructorOnCoreType = [
+  fileMain = """
+    constructor Int answear = 42
+    Int foo = [
+      x = Int answear
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedAst at: 1
+
+  | msgDecl
+  | MessageDecl => [
+    varDecl = msgDecl body typedBody2 at: 0
+
+    | varDecl
+    | VarDeclarationT => [
+      msg = varDecl value
+      | msg
+      | UnaryMsgT => [
+        Assert that: msg kind equals: MessageSendKind.DefaultConstructor
+        Assert that: msg dbMsg name equals: "answear"
+      ]
+      |=> TO DO
+    ]
+    |=> []
+  ]
+  |=> TO DO
+]
+
 Test getter = [
 
   fileMain = """

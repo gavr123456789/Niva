@@ -125,11 +125,15 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb append: methodName
 
 
-        argsStr = "_this" +
-            (args isNotEmpty ifTrue:  [", "]
-                             ifFalse: [""]) +
-            (args joinWith: ", "
-                  transform: [it name])
+        argsStr =
+            isConstructor
+                ifTrue: [args joinWith: ", " transform: [it name]]
+                ifFalse: [
+                    "_this" +
+                        (args isNotEmpty ifTrue:  [", "]
+                                         ifFalse: [""]) +
+                        (args joinWith: ", " transform: [it name])
+                ]
 
 
         sb append: "("
@@ -139,17 +143,19 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         // add receiver destructing
         //  let age = _this.age
         //  let name = _this.name
-        generateDestruct = [
-            // let fieldName = _this.fieldName
-            receiverFields forEach: [
-               sb append: "    "
-               sb append: "let "
-               sb append: it name
-               sb append: " = _this."
-               sb append: it name
-               sb append: "\n"
-            ]
-        ] do
+        isConstructor ifFalse: [
+            generateDestruct = [
+                // let fieldName = _this.fieldName
+                receiverFields forEach: [
+                   sb append: "    "
+                   sb append: "let "
+                   sb append: it name
+                   sb append: " = _this."
+                   sb append: it name
+                   sb append: "\n"
+                ]
+            ] do
+        ]
 
         this body typedBody2 forEach: [expr ->
             sb append: "    "

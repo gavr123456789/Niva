@@ -253,20 +253,34 @@ TypeDeclVisitor
       | AstLambdaType => false
 
 
-      method = NivaMethod
-        name: msg name
-        receiverType: receiverType
-        args: argsT
-        returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
-        forMut: isMutable
-        possibleErrors: {}
-        kind: MessageSendKind.Call
-        decl: msg
-        protocolName: "common"
-        pkgName: pkg
+      msg isConstructor ifTrue: [
+        constructorMethod = NivaMethod
+          defaultConstructorWithName: msg name
+          receiverType: receiverType
+          args: argsT
+          returnType: receiverType
+          decl: msg
+          protocolName: "constructors"
+          pkgName: pkg
 
-      db addNewMethod: method forType: receiverType inProtocol: null
-      "Methods: added method " + method name + " in pkg: " + pkg, log
+        db addNewConstructor: constructorMethod forType: receiverType
+        "Methods: added constructor " + constructorMethod name + " in pkg: " + pkg, log
+      ] ifFalse: [
+        method = NivaMethod
+          name: msg name
+          receiverType: receiverType
+          args: argsT
+          returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
+          forMut: isMutable
+          possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: msg
+          protocolName: "common"
+          pkgName: pkg
+
+        db addNewMethod: method forType: receiverType inProtocol: null
+        "Methods: added method " + method name + " in pkg: " + pkg, log
+      ]
     ]
 
 // resolve main

@@ -272,6 +272,10 @@ LiteralExprT literalToTS -> String =
 MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
     rec = receiver
     isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
+    useNewCtor = isDefaultConstructor && (dbMsg decl == null)
+    isReceiverFunction = | dbMsg receiverType
+        | FuntionT => true
+        |=> false
 
     getReceiverTs = [
         // we dont need to send receiver as first argument when its a constructor(its just a typeName identifier in such cases)
@@ -292,6 +296,11 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
                 ^ (receiver toTSFromPkg: currentPkg) + "." + selector name
             ]
 
+        isReceiverFunction && (selector name == "do")
+            ifTrue: [
+                ^ "(" + (receiver toTSFromPkg: currentPkg) + ")()"
+            ]
+
         | rec
         | CodeBlockT => [
             selector name == "do" ifTrue: [
@@ -302,7 +311,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
 
 
         isDefaultConstructor ifTrue: [
-            ^ "new " + dbMsg receiverType name + "(" + getReceiverTs do + ")"
+            useNewCtor ifTrue: [
+                ^ "new " + dbMsg receiverType name + "(" + getReceiverTs do + ")"
+            ] ifFalse: [
+                newSelector = dbMsg receiverType name + "__" + selector name
+                ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
+            ]
         ]
 
         newSelector = dbMsg receiverType name + "__" +  selector name
@@ -323,19 +337,28 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
             ^ "while (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
         ]
 
-        // selector
-        newSelector = isDefaultConstructor
-            ifFalse: [
-                selectorFromArgs = args joinWith: "_" transform: [
-                    it name name
-                ]
-                suffix = dbMsg name substringAfter: "__"
-                hasSuffix = suffix != dbMsg name
-                suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+        isReceiverFunction ifTrue: [
+            argsExprStr = args map: [
+                it expr toTSFromPkg: currentPkg
+            ]
+            ^ "(" + (receiver toTSFromPkg: currentPkg) + ")(" + (argsExprStr joinWith: ", ") + ")"
+        ]
 
+        // selector
+        selectorFromArgs = args joinWith: "_" transform: [
+            it name name
+        ]
+        suffix = dbMsg name substringAfter: "__"
+        hasSuffix = suffix != dbMsg name
+        suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+
+        newSelector = isDefaultConstructor
+            ifTrue: [
+                useNewCtor
+                  ifTrue: ["new " + dbMsg receiverType name]
+                  ifFalse: [dbMsg receiverType name + "__" + selectorFromArgs + suffixStr]
+            ] ifFalse: [
                 dbMsg receiverType name + "__" + selectorFromArgs + suffixStr
-            ] ifTrue: [
-                "new " + dbMsg receiverType name
             ]
 
         receiverStr = getReceiverTs do

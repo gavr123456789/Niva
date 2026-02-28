@@ -310,7 +310,7 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
 mut Lexer readIdentifier -> String = [
   localPos = pos
 
-  [ch isLetter] whileTrue: [
+  [ch isLetter || ch isDigit || (ch == '_')] whileTrue: [
     .step
   ]
 
@@ -332,7 +332,7 @@ mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
   intPart = .parseNumber
   full <- prefix + intPart
 
-  ch == '.', ifTrue: [
+  ch == '.' ifTrue: [
     .peekChar isDigit ifTrue: [
       .step // consume '.'
       frac = .parseNumber
@@ -342,9 +342,7 @@ mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
         .step
         ^ .createToken: TokenType.Float lexeme: full + "f"
       ]
-      |=> [
-        ^ .createToken: TokenType.Double lexeme: full
-      ]
+      |=> [^ .createToken: TokenType.Double lexeme: full]
     ]
   ]
 

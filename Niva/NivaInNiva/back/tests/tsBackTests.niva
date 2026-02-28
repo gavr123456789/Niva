@@ -64,3 +64,20 @@ Test tsSingleExprReturnCodegen = [
   Assert that: (js contains: "let side = _this.side") equals: true
   Assert that: (js contains: "return core.Int__inc(side)") equals: true
 ]
+
+Test tsConstructorOnCoreTypeCodegen = [
+  fileMain = """
+    constructor Int answear = 42
+    Int foo = [
+      x = Int answear
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "export function Int__answear") equals: true
+  Assert that: (js contains: "const x = Int__answear()") equals: true
+  Assert that: (js contains: "new Int") equals: false
+]
