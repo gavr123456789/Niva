@@ -15,9 +15,7 @@ import utils.testingLS
 
 
 fun main(args: Array<String>) {
-//    setOf(1).filter { it == 1 }
-
-    //    val args = arrayOf("build","")
+//        val args = arrayOf("build","Niva/main.niva")
 //        testingLS()
     if (help(args))
         return
@@ -34,6 +32,12 @@ fun run(args2: Array<String>) {
 
     val am = ArgsManager(args)
     val mainArg = am.mainArg()
+
+    if (mainArg == MainArgument.NEW) {
+        createNewProject()
+        return
+    }
+
     val pm = PathManager(getPathToMainOrSingleFile(args), mainArg, am.buildSystem)
 
     if (mainArg == MainArgument.DEV_MODE) {
@@ -199,4 +203,3 @@ fun getPathToMainOrSingleFile(args: List<String>): String {
             findMainNivaOrDie()
     }
 }
-

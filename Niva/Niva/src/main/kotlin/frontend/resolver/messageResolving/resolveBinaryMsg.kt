@@ -12,8 +12,10 @@ import main.utils.YEL
 
 fun Resolver.resolveBinaryMsg(
     statement: BinaryMsg,
-    previousAndCurrentScope: MutableMap<String, Type>,
+    previousScope: MutableMap<String, Type>,
+    currentScope: MutableMap<String, Type>,
 ): Pair<Type, MessageMetadata?> {
+    val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
     val receiver = statement.receiver
 
     if (receiver.type == null) {
@@ -97,6 +99,8 @@ fun Resolver.resolveBinaryMsg(
     if (msgFromDb is BinaryMsgMetaData && msgFromDb.argType is Type.UnknownGenericType) {
         letterToRealType[msgFromDb.argType.name] = argumentType
     }
+
+    resolveLocalReceiverGenericsFromTable(statement.receiver, previousScope, currentScope, letterToRealType)
 
     val returnTypeFromDb = msgFromDb.returnType
     val returnType2 = resolveReturnTypeIfGeneric(returnTypeFromDb, letterToRealType, receiverGenericsTable)

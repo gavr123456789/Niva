@@ -81,14 +81,11 @@ constructor TyperDB new -> TyperDB = [
     set tempEmptyProto
   }
 
-  typesWithSameNames::mut Map(String, mut Set::NivaType) = #{}!
+  typesWithSameNames = #{}!
   // add core types to typesWithSameNames so they can be found by mangled name (e.g. core_String)
   corePkg types values forEach: [
     mangled = it toMangledName
-
-    set = Set(NivaType) val: #(), toMut
-    set add: it
-    typesWithSameNames at: mangled put: set
+    typesWithSameNames at: mangled put: #(it)!
   ]
 
   ^TyperDB
@@ -544,6 +541,9 @@ extend TyperDB [
       ]
       |=> method
 
+    // ensure module import is generated for cross-pkg method calls
+    currentPkg addImport: result pkgName
+
     ^ result
   ]
 
@@ -695,6 +695,14 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   MsgDeclVisitor new
     processBodyes: msgDecls
     db: db
+
+  // merge entryPoint imports into the real entry file pkg
+  entryPointPkg = db addNewPkgIfNotExists: "entryPoint"
+  realEntryPkg = db addNewPkgIfNotExists: entryPoint
+
+  entryPointPkg imports forEach: [
+    realEntryPkg addImport: it
+  ]
 
   // add generated functions to fileToStatements
   db generatedMessageDecls forEach: [

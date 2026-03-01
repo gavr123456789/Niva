@@ -25,7 +25,7 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DEV_MODE, TEST, LSP, GRAPHVIZ
+    DEV_MODE, TEST, LSP, GRAPHVIZ, NEW
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -114,6 +114,7 @@ class ArgsManager(val args: MutableList<String>) {
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
                 "graphviz" -> MainArgument.GRAPHVIZ
+                "new" -> MainArgument.NEW
                 else -> {
                     if (!File(firstArg).exists()) {
                         println("There are no such command or File \"$firstArg\" is not exist, to run all files starting from main.niva run ${WHITE}niva run$RESET, to run single file use ${WHITE}niva path/to/file$RESET")
@@ -159,6 +160,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         MainArgument.DEV_MODE,
         MainArgument.TEST,
         MainArgument.GRAPHVIZ,
+        MainArgument.NEW,
 
         MainArgument.RUN_MILL,
         MainArgument.BUILD_MILL,
@@ -329,6 +331,84 @@ fun warning(string: String) {
         println("${YEL}Warning:$RESET $string$RESET")
 }
 
+const val NEW_PROJECT_MAIN_NIVA = """person = Person name: "Alice" age: 25
+
+person sayHello echo
+
+"""
+
+const val NEW_PROJECT_DEMO_TEST = """Test helloFromPerson = [
+  person= Person name: "Alice" age: 25
+
+  Assert
+    that: "Hello from " + person name
+    equals: person sayHello
+]
+"""
+
+const val NEW_PROJECT_ASSERT = $$"""type Assert
+
+/// prints both expressions and values
+constructor Assert that::Any? equals::Any? -> Unit = [
+  a = Compiler getName: 1
+  b = Compiler getName: 2
+  codePlace = Compiler getPlace
+  that != equals => [
+    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) ($that != $equals)", orPANIC
+  ]
+]
+
+/// `x log` will print "x = 42"
+T log -> T = [
+  receiver = Compiler getName: 0
+  codePlace = Compiler getPlace
+  codePlace + " $receiver = $this", echo
+  ^ this
+]
+
+"""
+
+const val NEW_PROJECT_DEMO_TYPE = """type Person
+  name: String
+  age: Int
+
+Person sayHello =
+  "Hello from " + name
+
+"""
+
+fun createNewProject() {
+    val projectDir = File("nivaProject")
+    if (projectDir.exists()) {
+        System.err.println("Folder ${WHITE}${projectDir.name}$RESET already exists")
+        exitProcess(1)
+    }
+
+    val libsDir = File(projectDir, "libs")
+    val testsDir = File(projectDir, "tests")
+
+    if (!libsDir.mkdirs() || !testsDir.mkdirs()) {
+        System.err.println("Failed to create project structure at ${WHITE}${projectDir.absolutePath}$RESET")
+        exitProcess(1)
+    }
+
+    File(projectDir, "main.niva").writeText(NEW_PROJECT_MAIN_NIVA)
+    File(testsDir, "demoTest.niva").writeText(NEW_PROJECT_DEMO_TEST)
+    File(libsDir, "assert.niva").writeText(NEW_PROJECT_ASSERT)
+    File(libsDir, "demoType.niva").writeText(NEW_PROJECT_DEMO_TYPE)
+
+    println(
+        """
+        Created new Niva project at ${WHITE}${projectDir.absolutePath}$RESET
+        You can build and test it with:
+
+            cd ${projectDir.name}
+            niva test
+            niva run
+        """.trimIndent()
+    )
+}
+
 //Flags for single file run:
 // Deprecated
 //    ${CYAN}target: $GREEN"TARGET"$RESET — target to jvm/native/js/jvmCompose(not supported yet)
@@ -340,6 +420,7 @@ Usage:
     ${WHITE}run$RESET      — compile and run project from "main.niva" file
     ${WHITE}FILE$RESET     — compile and run single file
     ${WHITE}run FILE$RESET — compile and run project from FILE entry point
+    ${WHITE}new$RESET      — create new project in ./nivaProject
 
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
         to rename binary use ${WHITE}niva --out-name=NAME build$RESET

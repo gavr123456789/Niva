@@ -144,7 +144,7 @@ fun Resolver.resolveMessage(
                 stack.pop()
             }
         }
-        is BinaryMsg -> resolveBinaryMsg(statement, previousAndCurrentScope)
+        is BinaryMsg -> resolveBinaryMsg(statement, previousScope, currentScope)
         is StaticBuilder -> resolveStaticBuilder(statement, currentScope, previousScope)
     }
 
@@ -282,4 +282,47 @@ fun replaceAllGenericsToRealTypeRecursive(
         it.fields.clear()
         it.fields.addAll(newResolvedFields)
     }
+}
+
+private fun Type.UserLike.hasUnresolvedGenericParams(): Boolean {
+    val unresolved = mutableSetOf<Type.UnknownGenericType>()
+    collectGenericParamsRecursivelyFRFR(unresolved)
+    return unresolved.isNotEmpty()
+}
+
+fun Resolver.resolveLocalReceiverGenericsFromTable(
+    receiver: Receiver,
+    previousScope: MutableMap<String, Type>,
+    currentScope: MutableMap<String, Type>,
+    letterToRealType: Map<String, Type>
+) {
+    val identifier = receiver as? IdentifierExpr ?: return
+    if (identifier.isType || identifier.names.size != 1) return
+    val name = identifier.name
+    val typeFromScope = currentScope[name] ?: previousScope[name] ?: return
+    val userType = typeFromScope as? Type.UserLike ?: return
+    if (!userType.hasUnresolvedGenericParams()) return
+
+    val resolvedTable = letterToRealType.filterValues { it !is Type.UnknownGenericType && !it.name.isGeneric() }
+    if (resolvedTable.isEmpty()) return
+
+    val receiverGenericsTable = mutableMapOf<String, Type>()
+    userType.typeArgumentList.forEach { typeArg ->
+        typeArg.beforeGenericResolvedName?.let { receiverGenericsTable[it] = typeArg }
+    }
+
+    val resolvedType = replaceAllGenericsToRealTypeRecursive(
+        userType,
+        resolvedTable.toMutableMap(),
+        receiverGenericsTable
+    )
+
+    userType.replaceTypeArguments(resolvedType.typeArgumentList)
+    userType.fields.clear()
+    userType.fields.addAll(resolvedType.fields)
+
+    receiver.type = userType
+
+    if (currentScope.containsKey(name)) currentScope[name] = userType
+    else if (previousScope.containsKey(name)) previousScope[name] = userType
 }
