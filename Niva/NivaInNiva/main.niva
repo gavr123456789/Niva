@@ -63,35 +63,13 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-] do
-
-pipesAgain = [
-
-  input = """
-    ("123456" drop: 1) dropLast: 2
-  """ trimIndent
-
-  statements = TestParse withInput: input expectedCount: 1
-  statements at: 0
-] 
-
-// strange bug
-//rarar = [
-//  LexTest checkThat: "()"
-//          equals: {
-//                   TokenType.Comma
-//                  }
-//] do
-
+]
 
 genericsReceiverAndKwArg = [
   fileMain = """
-    type Box x: T
-    box = Box x: 42
-    Box(T) tGeneric::T -> T = [
-        ^ tGeneric
-    ]
-    res = box tGeneric: 1
+    union Sas = Ses | Sis
+
+    1 > 2 ifTrue: [Ses new] ifFalse: [Sis new]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
@@ -99,7 +77,8 @@ genericsReceiverAndKwArg = [
   typedAst = result entryPointExpressions
 
   boxDecl = typedAst at: 0
-]
+  Assert that: boxDecl typeInfo t name equals: "Sas"
+] do
 
 
 mapCollection = [
@@ -113,7 +92,7 @@ mapCollection = [
   db = result db
   typedAst = result fileToStatements
   typedAst debug
-] 
+]
 
 untypedArgsResolve = [
   fileMain = """

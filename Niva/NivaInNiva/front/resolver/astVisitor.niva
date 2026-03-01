@@ -39,6 +39,8 @@ TypeDeclVisitor
   noFieldsTypes::mut Map(String, TypeT) = #{}!
   msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
   unionNameToBranchNames::mut Map(String, List::String) = #{}!
+  unionIncludes::mut Map(String, mut List(Tuple(String, Token))) = #{}!
+  unionRoots::mut Set::String = #()!
 
   // expressions of the main file
   entryPointExpressions:: mut List::Expr = {}!
@@ -46,6 +48,16 @@ TypeDeclVisitor
     | it
     | Expr => entryPointExpressions add: it
     |=> []
+  ]
+
+  // collect union roots before processing branches
+  fileToStatements forEach: [file, statements ->
+    statements forEach: [
+      | it | UnionDecl => [
+        rootId = file + "." + it name
+        unionRoots add: rootId
+      ] |=> []
+    ]
   ]
 
   processDeclarations = [file::String, statements::List::Statement ->
@@ -75,6 +87,8 @@ TypeDeclVisitor
       | UnionDecl => [
         common = it commonUnionFields
 
+        rootId = pkgName + "." + it name
+
         rootDecl = TypeDecl
           name: it name
           fields: common
@@ -86,21 +100,38 @@ TypeDeclVisitor
         branchNames::mut List::String = {}!
         it branches forEach: [branch ->
           branchNames add: branch name
-          fields::mut List::TypeField = {}!
-          common forEach: [fields add: it]
-          branch fields forEach: [fields add: it]
+          branchId = pkgName + "." + branch name
+          branch isInclude ? [
+            unionRoots contains: branchId, ifFalse: [
+              db addErrorMessage: (LazyError tok: branch token msg: "Union include branch " + branch name + " must be a union")
+            ]
+            branch fields isNotEmpty ifTrue: [
+              db addErrorMessage: (LazyError tok: branch token msg: "Union include branch " + branch name + " can't declare fields")
+            ]
 
-          fullDecl = TypeDecl
-            name: branch name
-            fields: fields toList
-            token: branch token
+            includesMaybe = unionIncludes at: rootId
+            includes::mut List(Tuple(String, Token)) =
+              | includesMaybe
+              | null => {}!
+              |=> includesMaybe
+            includes add: (Tuple x: branchId y: branch token)
+            unionIncludes at: rootId put: includes
+          ] ! [
+            fields::mut List::TypeField = {}!
+            common forEach: [fields add: it]
+            branch fields forEach: [fields add: it]
 
-          noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
-          noFieldsTypes at: fullDecl name put: noFieldsType
-          pkgTotypeDecls2 add: (Tuple x: pkgName y: fullDecl)
+            fullDecl = TypeDecl
+              name: branch name
+              fields: fields toList
+              token: branch token
+
+            noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
+            noFieldsTypes at: fullDecl name put: noFieldsType
+            pkgTotypeDecls2 add: (Tuple x: pkgName y: fullDecl)
+          ]
         ]
 
-        rootId = pkgName + "." + it name
         unionNameToBranchNames at: rootId put: branchNames toList
         db registerUnion: it name inPkg: pkgName branches: branchNames toList
       ]
@@ -165,6 +196,68 @@ TypeDeclVisitor
     ]
 
 
+  sameFieldsAs = [rootType::TypeT, includedType::TypeT ->
+    rootType fields count != includedType fields count ifTrue: [false] ifFalse: [
+      allOk <- true
+      rootType fields forEach: [f ->
+        allOk ifTrue: [
+          incField = includedType findField: f name
+          | incField
+          | null => allOk <- false
+          |=> [
+            f typeT compareWithConsideringUnion: incField typeT db: db, ifFalse: [
+              allOk <- false
+            ]
+          ]
+        ]
+      ]
+      allOk
+    ]
+  ]
+
+  // validate union includes (same fields as root)
+  validateUnionIncludes = [
+    unionIncludes forEach: [rootId, includes ->
+      rootTypeMaybe = db typesById at: rootId
+      | rootTypeMaybe
+      | null => []
+      |=> [
+        includes forEach: [inc ->
+          includedId = inc x
+          tok = inc y
+          includedTypeMaybe = db typesById at: includedId
+          | includedTypeMaybe
+          | null => []
+          |=> [
+            sameFieldsAs rootType: rootTypeMaybe includedType: includedTypeMaybe, ifFalse: [
+              msg = "Union include " + includedTypeMaybe name + " must have the same fields as " + rootTypeMaybe name
+              db addErrorMessage: (LazyError tok: tok msg: msg)
+            ]
+          ]
+        ]
+      ]
+    ]
+  ] do
+
+  // expand union branches for method copy
+  unionNameToBranchNamesExpanded::mut Map(String, List::String) = #{}!
+  unionNameToBranchNames keys forEach: [rootId ->
+    rootTypeMaybe = db typesById at: rootId
+    | rootTypeMaybe
+    | null => []
+    |=> [
+      branchesSet = db unionBranchesDeep: rootTypeMaybe
+      names::mut List::String = {}!
+      branchesSet forEach: [branchId ->
+        branchType = db typesById at: branchId
+        | branchType
+        | null => []
+        |=> names add: branchType name
+      ]
+      unionNameToBranchNamesExpanded at: rootId put: names toList
+    ]
+  ]
+
   // copy methods from union root to its branches
   extraMsgDecls::mut List(Tuple(String, MessageDecl)) = {}!
   msgDecls2 forEach: [tuple ->
@@ -174,7 +267,7 @@ TypeDeclVisitor
     | receiverAst
     | AstType => [
       rootId = pkg + "." + receiverAst name
-      branchNames = unionNameToBranchNames at: rootId
+      branchNames = unionNameToBranchNamesExpanded at: rootId
       | branchNames
       | null => []
       |=> [

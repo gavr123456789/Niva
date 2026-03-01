@@ -38,6 +38,7 @@ extend mut Parser [
   /// union name = (| (field1: astType)*)*
   /// union Color = Red | Blue | Green
   /// union Car genericField = Foo field1: Int | Bar field2: Int
+  /// union Vehicle = ^Car | Plane
   on unionTypeDeclaration(tok): Token -> UnionDecl = [
     name = .step lexeme
     commonUnionFields = .typeFields
@@ -45,12 +46,25 @@ extend mut Parser [
     .matchAssert: TokenType.Assign
     .matchString: "|" // first optional pipe
 
-    branches:: mut List::TypeDecl = {}
+    branches:: mut List::UnionBranch = {}
     // branchesParse
     mut c = true
     [c] whileTrue: [
+      mut isInclude = false
+      .peek kind == TokenType.Return ifTrue: [
+        .step // consume ^
+        isInclude <- true
+      ]
+
       .peek kind == TokenType.Identifier ifTrue: [
-        branches add: (.typeDeclaration: .peek)
+        nameTok = .step
+        fields = .typeFields
+        branch = UnionBranch
+          name: nameTok lexeme
+          fields: fields
+          isInclude: isInclude
+          token: nameTok
+        branches add: branch
         c <- .match: TokenType.If
         Unit
       ] ifFalse: [

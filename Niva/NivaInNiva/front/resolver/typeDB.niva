@@ -121,24 +121,143 @@ extend TyperDB [
   ]
 
   on isUnionBranch(branch): TypeT ofRoot(root): TypeT -> Bool = [
-    set = unionRootToBranches at: root toIdString
-    ^ | set
-      | null => false
-      |=> set contains: branch toIdString
+    branches = this unionBranchesDeep: root
+    ^ branches contains: branch toIdString
+  ]
+
+  on findUnionParent(branch): TypeT -> TypeT? = [
+    branchId = branch toIdString
+    mut parent::TypeT? = null
+    unionRootToBranches forEach: [rootId, branches ->
+      branches contains: branchId, ifTrue: [
+        parent <- typesById at: rootId
+      ]
+    ]
+    ^ parent
+  ]
+
+  on unionBranchesDeep(root): TypeT -> Set::String = [
+    visited::mut Set::String = #()!
+    ^ this unionBranchesDeepById: root toIdString visited: visited
+  ]
+
+  on unionBranchesDeepById(rootId): String visited: mut Set::String -> Set::String = [
+    visited contains: rootId, ifTrue: [^ #()!]
+    visited add: rootId
+
+    direct = unionRootToBranches at: rootId
+    ^ | direct
+      | null => #()!
+      |=> [
+        expanded = #()!
+        direct forEach: [branchId ->
+          expanded add: branchId
+          expanded addAll: (this unionBranchesDeepById: branchId visited: visited)
+        ]
+        expanded
+      ]
+  ]
+
+  on unionLeaves(root): TypeT -> Set::String = [
+    visited::mut Set::String = #()!
+    ^ this unionLeavesById: root toIdString visited: visited
+  ]
+
+  on unionLeavesById(rootId): String visited: mut Set::String -> Set::String = [
+    visited contains: rootId, ifTrue: [^ #()!]
+    visited add: rootId
+
+    direct = unionRootToBranches at: rootId
+    ^| direct
+    | null => #()!
+    |=> [
+      leaves = #()!
+      direct forEach: [branchId ->
+        sub = unionRootToBranches at: branchId
+        | sub
+        | null => leaves add: branchId
+        |=> [
+          nestedLeaves = this unionLeavesById: branchId visited: visited
+          leaves addAll: nestedLeaves
+        ]
+      ]
+      leaves
+    ]
+  ]
+
+  on unionAncestorChain(startType): TypeT -> List::TypeT = [
+    parent = .findUnionParent: startType
+    ^| parent
+    | null => {startType}
+    |=> [
+      rest = .unionAncestorChain: parent
+      chain = {startType}!
+      chain addAll: rest
+      chain toList
+    ]
+  ]
+
+  on unionAncestorIds(startType): TypeT -> Set(String) = [
+    chain = .unionAncestorChain: startType
+    ^ chain map: [it toIdString],
+      toSet
+  ]
+
+  on findFirstCommonUnionAncestor(types): List::NivaType -> TypeT? = [
+    types isEmpty ifTrue: [^ null]
+
+    nonTypeFound = types any: [
+      | it | TypeT => false
+      |=> true
+    ]
+    nonTypeFound ifTrue: [^ null]
+
+    typeTs::mut List::TypeT = {}!
+    types forEach: [
+      | it | TypeT => typeTs add: it
+      |=> []
+    ]
+
+    ancestorSets::mut List::Set::String = {}!
+    typeTs forEach: [
+      ancestorSets add: (this unionAncestorIds: it)
+    ]
+
+    firstChain = this unionAncestorChain: (typeTs first)
+
+    found = firstChain find: [candidate ->
+      candidateId = candidate toIdString
+      isCommon <- true
+      ancestorSets forEach: [set ->
+        set contains: candidateId,
+            ifFalse: [isCommon <- false]
+      ]
+      isCommon
+    ]
+
+    ^ found
+  ]
+
+  on mergeTypesByUnion(types): List::NivaType -> NivaType? = [
+    types isEmpty ifTrue: [^ null]
+
+    mut merged::NivaType = types first
+
+    rest = types drop: 1
+    rest forEach: [t ->
+      merged compareWith: t, ifFalse: [
+        ancestor = this findFirstCommonUnionAncestor: {merged t}
+        | ancestor
+        | null => [^ null]
+        |=> merged <- ancestor
+      ]
+    ]
+
+    ^ merged
   ]
 
   on isAssignable(actual): NivaType toExpected(expected): NivaType -> Bool = [
-    actual compareWith: expected, ifTrue: [^ true]
-
-    ^ | expected
-      | TypeT => [
-        | actual
-        | TypeT => [
-          .isUnionBranch: actual ofRoot: expected
-        ]
-        |=> false
-      ]
-      |=> false
+    ^ actual compareWithConsideringUnion: expected db: this
   ]
 
   // TODO replace with nullmatch + find

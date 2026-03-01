@@ -17,6 +17,12 @@ type Body
   typedBody2: mut List::TypedExpr2
 
 
+type UnionBranch
+  name: String
+  fields: List::TypeField
+  isInclude: Bool
+  token: Token
+
 
 union Declaration token: Token =
 | TypeDecl name: String fields: List::TypeField
@@ -24,7 +30,7 @@ union Declaration token: Token =
 | UnionDecl
   name: String
   commonUnionFields: List::TypeField
-  branches: List::TypeDecl
+  branches: List::UnionBranch
 | ExtendDecl
   receiver: AstType2
   messages: List::MessageDecl

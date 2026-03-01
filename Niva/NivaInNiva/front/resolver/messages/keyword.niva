@@ -55,7 +55,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
                             argName: name name)
 
     // infer generics from nested types (function return types)
-    argTypeFromDb collectGenericMappingsFrom: realType into: letterToType
+    argTypeFromDb collectGenericMappingsFrom: realType into: letterToType db: db
 
     argTypeFromDb containsUnresolvedGeneric
       ifTrue: [

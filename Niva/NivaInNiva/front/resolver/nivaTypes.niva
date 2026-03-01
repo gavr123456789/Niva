@@ -142,7 +142,7 @@ extend NivaType [
     |=> false
   ]
 
-  on collectGenericMappingsFrom(actual): NivaType into: mut Map(String, NivaType) = [
+  on collectGenericMappingsFrom(actual): NivaType into: mut Map(String, NivaType) db: TyperDB = [
     | this
     | UnresolvedGenericT => [
       existing = into at: letter
@@ -151,27 +151,33 @@ extend NivaType [
 
       |=> [
         existing compareWith: actual, ifFalse: [
-          l = letter
-          to = actual
-          TO DO: "Cant resolve $l to $to, it was already resolved to $existing"
+          merged = db mergeTypesByUnion: {existing actual}
+          | merged
+          | null => [
+            l = letter
+            to = actual
+            TO DO: "Cant resolve $l to $to, it was already resolved to $existing"
+          ]
+          |=> into at: letter put: merged
+
         ]
       ]
     ]
     | ListT => [
       | actual
-      | ListT => this t collectGenericMappingsFrom: actual t into: into
+      | ListT => this t collectGenericMappingsFrom: actual t :into :db
       |=> []
     ]
     | SetT => [
       | actual
-      | SetT => this t collectGenericMappingsFrom: actual t into: into
+      | SetT => this t collectGenericMappingsFrom: actual t :into :db
       |=> []
     ]
     | MapT => [
       | actual
       | MapT => [
-        this k collectGenericMappingsFrom: actual k into: into
-        this v collectGenericMappingsFrom: actual v into: into
+        this k collectGenericMappingsFrom: actual k :into :db
+        this v collectGenericMappingsFrom: actual v :into :db
       ]
       |=> []
     ]
@@ -181,10 +187,10 @@ extend NivaType [
         fields count == actual fields count ifTrue: [
           fields forEachIndexed: [i, fExp ->
             fAct = actual fields at: i
-            fExp typeT collectGenericMappingsFrom: fAct typeT into: into
+            fExp typeT collectGenericMappingsFrom: fAct typeT :into :db
           ]
         ]
-        returnType collectGenericMappingsFrom: actual returnType into: into
+        returnType collectGenericMappingsFrom: actual returnType :into :db
       ]
       |=> []
     ]
@@ -194,7 +200,7 @@ extend NivaType [
         (name == actual name) && (pkgName == actual pkgName), ifTrue: [
           genericArgs forEachIndexed: [i, gExp ->
             gAct = actual genericArgs at: i
-            gExp collectGenericMappingsFrom: gAct into: into
+            gExp collectGenericMappingsFrom: gAct :into :db
           ]
         ]
       ]
@@ -202,7 +208,7 @@ extend NivaType [
     ]
     | NullableT => [
       | actual
-      | NullableT => this v collectGenericMappingsFrom: actual v into: into
+      | NullableT => this v collectGenericMappingsFrom: actual v :into :db
       |=> []
     ]
     |=> []

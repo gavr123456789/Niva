@@ -122,3 +122,128 @@ NivaType compareWith(nivaType): NivaType -> Bool = [
   ]
 
 ]
+
+
+// TODO separate comparing internal types and reuse its functionallity
+// for that we should add Internal subUnion into NivaType, same as it was done with Complex
+NivaType compareWithConsideringUnion(nivaType): NivaType db: TyperDB -> Bool = [
+
+ ^| nivaType
+  | UnitT => [
+    | this
+    | UnitT => true
+    |=> false
+  ]
+  | IntegerT => [
+    | this
+    | IntegerT => [true]
+    |=> [false]
+  ]
+  | FloatT => [
+    | this
+    | FloatT => true
+    |=> false
+  ]
+  | DoubleT => [
+    | this
+    | DoubleT => true
+    |=> false
+  ]
+  | BoolT => [
+    | this
+    | BoolT => true
+    |=> false
+  ]
+  | CharT => [
+    | this
+    | CharT => true
+    |=> false
+  ]
+  | StringT => [
+    | this
+    | StringT => true
+    |=> false
+  ]
+  | AnyT => [
+    true
+  ]
+  | Unknown => [
+    TO DO: "Compiler bug: u cant compare Unknown"
+  ]
+  | NothingT => [
+    true
+  ]
+  // compare generics
+  | TypeT => [
+    | this
+    | TypeT => [
+      exactMatch = (name == nivaType name) &&
+                   (pkgName == nivaType pkgName) &&
+                   (genericArgs toString == nivaType genericArgs toString)
+
+      exactMatch ifTrue: [true] ifFalse: [
+        db isUnionBranch: this ofRoot: nivaType
+      ]
+    ]
+    |=> false
+  ]
+  // compare each arg and return type
+  | FuntionT => [
+    | this
+    | FuntionT => [
+      fields count != nivaType fields count
+        ifTrue: [^ false]
+
+      fieldsMatch <- true
+      fields forEachIndexed: [i, f1 ->
+        f2 = nivaType fields at: i
+        f1 typeT compareWithConsideringUnion: f2 typeT db: db, ifFalse: [
+          fieldsMatch <- false
+        ]
+      ]
+      returnTypeMatch = returnType compareWithConsideringUnion: nivaType returnType db: db
+      fieldsMatch && returnTypeMatch
+    ]
+    |=> false
+  ]
+  // compare generics
+  | ListT => [
+    | this
+    | ListT => this t compareWithConsideringUnion: nivaType t db: db
+    |=> false
+  ]
+  | SetT => [
+    | this
+    | SetT => this t compareWithConsideringUnion: nivaType t db: db
+    |=> false
+  ]
+  | MapT => [
+    | this
+    | MapT => [
+      (this k compareWithConsideringUnion: nivaType k db: db) &&
+      (this v compareWithConsideringUnion: nivaType v db: db)
+    ]
+    |=> false
+  ]
+  // ???
+  | UnresolvedGenericT => [
+    | this
+    | UnresolvedGenericT => letter == nivaType letter
+    |=> false
+  ]
+  // ???
+  | NullT => [
+    | this
+    | NullT => true
+    |=> false
+  ]
+  // compare internal types
+  | NullableT => [
+    | this
+    | NullableT => [
+      this v compareWithConsideringUnion: nivaType v db: db
+    ]
+    |=> false
+  ]
+
+]

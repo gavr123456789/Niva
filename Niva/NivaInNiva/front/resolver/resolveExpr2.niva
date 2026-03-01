@@ -32,8 +32,25 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
   Assert that: typedBody2 isNotEmpty equals: true
   Assert that: unTypedBody isEmpty equals: true
 
+  returnTypes::mut List::NivaType = {}!
+  listOfTypedExpr2 forEach: [expr ->
+    | expr
+    | ReturnStatementT => returnTypes add: expr typeInfo t
+    |=> []
+  ]
+
+  bodyType =
+    returnTypes isNotEmpty
+      ifTrue: [
+        merged = db mergeTypesByUnion: returnTypes
+        | merged
+        | null => returnTypes first
+        |=> merged
+      ]
+      ifFalse: [listOfTypedExpr2 last typeInfo t]
+
   ^ TypedBody v: listOfTypedExpr2
-              t: listOfTypedExpr2 last typeInfo t
+              t: bodyType
 ]
 
 // returns the number of wrong type element, if all good returns null
@@ -51,52 +68,53 @@ extend TyperDB [
   on checkUnionMatchExhaustiveness(subjectType): NivaType branches: List::MatchBranchT elseBranch: TypedBody? token: Token = [
     | subjectType
     | TypeT => [
-      unionBranches = unionRootToBranches at: subjectType toIdString
-      | unionBranches
-      | null => []
-      |=> [
-        // if else exists, it's a catch-all
-        elseBranch == null ifTrue: [
-          checkedBranches::mut Set::String = #()!
+      unionLeaves = this unionLeaves: subjectType
+      // if else exists, it's a catch-all
+      elseBranch == null ifTrue: [
+        checkedLeaves::mut Set::String = #()!
 
-          addCheckedBranch = [expr::TypedExpr2 ->
-            | expr
-            | IdentifierT => [
-              expr isNameOfTheType ifTrue: [
-                branchType = expr typeInfo t
-                | branchType
-                | TypeT => [
-                  this isUnionBranch: branchType ofRoot: subjectType, ifTrue: [
-                    checkedBranches add: branchType toIdString
+        addCheckedBranch = [expr::TypedExpr2 ->
+          | expr
+          | IdentifierT => [
+            expr isNameOfTheType ifTrue: [
+              branchType = expr typeInfo t
+              | branchType
+              | TypeT => [
+                this isUnionBranch: branchType ofRoot: subjectType, ifTrue: [
+                  branchId = branchType toIdString
+                  sub = unionRootToBranches at: branchId
+                  | sub
+                  | null => checkedLeaves add: branchId
+                  |=> [
+                    subLeaves = this unionLeaves: branchType
+                    subLeaves forEach: [checkedLeaves add: it]
                   ]
                 ]
-                |=> []
               ]
-            ]
-            |=> []
-          ]
-
-          branches forEach: [branch ->
-            addCheckedBranch expr: branch condition
-            branch conditions v forEach: [cond ->
-              addCheckedBranch expr: cond
+              |=> []
             ]
           ]
+          |=> []
+        ]
 
-          missing::mut List::String = {}!
-          unionBranches forEach: [branchId ->
-            checkedBranches contains: branchId, ifFalse: [
-              branchType = typesById at: branchId
-              name = branchType unpack: [it name] or: branchId
-              missing add: name
-            ]
+        branches forEach: [branch ->
+          addCheckedBranch expr: branch condition
+          branch conditions v forEach: [cond ->
+            addCheckedBranch expr: cond
           ]
+        ]
 
-          missing isNotEmpty ifTrue: [
-            missingSorted = missing sortedBy: [it]
-            msg = "Not all possible variants have been checked (" + (missingSorted joinWith: ", " transform: [it]) + ")"
-            this addErrorMessage: (LazyError tok: token msg: msg)
-          ]
+        missing = unionLeaves
+                    filter: [branchId -> checkedLeaves contains: branchId, not],
+                    map: [branchId ->
+                          branchType = typesById at: branchId
+                          name = branchType unpack: [it name] or: branchId
+                          name]
+
+        missing isNotEmpty ifTrue: [
+          missingSorted = missing sortedBy: [it]
+          msg = "Not all possible variants have been checked (" + (missingSorted joinWith: ", " transform: [it]) + ")"
+          this addErrorMessage: (LazyError tok: token msg: msg)
         ]
       ]
     ]
@@ -531,19 +549,38 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
         typedElseBody
       ]
 
-    // TODO infer common type between all branches
-    mut matchType::NivaType = db dtc unit
+    returnTypes::mut List::NivaType = {}!
     branchesT = branches map: [
 
       conditionsT = it conditions resolveBody2: db withContext: c
       bodyT = it body resolveBody2: db withContext: c
 
-      matchType <- it body typedBody2 last typeInfo t
+      returnTypes add: bodyT t
 
       MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c)
                    conditions: conditionsT
                    body: bodyT
     ]
+
+    elseBranchT unpack: [
+      returnTypes add: it t
+    ]
+
+    matchType =
+      returnTypes isEmpty
+        ifTrue: [db dtc unit]
+        ifFalse: [
+          merged = db mergeTypesByUnion: returnTypes
+          | merged
+          | null => [
+            typesStr = returnTypes joinWith: ", " transform: [it toString]
+            db addErrorMessage: (ErrorWrongArgType
+                                  tok: token
+                                  msg: "Match branches return incompatible types: " + typesStr)
+            returnTypes first
+          ]
+          |=> merged
+        ]
 
 
     newAst = MatchT subject: subjectT branches: branchesT elseBranch: elseBranchT token: token typeInfo: matchType toTypeInfoDefault
