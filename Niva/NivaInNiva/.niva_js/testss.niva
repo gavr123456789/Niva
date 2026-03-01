@@ -1,3 +1,2 @@
-union Sas = Ses | Sis
-
-y = 1 > 2 ifTrue: [Ses new] ifFalse: [Sis new]
+Unit sas = 1
+() sas

@@ -63,7 +63,7 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
+] do
 
 genericsReceiverAndKwArg = [
   fileMain = """
@@ -78,7 +78,7 @@ genericsReceiverAndKwArg = [
 
   boxDecl = typedAst at: 0
   Assert that: boxDecl typeInfo t name equals: "Sas"
-] do
+]
 
 
 mapCollection = [

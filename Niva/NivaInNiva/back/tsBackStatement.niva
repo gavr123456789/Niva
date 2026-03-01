@@ -38,10 +38,22 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb = StringBuilder new
 
         commonFields = this commonUnionFields
+        rootType = db findByTypeName: this name inPkg: null
+        parentUnion =
+          | rootType
+          | TypeT => db findUnionParent: rootType
+          |=> null
 
         // root class
         sb append: "export class "
         sb append: this name
+        | parentUnion
+        | null => []
+        |=> [
+            sb append: " extends "
+            sb append: parentUnion name
+            ()
+        ]
         sb append: " {\n"
         sb append: "    constructor("
 
@@ -49,9 +61,20 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb append: commonArgsStr
         sb append: ") {\n"
 
-        commonFields forEach: [
-            name = it name
-            sb append: "        this.$name = $name;\n"
+        | parentUnion
+        | null => []
+        |=> [
+            sb append: "        super("
+            sb append: commonArgsStr
+            sb append: ");\n"
+            ()
+        ]
+
+        parentUnion == null ifTrue: [
+            commonFields forEach: [
+                name = it name
+                sb append: "        this.$name = $name;\n"
+            ]
         ]
 
         sb append: "    }\n"
@@ -59,35 +82,38 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         // branches
         this branches forEach: [branch ->
-            branchFields = branch fields
-            commonArgsStr2 = commonFields joinWith: "," transform: [it name]
-            branchArgsStr = branchFields joinWith: "," transform: [it name]
-            allArgsStr =
-              (commonArgsStr2 != "") && (branchArgsStr != "")
-                ifTrue: [commonArgsStr2 + "," + branchArgsStr]
-                ifFalse: [commonArgsStr2 + branchArgsStr]
+            branch isInclude ifTrue: [] ifFalse: [
+                branchFields = branch fields
+                commonArgsStr2 = commonFields joinWith: "," transform: [it name]
+                branchArgsStr = branchFields joinWith: "," transform: [it name]
+                allArgsStr =
+                  (commonArgsStr2 != "") && (branchArgsStr != "")
+                    ifTrue: [commonArgsStr2 + "," + branchArgsStr]
+                    ifFalse: [commonArgsStr2 + branchArgsStr]
 
-            sb append: "export class "
-            sb append: branch name
-            sb append: " extends "
-            sb append: this name
-            sb append: " {\n"
-            sb append: "    constructor("
-            sb append: allArgsStr
-            sb append: ") {\n"
+                sb append: "export class "
+                sb append: branch name
+                sb append: " extends "
+                sb append: this name
+                sb append: " {\n"
+                sb append: "    constructor("
+                sb append: allArgsStr
+                sb append: ") {\n"
 
-            superArgsStr = commonFields joinWith: ", " transform: [it name]
-            sb append: "        super("
-            sb append: superArgsStr
-            sb append: ");\n"
+                superArgsStr = commonFields joinWith: ", " transform: [it name]
+                sb append: "        super("
+                sb append: superArgsStr
+                sb append: ");\n"
 
-            branchFields forEach: [
-                name = it name
-                sb append: "        this.$name = $name;\n"
+                branchFields forEach: [
+                    name = it name
+                    sb append: "        this.$name = $name;\n"
+                ]
+
+                sb append: "    }\n"
+                sb append: "}\n\n"
+                ()
             ]
-
-            sb append: "    }\n"
-            sb append: "}\n\n"
         ]
 
         sb toString

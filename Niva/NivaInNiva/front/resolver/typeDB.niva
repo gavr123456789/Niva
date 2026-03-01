@@ -566,9 +566,25 @@ extend TyperDB [
     // constructorsTypeToMethodNameToMethod keys debug
 
     receiver isIdentifierConstructor ? [
-      constructorDB = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC, at: name
+      constructorsForType::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
+      constructorDB = constructorsForType at: name
       | constructorDB
-      | null => [TO DO: "No such constructor $name for type $forType"]
+      | null => [
+        formatted = constructorsForType values map: [m ->
+          argsStr = m args isEmpty
+            ifTrue:  [""]
+            ifFalse: [m args joinWith: ", " transform: [it toString]]
+          m args isEmpty
+            ifTrue:  [m name]
+            ifFalse: [m name + "(" + argsStr + ")"]
+        ], sortedBy: [it]
+
+        constructorsPretty = formatted isEmpty
+          ifTrue: ["  (no constructors)"]
+          ifFalse: ["  - " + (formatted joinWith: "\n  - ")]
+
+        TO DO: "No such constructor $name' for type $forType.\nAvailable constructors:\n" + constructorsPretty
+      ]
       |=> [
         ^ constructorDB
       ]
