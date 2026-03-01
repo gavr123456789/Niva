@@ -1086,20 +1086,19 @@ fun createSetProtocols(
             createUnary("toMutableList", listType),
 
             createUnary("toMutableSet", mutableSetType),
-//            createUnary("m", mutableSetType).renameUnary("toMutableSet"),
             createUnary("toSet", setType),
 
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("==", mutableSetType, boolType),
-            createBinary("!=", mutableSetType, boolType),
-            createBinary("+", mutableSetType, setType),
-            createBinary("-", mutableSetType, setType),
+            createBinary("==", setType, boolType),
+            createBinary("!=", setType, boolType),
+            createBinary("+", setType, setType),
+            createBinary("-", setType, setType),
 
             ),
         keywordMsgs = mutableMapOf(
             createForEachKeyword(itType, unitType),
-            createOnEach(mutableSetType, itType, unitType),
+            createOnEach(setType, itType, unitType),
 
             createMapKeyword(itType, differentGenericType, listOfDifferentGeneric),
             createMapKeywordIndexed(intType, itType, differentGenericType, listOfDifferentGeneric),
@@ -1107,9 +1106,9 @@ fun createSetProtocols(
 
             createKeyword(KeywordArg("plus", itType), setType, "Returns a new set with given element"),
             createKeyword(KeywordArg("minus", itType), setType, "Returns a new set without given element"),
-            createKeyword(KeywordArg("intersect", mutableSetType), setType),
+            createKeyword(KeywordArg("intersect", setType), setType),
             createKeyword(KeywordArg("contains", itType), boolType),
-            createKeyword(KeywordArg("containsAll", mutableSetType), boolType, "Checks if all elements in the specified collection are contained in this set"),
+            createKeyword(KeywordArg("containsAll", setType), boolType, "Checks if all elements in the specified collection are contained in this set"),
         )
     )
 
@@ -1117,7 +1116,7 @@ fun createSetProtocols(
 //    if (isMutable || true) {
         val add = createKeyword(KeywordArg("add", itType), unitType, forMutable = true)
         val remove = createKeyword(KeywordArg("remove", itType), boolType, forMutable = true)
-        val addAll = createKeyword(KeywordArg("addAll", mutableSetType), boolType, forMutable = true)
+        val addAll = createKeyword(KeywordArg("addAll", setType), boolType, forMutable = true)
 
         collectionProtocol.keywordMsgs[add.first] = add.second
         collectionProtocol.keywordMsgs[remove.first] = remove.second

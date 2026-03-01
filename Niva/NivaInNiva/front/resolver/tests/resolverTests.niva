@@ -1,8 +1,93 @@
 
-// Test recursiveMessageDeclaration = [
-  // shoud be error, but there are no way to typeChecks errors for now
-// ]
+Test findingGenericRoot = [
+  fileMain = """
+    union Sas = Ses | Sis
 
+    1 > 2 ifTrue: [Ses new] ifFalse: [Sis new]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  boxDecl = typedAst at: 0
+  Assert that: boxDecl typeInfo t name equals: "Sas"
+]
+
+Test unionIncludeMismatchFields = [
+  fileMain = """
+    union Vehicle speed: Int =
+      | ^Car
+      | Plane
+
+    union Car =
+      | RaceCar
+      | Truck
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test unionIncludeOk = [
+  fileMain = """
+    union Vehicle speed: Int =
+      | ^Car
+      | Plane
+
+    union Car speed: Int =
+      | RaceCar
+      | Truck
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test unionIncludeNonUnion = [
+  fileMain = """
+    type Car speed: Int
+
+    union Vehicle speed: Int =
+      | ^Car
+      | Plane
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test unionIncludeMatchExhaustive = [
+  fileMain = """
+    union Vehicle speed: Int =
+      | ^Car
+      | Plane
+      | Ship
+
+    union Car speed: Int =
+      | RaceCar
+      | Truck
+      | PassengerCar
+
+    vehicle::Vehicle = RaceCar speed: 5
+
+    | vehicle
+    | Car => "medium" echo
+    | Plane => "fast" echo
+    | Ship => "slow" echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
 
 Test genericsReceiverAndKwArg = [
   fileMain = """
