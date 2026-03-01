@@ -212,6 +212,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
   | StringExpr  => StringExprT :token typeInfo: db dtc str toTypeInfoDefault
   | BooleanExpr => BooleanExprT :token typeInfo: db dtc bool toTypeInfoDefault
   | NullExpr    => NullExprT :token typeInfo: db dtc nothing toTypeInfoDefault
+  | UnitExpr    => UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
   // Identifier can be type itself like Unit
   | Identifier   => [
 

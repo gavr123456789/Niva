@@ -57,6 +57,7 @@ union LiteralExprT token: Token typeInfo: TypeInfo =
 | StringExprT
 | BooleanExprT
 | NullExprT
+| UnitExprT
 
 
 union CollectionLiteralT token: Token elements: TypedBody typeInfo: TypeInfo =

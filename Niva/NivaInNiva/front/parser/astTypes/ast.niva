@@ -209,7 +209,7 @@ union LiteralExpr token: Token =
 | StringExpr
 | BooleanExpr
 | NullExpr
-// | UnitExpr
+| UnitExpr
 
 CharExpr    toString = "CharExpr " + "'" + token lexeme + "'"
 FloatExpr   toString = "FloatExpr " + token lexeme
@@ -218,6 +218,7 @@ StringExpr  toString = "StringExpr \"" + token lexeme + "\""
 BooleanExpr toString = "BoolExpr " + token lexeme
 NullExpr    toString = "NullExpr null"
 IntExpr     toString = "IntExpr $num"
+UnitExpr    toString = "UnitExpr ()"
 
 
 // Map(Int, String)

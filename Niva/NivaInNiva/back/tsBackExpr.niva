@@ -266,7 +266,9 @@ IdentifierT identToTS -> String =
 
 
 LiteralExprT literalToTS -> String =
-    token lexeme
+  | this
+  | UnitExprT => "core.Unit"
+  |=> token lexeme
 
 
 MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
