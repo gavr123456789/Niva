@@ -18,7 +18,12 @@ fun checkThatCollectionIsTyped(statement: VarDeclaration) {
     val value = statement.value
     val emptyMap = value is MapCollection && value.initElements.isEmpty()
     val emptyList = value is CollectionAst && value.initElements.isEmpty()
-    if (emptyMap || emptyList) {
+    val isMutableCollection = when (value) {
+        is MapCollection -> value.isMutable
+        is CollectionAst -> value.isMutableCollection
+        else -> false
+    }
+    if ((emptyMap || emptyList) && !isMutableCollection) {
         statement.token.compileError("(x::mut List::Int = {})\nCan't infer type of empty collection, please specify it like x::MutableList::Int = {}")
     }
 }
@@ -169,7 +174,18 @@ fun Resolver.resolveVarDeclaration(
         }
 
     }
-    currentScope[statement.name] = (copyType ?: typeOfValueInVarDecl).copyAnyType().also {
+    val typeForScope = (copyType ?: typeOfValueInVarDecl)
+    val keepTypeReferenceForGenericInference =
+        definedASTType == null &&
+        (valueOfVarDecl is CollectionAst || valueOfVarDecl is MapCollection) &&
+        typeForScope is Type.UserLike &&
+        run {
+            val unresolvedGenerics = mutableSetOf<Type.UnknownGenericType>()
+            typeForScope.collectGenericParamsRecursivelyFRFR(unresolvedGenerics)
+            unresolvedGenerics.isNotEmpty()
+        }
+
+    currentScope[statement.name] = (if (keepTypeReferenceForGenericInference) typeForScope else typeForScope.copyAnyType()).also {
         it.isVarMutable = statement.mutable
     }
 

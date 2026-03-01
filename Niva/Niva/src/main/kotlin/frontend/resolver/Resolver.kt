@@ -465,12 +465,27 @@ fun Resolver.resolve(
 ): List<Statement> {
 
     val currentScope = mutableMapOf<String, Type>()
+    val currentScopeTokens = mutableMapOf<String, Token>()
 
     statements.forEach { statement ->
 
         resolveStatement(
             statement, currentScope, previousScope, rootStatement
         )
+
+        when (statement) {
+            is VarDeclaration -> currentScopeTokens[statement.name] = statement.token
+            is Assign -> if (statement.isDeclaration) currentScopeTokens[statement.name] = statement.token
+            else -> {}
+        }
+    }
+
+    // Check for unresolved generics in local scope
+    currentScope.forEach { (name, type) ->
+        if (type.hasUnresolvedGenerics()) {
+            val tok = currentScopeTokens[name] ?: createFakeToken()
+            tok.compileError("Type of $YEL$name$RESET remains unresolved: $YEL$type$RESET. Send a message to it or specify the type")
+        }
     }
 
     // we need to filter this things, only ifcurrent level is 0
@@ -482,6 +497,18 @@ fun Resolver.resolve(
 
 
     return statements
+}
+
+private fun Type.hasUnresolvedGenerics(): Boolean = when (this) {
+    is Type.UnresolvedType -> true
+    is Type.UnknownGenericType -> true
+    is Type.NullableType -> realType.hasUnresolvedGenerics()
+    is Type.UserLike -> {
+        val unresolved = mutableSetOf<Type.UnknownGenericType>()
+        collectGenericParamsRecursivelyFRFR(unresolved)
+        unresolved.isNotEmpty()
+    }
+    else -> false
 }
 
 fun Resolver.resolveExpressionInBrackets(

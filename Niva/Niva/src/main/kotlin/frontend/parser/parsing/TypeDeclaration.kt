@@ -22,9 +22,22 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     val typeName = matchAssertAnyIdent("name of the type expected")
     // type Person^ name: string age: int
 
-    val genericTypeParam = if (match(TokenType.DoubleColon)) {
-        matchAssertAnyIdent("inside type declaration after `Type::` generic param expected")
-    } else null
+    val genericTypeParams = mutableListOf<Token>()
+    if (match(TokenType.DoubleColon)) {
+        genericTypeParams.add(
+            matchAssertAnyIdent("inside type declaration after `Type::` generic param expected")
+        )
+    } else if (match(TokenType.OpenParen)) {
+        if (check(TokenType.CloseParen)) {
+            peek().compileError("inside type declaration generic param expected")
+        }
+        do {
+            genericTypeParams.add(
+                matchAssertAnyIdent("inside type declaration generic param expected")
+            )
+        } while (match(TokenType.Comma))
+        matchAssert(TokenType.CloseParen, "closing paren in generic params expected")
+    }
 
     skipNewLinesAndComments()
 
@@ -40,8 +53,8 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
         token = typeToken,
         pragmas = pragmas
     )
-    if (genericTypeParam != null) {
-        result.genericFields.add(genericTypeParam.lexeme)
+    if (genericTypeParams.isNotEmpty()) {
+        genericTypeParams.forEach { result.genericFields.add(it.lexeme) }
     }
 
     return result

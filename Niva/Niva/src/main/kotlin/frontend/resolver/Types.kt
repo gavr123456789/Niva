@@ -244,14 +244,14 @@ fun Type.unpackNull(): Type =
 
 // when generic, we need to reassign it to AST's Type field, instead of type's typeField
 fun generateGenerics(x: Type, sb: StringBuilder): String {
-    val isNullable = if (x is Type.NullableType) "?" else ""
-    val isMut = if (x.isMutable) "mut " else ""
     val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
 //        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
 //            x.name
 //        } else {
 //            x.toString()
 
+            val isNullable = if (x is Type.NullableType) "?" else ""
+            val isMut = if (x.isMutable) "mut " else ""
             isMut + x.name + isNullable
 //        }
     }

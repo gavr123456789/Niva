@@ -1,12 +1,6 @@
-type Sas
+x = {}!
 
-Sas + x: Sas =
-1
+//x add: 1
+//x add: 2
 
-Sas sas =
-[
-    1
-    ^ this
-]
-
-Sas new sas + Sas new, echo
+x echo

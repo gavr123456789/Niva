@@ -1353,6 +1353,17 @@ class ParserTest {
     }
 
     @Test
+    fun typeGenericParamsInParens() {
+        val source = """
+            type File(T)
+                name: String
+                x: T
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
     fun lambdaNoArgs() {
         val source = """
             x::[-> Int] = [5]

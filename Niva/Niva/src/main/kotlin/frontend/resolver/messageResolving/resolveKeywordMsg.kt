@@ -254,6 +254,10 @@ fun Resolver.resolveKeywordMsg(
         }
 
     }
+
+    // Infer unresolved generics for local receivers from resolved args
+    resolveLocalReceiverGenericsFromTable(statement.receiver, previousScope, currentScope, fromReceiverAndfromArgsTable)
+
     // if receiverType is lambda then we need to check does it have same argument names and types
     if (receiverType is Type.Lambda) {
         val receiverArgs = receiverType.args
