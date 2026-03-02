@@ -1,5 +1,73 @@
 type TypeScript
 
+String operatorToString -> String =
+  | this
+  | "+" => "plus"
+  | "-" => "minus"
+  | "*" => "times"
+  | "/" => "div"
+  | "%" => "rem"
+  | ".." => "rangeTo"
+  | "==" => "equals"
+  | "!=" => "notEquals"
+  | ">" => "gt"
+  | "<" => "lt"
+  | ">=" => "gte"
+  | "<=" => "lte"
+  | "||" => "or"
+  | "&&" => "and"
+  | "apply" => "invoke"
+  |=> this
+
+
+NivaType unwrapNullable -> NivaType =
+  | this
+  | NullableT => v
+  |=> this
+
+NivaType isCoreTypeNamed(name): String -> Bool = [
+  base = this unwrapNullable
+  ^ (base name == name) && (base pkgName == "core")
+]
+
+NivaType isNumericType -> Bool = [
+  ^ (this isCoreTypeNamed: "Int") ||
+    (this isCoreTypeNamed: "Double") ||
+    (this isCoreTypeNamed: "Float")
+]
+
+NivaType isStringType -> Bool = this isCoreTypeNamed: "String"
+NivaType isBoolType -> Bool = this isCoreTypeNamed: "Bool"
+
+NivaType tryEmitNativeBinary(op): String recvExpr: String argExpr: String argType: NivaType -> String? = [
+  rNum = this isNumericType
+  aNum = argType isNumericType
+  rStr = this isStringType
+  aStr = argType isStringType
+  rBool = this isBoolType
+  aBool = argType isBoolType
+
+  ^ | op
+    | "==" => "((" + recvExpr + ") === (" + argExpr + "))"
+    | "!=" => "((" + recvExpr + ") !== (" + argExpr + "))"
+    | "+" => [
+        (rNum && aNum) || (rStr && aStr)
+          ifTrue: ["((" + recvExpr + ") + (" + argExpr + "))"]
+          ifFalse: [null]
+      ]
+    | "-" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") - (" + argExpr + "))"] ifFalse: [null]
+    | "*" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") * (" + argExpr + "))"] ifFalse: [null]
+    | "/" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") / (" + argExpr + "))"] ifFalse: [null]
+    | "%" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") % (" + argExpr + "))"] ifFalse: [null]
+    | ">" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") > (" + argExpr + "))"] ifFalse: [null]
+    | "<" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") < (" + argExpr + "))"] ifFalse: [null]
+    | ">=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") >= (" + argExpr + "))"] ifFalse: [null]
+    | "<=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") <= (" + argExpr + "))"] ifFalse: [null]
+    | "||" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") || (" + argExpr + "))"] ifFalse: [null]
+    | "&&" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") && (" + argExpr + "))"] ifFalse: [null]
+    |=> null
+]
+
 
 constructor TypeScript  [
 
@@ -325,12 +393,26 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
         ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
-        q = args joinWith: " " transform: [
-            it name name + " " + (it expr toTSFromPkg: currentPkg)
+        receiverStr = receiver toTSFromPkg: currentPkg
+        mut currentExpr::String = receiverStr
+        currentType = receiver typeInfo t
+
+        args forEach: [arg ->
+            op = arg name name
+            argExpr = arg expr toTSFromPkg: currentPkg
+            argType = arg expr typeInfo t
+            native = currentType tryEmitNativeBinary: op recvExpr: currentExpr argExpr: argExpr argType: argType
+            | native
+            | null => [
+                selector = op operatorToString
+                currentExpr <- pkg_qualifier + (currentType name) + "__" + selector + "(" + currentExpr + ", " + argExpr + ")"
+            ]
+            |=> [
+                currentExpr <- native
+            ]
         ]
-        // if receiver is Supported type for concrete operato like Int\String\Float\Double and '+' then do nothing
-        // if not then replace it with function call, like Vector + Vector is Vector_plus(Vector, Vector)
-        ^ getReceiverTs do + " " + q
+
+        ^ currentExpr
     ]
     | KeywordMsgT => [
         dbMsg name == "whileTrue:" ifTrue: [

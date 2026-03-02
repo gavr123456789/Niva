@@ -91,7 +91,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
 
 constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
-  {str bool unit char} = dtc
+  {str bool unit char intRange} = dtc
 
   intProtocol = NivaProtocol name: "arithmetic"
 
@@ -115,6 +115,10 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
 
   intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
+
+  num name == "Int" ifTrue: [
+    intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
+  ]
 
   ^ intProtocol methods
   // ^intProtocol
@@ -249,8 +253,28 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
   ^anyProto methods
 ]
 
+constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer rangeType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
+  {unit bool} = dtc
+
+  rangeProto = NivaProtocol name: "range"
+
+  itArg = TypeTField name: "it" typeT: itemType
+  foreachBlock = FuntionT
+                  fields: { itArg }!
+                  name: "forEach"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: unit
+  rangeProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: rangeType argT: foreachBlock returnT: unit)
+
+  rangeProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: rangeType argT: itemType returnT: bool)
+  rangeProto addMethod: (NivaMethod unary: "isEmpty" receiverType: rangeType returnT: bool)
+
+  ^ rangeProto methods
+]
+
 constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
-  {str bool unit t int char} = dtc
+  {str bool unit t int char charRange} = dtc
 
   charProto = NivaProtocol name: "common"
 
@@ -291,6 +315,7 @@ constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut
   // operator fun Char.equals(other: Char): Boolean  (в Kotlin это ==)
   charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
+  charProto addMethod: (NivaMethod binary: ".." receiverType: char argT: char returnT: charRange)
 
   // operator fun Char.plus(other: Int): Char
   //charProto addMethod: (NivaMethod binary: "+" receiverType: char argT: int returnT: char)

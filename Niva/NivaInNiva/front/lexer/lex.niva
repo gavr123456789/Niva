@@ -214,7 +214,14 @@ extend mut Lexer [
     |'+'|'*'|'%' => .createToken: TokenType.BinarySymbol lexeme: l
     // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
-    | '.' =>     .createToken: TokenType.Dot lexeme: l
+    | '.' => [
+      .peekChar == '.', ifTrue: [
+        .step // consume second dot
+        .createToken: TokenType.BinarySymbol lexeme: ".."
+      ] ifFalse: [
+        .createToken: TokenType.Dot lexeme: l
+      ]
+    ]
     | ':' =>     .createToken: TokenType.Colon lexeme: l
     | '^' =>     .createToken: TokenType.Return  lexeme: l
 
