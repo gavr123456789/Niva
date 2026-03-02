@@ -1,4 +1,6 @@
 
+
+
 Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
     | this
     | TypeDecl => [
@@ -143,7 +145,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         // if keyword (has colons), reconstruct baseName from args
         finalBaseName = (baseName contains: ":")
             ifTrue:  [args joinWith: "__" transform: [it name]]
-            ifFalse: [baseName]
+            ifFalse: [baseName operatorToString]
 
         methodName = receiverType name + "__" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
 

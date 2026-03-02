@@ -512,31 +512,50 @@ type DefaultTypesContainer
   map2: MapT
   set: SetT
   set2: SetT
+  intRange: TypeT
+  charRange: TypeT
 
 constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   t = (UnresolvedGenericT name: "T")
   g = (UnresolvedGenericT name: "G")
   q = (UnresolvedGenericT name: "Q")
   w = (UnresolvedGenericT name: "W")
+  char = CharT new
+  int = IntegerT new
+  float = FloatT new
+  double = DoubleT new
+  str = StringT new
+  bool = BoolT new
+  nill = NullT new
+  unit = UnitT new
+  nothing = NothingT new
+  any = AnyT new
+
+  list = (ListT t: t)
+  list2 = (ListT t: q)
+  map = (MapT k: t v: g)
+  map2 = (MapT k: q v: w)
+  set = (SetT t: t)
+  set2 = (SetT t: q)
+
+  intRangeFields = {(TypeTField name: "start" typeT: int)
+                    (TypeTField name: "endInclusive" typeT: int)}!
+  intRange = TypeT
+    name: "IntRange"
+    pkgName: "core"
+    fields: intRangeFields
+    genericArgs: {}!
+
+  charRangeFields = {(TypeTField name: "start" typeT: char)
+                     (TypeTField name: "endInclusive" typeT: char)}!
+  charRange = TypeT
+    name: "CharRange"
+    pkgName: "core"
+    fields: charRangeFields
+    genericArgs: {}!
+
   dtc = DefaultTypesContainer
-    char: CharT new
-    int: IntegerT new
-    float: FloatT new
-    double: DoubleT new
-    str: StringT new
-    bool: BoolT new
-    nill: NullT new
-    unit: UnitT new
-    nothing: NothingT new
-    any: AnyT new
-    t: t
-    g: g
-    list: (ListT t: t)
-    list2: (ListT t: q)
-    map: (MapT k: t v: g)
-    map2: (MapT k: q v: w)
-    set: (SetT t: t)
-    set2: (SetT t: q)
+    :char :int :float :double :str :bool :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -568,7 +587,8 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   // T
   t,
   // collections
-  list, map, set} = dtc
+  list, map, set,
+  intRange, charRange} = dtc
 
   corePkg = NivaPkg name: "core" types: #{
     "Bool" bool
@@ -577,6 +597,8 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Int" int
     "Float" float
     "Double" double
+    "IntRange" intRange
+    "CharRange" charRange
 
     "Null" nill
     "Nothing" nothing

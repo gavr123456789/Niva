@@ -35,7 +35,7 @@ constructor TyperDB new -> TyperDB = [
   corePkg = tuple x
   dtc = tuple y
 
-  {char int float double str bool nill unit nothing any t list map set} = dtc
+  {char int float double str bool nill unit nothing any t list map set intRange charRange} = dtc
 
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
@@ -43,12 +43,15 @@ constructor TyperDB new -> TyperDB = [
   doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
   strProtocol     = NivaProtocol stringFromDefaultTypes: dtc
   boolProtocol    = NivaProtocol boolFromDefaultTypes: dtc
+  charProtocol    = NivaProtocol charFromDefaultTypes: dtc
   anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
+  intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
+  charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
 
   tempEmptyProto::mut Map(mut String, mut NivaMethod) = #{}!
 
   typeToMethodNameToMethod::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
-    char tempEmptyProto
+    char charProtocol
 
     int intProtocol
     double doubleProtocol
@@ -65,6 +68,8 @@ constructor TyperDB new -> TyperDB = [
     list listProtocol
     map tempEmptyProto
     set tempEmptyProto
+    intRange intRangeProtocol
+    charRange charRangeProtocol
   }
 
   constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{

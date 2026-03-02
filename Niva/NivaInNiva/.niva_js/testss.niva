@@ -1,2 +1,13 @@
-Unit sas = 1
-() sas
+//1..3 forEach: [ num ->
+//  num echo
+//]
+
+//'a'..'d' forEach: [ c ->
+//  c echo
+//]
+1..100 contains: 42, echo
+
+Double .. x: Double =
+  this + x, echo
+
+123.1..456.7
