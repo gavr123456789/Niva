@@ -20,11 +20,6 @@ String operatorToString -> String =
   |=> this
 
 
-NivaType unwrapNullable -> NivaType =
-  | this
-  | NullableT => v
-  |=> this
-
 NivaType isCoreTypeNamed(name): String -> Bool = [
   base = this unwrapNullable
   ^ (base name == name) && (base pkgName == "core")

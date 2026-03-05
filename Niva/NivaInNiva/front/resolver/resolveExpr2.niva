@@ -407,19 +407,23 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     typedExpr = this value toTypedExprFromDb2: db withContext: c
 
     // check that ast type is the same as declared
-    this astType unpack: [
+    mut declaredType::NivaType? = null
+    this astType unpack: [ declaredAstType ->
       // x::Int = "ars"
-      nivaType = db findByTypeName: it name
-      db isAssignable: typedExpr typeInfo t toExpected: nivaType, ifFalse: [
-        valName = name
-        astTypeName = it name
-        realTypeName = typedExpr typeInfo t name
-        // TODO add it to error list
-        TO DO: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
-      ]
+      nivaType = declaredAstType toNivaTypefromDB: db inPkg: null
+      declaredType <- nivaType
+      db isAssignable: typedExpr typeInfo t toExpected: nivaType,
+        ifFalse: [
+          valName = name
+          astTypeName = declaredType toString
+          realTypeName = typedExpr typeInfo t toString
+          // TODO add it to error list
+          db addErrorFromTok: this token withMsg: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
+        ]
     ]
 
-    c defineVar: name withType: typedExpr typeInfo t
+    varType = declaredType unpackOrValue: typedExpr typeInfo t
+    c defineVar: name withType: varType
 
     VarDeclarationT
       :name
@@ -540,13 +544,37 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     // TODO exhaustivness for unions and bool and enums and nullMatching
     elseb = elseBranch // local smart cast
 
+    mut hasNullBranch = false
+    branches forEach: [br ->
+      br condition isNullExpr ifTrue: [hasNullBranch <- true]
+      br conditions unTypedBody forEach: [e ->
+        e isNullExpr ifTrue: [hasNullBranch <- true]
+      ]
+    ]
 
     subjectT = subject toTypedExprFromDb2: db withContext: c
+    subjectType = subjectT typeInfo t
+
+    // type narrowing to non-nullable inside else branch
     elseBranchT =
       | elseb
       | null => [null]
       |=> [
-        typedElseBody = elseb resolveBody2: db withContext: c
+        mut elseContext = c
+        | subjectType
+        | NullableT => [
+          hasNullBranch ifTrue: [
+            | subjectT
+            | IdentifierT => [
+              narrowed = subjectType unwrapNullable
+              elseContext <- Context fromParent: c
+              elseContext defineVar: subjectT name withType: narrowed
+            ]
+            |=> []
+          ]
+        ]
+        |=> []
+        typedElseBody = elseb resolveBody2: db withContext: elseContext
         typedElseBody
       ]
 
@@ -588,6 +616,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
 
     // union exhaustiveness check
     db checkUnionMatchExhaustiveness: (subjectT typeInfo t) branches: branchesT elseBranch: elseBranchT token: token
+
+    // nullable exhaustiveness check
+    | subjectType
+    | NullableT => [
+      elseBranchT == null ifTrue: [
+        db addErrorMessage: (LazyError tok: token msg: "Nullable match must be exhaustive (add |=> branch)")
+      ]
+    ]
+    |=> []
 
     ^ newAst
   ]

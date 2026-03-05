@@ -274,7 +274,7 @@ TypeDeclVisitor
         branchNames forEach: [branchName ->
           newReceiver::mut AstType = AstType
             name: branchName
-            nullable: receiverAst nullable
+            isNullable: receiverAst isNullable
             genericParams: {}
             tok: receiverAst tok
           newReceiver setMutable: receiverAst isMut

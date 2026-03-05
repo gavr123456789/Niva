@@ -118,6 +118,8 @@ NivaType compareWith(nivaType): NivaType -> Bool = [
     | NullableT => [
       this v compareWith: nivaType v
     ]
+    | NothingT => true
+    | NullT => true
     |=> false
   ]
 
@@ -243,7 +245,9 @@ NivaType compareWithConsideringUnion(nivaType): NivaType db: TyperDB -> Bool = [
     | NullableT => [
       this v compareWithConsideringUnion: nivaType v db: db
     ]
-    |=> false
+    | NothingT => true
+    | NullT => true
+    |=> this compareWithConsideringUnion: nivaType v db: db
   ]
 
 ]

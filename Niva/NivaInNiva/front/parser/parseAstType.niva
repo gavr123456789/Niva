@@ -19,7 +19,7 @@ extend mut Parser [
       // errors = .parseErrors
       result::mut AstType = AstType
         name: name
-        nullable: isNullable
+        isNullable: isNullable
         genericParams: {recursiveGenerics}
         tok: identifier
       result setMutable: isMut
@@ -40,7 +40,7 @@ extend mut Parser [
       .matchAssert: TokenType.CloseParen
       result::mut AstType = AstType
         name: name
-        nullable: isNullable
+        isNullable: isNullable
         genericParams: typeArgumentList toList
         tok: identifier
       result setMutable: isMut
@@ -50,7 +50,7 @@ extend mut Parser [
     // no Map() no List::
     result::mut AstType = AstType
       name: name
-      nullable: isNullable
+      isNullable: isNullable
       genericParams: {}
       tok: identifier
     result setMutable: isMut
