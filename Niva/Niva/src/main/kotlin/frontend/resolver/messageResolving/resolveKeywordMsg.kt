@@ -753,7 +753,7 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
     val alreadyAddedType = this[str]
 
     if (alreadyAddedType != null) {
-        val sameTypes = compare2Types(alreadyAddedType, type, errorTok, nullIsFirstOrSecond = true, compareParentsOfBothTypes = true, isOut = true)
+        val sameTypes = compare2Types(type, alreadyAddedType, errorTok, nullIsFirstOrSecond = true, compareParentsOfBothTypes = true, isOut = true)
 
         // same letter gets different type
         if (!sameTypes) {

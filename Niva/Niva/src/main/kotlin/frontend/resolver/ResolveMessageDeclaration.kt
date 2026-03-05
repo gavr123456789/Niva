@@ -372,8 +372,8 @@ fun Resolver.resolveMessageDeclaration(
                 if (!statement.isRecursive && declaredReturnTypeOrFromReturnStatement != null && statement.returnTypeAST != null) {
                     // unpack null because return Int from -> Int? method is valid
                     if (!compare2Types(
-                            typeOfSingleExpr,
                             declaredReturnTypeOrFromReturnStatement,
+                            typeOfSingleExpr,
                             statement.token,
                             unpackNull = true,
                             isOut = true

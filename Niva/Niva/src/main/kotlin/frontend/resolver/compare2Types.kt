@@ -23,7 +23,7 @@ fun compare2Types(
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type, where type1OrChildOf2 - declared return type, type2 - real
     unpackNullForSecond: Boolean = false, // x::Int? <- y::Int
-    compareParentsOfBothTypes: Boolean = true,
+    compareParentsOfBothTypes: Boolean = false,
     nullIsFirstOrSecond: Boolean = false, // any branch of switch can return null
     compareMutability: Boolean = true,
     unpackNullForFirst: Boolean = false,

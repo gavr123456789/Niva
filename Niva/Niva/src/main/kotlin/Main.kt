@@ -3,7 +3,6 @@
 package main
 
 
-import frontend.resolver.Resolver
 import java.io.File
 import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
@@ -11,7 +10,6 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
-import utils.testingLS
 
 
 fun main(args: Array<String>) {
@@ -20,6 +18,7 @@ fun main(args: Array<String>) {
     if (help(args))
         return
     run(args)
+
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root

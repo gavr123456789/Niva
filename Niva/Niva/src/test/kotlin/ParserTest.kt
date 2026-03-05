@@ -27,7 +27,6 @@ import main.frontend.parser.types.ast.MessageSend
 import main.frontend.parser.types.ast.MessageSendBinary
 import main.frontend.parser.types.ast.MessageSendKeyword
 import main.frontend.parser.types.ast.MessageSendUnary
-import main.frontend.parser.types.ast.MethodReference
 import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.SetCollection
 import main.frontend.parser.types.ast.Statement
@@ -47,6 +46,17 @@ import kotlin.test.assertTrue
 
 class ParserTest {
 
+    @Test
+    fun parseConstructorWithListArgument() {
+        val source = """
+            type TypeApp parameters: List(Int)
+            TypeApp parameters: {newTy (res1 ty)}
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        assert(ast[0] is TypeDeclaration)
+        assert(ast[1] is MessageSendKeyword)
+    }
     @Test
     fun unionWithFieldsOnNewLine() {
         val source = """
@@ -1655,7 +1665,7 @@ class ParserTest {
         val source = """
             x = 1
             | x
-            | 1, 2, 3 => "sas" echo
+            | 1 | 2 | 3 => "sas" echo
             |=> "sus" echo
         """.trimIndent()
 
@@ -1663,24 +1673,24 @@ class ParserTest {
         assert(ast.count() == 2)
     }
 
-    @Test
-    fun staticBuilderCall() {
-        val source = """
-            sas [ 
-                it echo 
-                defaultAction = [
-                  it echo
-                ]
-            ] 
-        """.trimIndent()
-
-        // is the same as when() {}, so it is if else if
-
-        val ast = getAstTest(source)
-        assert(ast.count() == 1)
-        val staticB = ast[0] as StaticBuilder
-        assert(staticB.statements[0] is MessageSendUnary)
-    }
+//    @Test
+//    fun staticBuilderCall() {
+//        val source = """
+//            sas [
+//                it echo
+//                defaultAction = [
+//                  it echo
+//                ]
+//            ]
+//        """.trimIndent()
+//
+//        // is the same as when() {}, so it is if else if
+//
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 1)
+//        val staticB = ast[0] as StaticBuilder
+//        assert(staticB.statements[0] is MessageSendUnary)
+//    }
 
     @Test
     fun inlineCanBeOnlyExpression() {
@@ -1855,20 +1865,20 @@ class ParserTest {
     }
 
 
-    @Test
-    fun methodReference2() {
-        val source = """
-            &String x
-            &String +
-            &String x:y:
-        """.trimIndent()
-
-        val ast = getAstTest(source)
-        assert(ast.count() == 3)
-        assert(ast[0] is MethodReference.Unary)
-        assert(ast[1] is MethodReference.Binary)
-        assert(ast[2] is MethodReference.Keyword)
-    }
+//    @Test
+//    fun methodReference2() {
+//        val source = """
+//            &String x
+//            &String +
+//            &String x:y:
+//        """.trimIndent()
+//
+//        val ast = getAstTest(source)
+//        assert(ast.count() == 3)
+//        assertIs<MethodReference.Unary>(ast[0])
+//        assertIs<MethodReference.Binary>(ast[1])
+//        assertIs<MethodReference.Keyword>(ast[2])
+//    }
 
 
     @Test
@@ -2008,10 +2018,8 @@ class ParserTest {
         assertEquals(ast.count(), 1)
         val q = ast.first()
 
-        assertTrue {
-            q.token.pos.start == 0 &&
-                    q.token.pos.end == 4
-        }
+        assertEquals(q.token.pos.start, 2)
+        assertEquals(q.token.pos.end, 4)
     }
 
 

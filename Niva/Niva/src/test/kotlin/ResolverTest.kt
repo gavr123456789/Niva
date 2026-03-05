@@ -1285,8 +1285,8 @@ class ResolverTest {
     @Test
     fun genericArgHasType() {
         val source = """
-            type Node v: T next: Node?
-            type LinkedList head: Node? tail: Node? size: Int
+            type Node v: T next: Node(T)?
+            type LinkedList head: Node(T)? tail: Node(T)? size: Int
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -1299,9 +1299,9 @@ class ResolverTest {
     @Test
     fun genericArgFromInputParamsNotNeedToBeResolved() {
         val source = """
-            type Node v: T next: Node?
-            Node::T str = "rar" 
-            Node str2 -> String = next unpackOrPANIC str
+            type Node v: T next: Node(T)?
+            Node(T) str = "rar" 
+            Node(T) str2 -> String = next unpackOrPANIC str
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 3)
@@ -1316,9 +1316,9 @@ class ResolverTest {
     fun genericParamForMsgSending() {
         val source = """
             type Node v: T
-            type LinkedList head: Node? 
-            constructor LinkedList::T empty = 
-                LinkedList::T head: null
+            type LinkedList head: Node(T)? 
+            constructor LinkedList(T) empty = 
+                LinkedList(T) head: null
             x = LinkedList::Int empty
         """.trimIndent()
         val statements = resolve(source)
@@ -2778,6 +2778,20 @@ class ResolverTest {
 //        val (x) = resolveWithResolver(source)
 //        assert(x.count() == 3)
 //    }
+@Test
+fun unionAssignmentInBuilderError() {
+    val source = """
+            union Sas =
+            | Sas1
+            | Sas2
 
+            Int foo: Sas = [
+                x::Sas1 = foo
+            ]
+        """.trimIndent()
 
+    assertFailsWith<CompilerError> {
+        resolve(source)
+    }
+}
 }

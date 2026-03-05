@@ -10,6 +10,7 @@ import main.utils.WHITE
 import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.CollectionAst
+import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordLikeType
@@ -48,6 +49,10 @@ fun Resolver.resolveUnaryMsg(
             is CollectionAst, is MapCollection -> true
             is KeywordMsg -> {
                 actualReceiver.kind == KeywordLikeType.Constructor || actualReceiver.kind == KeywordLikeType.CustomConstructor
+            }
+            is UnaryMsg -> {
+                val decl = actualReceiver.declaration
+                decl is ConstructorDeclaration && decl.returnType == decl.forType
             }
             is MessageSendKeyword -> {
                 // check if the first message in the chain is a constructor
