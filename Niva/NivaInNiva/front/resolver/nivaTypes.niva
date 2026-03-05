@@ -42,6 +42,12 @@ union Complex
 //| UnionT  branches: List::UnionTBranch
 
 extend NivaType [
+  on unwrapNullable -> NivaType = [
+    ^| this
+    | NullableT => v
+    |=> this
+  ]
+
   on generateId -> String = [
 
     result = | this
@@ -648,3 +654,4 @@ ListT    toString -> String = " Type(" + name + " <" + t toString + ">" + ")"
 MapT    toString -> String = " Type(" +  name + " <" + "key: $k val: $v" +  ">" + ")"
 SetT    toString -> String =  " Type(" + name + " <" + t toString + ">" + ")"
 UnresolvedGenericT toString -> String = " Type(" + name + ")"
+NullableT toString -> String =  v toString + "?"

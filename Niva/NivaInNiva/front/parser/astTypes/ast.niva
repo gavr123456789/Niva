@@ -143,6 +143,12 @@ constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr
 
 Identifier toString = "$name"
 
+Expr isNullExpr -> Bool =
+  | this
+  | NullExpr => true
+  | Identifier => name == "null"
+  | ExprInBrackets => value isNullExpr
+  |=> false
 
 /// path will be empty when
 constructor Identifier fromToken::Token =
@@ -161,7 +167,7 @@ NameAndAstType toString = [
 // Types
 union AstType2 tok: Token name: String =
 | AstType
-  nullable: Bool
+  isNullable: Bool
   genericParams: List::AstType2
   isMut: Bool
 | AstLambdaType
@@ -176,16 +182,16 @@ AstType toString = [
   ^ "$name$genericParamsStr"
 ]
 
-constructor AstType name::String nullable::Bool genericParams::List::AstType tok::Token = AstType
+constructor AstType name::String isNullable::Bool genericParams::List::AstType tok::Token = AstType
   name: name
-  nullable: nullable
+  isNullable: isNullable
   genericParams: genericParams
   isMut: false
   tok: tok
 
 constructor AstType name::String tok::Token = AstType
   name: name
-  nullable: false
+  isNullable: false
   genericParams: {}
   isMut: false
   tok: tok

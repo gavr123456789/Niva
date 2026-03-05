@@ -48,7 +48,7 @@ Test parseType -> Unit! = [
       | AstType => [
         Assert that: type3 name equals: "List"
         Assert that: type3 genericParams count equals: 1
-        Assert that: type3 nullable equals: false
+        Assert that: type3 isNullable equals: false
         genericListParam = type3 genericParams at: 0
         | genericListParam
         | AstType => Assert that: genericListParam name equals: "Int"
@@ -60,7 +60,7 @@ Test parseType -> Unit! = [
       | type4
       | AstType => [
         Assert that: type4 name equals: "Int"
-        Assert that: type4 nullable equals: true
+        Assert that: type4 isNullable equals: true
       ]
       |=> [TO DO: "It should be AstType, but it " + type4 toString]
 

@@ -338,7 +338,7 @@ extend TyperDB [
     x::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
     x at: m name put: m
 
-    "addNewConstructor: added constructor " + m name + " for type " + forType name, log
+    //"addNewConstructor: added constructor " + m name + " for type " + forType name, log
   ]
 
   on addNewPkgIfNotExists(pkgName): String -> NivaPkg = [
@@ -596,11 +596,20 @@ extend TyperDB [
     ]
 
     typeToMethodNameToMethod //keys debug
+    isNullable = | forType
+      | NullableT => true
+      |=> false
+
     x = this typeToMethodNameToMethod at: forType
-    y::mut Map(String, NivaMethod) =
-      | x
-      | null => [TO DO: "cant find type $forType in db typeToMethodNameToMethod"]
-      |=> [ x ]
+    | x
+    | null => [
+      isNullable
+        ifTrue: [^ null]
+        ifFalse: [TO DO: "cant find type $forType in db typeToMethodNameToMethod"]
+    ]
+    |=> []
+
+    y::mut Map(String, NivaMethod) = x unpackOrPANIC
 
     //StackTrace get echo
     "Methods: found method $name in $forType" log

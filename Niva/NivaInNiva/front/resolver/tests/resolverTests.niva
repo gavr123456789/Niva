@@ -619,3 +619,32 @@ Test testGenericsMethodWithTwoGenerics = [
   ]
   |=> [ Assert that: false equals: true ]
 ]
+
+Test nullableMatchExhaustiveNarrows = [
+  fileMain = """
+    x::Int? = 1
+
+    | x
+    | null => "meh" echo
+    |=> x inc echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test nullableMatchRequiresElse = [
+  fileMain = """
+    x::Int? = 1
+
+    | x
+    | null => "meh" echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
