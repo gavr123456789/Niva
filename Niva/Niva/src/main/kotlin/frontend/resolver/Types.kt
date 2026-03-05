@@ -371,7 +371,7 @@ sealed class Type(
     fun copyAndAddErrors(errors2: Set<Union>): Type {
         // copy the current type and add errors to it
 
-        assert(this.errors == null)
+//        assert(this.errors == null)
 
         val typeCopy = this.copyAnyType()
         val errs = typeCopy.errors

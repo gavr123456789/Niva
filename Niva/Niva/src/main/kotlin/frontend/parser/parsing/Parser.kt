@@ -249,10 +249,18 @@ fun Parser.identifierMayBeTyped(typeAST: TypeAST? = null, useSingleColumn: Boole
     // [x^: Int -> ]
     val isTyped = match(TokenType.DoubleColon) || if (useSingleColumn) match(TokenType.Colon) else false
     // [x: List^(Int) -> ] ??? wait, where is List matching, wtf
-    val hasGenericParen = match(TokenType.OpenParen)
+    var hasGenericParen = false
+    if (x.lexeme[0].isUpperCase() && check(TokenType.OpenParen)) {
+        val save = current
+        step() // eat (
+        if ((check(TokenType.Identifier) || check(TokenType.Mut)) && !check(TokenType.Colon, 1) && !check(TokenType.Identifier, 1)) {
+            hasGenericParen = true
+        }
+        current = save
+    }
 
 
-    return if (hasGenericParen) {
+    return if (hasGenericParen && match(TokenType.OpenParen)) {
         step(-2) // from `Map(^Int`, to `^Map(Int,`
         val type = parseTypeAST()
         IdentifierExpr(listOfIdentifiersPath.last(), listOfIdentifiersPath, type, x)
