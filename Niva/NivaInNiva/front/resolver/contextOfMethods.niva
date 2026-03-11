@@ -2,7 +2,7 @@
 /// every [] have a context
 type Context
   parent: Context?
-  vars: mut Map(String, NivaType)
+  vars: mut Map(String, TypeInfo)
   currentPkg: NivaPkg
 
 
@@ -21,7 +21,7 @@ extend Context [
 
 
   // TODO need to store
-  on defineVar(name): String withType: NivaType = [
+  on defineVar(name): String withType: TypeInfo = [
     varType = vars at: name
     | varType
     | null => vars at: name put: withType
@@ -29,7 +29,7 @@ extend Context [
   ]
 
   /// if not found, try to search in the parent
-  on lookupForVar(name): String -> NivaType? = [
+  on lookupForVar(name): String -> TypeInfo? = [
     result = vars at: name
     localP = parent
    ^| result

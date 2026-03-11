@@ -458,6 +458,25 @@ fun Resolver.resolveMessageDeclaration(
                     statement.token.compileError("Method ${it.name} for type $typeFromDB already exists in pkg: ${it.pkg} in file: ${it.declaration.token.file} on line ${it.declaration.token.line}")
                 }
             }
+
+            // forbid overriding methods from ancestors
+            var parent = typeFromDB.parent
+            while (parent != null) {
+//                if (parent !is Type.InternalType) {
+                    findAnyMethod(parent, statement.name, Package(parent.pkg), declType, false)?.let { parentMsg ->
+                        val decl = parentMsg.declaration
+                        val place = if (decl != null) {
+                            "in pkg: ${parentMsg.pkg} in file: ${decl.token.file}:${decl.token.line}:${decl.token.pos.start}"
+                        } else {
+                            "in pkg: ${parentMsg.pkg}"
+                        }
+                        statement.token.compileError(
+                            "Method ${statement.name} for type $typeFromDB already exists in root $parent $place"
+                        )
+                    }
+//                }
+                parent = parent.parent
+            }
         }
 
         try {

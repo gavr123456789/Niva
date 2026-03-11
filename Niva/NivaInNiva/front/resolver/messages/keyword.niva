@@ -210,7 +210,8 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     token: token
     typeInfo: (TypeInfo
                   t: kwMsgDB returnType
-                  isMut: kwMsgDB forMut)
+                  isMut: kwMsgDB forMut
+                  listOfErrors: kwMsgDB returnErrors)
     dbMsg: kwMsgDB
 
   // receiver stays non instaciated when its constructor, its pretty logical

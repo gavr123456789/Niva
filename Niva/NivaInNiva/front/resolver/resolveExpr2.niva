@@ -132,7 +132,8 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
       args map: [
         {name astType} = it
         t = astType toNivaTypefromDB: db inPkg: null
-        c defineVar: name withType: t
+        errorsList = astType toErrorsFromDb: db inPkg: null
+        c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
         TypeTField name: name typeT: t
       ]
     ]
@@ -148,7 +149,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
             ifFalse: [
               untypedArgs mapIndexed: [i, ident ->
                 expectedField = expectedFields at: i
-                c defineVar: ident name withType: expectedField typeT
+                c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
                 TypeTField name: ident name typeT: expectedField typeT
               ]
             ]
@@ -157,7 +158,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
           expectedFields count == 1
             ifTrue: [
               expectedField = expectedFields first
-              c defineVar: expectedField name withType: expectedField typeT
+              c defineVar: expectedField name withType: expectedField typeT toTypeInfoDefault
               { expectedField }
             ]
             ifFalse: [
@@ -236,12 +237,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
             name: "this"
             path: null
             token: token
-            typeInfo: thisType toTypeInfoDefault
+            typeInfo: thisType
             isNameOfTheType: false
 
           methodMaybe = db
             findMethodInAllProtocols: name
-            forType: thisType
+            forType: thisType t
             receiver: thisIdent
             currentPkg: c currentPkg
             dtc: db dtc
@@ -249,9 +250,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
           | methodMaybe
           | null => [
             // try to resolve union branch field
-            | thisType
+            thisTypeT = thisType t
+            | thisTypeT
             | TypeT => [
-              unionField = db findUnionField: thisType fieldName: name
+              unionField = db findUnionField: thisTypeT fieldName: name
               | unionField
               | null => [
                 contextString = c allKnownVars
@@ -260,22 +262,23 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
               |=> [
                 getter = NivaMethod
                   name: name
-                  receiverType: thisType
+                  receiverType: thisTypeT
                   args: {}
                   returnType: unionField typeT
+                  returnErrors: {}!
                   forMut: false
                   possibleErrors: {}
                   kind: MessageSendKind.Getter
                   decl: null
                   protocolName: "getters"
-                  pkgName: thisType pkgName
+                  pkgName: thisTypeT pkgName
 
                 UnaryMsgT
                   selector: (Identifier name: name token: token path: null)
                   kind: getter kind
                   receiver: thisIdent
                   token: token
-                  typeInfo: getter returnType toTypeInfoDefault
+                  typeInfo: getter returnTypeInfo
                   dbMsg: getter
               ]
             ]
@@ -295,13 +298,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
               kind: methodMaybe kind
               receiver: thisIdent
               token: token
-              typeInfo: methodMaybe returnType toTypeInfoDefault
+              typeInfo: methodMaybe returnTypeInfo
               dbMsg: methodMaybe
           ]
         ]
       ]
     ]
-    |=> IdentifierT :name :path :token typeInfo: varType toTypeInfoDefault isNameOfTheType: false
+    |=> IdentifierT :name :path :token typeInfo: varType isNameOfTheType: false
 
   ]
   | ExprInBrackets => [
@@ -408,10 +411,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
 
     // check that ast type is the same as declared
     mut declaredType::NivaType? = null
+    mut declaredTypeInfo::TypeInfo? = null
     this astType unpack: [ declaredAstType ->
       // x::Int = "ars"
       nivaType = declaredAstType toNivaTypefromDB: db inPkg: null
+      errorsList = declaredAstType toErrorsFromDb: db inPkg: null
       declaredType <- nivaType
+      declaredTypeInfo <- (TypeInfo t: nivaType isMut: isMut listOfErrors: errorsList)
       db isAssignable: typedExpr typeInfo t toExpected: nivaType,
         ifFalse: [
           valName = name
@@ -422,8 +428,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
         ]
     ]
 
-    varType = declaredType unpackOrValue: typedExpr typeInfo t
-    c defineVar: name withType: varType
+    varTypeInfo = declaredTypeInfo unpackOrValue: typedExpr typeInfo
+    c defineVar: name withType: varTypeInfo
 
     VarDeclarationT
       :name
@@ -440,7 +446,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       kind = | method_receiver
               | null => AssignKind.TO_LOCAL_MUT
               |=> [
-                  found_field = method_receiver findField: name
+                  found_field = method_receiver t findField: name
                   | found_field
                   | null => AssignKind.TO_LOCAL_MUT
                   |=>       AssignKind.TO_THIS_FIELD
@@ -462,7 +468,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
         db addErrorMessage: (LazyError tok: token msg: errMsg)
       ]
       |=> [
-        c defineVar: fieldName withType: field typeT
+        c defineVar: fieldName withType: field typeT toTypeInfoDefault
       ]
     ]
 
@@ -474,14 +480,14 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
   ]
   | ReturnStatement =>[
     valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
-    returnType =
+    returnInfo =
       | valueT
-      | null => db dtc unit
-      |=> valueT typeInfo t
+      | null => db dtc unit toTypeInfoDefault
+      |=> valueT typeInfo
 
     ReturnStatementT value: valueT
                      :token
-                     typeInfo: returnType toTypeInfoDefault
+                     typeInfo: returnInfo
   ]
 
   | CodeBlock => [
@@ -492,7 +498,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
         args map: [
           {name astType} = it
           t = astType toNivaTypefromDB: db inPkg: null
-          c defineVar: name withType: t
+          errorsList = astType toErrorsFromDb: db inPkg: null
+          c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
           TypeTField name: name typeT: t
         ]
       ]
@@ -501,7 +508,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
           ifTrue: [
             untypedArgs map: [ident ->
               unresolvedT = UnresolvedGenericT name: ident name
-              c defineVar: ident name withType: unresolvedT
+              c defineVar: ident name withType: unresolvedT toTypeInfoDefault
               TypeTField name: ident name typeT: unresolvedT
             ]
           ]
@@ -568,7 +575,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
             | IdentifierT => [
               narrowed = subjectType unwrapNullable
               elseContext <- Context fromParent: c
-              elseContext defineVar: subjectT name withType: narrowed
+              elseContext defineVar: subjectT name withType: narrowed toTypeInfoDefault
             ]
             |=> []
           ]

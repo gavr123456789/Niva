@@ -1,7 +1,42 @@
 extend mut Parser [
+  on parseTypeErrors -> AstTypeErrors? = [
+    .match: TokenType.Bang, ifFalse: [^ null]
+
+    .match: TokenType.OpenBrace, ifTrue: [
+      names::mut List::String = {}!
+      mut c = true
+      [c] whileTrue: [
+        tok = .peek
+        tok kind == TokenType.CloseBrace ifTrue: [
+          c <- false
+        ] ifFalse: [
+          nameTok = .matchAssertAnyIdent: "error name expected"
+          names add: nameTok lexeme
+          .match: TokenType.Comma
+          Unit
+        ]
+      ]
+
+      names isEmpty ifTrue: [TO DO: "error list cannot be empty"]
+      .matchAssert: TokenType.CloseBrace
+      ^ AstTypeErrors kind: AstTypeErrorsKind.List names: names toList
+    ]
+
+    tok = .peek
+    tok isIdentifier ifTrue: [
+      nameTok = .step
+      ^ AstTypeErrors kind: AstTypeErrorsKind.Single names: {(nameTok lexeme)}!
+    ]
+
+    ^ AstTypeErrors kind: AstTypeErrorsKind.Any names: {}
+  ]
+
   /// List::Set::Int
   /// Map(String, Int)
   /// identifier ("(" | "::")
+  /// Int!{Err1, Err2}
+  /// Int!
+  /// Int!Err1
   on parseGenericType -> AstType = [
 
     isMut = .match: TokenType.Mut
@@ -9,25 +44,21 @@ extend mut Parser [
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 
+
     isListLike = identifier kind == TokenType.IdentifierDoubleColon
-    isMapLike = .match: TokenType.OpenParen
-
-
-
     isListLike ifTrue: [
       recursiveGenerics = .parseGenericType
-      // errors = .parseErrors
-      result::mut AstType = AstType
-        name: name
-        isNullable: isNullable
-        genericParams: {recursiveGenerics}
-        tok: identifier
-      result setMutable: isMut
-      ^ result
 
-
+      ^ AstType
+          name: name
+          isNullable: isNullable
+          genericParams: {recursiveGenerics}
+          tok: identifier
+          isMut: isMut
+          errors: .parseTypeErrors
     ]
 
+    isMapLike = .match: TokenType.OpenParen
     isMapLike ifTrue: [
       typeArgumentList::mut List::AstType = {}!
 
@@ -38,54 +69,47 @@ extend mut Parser [
       ]
 
       .matchAssert: TokenType.CloseParen
-      result::mut AstType = AstType
-        name: name
-        isNullable: isNullable
-        genericParams: typeArgumentList toList
-        tok: identifier
-      result setMutable: isMut
-      ^ result
+
+      ^ AstType
+          name: name
+          isNullable: isNullable
+          genericParams: typeArgumentList toList
+          tok: identifier
+          isMut: isMut
+          errors: .parseTypeErrors
     ]
 
-    // no Map() no List::
-    result::mut AstType = AstType
-      name: name
-      isNullable: isNullable
-      genericParams: {}
-      tok: identifier
-    result setMutable: isMut
-    ^ result
+    // nor Type() nor Type::
+    ^ AstType
+        name: name
+        isNullable: isNullable
+        genericParams: {}
+        tok: identifier
+        isMut: isMut
+        errors: .parseTypeErrors
   ]
 
   on parseType -> AstType2 = [
+    itLambda = .match: TokenType.OpenBracket
 
-    isMut = .match: TokenType.Mut
-    itLambda = .match: TokenType.OpenBracket, ifTrue: [
-      // [Int, String -> Int]
-      // [ -> ]
+    ^ itLambda
+        ifTrue: [
+          // [Int, String -> Int]
+          // [ -> ]
 
-      mut c = true
-      mut args::mut List::AstType2 = {}!
-      [c] whileTrue: [
-        argType = .parseGenericType
-        args add: argType
-        c <- .match: TokenType.Comma
-      ]
-      > this
-      //.match: TokenType.ReturnArrow, ifTrue: [
+          args::mut List(AstType2) = {}!
 
-      //]
+          [ argType = .parseGenericType
+            args add: argType
+            .match: TokenType.Comma
+          ] whileTrue: []
 
-      .matchAssert: TokenType.ReturnArrow
+          .matchAssert: TokenType.ReturnArrow
+          returnType = .parseType
+          lastBracketTok = .matchAssert: TokenType.CloseBracket
+          AstLambdaType args: args toList returnType: returnType tok: lastBracketTok name: "[$args -> ]"
+        ]
+        ifFalse: [.parseGenericType]
 
-      returnType = .parseType
-
-
-      lastBracketTok = .matchAssert: TokenType.CloseBracket
-      ^ AstLambdaType args: args toList returnType: returnType tok: lastBracketTok name: "[$args -> ]"
-    ]
-    result::mut AstType = .parseGenericType
-    result setMutable: isMut
-    ^ result
   ]
 ]

@@ -53,7 +53,7 @@ extend mut Lexer [
       ifTrue: [ch <- '\u0000']
       ifFalse: [ch <- input at: readPos]
 
-    readPos >= 1000 => Error throwWithMessage: "readPos >= 1000, $readPos", orPANIC
+    readPos >= 10000 => Error throwWithMessage: "readPos >= 10000, we are in infinit loop probably, $readPos", orPANIC
     pos       <- readPos
     readPos   <- readPos inc
     posOnLine <- posOnLine inc // resets to 0 on \n
@@ -155,9 +155,14 @@ extend mut Lexer [
     | '/' => .createToken: TokenType.BinarySymbol lexeme: l
 
 
-    | '!' => .stepMatch: '=',
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "!="]
-      ifFalse: [.createToken: TokenType.Bang lexeme: "!"]
+    | '!' => [
+      .peekChar == '=', ifTrue: [
+        .step // consume '='
+        .createToken: TokenType.BinarySymbol lexeme: "!="
+      ] ifFalse: [
+        .createToken: TokenType.Bang lexeme: "!"
+      ]
+    ]
     | '&' => .stepMatch: '&',
       ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "&&"]
       ifFalse: [.createToken: TokenType.Ampersand lexeme: "&"]

@@ -1,13 +1,12 @@
-//1..3 forEach: [ num ->
-//  num echo
-//]
 
-//'a'..'d' forEach: [ c ->
-//  c echo
-//]
-1..100 contains: 42, echo
+Int sas -> Int!{Error} = [
+  Error throwWithMessage: "oh no"
+  ^ this inc
+]
 
-Double .. x: Double =
-  this + x, echo
+//x::Int? = null
 
-123.1..456.7
+//y::Int =
+//| x
+//| null => [Error throwWithMessage: "sas"]
+//|=> [ x ]

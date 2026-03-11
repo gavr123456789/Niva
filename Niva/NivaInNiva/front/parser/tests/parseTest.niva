@@ -21,7 +21,7 @@ constructor TestParse expression::String -> Expr = [
     |=> [TO DO: "It should be Expr, but it " + expr toString]
 ]
 
-Test varDeclarationWithAstType -> Unit! = [
+Test varDeclarationWithAstType  = [
   input = """
     x::Int = 42
   """
@@ -35,7 +35,7 @@ Test varDeclarationWithAstType -> Unit! = [
   |=> [TO DO: "VarDeclaration expected"]
 
 ]
-Test varDeclarationWithAstType2 -> Unit! = [
+Test varDeclarationWithAstType2 = [
 
   input = """
     Money make::Int sas::String -> Unit = [
@@ -47,7 +47,7 @@ Test varDeclarationWithAstType2 -> Unit! = [
 ]
 
 
-Test comments -> Unit! = [
+Test comments = [
   input = """
     1 + 2
     //sas
@@ -59,7 +59,7 @@ Test comments -> Unit! = [
 ]
 
 
-Test parseNumber -> Unit! = [
+Test parseNumber = [
   input = """
   123
   """ trimIndent
@@ -76,7 +76,7 @@ Test parseNumber -> Unit! = [
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
 
-Test parseString -> Unit! = [
+Test parseString = [
   tokens = Lexer newLex: """ "sas" """
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
@@ -93,7 +93,7 @@ Test parseString -> Unit! = [
 
 
 
-Test parseAstTypeList -> Unit! = [
+Test parseAstTypeList = [
   input = """
     List::List::Int
   """ trimIndent
@@ -115,7 +115,7 @@ Test parseAstTypeList -> Unit! = [
 
 ]
 
-Test parseAstTypeMap -> Unit! = [
+Test parseAstTypeMap = [
   input = """
     Map(Int, String)
   """ trimIndent
@@ -143,7 +143,62 @@ Test parseAstTypeMap -> Unit! = [
 
 ]
 
-Test parseExtendMessageDeclarations -> Unit! = [
+Test parseAstTypeErrorAny = [
+  input = """
+    Int!
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  astType = parser parseType
+
+  | astType | AstType => [
+    errors = astType errors unpackOrPANIC
+    Assert that: errors kind equals: AstTypeErrorsKind.Any
+    Assert that: errors names count equals: 0
+  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+]
+
+Test parseAstTypeErrorSingle = [
+  input = """
+    Int!OutOfMemory
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  astType = parser parseType
+
+  | astType | AstType => [
+    errors = astType errors unpackOrPANIC
+    Assert that: errors kind equals: AstTypeErrorsKind.Single
+    Assert that: errors names count equals: 1
+    Assert that: errors names first equals: "OutOfMemory"
+  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+]
+
+Test parseAstTypeErrorList = [
+  input = """
+    Int!{Error1 Error2 Error3}
+  """ trimIndent
+
+  tokens = Lexer newLex: input
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  astType = parser parseType
+
+  | astType | AstType => [
+    errors = astType errors unpackOrPANIC
+    Assert that: errors kind equals: AstTypeErrorsKind.List
+    Assert that: errors names count equals: 3
+    Assert that: (errors names at: 0) equals: "Error1"
+    Assert that: (errors names at: 1) equals: "Error2"
+    Assert that: (errors names at: 2) equals: "Error3"
+  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+]
+
+Test parseExtendMessageDeclarations = [
   input = """
     extend FooBar [
       on foo: Int bar: Int = []

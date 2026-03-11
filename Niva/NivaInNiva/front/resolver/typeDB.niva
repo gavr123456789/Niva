@@ -35,7 +35,7 @@ constructor TyperDB new -> TyperDB = [
   corePkg = tuple x
   dtc = tuple y
 
-  {char int float double str bool nill unit nothing any t list map set intRange charRange} = dtc
+  {char int float double str bool error nill unit nothing any t list map set intRange charRange} = dtc
 
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
@@ -45,6 +45,7 @@ constructor TyperDB new -> TyperDB = [
   boolProtocol    = NivaProtocol boolFromDefaultTypes: dtc
   charProtocol    = NivaProtocol charFromDefaultTypes: dtc
   anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
+  errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
 
@@ -65,6 +66,7 @@ constructor TyperDB new -> TyperDB = [
     unit tempEmptyProto
 
     any anyProtocol
+    error errorProtocol
     list listProtocol
     map tempEmptyProto
     set tempEmptyProto
@@ -81,6 +83,7 @@ constructor TyperDB new -> TyperDB = [
     bool tempEmptyProto
     unit tempEmptyProto
     any tempEmptyProto
+    error tempEmptyProto
     list tempEmptyProto
     map tempEmptyProto
     set tempEmptyProto
@@ -288,9 +291,9 @@ extend TyperDB [
       ifTrue: [TO DO: "Type $forType already has method $m"]
 
     methodNameToMethodMap at: m name put: m
-    m kind == MessageSendKind.Getter ifFalse: [
-      "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
-    ]
+    //m kind == MessageSendKind.Getter ifFalse: [
+    //  "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
+    //]
   ]
 
 
@@ -394,7 +397,7 @@ extend TyperDB [
 
     id = t toIdString
     typesById get: id orPut: [t]
-    "addNewType typesById: added new type $t to typesById with id: $id" log
+    //"addNewType typesById: added new type $t to typesById with id: $id" log
 
 
     // 2 add to methods db
@@ -415,7 +418,8 @@ extend TyperDB [
   ]
 
   on addGenericInstantiationIfAbsent(t): TypeT letterToType::Map(String, NivaType) -> TypeT = [
-    newTypeWithGenericInstantiated = t replaceGenericsFromTable: letterToType db: this
+    baseType = t
+    newTypeWithGenericInstantiated = baseType replaceGenericsFromTable: letterToType db: this
     typeId = newTypeWithGenericInstantiated toIdString
 
     // check if it already
@@ -443,7 +447,7 @@ extend TyperDB [
 
 
     // we adding type the first time, othervice it would be returned before
-    Assert that: (instantiatedCache at: t) equals: null
+    Assert that: (instantiatedCache at: baseType) equals: null
 
     // add empty method lits to methods and constructors
     this instantiatedCache at: newTypeWithGenericInstantiated put: #{}!
@@ -454,7 +458,7 @@ extend TyperDB [
 
     // copy methods
     dontMangle = letterToType keys toSet
-    methodsOfGeneric = this typeToMethodNameToMethod at: t
+    methodsOfGeneric = this typeToMethodNameToMethod at: baseType
     | methodsOfGeneric
     | null => []
     |=> [
@@ -465,7 +469,7 @@ extend TyperDB [
     ]
 
     // copy constructors
-    constructorsOfGeneric = this constructorsTypeToMethodNameToMethod at: t
+    constructorsOfGeneric = this constructorsTypeToMethodNameToMethod at: baseType
     | constructorsOfGeneric
     | null => []
     |=> [
@@ -484,11 +488,11 @@ extend TyperDB [
       existing = typeToMethodNameToMethod at: collectionType
       | existing
       | null => [
-        baseType = dtc list
+        coreBase = dtc list
         letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: baseType t name put: collectionType t
+        letterToType at: coreBase t name put: collectionType t
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
         instMethods::mut Map(String, NivaMethod) = #{}!
         dontMangle = letterToType keys toSet
 
@@ -507,11 +511,11 @@ extend TyperDB [
       existing = typeToMethodNameToMethod at: collectionType
       | existing
       | null => [
-        baseType = dtc set
+        coreBase = dtc set
         letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: baseType t name put: collectionType t
+        letterToType at: coreBase t name put: collectionType t
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
         instMethods::mut Map(String, NivaMethod) = #{}!
         dontMangle = letterToType keys toSet
 
@@ -530,12 +534,12 @@ extend TyperDB [
       existing = typeToMethodNameToMethod at: collectionType
       | existing
       | null => [
-        baseType = dtc map
+        coreBase = dtc map
         letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: baseType k name put: collectionType k
-        letterToType at: baseType v name put: collectionType v
+        letterToType at: coreBase k name put: collectionType k
+        letterToType at: coreBase v name put: collectionType v
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: baseType, unpackOrPANIC
+        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
         instMethods::mut Map(String, NivaMethod) = #{}!
         dontMangle = letterToType keys toSet
 
@@ -567,11 +571,12 @@ extend TyperDB [
 // как ни крути походу лучше всего хранить пакет в самом методе
 
   on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
+    lookupType = forType
 
     // constructorsTypeToMethodNameToMethod keys debug
 
-    receiver isIdentifierConstructor ? [
-      constructorsForType::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
+    receiver isIdentifierConstructor ifTrue: [
+      constructorsForType::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: lookupType, unpackOrPANIC
       constructorDB = constructorsForType at: name
       | constructorDB
       | null => [
@@ -588,7 +593,7 @@ extend TyperDB [
           ifTrue: ["  (no constructors)"]
           ifFalse: ["  - " + (formatted joinWith: "\n  - ")]
 
-        TO DO: "No such constructor $name' for type $forType.\nAvailable constructors:\n" + constructorsPretty
+        TO DO: "No such constructor $name' for type $lookupType.\nAvailable constructors:\n" + constructorsPretty
       ]
       |=> [
         ^ constructorDB
@@ -596,23 +601,23 @@ extend TyperDB [
     ]
 
     typeToMethodNameToMethod //keys debug
-    isNullable = | forType
+    isNullable = | lookupType
       | NullableT => true
       |=> false
 
-    x = this typeToMethodNameToMethod at: forType
+    x = this typeToMethodNameToMethod at: lookupType
     | x
     | null => [
       isNullable
         ifTrue: [^ null]
-        ifFalse: [TO DO: "cant find type $forType in db typeToMethodNameToMethod"]
+        ifFalse: [TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"]
     ]
     |=> []
 
     y::mut Map(String, NivaMethod) = x unpackOrPANIC
 
     //StackTrace get echo
-    "Methods: found method $name in $forType" log
+    //"Methods: found method $name in $lookupType" log
     ^ y at: name
   ]
 
@@ -668,7 +673,7 @@ extend TyperDB [
     result =
       | method returnType
       | Unknown => [
-        "Lazy resolving for $name", log
+        //"Lazy resolving for $name", log
 
         {decl} = method
         | decl

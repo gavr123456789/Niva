@@ -190,6 +190,20 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
 
   boolProto = NivaProtocol name: "common"
 
+  noArgsFunc = FuntionT
+                fields: {}!
+                name: "noFields"
+                genericArgs: {}!
+                pkgName: "core"
+                returnType: unit
+
+  no-args-to-t = FuntionT
+                  fields: {}!
+                  name: "ifTrueOrIfFalse"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: t
+
   // unary
   boolProto addMethod: (NivaMethod unary: "toString" receiverType: bool returnT: str)
   boolProto addMethod: (NivaMethod unary: "not" receiverType: bool returnT: bool)
@@ -200,11 +214,9 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
 
   // keyword
-  noArgsFunc = FuntionT fields: {}! name: "noFields" genericArgs: {}! pkgName: "core" returnType: unit
   boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgsFunc returnT: unit )
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit )
 
-  no-args-to-t = FuntionT fields: {}! name: "ifTrueOrIfFalse" genericArgs: {}! pkgName: "core" returnType: t
   args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t)
           (TypeTField name: "ifFalse" typeT: no-args-to-t)}
   boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
@@ -251,6 +263,16 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
 
   // keyword
   ^anyProto methods
+]
+
+constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
+  {str nothing} = dtc
+
+  errProto = NivaProtocol name: "common"
+  errProto addMethod: (NivaMethod unary: "throw" receiverType: errorType returnT: nothing)
+  errProto addMethod: (NivaMethod singleArgKw: "throwWithMsg" receiverType: errorType argT: str returnT: nothing)
+
+  ^ errProto methods
 ]
 
 constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer rangeType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
