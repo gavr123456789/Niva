@@ -174,6 +174,7 @@ TypeDeclVisitor
               receiverType: resolvedType
               args: {}
               returnType: field typeT
+              returnErrors: {}!
               forMut: false // false because its getter
               possibleErrors: {}
               kind: MessageSendKind.Getter
@@ -186,7 +187,7 @@ TypeDeclVisitor
           ]
         ] do
 
-        "Types: added type " + resolvedType name + " in pkg " + pkgName, log
+        //"Types: added type " + resolvedType name + " in pkg " + pkgName, log
 
       ]
       readyToAddToDBType == null ifTrue: [
@@ -264,37 +265,29 @@ TypeDeclVisitor
     pkg = tuple x
     msg = tuple y
     receiverAst = msg receiver
-    | receiverAst
-    | AstType => [
+    | receiverAst | AstType => [
       rootId = pkg + "." + receiverAst name
       branchNames = unionNameToBranchNamesExpanded at: rootId
       | branchNames
       | null => []
       |=> [
-        branchNames forEach: [branchName ->
-          newReceiver::mut AstType = AstType
-            name: branchName
-            isNullable: receiverAst isNullable
-            genericParams: {}
-            tok: receiverAst tok
-          newReceiver setMutable: receiverAst isMut
+        branchNames
+          forEach: [branchName ->
+                      newReceiver = AstType
+                                      name: branchName
+                                      isNullable: receiverAst isNullable
+                                      genericParams: {}
+                                      tok: receiverAst tok
+                                      isMut: receiverAst isMut
+                                      errors: receiverAst errors
 
-          newMsgDecl = MessageDecl
-            receiver: newReceiver
-            name: msg name
-            args: msg args
-            returnType: msg returnType
-            body: msg body
-            isSingleExpr: msg isSingleExpr
-            isConstructor: msg isConstructor
-            token: msg token
+                      newMsgDecl = msg receiver: newReceiver // copy with field changed, cool right?
 
-          extraMsgDecls add: (Tuple x: pkg y: newMsgDecl)
-          db addGeneratedMessageDecl: newMsgDecl
-        ]
+                      extraMsgDecls add: (Tuple x: pkg y: newMsgDecl)
+                      db addGeneratedMessageDecl: newMsgDecl
+                   ]
       ]
-    ]
-    |=> []
+    ] |=> []
   ]
   msgDecls2 addAll: extraMsgDecls
 
@@ -357,13 +350,19 @@ TypeDeclVisitor
           pkgName: pkg
 
         db addNewConstructor: constructorMethod forType: receiverType
-        "Methods: added constructor " + constructorMethod name + " in pkg: " + pkg, log
+        //"Methods: added constructor " + constructorMethod name + " in pkg: " + pkg, log
+        ()
       ] ifFalse: [
+        returnErrors = msg returnType unpack: [
+          it toErrorsFromDb: db inPkg: null
+        ] or: {NivaType}
+
         method = NivaMethod
           name: msg name
           receiverType: receiverType
           args: argsT
           returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
+          returnErrors: returnErrors
           forMut: isMutable
           possibleErrors: {}
           kind: MessageSendKind.Call
@@ -372,7 +371,8 @@ TypeDeclVisitor
           pkgName: pkg
 
         db addNewMethod: method forType: receiverType inProtocol: null
-        "Methods: added method " + method name + " in pkg: " + pkg, log
+        //"Methods: added method " + method name + " in pkg: " + pkg, log
+        ()
       ]
     ]
 
@@ -512,12 +512,13 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       TO DO: "You cant declare methods for Nothing type"
     ]
 
-    c defineVar: "this" withType: receiverType
+    c defineVar: "this" withType: receiverType toTypeInfoDefault
 
 
     args forEach: [
-      argType = db findByTypeName: it astType name inPkg: null
-      c defineVar: it name withType: argType
+      argType = it astType toNivaTypefromDB: db inPkg: null
+      errorsList = it astType toErrorsFromDb: db inPkg: null
+      c defineVar: it name withType: (TypeInfo t: argType isMut: false listOfErrors: errorsList)
     ]
 
     receiverFields =
@@ -526,7 +527,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       |=> {TypeTField}
 
     receiverFields forEach: [
-      c defineVar: it name withType: it typeT
+      c defineVar: it name withType: it typeT toTypeInfoDefault
     ]
 
     c

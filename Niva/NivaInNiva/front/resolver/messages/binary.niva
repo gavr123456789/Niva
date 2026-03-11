@@ -3,8 +3,8 @@
 BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> BinaryMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
 
-  typeOfReceiver = receiverTypedExpr typeInfo t
-  mut lastType = typeOfReceiver
+  // since the expr resllt is from last arg??
+  mut lastTypeInfo = receiverTypedExpr typeInfo
   mut lastReceiverExpr = receiver
   mut lastReceiverTypedExpr = receiverTypedExpr
   mut lastDbMsg::NivaMethod? = null
@@ -20,7 +20,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
 
     kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: lastReceiverTypedExpr nameOverride: binary name name
     lastDbMsg <- kwResolved dbMsg
-    lastType <- kwResolved typeInfo t
+    lastTypeInfo <- kwResolved typeInfo
     lastReceiverExpr <- binary expr
 
     typedArg = kwResolved args first
@@ -33,7 +33,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
     args: typedArgs toList
     receiver: receiverTypedExpr
     token: token
-    typeInfo: lastType toTypeInfoDefault
+    typeInfo: lastTypeInfo
     dbMsg: lastDbMsg unpackOrPANIC // this is +, its impossible to do 1 pkg.+ 2
   ^ newBinaryT
 ]

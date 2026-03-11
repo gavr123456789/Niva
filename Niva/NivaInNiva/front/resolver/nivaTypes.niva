@@ -42,6 +42,7 @@ union Complex
 //| UnionT  branches: List::UnionTBranch
 
 extend NivaType [
+
   on unwrapNullable -> NivaType = [
     ^| this
     | NullableT => v
@@ -327,6 +328,7 @@ type NivaMethod
   receiverType: NivaType
   args: List(TypeTField)
   returnType: NivaType
+  returnErrors: List::NivaType
   forMut: Bool // can be called only on mutable types
   possibleErrors: List(TypeT)//List(UnionT)
   kind: MessageSendKind
@@ -349,6 +351,7 @@ extend NivaMethod [
     retType = returnType
     instantiatedReceiverOrDefaultT = recType replaceGenericsFromTableDeep: letterToType db: db
     instantiatedReturnOrDefaultT = retType replaceGenericsFromTableDeep: letterToType db: db
+    instantiatedReturnErrors = returnErrors map: [it replaceGenericsFromTableDeep: letterToType db: db]
 
     newArgs = args map: [
       TypeTField name: it name
@@ -391,6 +394,7 @@ extend NivaMethod [
         receiverType: instantiatedReceiverOrDefaultT
         args: newArgs
         returnType: instantiatedReturnOrDefaultT
+        returnErrors: instantiatedReturnErrors
         :forMut
         :possibleErrors
         :kind
@@ -400,7 +404,7 @@ extend NivaMethod [
   ]
 
   on copyWithDifferentReturnType(rt): NivaType =
-    NivaMethod :name  :receiverType :args returnType: rt :forMut :possibleErrors :kind :decl :protocolName :pkgName
+    NivaMethod :name  :receiverType :args returnType: rt returnErrors: returnErrors :forMut :possibleErrors :kind :decl :protocolName :pkgName
 
   /// sort args and checks them with fields, so any arg order should work probably
   on isConstructorForReceiver(receiver): TypeT -> Bool = [
@@ -416,6 +420,9 @@ extend NivaMethod [
     argsStr = args joinWith: " " transform: [it toString]
     ^ "(NivaMethod " + isMut + " " + name + "(" + argsStr + ")" + p2 + " -> " + returnType toString + ")"
   ]
+
+  on returnTypeInfo -> TypeInfo =
+    TypeInfo t: returnType isMut: forMut listOfErrors: returnErrors
 ]
 
 constructor NivaMethod [
@@ -425,6 +432,7 @@ constructor NivaMethod [
     receiverType: receiverType
     args: args
     returnType: returnType
+    returnErrors: {}!
     forMut: forMut
     possibleErrors: {}
     kind: MessageSendKind.Call
@@ -437,6 +445,7 @@ constructor NivaMethod [
     :receiverType
     args: args
     returnType: returnType
+    returnErrors: {}!
     forMut: forMut
     possibleErrors: {}
     kind: MessageSendKind.Call
@@ -449,6 +458,7 @@ constructor NivaMethod [
     :receiverType
     :args
     :returnType
+    returnErrors: {}!
     forMut: false
     possibleErrors: {}
     kind: MessageSendKind.DefaultConstructor
@@ -490,7 +500,7 @@ constructor NivaPkg withCoreImportednamed(name): String =
 extend NivaPkg [
   on addImport(pkgName): String = [
     pkgName != this name ifTrue: [
-      "Imports: added import of $pkgName to $name pkg" log
+      //"Imports: added import of $pkgName to $name pkg" log
       imports add: pkgName
     ]
   ]
@@ -504,6 +514,7 @@ type DefaultTypesContainer
   double: DoubleT
   str: StringT
   bool: BoolT
+  error: TypeT
   nill: NullT
   unit: UnitT
   // utils
@@ -536,6 +547,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   unit = UnitT new
   nothing = NothingT new
   any = AnyT new
+  error = TypeT noFieldsWithName: "Error" pkgName: "core"
 
   list = (ListT t: t)
   list2 = (ListT t: q)
@@ -561,7 +573,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    :char :int :float :double :str :bool :error :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -587,7 +599,7 @@ constructor DefaultTypesContainer new-collection-with-different-generic(collecti
 /// create basic types like String Int List
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
-  {char, int, float, double, str, bool, nill, unit,
+  {char, int, float, double, str, bool, error, nill, unit,
   // utils
   nothing, any,
   // T
@@ -603,6 +615,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Int" int
     "Float" float
     "Double" double
+    "Error" error
     "IntRange" intRange
     "CharRange" charRange
 

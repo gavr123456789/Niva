@@ -165,40 +165,58 @@ NameAndAstType toString = [
 ]
 
 // Types
+enum AstTypeErrorsKind = Any | Single | List
+type AstTypeErrors
+  kind: AstTypeErrorsKind
+  names: List::String
+
 union AstType2 tok: Token name: String =
 | AstType
   isNullable: Bool
-  genericParams: List::AstType2
+  genericParams: List(AstType2)
   isMut: Bool
+  errors: AstTypeErrors?
 | AstLambdaType
   args: List::AstType2
   returnType: AstType2
 
-constructor AstType2 unitType -> AstType2 =
-  AstType name: "Unit" tok: (Token fake)
-
+constructor AstType2 unitType -> AstType2 =[
+  ^ AstType name: "Unit" tok: (Token fake)
+]
 AstType toString = [
   genericParamsStr = genericParams joinWith: ": " transform: [it toString]
-  ^ "$name$genericParamsStr"
+  errors = this errors
+  errorsStr = | errors
+  | null => ""
+  |=> [
+    | errors kind
+    | AstTypeErrorsKind.Any => "!"
+    | AstTypeErrorsKind.Single => "!" + (errors names first)
+    | AstTypeErrorsKind.List => "!{" + (errors names joinWith: " ") + "}"
+  ]
+  ^ "$name$genericParamsStr$errorsStr"
 ]
 
-constructor AstType name::String isNullable::Bool genericParams::List::AstType tok::Token = AstType
+constructor AstType name: String isNullable: Bool genericParams: List(AstType) tok: Token = AstType
   name: name
   isNullable: isNullable
   genericParams: genericParams
   isMut: false
+  errors: null
   tok: tok
 
-constructor AstType name::String tok::Token = AstType
+constructor AstType name: String tok: Token = AstType
   name: name
   isNullable: false
   genericParams: {}
   isMut: false
+  errors: null
   tok: tok
 
-extend mut AstType [
-  on setMutable::Bool = isMut <- setMutable
-]
+//extend mut AstType [
+  //on setMutable: Bool = isMut <- setMutable
+  //on setErrors: AstTypeErrors? = errors <- setErrors
+//]
 
 
 

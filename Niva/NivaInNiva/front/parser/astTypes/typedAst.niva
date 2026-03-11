@@ -1,13 +1,16 @@
 
 
 // type itself + number of flags
-type TypeInfo t: NivaType isMut: Bool
+type TypeInfo t: NivaType isMut: Bool listOfErrors: List::NivaType
 extend TypeInfo [
   on toString =
-    t toString + (| isMut | true => " mut" |=> "")
+    t toString +
+      (| isMut | true => " mut" |=> "") +
+      (listOfErrors isEmpty ifTrue: [""] ifFalse: [" !{" + (listOfErrors joinWith: " " transform: [it name]) + "}"])
 ]
 
-NivaType toTypeInfoDefault -> TypeInfo = [^ TypeInfo t: this isMut: false]
+NivaType toTypeInfoDefault -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: {}!]
+NivaType toTypeInfoWithErrors(errors): List::NivaType -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: errors]
 // constructor TypeInfo default: t::NivaType =
 //   TypeInfo :t isMut: false
 
