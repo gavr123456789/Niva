@@ -1,12 +1,7 @@
 
-Int sas -> Int!{Error} = [
-  Error throwWithMessage: "oh no"
-  ^ this inc
+Int read: String -> String = [
+  Bind addImport: "fs"
+  ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
 ]
-
-//x::Int? = null
-
-//y::Int =
-//| x
-//| null => [Error throwWithMessage: "sas"]
-//|=> [ x ]
+x = 1 read: ".niva_js/testss.niva"
+x

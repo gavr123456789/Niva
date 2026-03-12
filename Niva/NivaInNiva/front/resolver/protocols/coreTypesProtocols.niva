@@ -265,9 +265,22 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
   ^anyProto methods
 ]
 
+constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+  {str bind list any} = dtc
+  //listAny = ListT
+  bindProto = NivaProtocol name: "constructors"
+
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: any)
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
+  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: any)
+
+  ^bindProto methods
+]
+
 constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
   {str nothing} = dtc
 
+  // ITS NOT A METHOD ITS CONSTRUCTOR
   errProto = NivaProtocol name: "common"
   errProto addMethod: (NivaMethod unary: "throw" receiverType: errorType returnT: nothing)
   errProto addMethod: (NivaMethod singleArgKw: "throwWithMsg" receiverType: errorType argT: str returnT: nothing)
@@ -368,4 +381,34 @@ constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: N
     returnType: returnT
     forMut: false
     protocolName: "common"
+    pkgName: "core"
+
+constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType =
+  NivaMethod
+    defaultConstructorWithName: name + ":"
+    :receiverType
+    args: {(TypeTField name: name typeT: argT)}
+    returnType: receiverType
+    decl: null
+    protocolName: "constructors"
+    pkgName: "core"
+
+constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType returnType: NivaType =
+  NivaMethod
+    defaultConstructorWithName: name + ":"
+    :receiverType
+    args: {(TypeTField name: name typeT: argT)}
+    :returnType
+    decl: null
+    protocolName: "constructors"
+    pkgName: "core"
+
+constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: NivaType argT1: NivaType argT2: NivaType returnType: NivaType =
+  NivaMethod
+    defaultConstructorWithName: name1 + ":" + name2 + ":"
+    :receiverType
+    args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2)}
+    :returnType
+    decl: null
+    protocolName: "constructors"
     pkgName: "core"

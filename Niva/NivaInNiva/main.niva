@@ -50,6 +50,26 @@ constructor IO_Container new -> IO_Container = [
 
 
 
+constructorReturnType = [
+  fileMain = """
+    type FS
+
+    constructor FS read: String -> String = [
+      ^ "sas"
+    ]
+
+    x = FS read: "file.txt"
+
+    x + "111"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  boxDecl = typedAst at: 0
+  boxDecl debug
+] do
 
 compilerTry = [
   path = Compiler cliArgs debug //"~/Documents/Fun/niva_demo/main.niva"
@@ -102,7 +122,7 @@ genericsReceiverAndKwArg = [
   ]
   |=> [ Assert that: false equals: true ]
 
-] do
+]
 
 
 mapCollection = [

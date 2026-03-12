@@ -1,4 +1,32 @@
 
+
+Test constructorReturnType = [
+  fileMain = """
+    type FS
+
+    constructor FS read: String -> String = [
+      ^ "sas"
+    ]
+
+    x = FS read: "file.txt"
+
+    x + "111"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  boxDecl = typedAst at: 0
+  | boxDecl
+  | VarDeclarationT => [
+      t = boxDecl value typeInfo t
+      Assert that: t name equals: "String"
+  ]
+  |=> Assert that: false equals: true
+
+]
+
 Test findingGenericRoot = [
   fileMain = """
     union Sas = Ses | Sis

@@ -35,7 +35,7 @@ constructor TyperDB new -> TyperDB = [
   corePkg = tuple x
   dtc = tuple y
 
-  {char int float double str bool error nill unit nothing any t list map set intRange charRange} = dtc
+  {char int float double str bool bind error nill unit nothing any t list map set intRange charRange} = dtc
 
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
@@ -45,6 +45,7 @@ constructor TyperDB new -> TyperDB = [
   boolProtocol    = NivaProtocol boolFromDefaultTypes: dtc
   charProtocol    = NivaProtocol charFromDefaultTypes: dtc
   anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
+  bindConstructors = NivaProtocol bindFromDefaultTypes: dtc
   errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
@@ -81,6 +82,7 @@ constructor TyperDB new -> TyperDB = [
     double tempEmptyProto
     str tempEmptyProto
     bool tempEmptyProto
+    bind bindConstructors
     unit tempEmptyProto
     any tempEmptyProto
     error tempEmptyProto
@@ -310,7 +312,7 @@ extend TyperDB [
     pos = e tok toPosition
     "ADDED ERROR $pos $msg" red log
     listOfErrors add: e
-    //TO DO: "Error"
+    //TO DO: "bad"
   ]
 
   on addErrorFromTok(tok): Token withMsg(msg): String = [
@@ -856,6 +858,9 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
 
   entryPointPkg imports forEach: [
     realEntryPkg addImport: it
+  ]
+  entryPointPkg packageImports forEach: [
+    realEntryPkg addPackageImport: it
   ]
 
   // add generated functions to fileToStatements

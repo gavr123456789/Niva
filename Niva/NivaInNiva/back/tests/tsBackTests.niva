@@ -80,3 +80,44 @@ Test tsConstructorOnCoreTypeCodegen = [
   Assert that: (js contains: "const x = Int__answear()") equals: true
   Assert that: (js contains: "new Int") equals: false
 ]
+
+Test tsBindingsCodegen = [
+  fileMain = """
+    Int read: String -> String = [
+      Bind addImport: "fs"
+      ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
+    ]
+    x = 1 read: ".niva_js/testss.niva"
+    x echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "import * as fs from \"fs\"") equals: true
+  Assert that: (js contains: "export function Int__read(_this, read)") equals: true
+  Assert that: (js contains: "fs.readFileSync(read, \"UTF-8\")") equals: true
+  Assert that: (js contains: "const x = Int__read(1, \".niva_js/testss.niva\")") equals: true
+]
+
+Test tsBindingsPlaceholderValidation = [
+  fileMain = """
+    Int mul: Int -> Int = [
+      ^ Bind emit: "$1 * $4" args: {this mul}
+    ]
+    x = 21 mul: 2
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+
+  //result
+  // TODO: check errors
+
+  //Assert that: error isSome equals: true
+  //error unpack: [
+  //  errorMsg = it message
+  //  Assert that: (errorMsg contains: "placeholder $4") equals: true
+  //  Assert that: (errorMsg contains: "only 2 arguments") equals: true
+  //]
+]
