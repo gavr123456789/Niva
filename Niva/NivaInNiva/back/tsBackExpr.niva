@@ -34,6 +34,15 @@ NivaType isNumericType -> Bool = [
 NivaType isStringType -> Bool = this isCoreTypeNamed: "String"
 NivaType isBoolType -> Bool = this isCoreTypeNamed: "Bool"
 
+String unquoteLiteral -> String = [
+  len = this count
+  ^ len >= 2 ifTrue: [
+    (this drop: 1) dropLast: 1
+  ] ifFalse: [
+    this
+  ]
+]
+
 NivaType tryEmitNativeBinary(op): String recvExpr: String argExpr: String argType: NivaType -> String? = [
   rNum = this isNumericType
   aNum = argType isNumericType
@@ -72,6 +81,13 @@ constructor TypeScript  [
         //"\n" + db structureInfo, debug
 
         generateImports = [pkg::NivaPkg sb::StringBuilder ->
+            pkg packageImports forEach: [
+                sb append: "import * as "
+                sb append: it
+                sb append: " from \""
+                sb append: it
+                sb append: "\"\n"
+            ]
             pkg imports forEach: [
                 // import * as core from "./core.js"
                 sb append: "import * as "
@@ -81,15 +97,11 @@ constructor TypeScript  [
             sb appendLine: "\n" // 2
         ]
 
-        outputFileToJS::mut Map(String, String) = #{}!
+        outputFileToCode::mut Map(String, String) = #{}!
 
         rh fileToStatements forEach: [file, statement ->
             // one sb per file
             sb = StringBuilder new
-
-            pkg = packages at: file, unpackOrPANIC
-
-            generateImports :pkg :sb
 
             statement forEach: [
                 x = it toTSFromPkg: file db: db
@@ -99,20 +111,31 @@ constructor TypeScript  [
                 ]
             ]
 
+            outputFileToCode at: file put: sb toString
+        ]
+
+        entryPointName = rh entryPointName
+        exprs = rh entryPointExpressions joinWith: ";\n" transform: [it toTSFromPkg: entryPointName db: db]
+        entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs + ";"]
+
+        outputFileToJS::mut Map(String, String) = #{}!
+        rh fileToStatements forEach: [file, statement ->
+            sb = StringBuilder new
+            pkg = packages at: file, unpackOrPANIC
+            generateImports :pkg :sb
+            codeStr = outputFileToCode at: file, unpackOrPANIC
+            sb append: codeStr
             outputFileToJS at: file put: sb toString
         ]
 
+        mainSb = StringBuilder new
+        mainPkg = packages at: entryPointName, unpackOrPANIC
+        generateImports :mainPkg :mainSb
+        mainCode = outputFileToCode at: entryPointName, unpackOrPANIC
+        mainSb append: mainCode
+        mainSb append: entryPointExprs
+        outputFileToJS at: entryPointName put: mainSb toString
 
-
-        entryPointName = rh entryPointName
-        generateMain = [
-            x = outputFileToJS at: entryPointName, unpackOrPANIC
-            exprs = rh entryPointExpressions joinWith: ";\n" transform: [it toTSFromPkg: entryPointName]
-            entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs + ";"]
-            x + entryPointExprs
-        ]
-
-        outputFileToJS at: entryPointName put: generateMain do
         ^ outputFileToJS
     ]
 ]
@@ -121,32 +144,32 @@ constructor TypeScript  [
 // currentPkg is basically a file name from which this expr is
 // this is needed to remove pkg_qualifiers from calls from the same file, like
 // sas.js contains "function foo(){}" and call it like "sas.foo()", this is wrong
-TypedExpr2 toTSFromPkg(currentPkg): String -> String =
+TypedExpr2 toTSFromPkg(currentPkg): String db: TyperDB -> String =
   | this
   | LiteralExprT       => .literalToTS
   | IdentifierT        => .identToTS
-  | ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg) + ")"
-  | VarDeclarationT    => .varDeclToTSFromPkg: currentPkg
-  | AssignT            => .generateTSAssignFromPkg: currentPkg
-  | DestructingAssignT => .destructToTSFromPkg: currentPkg
-  | CollectionLiteralT => .collectionToTSFromPkg: currentPkg
-  | MessageSendT       => .msgSendToTSFromPkg: currentPkg
-  | ReturnStatementT   => .returnToTSFromPkg: currentPkg
-  | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg
-  | MatchT             => .matchToTSFromPkg: currentPkg
+  | ExprInBracketsT    => "(" + (value toTSFromPkg: currentPkg db: db) + ")"
+  | VarDeclarationT    => .varDeclToTSFromPkg: currentPkg db: db
+  | AssignT            => .generateTSAssignFromPkg: currentPkg db: db
+  | DestructingAssignT => .destructToTSFromPkg: currentPkg db: db
+  | CollectionLiteralT => .collectionToTSFromPkg: currentPkg db: db
+  | MessageSendT       => .msgSendToTSFromPkg: currentPkg db: db
+  | ReturnStatementT   => .returnToTSFromPkg: currentPkg db: db
+  | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg db: db
+  | MatchT             => .matchToTSFromPkg: currentPkg db: db
 
 /// checks if it a field of receiver than generates _this.field = ...
-AssignT generateTSAssignFromPkg(currentPkg): String -> String = [
+AssignT generateTSAssignFromPkg(currentPkg): String db: TyperDB -> String = [
   need_this = | kind
               | AssignKind.TO_LOCAL_MUT  => ""
               | AssignKind.TO_THIS_FIELD => "_this."
-  ^ need_this + name + " = " + (value toTSFromPkg: currentPkg)
+  ^ need_this + name + " = " + (value toTSFromPkg: currentPkg db: db)
 ]
 
-CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
+CollectionLiteralT collectionToTSFromPkg(currentPkg): String db: TyperDB -> String = [
   sb = StringBuilder new
   elementsStr = elements v joinWith: ", " transform: [
-    it toTSFromPkg: currentPkg
+    it toTSFromPkg: currentPkg db: db
   ]
   ^ | this
     | ListLiteralT => [
@@ -169,18 +192,18 @@ CollectionLiteralT collectionToTSFromPkg(currentPkg): String -> String = [
                 chunked: 2, joinTransform: [
                   key = it at: 0
                   value = it at: 1
-                  "[" + (key toTSFromPkg: currentPkg) + ", " + (value toTSFromPkg: currentPkg) + "]"
+                  "[" + (key toTSFromPkg: currentPkg db: db) + ", " + (value toTSFromPkg: currentPkg db: db) + "]"
                 ]
       "new Map([" + (pairs) + "])"
     ]
 ]
 
-ReturnStatementT returnToTSFromPkg(currentPkg): String -> String = [
-  exprStr = value unpack: [it toTSFromPkg: currentPkg] or: ""
+ReturnStatementT returnToTSFromPkg(currentPkg): String db: TyperDB -> String = [
+  exprStr = value unpack: [it toTSFromPkg: currentPkg db: db] or: ""
   ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
 ]
 
-CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
+CodeBlockT codeBlockToTSFromPkg(currentPkg): String db: TyperDB -> String = [
     argsStr = args isNotEmpty
       ifTrue: [
         args joinWith: ", " transform: [
@@ -218,16 +241,16 @@ CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
             ifTrue: [
               | expr
               | ReturnStatementT =>
-                expr toTSFromPkg: currentPkg
+                expr toTSFromPkg: currentPkg db: db
               | VarDeclarationT
               | AssignT
               | DestructingAssignT =>
-                (expr toTSFromPkg: currentPkg) + "\nreturn"
+                (expr toTSFromPkg: currentPkg db: db) + "\nreturn"
               |=> [
-                "return " + (expr toTSFromPkg: currentPkg)
+                "return " + (expr toTSFromPkg: currentPkg db: db)
               ]
             ] ifFalse: [
-              expr toTSFromPkg: currentPkg
+              expr toTSFromPkg: currentPkg db: db
             ]
         ], joinWith: "\n"
       ]
@@ -235,8 +258,8 @@ CodeBlockT codeBlockToTSFromPkg(currentPkg): String -> String = [
     ^ "(" + argsStr + ") => {" + bodyStr + "}"
 ]
 
-MatchT matchToTSFromPkg(currentPkg): String -> String = [
-    subjectStr = subject toTSFromPkg: currentPkg
+MatchT matchToTSFromPkg(currentPkg): String db: TyperDB -> String = [
+    subjectStr = subject toTSFromPkg: currentPkg db: db
 
     buildBody = [body::TypedBody ->
       bodyExprs = body v
@@ -250,16 +273,16 @@ MatchT matchToTSFromPkg(currentPkg): String -> String = [
               ifTrue: [
                 | expr
                 | ReturnStatementT =>
-                  expr toTSFromPkg: currentPkg
+                  expr toTSFromPkg: currentPkg db: db
                 | VarDeclarationT
                 | AssignT
                 | DestructingAssignT =>
-                  (expr toTSFromPkg: currentPkg) + "\nreturn"
+                  (expr toTSFromPkg: currentPkg db: db) + "\nreturn"
                 |=> [
-                  "return " + (expr toTSFromPkg: currentPkg)
+                  "return " + (expr toTSFromPkg: currentPkg db: db)
                 ]
               ] ifFalse: [
-                expr toTSFromPkg: currentPkg
+                expr toTSFromPkg: currentPkg db: db
               ]
           ], joinWith: "\n"
         ]
@@ -272,15 +295,15 @@ MatchT matchToTSFromPkg(currentPkg): String -> String = [
         | condExpr
         | IdentifierT => [
           condExpr isNameOfTheType
-            ifTrue: ["(" + subjectStr + " instanceof " + (condExpr toTSFromPkg: currentPkg) + ")"]
-            ifFalse: ["(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg) + ")"]
+            ifTrue: ["(" + subjectStr + " instanceof " + (condExpr toTSFromPkg: currentPkg db: db) + ")"]
+            ifFalse: ["(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg db: db) + ")"]
         ]
         |=> [
-          "(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg) + ")"
+          "(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg db: db) + ")"
         ]
       conds add: condStr
       branch conditions v forEach: [
-        conds add: "(" + (it toTSFromPkg: currentPkg) + ")"
+        conds add: "(" + (it toTSFromPkg: currentPkg db: db) + ")"
       ]
       conds joinWith: " && "
     ]
@@ -311,14 +334,14 @@ MatchT matchToTSFromPkg(currentPkg): String -> String = [
 ]
 
 
-VarDeclarationT varDeclToTSFromPkg(currentPkg): String -> String = [
+VarDeclarationT varDeclToTSFromPkg(currentPkg): String db: TyperDB -> String = [
     declKw = isMut ifTrue: ["let "] ifFalse: ["const "]
-    ^ declKw + name  + " = " + (value toTSFromPkg: currentPkg)
+    ^ declKw + name  + " = " + (value toTSFromPkg: currentPkg db: db)
 ]
 
-DestructingAssignT destructToTSFromPkg(currentPkg): String -> String = [
+DestructingAssignT destructToTSFromPkg(currentPkg): String db: TyperDB -> String = [
     fieldsStr = names joinWith: ", "
-    ^ "const {" + fieldsStr + "} = " + (value toTSFromPkg: currentPkg)
+    ^ "const {" + fieldsStr + "} = " + (value toTSFromPkg: currentPkg db: db)
 ]
 
 
@@ -334,18 +357,19 @@ LiteralExprT literalToTS -> String =
   |=> token lexeme
 
 
-MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
+MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
     rec = receiver
     isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
     useNewCtor = isDefaultConstructor && (dbMsg decl == null)
     isReceiverFunction = | dbMsg receiverType
         | FuntionT => true
         |=> false
+    isBindReceiver = dbMsg receiverType isCoreTypeNamed: "Bind"
 
     getReceiverTs = [
         // we dont need to send receiver as first argument when its a constructor(its just a typeName identifier in such cases)
         isDefaultConstructor
-            ifFalse: [receiver toTSFromPkg: currentPkg]
+            ifFalse: [receiver toTSFromPkg: currentPkg db: db]
             ifTrue:  [""]
     ]
 
@@ -358,12 +382,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
 
         dbMsg kind == MessageSendKind.Getter
             ifTrue: [
-                ^ (receiver toTSFromPkg: currentPkg) + "." + selector name
+                ^ (receiver toTSFromPkg: currentPkg db: db) + "." + selector name
             ]
 
         isReceiverFunction && (selector name == "do")
             ifTrue: [
-                ^ "(" + (receiver toTSFromPkg: currentPkg) + ")()"
+                ^ "(" + (receiver toTSFromPkg: currentPkg db: db) + ")()"
             ]
 
         | rec
@@ -388,13 +412,13 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
         ^ pkg_qualifier + newSelector + "(" + getReceiverTs do + ")"
     ]
     | BinaryMsgT => [
-        receiverStr = receiver toTSFromPkg: currentPkg
+        receiverStr = receiver toTSFromPkg: currentPkg db: db
         mut currentExpr::String = receiverStr
         currentType = receiver typeInfo t
 
         args forEach: [arg ->
             op = arg name name
-            argExpr = arg expr toTSFromPkg: currentPkg
+            argExpr = arg expr toTSFromPkg: currentPkg db: db
             argType = arg expr typeInfo t
             native = currentType tryEmitNativeBinary: op recvExpr: currentExpr argExpr: argExpr argType: argType
             | native
@@ -410,17 +434,89 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
         ^ currentExpr
     ]
     | KeywordMsgT => [
+        isBindReceiver && (dbMsg name == "emit:")
+            ifTrue: [
+                argExpr = args first expr
+                ^ | argExpr
+                  | StringExprT => argExpr token lexeme unquoteLiteral
+                  |=> argExpr toTSFromPkg: currentPkg db: db
+            ]
+        isBindReceiver && (dbMsg name == "addImport:")
+            ifTrue: [
+                argExpr = args first expr
+                | argExpr
+                | StringExprT => [
+                    importName = argExpr token lexeme unquoteLiteral
+                    pkg = db packages at: currentPkg, unpackOrPANIC
+                    pkg addPackageImport: importName
+                  ]
+                |=> [
+                    TO DO: "Bind addImport expects String literal"
+                  ]
+                ^ ""
+            ]
+
+        isBindReceiver && (dbMsg name == "emit:args:")
+            ifTrue: [
+                templateExpr = args first expr
+                argsListExpr = (args at: 1) expr
+
+                template = | templateExpr
+                  | StringExprT => templateExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:args: expects String literal as first argument"]
+
+                argsValues = | argsListExpr
+                  | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
+                  |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
+
+                // Validate placeholder count
+                mut maxPlaceholder = 0
+                mut i = 0
+                template count repeat: [
+                    (template at: i) == '$' ifTrue: [
+                        (i + 1) < (template count) ifTrue: [
+                            nextChar = template at: (i + 1)
+                            nextChar isDigit ifTrue: [
+                                mut digitStr = nextChar toString
+                                mut j = i + 2
+                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
+                                    digitStr <- digitStr + ((template at: j) toString)
+                                    j <- j + 1
+                                ]
+                                placeholderNum = digitStr toInt
+                                placeholderNum > maxPlaceholder ifTrue: [
+                                    maxPlaceholder <- placeholderNum
+                                ]
+                            ]
+                        ]
+                    ]
+                    i <- i + 1
+                ]
+
+                argsCount = argsValues count
+                maxPlaceholder > argsCount ifTrue: [
+                    TO DO: "Bind emit:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
+                ]
+
+                mut result = template
+                argsValues forEachIndexed: [i, argValue ->
+                    placeholder = "$" + ((i + 1) toString)
+                    result <- result replace: placeholder with: argValue
+                ]
+                ^ result
+            ]
+
         dbMsg name == "whileTrue:" ifTrue: [
-            condStr = receiver toTSFromPkg: currentPkg
-            bodyStr = (args first expr) toTSFromPkg: currentPkg
+            condStr = receiver toTSFromPkg: currentPkg db: db
+            bodyStr = (args first expr) toTSFromPkg: currentPkg db: db
             ^ "while (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
         ]
 
         isReceiverFunction ifTrue: [
             argsExprStr = args map: [
-                it expr toTSFromPkg: currentPkg
+                it expr toTSFromPkg: currentPkg db: db
             ]
-            ^ "(" + (receiver toTSFromPkg: currentPkg) + ")(" + (argsExprStr joinWith: ", ") + ")"
+            ^ "(" + (receiver toTSFromPkg: currentPkg db: db) + ")(" + (argsExprStr joinWith: ", ") + ")"
         ]
 
         // selector
@@ -445,7 +541,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String -> String = [
 
     // args
         argsExprStr = args map: [
-            it expr toTSFromPkg: currentPkg
+            it expr toTSFromPkg: currentPkg db: db
         ]
         args = receiverWithComma + (argsExprStr joinWith: ", ")
 

@@ -1,6 +1,5 @@
-x = {}!
+union Sas = Sus | Ses
+Sas sas = 1
+Sus sas = ""
 
-//x add: 1
-//x add: 2
-
-x echo
+x = Sus new sas

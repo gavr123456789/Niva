@@ -488,14 +488,16 @@ type NivaPkg
   name: String
   types: mut Map(String, NivaType)
   constructorsProtocol: NivaProtocol
-  imports: mut Set::String
+  imports: mut Set(String)
+  packageImports: mut Set(String)
 
 
-constructor NivaPkg name: String = NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()!
+constructor NivaPkg name: String =
+  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()! packageImports: #()!
 
 /// create a package with "core" pkg imported, I think there is no case when pkg doesn't import core
 constructor NivaPkg withCoreImportednamed(name): String =
-  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")!
+  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")! packageImports: #()!
 
 extend NivaPkg [
   on addImport(pkgName): String = [
@@ -503,6 +505,10 @@ extend NivaPkg [
       //"Imports: added import of $pkgName to $name pkg" log
       imports add: pkgName
     ]
+  ]
+
+  on addPackageImport(pkgName): String = [
+    packageImports add: pkgName
   ]
 ]
 
@@ -514,6 +520,7 @@ type DefaultTypesContainer
   double: DoubleT
   str: StringT
   bool: BoolT
+  bind: TypeT
   error: TypeT
   nill: NullT
   unit: UnitT
@@ -543,6 +550,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   double = DoubleT new
   str = StringT new
   bool = BoolT new
+  bind = TypeT noFieldsWithName: "Bind" pkgName: "core"
   nill = NullT new
   unit = UnitT new
   nothing = NothingT new
@@ -573,7 +581,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :error :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    :char :int :float :double :str :bool :bind :error :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -599,7 +607,7 @@ constructor DefaultTypesContainer new-collection-with-different-generic(collecti
 /// create basic types like String Int List
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
-  {char, int, float, double, str, bool, error, nill, unit,
+  {char, int, float, double, str, bool, bind, error, nill, unit,
   // utils
   nothing, any,
   // T
@@ -615,6 +623,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Int" int
     "Float" float
     "Double" double
+    "Bind" bind
     "Error" error
     "IntRange" intRange
     "CharRange" charRange
@@ -630,6 +639,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
 
   constructorsProtocol: NivaProtocol constructors
   imports: #()!
+  packageImports: #()!
 
 
   ^ Tuple x: corePkg y: dtc

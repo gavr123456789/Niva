@@ -344,7 +344,7 @@ TypeDeclVisitor
           defaultConstructorWithName: msg name
           receiverType: receiverType
           args: argsT
-          returnType: receiverType
+          returnType: (msg getReturnTypeFromDb: db)
           decl: msg
           protocolName: "constructors"
           pkgName: pkg

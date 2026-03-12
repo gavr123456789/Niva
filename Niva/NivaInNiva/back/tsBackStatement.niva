@@ -187,7 +187,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         this body typedBody2 forEach: [expr ->
             sb append: "    "
-            sb appendLine: (expr toTSFromPkg: currentPkg)
+            sb appendLine: (expr toTSFromPkg: currentPkg db: db)
         ]
 
         sb append: "}"
