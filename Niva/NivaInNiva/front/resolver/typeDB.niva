@@ -431,7 +431,7 @@ extend TyperDB [
     ]
 
     typesById at: typeId put: newTypeWithGenericInstantiated
-    "added new generic instantiation $typeId" log
+    //"added new generic instantiation $typeId" log
 
     // add to lookup for mangled name (so we can find Box__Int)
     mangled = newTypeWithGenericInstantiated toMangledName

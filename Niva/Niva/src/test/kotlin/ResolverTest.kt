@@ -71,6 +71,25 @@ class ResolverTest {
     }
 
     @Test
+    fun unaryMethodOverridesFieldGetter() {
+        val source = """
+            type DTO
+              secretState: Int
+
+            DTO secretState = ()
+
+            dto = DTO secretState: 42
+            dto secretState
+        """.trimIndent()
+        val statements = resolve(source)
+        assert(statements.count() == 4)
+        val q = statements[3] as MessageSendUnary
+        val msg = q.messages[0] as UnaryMsg
+        assert(msg.kind == UnaryMsgKind.Unary)
+        assert(msg.type?.name == "Unit")
+    }
+
+    @Test
     fun keywordCall() {
         val source = """
             Int add2::Int = [

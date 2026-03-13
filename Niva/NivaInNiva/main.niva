@@ -48,31 +48,26 @@ constructor IO_Container new -> IO_Container = [
   ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
 ]
 
-
-
-constructorReturnType = [
+callNewFromOtherFile = [
+  otherFile = """
+    type Person
+      name: String
+  """
   fileMain = """
-    type FS
-
-    constructor FS read: String -> String = [
-      ^ "sas"
-    ]
-
-    x = FS read: "file.txt"
-
-    x + "111"
+    alice = Person name: "Alice"
   """
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  db = result db
-  typedAst = result entryPointExpressions
-
-  boxDecl = typedAst at: 0
-  boxDecl debug
+  result = ResolverHelper resolve: #{"main" fileMain
+                                     "person" otherFile}
+                          entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  js debug
+  //Assert that: (js contains: "const {age, name} = alice") equals: true
 ] do
 
 compilerTry = [
-  path = Compiler cliArgs debug //"~/Documents/Fun/niva_demo/main.niva"
+  path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
   NivaCompiler runArgs: path withIO: IO_Container new
 ]
 

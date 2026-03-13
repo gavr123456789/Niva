@@ -57,11 +57,28 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
 
+  // injectInto: initial operation: (acc, item) -> acc (List only)
+  | collectionType
+  | ListT => [
+      accArg = TypeTField name: "acc" typeT: t
+      injectBlock = FuntionT
+                      fields: { accArg itArg }!
+                      name: "injectInto"
+                      genericArgs: {}!
+                      pkgName: "core"
+                      returnType: t
+
+      injectArgs = {(TypeTField name: "inject" typeT: t)
+                    (TypeTField name: "into" typeT: injectBlock)}
+      collP addMethod: (NivaMethod manyArgKw: injectArgs receiverType: collectionType returnT: t)
+    ]
+  |=> []
+
   listOfCollection = ListT t: collectionType
   collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
   collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
 
-  // joinTransform: [T -> String]   (джойнит через ", ")
+  // joinTransform: [T -> String] join with ", "
   joinTransformBlock = FuntionT
                         fields: { itArg }!
                         name: "joinTransform"
@@ -73,7 +90,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                     argT: joinTransformBlock
                     returnT: str)
 
-  // joinWith: String   (просто джойнит)
+  // joinWith: String
   collP addMethod: (NivaMethod singleArgKw: "joinWith"
                     receiverType: collectionType
                     argT: str

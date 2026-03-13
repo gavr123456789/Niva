@@ -1,3 +1,21 @@
+Test callNewFromOtherFile = [
+  otherFile = """
+    type Person
+      name: String
+  """
+  fileMain = """
+    alice = Person name: "Alice"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain
+                                     "person" otherFile}
+                          entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  js debug
+  Assert that: (js contains: "const alice = new person.Person(\"Alice\")") equals: true
+]
+
 Test tsGetterCodegen = [
   fileMain = """
     type Person age: Int

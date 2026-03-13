@@ -13,6 +13,7 @@ import main.frontend.parser.types.ast.CollectionAst
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.KeywordLikeType
 import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.MapCollection
@@ -138,6 +139,34 @@ fun Resolver.resolveUnaryMsg(
         return Pair(receiverType.returnType, null)
     }
 
+    fun hasUnaryMethodOverride(): Boolean {
+        if (receiverType !is Type.UserLike) return false
+
+        val pkg = getCurrentPackage(statement.token)
+        fun hasNonGetterOn(type: Type): Boolean {
+            val method = findAnyMethod(
+                type,
+                statement.selectorName,
+                pkg,
+                MessageDeclarationType.Unary,
+                addImports = false,
+                lookInStatic = false
+            )
+            return method is UnaryMsgMetaData && !method.isGetter
+        }
+
+        if (hasNonGetterOn(receiverType)) return true
+
+        val anyType = Resolver.defaultTypes[InternalTypes.Any]
+        val unknownType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]
+        var parent = receiverType.parent
+        while (parent != null && parent != anyType && parent != unknownType) {
+            if (hasNonGetterOn(parent)) return true
+            parent = parent.parent
+        }
+        return false
+    }
+
     val checkForGetter = {
         if (receiverType is Type.UserLike && !receiverType.noGetters) {
             val field = receiverType.fields.find { it.name == statement.selectorName }
@@ -150,7 +179,7 @@ fun Resolver.resolveUnaryMsg(
 
 
     val (isGetter, field) = checkForGetter()
-    if (isGetter) {
+    if (isGetter && !hasUnaryMethodOverride()) {
         statement.kind = UnaryMsgKind.Getter
         val result = field!!.type
         statement.type = result
