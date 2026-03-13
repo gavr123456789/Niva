@@ -2,6 +2,7 @@ package main.utils
 
 import frontend.resolver.MessageMetadata
 import frontend.resolver.Type
+import main.frontend.parser.types.ast.InternalTypes
 import io.github.irgaly.kfswatch.KfsDirectoryWatcher
 import io.github.irgaly.kfswatch.KfsEvent
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +16,6 @@ import main.languageServer.Scope
 import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStreamReader
 import kotlin.collections.forEach
 import kotlin.collections.joinToString
@@ -179,6 +179,26 @@ fun findSimilar(to: String, forType: Type): Pair<List<String>, String> {
     val b = StringBuilder()
 
     val result = mutableListOf<String>()
+    val nonGetterUnaryNames = mutableSetOf<String>()
+    if (forType is Type.UserLike) {
+        fun collectNonGetterUnary(type: Type) {
+            type.protocols.values.forEach { protocol ->
+                protocol.unaryMsgs.values.forEach { msg ->
+                    if (!msg.isGetter) {
+                        nonGetterUnaryNames.add(msg.name)
+                    }
+                }
+            }
+        }
+        var current: Type? = forType
+        while (current != null) {
+            collectNonGetterUnary(current)
+            val name = current.name
+            if (name == InternalTypes.Any.name || name == InternalTypes.UnknownGeneric.name) break
+            current = current.parent
+        }
+    }
+
     fun find(it: MessageMetadata){
         if (it.name.lowercase().startsWith(to)) {
             b.appendLine("$foundCounter\t$it")
@@ -192,6 +212,7 @@ fun findSimilar(to: String, forType: Type): Pair<List<String>, String> {
         val p = forType.parent
         forType.protocols.values.forEach { protocol ->
             protocol.unaryMsgs.values.forEach {
+                if (it.isGetter && nonGetterUnaryNames.contains(it.name)) return@forEach
                 find(it)
             }
             protocol.keywordMsgs.values.forEach {
@@ -208,6 +229,7 @@ fun findSimilar(to: String, forType: Type): Pair<List<String>, String> {
     // search for fields
     if (forType is Type.UserLike && !forType.noGetters) {
         forType.fields.forEach {
+            if (nonGetterUnaryNames.contains(it.name)) return@forEach
             if (it.name.lowercase().startsWith(to)) {
                 b.appendLine("$foundCounter\tfield $it")
                 result.add(it.toString())

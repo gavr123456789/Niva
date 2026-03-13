@@ -1,5 +1,7 @@
-union Sas = Sus | Ses
-Sas sas = 1
-Sus sas = ""
+type DTO
+  secretState: Int
 
-x = Sus new sas
+DTO secretState = ()
+
+dto = DTO secretState: 42
+dto secretState echo
