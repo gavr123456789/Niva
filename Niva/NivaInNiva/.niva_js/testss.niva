@@ -1,7 +1,19 @@
 
-Int read: String -> String = [
-  Bind addImport: "fs"
-  ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
+//Int read: String -> String = [
+//  Bind addImport: "fs"
+//  ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
+//]
+//x = 1 read: ".niva_js/testss.niva"
+//x
+
+
+String binaryToAscii = [
+  result = this
+    split: " ",
+    map: [it toInt: 2, toChar],
+    joinWith: ""
+
+  ^ result
 ]
-x = 1 read: ".niva_js/testss.niva"
-x
+
+"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo

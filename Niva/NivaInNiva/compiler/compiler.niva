@@ -29,17 +29,30 @@ constructor NivaCompiler [
     on runArgs(args): List(String) withIO(io): IO_Container = [
 
         argsParsed = ArgParser args: args
-        {option path} = argsParsed
+        {option path backend} = argsParsed
 
         realJSPath = io currentDir + "/.niva_js"
+        realNimPath = io currentDir + "/.niva_nim"
 
-        buildFromResolver = [res::ResolverHelper ->
-            FileSystem createDirectories: (realJSPath toPath)
-            fileToJSCOntent = TypeScript fullFromResolver: res
+        buildFromResolver = [res: ResolverHelper ->
+            | backend
+            | Backend.Nim => [
+                FileSystem createDirectories: (realNimPath toPath)
+                fileToNimContent = Nim fullFromResolver: res
 
-            fileToJSCOntent forEach: [file, jsContent ->
-                destanation = realJSPath + "/" + file + ".js"
-                io writeFile file: destanation content: jsContent
+                fileToNimContent forEach: [file, nimContent ->
+                    destination = realNimPath + "/" + file + ".nim"
+                    io writeFile file: destination content: nimContent
+                ]
+            ]
+            | Backend.JS => [
+                FileSystem createDirectories: (realJSPath toPath)
+                fileToJSCOntent = TypeScript fullFromResolver: res
+
+                fileToJSCOntent forEach: [file, jsContent ->
+                    destanation = realJSPath + "/" + file + ".js"
+                    io writeFile file: destanation content: jsContent
+                ]
             ]
         ]
 
@@ -57,9 +70,16 @@ constructor NivaCompiler [
 
             buildFromResolver res: resolver
             option == CompilerOption.Run ifTrue: [
-              // run with bun
-              pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
-              io runProgram args: {"bun" pathToEntryPoint}
+              | backend
+              | Backend.Nim => [
+                pathToEntryPoint = realNimPath + "/" + entryPoint + ".nim"
+                io runProgram args: {"nim" "--hints:off" "r" pathToEntryPoint}
+              ]
+              | Backend.JS => [
+                // run with bun
+                pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
+                io runProgram args: {"bun" pathToEntryPoint}
+              ]
             ]
         ]
         | CompilerOption.Help => []

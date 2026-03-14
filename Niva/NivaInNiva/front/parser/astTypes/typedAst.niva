@@ -10,7 +10,7 @@ extend TypeInfo [
 ]
 
 NivaType toTypeInfoDefault -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: {}!]
-NivaType toTypeInfoWithErrors(errors): List::NivaType -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: errors]
+NivaType toTypeInfoWithErrors(errors): List(NivaType) -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: errors]
 // constructor TypeInfo default: t::NivaType =
 //   TypeInfo :t isMut: false
 
@@ -23,20 +23,20 @@ enum AssignKind = TO_THIS_FIELD | TO_LOCAL_MUT
 
 union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^LiteralExprT
-| IdentifierT     name: String path: {String}? isNameOfTheType: Bool
+| IdentifierT     name: String path: List(String)? isNameOfTheType: Bool
 | ExprInBracketsT value: TypedExpr2
 | VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool
 | AssignT            name: String value: TypedExpr2 kind: AssignKind
-| DestructingAssignT names: List::String value: TypedExpr2 // {name} = person
+| DestructingAssignT names: List(String) value: TypedExpr2 // {name} = person
 
 | ^CollectionLiteralT
 | ^MessageSendT
 | ReturnStatementT value: TypedExpr2?
 // only one of the lists can be non empty
-| CodeBlockT args: List::NameAndAstType untypedArgs: List::Identifier body: TypedBody
+| CodeBlockT args: List(NameAndAstType) untypedArgs: List(Identifier) body: TypedBody
 | MatchT
   subject: TypedExpr2
-  branches: List::MatchBranchT
+  branches: List(MatchBranchT)
   elseBranch: TypedBody? // possible body
 
 IdentifierT toString -> String = [
@@ -48,7 +48,7 @@ IdentifierT toString -> String = [
 type NameAndExprT name: Identifier expr: TypedExpr2
 
 type TypedBody
-  v: List::TypedExpr2
+  v: List(TypedExpr2)
   t: NivaType
 
 
@@ -76,13 +76,13 @@ union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo dbMsg: N
   selector: Identifier // no need for type here
   kind: MessageSendKind
 | BinaryMsgT
-  args: List::NameAndExprT // expr - Primary or UnaryMsg
+  args: List(NameAndExprT) // expr - Primary or UnaryMsg
 | KeywordMsgT
-  args: List::NameAndExprT // expr - Primary or UnaryMsg or BinaryMsg
+  args: List(NameAndExprT) // expr - Primary or UnaryMsg or BinaryMsg
   kind: MessageSendKind
 
 
 // constructors
 
-constructor IdentifierT fromToken::Token typeInfo::TypeInfo isNameOfTheType::Bool=
+constructor IdentifierT fromToken: Token typeInfo: TypeInfo isNameOfTheType: Bool=
   IdentifierT name: (fromToken lexeme) token: fromToken path: null :typeInfo :isNameOfTheType

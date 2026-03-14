@@ -63,8 +63,12 @@ callNewFromOtherFile = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
   js debug
+
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+  nim debug
   //Assert that: (js contains: "const {age, name} = alice") equals: true
-] do
+]
 
 compilerTry = [
   path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
@@ -72,13 +76,13 @@ compilerTry = [
 ]
 
 compilerTry2 = [
-  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"run" ".niva_nim/testss.niva" "--nim"} //"~/Documents/Fun/niva_demo/main.niva"
   //t1 = System currentTimeMillis
   //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
+] do
 
 genericsReceiverAndKwArg = [
   fileMain = """

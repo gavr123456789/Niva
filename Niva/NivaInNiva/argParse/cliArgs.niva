@@ -1,12 +1,13 @@
-type ArgParser 
-type ArgsParsed 
-  path: String? 
+type ArgParser
+type ArgsParsed
+  path: String?
   option: CompilerOption
   // flags
   verbose: Bool
   lsp: Bool
+  backend: Backend
 
-constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help verbose: false lsp: false
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help verbose: false lsp: false backend: Backend.JS
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -16,6 +17,7 @@ constructor ArgParser args::List::String -> ArgsParsed = [
       run — compile and run project from main.niva (recursive)
       run FILE — compile and run project from root file (recursive)
       build FILE — compile only the given file
+      --nim — emit Nim instead of JS
   """ trimIndent
 
   args contains: "--help", ifTrue: [
@@ -23,20 +25,36 @@ constructor ArgParser args::List::String -> ArgsParsed = [
   ]
 
   // separate flags from args
-  // flags = #{"--verbose" false 
+  // flags = #{"--verbose" false
   //           "--lsp"     false}
 
   mut verbose = false
   mut lsp = false
+  mut backend = Backend.JS
   filteredArgs = args filter: [
-    // flags at: it put: true
-    it == "--verbose" ifTrue: [verbose <- true]
-    it == "--lsp" ifTrue: [lsp <- true]
-    (verbose || lsp) not
+    mut isFlag = false
+    | it
+    | "--verbose" => [
+      verbose <- true
+      isFlag <- true
+    ]
+    | "--lsp" => [
+      lsp <- true
+      isFlag <- true
+    ]
+    | "--nim" => [
+      backend <- Backend.Nim
+      isFlag <- true
+    ]
+    | "--js" => [
+      backend <- Backend.JS
+      isFlag <- true
+    ]
+    isFlag not
   ]
 
   getFirstArg = [
-    arg = args at: 0
+    arg = filteredArgs at: 0
     | arg
     | "run" => CompilerOption.Run
     | "build" => CompilerOption.Build
@@ -47,21 +65,22 @@ constructor ArgParser args::List::String -> ArgsParsed = [
     ]
   ]
 
-  ^ | args count
+  ^ | filteredArgs count
     | 1 => [
-      arg0 = args at: 0
+      arg0 = filteredArgs at: 0
       | arg0
-      | "run" => ArgsParsed path: null option: CompilerOption.Run verbose: verbose lsp: lsp
+      | "run" => ArgsParsed path: null option: CompilerOption.Run verbose: verbose lsp: lsp backend: backend
       | "build" => ArgsParsed help
-      | "info" => ArgsParsed path: null option: CompilerOption.Info verbose: verbose lsp: lsp
+      | "info" => ArgsParsed path: null option: CompilerOption.Info verbose: verbose lsp: lsp backend: backend
       |=> ArgsParsed help
     ]
     | 2 => [
       arg1 = getFirstArg do
-      arg2 = args at: 1
-      ArgsParsed path: arg2 option: arg1 verbose: verbose lsp: lsp
+      arg2 = filteredArgs at: 1
+      ArgsParsed path: arg2 option: arg1 verbose: verbose lsp: lsp backend: backend
     ]
     |=> ArgsParsed help
 ]
 
 enum CompilerOption = Run | Build | Daemon | RunTests | Info | Help
+enum Backend = JS | Nim
