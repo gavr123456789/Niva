@@ -94,3 +94,12 @@ AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
     ]
   ]
   | AstLambdaType => {NivaType}
+
+AstType2 toTypeInfoFromDb(db): TyperDB inPkg: String? -> TypeInfo = [
+  t = this toNivaTypefromDB: db inPkg: inPkg
+  errorsList = this toErrorsFromDb: db inPkg: inPkg
+  isMut = | this
+           | AstType => this isMut
+           |=> false
+  ^ TypeInfo t: t isMut: isMut listOfErrors: errorsList
+]

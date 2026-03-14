@@ -115,6 +115,11 @@ TypedExpr2 toTSFromPkg(currentPkg): String db: TyperDB -> String =
   | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg db: db
   | MatchT             => .matchToTSFromPkg: currentPkg db: db
 
+// Wrapper to avoid recursive dispatch when called from TypedStatement
+TypedExpr2 toTSExprFromPkg(currentPkg): String db: TyperDB -> String = [
+  ^ this toTSFromPkg: currentPkg db: db
+]
+
 /// checks if it a field of receiver than generates _this.field = ...
 AssignT generateTSAssignFromPkg(currentPkg): String db: TyperDB -> String = [
   need_this = | kind

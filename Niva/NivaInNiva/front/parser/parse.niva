@@ -177,7 +177,7 @@ extend mut Parser [
           Unit
         ]
       ]
-      Body unTypedBody: body typedBody2: {}!
+      Body unTypedBody: body
     ]
 
    ^| tok kind
@@ -289,7 +289,7 @@ extend mut Parser [
       ]
     ]
 
-    result = Body unTypedBody: body typedBody2: {}!
+    result = Body unTypedBody: body
 
     ^ result
   ]
@@ -318,7 +318,7 @@ extend mut Parser [
       .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
-      Body unTypedBody: {(.nextExperssion: .step)}! typedBody2: {}!
+      Body unTypedBody: {(.nextExperssion: .step)}!
     ]
   ]
 
@@ -376,7 +376,7 @@ extend mut Parser [
         .matchAssert: TokenType.Then
 
         body = .parseBodyOrSingleExpr
-        conditions = Body unTypedBody: (exprs drop: 1, toMutableList) typedBody2: {}!
+        conditions = Body unTypedBody: (exprs drop: 1, toMutableList)
         mb = MatchBranch condition: exprs first conditions: conditions body: body
         branches add: mb
 

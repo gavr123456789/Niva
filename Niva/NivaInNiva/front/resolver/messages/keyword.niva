@@ -143,7 +143,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           // Create new MessageDecl
 
           // create new body with same expressions but empty typed body
-          newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList) typedBody2: {}!
+          newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
 
           // create args
           // args is List<NameAndAstType>
