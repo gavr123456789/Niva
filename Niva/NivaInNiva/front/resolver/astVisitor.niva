@@ -344,7 +344,7 @@ TypeDeclVisitor
           defaultConstructorWithName: msg name
           receiverType: receiverType
           args: argsT
-          returnType: (msg getReturnTypeFromDb: db)
+          returnType: (msg getReturnTypeIfDeclaredOrUnknown: db)
           decl: msg
           protocolName: "constructors"
           pkgName: pkg
@@ -361,7 +361,7 @@ TypeDeclVisitor
           name: msg name
           receiverType: receiverType
           args: argsT
-          returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
+          returnType: (msg getReturnTypeIfDeclaredOrUnknown: db) // if generic need to resolve
           returnErrors: returnErrors
           forMut: isMutable
           possibleErrors: {}
@@ -406,16 +406,15 @@ TypeDeclVisitor
 
 /// if no return type and has body then its Unit
 /// if no return type and isSingleExpr then its unknown
-MessageDecl getReturnTypeFromDb(db): TyperDB -> NivaType = [
-
+MessageDecl getReturnTypeIfDeclaredOrUnknown(db): TyperDB -> NivaType = [
   rt = returnType
- ^| rt
-  | null => [
-    | isSingleExpr
-    | true => Unknown new
-    | false => db dtc unit
-  ]
-  |=> db findByTypeName: rt name inPkg: null
+  ^ | rt
+      | null => [
+        | isSingleExpr
+        | true => Unknown new
+        | false => db dtc unit
+      ]
+    |=> db findByTypeName: rt name inPkg: null
 ]
 
 /// returns a type with fields filled with real types, ready to add to db
