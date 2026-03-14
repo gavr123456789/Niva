@@ -10,9 +10,6 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
     ^ TypedBody v: {} t: db dtc unit
   ]
 
-
-  Assert that: typedBody2 isEmpty equals: true
-
   // stackOfVisited::mut Set::MessageDecl = #()
   listOfTypedExpr2 = unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb2: db withContext: c
@@ -25,12 +22,6 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
 
     typed
   ]
-
-  typedBody2 addAll: listOfTypedExpr2
-  unTypedBody clear
-
-  Assert that: typedBody2 isNotEmpty equals: true
-  Assert that: unTypedBody isEmpty equals: true
 
   returnTypes::mut List::NivaType = {}!
   listOfTypedExpr2 forEach: [expr ->
@@ -179,8 +170,8 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                   ],
                   map: [it typeT]
 
-  typedBody2 = body resolveBody2: db withContext: c
-  returnType = typedBody2 t
+  typedBody = body resolveBody2: db withContext: c
+  returnType = typedBody t
 
   name = args isNotEmpty
     ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
@@ -191,7 +182,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
     ]
 
   ^ CodeBlockT :args :untypedArgs
-    body: typedBody2
+    body: typedBody
     :token
     typeInfo: (FuntionT
                 fields: typeTFields toMutableList
@@ -316,7 +307,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       TO DO: "Can't infer type of the Collection collection without elements"
     ]
     typedBody = elements resolveBody2: db withContext: c
-    Assert that: elements unTypedBody count equals: 0
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -355,7 +345,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     // resolve
     // compere each first and each second
     typedBody = elements resolveBody2: db withContext: c
-    Assert that: elements unTypedBody count equals: 0
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -525,8 +514,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
                     map: [it typeT]
 
 
-    typedBody2 = body resolveBody2: db withContext: c
-    returnType = typedBody2 t
+    typedBody = body resolveBody2: db withContext: c
+    returnType = typedBody t
 
     name = args isNotEmpty
       ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
@@ -537,7 +526,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       ]
 
     CodeBlockT :args :untypedArgs
-      body: typedBody2
+      body: typedBody
       :token
       typeInfo: (FuntionT
                   fields: typeTFields toMutableList

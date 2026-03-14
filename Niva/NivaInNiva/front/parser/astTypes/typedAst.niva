@@ -52,6 +52,40 @@ type TypedBody
   t: NivaType
 
 
+type NameAndTypeInfo name: String typeInfo: TypeInfo
+
+type TypeFieldT name: String typeInfo: TypeInfo
+
+type UnionBranchT
+  name: String
+  fields: List::TypeFieldT
+  isInclude: Bool
+  token: Token
+
+union TypedDeclaration token: Token =
+| TypeDeclT name: String fields: List::TypeFieldT
+| EnumDeclT
+| UnionDeclT
+  name: String
+  commonUnionFields: List::TypeFieldT
+  branches: List::UnionBranchT
+| ExtendDeclT
+  receiver: NivaType
+  messages: List::MessageDeclT
+| MessageDeclT
+  receiver: NivaType
+  name: String
+  args: List::NameAndTypeInfo
+  returnType: TypeInfo
+  body: TypedBody
+  isSingleExpr: Bool
+  isConstructor: Bool
+
+union TypedStatement token: Token =
+| ^TypedExpr2
+| ^TypedDeclaration
+
+
 union LiteralExprT token: Token typeInfo: TypeInfo =
 | CharExprT
 | IntExprT
