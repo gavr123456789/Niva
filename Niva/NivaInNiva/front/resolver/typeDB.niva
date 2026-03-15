@@ -907,9 +907,6 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
         name: arg name
         typeInfo: (arg astType toTypeInfoFromDb: db inPkg: null)
     ]
-    returnInfo = msgDecl returnType unpack: [
-      it toTypeInfoFromDb: db inPkg: null
-    ] or: ((msgDecl getReturnTypeIfDeclaredOrUnknown: db) toTypeInfoDefault)
     typedBodyMaybe = db typedBodiesCache at: msgDecl
     typedBody =
       | typedBodyMaybe
@@ -925,6 +922,15 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
         msgDecl resolveBodyWithDb: db pkg: pkg extraTypes: extraTypes
       ]
       |=> typedBodyMaybe
+    fallbackReturnInfo = [
+      noDeclaredReturnType = msgDecl returnType == null
+      shouldUseBodyType = msgDecl isSingleExpr && noDeclaredReturnType
+      inferredReturnType = shouldUseBodyType ifTrue: [typedBody t] ifFalse: [msgDecl getReturnTypeIfDeclaredOrUnknown: db]
+      inferredReturnType toTypeInfoDefault
+    ] do
+    returnInfo = msgDecl returnType unpack: [
+      it toTypeInfoFromDb: db inPkg: null
+    ] or: fallbackReturnInfo
     MessageDeclT
       receiver: receiverType
       name: msgDecl name

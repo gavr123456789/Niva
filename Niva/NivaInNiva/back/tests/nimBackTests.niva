@@ -1,0 +1,149 @@
+Test nimCallNewFromOtherFile = [
+  otherFile = """
+    type Person
+      name: String
+  """
+  fileMain = """
+    alice = Person name: "Alice"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain
+                                     "person" otherFile}
+                          entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "import person") equals: true
+  Assert that: (nim contains: "let alice = person.Person(name: \"Alice\")") equals: true
+]
+
+Test nimTypeAndGetterCodegen = [
+  fileMain = """
+    type Person age: Int
+
+    p = Person age: 21
+    z = p age
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "type Person* = ref object") equals: true
+  Assert that: (nim contains: "age: int") equals: true
+  Assert that: (nim contains: "let p = Person(age: 21)") equals: true
+  Assert that: (nim contains: "let z = p.age") equals: true
+]
+
+Test nimMethodCodegen = [
+  fileMain = """
+    type Person age: Int
+
+    Person olderBy: Int -> Int = [
+      ^ age + olderBy
+    ]
+
+    p = Person age: 20
+    newAge = p olderBy: 5
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "proc Person_olderBy*(this: Person, olderBy: int): int") equals: true
+  Assert that: (nim contains: "let age = this.age") equals: true
+  Assert that: (nim contains: "return ((age) + (olderBy))") equals: true
+  Assert that: (nim contains: "let newAge = Person_olderBy(p, 5)") equals: true
+]
+
+Test nimSingleExprMethodReturnInference = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    Person sas: Int = 1 + 1
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "proc Person_sas*(this: Person, sas: int): int") equals: true
+]
+
+Test nimUnionCodegen = [
+  fileMain = """
+    union Figure size: Int =
+      | Circle r: Int
+      | Rectangle width: Int height: Int
+
+    figure::Figure = Circle size: 1 r: 2
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "type Figure* = ref object of RootObj") equals: true
+  Assert that: (nim contains: "type Circle* = ref object of Figure") equals: true
+  Assert that: (nim contains: "type Rectangle* = ref object of Figure") equals: true
+  Assert that: (nim contains: "let figure = Circle(size: 1, r: 2)") equals: true
+]
+
+Test nimMethodChainCodegen = [
+  fileMain = """
+    x = 1
+    y = x inc inc
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "let y = core.Int_inc(core.Int_inc(x))") equals: true
+]
+
+Test nimCollectionsCodegen = [
+  fileMain = """
+    l = {1 2 3}
+    s = #(1 2 3)
+    m = #{1 "a" 2 "b"}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "import sets") equals: true
+  Assert that: (nim contains: "import tables") equals: true
+  Assert that: (nim contains: "let l = @[ 1, 2, 3 ]") equals: true
+  Assert that: (nim contains: "let s = toHashSet(@[1, 2, 3])") equals: true
+  Assert that: (nim contains: "let m = toTable(@[(1, \"a\"), (2, \"b\")])") equals: true
+]
+
+Test nimUntypedLambdaArgGetsType = [
+  fileMain = """
+    "abcdef" forEach: [char -> char echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "proc (char: char)") equals: true
+]
+
+Test nimDiscardUnusedTopLevelValue = [
+  fileMain = """
+    "foo-bar" count
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToNim = Nim fullFromResolver: result
+  nim = fileToNim at: "main", unpackOrPANIC
+
+  Assert that: (nim contains: "discard ") equals: true
+  Assert that: (nim contains: "String_count(\"foo-bar\")") equals: true
+]

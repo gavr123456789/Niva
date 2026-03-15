@@ -1,0 +1,672 @@
+type Nim
+
+String indentLines(prefix): String = [
+  this count == 0 ifTrue: [^ ""]
+  parts = this split: "\n"
+  indented = parts map: [prefix + it]
+  ^ indented joinWith: "\n"
+]
+
+
+NivaType collectUnresolvedGenerics(into): mut Set::String = [
+  | this
+  | UnresolvedGenericT => into add: name
+  | ListT => this t collectUnresolvedGenerics: into
+  | SetT => this t collectUnresolvedGenerics: into
+  | MapT => [
+      this k collectUnresolvedGenerics: into
+      this v collectUnresolvedGenerics: into
+    ]
+  | FuntionT => [
+      fields forEach: [it typeT collectUnresolvedGenerics: into]
+      returnType collectUnresolvedGenerics: into
+    ]
+  | TypeT => [
+      genericArgs forEach: [it collectUnresolvedGenerics: into]
+    ]
+  | NullableT => v collectUnresolvedGenerics: into
+  |=> []
+]
+
+NivaType toNimTypeFromPkg(currentPkg): String -> String = [
+  ^ | this
+    | NullableT => (this v) toNimTypeFromPkg: currentPkg
+    | IntegerT => "int"
+    | FloatT => "float32"
+    | DoubleT => "float64"
+    | BoolT => "bool"
+    | CharT => "char"
+    | StringT => "string"
+    | UnitT => "void"
+    | AnyT => TO DO: "Implement Any for Nim, probably RootObj or smth like that"//"auto"
+    | NothingT => "void"
+    | Unknown => TO DO: "Compiler bug: (nim backend) all Unknown types should be resolved"
+    | ListT => [
+        inner = this t
+        "seq[" + (t toNimTypeFromPkg: currentPkg) + "]"
+    ]
+    | SetT => [
+        inner = this t
+        "HashSet[" + (inner toNimTypeFromPkg: currentPkg) + "]"
+    ]
+    | MapT => [
+        "Table[" + (k toNimTypeFromPkg: currentPkg) + ", " + (v toNimTypeFromPkg: currentPkg) + "]"
+    ]
+    | UnresolvedGenericT => this name
+    | FuntionT => [
+        argsStr = this fields
+                        mapIndexed: [i, f ->
+                                      argName = f name == "" ifTrue: ["arg" + (i toString)] ifFalse: [f name]
+                                      argName + ": " + (f typeT toNimTypeFromPkg: currentPkg)
+                                    ],
+                                    joinWith: ", "
+        retStr = this returnType toNimTypeFromPkg: currentPkg
+        retStr == "void"
+          ifTrue:  ["proc (" + argsStr + ")"]
+          ifFalse: ["proc (" + argsStr + "): " + retStr]
+    ]
+    | TypeT => [
+        hasPkg = this pkgName != ""
+        isOtherPkg = this pkgName != currentPkg
+        qual = (hasPkg && isOtherPkg)
+          ifTrue: [this pkgName + "."]
+          ifFalse: [""]
+        genStr = this genericArgs isNotEmpty
+          ifTrue: ["[" + (this genericArgs joinWith: ", " transform: [it toNimTypeFromPkg: currentPkg]) + "]"]
+          ifFalse: [""]
+        qual + this name + genStr
+    ]
+    |=> this name
+]
+
+NivaType tryEmitNativeBinaryNim(op): String recvExpr: String argExpr: String argType: NivaType -> String? = [
+  rNum = this isNumericType
+  aNum = argType isNumericType
+  rStr = this isStringType
+  aStr = argType isStringType
+  rBool = this isBoolType
+  aBool = argType isBoolType
+
+  ^ | op
+    | "==" => "((" + recvExpr + ") == (" + argExpr + "))"
+    | "!=" => "((" + recvExpr + ") != (" + argExpr + "))"
+    | "+" => [
+        opStr = (rNum && aNum) ifTrue: ["+"] ifFalse: [
+          (rStr && aStr) ifTrue: ["&"] ifFalse: [""]
+        ]
+        opStr == "" ifTrue: [null] ifFalse: ["((" + recvExpr + ") " + opStr + " (" + argExpr + "))"]
+      ]
+    | "-" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") - (" + argExpr + "))"] ifFalse: [null]
+    | "*" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") * (" + argExpr + "))"] ifFalse: [null]
+    | "/" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") / (" + argExpr + "))"] ifFalse: [null]
+    | "%" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") mod (" + argExpr + "))"] ifFalse: [null]
+    | ">" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") > (" + argExpr + "))"] ifFalse: [null]
+    | "<" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") < (" + argExpr + "))"] ifFalse: [null]
+    | ">=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") >= (" + argExpr + "))"] ifFalse: [null]
+    | "<=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") <= (" + argExpr + "))"] ifFalse: [null]
+    | "||" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") or (" + argExpr + "))"] ifFalse: [null]
+    | "&&" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") and (" + argExpr + "))"] ifFalse: [null]
+    |=> null
+]
+
+constructor Nim [
+
+    on fullFromResolver(rh): ResolverHelper -> Map(String, String) = [
+        db = rh db
+        packages = db packages
+
+        detectExtraImports = [codeStr: String ->
+          extra::mut Set(String) = #()!
+          codeStr contains: "HashSet", ifTrue: [extra add: "sets"]
+          codeStr contains: "toHashSet", ifTrue: [extra add: "sets"]
+          codeStr contains: "Table", ifTrue: [extra add: "tables"]
+          codeStr contains: "toTable", ifTrue: [extra add: "tables"]
+          extra toList sortedBy: [it]
+        ]
+
+        generateImports = [pkg: NivaPkg, sb: StringBuilder, extraImports: List(String) ->
+            allImports::mut Set(String) = #()!
+            pkg packageImports forEach: [allImports add: it]
+            pkg imports forEach: [allImports add: it]
+            extraImports forEach: [allImports add: it]
+
+            sortedImports = allImports toList sortedBy: [it]
+            sortedImports forEach: [
+                sb append: "import "
+                sb append: it
+                sb append: "\n"
+            ]
+            hasImports = (allImports count) > 0
+            hasImports ifTrue: [sb appendLine: ""]
+
+        ]
+
+        outputFileToCode::mut Map(String, String) = #{}!
+
+        rh fileToStatements forEach: [file, statement ->
+            sb = StringBuilder new
+
+            statement forEach: [
+                x = it toNimTypeDeclFromPkg: file db: db
+                x != "" ifTrue: [
+                    sb appendLine: x
+                    sb appendLine: ""
+                ]
+            ]
+
+            statement forEach: [
+                x = it toNimForwardDeclFromPkg: file db: db
+                x != "" ifTrue: [
+                    sb appendLine: x
+                    sb appendLine: ""
+                ]
+            ]
+
+            statement forEach: [
+                x = it toNimProcDefFromPkg: file db: db
+                x != "" ifTrue: [
+                    sb appendLine: x
+                    sb appendLine: ""
+                ]
+            ]
+
+            outputFileToCode at: file put: sb toString
+        ]
+
+        entryPointName = rh entryPointName
+        exprs = rh entryPointExpressions joinWith: "\n" transform: [it toNimStmtFromPkg: entryPointName db: db]
+        entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs + "\n"]
+
+        outputFileToNim::mut Map(String, String) = #{}!
+        rh fileToStatements forEach: [file, statement ->
+            sb = StringBuilder new
+            pkg = packages at: file, unpackOrPANIC
+            codeStr = outputFileToCode at: file, unpackOrPANIC
+            fullCode = file == entryPointName ifTrue: [codeStr + entryPointExprs] ifFalse: [codeStr]
+            extraImports = detectExtraImports codeStr: fullCode
+            generateImports :pkg :sb extraImports: extraImports
+            sb append: fullCode
+            outputFileToNim at: file put: sb toString
+        ]
+
+        ^ outputFileToNim
+    ]
+]
+
+
+TypedExpr2 toNimFromPkg(currentPkg): String db: TyperDB -> String =
+  | this
+  | LiteralExprT       => .literalToNim
+  | IdentifierT        => .identToNim
+  | ExprInBracketsT    => "(" + (value toNimFromPkg: currentPkg db: db) + ")"
+  | VarDeclarationT    => .varDeclToNimFromPkg: currentPkg db: db
+  | AssignT            => .generateNimAssignFromPkg: currentPkg db: db
+  | DestructingAssignT => .destructToNimFromPkg: currentPkg db: db
+  | CollectionLiteralT => .collectionToNimFromPkg: currentPkg db: db
+  | MessageSendT       => .msgSendToNimFromPkg: currentPkg db: db
+  | ReturnStatementT   => .returnToNimFromPkg: currentPkg db: db
+  | CodeBlockT         => .codeBlockToNimFromPkg: currentPkg db: db
+  | MatchT             => .matchToNimFromPkg: currentPkg db: db
+
+TypedExpr2 shouldEmitDiscardInNimStmt -> Bool = [
+  ^ | this
+    | VarDeclarationT
+    | AssignT
+    | DestructingAssignT
+    | ReturnStatementT => false
+    | MessageSendT => [
+      | dbMsg returnType
+      | UnitT
+      | NothingT => false
+      |=> true
+    ]
+    |=> [
+      | typeInfo t
+      | UnitT
+      | NothingT => false
+      |=> true
+    ]
+]
+
+TypedExpr2 toNimStmtFromPkg(currentPkg): String db: TyperDB -> String = [
+  exprStr = this toNimFromPkg: currentPkg db: db
+  ^ this shouldEmitDiscardInNimStmt
+            ifTrue:  ["discard " + exprStr]
+            ifFalse: [exprStr]
+]
+
+/// checks if it a field of receiver than generates _this.field = ...
+AssignT generateNimAssignFromPkg(currentPkg): String db: TyperDB -> String = [
+  need_this = | kind
+              | AssignKind.TO_LOCAL_MUT  => ""
+              | AssignKind.TO_THIS_FIELD => "this."
+  ^ need_this + name + " = " + (value toNimFromPkg: currentPkg db: db)
+]
+
+CollectionLiteralT collectionToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+  elementsStr = elements v joinWith: ", " transform: [
+    it toNimFromPkg: currentPkg db: db
+  ]
+  ^ | this
+    | ListLiteralT => [
+      "@[ " + elementsStr + " ]"
+    ]
+    | SetLiteralT => [
+      "toHashSet(@[" + elementsStr + "])"
+    ]
+    | MapLiteralT => [
+      elems = elements v
+      elems count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
+      pairs = elems asSequence
+                chunked: 2, joinTransform: [
+                  key = it at: 0
+                  value = it at: 1
+                  "(" + (key toNimFromPkg: currentPkg db: db) + ", " + (value toNimFromPkg: currentPkg db: db) + ")"
+                ]
+      "toTable(@[" + (pairs) + "])"
+    ]
+]
+
+ReturnStatementT returnToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+  exprStr = value unpack: [it toNimFromPkg: currentPkg db: db] or: ""
+  ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
+]
+
+CodeBlockT codeBlockToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+    argsStr = args isNotEmpty
+      ifTrue: [
+        args joinWith: ", " transform: [
+          t = it astType toNivaTypefromDB: db inPkg: null
+          it name + ": " + (t toNimTypeFromPkg: currentPkg)
+        ]
+      ] ifFalse: [
+        untypedArgs isNotEmpty
+          ifTrue: [
+            untypedArgs joinWith: ", " transform: [
+              argT = it typeInfo t
+              it name + ": " + (argT toNimTypeFromPkg: currentPkg)
+            ]
+          ] ifFalse: [
+              p = typeInfo t
+            implicitArg =
+              | p
+              | FuntionT => [
+                p fields count == 1
+                  ifTrue: [
+                    fieldName = p fields first name
+                    fieldName2 = fieldName == "" ifTrue: ["it"] ifFalse: [fieldName]
+                    fieldType = p fields first typeT
+                    fieldName2 + ": " + (fieldType toNimTypeFromPkg: currentPkg)
+                  ]
+                  ifFalse: [""]
+              ]
+              |=> ""
+            implicitArg
+          ]
+      ]
+
+    funType = typeInfo t
+    retType = | funType
+      | FuntionT => funType returnType
+      |=> TO DO: "Compiler bug? non FunctionT but $funType"
+    retTypeStr = retType toNimTypeFromPkg: currentPkg
+    isVoid = retTypeStr == "void"
+
+    bodyExprs = body v
+    bodyStr = bodyExprs isEmpty
+      ifTrue: [isVoid ifTrue: ["discard"] ifFalse: ["return"]]
+      ifFalse: [
+        lastIndex = bodyExprs count - 1
+        bodyExprs mapIndexed: [i, expr ->
+          isLast = i == lastIndex
+          isLast
+            ifTrue: [
+              | expr
+              | ReturnStatementT => [
+                  isVoid ifTrue: ["return"] ifFalse: [expr toNimFromPkg: currentPkg db: db]
+              ]
+              | VarDeclarationT
+              | AssignT
+              | DestructingAssignT => [
+                  isVoid
+                    ifTrue: [expr toNimStmtFromPkg: currentPkg db: db]
+                    ifFalse: [(expr toNimFromPkg: currentPkg db: db) + "\nreturn"]
+                ]
+              |=> [
+                isVoid
+                  ifTrue: [expr toNimStmtFromPkg: currentPkg db: db]
+                  ifFalse: ["return " + (expr toNimFromPkg: currentPkg db: db)]
+              ]
+            ]
+            ifFalse: [
+              expr toNimStmtFromPkg: currentPkg db: db
+            ]
+        ], joinWith: "\n"
+      ]
+
+    retSuffix = retTypeStr == "void" ifTrue: [""] ifFalse: [": " + retTypeStr]
+
+    ^ "proc (" + argsStr + ")" + retSuffix + " =\n" + (bodyStr indentLines: "  ")
+]
+
+MatchT matchToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+    subjectStr = subject toNimFromPkg: currentPkg db: db
+    resultVar = "_matchResult" + (token line toString)
+
+    resultType = typeInfo t
+    resultTypeStr = resultType toNimTypeFromPkg: currentPkg
+    isVoid = resultTypeStr == "void"
+
+    buildBody::[TypedBody -> String] = [body: TypedBody ->
+      bodyExprs = body v
+      bodyExprs isEmpty
+        ifTrue: [
+          isVoid ifTrue: ["discard"] ifFalse: ["$resultVar = default(" + resultTypeStr + ")"]
+        ]
+        ifFalse: [
+          lastIndex = bodyExprs count - 1
+          bodyExprs mapIndexed: [i, expr ->
+            isLast = i == lastIndex
+            isLast
+              ifTrue: [
+                | expr
+                | ReturnStatementT => [
+                    | expr value
+                    | null => [isVoid ifTrue: ["discard"] ifFalse: ["$resultVar = default(" + resultTypeStr + ")"]]
+                    |=> [
+                      valStr = expr value unpack: [it toNimFromPkg: currentPkg db: db] or: ""
+                      isVoid ifTrue: ["discard"] ifFalse: ["$resultVar = " + valStr]
+                    ]
+                  ]
+                | VarDeclarationT
+                | AssignT
+                | DestructingAssignT => [
+                    stmt = expr toNimStmtFromPkg: currentPkg db: db
+                    isVoid ifTrue: [stmt] ifFalse: [stmt + "\n" + "$resultVar = default(" + resultTypeStr + ")"]
+                  ]
+                |=> [
+                  isVoid
+                    ifTrue: [expr toNimStmtFromPkg: currentPkg db: db]
+                    ifFalse: ["$resultVar = " + (expr toNimFromPkg: currentPkg db: db)]
+                ]
+              ] ifFalse: [
+                expr toNimStmtFromPkg: currentPkg db: db
+              ]
+          ], joinWith: "\n"
+        ]
+    ]
+
+    conditionToNim::[MatchBranchT -> String] = [branch::MatchBranchT ->
+      conds::mut List::String = {}!
+      condExpr = branch condition
+      condStr =
+        | condExpr
+        | IdentifierT => [
+          condExpr isNameOfTheType
+            ifTrue: ["(" + subjectStr + " of " + (condExpr toNimFromPkg: currentPkg db: db) + ")"]
+            ifFalse: ["(" + subjectStr + " == " + (condExpr toNimFromPkg: currentPkg db: db) + ")"]
+        ]
+        |=> [
+          "(" + subjectStr + " == " + (condExpr toNimFromPkg: currentPkg db: db) + ")"
+        ]
+      conds add: condStr
+      branch conditions v forEach: [
+        conds add: "(" + (it toNimFromPkg: currentPkg db: db) + ")"
+      ]
+      conds joinWith: " and "
+    ]
+
+    sb = StringBuilder new
+    sb appendLine: "block:"
+    isVoid ifFalse: [
+      sb appendLine: "  var " + resultVar + ": " + resultTypeStr
+    ]
+
+    lastIndex = branches count - 1
+    branches forEachIndexed: [i, branch ->
+      prefix = i == 0 ifTrue: ["if"] ifFalse: ["elif"]
+      condStr = conditionToNim branch: branch
+      bodyStr = buildBody body: branch body
+      sb appendLine: "  " + prefix + " " + condStr + ":"
+      sb appendLine: (bodyStr indentLines: "    ")
+    ]
+
+    elseBranch unpack: [
+      elseBodyStr = buildBody body: it
+      sb appendLine: "  else:"
+      sb appendLine: (elseBodyStr indentLines: "    ")
+    ]
+
+    isVoid ifTrue: [
+      sb appendLine: "  discard"
+    ] ifFalse: [
+      sb appendLine: "  " + resultVar
+    ]
+
+    ^ "(" + (sb toString) + ")"
+]
+
+
+
+VarDeclarationT varDeclToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+    declKw = isMut ifTrue: ["var "] ifFalse: ["let "]
+    ^ declKw + name  + " = " + (value toNimFromPkg: currentPkg db: db)
+]
+
+DestructingAssignT destructToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+    valueStr = value toNimFromPkg: currentPkg db: db
+    ^ names map: [
+      "let " + it + " = " + valueStr + "." + it
+    ], joinWith: "\n"
+]
+
+
+IdentifierT identToNim -> String = name
+    //| name
+    //| "this" => "_this"
+    //|=> name
+
+
+LiteralExprT literalToNim -> String =
+  | this
+  | UnitExprT => "discard"
+  | NullExprT => "nil"
+  |=> token lexeme
+
+
+MessageSendT msgSendToNimFromPkg(currentPkg): String db: TyperDB -> String = [
+    rec = receiver
+    isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
+    useNewCtor = isDefaultConstructor && (dbMsg decl == null)
+    isReceiverFunction = | dbMsg receiverType
+        | FuntionT => true
+        |=> false
+    isBindReceiver = dbMsg receiverType isCoreTypeNamed: "Bind"
+
+    getReceiverNim = [
+        isDefaultConstructor
+            ifFalse: [receiver toNimFromPkg: currentPkg db: db]
+            ifTrue:  [""]
+    ]
+
+    pkg_qualifier = currentPkg == dbMsg pkgName ifFalse: [dbMsg pkgName + "."] ifTrue: [""]
+
+    | this
+    | UnaryMsgT => [
+
+        dbMsg kind == MessageSendKind.Getter
+            ifTrue: [
+                ^ (receiver toNimFromPkg: currentPkg db: db) + "." + selector name
+            ]
+
+        isReceiverFunction && (selector name == "do")
+            ifTrue: [
+                ^ "(" + (receiver toNimFromPkg: currentPkg db: db) + ")()"
+            ]
+
+        | rec
+        | CodeBlockT => [
+            selector name == "do" ifTrue: [
+                ^ "()"
+            ]
+        ]
+        |=> []
+
+        isDefaultConstructor ifTrue: [
+            ^ useNewCtor ifTrue: [
+                pkg_qualifier + dbMsg receiverType name + "()"
+            ] ifFalse: [
+                newSelector = dbMsg receiverType name + "_" + selector name
+                pkg_qualifier + newSelector + "(" + getReceiverNim do + ")"
+            ]
+        ]
+
+        newSelector = dbMsg receiverType name + "_" +  selector name
+        ^ pkg_qualifier + newSelector + "(" + getReceiverNim do + ")"
+    ]
+    | BinaryMsgT => [
+        receiverStr = receiver toNimFromPkg: currentPkg db: db
+        mut currentExpr::String = receiverStr
+        currentType = receiver typeInfo t
+
+        args forEach: [arg ->
+            op = arg name name
+            argExpr = arg expr toNimFromPkg: currentPkg db: db
+            argType = arg expr typeInfo t
+            native = currentType tryEmitNativeBinaryNim: op recvExpr: currentExpr argExpr: argExpr argType: argType
+            | native
+            | null => [
+                selector = op operatorToString
+                currentExpr <- pkg_qualifier + (currentType name) + "_" + selector + "(" + currentExpr + ", " + argExpr + ")"
+            ]
+            |=> [
+                currentExpr <- native
+            ]
+        ]
+
+        ^ currentExpr
+    ]
+    | KeywordMsgT => [
+        isBindReceiver && (dbMsg name == "emit:")
+            ifTrue: [
+                argExpr = args first expr
+                ^ | argExpr
+                  | StringExprT => argExpr token lexeme unquoteLiteral
+                  |=> argExpr toNimFromPkg: currentPkg db: db
+            ]
+        isBindReceiver && (dbMsg name == "addImport:")
+            ifTrue: [
+                argExpr = args first expr
+                | argExpr
+                | StringExprT => [
+                    importName = argExpr token lexeme unquoteLiteral
+                    pkg = db packages at: currentPkg, unpackOrPANIC
+                    pkg addPackageImport: importName
+                  ]
+                |=> [
+                    TO DO: "Bind addImport expects String literal"
+                  ]
+                ^ ""
+            ]
+
+        isBindReceiver && (dbMsg name == "emit:args:")
+            ifTrue: [
+                templateExpr = args first expr
+                argsListExpr = (args at: 1) expr
+
+                template = | templateExpr
+                  | StringExprT => templateExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:args: expects String literal as first argument"]
+
+                argsValues = | argsListExpr
+                  | ListLiteralT => argsListExpr elements v map: [it toNimFromPkg: currentPkg db: db]
+                  |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
+
+                mut maxPlaceholder = 0
+                mut i = 0
+                template count repeat: [
+                    (template at: i) == '$' ifTrue: [
+                        (i + 1) < (template count) ifTrue: [
+                            nextChar = template at: (i + 1)
+                            nextChar isDigit ifTrue: [
+                                mut digitStr = nextChar toString
+                                mut j = i + 2
+                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
+                                    digitStr <- digitStr + ((template at: j) toString)
+                                    j <- j + 1
+                                ]
+                                placeholderNum = digitStr toInt
+                                placeholderNum > maxPlaceholder ifTrue: [
+                                    maxPlaceholder <- placeholderNum
+                                ]
+                            ]
+                        ]
+                    ]
+                    i <- i + 1
+                ]
+
+                argsCount = argsValues count
+                maxPlaceholder > argsCount ifTrue: [
+                    TO DO: "Bind emit:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
+                ]
+
+                mut result = template
+                argsValues forEachIndexed: [i, argValue ->
+                    placeholder = "$" + ((i + 1) toString)
+                    result <- result replace: placeholder with: argValue
+                ]
+                ^ result
+            ]
+
+        dbMsg name == "whileTrue:" ifTrue: [
+            condStr = receiver toNimFromPkg: currentPkg db: db
+            bodyStr = (args first expr) toNimFromPkg: currentPkg db: db
+            ^ "while (" + condStr + ")():\n  (" + bodyStr + ")()"
+        ]
+
+        isReceiverFunction ifTrue: [
+            argsExprStr = args map: [
+                it expr toNimFromPkg: currentPkg db: db
+            ]
+            ^ "(" + (receiver toNimFromPkg: currentPkg db: db) + ")(" + (argsExprStr joinWith: ", ") + ")"
+        ]
+
+        selectorFromArgs = args joinWith: "_" transform: [
+            it name name
+        ]
+        suffix = dbMsg name substringAfter: "_"
+        hasSuffix = suffix != dbMsg name
+        suffixStr = hasSuffix ifTrue: ["_" + suffix] ifFalse: [""]
+
+        newSelector = isDefaultConstructor
+            ifTrue: [
+                useNewCtor
+                  ifTrue:  [dbMsg receiverType name]
+                  ifFalse: [dbMsg receiverType name + "_" + selectorFromArgs + suffixStr]
+            ] ifFalse: [
+                dbMsg receiverType name + "_" + selectorFromArgs + suffixStr
+            ]
+
+        receiverStr = getReceiverNim do
+        receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
+
+        argsExprStr = args map: [
+            >it expr
+            it expr toNimFromPkg: currentPkg db: db
+        ]
+
+        useNewCtor ifTrue: [
+            // keyword constructor call uses named args in Nim
+            namedArgs = args joinWith: ", " transform: [
+                it name name + ": " + (it expr toNimFromPkg: currentPkg db: db)
+            ]
+            ^ pkg_qualifier + dbMsg receiverType name + "(" + namedArgs + ")"
+        ]
+
+        args = receiverWithComma + (argsExprStr joinWith: ", ")
+        ^ pkg_qualifier + newSelector + "(" + args + ")"
+    ]
+
+
+    ^ getReceiverNim do
+]
