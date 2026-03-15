@@ -97,7 +97,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 }
 
 
-// returns kw args before `->` or `=`
+// returns kw args before `->` or `=` or `[`
 fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     val args = mutableListOf<KeywordDeclarationArg>()
 
@@ -109,7 +109,7 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
         args.add(keyArg())
         skipNewLinesAndComments()
 
-    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow) || check(">>")))
+    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow) || check(">>") || check(TokenType.OpenBracket)))
     return args
 }
 
@@ -121,7 +121,7 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
  * The message name for the keyword message is produced by concatenating the argument names with capitalized first letters.
  * The function returns a [MessageDeclarationKeyword] object representing the parsed keyword message declaration.
  */
-fun Parser.keywordDeclaration(forType: TypeAST): MessageDeclarationKeyword {
+fun Parser.keywordDeclaration(forType: TypeAST, isConstructor: Boolean = false): MessageDeclarationKeyword {
     val args = keywordArgs()
 
     val returnType = returnType()
@@ -172,17 +172,17 @@ private fun Parser.keyArg(): KeywordDeclarationArg {
         val local = matchAssert(TokenType.Identifier, "Local name identifier expected in keyword arg")
         matchAssert(TokenType.CloseParen, "Closing ) expected after local name")
         matchAssert(TokenType.Colon, "Colon expected after local name in keyword arg")
-        val type = parseTypeAST()
+        val type = parseTypeAST(isExtendDeclaration = true)
         return KeywordDeclarationArg(name = key.lexeme, key, localName = local.lexeme, typeAST = type)
     }
 
     if (match(TokenType.DoubleColon)) {
-        val type = parseTypeAST()
+        val type = parseTypeAST(isExtendDeclaration = true)
         return KeywordDeclarationArg(name = key.lexeme, key, typeAST = type)
     }
 
     if (match(TokenType.Colon)) {
-        val type = parseTypeAST()
+        val type = parseTypeAST(isExtendDeclaration = true)
         return KeywordDeclarationArg(name = key.lexeme, key, typeAST = type)
     }
 
@@ -198,7 +198,8 @@ fun Parser.methodBody(
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual
+    // For constructors: `new(ctx): Type [...]` - bracket can appear without `=`
+    val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual || check(TokenType.OpenBracket)
 //    skipNewLinesAndComments() // `[` on the new line
 
     if (!isThereAssignOrThen) {
@@ -379,13 +380,14 @@ fun Parser.messageDeclaration(
     type: MessageDeclarationType,
     pragmas: MutableList<Pragma>? = null,
     customForTypeAst: TypeAST? = null,
+    isConstructor: Boolean = false,
 ): MessageDeclaration {
 
     val forTypeAst = customForTypeAst ?: parseTypeAST()
     val result = when (type) {
         MessageDeclarationType.Unary -> unaryDeclaration(forTypeAst)
         MessageDeclarationType.Binary -> binaryDeclaration(forTypeAst)
-        MessageDeclarationType.Keyword -> keywordDeclaration(forTypeAst)
+        MessageDeclarationType.Keyword -> keywordDeclaration(forTypeAst, isConstructor)
     }
     if (pragmas != null) {
         result.pragmas = pragmas
@@ -446,7 +448,7 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
     val msgDecl = if (messageDeclarationType != null) {
-        messageDeclaration(messageDeclarationType, pragmas)
+        messageDeclaration(messageDeclarationType, pragmas, isConstructor = true)
     } else null
 
     if (msgDecl == null) {

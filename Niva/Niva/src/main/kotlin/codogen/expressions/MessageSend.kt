@@ -171,7 +171,7 @@ enum class Pragmas(val v: String) {
     EMIT("emit"),
     // NOT IMPLEMENTED, - do not auto-import this method or type, good for methods for default types
     NO_PKG_EMIT("noPkgEmit"),
-    // ???
+    // additional invisible argument
     CT_NAME("arg"),
     // do not generate getter method
     NO_GETTER("noGetters")
