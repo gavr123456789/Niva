@@ -542,6 +542,34 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       TypedBody v: bodyExprs toList t: typedBody t
     ] ifFalse: [typedBody]
 
+  noDeclaredReturnType = returnType == null
+  shouldInferSingleExprReturnType =
+    isConstructor ifTrue: [false] ifFalse: [
+      isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty
+    ]
+
+  shouldInferSingleExprReturnType ifTrue: [
+    receiverType = receiver toNivaTypefromDB: db inPkg: null
+    methodsMaybe = db typeToMethodNameToMethod at: receiverType
+    | methodsMaybe
+    | null => []
+    |=> [
+      methods::mut Map(String, NivaMethod) = methodsMaybe
+      existingMethod = methods at: name
+      | existingMethod
+      | null => []
+      |=> [
+        | existingMethod returnType
+        | Unknown => [
+          inferredRt = finalTypedBody t
+          updatedMethod = existingMethod copyWithDifferentReturnType: inferredRt
+          db replaceMethod: updatedMethod inType: receiverType
+        ]
+        |=> []
+      ]
+    ]
+  ]
+
   // clean up local scope
   extraTypes keys forEach: [
     db localGenericScope remove: it

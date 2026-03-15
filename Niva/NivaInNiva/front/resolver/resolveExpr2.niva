@@ -170,18 +170,45 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                   ],
                   map: [it typeT]
 
+  typedUntypedArgs = untypedArgs isNotEmpty
+    ifTrue: [
+      expectedFields count == untypedArgs count
+        ifTrue: [
+          untypedArgs mapIndexed: [i, ident ->
+            expectedField = expectedFields at: i
+            IdentifierT
+              name: ident name
+              path: ident path
+              token: ident token
+              typeInfo: expectedField typeT toTypeInfoDefault
+              isNameOfTheType: false
+          ]
+        ]
+        ifFalse: [
+          untypedArgs map: [ident ->
+            IdentifierT
+              name: ident name
+              path: ident path
+              token: ident token
+              typeInfo: db dtc any toTypeInfoDefault
+              isNameOfTheType: false
+          ]
+        ]
+    ]
+    ifFalse: [{}]
+
   typedBody = body resolveBody2: db withContext: c
   returnType = typedBody t
 
   name = args isNotEmpty
     ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
     ifFalse: [
-      untypedArgs isNotEmpty
-        ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+      typedUntypedArgs isNotEmpty
+        ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
         ifFalse: [expectedType name]
     ]
 
-  ^ CodeBlockT :args :untypedArgs
+  ^ CodeBlockT :args untypedArgs: typedUntypedArgs
     body: typedBody
     :token
     typeInfo: (FuntionT
@@ -513,6 +540,20 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
                     ],
                     map: [it typeT]
 
+    typedUntypedArgs = untypedArgs isNotEmpty
+      ifTrue: [
+        untypedArgs mapIndexed: [i, ident ->
+          typeField = typeTFields at: i
+          IdentifierT
+            name: ident name
+            path: ident path
+            token: ident token
+            typeInfo: typeField typeT toTypeInfoDefault
+            isNameOfTheType: false
+        ]
+      ]
+      ifFalse: [{}]
+
 
     typedBody = body resolveBody2: db withContext: c
     returnType = typedBody t
@@ -520,12 +561,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     name = args isNotEmpty
       ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
       ifFalse: [
-        untypedArgs isNotEmpty
-          ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+        typedUntypedArgs isNotEmpty
+          ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
           ifFalse: [""]
       ]
 
-    CodeBlockT :args :untypedArgs
+    CodeBlockT :args untypedArgs: typedUntypedArgs
       body: typedBody
       :token
       typeInfo: (FuntionT

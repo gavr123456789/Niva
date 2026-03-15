@@ -1,0 +1,355 @@
+
+
+TypedStatement toNimTypeDeclFromPkg(currentPkg): String db: TyperDB -> String =
+    | this
+    | TypeDeclT => [
+        sb = StringBuilder new
+        generics::mut Set::String = #()!
+        this fields forEach: [
+          t = it typeInfo t
+          t collectUnresolvedGenerics: generics
+        ]
+        genericList = generics toList sortedBy: [it]
+        genericsStr = genericList isNotEmpty
+          ifTrue: ["[" + (genericList joinWith: ", ") + "]"]
+          ifFalse: [""]
+
+        sb append: "type "
+        sb append: this name
+        sb append: "*"
+        sb append: genericsStr
+        sb append: " = ref object"
+
+        this fields isNotEmpty ifTrue: [
+          sb appendLine: ""
+          this fields forEach: [
+            fieldType = it typeInfo t
+            sb append: "  "
+            sb append: it name
+            sb append: ": "
+            sb append: (fieldType toNimTypeFromPkg: currentPkg)
+            sb appendLine: ""
+          ]
+        ]
+
+        sb toString
+    ]
+    | EnumDeclT => [TO DO]
+    | UnionDeclT => [
+        sb = StringBuilder new
+
+        commonFields = this commonUnionFields
+        rootType = db findByTypeName: this name inPkg: null
+        parentUnion =
+          | rootType
+          | TypeT => db findUnionParent: rootType
+          |=> null
+
+        // collect generics from all fields
+        generics::mut Set(String) = #()!
+        commonFields forEach: [
+          t = it typeInfo t
+          t collectUnresolvedGenerics: generics
+        ]
+        this branches forEach: [branch ->
+          branch fields forEach: [
+            t = it typeInfo t
+            t collectUnresolvedGenerics: generics
+          ]
+        ]
+        genericList = generics toList sortedBy: [it]
+        genericsStr = genericList isNotEmpty
+          ifTrue: ["[" + (genericList joinWith: ", ") + "]"]
+          ifFalse: [""]
+
+        // root type
+        sb append: "type "
+        sb append: this name
+        sb append: "*"
+        sb append: genericsStr
+        sb append: " = ref object of "
+        | parentUnion
+        | null => sb append: "RootObj"
+        |=> [
+            sb append: (parentUnion toNimTypeFromPkg: currentPkg)
+        ]
+
+        commonFields isNotEmpty ifTrue: [
+          sb appendLine: ""
+          commonFields forEach: [
+            fieldType = it typeInfo t
+            sb append: "  "
+            sb append: it name
+            sb append: ": "
+            sb append: (fieldType toNimTypeFromPkg: currentPkg)
+            sb appendLine: ""
+          ]
+        ]
+
+        sb appendLine: ""
+
+        // branches
+        this branches forEach: [branch ->
+            branch isInclude ifTrue: [] ifFalse: [
+                sb append: "type "
+                sb append: branch name
+                sb append: "*"
+                sb append: genericsStr
+                sb append: " = ref object of "
+                sb append: this name
+                sb append: genericsStr
+                branch fields isNotEmpty ifTrue: [
+                  sb appendLine: ""
+                  branch fields forEach: [
+                    fieldType = it typeInfo t
+                    sb append: "  "
+                    sb append: it name
+                    sb append: ": "
+                    sb append: (fieldType toNimTypeFromPkg: currentPkg)
+                    sb appendLine: ""
+                  ]
+                ]
+                sb appendLine: ""
+                ()
+            ]
+        ]
+
+        sb toString
+    ]
+    |=> [
+        ""
+    ]
+
+
+TypedStatement toNimForwardDeclFromPkg(currentPkg): String db: TyperDB -> String =
+    | this
+    | MessageDeclT => .nimProcSignatureFromPkg: currentPkg db: db
+    | ExtendDeclT => [
+      sb = StringBuilder new
+      this messages forEach: [
+        sig = it nimProcSignatureFromPkg: currentPkg db: db
+        sig != "" ifTrue: [
+          sb appendLine: sig
+        ]
+      ]
+      sb toString
+    ]
+    |=> [
+        ""
+    ]
+
+TypedStatement toNimProcDefFromPkg(currentPkg): String db: TyperDB -> String =
+    | this
+    | TypeDeclT => .nimToStringDefFromTypeDeclPkg: currentPkg db: db
+    | UnionDeclT => .nimToStringDefFromUnionDeclPkg: currentPkg db: db
+    | MessageDeclT => .nimProcDefFromPkg: currentPkg db: db
+    | ExtendDeclT => [
+      sb = StringBuilder new
+      this messages forEach: [
+        def = it nimProcDefFromPkg: currentPkg db: db
+        def != "" ifTrue: [
+          sb appendLine: def
+        ]
+      ]
+      sb toString
+    ]
+    |=> [
+        ""
+    ]
+
+TypeDeclT nimToStringDefFromTypeDeclPkg(currentPkg): String db: TyperDB -> String = [
+    sb = StringBuilder new
+
+    generics::mut Set::String = #()!
+    this fields forEach: [
+      t = it typeInfo t
+      t collectUnresolvedGenerics: generics
+    ]
+    genericList = generics toList sortedBy: [it]
+    genericsStr = genericList isNotEmpty
+      ifTrue: ["[" + (genericList joinWith: ", ") + "]"]
+      ifFalse: [""]
+
+    typeName = this name + genericsStr
+
+    sb appendLine: "proc `$`*" + genericsStr + "(this: " + typeName + "): string ="
+    sb appendLine: "  if this.isNil:"
+    sb appendLine: "    return \"" + this name + "(nil)\""
+    sb appendLine: "  var txt = \"" + this name + "\""
+
+    this fields forEach: [
+      sb appendLine: "  txt.add(\"\\n  " + it name + ": \" & core.Any_toString(this." + it name + "))"
+    ]
+
+    sb appendLine: "  txt"
+    ^ sb toString
+]
+
+UnionDeclT nimToStringDefFromUnionDeclPkg(currentPkg): String db: TyperDB -> String = [
+    sb = StringBuilder new
+    commonFields = this commonUnionFields
+
+    generics::mut Set::String = #()!
+    commonFields forEach: [
+      t = it typeInfo t
+      t collectUnresolvedGenerics: generics
+    ]
+    this branches forEach: [branch ->
+      branch fields forEach: [
+        t = it typeInfo t
+        t collectUnresolvedGenerics: generics
+      ]
+    ]
+    genericList = generics toList sortedBy: [it]
+    genericsStr = genericList isNotEmpty
+      ifTrue: ["[" + (genericList joinWith: ", ") + "]"]
+      ifFalse: [""]
+
+    rootTypeName = this name + genericsStr
+    sb appendLine: "proc `$`*" + genericsStr + "(this: " + rootTypeName + "): string ="
+    sb appendLine: "  if this.isNil:"
+    sb appendLine: "    return \"" + this name + "(nil)\""
+    sb appendLine: "  var txt = \"" + this name + "\""
+    commonFields forEach: [
+      sb appendLine: "  txt.add(\"\\n  " + it name + ": \" & core.Any_toString(this." + it name + "))"
+    ]
+    sb appendLine: "  txt"
+    sb appendLine: ""
+
+    this branches forEach: [branch ->
+      branch isInclude ifTrue: [] ifFalse: [
+        branchTypeName = branch name + genericsStr
+        sb appendLine: "proc `$`*" + genericsStr + "(this: " + branchTypeName + "): string ="
+        sb appendLine: "  if this.isNil:"
+        sb appendLine: "    return \"" + branch name + "(nil)\""
+        sb appendLine: "  var txt = \"" + branch name + "\""
+        commonFields forEach: [
+          sb appendLine: "  txt.add(\"\\n  " + it name + ": \" & core.Any_toString(this." + it name + "))"
+        ]
+        branch fields forEach: [
+          sb appendLine: "  txt.add(\"\\n  " + it name + ": \" & core.Any_toString(this." + it name + "))"
+        ]
+        sb appendLine: "  txt"
+        sb appendLine: ""
+        ()
+      ]
+    ]
+
+    ^ sb toString
+]
+
+
+MessageDeclT nimProcSignatureFromPkg(currentPkg): String db: TyperDB -> String = [
+    receiverType = receiver
+
+    suffix = name substringAfter: "_"
+    hasSuffix = suffix != name
+    baseName = hasSuffix ifTrue: [name substringBefore: "_"] ifFalse: [name]
+
+    finalBaseName = (baseName contains: ":")
+        ifTrue:  [args joinWith: "_" transform: [it name]]
+        ifFalse: [baseName operatorToString]
+
+    methodName = receiverType name + "_" + finalBaseName + (hasSuffix ifTrue: ["_" + suffix] ifFalse: [""])
+
+    receiverT = receiver
+
+    argsStr =
+        isConstructor
+            ifTrue: [args joinWith: ", "
+                          transform: [t = it typeInfo t
+                                      it name + ": " + (t toNimTypeFromPkg: currentPkg)]
+            ]
+            ifFalse: [
+                receiverArg = "this: " + (receiverT toNimTypeFromPkg: currentPkg)
+                otherArgs = args joinWith: ", "
+                                 transform: [t = it typeInfo t
+                                             it name + ": " + (t toNimTypeFromPkg: currentPkg)]
+                otherArgs == "" ifTrue: [receiverArg] ifFalse: [receiverArg + ", " + otherArgs]
+            ]
+
+    retType = isConstructor
+      ifTrue:  [receiverT]
+      ifFalse: [this returnType t]
+
+    retTypeStr = retType toNimTypeFromPkg: currentPkg
+    retSuffix = (retTypeStr == "void") ifTrue: [""] ifFalse: [": " + retTypeStr]
+
+    // generics for proc
+    generics::mut Set(String) = #()!
+    receiverT collectUnresolvedGenerics: generics
+    args forEach: [
+      t = it typeInfo t
+      t collectUnresolvedGenerics: generics
+    ]
+    retType collectUnresolvedGenerics: generics
+    genericList = generics toList sortedBy: [it]
+    genericsStr = genericList isNotEmpty
+      ifTrue: ["[" + (genericList joinWith: ", ") + "]"]
+      ifFalse: [""]
+
+    ^ "proc " + methodName + "*" + genericsStr + "(" + argsStr + ")" + retSuffix
+]
+
+MessageDeclT nimProcDefFromPkg(currentPkg): String db: TyperDB -> String = [
+    sb = StringBuilder new
+
+    // resolve receiver type to get mangled name
+    receiverType = receiver
+    receiverFields =
+        | receiverType
+        | Complex => [receiverType fields]
+        |=> {TypeTField}
+
+    signature = this nimProcSignatureFromPkg: currentPkg db: db
+    sb appendLine: signature + " ="
+
+    receiverT = receiver
+    retType = isConstructor
+      ifTrue: [receiverT]
+      ifFalse: [this returnType t]
+    retTypeStr = retType toNimTypeFromPkg: currentPkg
+    isVoid = retTypeStr == "void"
+
+    // add receiver destructing
+    isConstructor ifFalse: [
+        receiverFields forEach: [
+           sb appendLine: "  let " + it name + " = this." + it name
+        ]
+    ]
+
+    bodyExprs = this body v
+    bodyStr = bodyExprs isEmpty
+      ifTrue: [isVoid ifTrue: ["discard"] ifFalse: ["return"]]
+      ifFalse: [
+        lastIndex = bodyExprs count - 1
+        bodyExprs mapIndexed: [i, expr::TypedExpr2 ->
+          isLast = i == lastIndex
+          isLast
+            ifTrue: [
+              | expr
+              | ReturnStatementT => [
+                  isVoid ifTrue: ["return"] ifFalse: [expr toNimFromPkg: currentPkg db: db]
+                ]
+              | VarDeclarationT
+              | AssignT
+              | DestructingAssignT => [
+                  isVoid
+                    ifTrue: [expr toNimStmtFromPkg: currentPkg db: db]
+                    ifFalse: [(expr toNimFromPkg: currentPkg db: db) + "\nreturn"]
+                ]
+              |=> [
+                isVoid
+                  ifTrue: [expr toNimStmtFromPkg: currentPkg db: db]
+                  ifFalse: ["return " + (expr toNimFromPkg: currentPkg db: db)]
+              ]
+            ] ifFalse: [
+              expr toNimStmtFromPkg: currentPkg db: db
+            ]
+        ], joinWith: "\n"
+      ]
+
+    sb appendLine: (bodyStr indentLines: "  ")
+
+    ^ sb toString
+]

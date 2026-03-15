@@ -33,7 +33,9 @@ union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^MessageSendT
 | ReturnStatementT value: TypedExpr2?
 // only one of the lists can be non empty
-| CodeBlockT args: List(NameAndAstType) untypedArgs: List(Identifier) body: TypedBody
+// [a, b -> a + b] has `untyped args`, but not `args`
+// [a::Int, b::Int -> a + b] // the opposite
+| CodeBlockT args: List(NameAndAstType) untypedArgs: List(IdentifierT) body: TypedBody
 | MatchT
   subject: TypedExpr2
   branches: List(MatchBranchT)
