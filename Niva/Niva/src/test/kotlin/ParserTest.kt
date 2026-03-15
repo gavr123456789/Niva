@@ -46,6 +46,41 @@ import kotlin.test.assertTrue
 
 class ParserTest {
 
+
+    @Test
+    fun strangeError2() {
+        val source = """
+            extend mut Parser [
+              on parseTypeErrors -> AstTypeErrors? = [
+      
+                .match: TokenType.OpenBrace, ifTrue: [
+
+                  [c] whileTrue: [
+                    
+                  ]
+                ]
+              ]
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
+    fun strangeError() {
+        val source = """
+            constructor IRBuilder new(ctx): SSAContext [
+              entryBlock = IRBlock label: "entry" instructions: {}! terminator: (IRReturn value: null)
+              ^ IRBuilder
+                :ctx
+                currentBlock: entryBlock
+                blocks: {entryBlock}!
+                blockCounter: 0
+            ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
     @Test
     fun parseConstructorWithListArgument() {
         val source = """
@@ -109,6 +144,7 @@ class ParserTest {
     fun varDeclarationWithColonType() {
         val source = "x: Int = 1"
         val ast = getAstTest(source)
+        println("AST: ${ast[0]::class.simpleName}")
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration

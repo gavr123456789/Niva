@@ -1,0 +1,1815 @@
+/**
+ * Kotlin-like primitive aliases
+ */
+
+/** @typedef {number} Int */
+/** @typedef {number} Float */
+/** @typedef {number} Double */
+/** @typedef {number} Long */
+/** @typedef {boolean} Bool */
+/** @typedef {string} String */
+/** @typedef {string} Char */
+/** @typedef {any} Any */
+/** @typedef {any} Nullable */
+
+/**
+ * Generic helpers
+ */
+
+/**
+ * @template T
+ * @typedef {T[]} List
+ */
+
+/**
+ * @template T
+ * @typedef {Set<T>} MutableSet
+ */
+
+/**
+ * @template T
+ * @typedef {Set<T>} SetT
+ */
+
+/**
+ * @template K,V
+ * @typedef {Map<K,V>} MapT
+ */
+
+/**
+ * Kotlin style lambda
+ *
+ * @callback Fn
+ * @param {...any} args
+ * @returns {any}
+ */
+
+/**
+ * @template T
+ * @callback Predicate
+ * @param {T} value
+ * @returns {boolean}
+ */
+
+/**
+ * @template T,R
+ * @callback Transform
+ * @param {T} value
+ * @returns {R}
+ */
+
+/**
+ * @template T
+ * @callback Consumer
+ * @param {T} value
+ * @returns {void}
+ */
+export function throwWithMessage(msg) {
+  throw new Error(msg);
+}
+
+export function Error__throw(self) {
+  throw self;
+}
+
+export function Error__throwWithMsg(self, msg) {
+  throw new Error(msg);
+}
+
+export const Unit = Object.freeze({ __nivaType: "Unit" });
+
+export class IntRange {
+  constructor(start, endInclusive) {
+    this.start = start;
+    this.endInclusive = endInclusive;
+  }
+}
+
+export class CharRange {
+  constructor(start, endInclusive) {
+    this.start = start;
+    this.endInclusive = endInclusive;
+  }
+}
+
+function iterateIntRange(range, callback) {
+  const { start, endInclusive } = range;
+  if (start > endInclusive) {
+    return;
+  }
+  for (let i = start; i <= endInclusive; i++) {
+    callback(i);
+  }
+}
+
+function iterateCharRange(range, callback) {
+  if (!range.start || !range.endInclusive) {
+    return;
+  }
+  const startCode = range.start.charCodeAt(0);
+  const endCode = range.endInclusive.charCodeAt(0);
+  if (startCode > endCode) {
+    return;
+  }
+  for (let code = startCode; code <= endCode; code++) {
+    callback(String.fromCharCode(code));
+  }
+}
+
+/**
+ * @param {Int} self
+ */
+export function Int__inc(self) {
+  return self + 1;
+}
+/**
+ * @param {Int} self
+ */
+export function Int__dec(self) {
+  return self - 1;
+}
+
+/**
+ * @param {Int} self
+ */
+export function Int__toFloat(self) {
+  return self;
+}
+
+/**
+ * @param {Int} self
+ */
+export function Int__toDouble(self) {
+  return self;
+}
+
+/**
+ * @param {Int} self
+ */
+export function Int__toLong(self) {
+  return self;
+}
+
+/**
+ * @param {Int} self
+ */
+export function Int__toChar(self) {
+  return String.fromCharCode(self);
+}
+
+/**
+ * @param {Int} self
+ * @param {Int} to
+ * @param {Fn} block
+ */
+export function Int__toDo(self, to, block) {
+  for (let i = self; i <= to; i++) {
+    block(i);
+  }
+}
+
+/**
+ * @param {Int} self
+ * @param {Int} downTo
+ * @param {Fn} block
+ */
+export function Int__downToDo(self, downTo, block) {
+  for (let i = self; i >= downTo; i--) {
+    block(i);
+  }
+}
+
+/**
+ * @param {Int} self
+ * @param {Int} to
+ */
+export function Int__rangeTo(self, to) {
+  return new IntRange(self, to);
+}
+
+/**
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__forEach(self, block) {
+  iterateIntRange(self, block);
+}
+
+/****
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__map(self, block) {
+  const result = [];
+  iterateIntRange(self, (value) => {
+    result.push(block(value));
+  });
+  return result;
+}
+
+/**
+ * @param {IntRange} self
+ * @param {Fn} block
+ */
+export function IntRange__filter(self, block) {
+  const result = [];
+  iterateIntRange(self, (value) => {
+    if (block(value)) {
+      result.push(value);
+    }
+  });
+  return result;
+}
+
+export function IntRange__contains(self, value) {
+  return value >= self.start && value <= self.endInclusive;
+}
+
+export function IntRange__isEmpty(self) {
+  return self.start > self.endInclusive;
+}
+
+export function CharRange__forEach(self, block) {
+  iterateCharRange(self, block);
+}
+
+export function CharRange__map(self, block) {
+  const result = [];
+  iterateCharRange(self, (value) => {
+    result.push(block(value));
+  });
+  return result;
+}
+
+export function CharRange__filter(self, block) {
+  const result = [];
+  iterateCharRange(self, (value) => {
+    if (block(value)) {
+      result.push(value);
+    }
+  });
+  return result;
+}
+
+export function CharRange__contains(self, value) {
+  if (typeof value !== "string" || value.length === 0) {
+    return false;
+  }
+  const valueCode = value.charCodeAt(0);
+  const startCode = self.start.charCodeAt(0);
+  const endCode = self.endInclusive.charCodeAt(0);
+  return valueCode >= startCode && valueCode <= endCode;
+}
+
+export function CharRange__isEmpty(self) {
+  return self.start.charCodeAt(0) > self.endInclusive.charCodeAt(0);
+}
+
+/**
+ * @param {Nullable} self
+ */
+export function Nullable__unpackOrPANIC(self) {
+  if (self == null) {
+    throwWithMessage("Nullable__unpackOrPANIC on null");
+  }
+  return self;
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Fn} block
+ */
+export function Nullable__unpack(self, block) {
+  if (self != null) {
+    block(self);
+  }
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Fn} block
+ * @param {Any} or
+ */
+export function Nullable__unpackOr(self, block, or) {
+  if (self != null) {
+    return block(self);
+  }
+  return or;
+}
+
+/**
+ * @param {Nullable} self
+ * @param {Any} v
+ */
+export function Nullable__unpackOrValue(self, v) {
+  return self != null ? self : v;
+}
+
+export function Any__toString(value, indent = 0) {
+  const space = "    ".repeat(indent);
+
+  // primitives
+  if (value === null) return "null";
+  if (value === Unit) return "()";
+  if (typeof value !== "object") {
+    if (typeof value === "string") return `"${value}"`;
+    return String(value);
+  }
+
+  // arrays
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "{}";
+    let result = "{\n";
+    for (const item of value) {
+      result += space + "    " + Any__toString(item, indent + 1) + "\n";
+    }
+    result += space + "}";
+    return result;
+  }
+
+  // Set
+  if (value instanceof Set) {
+    if (value.size === 0) return "Set {}";
+    let result = "#(\n";
+    for (const item of value) {
+      result += space + "    " + Any__toString(item, indent + 1) + ",\n";
+    }
+    result += space + ")";
+    return result;
+  }
+
+  // Map
+  if (value instanceof Map) {
+    if (value.size === 0) return "Map {}";
+    let result = "#{\n";
+    for (const [key, val] of value) {
+      result +=
+        space +
+        "    " +
+        `${Any__toString(key, indent + 1)} => ${Any__toString(val, indent + 1)},\n`;
+    }
+    result += space + "}";
+    return result;
+  }
+
+  // regular objects
+  const entries = Object.entries(value);
+
+  let result = "";
+  if (value.constructor && value.constructor.name !== "Object") {
+    result += value.constructor.name + "\n";
+  }
+
+  if (entries.length === 0) return result;
+
+  result += entries
+    .map(
+      ([key, val]) =>
+        space +
+        (value.constructor && value.constructor.name !== "Object"
+          ? "    "
+          : "") +
+        `${key}: ${Any__toString(val, indent + 1)}`,
+    )
+    .join("\n");
+
+  return result;
+}
+
+/**
+ * @param {Any} obj
+ */
+export function Any__echo(obj) {
+  console.log(Any__toString(obj));
+}
+
+/**
+ * @param {String} str
+ */
+export function String__uppercase(str) {
+  return String(str).toUpperCase();
+}
+
+/**
+ * @param {String} str
+ */
+export function String__reversed(str) {
+  return String(str).split("").reverse().join("");
+}
+
+/**
+ * @param {String} str
+ */
+export function String__count(str) {
+  return String(str).length;
+}
+
+/**
+ * @param {String} str
+ */
+export function String__trim(str) {
+  return String(str).trim();
+}
+
+/**
+ * @param {String} str
+ */
+export function String__isEmpty(str) {
+  return String(str).length === 0;
+}
+
+/**
+ * @param {String} str
+ */
+export function String__isNotEmpty(str) {
+  return String(str).length !== 0;
+}
+
+/**
+ * @param {String} str
+ */
+export function String__isBlank(str) {
+  return String(str).trim().length === 0;
+}
+
+/**
+ * @param {String} str
+ */
+export function String__isNotBlank(str) {
+  return String(str).trim().length !== 0;
+}
+
+/**
+ * @param {String} str
+ */
+export function String__toFloat(str) {
+  return parseFloat(str);
+}
+
+/**
+ * @param {String} str
+ */
+export function String__toDouble(str) {
+  return parseFloat(str);
+}
+
+/**
+ * @param {String} str
+ */
+export function String__lowercase(str) {
+  return String(str).toLowerCase();
+}
+
+/**
+ * @param {String} str
+ */
+export function String__first(str) {
+  return String(str)[0];
+}
+
+/**
+ * @param {String} str
+ */
+export function String__last(str) {
+  const s = String(str);
+  return s[s.length - 1];
+}
+
+/**
+ * @param {String} str
+ * @param {Int} index
+ */
+export function String__at(str, index) {
+  return String(str)[index];
+}
+
+/**
+ * @param {String} str
+ * @param {Int} index
+ */
+export function String__get(str, index) {
+  return String(str)[index];
+}
+/**
+ * Kotlin: fun String.split(delimiter: String): List<String>
+ *
+ * @param {String} str
+ * @param {String} delimiter
+ */
+export function String__split(str, delimiter) {
+  return String(str).split(String(delimiter));
+}
+
+/**
+ * @param {String} str
+ * @param {Int} start
+ * @param {Int} end
+ */
+export function String__substring(str, start, end) {
+  return String(str).substring(start, end);
+}
+
+/**
+ * @param {String} str
+ * @param {Int} count
+ */
+export function String__drop(str, count) {
+  const s = String(str);
+  if (count <= 0) return s;
+  if (count >= s.length) return "";
+  return s.slice(count);
+}
+
+/**
+ * @param {String} str
+ * @param {Int} count
+ */
+export function String__dropLast(str, count) {
+  const s = String(str);
+  if (count <= 0) return s;
+  if (count >= s.length) return "";
+  return s.slice(0, s.length - count);
+}
+
+/**
+ * @param {String} str
+ * @param {String} substring
+ */
+export function String__contains(str, substring) {
+  return String(str).includes(substring);
+}
+
+/**
+ * @param {String} str
+ * @param {String} oldVal
+ * @param {String} newVal
+ */
+export function String__replace_with(str, oldVal, newVal) {
+  return String(str).replaceAll(oldVal, newVal);
+}
+
+/**
+ * @param {String} str
+ * @param {(char: string, index: number, original: string) => string} callback
+ * @returns {String}
+ */
+export function String__map(str, callback) {
+  const s = String(str);
+  let result = "";
+
+  for (let i = 0; i < s.length; i++) {
+    result += callback(s[i], i, s);
+  }
+
+  return result;
+}
+
+/**
+ * @param {String} str
+ * @param {(char: string) => Unit} block
+ */
+export function String__forEach(str, block) {
+  const s = String(str);
+
+  for (let i = 0; i < s.length; i++) {
+    block(s[i]); // char = string length 1
+  }
+}
+
+/**
+ * @param {String} str
+ * @param {(char: string) => boolean} predicate
+ */
+export function String__filter(str, predicate) {
+  const s = String(str);
+  let out = "";
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (predicate(ch)) {
+      out += ch;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Kotlin: fun String.toInt(radix: Int): Int
+ *
+ * @param {string} self
+ * @param {number} radix
+ */
+export function String__toInt(self, radix = 10) {
+  if (radix < 2 || radix > 36) {
+    throw new Error(`Invalid radix: ${radix}`);
+  }
+
+  if (self.length === 0) {
+    throw new Error(`Invalid integer format: "${self}"`);
+  }
+
+  let negative = false;
+  let start = 0;
+
+  const first = self[0];
+  if (first === "-" || first === "+") {
+    negative = first === "-";
+    start = 1;
+
+    if (self.length === 1) {
+      throw new Error(`Invalid integer format: "${self}"`);
+    }
+  }
+
+  let result = 0;
+
+  for (let i = start; i < self.length; i++) {
+    const ch = self[i];
+    const digit = parseInt(ch, 36);
+
+    if (Number.isNaN(digit) || digit >= radix) {
+      throw new Error(`Invalid integer format: "${self}"`);
+    }
+
+    result = result * radix + digit;
+  }
+
+  if (negative) {
+    result = -result;
+  }
+
+  if (result < -2147483648 || result > 2147483647) {
+    throw new Error(`Integer overflow: "${self}"`);
+  }
+
+  return result;
+}
+
+/**
+ * joinTransform: [T -> String]  (separator = ", ")
+ *
+ * @param {Iterable<any>} self
+ * @param {(it: any) => string} transform
+ */
+export function Collection__joinTransform(self, transform) {
+  let first = true;
+  let out = "";
+
+  for (const it of self) {
+    if (!first) out += ", ";
+    first = false;
+    out += transform(it);
+  }
+
+  return out;
+}
+
+/**
+ * joinWith: String
+ *
+ * @param {Iterable<any>} self
+ * @param {string} sep
+ */
+export function Collection__joinWith(self, sep) {
+  let first = true;
+  let out = "";
+
+  for (const it of self) {
+    if (!first) out += sep;
+    first = false;
+    out += String(it);
+  }
+
+  return out;
+}
+
+/**
+ * joinWith: String transform: [T -> String]
+ *
+ * @param {Iterable<any>} self
+ * @param {string} sep
+ * @param {(it: any) => string} transform
+ */
+export function Collection__joinWithTransform(self, sep, transform) {
+  let first = true;
+  let out = "";
+
+  for (const it of self) {
+    if (!first) out += sep;
+    first = false;
+    out += transform(it);
+  }
+
+  return out;
+}
+
+/**
+ * @param {string} ch  single char
+ * @param {number} [base]
+ * @returns {number}
+ */
+export function Char__toInt(ch, base) {
+  const s = String(ch);
+
+  if (base !== undefined) {
+    return parseInt(s, base);
+  }
+
+  return s.codePointAt(0);
+}
+
+/**
+ * @param {Bool} self
+ */
+export function Bool__not(self) {
+  return !self;
+}
+
+/**
+ * @param {Bool} self
+ */
+export function Bool__isTrue(self) {
+  return self === true;
+}
+
+/**
+ * @param {Bool} self
+ */
+export function Bool__isFalse(self) {
+  return self === false;
+}
+
+/**
+ * @param {Bool} self
+ * @param {Bool} other
+ */
+export function Bool__or(self, other) {
+  return self || other;
+}
+
+/**
+ * @param {Bool} self
+ * @param {Bool} other
+ */
+export function Bool__and(self, other) {
+  return self && other;
+}
+
+/**
+ * @param {Bool} self
+ * @param {Fn} block
+ */
+export function Bool__ifTrue(self, block) {
+  if (self) {
+    block();
+  }
+}
+
+/**
+ * @param {Bool} self
+ * @param {Fn} block
+ */
+export function Bool__ifFalse(self, block) {
+  if (!self) {
+    block();
+  }
+}
+
+/**
+ * @param {Bool} self
+ * @param {Fn} blockTrue
+ * @param {Fn} blockFalse
+ * @returns {Bool}
+ */
+export function Bool__ifTrue_ifFalse(self, blockTrue, blockFalse) {
+  if (self) {
+    return blockTrue();
+  } else {
+    return blockFalse();
+  }
+}
+
+/**
+ * @param {Bool} self
+ * @param {Fn} blockFalse
+ * @param {Fn} blockTrue
+ */
+export function Bool__ifFalse_ifTrue(self, blockFalse, blockTrue) {
+  if (self) {
+    return blockTrue();
+  } else {
+    return blockFalse();
+  }
+}
+
+// --- Char ---
+/**
+ * Kotlin: val Char.code: Int
+ * @param {string} self
+ */
+export function Char__code(self) {
+  return self.charCodeAt(0);
+}
+
+/**
+ * operator fun Char.inc(): Char
+ * @param {string} self
+ */
+export function Char__inc(self) {
+  return String.fromCharCode(self.charCodeAt(0) + 1);
+}
+
+/**
+ * operator fun Char.dec(): Char
+ * @param {string} self
+ */
+export function Char__dec(self) {
+  return String.fromCharCode(self.charCodeAt(0) - 1);
+}
+
+/**
+ * fun Char.isDigit(): Boolean
+ * (ASCII-only, как базовая версия)
+ * @param {string} self
+ */
+export function Char__isDigit(self) {
+  const code = self.charCodeAt(0);
+  return code >= 48 && code <= 57; // '0'..'9'
+}
+
+export function Int__toChar(self) {
+  const codeUnit = self & 0xffff; // shink 16 bit
+  return String.fromCharCode(codeUnit);
+}
+
+/**
+ * fun Char.isLetter(): Boolean
+ * (ASCII-only)
+ * @param {string} self
+ */
+export function Char__isLetter(self) {
+  const code = self.charCodeAt(0);
+  return (
+    (code >= 65 && code <= 90) || // A..Z
+    (code >= 97 && code <= 122) // a..z
+  );
+}
+
+/**
+ * fun Char.isLetterOrDigit(): Boolean
+ * @param {string} self
+ */
+export function Char__isLetterOrDigit(self) {
+  return Char__isLetter(self) || Char__isDigit(self);
+}
+
+/**
+ * fun Char.isLowerCase(): Boolean
+ * (ASCII-only)
+ * @param {string} self
+ */
+export function Char__isLowerCase(self) {
+  const code = self.charCodeAt(0);
+  return code >= 97 && code <= 122; // a..z
+}
+
+/**
+ * fun Char.isUpperCase(): Boolean
+ * (ASCII-only)
+ * @param {string} self
+ */
+export function Char__isUpperCase(self) {
+  const code = self.charCodeAt(0);
+  return code >= 65 && code <= 90; // A..Z
+}
+
+/**
+ * fun Char.isWhitespace(): Boolean
+ * Базовый набор whitespace
+ * @param {string} self
+ */
+export function Char__isWhitespace(self) {
+  return /\s/.test(self);
+}
+
+/**
+ * fun Char.lowercaseChar(): Char
+ * @param {string} self
+ */
+export function Char__lowercaseChar(self) {
+  return self.toLowerCase();
+}
+
+/**
+ * fun Char.uppercaseChar(): Char
+ * @param {string} self
+ */
+export function Char__uppercaseChar(self) {
+  return self.toUpperCase();
+}
+
+export function Char__rangeTo(self, to) {
+  return new CharRange(self, to);
+}
+
+// --- List ---
+
+/**
+ * @param {List} self
+ */
+export function List__count(self) {
+  return self.length;
+}
+
+/**
+ * @param {List} self
+ */
+export function List__first(self) {
+  if (self.length === 0) throw new Error("List is empty");
+  return self[0];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__last(self) {
+  if (self.length === 0) throw new Error("List is empty");
+  return self[self.length - 1];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__firstOrNull(self) {
+  if (self.length === 0) return null;
+  return self[0];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__lastOrNull(self) {
+  if (self.length === 0) return null;
+  return self[self.length - 1];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__toList(self) {
+  return [...self];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__toMutableList(self) {
+  return [...self];
+}
+
+/**
+ * @param {List} self
+ */
+export function List__shuffled(self) {
+  const array = [...self];
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+/**
+ * @param {List} self
+ */
+export function List__asSequence(self) {
+  return self; // Sequences not fully implemented, returning list
+}
+
+/**
+ * @param {List} self
+ */
+export function List__isEmpty(self) {
+  return self.length === 0;
+}
+
+/**
+ * @param {List} self
+ */
+export function List__toSet(self) {
+  return new Set(self);
+}
+
+/**
+ * @param {List} self
+ */
+export function List__isNotEmpty(self) {
+  return self.length !== 0;
+}
+
+/**
+ * @param {List} self
+ */
+export function List__reversed(self) {
+  return [...self].reverse();
+}
+
+/**
+ * @param {List} self
+ */
+export function List__sum(self) {
+  return self.reduce((a, b) => a + b, 0);
+}
+
+/**
+ * @param {List} self
+ * @param {List} other
+ */
+export function List__plus(self, other) {
+  if (Array.isArray(other)) {
+    return self.concat(other);
+  } else {
+    return self.concat([other]);
+  }
+}
+
+/**
+ * @param {List} self
+ * @param {List} other
+ */
+export function List__minus(self, other) {
+  if (Array.isArray(other)) {
+    const otherSet = new Set(other);
+    return self.filter((x) => !otherSet.has(x));
+  } else {
+    return self.filter((x) => x !== other);
+  }
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__forEach(self, block) {
+  self.forEach(block);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__onEach(self, block) {
+  self.forEach(block);
+  return self;
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__forEachIndexed(self, block) {
+  self.forEach((item, index) => block(index, item));
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__map(self, block) {
+  return self.map(block);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__mapIndexed(self, block) {
+  return self.map((item, index) => block(index, item));
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} block
+ */
+export function List__filter(self, block) {
+  return self.filter(block);
+}
+
+/**
+ * @param {List} self
+ * @param {Int} index
+ */
+export function List__at(self, index) {
+  if (index < 0 || index >= self.length) throw new Error("Index out of bounds");
+  return self[index];
+}
+
+/**
+ * @param {List} self
+ * @param {Int} index
+ */
+export function List__getOrNull(self, index) {
+  if (index < 0 || index >= self.length) return null;
+  return self[index];
+}
+
+/**
+ * @param {List} self
+ * @param {Any} element
+ */
+export function List__contains(self, element) {
+  return self.includes(element);
+}
+
+/**
+ * @param {List} self
+ * @param {Int} n
+ */
+export function List__drop(self, n) {
+  return self.slice(n);
+}
+
+/**
+ * @param {List} self
+ * @param {Int} n
+ */
+export function List__dropLast(self, n) {
+  return self.slice(0, -n);
+}
+
+/**
+ * @param {List} self
+ * @param {Int} size
+ */
+export function List__chunked(self, size) {
+  const result = [];
+  for (let i = 0; i < self.length; i += size) {
+    result.push(self.slice(i, i + size));
+  }
+  return result;
+}
+
+/**
+ * @param {List} self
+ * @param {String|Fn} arg1
+ */
+export function List__joinToString(self, arg1) {
+  if (typeof arg1 === "function") {
+    return self.map(arg1).join(", ");
+  } else {
+    return self.join(arg1);
+  }
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} predicate
+ */
+export function List__indexOfFirst(self, predicate) {
+  return self.findIndex(predicate);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} predicate
+ */
+export function List__indexOfLast(self, predicate) {
+  for (let i = self.length - 1; i >= 0; i--) {
+    if (predicate(self[i])) return i;
+  }
+  return -1;
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} transform
+ */
+export function List__sortedBy(self, transform) {
+  return [...self].sort((a, b) => {
+    const valA = transform(a);
+    const valB = transform(b);
+    if (valA < valB) return -1;
+    if (valA > valB) return 1;
+    return 0;
+  });
+}
+
+/**
+ * @param {List} self
+ * @param {String} separator
+ * @param {Fn} transform
+ */
+export function List__joinWithTransform(self, separator, transform) {
+  return self.map(transform).join(separator);
+}
+
+/**
+ * @param {List} self
+ * @param {String} separator
+ */
+export function List__joinWith(self, separator) {
+  return self.join(separator);
+}
+
+/**
+ * @param {List} self
+ * @param {Any} initial
+ * @param {Fn} operation
+ */
+export function List__injectInto(self, initial, operation) {
+  return self.reduce(operation, initial);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} operation
+ */
+export function List__reduce(self, operation) {
+  if (self.length === 0) throw new Error("Empty list cannot be reduced");
+  return self.reduce(operation);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} predicate
+ */
+export function List__partition(self, predicate) {
+  const trueList = [];
+  const falseList = [];
+  self.forEach((item) => {
+    if (predicate(item)) {
+      trueList.push(item);
+    } else {
+      falseList.push(item);
+    }
+  });
+  return [trueList, falseList];
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} selector
+ */
+export function List__sumOf(self, selector) {
+  return self.reduce((acc, item) => acc + selector(item), 0);
+}
+
+/**
+ * @param {List} self
+ * @param {Fn} predicate
+ */
+export function List__find(self, predicate) {
+  const res = self.find(predicate);
+  return res === undefined ? null : res;
+}
+
+/**
+ * @param {List} self
+ * @param {Int} from
+ * @param {Int} to
+ */
+export function List__viewFromTo(self, from, to) {
+  return self.slice(from, to);
+}
+
+/**
+ * @param {List} self
+ */
+export function List__mut__clear(self) {
+  self.length = 0;
+}
+
+/**
+ * @param {List} self
+ * @param {Any|Int} arg1
+ * @param {Any} arg2
+ */
+export function List__mut__add(self, arg1, arg2) {
+  if (arg2 === undefined) {
+    self.push(arg1);
+  } else {
+    self.splice(arg1, 0, arg2);
+  }
+}
+
+/**
+ * @param {List} self
+ * @param {Any} item
+ */
+export function List__mut__addFirst(self, item) {
+  self.unshift(item);
+}
+
+/**
+ * @param {List} self
+ * @param {List} other
+ */
+export function List__mut__addAll(self, other) {
+  self.push(...other);
+}
+
+/**
+ * @param {List} self
+ * @param {Int} index
+ */
+export function List__mut__removeAt(self, index) {
+  if (index >= 0 && index < self.length) {
+    self.splice(index, 1);
+  }
+}
+
+/**
+ * @param {List} self
+ * @param {Any} item
+ */
+export function List__mut__remove(self, item) {
+  const index = self.indexOf(item);
+  if (index !== -1) {
+    self.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @param {List} self
+ * @param {Int} index
+ * @param {Any} item
+ */
+export function List__mut__set(self, index, item) {
+  if (index < 0 || index >= self.length) throw new Error("Index out of bounds");
+  self[index] = item;
+}
+
+// --- Set ---
+
+/**
+ * @param {Set} self
+ */
+export function Set__count(self) {
+  return self.size;
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__mut__clear(self) {
+  self.clear();
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__first(self) {
+  if (self.size === 0) throw new Error("Set is empty");
+  return self.values().next().value;
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__last(self) {
+  if (self.size === 0) throw new Error("Set is empty");
+  return Array.from(self).pop();
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__toList(self) {
+  return Array.from(self);
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__toMutableList(self) {
+  return Array.from(self);
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__toMutableSet(self) {
+  return new Set(self);
+}
+
+/**
+ * @param {Set} self
+ */
+export function Set__toSet(self) {
+  return new Set(self);
+}
+
+/**
+ * @param {Set} self
+ * @param {Set} other
+ */
+export function Set__plus(self, other) {
+  const result = new Set(self);
+  for (const item of other) {
+    result.add(item);
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Set} other
+ */
+export function Set__minus(self, other) {
+  const result = new Set(self);
+  for (const item of other) {
+    result.delete(item);
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Fn} block
+ */
+export function Set__forEach(self, block) {
+  self.forEach(block);
+}
+
+/**
+ * @param {Set} self
+ * @param {Fn} block
+ */
+export function Set__onEach(self, block) {
+  self.forEach(block);
+  return self;
+}
+
+/**
+ * @param {Set} self
+ * @param {Fn} block
+ */
+export function Set__map(self, block) {
+  const result = [];
+  for (const item of self) {
+    result.push(block(item));
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Fn} block
+ */
+export function Set__mapIndexed(self, block) {
+  let index = 0;
+  const result = [];
+  for (const item of self) {
+    result.push(block(index++, item));
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Fn} block
+ */
+export function Set__filter(self, block) {
+  const result = new Set();
+  for (const item of self) {
+    if (block(item)) {
+      result.add(item);
+    }
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Any} item
+ */
+export function Set__intersect(self, other) {
+  const result = new Set();
+  for (const item of self) {
+    if (other.has(item)) {
+      result.add(item);
+    }
+  }
+  return result;
+}
+
+/**
+ * @param {Set} self
+ * @param {Any} item
+ */
+export function Set__contains(self, item) {
+  return self.has(item);
+}
+
+/**
+ * @param {Set} self
+ * @param {Set} other
+ */
+export function Set__containsAll(self, other) {
+  for (const item of other) {
+    if (!self.has(item)) return false;
+  }
+  return true;
+}
+
+/**
+ * @param {Set} self
+ * @param {Any} item
+ */
+export function Set__mut__add(self, item) {
+  self.add(item);
+}
+
+/**
+ * @param {Set} self
+ * @param {Any} item
+ */
+export function Set__mut__remove(self, item) {
+  return self.delete(item);
+}
+
+/**
+ * @param {Set} self
+ * @param {Set} other
+ */
+export function Set__mut__addAll(self, other) {
+  for (const item of other) {
+    self.add(item);
+  }
+  return true;
+}
+
+// --- Map ---
+
+/**
+ * @param {Map} self
+ */
+export function Map__count(self) {
+  return self.size;
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__isEmpty(self) {
+  return self.size === 0;
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__isNotEmpty(self) {
+  return self.size !== 0;
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__keys(self) {
+  return new Set(self.keys());
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__values(self) {
+  return new Set(self.values());
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__toMap(self) {
+  return new Map(self);
+}
+
+/**
+ * @param {Map} self
+ */
+export function Map__toMutableMap(self) {
+  return new Map(self);
+}
+
+/**
+ * @param {Map} self
+ * @param {Map} other
+ */
+export function Map__plus(self, other) {
+  const result = new Map(self);
+  for (const [key, value] of other) {
+    result.set(key, value);
+  }
+  return result;
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ */
+export function Map__minus(self, key) {
+  const result = new Map(self);
+  result.delete(key);
+  return result;
+}
+
+/**
+ * @param {Map} self
+ * @param {Fn} block
+ */
+export function Map__forEach(self, block) {
+  for (const [key, value] of self) {
+    block(key, value);
+  }
+}
+
+/**
+ * @param {Map} self
+ * @param {Fn} block
+ */
+export function Map__map(self, block) {
+  const result = [];
+  for (const [key, value] of self) {
+    result.push(block(key, value));
+  }
+  return result;
+}
+
+/**
+ * @param {Map} self
+ * @param {Fn} block
+ */
+export function Map__filter(self, block) {
+  const result = new Map();
+  for (const [key, value] of self) {
+    if (block(key, value)) {
+      result.set(key, value);
+    }
+  }
+  return result;
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ */
+export function Map__at(self, key) {
+  return self.at(key);
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ */
+export function Map__containsKey(self, key) {
+  return self.has(key);
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} value
+ */
+export function Map__containsValue(self, value) {
+  for (const v of self.values()) {
+    if (v === value) return true;
+  }
+  return false;
+}
+
+///// mutable map
+/**
+ * @param {Map} self
+ */
+export function Map__mut__clear(self) {
+  self.clear();
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ */
+export function Map__mut__remove(self, key) {
+  return self.delete(key);
+}
+
+/**
+ * @param {Map} self
+ * @param {Map} other
+ */
+export function Map__mut__putAll(self, other) {
+  for (const [key, value] of other) {
+    self.set(key, value);
+  }
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ * @param {Any} value
+ */
+export function Map__mut__atPut(self, key, value) {
+  self.set(key, value);
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ * @param {Fn} block
+ */
+export function Map__mut__getOrPut(self, key, block) {
+  if (self.has(key)) {
+    return self.at(key);
+  }
+  const value = block();
+  self.set(key, value);
+  return value;
+}
+
+/**
+ * @param {Map} self
+ * @param {Any} key
+ * @param {Any} value
+ */
+export function Map__mut__putIfAbsent(self, key, value) {
+  if (!self.has(key)) {
+    self.set(key, value);
+  }
+}
+
+// immutable map functions for mutable map
+export const Map__mut__count = Map__count;
+export const Map__mut__isEmpty = Map__isEmpty;
+export const Map__mut__isNotEmpty = Map__isNotEmpty;
+export const Map__mut__keys = Map__keys;
+export const Map__mut__values = Map__values;
+export const Map__mut__toMap = Map__toMap;
+export const Map__mut__toMutableMap = Map__toMutableMap;
+export const Map__mut__plus = Map__plus;
+export const Map__mut__minus = Map__minus;
+export const Map__mut__forEach = Map__forEach;
+export const Map__mut__map = Map__map;
+export const Map__mut__filter = Map__filter;
+export const Map__mut__at = Map__at;
+export const Map__mut__containsKey = Map__containsKey;
+export const Map__mut__containsValue = Map__containsValue;
+
+// immutable set functions for mutable set
+export const Set__mut__count = Set__count;
+export const Set__mut__first = Set__first;
+export const Set__mut__last = Set__last;
+export const Set__mut__toList = Set__toList;
+export const Set__mut__toMutableList = Set__toMutableList;
+export const Set__mut__toMutableSet = Set__toMutableSet;
+export const Set__mut__toSet = Set__toSet;
+export const Set__mut__plus = Set__plus;
+export const Set__mut__minus = Set__minus;
+export const Set__mut__forEach = Set__forEach;
+export const Set__mut__onEach = Set__onEach;
+export const Set__mut__map = Set__map;
+export const Set__mut__mapIndexed = Set__mapIndexed;
+export const Set__mut__filter = Set__filter;
+export const Set__mut__intersect = Set__intersect;
+export const Set__mut__contains = Set__contains;
+export const Set__mut__containsAll = Set__containsAll;
+// list
+export const List__mut__count = List__count;
+export const List__mut__first = List__first;
+export const List__mut__last = List__last;
+export const List__mut__firstOrNull = List__firstOrNull;
+export const List__mut__lastOrNull = List__lastOrNull;
+export const List__mut__toList = List__toList;
+export const List__mut__toMutableList = List__toMutableList;
+export const List__mut__shuffled = List__shuffled;
+export const List__mut__asSequence = List__asSequence;
+export const List__mut__isEmpty = List__isEmpty;
+export const List__mut__toSet = List__toSet;
+export const List__mut__isNotEmpty = List__isNotEmpty;
+export const List__mut__reversed = List__reversed;
+export const List__mut__sum = List__sum;
+export const List__mut__plus = List__plus;
+export const List__mut__minus = List__minus;
+export const List__mut__forEach = List__forEach;
+export const List__mut__onEach = List__onEach;
+export const List__mut__forEachIndexed = List__forEachIndexed;
+export const List__mut__map = List__map;
+export const List__mut__mapIndexed = List__mapIndexed;
+export const List__mut__filter = List__filter;
+export const List__mut__at = List__at;
+export const List__mut__getOrNull = List__getOrNull;
+export const List__mut__contains = List__contains;
+export const List__mut__drop = List__drop;
+export const List__mut__dropLast = List__dropLast;
+export const List__mut__chunked = List__chunked;
+export const List__mut__joinToString = List__joinToString;
+export const List__mut__indexOfFirst = List__indexOfFirst;
+export const List__mut__indexOfLast = List__indexOfLast;
+export const List__mut__sortedBy = List__sortedBy;
+export const List__mut__joinWithTransform = List__joinWithTransform;
+export const List__mut__injectInto = List__injectInto;
+export const List__mut__reduce = List__reduce;
+export const List__mut__partition = List__partition;
+export const List__mut__sumOf = List__sumOf;
+export const List__mut__find = List__find;
+export const List__mut__viewFromTo = List__viewFromTo;

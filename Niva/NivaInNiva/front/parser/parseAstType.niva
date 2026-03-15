@@ -3,7 +3,7 @@ extend mut Parser [
     .match: TokenType.Bang, ifFalse: [^ null]
 
     .match: TokenType.OpenBrace, ifTrue: [
-      names::mut List::String = {}!
+      names::mut List(String) = {}!
       mut c = true
       [c] whileTrue: [
         tok = .peek

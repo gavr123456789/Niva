@@ -8,17 +8,9 @@ import main.frontend.parser.types.ast.*
 
 private fun Parser.statementsUntilCloseBracket(bracketType: TokenType, parseMsgDecls: Boolean = true): List<Statement> {
     val result = mutableListOf<Statement>()
-        do {
-        val (a, _) = methodBody()
-        result.addAll(a)
+    while (!match(bracketType)) {
         result.add(statementWithEndLine(parseMsgDecls))
-    } while (!match(bracketType))
-
-//    while (!match(bracketType)) {
-//        result.add(statementWithEndLine(parseMsgDecls = false))
-//    }
-
-
+    }
     return result
 }
 
