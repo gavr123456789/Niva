@@ -6,14 +6,15 @@
 //x = 1 read: ".niva_js/testss.niva"
 //x
 
+"sas" echo
 
-String binaryToAscii = [
-  result = this
-    split: " ",
-    map: [it toInt: 2, toChar],
-    joinWith: ""
+//String binaryToAscii = [
+//  result = this
+//    split: " ",
+//    map: [it toInt: 2, toChar],
+//    joinWith: ""
 
-  ^ result
-]
+//  ^ result
+//]
 
-"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo
+//"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo

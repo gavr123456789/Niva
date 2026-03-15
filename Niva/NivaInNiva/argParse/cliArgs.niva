@@ -18,6 +18,7 @@ constructor ArgParser args::List::String -> ArgsParsed = [
       run FILE — compile and run project from root file (recursive)
       build FILE — compile only the given file
       --nim — emit Nim instead of JS
+      --go — emit Go instead of JS
   """ trimIndent
 
   args contains: "--help", ifTrue: [
@@ -44,6 +45,10 @@ constructor ArgParser args::List::String -> ArgsParsed = [
     ]
     | "--nim" => [
       backend <- Backend.Nim
+      isFlag <- true
+    ]
+    | "--go" => [
+      backend <- Backend.Go
       isFlag <- true
     ]
     | "--js" => [
@@ -83,4 +88,4 @@ constructor ArgParser args::List::String -> ArgsParsed = [
 ]
 
 enum CompilerOption = Run | Build | Daemon | RunTests | Info | Help
-enum Backend = JS | Nim
+enum Backend = JS | Nim | Go

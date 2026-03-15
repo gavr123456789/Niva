@@ -33,6 +33,7 @@ constructor NivaCompiler [
 
         realJSPath = io currentDir + "/.niva_js"
         realNimPath = io currentDir + "/.niva_nim"
+        realGoPath = io currentDir + "/.niva_go"
 
         buildFromResolver = [res: ResolverHelper ->
             | backend
@@ -52,6 +53,21 @@ constructor NivaCompiler [
                 fileToJSCOntent forEach: [file, jsContent ->
                     destanation = realJSPath + "/" + file + ".js"
                     io writeFile file: destanation content: jsContent
+                ]
+            ]
+            | Backend.Go => [
+                FileSystem createDirectories: (realGoPath toPath)
+                goModPath = realGoPath + "/go.mod"
+                FileSystem exists: (goModPath toPath), ifFalse: [
+                  io writeFile file: goModPath content: "module niva\n\ngo 1.20\n"
+                ]
+                fileToGoContent = Go fullFromResolver: res
+
+                fileToGoContent forEach: [file, goContent ->
+                    destDir = realGoPath + "/" + file
+                    FileSystem createDirectories: (destDir toPath)
+                    destination = destDir + "/" + file + ".go"
+                    io writeFile file: destination content: goContent
                 ]
             ]
         ]
@@ -79,6 +95,10 @@ constructor NivaCompiler [
                 // run with bun
                 pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
                 io runProgram args: {"bun" pathToEntryPoint}
+              ]
+              | Backend.Go => [
+                goRunCmd = "cd " + realGoPath + " && go run ./" + entryPoint
+                io runProgram args: {"bash" "-lc" goRunCmd}
               ]
             ]
         ]

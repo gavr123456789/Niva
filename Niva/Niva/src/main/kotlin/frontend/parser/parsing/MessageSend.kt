@@ -198,7 +198,7 @@ fun Parser.unaryOrBinary(
                 cascadedMsgs.addAll(binary)
             }
 
-            checkForKeyword() -> {
+            checkForKeyword(allowReceiverPrefix = false) -> {
                 val keyword = keywordMessageParsing(firstReceiver).also { it.isCascade = true }
                 cascadedMsgs.add(keyword)
             }
@@ -232,15 +232,17 @@ fun Parser.unaryOrBinary(
 }
 
 // Receiver ^ from: to:
-fun Parser.checkForKeyword(): Boolean {
+fun Parser.checkForKeyword(allowReceiverPrefix: Boolean = true): Boolean {
     val savePoint = current
     var result = false
     skipNewLinesAndComments()
-    if (match(TokenType.OpenParen)) {
-        this.skipUntilOnLineInclusive(TokenType.CloseParen)
-    }
-    if (check(TokenType.OpenBracket, -1)) {
-        this.skipUntilOnLineInclusive(TokenType.CloseBracket)
+    if (allowReceiverPrefix) {
+        if (match(TokenType.OpenParen)) {
+            this.skipUntilOnLineInclusive(TokenType.CloseParen)
+        }
+        if (check(TokenType.OpenBracket, -1)) {
+            this.skipUntilOnLineInclusive(TokenType.CloseBracket)
+        }
     }
     val identTok = match(TokenType.Identifier)
     if (identTok) {
@@ -399,7 +401,7 @@ fun Parser.keyword(
     val messages = mutableListOf<Message>(keyColonCycle())
 
     // checkForKeyword for `1 to: 2 |> kek ^ from: 4` situation
-    while ((checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Comma)) || checkAfterSkip(TokenType.Cascade) || checkForKeyword()) {
+    while ((checkAfterSkip(TokenType.PipeOperator) || checkAfterSkip(TokenType.Comma)) || checkAfterSkip(TokenType.Cascade) || checkForKeyword(allowReceiverPrefix = false)) {
         val tok = step() // |> or ;
         val isPipe = tok.kind == TokenType.PipeOperator || tok.kind == TokenType.Comma
         val isCascade = tok.kind == TokenType.Cascade
@@ -547,4 +549,3 @@ fun Parser.keywordMessageParsing(
     )
     return keywordMsg
 }
-
