@@ -1,32 +1,9 @@
 type Nim
 
-String indentLines(prefix): String = [
-  this count == 0 ifTrue: [^ ""]
-  parts = this split: "\n"
-  indented = parts map: [prefix + it]
-  ^ indented joinWith: "\n"
-]
 
 
-NivaType collectUnresolvedGenerics(into): mut Set::String = [
-  | this
-  | UnresolvedGenericT => into add: name
-  | ListT => this t collectUnresolvedGenerics: into
-  | SetT => this t collectUnresolvedGenerics: into
-  | MapT => [
-      this k collectUnresolvedGenerics: into
-      this v collectUnresolvedGenerics: into
-    ]
-  | FuntionT => [
-      fields forEach: [it typeT collectUnresolvedGenerics: into]
-      returnType collectUnresolvedGenerics: into
-    ]
-  | TypeT => [
-      genericArgs forEach: [it collectUnresolvedGenerics: into]
-    ]
-  | NullableT => v collectUnresolvedGenerics: into
-  |=> []
-]
+
+
 
 NivaType toNimTypeFromPkg(currentPkg): String -> String = [
   ^ | this

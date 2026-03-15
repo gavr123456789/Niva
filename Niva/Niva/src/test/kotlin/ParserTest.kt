@@ -50,20 +50,11 @@ class ParserTest {
     @Test
     fun strangeError2() {
         val source = """
-            extend mut Parser [
-              on parseTypeErrors -> AstTypeErrors? = [
-      
-                .match: TokenType.OpenBrace, ifTrue: [
-
-                  [c] whileTrue: [
-                    
-                  ]
-                ]
-              ]
-            ]
+        (this pkgName == "core" && this name == "Error") ifTrue: [^ "error"]
+        (this pkgName == "core") ifTrue: [^ "any"]
         """.trimIndent()
         val ast = getAstTest(source)
-        assert(ast.count() == 1)
+        assert(ast.count() == 2)
     }
 
     @Test

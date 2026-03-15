@@ -76,7 +76,7 @@ compilerTry = [
 ]
 
 compilerTry2 = [
-  path = {"run" ".niva_nim/testss.niva" "--nim"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"run" ".niva_go/testss.niva" "--go"} //"~/Documents/Fun/niva_demo/main.niva"
   //t1 = System currentTimeMillis
   //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
