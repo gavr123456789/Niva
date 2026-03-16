@@ -3,9 +3,11 @@ package main.codogen
 import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
 import frontend.resolver.Type
+import frontend.resolver.isCollection
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
+import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.appendnl
 import main.utils.isGeneric
 
@@ -97,7 +99,15 @@ fun MessageDeclaration.funGenerateReceiver(isStatic: Boolean = false) = buildStr
         append(">")
     }
 
-    append(forTypeAst.generateType((forType as? Type.UserLike)?.emitName, generateGeneric = false))
+
+    val receiverType = forType as? Type.UserLike
+    val receiverEmitName = receiverType?.emitName
+    val receiverName = if (receiverType != null && isCollection(receiverType.name) && (forTypeAst.isMutable || receiverType.isMutable)) {
+        replaceCollectionWithMutable(receiverEmitName ?: receiverType.name)
+    } else {
+        receiverEmitName
+    }
+    append(forTypeAst.generateType(receiverName, generateGeneric = false))
 
     if (isStatic) {
         append(".Companion")
