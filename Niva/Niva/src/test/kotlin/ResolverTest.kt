@@ -33,6 +33,27 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 class ResolverTest {
 
     @Test
+    fun errorCatching() {
+        val source = """
+            Unit main -> Unit! = [
+              //x = ()sus
+              //y = ()sas
+              Error throwWithMessage: "sas"
+            ]
+            
+            Unit q -> Int = [
+              ()main ifError: [
+                | it
+                | Error => []
+              ]
+              ^ 1
+            ]
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+        assert(statements.count() == 2)
+    }
+
+    @Test
     fun nullable() {
         val source = """
             x::Int? = 1
