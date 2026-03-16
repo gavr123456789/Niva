@@ -296,11 +296,8 @@ fun Resolver.findAnyMsgType(
 
         // remove error from method decl
         val resolvingMsgDecl = this.resolvingMessageDeclaration
-        val msg = if (stack.isNotEmpty())
-            this.stack.last()
-        else
-            null
-        if (resolvingMsgDecl != null && msg is MessageSend) {
+        val msg = stack.asReversed().firstOrNull { it is MessageSend } as? MessageSend
+        if (resolvingMsgDecl != null && msg != null) {
             val receiver = msg.receiver
             val unbranckedExpression = if (receiver is ExpressionInBrackets) receiver.expr else receiver
             if (unbranckedExpression is MessageSend) {
