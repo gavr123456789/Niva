@@ -279,6 +279,7 @@ fun Parser.primary(typeAST: TypeAST? = null): Primary? {
         TokenType.True -> LiteralExpression.TrueExpr(step())
         TokenType.False -> LiteralExpression.FalseExpr(step())
         TokenType.Null -> LiteralExpression.NullExpr(typeAST ?: TypeAST.InternalType(InternalTypes.Any, peek()), step())
+        TokenType.UnitSymbol -> LiteralExpression.UnitExpr(step())
         TokenType.Integer -> LiteralExpression.IntExpr(step())
         TokenType.Float -> LiteralExpression.FloatExpr(step())
         TokenType.Double -> LiteralExpression.DoubleExpr(step())
