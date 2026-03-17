@@ -964,11 +964,11 @@ fun createListProtocols(
         collectionProtocol.unaryMsgs[clear.first] = clear.second
         // kw
         val mutKwMsgs = mutableMapOf(
-            createKeyword(KeywordArg("add", itType), unitType, forMutable = true),
+            createKeyword(KeywordArg("add", itType), boolType, forMutable = true),
             createKeyword(KeywordArg("addFirst", itType), unitType, forMutable = true),
-            createKeyword(KeywordArg("addAll", currentType), unitType, "Add all items from other collection", forMutable = true),
-            createKeyword(KeywordArg("removeAt", intType), unitType, "Remove element by index", forMutable = true),
-            createKeyword(KeywordArg("remove", itType), unitType, "Remove element", forMutable = true),
+            createKeyword(KeywordArg("addAll", currentType), boolType, "Add all items from other collection", forMutable = true),
+            createKeyword(KeywordArg("removeAt", intType), itType, "Remove element by index", forMutable = true),
+            createKeyword(KeywordArg("remove", itType), boolType, "Remove element", forMutable = true),
             createKeyword(
                 "atPut",
                 listOf(
