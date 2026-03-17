@@ -47,6 +47,16 @@ import kotlin.test.assertTrue
 class ParserTest {
 
     @Test
+    fun parseUnitExprBeforeDeclaration() {
+        val source = """
+Environment dont_construct: ()
+Environment makeChild = Environment parent: this map: #{} 
+
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+    @Test
     fun parseConstructorWithListArgument() {
         val source = """
             type TypeApp parameters: List(Int)
@@ -452,6 +462,11 @@ class ParserTest {
         and: that
                   and: that
         """.trimIndent()
+        val fakeFile = File("Niva.iml")
+        val tokens = lex(source, fakeFile)
+        File("build/tmp/tokens.txt").printWriter().use { out ->
+            tokens.filter { it.line in 4..5 }.forEach { out.println("${it.line} ${it.kind} ${it.lexeme}") }
+        }
         val ast = getAstTest(source)
         assert(ast.count() == 2)
     }
