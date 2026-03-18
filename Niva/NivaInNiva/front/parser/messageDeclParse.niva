@@ -180,6 +180,7 @@ extend mut Parser [
       ] ifFalse: [
         onTok = .matchAssert: TokenType.On
         decls add: (.parseMessageDeclForReceiver: receiverType token: onTok isConstructor: false)
+        ()
       ]
     ]
 
@@ -305,6 +306,7 @@ extend mut Parser [
         nextArg2 = nextArg unpackOrPANIC
         args add: nextArg2 arg
         nameParts add: nextArg2 namePart
+        ()
       ]
     ]
 

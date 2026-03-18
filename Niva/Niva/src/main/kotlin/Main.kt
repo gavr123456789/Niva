@@ -13,7 +13,7 @@ import main.utils.*
 
 
 fun main(args: Array<String>) {
-//        val args = arrayOf("build","Niva/main.niva")
+//        val args = arrayOf("build","/Users/gavriil.maksyutenko/Downloads/file/main.niva")
 //        testingLS()
     if (help(args))
         return
