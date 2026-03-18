@@ -24,7 +24,7 @@ fun Resolver.resolveMessageDeclaration(
     addToDb: Boolean = true
 ): Boolean {
     val forTypeAst = statement.forTypeAst
-
+    var isNullableGeneric = false
     val initialTypeFromDB: Type? = if (forTypeAst is TypeAST.UserType) { //statement.forType ?:
         val ident = IdentifierExpr(
             name = forTypeAst.name,
@@ -39,7 +39,13 @@ fun Resolver.resolveMessageDeclaration(
             names = forTypeAst.names
         ) ?: if (forTypeAst.name.isGeneric()) {
             statement.typeArgs.add(forTypeAst.name)
-            Type.UnknownGenericType(forTypeAst.name)
+            if (!forTypeAst.isNullable) {
+                Type.UnknownGenericType(forTypeAst.name)
+            } else {
+                isNullableGeneric = true
+//                Type.NullableType(Type.UnknownGenericType(forTypeAst.name))
+                Type.UnknownGenericType(forTypeAst.name)
+            }
         } else null
 
         q
@@ -127,12 +133,19 @@ fun Resolver.resolveMessageDeclaration(
 
     val bodyScope = mutableMapOf<String, Type>()
     val resolveBody = {
+        // very stupid hack, but Im lazy
+        if (isNullableGeneric) {
+            statement.forType = Type.NullableType(Type.UnknownGenericType(forTypeAst.name))
+        }
+
         val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
         if (!isStaticBuilderWithoutReceiver && statement !is ConstructorDeclaration) {
             if (statement.forTypeAst.isMutable) {
                 bodyScope["this"] = copyTypeIfGenerics.copyAnyType().also {it.isMutable = true}
             } else {
-                bodyScope["this"] = copyTypeIfGenerics
+                bodyScope["this"] = if (isNullableGeneric)
+                    Type.NullableType(copyTypeIfGenerics)
+                else copyTypeIfGenerics
             }
         }
 
@@ -240,6 +253,8 @@ fun Resolver.resolveMessageDeclaration(
         wasThereReturn = null
         wasThereTopLevelReturn = false
         resolvingMessageDeclaration = statement
+
+
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
         // check that errors that returns and stack are the same
         val validateErrorsDeclarated = {
@@ -317,13 +332,23 @@ fun Resolver.resolveMessageDeclaration(
         validateErrorsDeclarated()
 
 
+        fun checkThatReturnTypesMatch() {
+            if(!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
+                statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
+            } else if (!statement.isSingleExpression && wasThereReturn != null && !wasThereTopLevelReturn) {
+                statement.token.compileError("Return(^) used inside codeblock, but there is no return at the top level")
+            }
+        }
+        if (statement.body.isNotEmpty()) {
+            val last = statement.body.last()
+            val lastStatementIsNothingType = last is Expression && last.type?.name == InternalTypes.Nothing.name
+            if (!lastStatementIsNothingType) {
+               checkThatTypeGenericsResolvable()
+            }
+        } else {
+            checkThatReturnTypesMatch()
+        }
 
-        if (!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
-            statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
-        }
-        if (!statement.isSingleExpression && wasThereReturn != null && !wasThereTopLevelReturn) {
-            statement.token.compileError("Return(^) used inside codeblock, but there is no return at the top level")
-        }
         resolvingMessageDeclaration = null
         // change return type in db is single exp, because it was recorded as -> Unit, since there was no return type declarated
         if (statement.isSingleExpression) {

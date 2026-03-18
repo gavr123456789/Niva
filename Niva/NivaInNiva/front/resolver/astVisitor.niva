@@ -73,6 +73,7 @@ TypeDeclVisitor
         noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
         noFieldsTypes at: it name put: noFieldsType
         pkgTotypeDecls2 add: (Tuple x: pkgName y: it)
+        ()
       ]
       | MessageDecl => [
         msgDecls2 add: (Tuple x: pkgName y: it)
@@ -550,6 +551,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
                           value: null
                           token: lastExpr token
                           typeInfo: db dtc unit toTypeInfoDefault)
+        ()
       ]
       |=> [
         newBody = (bodyExprs dropLast: 1, toMutableList)
@@ -559,6 +561,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
                         typeInfo: lastExpr typeInfo)
         bodyExprs clear
         bodyExprs addAll: newBody
+        ()
       ]
     ]
   ]
@@ -576,6 +579,7 @@ AstVisitor visit(st): Statement = [
   | this
   | PrintingVisitor => this visit: st
   | TypeDeclVisitor => [
+
     | st
     | TypeDecl => this visit: st
     |=>[]

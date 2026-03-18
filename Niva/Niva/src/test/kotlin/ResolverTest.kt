@@ -7,6 +7,7 @@ import org.junit.jupiter.api.assertThrows
 import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -32,6 +33,138 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+    @Test
+    fun matchOnManyBranchesShouldNotNarrowTheType() {
+        val source = """
+            union Sas = Sus | Sos x: Int | Ses
+            x = Sus new 
+            
+            | x 
+            |Sos|Sus|Ses => [x x]
+           
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 3)
+        }
+    }
+
+    @Test
+    fun returnNeeded() {
+        val source = """
+            Int sas -> Int = [
+              
+            ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 1)
+        }
+    }
+    @Test
+    fun noReturnNeeded() {
+        val source = """
+            errordomain Sas = Sus | Sos 
+            
+            Int sas -> Int! = [
+              Sus new throw
+            ]
+            
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+        assert(statements.count() == 2)
+    }
+    @Test
+    fun errorsShouldNotBeEatenHere() {
+        val source = """
+            errordomain Sas = Sus | Sos 
+            
+            Int sas -> Unit! = [
+              Sus new throw
+              
+            ]
+            
+            Int sus = [
+              .sas ifError: [
+                | it
+                | Sus => [
+                  it throw
+                ]
+              ]
+            ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 2)
+        }
+    }
+
+    @Test
+    fun notAddFieldsOfUnion() {
+        val source = """
+        union Sas = Sus y: Int | Sos x: Int
+        
+        Int sas: Sas = [
+          | sas
+          | Sus => [y + 1]
+          | Sos => [x + 1]
+        ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 2)
+        }
+    }
+    @Test
+    fun errorCatching() {
+        val source = """
+            Unit main -> Unit! = [
+              Error throwWithMessage: "sas"
+            ]
+            
+            Unit q -> Int = [
+              ()main ifError: [
+                | it
+                | Error => []
+              ]
+              ^ 1
+            ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 2)
+        }
+    }
+
+    @Test
+    fun methodForNullableT() {
+        val source = """
+            T? myUnpack = [
+                | this 
+                | null => null
+                |=> this
+            ]
+        """.trimIndent()
+
+        val statements = resolve(source)
+        assert(statements.count() == 1)
+    }
+
+    @Test
+    fun unhelukar() {
+
+        val source = """
+            type Sas
+            Unit sas: Sas = []
+            ()sas: Sas
+        """.trimIndent()
+
+
+        assertFails {
+            val statements = resolve(source)
+//            assert(statements.count() == 3)
+        }
+    }
     @Test
     fun nullable() {
         val source = """
@@ -92,7 +225,7 @@ class ResolverTest {
     @Test
     fun keywordCall() {
         val source = """
-            Int add2::Int = [
+            Int add2: Int = [
                 ^ this + add2
             ]
             list = {1 2 3}
@@ -2270,7 +2403,7 @@ class ResolverTest {
 
         """.trimIndent()
 
-        val (x) = resolveWithResolver(source)
+        val (x, resolver) = resolveWithResolver(source)
         assert(x.count() ==5)
         val forVar = ((x[3] as VarDeclaration).value as MethodReference).type as Type.Lambda
         val forType = ((x[4] as VarDeclaration).value as MethodReference).type as Type.Lambda

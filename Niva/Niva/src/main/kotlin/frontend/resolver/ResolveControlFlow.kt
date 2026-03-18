@@ -276,7 +276,13 @@ fun Resolver.resolveControlFlow(
             }
             currentLevel--
             val currentTypeName = it.ifExpression.type?.name
-            val currentType = it.ifExpression.type!!
+            val currentType = if (it.otherIfExpressions.isNotEmpty()) {
+                val allChecksOfCurrentBranch = it.otherIfExpressions.map { it.type!! } + it.ifExpression.type!!
+                val generalRoot = findGeneralRootMany(allChecksOfCurrentBranch, it.ifExpression.token)
+                generalRoot
+            }
+            else
+                it.ifExpression.type!!
 
             if (!thisIsNullMatching)
                 thisIsNullMatching = currentType.name == InternalTypes.Null.name
@@ -334,7 +340,7 @@ fun Resolver.resolveControlFlow(
                 }
             }
             if (thisIsTypeMatching && statement.switch is IdentifierExpr) { // add current switching if Identifier to scope, type narrowed
-                if (currentType is Type.UserLike) {
+                if (currentType is Type.UserLike && statement.switch.name == "this") {
                     currentType.fields.forEach {
                         val alreadyDeclarated = currentScope[it.name]
                         if (alreadyDeclarated == null) {
@@ -635,7 +641,7 @@ fun recursiveCheckThatEveryBranchChecked(
     if (realNamesAndPkg != fromDbNamesAndPkg) {
         if (fromDbNamesAndPkg.count() > realNamesAndPkg.count()) {
             val difference = (fromDbNamesAndPkg - realNamesAndPkg).joinToString("$RESET, $YEL") { it }
-            tok.compileError("Not all possible variants have been checked ($YEL$difference$RESET)")
+            tok.compileError("Not all possible variants have been checked, or they are not a union branch ($YEL$difference$RESET)")
         } else {
             val difference = (realNamesAndPkg - fromDbNamesAndPkg).joinToString("$RESET, $YEL") { it }
             tok.compileError("Extra unions are checked: ($YEL$difference$RESET)")

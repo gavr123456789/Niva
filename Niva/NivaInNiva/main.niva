@@ -190,3 +190,12 @@ odin = [
   ]
   "The program $program calculates the value $acc" echo
 ]
+
+
+[
+
+  //true ifTrue: [5] ifFalse: [ true ]
+  //v = #{} toMut // whats the type of v
+  ////v get: 12 orPut: ["meow"] // what's the type of v
+  //meow = v at: 13 // what's the type of meow
+]

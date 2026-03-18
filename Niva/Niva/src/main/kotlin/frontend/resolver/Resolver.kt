@@ -188,6 +188,11 @@ private fun Resolver.resolveStatement(
                 }
 
                 statement.isType = true
+
+                // check if user type with zero fields is used as expression without calling new
+//                if (type is Type.UserLike && type.fields.isEmpty() && rootStatement !is KeywordMsg && rootStatement !is ControlFlow.Switch) {
+//                    statement.token.compileError("Type ${type.name} with zero fields cannot be used as an expression. Use `${type.name} new` instead")
+//                }
             }
 
             if (GlobalVariables.isLspMode) {
@@ -482,6 +487,9 @@ fun Resolver.resolve(
 
     // Check for unresolved generics in local scope
     currentScope.forEach { (name, type) ->
+        if (resolvingMessageDeclaration?.forTypeAst?.name?.isGeneric() == true){
+            1
+        }
         if (type.hasUnresolvedGenerics()) {
             val tok = currentScopeTokens[name] ?: createFakeToken()
             tok.compileError("Type of $YEL$name$RESET remains unresolved: $YEL$type$RESET. Send a message to it or specify the type")

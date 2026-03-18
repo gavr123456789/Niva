@@ -2,7 +2,9 @@
 
 package frontend.resolver
 
+import com.sun.tools.javac.tree.TreeInfo.args
 import frontend.parser.types.ast.KeyPragma
+import frontend.resolver.add
 import main.codogenjs.EMIT_JS_PRAGMA
 import main.codogenjs.RENAME_JS_PRAGMA
 import main.frontend.meta.Position
@@ -28,13 +30,13 @@ fun createIntProtocols(
 
 ): MutableMap<String, Protocol> {
     val result = mutableMapOf<String, Protocol>()
-
     val arithmeticProtocol = Protocol(
         name = "arithmetic",
         unaryMsgs = mutableMapOf(
 
             createUnary("inc", intType, docComment = "increments the number by 1\n1 inc == 2"),
             createUnary("dec", intType, "1 dec == 0"),
+            createUnary("abs", intType, "absolute value").emit("kotlin.math.abs($0)"),
             createUnary("toFloat", floatType),
             createUnary("toDouble", doubleType),
             createUnary("toLong", longType),
@@ -126,6 +128,7 @@ fun createFloatProtocols(
         unaryMsgs = mutableMapOf(
             createUnary("inc", floatType),
             createUnary("dec", floatType),
+            createUnary("abs", floatType, "absolute value").emit("kotlin.math.abs($0)"),
             createUnary("toInt", intType),
             createUnary("toString", stringType),
 
@@ -946,16 +949,19 @@ fun createListProtocols(
             createSumOf(itType),
             createFind(itType, boolType),
 
-            createKeyword(
-                "viewFromTo",
-                listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)),
-                currentType,
-                "Returns a view of the portion of this list between the specified fromIndex (inclusive) and toIndex (exclusive). The returned list is backed by this list, so non-structural changes in the returned list are reflected in this list, and vice-versa."
-            ).rename("subList"),
-
 
         )
-    )
+    ).also { protocol ->
+        if (listType.name == "List") {
+            val docComment = "Returns a view of the portion of this list between the specified fromIndex (inclusive) and toIndex (exclusive). The returned list is backed by this list, so non-structural changes in the returned list are reflected in this list, and vice-versa."
+            val kw = KeywordMsgMetaData("viewFromTo", listOf(KeywordArg("viewFrom", intType), KeywordArg("to", intType)), currentType, "core", declaration = null, docComment = docComment.createDocComment())
+                .also {
+                    it.forMutableType = false
+                    it.pragmas.add(createRenameAtttribure("subList"))
+                }
+            protocol.keywordMsgs["viewFromTo"] = kw
+        }
+    }
 
     // this check is not needed since we are getting it from "forMutable" parameter
 //    if (isMutable || true) {
