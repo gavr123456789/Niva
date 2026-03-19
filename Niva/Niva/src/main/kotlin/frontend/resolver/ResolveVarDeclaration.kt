@@ -93,8 +93,8 @@ fun Resolver.resolveVarDeclaration(
                 currentPackageName
             ) ?: typeAST.token.compileError("Can't find type $YEL${typeAST.name}")
 
-            e.beforeGenericResolvedName = copyType.typeArgumentList[i].name
-            newTypeArgList.add(e)
+            val newType = e.cloneAndChangeBeforeGeneric(copyType.typeArgumentList[i].name)
+            newTypeArgList.add(newType)
         }
 //        copyType.typeArgumentList = newTypeArgList
         copyType.replaceTypeArguments(newTypeArgList)
@@ -205,12 +205,10 @@ fun Resolver.resolveDestruction(
     // check that value has this fields
     // {name age} = person
 
-    val resolveValue = {
-        currentLevel++
-        val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
-        resolveSingle((statement.value), previousAndCurrentScope, statement)
-        currentLevel--
-    }()
+    currentLevel++
+    val previousAndCurrentScope1 = (previousScope + currentScope).toMutableMap()
+    resolveSingle((statement.value), previousAndCurrentScope1, statement)
+    val resolveValue = currentLevel--
 
 
 
