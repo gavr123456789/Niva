@@ -1039,7 +1039,13 @@ fun TypeAST.toType(
             }
 
             val type2 = if (this.isMutable) {
-                (type).copyAnyType().also { it.isMutable = true }
+                (type).copyAnyType().also {
+                    it.isMutable = true
+                    // keep fields linked to the original type to avoid stale unresolved fields
+                    if (it is Type.UserLike && type is Type.UserLike) {
+                        it.fields = type.fields
+                    }
+                }
             } else type
 
             validateAstTypeHasGenericsDeclared(type2)
