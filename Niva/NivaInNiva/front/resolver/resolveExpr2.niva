@@ -311,40 +311,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     valueT = value toTypedExprFromDb2: db withContext: c
     ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
   ]
-  | ListLiteral | SetLiteral => [
-    this elements unTypedBody isEmpty ? [
-      TO DO: "Can't infer type of the Collection collection without elements"
-    ]
-    typedBody = elements resolveBody2: db withContext: c
-    Assert that: elements unTypedBody count equals: 0
-
-    elems = typedBody v
-    typesOfElems = elems map: [it typeInfo t]
-    // take first and others
-    // Compare all elements between each other
-    f = typesOfElems first
-    numberOfWrongElementType = f compareWithMany: (typesOfElems drop: 1)
-    numberOfWrongElementType unpack: [
-      wrongElement = elems at: it
-      db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")
-    ]
-
-    astType =
-      | this
-      | ListLiteral => [
-        newType = ListT t: f
-        db addCollectionInstantiationIfAbsent: newType
-        ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
-      ]
-      | SetLiteral => [
-        newType = SetT t: f
-        db addCollectionInstantiationIfAbsent: newType
-        SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
-      ]
-      |=> [TO DO]
-
-      astType
-  ]
   | MapLiteral     => [
     this elements unTypedBody count % 2 != 0 ? [
       db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
@@ -394,7 +360,41 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       elements: typedBody
       typeInfo: mapType toTypeInfoDefault
   ]
+  // false positive warning since now ListLiteral | SetLiteral gives collection
+  | ListLiteral | SetLiteral => [
+    this elements unTypedBody isEmpty ? [
+      TO DO: "Can't infer type of the Collection collection without elements"
+    ]
+    typedBody = elements resolveBody2: db withContext: c
+    Assert that: elements unTypedBody count equals: 0
 
+    elems = typedBody v
+    typesOfElems = elems map: [it typeInfo t]
+    // take first and others
+    // Compare all elements between each other
+    f = typesOfElems first
+    numberOfWrongElementType = f compareWithMany: (typesOfElems drop: 1)
+    numberOfWrongElementType unpack: [
+      wrongElement = elems at: it
+      db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")
+    ]
+
+    astType =
+      | this
+      | ListLiteral => [
+        newType = ListT t: f
+        db addCollectionInstantiationIfAbsent: newType
+        ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
+      ]
+      | SetLiteral => [
+        newType = SetT t: f
+        db addCollectionInstantiationIfAbsent: newType
+        SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
+      ]
+      |=> [TO DO]
+
+      astType
+  ]
   | UnaryMsg   => .resolveUnaryFromDb2: db withContext: c
   | BinaryMsg  => [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
