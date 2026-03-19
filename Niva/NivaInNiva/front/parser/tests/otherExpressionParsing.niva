@@ -1,7 +1,7 @@
 
 
 
-Test expressionWithDots -> Unit! = [
+Test expressionWithDots -> Unit = [
   input = """
     a.b.c
   """ trimIndent
@@ -16,7 +16,7 @@ Test expressionWithDots -> Unit! = [
 
 ]
 
-Test varDeclarationExpr -> Unit! = [
+Test varDeclarationExpr -> Unit = [
   input = """
     x = 56
     [
@@ -26,7 +26,7 @@ Test varDeclarationExpr -> Unit! = [
   statements = TestParse withInput: input expectedCount: 2
 ]
 
-Test mutVarDeclarationExpr -> Unit! = [
+Test mutVarDeclarationExpr -> Unit = [
   input = """
     mut x = 56
     x <- 2
@@ -35,7 +35,7 @@ Test mutVarDeclarationExpr -> Unit! = [
 ]
 
 
-Test matchExpr -> Unit! = [
+Test matchExpr -> Unit = [
   input = """
     | x
     | 1 | 1 => 2
@@ -46,7 +46,7 @@ Test matchExpr -> Unit! = [
 
 ]
 
-Test listLiterals -> Unit! = [
+Test listLiterals -> Unit = [
   input = """
     {1 2 3}
     #{1 2 3 4}
@@ -72,7 +72,7 @@ Test listLiterals -> Unit! = [
 
 ]
 
-Test returnStatement -> Unit! = [
+Test returnStatement -> Unit = [
   input = """
     [
       ^ 1 + 2
@@ -82,7 +82,7 @@ Test returnStatement -> Unit! = [
   statements = TestParse withInput: input expectedCount: 1
 ]
 
-Test codeBlockStatement -> Unit! = [
+Test codeBlockStatement -> Unit = [
   input = """
 
     [

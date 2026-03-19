@@ -1,4 +1,4 @@
-Test someExpressions -> Unit! = [
+Test someExpressions -> Unit = [
   input = """
     1 + 2
     1 inc
@@ -73,7 +73,7 @@ Test pipes = [
   |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
 ]
 
-Test pipesMany -> Unit! = [
+Test pipesMany -> Unit = [
   input = """
     1 to: 2, inc echo
     1 to: 2, inc + 3
@@ -88,7 +88,7 @@ Test pipesMany -> Unit! = [
 
 ]
 
-Test parseSimbleBinaryMsg -> Unit! = [
+Test parseSimbleBinaryMsg -> Unit = [
   msgSend = TestParse expression: "a + b"
 
   | msgSend
@@ -118,12 +118,12 @@ Test parseSimbleBinaryMsg -> Unit! = [
   |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]
 
-Test parseBinaryMsgWithUnary -> Unit! = [
+Test parseBinaryMsgWithUnary -> Unit = [
   msgSend = TestParse expression: "1 + 2 inc"
   Assert that: msgSend toString equals: "IntExpr 1 + UnaryMsg Call(IntExpr 2 inc)"
 ]
 
-Test parseBinaryMsgWithUnary2 -> Unit! = [
+Test parseBinaryMsgWithUnary2 -> Unit = [
   msgSend = TestParse expression: "1 inc + 2"
 
   | msgSend
