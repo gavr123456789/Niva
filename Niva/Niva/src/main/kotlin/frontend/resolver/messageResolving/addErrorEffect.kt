@@ -34,9 +34,10 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
     }
 
     val currentMsgDecl = resolvingMessageDeclaration
-    // temp fix for ifTrue:ifFalse: that returns errors in each branch
     if (errors == null && returnType.errors != null && (msgFromDB?.returnType?.name?.isGeneric() == false)) {
         statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
+
+//        return returnType.copyAnyType().also { it.errors = null }
     }
 
     if (errors != null) {
