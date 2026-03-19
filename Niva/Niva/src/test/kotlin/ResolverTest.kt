@@ -34,6 +34,18 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 class ResolverTest {
 
     @Test
+    fun joinWith() {
+        val source = """
+           {1 2 3} joinWith: " qwf " transform: ["sas"]
+           {1 2 3} joinWith: " qwf " transform: ["sas"]
+        """.trimIndent()
+
+        val (statements, resolver) = resolveWithResolver(source)
+        assert(statements.count() == 2)
+    }
+
+
+    @Test
     fun matchOnManyBranchesShouldNotNarrowTheType() {
         val source = """
             union Sas = Sus | Sos x: Int | Ses
