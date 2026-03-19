@@ -321,7 +321,7 @@ fun Resolver.resolveMessageDeclaration(
                     errorsMismatchCompileError()
                 }
                 // errors are possible but not declared
-                if (possibleErrors.isEmpty() && declaredErrors?.isNotEmpty() == true) {
+                if (possibleErrors.isEmpty() && declaredErrors != null) {
                     statement.token.compileError("there are declared errors:\n${listOfErrorsWithLines()}\nbut no possible ones you didn't specify them in return type: `-> Type!{Errors}`")
                 }
             }

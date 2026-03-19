@@ -1,4 +1,4 @@
-Test parseType -> Unit! = [
+Test parseType -> Unit = [
   input = """
     type Person
       name: String
@@ -76,7 +76,7 @@ Test parseType -> Unit! = [
   |=> [TO DO: "It should be int, but it " + typeDecl toString]
 ]
 
-Test parseTypeWithNoFields -> Unit! = [
+Test parseTypeWithNoFields -> Unit = [
   input = """
     type Person
   """ trimIndent
@@ -96,7 +96,7 @@ Test parseTypeWithNoFields -> Unit! = [
   |=> []
 ]
 
-Test parseUnion -> Unit! = [
+Test parseUnion -> Unit = [
   input = """
     union Color = Red | Blue | Green
 
@@ -113,7 +113,7 @@ Test parseUnion -> Unit! = [
 ]
 
 
-Test parseUnaryConstructor -> Unit! = [
+Test parseUnaryConstructor -> Unit = [
   input = """
     constructor Int theAnswer = 42
   """ trimIndent
@@ -163,7 +163,7 @@ Test parseUnaryDecl -> Unit = [
   |=> [TO DO: "It should be MessageDecl, but it " + unaryDecl toString]
 ]
 
-Test parseBinaryDecl -> Unit! = [
+Test parseBinaryDecl -> Unit = [
   input = """
     Int + inc::String -> Bool = [
       1
@@ -199,7 +199,7 @@ Test parseBinaryDecl -> Unit! = [
   |=> [TO DO: "It should be MessageDecl, but it " + binary toString]
 ]
 
-Test parseKeywordDecl -> Unit! = [
+Test parseKeywordDecl -> Unit = [
   input = """
     Int from::Int to::Int -> Bool = [
       true
@@ -234,7 +234,7 @@ Test parseKeywordDecl -> Unit! = [
   |=> [TO DO: "It should be MessageDecl, but it " + keyword toString]
 ]
 
-Test parseRealWorldExample -> Unit! = [
+Test parseRealWorldExample -> Unit = [
   input = """
 
     type Person name: String age: Int
@@ -247,7 +247,7 @@ Test parseRealWorldExample -> Unit! = [
 ]
 
 
-Test parseKeywordDeclWithBody -> Unit! = [
+Test parseKeywordDeclWithBody -> Unit = [
   input = """
     Money make: Int sas: String -> Int = [
       x = 42
