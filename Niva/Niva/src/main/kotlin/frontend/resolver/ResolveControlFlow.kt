@@ -5,14 +5,25 @@ import frontend.resolver.messageResolving.resolveCodeBlock
 import frontend.resolver.messageResolving.resolveCodeBlockAsBody
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
-import main.frontend.meta.prettyCodePlace
-import main.frontend.parser.types.ast.*
+import main.frontend.parser.types.ast.Assign
+import main.frontend.parser.types.ast.CodeBlock
+import main.frontend.parser.types.ast.ControlFlow
+import main.frontend.parser.types.ast.ControlFlowKind
+import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.ExpressionInBrackets
+import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.IfBranch
+import main.frontend.parser.types.ast.InternalTypes
+import main.frontend.parser.types.ast.MessageDeclaration
+import main.frontend.parser.types.ast.MessageSend
+import main.frontend.parser.types.ast.ReturnStatement
+import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.UnaryMsg
+import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.RESET
 import main.utils.WHITE
 import main.utils.YEL
 import main.utils.capitalizeFirstLetter
-import main.utils.warning
-import kotlin.collections.ArrayDeque
 
 
 fun Statement.isNotExpression(): Boolean =
@@ -295,12 +306,14 @@ fun Resolver.resolveControlFlow(
                         ControlFlowKind.StatementTypeMatch
                 // if the match exp is a field of some type(not in current scope) or mutable then error
                 val checkMutMatchError = { localName: String ->
-                    val isField = {
-                        // this in scope
+                    // this in scope
+                    // this type has switch field
+                    val zis1 = previousAndCurrentScope["this"]
+                    // this in scope
+                    // this type has switch field
+                    val isField = // this in scope
                         // this type has switch field
-                        val zis = previousAndCurrentScope["this"]
-                        zis != null && zis is Type.UserLike && zis.fields.find {it.name == localName} != null
-                    }()
+                        zis1 != null && zis1 is Type.UserLike && zis1.fields.find { it.name == localName } != null
                     val mutable = statement.switch.type?.isMutable ?: false
                     val name = localName.capitalizeFirstLetter()
                     val name2 = localName
@@ -601,18 +614,18 @@ fun Type.Union.unpackUnionToAllBranches(x: MutableSet<Type.Union>, typeToToken: 
 
                     return path
                 }
-                val path = findSas(this, ArrayDeque())
-                val strPath = path.joinToString("$RESET <- $YEL") { "$YEL${it.name}" }
-                if(typeToToken != null) {
-                    val tokFromMap = {
-                        val e = path.find { typeToToken[it] != null }
-                        typeToToken[e]
-                    }()
-                    val onLine = if (tokFromMap != null) "on line ${tokFromMap.prettyCodePlace()}" else ""
+//                val path = findSas(this, ArrayDeque())
+//                val strPath = path.joinToString("$RESET <- $YEL") { "$YEL${it.name}" }
+//                if(typeToToken != null) {
+//                    val tokFromMap = {
+//                        val e = path.find { typeToToken[it] != null }
+//                        typeToToken[e]
+//                    }()
+//                    val onLine = if (tokFromMap != null) "on line ${tokFromMap.prettyCodePlace()}" else ""
                     // TODO make warning mechanism in LSP
 
-                    warning("in matching $this was already checked $onLine ($strPath$RESET)")
-                }
+//                    warning("in matching $this was already checked $onLine ($strPath$RESET)")
+//                }
             }
             x.add(this)
         }
