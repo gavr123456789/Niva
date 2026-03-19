@@ -278,7 +278,7 @@ extend mut Lexer [
     ^ tok
   ]
 
-  on lex -> mut List::Token! = [
+  on lex -> mut List::Token = [
     mut newTok = .nextToken orPANIC
     mut tokens::mut List::Token = {newTok}!
 

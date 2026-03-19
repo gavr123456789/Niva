@@ -287,13 +287,7 @@ fun Resolver.resolveControlFlow(
             }
             currentLevel--
             val currentTypeName = it.ifExpression.type?.name
-            val currentType = if (it.otherIfExpressions.isNotEmpty()) {
-                val allChecksOfCurrentBranch = it.otherIfExpressions.map { it.type!! } + it.ifExpression.type!!
-                val generalRoot = findGeneralRootMany(allChecksOfCurrentBranch, it.ifExpression.token)
-                generalRoot
-            }
-            else
-                it.ifExpression.type!!
+            val currentType = it.ifExpression.type!!
 
             if (!thisIsNullMatching)
                 thisIsNullMatching = currentType.name == InternalTypes.Null.name
@@ -361,9 +355,15 @@ fun Resolver.resolveControlFlow(
                         }
                     }
                 }
-
-                currentScope[statement.switch.name] = currentType
-                previousAndCurrentScope[statement.switch.name] = currentType
+                val generalRootBetweenManyMatches = if (it.otherIfExpressions.isNotEmpty()) {
+                    val allChecksOfCurrentBranch = it.otherIfExpressions.map { it.type!! } + it.ifExpression.type!!
+                    val generalRoot = findGeneralRootMany(allChecksOfCurrentBranch, it.ifExpression.token)
+                    generalRoot
+                }
+                else
+                    currentType
+                currentScope[statement.switch.name] = generalRootBetweenManyMatches
+                previousAndCurrentScope[statement.switch.name] = generalRootBetweenManyMatches
                 statement.switch.type = currentType
                 typesAlreadyChecked += currentType
                 // add import of the type (if it's an errordomain it used only one time in matching)
