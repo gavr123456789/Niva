@@ -182,23 +182,31 @@ fun Resolver.resolveMessage(
 
         if (decl?.returnTypeAST?.errors?.isEmpty() == true && decl.stackOfPossibleErrors.isEmpty()) {
             // this means the errors were not resolved yet
+            val savedResolving = this.resolvingMessageDeclaration
+            val savedLevel = currentLevel
+            currentLevel++
             this.resolvingMessageDeclaration = decl
-            resolveMessageDeclaration(decl, true, previousScope, false)
+            try {
+                resolveMessageDeclaration(decl, true, previousScope, false)
+            } finally {
+                currentLevel = savedLevel
+                this.resolvingMessageDeclaration = savedResolving
+            }
         }
     }
 
     val type = addErrorEffect(msgFromDb, returnType, statement)
     statement.type = type
 
-    val receiverType = statement.receiver.type
-    if (receiverType?.errors?.isNotEmpty() == true &&
-        statement.selectorName != "orPANIC" &&
-        statement.selectorName != "orValue" &&
-        statement.selectorName != "ifError") {
+//    val receiverType = statement.receiver.type
+//    if (receiverType?.errors?.isNotEmpty() == true &&
+//        statement.selectorName != "orPANIC" &&
+//        statement.selectorName != "orValue" &&
+//        statement.selectorName != "ifError") {
 
-        statement.receiver.token.compileError("Can't send message to ${statement.receiver.type} that can contain error, use orValue: | orPANIC | ifError: [it]")
-    }
-
+//        statement.receiver.token.compileError("Can't send message to ${statement.receiver.type} that can contain error, use orValue: | orPANIC | ifError: [it]")
+//    }
+//
 
 
     if (GlobalVariables.isLspMode) {
