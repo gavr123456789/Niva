@@ -1,6 +1,7 @@
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import frontend.resolver.buildGlobalConstScopeFromStatements
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
 import org.junit.jupiter.api.assertThrows
@@ -14,14 +15,16 @@ import kotlin.test.assertTrue
 fun resolve(source: String): List<Statement> {
     val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
-    val resolved = resolver.resolve(resolver.statements, mutableMapOf())
+    val globalScope = resolver.buildGlobalConstScopeFromStatements(resolver.statements)
+    val resolved = resolver.resolve(resolver.statements, globalScope)
     return resolved
 }
 
 fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
     val ast = getAstTest(source)
     val resolver = createDefaultResolver(ast)
-    val resolved = resolver.resolve(resolver.statements, mutableMapOf())
+    val globalScope = resolver.buildGlobalConstScopeFromStatements(resolver.statements)
+    val resolved = resolver.resolve(resolver.statements, globalScope)
     return Pair(resolved, resolver)
 }
 
@@ -33,15 +36,52 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
-    @Test
-    fun joinWith() {
-        val source = """
-           {1 2 3} joinWith: " qwf " transform: ["sas"]
-           {1 2 3} joinWith: " qwf " transform: ["sas"]
-        """.trimIndent()
 
-        val (statements, resolver) = resolveWithResolver(source)
-        assert(statements.count() == 2)
+
+
+
+    @Test
+    fun globalsConstantsInScope() {
+        val source = """
+            global qwfqwf = 1
+
+
+            Int x =[
+                qwfqwf inc inc
+            ]
+            Int y =
+                qwfqwf inc inc
+
+        """.trimIndent()
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 3)
+    }
+    @Test
+    fun sasas() {
+        val source = """
+            union Sas = Sus | Sos | Ses
+
+            Sas sus =
+            | this
+            | Sus | Sos => []
+            //| Ses => []
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 1)
+        }
+    }
+
+    @Test
+    fun anyCoercion() {
+        val source = """
+           Unit meow: Any? -> Any = meow
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+            assert(statements.count() == 1)
+        }
+
     }
 
 

@@ -61,6 +61,7 @@ class VarDeclaration(
     var value: Expression,
     var valueTypeAst: TypeAST? = null,
     val mutable: Boolean = false,
+    val isGlobal: Boolean = false,
     pragmas: MutableList<Pragma> = mutableListOf(),
     var declaredType: Type? = null,
 ) : Statement(token, pragmas) {
@@ -94,6 +95,5 @@ class Assign(
         return "$name <- $value"
     }
 }
-
 
 

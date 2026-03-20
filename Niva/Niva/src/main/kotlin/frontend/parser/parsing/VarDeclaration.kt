@@ -13,8 +13,12 @@ import main.utils.RESET
 fun Parser.varDeclaration(): VarDeclaration? {
     val savePoint = current
 //    try {
+        val isGlobal = match(TokenType.Global)
         // skip mut
         val isMutable = match(TokenType.Mut)
+        if (isGlobal && isMutable) {
+            peek(-1).compileError("Global variables cannot be mutable")
+        }
 
         val tok = step()
         val typeOrEqual = step()
@@ -68,6 +72,6 @@ fun Parser.varDeclaration(): VarDeclaration? {
             else -> peek().compileError("After ${peek(-1)} needed type or expression")
         }
 
-        val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable)
+        val result = VarDeclaration(tok, tok.lexeme, value, valueType, isMutable, isGlobal)
         return result
 }
