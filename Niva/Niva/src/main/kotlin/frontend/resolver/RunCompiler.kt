@@ -11,11 +11,13 @@ import kotlinx.coroutines.newFixedThreadPoolContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import main.frontend.meta.Token
+import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDeclarationsOnly
+import main.frontend.typer.resolveVarDeclaration
 import main.utils.*
 import java.io.File
 import kotlin.time.TimeSource
@@ -75,6 +77,79 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
 
         }
     }
+}
+
+private fun Resolver.buildGlobalConstScope(globalDeclarations: List<Pair<String, VarDeclaration>>): MutableMap<String, Type> {
+    val scope = mutableMapOf<String, Type>()
+    val previousScope = mutableMapOf<String, Type>()
+    val unresolved = globalDeclarations.toMutableList()
+    var lastError: CompilerError? = null
+
+    do {
+        var progress = false
+        val iter = unresolved.iterator()
+        while (iter.hasNext()) {
+            val (pkgName, statement) = iter.next()
+            try {
+                if (currentPackageName != pkgName) {
+                    changePackage(pkgName, statement.token)
+                }
+                resolveVarDeclaration(
+                    statement = statement,
+                    currentScope = scope,
+                    previousScope = previousScope,
+                    addToTopLevelStatements = false,
+                )
+                iter.remove()
+                progress = true
+            } catch (e: CompilerError) {
+                lastError = e
+                if (!e.noColorsMsg.startsWith("Unresolved reference:")) {
+                    throw e
+                }
+            }
+        }
+        if (!progress) break
+    } while (unresolved.isNotEmpty())
+
+    if (unresolved.isNotEmpty()) {
+        if (lastError != null) {
+            throw lastError
+        }
+        unresolved.first().second.token.compileError("Unresolved global constants")
+    }
+
+    return scope
+}
+
+fun Resolver.buildGlobalConstScopeFromStatements(statements: List<Statement>): MutableMap<String, Type> {
+    val globals = statements.asSequence()
+        .filterIsInstance<VarDeclaration>()
+        .filter { it.isGlobal }
+        .map { currentPackageName to it }
+        .toList()
+    return buildGlobalConstScope(globals)
+}
+
+fun Resolver.buildGlobalConstScopeFromFiles(
+    mainPkgName: String,
+    mainAST: List<Statement>,
+    otherASTs: List<Pair<String, List<Statement>>>,
+): MutableMap<String, Type> {
+    val globals = mutableListOf<Pair<String, VarDeclaration>>()
+    fun collect(pkgName: String, from: List<Statement>) {
+        from.forEach { st ->
+            if (st is VarDeclaration && st.isGlobal) globals.add(pkgName to st)
+        }
+    }
+    val savedPkg = currentPackageName
+    collect(mainPkgName, mainAST)
+    otherASTs.forEach { collect(it.first, it.second) }
+    val scope = buildGlobalConstScope(globals)
+    if (currentPackageName != savedPkg) {
+        changePackage(savedPkg, createFakeToken())
+    }
+    return scope
 }
 
 fun Resolver.resolveWithBackTracking(
@@ -195,12 +270,13 @@ fun Resolver.resolveWithBackTracking(
         resolveDeclarationsOnly(unresolvedDecl.toMutableList())
     }
     // second time resolve single expressions, to add them to DB
+    val globalConstScope = buildGlobalConstScopeFromFiles(mainFileNameWithoutExtension, mainAST, otherASTs)
     unResolvedSingleExprMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
         unresolvedDecl.forEach {
             val (protocol, it) = it
             changeProtocol(protocol)
-            resolveDeclarations(it, mutableMapOf(), resolveBody = true)
+            resolveDeclarations(it, globalConstScope.toMutableMap(), resolveBody = true)
         }
     }
     unResolvedSingleExprMessageDeclarations.clear()
@@ -248,13 +324,13 @@ fun Resolver.resolveWithBackTracking(
     val resolveExpressionsMark = markNow()
 
     resolvingMainFile = true
-    resolve(mainAST, mutableMapOf())// createArgsFromMain()
+    resolve(mainAST, globalConstScope.toMutableMap())// createArgsFromMain()
     resolvingMainFile = false
 
     otherASTs.forEach {
         currentPackageName = it.first
         statements = it.second.toMutableList()
-        resolve(it.second, mutableMapOf())
+        resolve(it.second, globalConstScope.toMutableMap())
     }
 
     verbosePrinter.print { "Resolving: expressions in ${resolveExpressionsMark.getMs()} ms" }

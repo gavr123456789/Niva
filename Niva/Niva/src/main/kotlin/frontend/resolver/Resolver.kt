@@ -25,7 +25,10 @@ private fun Resolver.addPrintingInfoAboutType(type: Type, printOnlyTypeName: Boo
 }
 
 fun Resolver.addToTopLevelStatements(statement: Statement) {
-    if (currentLevel == 0 && resolvingMainFile) topLevelStatements.add(statement)
+    if (currentLevel != 0) return
+    if (resolvingMainFile || (statement is VarDeclaration && statement.isGlobal)) {
+        topLevelStatements.add(statement)
+    }
 }
 
 private fun Resolver.resolveStatement(
@@ -487,9 +490,6 @@ fun Resolver.resolve(
 
     // Check for unresolved generics in local scope
     currentScope.forEach { (name, type) ->
-        if (resolvingMessageDeclaration?.forTypeAst?.name?.isGeneric() == true){
-            1
-        }
         if (type.hasUnresolvedGenerics()) {
             val tok = currentScopeTokens[name] ?: createFakeToken()
             tok.compileError("Type of $YEL$name$RESET remains unresolved: $YEL$type$RESET. Send a message to it or specify the type")

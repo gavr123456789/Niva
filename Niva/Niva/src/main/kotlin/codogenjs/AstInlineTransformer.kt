@@ -31,6 +31,7 @@ class AstInlineTransformer(
                     transformExpression(st.value),
                     st.valueTypeAst,
                     st.mutable,
+                    st.isGlobal,
                     st.pragmas,
                     st.declaredType
                 ))

@@ -182,6 +182,7 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 fun Parser.isVarDeclarationStart(): Boolean {
     val savePoint = current
+    match(TokenType.Global)
     match(TokenType.Mut)
 
     val isVarDeclaration = when {

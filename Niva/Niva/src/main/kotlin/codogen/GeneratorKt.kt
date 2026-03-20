@@ -15,6 +15,7 @@ import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationUnary
 import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.VarDeclaration
 import main.utils.MILL_BUILD
 import main.utils.addStd
 import main.utils.appendnl
@@ -426,6 +427,7 @@ fun GeneratorKt.createCodeKtFile(path: File, fileName: String, code: String): Fi
 
 fun GeneratorKt.addStdAndPutInMain(
     ktCode: String,
+    topLevelConstCode: String,
     mainPkg: Package,
     compilationTarget: CompilationTarget,
     pathToInfroProject: String,
@@ -438,7 +440,11 @@ fun GeneratorKt.addStdAndPutInMain(
             ktCode//.addIndentationForEachString(1) // do not add indent to main because of """ will look strange
 
         val mainCode = putInMainKotlinCode(code1, compilationTarget, pathToInfroProject, pathToMainNivaFileFolder)
-        val code3 = addStd(mainCode, compilationTarget)
+        val codeWithTopLevelConst = if (topLevelConstCode.isNotBlank())
+            topLevelConstCode.trimEnd() + "\n\n" + mainCode
+        else
+            mainCode
+        val code3 = addStd(codeWithTopLevelConst, compilationTarget)
         append(mainPkg.generateImports(), "\n")
         append(code3, "\n")
     }
@@ -593,8 +599,13 @@ fun GeneratorKt.generateKtProject(
         // 2 generate Main.kt
         val mainPkg = mainProject.packages[MAIN_PKG_NAME]!!
 
+        val (topLevelConstStatements, mainStatements) = topLevelStatements.partition {
+            it is VarDeclaration && it.isGlobal
+        }
+
         val mainCode = addStdAndPutInMain(
-            codegenKt(topLevelStatements),
+            codegenKt(mainStatements),
+            codegenKt(topLevelConstStatements),
             mainPkg,
             compilationTarget,
             pathToInfroProject,

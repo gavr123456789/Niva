@@ -39,7 +39,11 @@ fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
     currentScope: MutableMap<String, Type>,
     previousScope: MutableMap<String, Type>,
+    addToTopLevelStatements: Boolean = true,
 ) {
+    if (statement.isGlobal && statement.mutable) {
+        statement.token.compileError("Global variables cannot be mutable")
+    }
     val previousAndCurrentScope = (previousScope + currentScope).toMutableMap()
     if (currentScope.contains(statement.name)) {
         statement.token.compileError("This scope already contain varDeclaration with name ${statement.name}")
@@ -174,6 +178,16 @@ fun Resolver.resolveVarDeclaration(
         }
 
     }
+    if (statement.isGlobal) {
+        val typeForCheck = when (typeOfValueInVarDecl) {
+            is Type.NullableType -> typeOfValueInVarDecl.realType
+            else -> typeOfValueInVarDecl
+        }
+        if (typeForCheck.isMutable) {
+            statement.token.compileError("Global variable `${statement.name}` cannot have mutable type $YEL$typeForCheck$RESET")
+        }
+    }
+
     val typeForScope = (copyType ?: typeOfValueInVarDecl)
     val keepTypeReferenceForGenericInference =
         definedASTType == null &&
@@ -193,7 +207,12 @@ fun Resolver.resolveVarDeclaration(
 //    devModeSetInlineRepl(valueOfVarDecl, resolvingMessageDeclaration)
 
     getCurrentPackage(statement.token).addImport(typeOfValueInVarDecl.pkg)
-    addToTopLevelStatements(statement)
+    if (statement.isGlobal && currentPackageName != MAIN_PKG_NAME) {
+        projects[currentProjectName]?.packages?.get(MAIN_PKG_NAME)?.addImport(currentPackageName)
+    }
+    if (addToTopLevelStatements) {
+        addToTopLevelStatements(statement)
+    }
 }
 
 
