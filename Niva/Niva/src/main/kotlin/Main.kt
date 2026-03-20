@@ -10,15 +10,16 @@ import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.codogenjs.generateJsProject
 import main.utils.*
+import utils.testingLS
 
 
 fun main(args: Array<String>) {
 
 
-//        val args = arrayOf("build","/Users/gavriil.maksyutenko/Downloads/file/main.niva")
+        val args = arrayOf("build","")
 //        testingLS()
-    if (help(args))
-        return
+//    if (help(args))
+//        return
     run(args)
 
 }

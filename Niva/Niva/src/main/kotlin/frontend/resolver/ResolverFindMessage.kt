@@ -322,6 +322,14 @@ fun Resolver.findAnyMsgType(
         return it
     }
 
+    // maybe it's changed after resolve (protocols not copied into this instance yet)
+    val q = typeTable[receiverType.name]
+    if (q != null && q != receiverType && q.protocols.count() != receiverType.protocols.count()) { // q != receiverType - protection from infinity recursion
+        val allProtocolsExceptDynamic = q.protocols - "dynamic"
+        receiverType.protocols.putAll(allProtocolsExceptDynamic)
+        return findAnyMsgType(q, selectorName, token, msgType)
+    }
+
     if (GlobalVariables.isDemonMode) {
         findSimilar(to = selectorName, forType = receiverType)
         onCompletionExc(mapOf())
@@ -338,14 +346,6 @@ fun Resolver.findAnyMsgType(
 
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
     } else {
-        // maybe its changed after resolve
-//    val receiverType = receiverType.replaceInitializedGenericToUnInitialized(resolver = this, token = token)
-        val q = typeTable[receiverType.name]
-        if (q != null && q != receiverType && q.protocols.count() != receiverType.protocols.count()) { // q != receiverType - protection from infinity recursion
-            val allProtocolsExceptDynamic = q.protocols - "dynamic"
-            receiverType.protocols.putAll(allProtocolsExceptDynamic)
-            return findAnyMsgType(q,selectorName,token, msgType)
-        }
         throwNotFoundError(receiverType, selectorName, token, msgType.name.lowercase())
     }
 }
