@@ -145,6 +145,30 @@ fun compare2Types(
         return true
     }
 
+    // expected nullable generic can accept non-nullable generic with the same name
+    if (type1OrChildOf2 is Type.NullableType &&
+        type1OrChildOf2.realType is Type.UnknownGenericType &&
+        type2 is Type.UnknownGenericType &&
+        type1OrChildOf2.realType.name == type2.name
+    ) {
+        return true
+    }
+    // non-nullable generic cannot accept nullable value unless explicitly allowed by unpackNull flags
+
+    if (!unpackNull && !unpackNullForFirst && !unpackNullForSecond &&
+        type1OrChildOf2 is Type.UnknownGenericType &&
+        type2 is Type.NullableType && type2.realType is Type.UnknownGenericType
+    ) {
+        return false
+    }
+//    if (!unpackNull && !unpackNullForFirst && !unpackNullForSecond &&
+//        type2 is Type.UnknownGenericType &&
+//        type1OrChildOf2 is Type.NullableType && type1OrChildOf2.realType is Type.UnknownGenericType
+//    ) {
+//        return false
+//    }
+
+
     // if one of them is generic
     if ((type1OrChildOf2 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType  || //&& type2 !is Type.NullableType
                 type2 is Type.UnknownGenericType && type1OrChildOf2 !is Type.UnknownGenericType ) //&& type1OrChildOf2 !is Type.NullableType // NOW comparing generics with Nullable types is OK

@@ -24,38 +24,50 @@ fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     // receiver can be generic
     // args can be generic
 
-    val result = mutableSetOf<String>()
+    val result = linkedMapOf<Char, String>()
+    fun addGeneric(generic: String) {
+        if (generic.isEmpty()) return
+        val key = generic.first()
+        val existing = result[key]
+        if (existing == null) {
+            result[key] = generic
+            return
+        }
+        val existingHasBound = existing.contains(":")
+        val newHasBound = generic.contains(":")
+        if (!existingHasBound && newHasBound) {
+            result[key] = generic
+        }
+    }
     // from return type
     if (returnTypeAST != null) {
         val isThereUnresolvedTypeArgs = returnTypeAST.name.isGeneric()
         if (isThereUnresolvedTypeArgs) {
             // There can be resolved type args like box::Box::Int, then we don't need to add them
-            result.add(returnTypeAST.name)
+            addGeneric(returnTypeAST.name)
         }
     }
 
     val isThereUnresolvedTypeArgs = typeArgs.filter { it.isGeneric() }
     if (isThereUnresolvedTypeArgs.isNotEmpty()) {
         // There can be resolved type args like box::Box::Int, then we don't need to add them
-        result.addAll(isThereUnresolvedTypeArgs)
+        isThereUnresolvedTypeArgs.forEach { addGeneric(it) }
     }
 
     // from args
-    this.collectGenericsFromArgs(result)
+    val argsGenerics = mutableSetOf<String>()
+    this.collectGenericsFromArgs(argsGenerics)
+    argsGenerics.forEach { addGeneric(it) }
 
     // from receiver
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
-        forTypeVal.collectGenericParamsRecursively(mutableSetOf())
-        val q = result.reversed().distinctBy { string -> string.first() }
-        result.clear()
-        result.addAll(q)
+        val receiverGenerics = mutableSetOf<String>()
+        forTypeVal.collectGenericParamsRecursively(receiverGenerics)
+        receiverGenerics.forEach { addGeneric(it) }
     }
 
-
-
-
-    return result
+    return result.values.toMutableSet()
 }
 
 fun MessageDeclaration.collectGenericsFromArgs (set: MutableSet<String>) {
@@ -202,9 +214,8 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     args.forEachIndexed { i, arg ->
         append(arg.name())
         if (arg.typeAST != null) {
-            val type = arg.type
-            val name = type?.toKotlinString(true)
-                ?: arg.typeAST.generateType(null)
+            val realName = (arg.type as? Type.UserLike)?.emitName
+            val name = arg.typeAST.generateType(realName)
             append(": ", name)
             if (i != c) {
                 append(", ")

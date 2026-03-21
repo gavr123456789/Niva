@@ -104,9 +104,19 @@ fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst
             // find real type from arguments
             val real = args.find { it.name == genericField.name }
                 ?: tok.compileError("Can't find real type for field: ${YEL}${genericField.name}${RESET} of generic type: ${YEL}${genericField.type.name}${RESET}")
-            val realType = real.keywordArg.type
+            val rawRealType = real.keywordArg.type
                 ?: real.keywordArg.token.compileError("Compiler bug: ${YEL}${real.name}${RESET} doesn't have type")
-            map[typeArg.name] = realType
+            val realTypeForGeneric = if (genericField.type is Type.NullableType && rawRealType is Type.NullableType) {
+                rawRealType.realType
+            } else {
+                rawRealType
+            }
+            if (genericField.type is Type.NullableType &&
+                (realTypeForGeneric.name == InternalTypes.Any.name || realTypeForGeneric.name == InternalTypes.Null.name)
+            ) {
+                return@forEach
+            }
+            map[typeArg.name] = realTypeForGeneric
         }
     }
     // replace typeFields to real ones
@@ -117,7 +127,11 @@ fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst
         // replace all fields of generic type
         replacerTypeIfItGeneric.fields.forEach {
             if (it.type.name == fieldName) {
-                it.type = fieldRealType
+                it.type = if (it.type is Type.NullableType) {
+                    if (fieldRealType is Type.NullableType) fieldRealType else Type.NullableType(fieldRealType)
+                } else {
+                    fieldRealType
+                }
             }
         }
     }

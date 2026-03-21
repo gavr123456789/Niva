@@ -5,7 +5,7 @@ import main.frontend.parser.types.ast.CodeBlock
 fun CodeBlock.generateCodeBlock(withTypeDeclaration: Boolean = true, putArgListInBrackets: Boolean = false) = buildString {
     // {x: Int, y: Int -> x + y}
 
-    if (isSingle) {
+    if (isSingle && !withTypeDeclaration) {
         append(";")
     }
 
