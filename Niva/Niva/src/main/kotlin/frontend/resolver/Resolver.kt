@@ -1287,6 +1287,7 @@ class Resolver(
     val infoTypesToPrint: MutableMap<Type, Boolean> = mutableMapOf(),
 
     val stack: ArrayDeque<Statement> = ArrayDeque(),
+    val resolvingErrorsDecls: ArrayDeque<MessageDeclaration> = ArrayDeque(),
 
     // signal to remember top level expressions
     var resolvingMainFile: Boolean = false,
@@ -1302,6 +1303,7 @@ class Resolver(
         typeDB.unresolvedFields.clear()
         resolvingMainFile = false
         stack.clear()
+        resolvingErrorsDecls.clear()
 //        infoTypesToPrint.clear()
         allDeclarationResolvedAlready = false
         currentArgumentNumber = -1
