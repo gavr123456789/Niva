@@ -185,7 +185,9 @@ private fun Resolver.resolveStatement(
 
             // This Identifier is Type, like Person
             // all except statement.name == type.name is bullshit here
-            if (statement.name == type?.name) {
+            val isShadowedByVar = currentScope.containsKey(statement.name) || previousScope.containsKey(statement.name)
+            val isAliasTypeRef = !isShadowedByVar && type != null && typeTable[statement.name] === type
+            if (statement.name == type?.name || isAliasTypeRef) {
                 if (statement.isInfoRepl) {
                     addPrintingInfoAboutType(type, statement.str != type.name)
                 }

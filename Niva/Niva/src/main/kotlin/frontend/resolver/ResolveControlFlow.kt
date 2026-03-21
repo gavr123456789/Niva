@@ -292,7 +292,7 @@ fun Resolver.resolveControlFlow(
             if (!thisIsNullMatching)
                 thisIsNullMatching = currentType.name == InternalTypes.Null.name
 
-            if (i == 0 && it.ifExpression is IdentifierExpr && currentTypeName == it.ifExpression.name) {
+            if (i == 0 && it.ifExpression is IdentifierExpr && (currentTypeName == it.ifExpression.name || it.ifExpression.isType)) {
                 statement.kind =
                     if (statement.kind == ControlFlowKind.Expression)
                         ControlFlowKind.ExpressionTypeMatch
@@ -662,4 +662,3 @@ fun recursiveCheckThatEveryBranchChecked(
     }
 
 }
-

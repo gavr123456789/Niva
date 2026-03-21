@@ -48,15 +48,20 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
     ifBranches.forEach {
         append("    ")
 
-        if (kind != ControlFlowKind.ExpressionTypeMatch && kind != ControlFlowKind.StatementTypeMatch) {
+        val isTypeMatch =
+            kind == ControlFlowKind.ExpressionTypeMatch ||
+                kind == ControlFlowKind.StatementTypeMatch ||
+                (it.ifExpression is IdentifierExpr && it.ifExpression.isType)
+
+        if (!isTypeMatch) {
             append(it.ifExpression.generateExpression())
             if (it.otherIfExpressions.isNotEmpty()) {
-                append(", " + it.otherIfExpressions.joinToString(", ") {x -> x.generateExpression() })
+                append(", " + it.otherIfExpressions.joinToString(", ") { x -> x.generateExpression() })
             }
         } else {
             append("is ", it.ifExpression.generateExpression())
             if (it.otherIfExpressions.isNotEmpty()) {
-                append(", is " + it.otherIfExpressions.joinToString(", is ") {x -> x.generateExpression() })
+                append(", is " + it.otherIfExpressions.joinToString(", is ") { x -> x.generateExpression() })
             }
         }
 
