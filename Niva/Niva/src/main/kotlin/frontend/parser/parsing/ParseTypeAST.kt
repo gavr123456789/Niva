@@ -204,8 +204,9 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
                 } while (match(TokenType.Comma))
                 matchAssert(TokenType.CloseParen, "closing paren in generic type expected")
 
+                val errors = checkForErrors()
                 val isNullable = match("?")
-                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable || isNullable, identifier).also {
+                return TypeAST.UserType(identifier.lexeme, typeArgumentList, isIdentifierNullable || isNullable, identifier, errors = errors).also {
                     it.isMutable = isMutableGenericParam
                 }
             }
