@@ -35,14 +35,40 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 )
 
 class ResolverTest {
+    @Test
+    fun anyCantGoInPlaceOfGeneric_OnlyTheOpposite2() {
+        val source = """
+            Int any: Any = 1
+            Int q: T = [
+              1 any: q
+            ]
+        """.trimIndent()
+        assertFails {
+            val (_, _) = resolveWithResolver(source)
+        }
+    }
 
+    @Test
+    fun anyCantGoInPlaceOfGeneric_OnlyTheOpposite() {
+        val source = """
+            type Box x: T
+            Any sas = 1
+        
+            Int q: T = [
+                q sas
+            ]
+        """.trimIndent()
+        assertFails {
+            val (_, _) = resolveWithResolver(source)
+        }
 
+    }
     @Test
     fun nullableGenericsSubtyping() {
         val source = """
             Int sas: D -> D? = sas
         """.trimIndent()
-        val (statements, resolver) = resolveWithResolver(source)
+        val (_, _) = resolveWithResolver(source)
     }
 
     @Test
@@ -55,7 +81,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
         }
     }
 
@@ -68,7 +94,7 @@ class ResolverTest {
               x = t
             ]
         """.trimIndent()
-            val (statements, resolver) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
     }
 
     @Test
@@ -85,7 +111,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
         }
     }
 
@@ -103,7 +129,7 @@ class ResolverTest {
             // it v is List(Int) not List(Strings)!!
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
         }
     }
 
@@ -118,7 +144,7 @@ class ResolverTest {
             ()makeString echo
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
         }
     }
 
@@ -141,7 +167,7 @@ class ResolverTest {
             v3 = ()nyaFromAny: v2
             v3 echo
         """.trimIndent()
-        val (statements, resolver) = resolveWithResolver(source)
+        val (_, _) = resolveWithResolver(source)
     }
     @Test
     fun globalsConstantsInScope() {
@@ -156,7 +182,7 @@ class ResolverTest {
                 qwfqwf inc inc
 
         """.trimIndent()
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 3)
     }
     @Test
@@ -170,7 +196,7 @@ class ResolverTest {
             //| Ses => []
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 1)
         }
     }
@@ -181,7 +207,7 @@ class ResolverTest {
            Unit meow: Any? -> Any = meow
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 1)
         }
 
@@ -199,7 +225,7 @@ class ResolverTest {
            
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 3)
         }
     }
@@ -212,7 +238,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 1)
         }
     }
@@ -226,7 +252,7 @@ class ResolverTest {
             ]
             
         """.trimIndent()
-        val (statements, resolver) = resolveWithResolver(source)
+        val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 2)
     }
     @Test
@@ -249,7 +275,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 2)
         }
     }
@@ -266,7 +292,7 @@ class ResolverTest {
         ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 2)
         }
     }
@@ -286,7 +312,7 @@ class ResolverTest {
             ]
         """.trimIndent()
         assertFails {
-            val (statements, resolver) = resolveWithResolver(source)
+            val (statements, _) = resolveWithResolver(source)
             assert(statements.count() == 2)
         }
     }
@@ -316,7 +342,7 @@ class ResolverTest {
 
 
         assertFails {
-            val statements = resolve(source)
+            resolve(source)
 //            assert(statements.count() == 3)
         }
     }
@@ -2558,7 +2584,7 @@ class ResolverTest {
 
         """.trimIndent()
 
-        val (x, resolver) = resolveWithResolver(source)
+        val (x, _) = resolveWithResolver(source)
         assert(x.count() ==5)
         val forVar = ((x[3] as VarDeclaration).value as MethodReference).type as Type.Lambda
         val forType = ((x[4] as VarDeclaration).value as MethodReference).type as Type.Lambda
