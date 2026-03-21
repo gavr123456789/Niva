@@ -254,7 +254,8 @@ TypeDeclVisitor
         branchType = db typesById at: branchId
         | branchType
         | null => []
-        |=> names add: branchType name
+        |=> [names add: branchType name
+             ()]
       ]
       unionNameToBranchNamesExpanded at: rootId put: names toList
     ]
@@ -525,7 +526,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     receiverFields =
       | receiverType
       | Complex => receiverType fields
-      |=> {TypeTField}
+      |=> {TypeTField}!
 
     receiverFields forEach: [
       c defineVar: it name withType: it typeT toTypeInfoDefault
