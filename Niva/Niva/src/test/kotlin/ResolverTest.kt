@@ -35,6 +35,20 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 )
 
 class ResolverTest {
+
+
+    @Test
+    fun T_Can_goInto_Any() {
+        val source = """
+            Int w: Any = [
+        
+            ]
+            Int q: T = [
+                1 w: q
+            ]
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
     @Test
     fun anyCantGoInPlaceOfGeneric_OnlyTheOpposite2() {
         val source = """
@@ -43,9 +57,7 @@ class ResolverTest {
               1 any: q
             ]
         """.trimIndent()
-        assertFails {
-            val (_, _) = resolveWithResolver(source)
-        }
+        val (_, _) = resolveWithResolver(source)
     }
 
     @Test
