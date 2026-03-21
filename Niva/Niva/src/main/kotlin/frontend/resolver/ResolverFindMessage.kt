@@ -281,8 +281,16 @@ fun Resolver.findAnyMsgType(
     }
 
     // there is a method for Any, like Any echo = [...]
-    checkForAny(selectorName, pkg, msgType)?.let {
-        return it
+    val receiverHasUnknownGeneric = when (receiverType) {
+        is Type.UnknownGenericType -> true
+        is Type.NullableType -> receiverType.realType is Type.UnknownGenericType
+        is Type.UserLike -> receiverType.typeArgumentList.any { it is Type.UnknownGenericType }
+        else -> false
+    }
+    if (!receiverHasUnknownGeneric) {
+        checkForAny(selectorName, pkg, msgType)?.let {
+            return it
+        }
     }
 
     // there is a method for T, like T echo = [...]
