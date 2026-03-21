@@ -184,13 +184,12 @@ fun Resolver.resolveMessageDeclaration(
 
         val isStaticBuilderWithoutReceiver = statement is StaticBuilderDeclaration && !statement.withReceiver
         if (!isStaticBuilderWithoutReceiver && statement !is ConstructorDeclaration) {
-            if (statement.forTypeAst.isMutable) {
-                bodyScope["this"] = copyTypeIfGenerics.copyAnyType().also {it.isMutable = true}
-            } else {
-                bodyScope["this"] = if (isNullableGeneric)
-                    Type.NullableType(copyTypeIfGenerics)
-                else copyTypeIfGenerics
+            val receiverForBody = copyTypeIfGenerics.copyAnyType().also {
+                if (statement.forTypeAst.isMutable) it.isMutable = true
             }
+            bodyScope["this"] = if (isNullableGeneric)
+                Type.NullableType(receiverForBody)
+            else receiverForBody
         }
 
         // args from kw or constructor

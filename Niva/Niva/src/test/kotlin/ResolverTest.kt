@@ -38,6 +38,14 @@ class ResolverTest {
 
 
     @Test
+    fun nullableGenericsSubtyping() {
+        val source = """
+            Int sas: D -> D? = sas
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+    }
+
+    @Test
     fun checkForGenericsInArgumentsDeeply() {
         val source = """
             type Box t: [Int -> T]// ??? WHERE "Please declare missing generic arguments" ERROR

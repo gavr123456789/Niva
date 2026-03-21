@@ -501,6 +501,9 @@ sealed class Type(
         realType.pkg,
         createNullableAnyProtocols(realType)
     ) {
+        override fun toString(): String {
+            return "$realType?"
+        }
         init {
             if (realType is NullableType) {
                 throw Exception("Compiler but $realType boxing into Nullable, but its nullable already")
@@ -1000,7 +1003,11 @@ fun TypeAST.toType(
                     copy.fields.forEachIndexed { i, field ->
                         val fieldType = letterToTypeMap[field.type.name]
                         if (fieldType != null) {
-                            field.type = fieldType
+                            field.type = if (field.type is Type.NullableType) {
+                                if (fieldType is Type.NullableType) fieldType else Type.NullableType(fieldType)
+                            } else {
+                                fieldType
+                            }
                         }
                     }
                     val result =  copy.also {
