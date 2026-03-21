@@ -125,15 +125,16 @@ fun compare2Types(
         return isReturnTypesEqual
     }
 
-    // Any should not accept unresolved generic as a concrete value
-    if ((type1OrChildOf2 is Type.InternalType && type1OrChildOf2.name == InternalTypes.Any.name) &&
-        (type2 is Type.UnknownGenericType || (type2 is Type.NullableType && type2.realType is Type.UnknownGenericType))
-    ) {
-        return false
-    }
-
     // one of the types is top type Any
-    if (type1OrChildOf2.name == InternalTypes.Any.name || type2.name == InternalTypes.Any.name) {
+    val type1IsAny = type1OrChildOf2.name == InternalTypes.Any.name
+    val type2IsAny = type2.name == InternalTypes.Any.name
+    if (type1IsAny || type2IsAny) {
+        val expectedIsGeneric =
+            type1OrChildOf2 is Type.UnknownGenericType ||
+                (type1OrChildOf2 is Type.NullableType && type1OrChildOf2.realType is Type.UnknownGenericType)
+        if (type2IsAny && expectedIsGeneric) {
+            return false
+        }
         return true
     }
     if (type1OrChildOf2.name == InternalTypes.Nothing.name || type2.name == InternalTypes.Nothing.name) {
