@@ -1212,34 +1212,43 @@ fun SomeTypeDeclaration.toType(
 
     fun getAllGenericTypesFromFields(
         fields2: List<KeywordArg>,
-        fields: List<TypeFieldAST>,
         setOfCheckedFields: MutableSet<Type>
     ): MutableList<Type> {
-        val result2 = mutableListOf<Type>()
-
-        fields2.forEachIndexed { i, it ->
-            val type = it.type
+        fun collectUnknownGenericsFromType(type: Type): MutableList<Type> {
+            val result = mutableListOf<Type>()
             val nullUnpacked = type.unpackNull()
-
-            if (nullUnpacked is Type.UserLike) {
-                val unknownGenericTypes = mutableListOf<Type.UserLike>()
-                nullUnpacked.typeArgumentList.forEach {
-                    if (it.name.isGeneric()) {
-                        unknownGenericTypes.add(Type.UnknownGenericType(name = it.name))
+            if (nullUnpacked.name.isGeneric() && nullUnpacked !is Type.UnknownGenericType) {
+                result.add(Type.UnknownGenericType(nullUnpacked.name))
+            }
+            when (nullUnpacked) {
+                is Type.UnknownGenericType -> result.add(nullUnpacked)
+                is Type.UserLike -> {
+                    nullUnpacked.typeArgumentList.forEach { typeArg ->
+                        result.addAll(collectUnknownGenericsFromType(typeArg))
+                    }
+                    if (nullUnpacked !in setOfCheckedFields && nullUnpacked.fields.isNotEmpty()) {
+                        setOfCheckedFields.add(nullUnpacked)
+                        nullUnpacked.fields.forEach { field ->
+                            result.addAll(collectUnknownGenericsFromType(field.type))
+                        }
                     }
                 }
-
-                if (nullUnpacked is Type.UnknownGenericType)
-                    result2.add(type)
-
-                result2.addAll(unknownGenericTypes)
-
-                if (nullUnpacked !in setOfCheckedFields && nullUnpacked.fields.isNotEmpty()) {
-                    setOfCheckedFields.add(nullUnpacked)
-                    result2.addAll(getAllGenericTypesFromFields(nullUnpacked.fields, fields, setOfCheckedFields))
+                is Type.Lambda -> {
+                    nullUnpacked.extensionOfType?.let { result.addAll(collectUnknownGenericsFromType(it)) }
+                    nullUnpacked.args.forEach { arg ->
+                        result.addAll(collectUnknownGenericsFromType(arg.type))
+                    }
+                    result.addAll(collectUnknownGenericsFromType(nullUnpacked.returnType))
                 }
+                is Type.NullableType -> result.addAll(collectUnknownGenericsFromType(nullUnpacked.realType))
+                else -> {}
             }
+            return result
+        }
 
+        val result2 = mutableListOf<Type>()
+        fields2.forEach { field ->
+            result2.addAll(collectUnknownGenericsFromType(field.type))
         }
         return result2
     }
@@ -1247,7 +1256,7 @@ fun SomeTypeDeclaration.toType(
     val genericsDeclarated = fieldsTyped.asSequence()
         .filter { it.type is Type.UnknownGenericType }
         .map { it.type }
-    val genericsFromFieldsTypes = getAllGenericTypesFromFields(fieldsTyped, fields, mutableSetOf())
+    val genericsFromFieldsTypes = getAllGenericTypesFromFields(fieldsTyped, mutableSetOf())
 
 
     val genericsFromFieldsAndDecl = (genericsDeclarated + genericsFromFieldsTypes).toMutableList()

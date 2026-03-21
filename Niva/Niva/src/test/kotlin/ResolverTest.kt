@@ -36,6 +36,21 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+
+    @Test
+    fun checkForGenericsInArgumentsDeeply() {
+        val source = """
+            type Box t: [Int -> T]// ??? WHERE "Please declare missing generic arguments" ERROR
+            
+            Box sas = [
+              x = t
+            ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+        }
+    }
+
     @Test
     fun generiicsss() {
         val source = """
