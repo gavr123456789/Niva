@@ -180,6 +180,22 @@ fun Resolver.resolveUnaryMsg(
 
     val (isGetter, field) = checkForGetter()
     if (isGetter && !hasUnaryMethodOverride()) {
+        if (field!!.type is Type.UnresolvedType) {
+            val parentType = receiverType as? Type.UserLike
+            val decl = parentType?.typeDeclaration
+            val declField = decl?.fields?.firstOrNull { it.name == field.name }
+            val fieldAst = declField?.typeAST
+            if (fieldAst != null) {
+                val resolvedType = fieldAst.toType(typeDB, typeTable)
+                field.type = resolvedType
+                declField.type = resolvedType
+                if (parentType is Type.UnionRootType) {
+                    parentType.branches.forEach { branch ->
+                        branch.fields.find { it.name == field.name }?.let { it.type = resolvedType }
+                    }
+                }
+            }
+        }
         statement.kind = UnaryMsgKind.Getter
         val result = field!!.type
         statement.type = result

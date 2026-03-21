@@ -182,15 +182,19 @@ fun Resolver.resolveMessage(
 
         if (decl?.returnTypeAST?.errors?.isEmpty() == true && decl.stackOfPossibleErrors.isEmpty()) {
             // this means the errors were not resolved yet
-            val savedResolving = this.resolvingMessageDeclaration
-            val savedLevel = currentLevel
-            currentLevel++
-            this.resolvingMessageDeclaration = decl
-            try {
-                resolveMessageDeclaration(decl, true, previousScope, false)
-            } finally {
-                currentLevel = savedLevel
-                this.resolvingMessageDeclaration = savedResolving
+            if (!resolvingErrorsDecls.contains(decl)) {
+                val savedResolving = this.resolvingMessageDeclaration
+                val savedLevel = currentLevel
+                currentLevel++
+                this.resolvingMessageDeclaration = decl
+                resolvingErrorsDecls.addLast(decl)
+                try {
+                    resolveMessageDeclaration(decl, true, previousScope, false)
+                } finally {
+                    resolvingErrorsDecls.removeLast()
+                    currentLevel = savedLevel
+                    this.resolvingMessageDeclaration = savedResolving
+                }
             }
         }
     }

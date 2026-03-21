@@ -130,7 +130,51 @@ fun Resolver.resolveMessageDeclaration(
     unResolvedMessageDeclarations.remove(currentPackageName, statement)
     statement.forType = copyTypeIfGenerics
 
-
+    var hasUnresolvedArgType = false
+    fun resolveArgType(astType: TypeAST): Type? {
+        return try {
+            astType.toType(typeDB, typeTable, resolver = this)
+        } catch (e: CompilerError) {
+            if (e.message?.contains("Can't find") == true) {
+                hasUnresolvedArgType = true
+                null
+            } else {
+                throw e
+            }
+        }
+    }
+    fun resolveKeywordArgsTypes(st: MessageDeclarationKeyword) {
+        st.args.forEach {
+            if (it.typeAST == null) {
+                st.token.compileError("Can't parse type for argument ${WHITE}${it.name}")
+            }
+            if (it.type == null) {
+                val typeFromAst = resolveArgType(it.typeAST)
+                if (typeFromAst != null) it.type = typeFromAst
+            }
+        }
+    }
+    fun resolveBinaryArgType(st: MessageDeclarationBinary) {
+        val arg = st.arg
+        if (arg.typeAST == null) {
+            st.token.compileError("Cant infer type of argument: `$YEL${arg.name}$RED` for binary message declaration `${YEL}${st.forTypeAst.name} ${CYAN}${st.name}`")
+        }
+        if (arg.type == null) {
+            val typeFromAst = resolveArgType(arg.typeAST)
+            if (typeFromAst != null) arg.type = typeFromAst
+        }
+    }
+    when (statement) {
+        is MessageDeclarationKeyword -> resolveKeywordArgsTypes(statement)
+        is MessageDeclarationBinary -> resolveBinaryArgType(statement)
+        is MessageDeclarationUnary -> {}
+        is ConstructorDeclaration -> when (val msgDecl = statement.msgDeclaration) {
+            is MessageDeclarationKeyword -> resolveKeywordArgsTypes(msgDecl)
+            is MessageDeclarationBinary -> resolveBinaryArgType(msgDecl)
+            else -> {}
+        }
+        is StaticBuilderDeclaration -> resolveKeywordArgsTypes(statement.msgDeclaration)
+    }
     val bodyScope = mutableMapOf<String, Type>()
     val resolveBody = {
         // very stupid hack, but Im lazy
@@ -157,7 +201,7 @@ fun Resolver.resolveMessageDeclaration(
                 }
                 val astType = it.typeAST
 
-                val typeFromAst = astType.toType(typeDB, typeTable, resolver = this)
+                val typeFromAst = it.type ?: astType.toType(typeDB, typeTable, resolver = this)
                 it.type = typeFromAst
                 if (typeFromAst is Type.InternalType && typeFromAst.isMutable) {
                     astType.token.compileError("Can't make internal type mutable: ${RED}mut ${YEL}$typeFromAst")
@@ -166,11 +210,13 @@ fun Resolver.resolveMessageDeclaration(
                 bodyScope[it.localName ?: it.name] = typeFromAst
 
                 if (typeFromAst is Type.UnknownGenericType) {
-                    st.typeArgs.add(typeFromAst.name)
+                    if (!st.typeArgs.contains(typeFromAst.name)) st.typeArgs.add(typeFromAst.name)
                 }
                 // add generic params to scope
                 if (typeFromAst is Type.UserLike && typeFromAst.typeArgumentList.isNotEmpty()) {
-                    st.typeArgs.addAll(typeFromAst.typeArgumentList.map { typeArg -> typeArg.name })
+                    typeFromAst.typeArgumentList.forEach { typeArg ->
+                        if (!st.typeArgs.contains(typeArg.name)) st.typeArgs.add(typeArg.name)
+                    }
                     // T == T
                     if (typeFromAst.name == it.typeAST.name) {
                         bodyScope[it.name] = typeFromAst
@@ -468,6 +514,15 @@ fun Resolver.resolveMessageDeclaration(
             } else
                 throw e
         }
+    }
+
+    if (hasUnresolvedArgType) {
+        if (statement.returnType == null) {
+            statement.returnType = Resolver.defaultTypes[InternalTypes.Unit]!!
+        }
+        unResolvedMessageDeclarations.add(currentPackageName, statement)
+        currentLevel--
+        return true
     }
 
 

@@ -296,7 +296,11 @@ fun Resolver.resolveWithBackTracking(
                     it.tok.compileError("Can't find the arg's type $YEL${it.typeAST ?: ""}$RESET of the method declaration: `${CYAN}${decl}${RESET}`")
                 }
             }
-
+            if (decl is MessageDeclarationBinary) {
+                if (decl.arg.type == null) {
+                    decl.arg.tok.compileError("Can't find the arg's type $YEL${decl.arg.typeAST ?: ""}$RESET of the method declaration: `${CYAN}${decl}${RESET}`")
+                }
+            }
             decl.token.compileError("Method `${CYAN}${decl}${RESET}` for unresolved type: `${YEL}${decl.forTypeAst.name}${RESET}`")
         }
     }
