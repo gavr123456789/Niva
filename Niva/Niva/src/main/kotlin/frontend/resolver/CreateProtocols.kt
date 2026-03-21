@@ -865,6 +865,23 @@ fun createListProtocols(
                     ```
                 """.trimIndent()
             ),
+            createKeyword(
+                KeywordArg(
+                    "sortedWith",
+                    Type.Lambda(
+                        mutableListOf(KeywordArg("a", itType), KeywordArg("b", itType)),
+                        intType
+                    )
+                ),
+                currentType,
+                """
+                    Sorts collection with custom comparator
+                    ```Scala
+                    type Person age: Int
+                    {(Person age: 456) (Person age: 123)} sortedWith: [a, b -> a age > b age ifTrue: [1] ifFalse: [-1] ]
+                    ```
+                """.trimIndent()
+            ),
 
 
             createKeyword(
