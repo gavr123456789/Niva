@@ -8,6 +8,9 @@ import main.utils.RESET
 import main.utils.YEL
 
 fun Resolver.resolveReturnStatement(statement: ReturnStatement, previousAndCurrentScope: MutableMap<String, Type>) {
+    if (resolvingMessageDeclaration == null) {
+        statement.token.compileError("Return(^) is not allowed at the top level")
+    }
     val isInsideLambdaCodeBlock = stack.any { it is CodeBlock && !it.isStatement }
     if (!isInsideLambdaCodeBlock) {
         wasThereTopLevelReturn = true
