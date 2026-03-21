@@ -179,7 +179,8 @@ fun Resolver.resolveCodeBlock(
         val type =
             it.type ?:
             it.token.compileError("Compiler bug: can't infer type of $WHITE${it.name}$RESET codeblock parameter")
-        previousAndCurrentScope.putIfAbsent(it.name, type)
+        // codeblock args must shadow outer scope values
+        previousAndCurrentScope[it.name] = type
     }
 
     currentLevel++

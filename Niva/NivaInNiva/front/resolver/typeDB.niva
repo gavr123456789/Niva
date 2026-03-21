@@ -189,6 +189,7 @@ extend TyperDB [
         |=> [
           nestedLeaves = this unionLeavesById: branchId visited: visited
           leaves addAll: nestedLeaves
+          ()
         ]
       ]
       leaves

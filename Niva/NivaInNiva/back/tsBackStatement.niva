@@ -136,7 +136,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         receiverFields =
             | receiverType
             | Complex => [receiverType fields]
-            |=> {TypeTField}
+            |=> {TypeTField}!
 
         suffix = name substringAfter: "__"
         hasSuffix = suffix != name

@@ -36,7 +36,23 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
-
+    @Test
+    fun resolverGoesBRRR() {
+        val source = """
+             String myCustomMessage = "heyo" echo
+            
+            Int doStuff: [Int -> Unit] = doStuff do: .
+            
+            Unit meow = [
+                v = "12"
+                // v IS STRING, not INT
+                3 doStuff: [v: Int -> v myCustomMessage]
+            ]
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+        }
+    }
 
 
     @Test
