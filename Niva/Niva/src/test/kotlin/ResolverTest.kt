@@ -37,6 +37,18 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 class ResolverTest {
 
     @Test
+    fun generiicsss() {
+        val source = """
+            type Box t: T
+            
+            Box(T) sas = [
+              x = t
+            ]
+        """.trimIndent()
+            val (statements, resolver) = resolveWithResolver(source)
+    }
+
+    @Test
     fun resolverGoesBRRR() {
         val source = """
              String myCustomMessage = "heyo" echo
@@ -53,7 +65,6 @@ class ResolverTest {
             val (statements, resolver) = resolveWithResolver(source)
         }
     }
-
 
     @Test
     fun unificationBugMehhhh() {
