@@ -104,8 +104,16 @@ fun Resolver.resolveCollection(
 
 }
 
-fun Resolver.findNearestVarDeclInStack(): VarDeclaration? =
-    stack.reversed().find { it is VarDeclaration } as VarDeclaration?
+fun Resolver.findNearestVarDeclInStack(): VarDeclaration? {
+    stack.reversed().forEach { st ->
+        when (st) {
+            is CodeBlock -> if (!st.isStatement) return null
+            is VarDeclaration -> return st
+            else -> {}
+        }
+    }
+    return null
+}
 
 fun Resolver.findNearestCodeBlockInStack(): CodeBlock? =
     stack.reversed().find { it is CodeBlock } as CodeBlock?
