@@ -491,10 +491,19 @@ fun Resolver.resolve(
     }
 
     // Check for unresolved generics in local scope
+    val allowedGenericNames = collectAllowedGenericNames(previousScope, resolvingMessageDeclaration)
     currentScope.forEach { (name, type) ->
-        if (type.hasUnresolvedGenerics()) {
+        if (type.containsUnresolvedType()) {
             val tok = currentScopeTokens[name] ?: createFakeToken()
             tok.compileError("Type of $YEL$name$RESET remains unresolved: $YEL$type$RESET. Send a message to it or specify the type")
+        } else if (type.hasUnresolvedGenerics()) {
+            val unresolvedNames = mutableSetOf<String>()
+            type.collectUnknownGenericNames(unresolvedNames)
+            val hasOnlyAllowedGenerics = unresolvedNames.isNotEmpty() && unresolvedNames.all { it in allowedGenericNames }
+            if (!hasOnlyAllowedGenerics) {
+                val tok = currentScopeTokens[name] ?: createFakeToken()
+                tok.compileError("Type of $YEL$name$RESET remains unresolved: $YEL$type$RESET. Send a message to it or specify the type")
+            }
         }
     }
 
@@ -519,6 +528,40 @@ private fun Type.hasUnresolvedGenerics(): Boolean = when (this) {
         unresolved.isNotEmpty()
     }
     else -> false
+}
+
+private fun Type.containsUnresolvedType(): Boolean = when (this) {
+    is Type.UnresolvedType -> true
+    is Type.NullableType -> realType.containsUnresolvedType()
+    is Type.UserLike -> typeArgumentList.any { it.containsUnresolvedType() }
+    is Type.Lambda -> args.any { it.type.containsUnresolvedType() } || returnType.containsUnresolvedType()
+    else -> false
+}
+
+private fun Type.collectUnknownGenericNames(out: MutableSet<String>) {
+    when (this) {
+        is Type.UnknownGenericType -> out.add(name)
+        is Type.NullableType -> realType.collectUnknownGenericNames(out)
+        is Type.UserLike -> typeArgumentList.forEach { it.collectUnknownGenericNames(out) }
+        is Type.Lambda -> {
+            args.forEach { it.type.collectUnknownGenericNames(out) }
+            returnType.collectUnknownGenericNames(out)
+        }
+        else -> {}
+    }
+}
+
+private fun collectAllowedGenericNames(
+    previousScope: Map<String, Type>,
+    resolvingMessageDeclaration: MessageDeclaration?
+): Set<String> {
+    val allowed = mutableSetOf<String>()
+    previousScope.values.forEach { it.collectUnknownGenericNames(allowed) }
+    resolvingMessageDeclaration?.let { decl ->
+        decl.typeArgs.forEach { allowed.add(it) }
+        decl.forType?.collectUnknownGenericNames(allowed)
+    }
+    return allowed
 }
 
 fun Resolver.resolveExpressionInBrackets(
