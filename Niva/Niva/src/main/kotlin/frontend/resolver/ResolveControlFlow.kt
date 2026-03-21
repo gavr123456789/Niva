@@ -452,6 +452,18 @@ fun Resolver.resolveControlFlow(
                 elseReturnTypeMaybe = elseReturnType
 
                 // we have else branch here
+                val isSameTypes = compare2Types(
+                    firstBranchReturnType2,
+                    elseReturnType,
+                    lastExpr.token,
+                    unpackNull = true,
+                    compareParentsOfBothTypes = true,
+                    isOut = true,
+                    nullIsFirstOrSecond = true
+                )
+                if (!isSameTypes) {
+                    lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")
+                }
                 val generalRoot = findGeneralRoot(firstBranchReturnType2, elseReturnType)
                 if (generalRoot == null) {
                     lastExpr.token.compileError("In switch Expression return type of else branch and main branches are not the same($YEL$firstBranchReturnType2$RESET != $YEL$elseReturnType$RESET)")

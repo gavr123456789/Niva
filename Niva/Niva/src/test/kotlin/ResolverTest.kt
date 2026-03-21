@@ -36,6 +36,28 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+
+
+
+    @Test
+    fun unificationBugMehhhh() {
+        val source = """
+            union Meow = None | Value v: List(Int)
+        
+            v::Meow? = null
+            v2::List(String) = v unpack: [
+                |it
+                |Value => it v
+                |=> {}
+            ] or: {}
+            // it v is List(Int) not List(Strings)!!
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+        }
+    }
+
+
     @Test
     fun returnAlwaysChecked() {
         val source = """

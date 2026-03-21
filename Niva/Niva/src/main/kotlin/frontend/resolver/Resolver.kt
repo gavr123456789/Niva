@@ -540,6 +540,20 @@ private val namesAndPkgEqual = {t1: Type, t2: Type ->
 // so we compare only name and pkg instead of toSting
 fun findGeneralRoot(type1: Type, type2: Type): Type? {
     if (type1 == type2) return type1
+    fun Type.unknownGenericCount(): Int = when (this) {
+        is Type.UnknownGenericType -> 1
+        is Type.NullableType -> realType.unknownGenericCount()
+        is Type.UserLike -> typeArgumentList.sumOf { it.unknownGenericCount() }
+        is Type.Lambda -> args.sumOf { it.type.unknownGenericCount() } + returnType.unknownGenericCount()
+        else -> 0
+    }
+    if (type1 is Type.UserLike && type2 is Type.UserLike && namesAndPkgEqual(type1, type2)) {
+        val u1 = type1.unknownGenericCount()
+        val u2 = type2.unknownGenericCount()
+        if (u1 != u2) {
+            return if (u1 < u2) type1 else type2
+        }
+    }
     if (namesAndPkgEqual(type1, type2)) return type1
     /// check for nothing
     val firstIsNothing = type1.name == "Nothing"

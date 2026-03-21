@@ -246,6 +246,29 @@ fun Resolver.resolveKeywordMsg(
     resolveKwArgsGenerics(statement, argsTypesFromDb, fromReceiverAndfromArgsTable)
     // stupid hack to make generics like Pair(T, G) to T, T, when the types are the same
 
+    // update collection literals for generic args once generics are resolved
+    if (argsTypesFromDb.isNotEmpty()) {
+        statement.args.forEachIndexed { i, kwArg ->
+            val argTypeFromDb = argsTypesFromDb.getOrNull(i)
+            if (argTypeFromDb is Type.UnknownGenericType) {
+                val resolvedArgType = fromReceiverAndfromArgsTable[argTypeFromDb.name]
+                val argExpr = kwArg.keywordArg
+                val currentArgType = argExpr.type
+                val isCollectionLiteral = argExpr is CollectionAst || argExpr is MapCollection
+                val hasUnknownGenerics =
+                    currentArgType is Type.UserLike && currentArgType.typeArgumentList.any { it is Type.UnknownGenericType }
+
+                if (resolvedArgType is Type.UserLike &&
+                    resolvedArgType.typeArgumentList.none { it is Type.UnknownGenericType } &&
+                    isCollectionLiteral &&
+                    hasUnknownGenerics
+                ) {
+                    updateCollectionTypes(argExpr, resolvedArgType)
+                }
+            }
+        }
+    }
+
     if (fromReceiverAndfromArgsTable.count() == 1){
         val returnType = kwFromDB?.returnType
         if (returnType is Type.UserLike && returnType.typeArgumentList.count() == 2)
@@ -749,10 +772,20 @@ fun Resolver.resolveKwArgsGenerics(
 
 typealias GenericTable = MutableMap<String, Type>
 
+private fun Type.containsUnknownGeneric(): Boolean = when (this) {
+    is Type.UnknownGenericType -> true
+    is Type.NullableType -> realType.containsUnknownGeneric()
+    is Type.UserLike -> typeArgumentList.any { it.containsUnknownGeneric() }
+    is Type.Lambda -> args.any { it.type.containsUnknownGeneric() } || returnType.containsUnknownGeneric()
+    else -> false
+}
+
 fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Package, customPlaceInCode: String?) {
     val alreadyAddedType = this[str]
 
     if (alreadyAddedType != null) {
+        val existingHasUnknown = alreadyAddedType.containsUnknownGeneric()
+        val newHasUnknown = type.containsUnknownGeneric()
         val sameTypes = compare2Types(type, alreadyAddedType, errorTok, nullIsFirstOrSecond = true, compareParentsOfBothTypes = true, isOut = true)
 
         // same letter gets different type
@@ -764,6 +797,14 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
 //            if (!GlobalVariables.isLspMode)
             errorTok.compileError("Generic unification failed, generic type $str was already resolved to $alreadyAddedType but now its $type$place")
         } else {
+            if (existingHasUnknown && !newHasUnknown) {
+                this[str] = type
+                pkg.addImport(type.pkg)
+                return
+            }
+            if (!existingHasUnknown && newHasUnknown) {
+                return
+            }
             // T was already added, but maybe it's a different type from same union
             // then replace added type to this union
             // so x ifTrue: [Red] ifFalse: [Blue] will be resolved to Color
