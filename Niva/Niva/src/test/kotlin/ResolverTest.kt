@@ -28,6 +28,8 @@ fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
     return Pair(resolved, resolver)
 }
 
+
+
 private fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
     statements = statements.toMutableList(),
@@ -40,7 +42,7 @@ class ResolverTest {
     @Test
     fun T_Can_goInto_Any() {
         val source = """
-            Int w: Any = [
+            Int w: Any? = [
         
             ]
             Int q: T = [
@@ -48,6 +50,21 @@ class ResolverTest {
             ]
         """.trimIndent()
         val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
+    fun genericCantGoIntoNonNullableAny() {
+        val source = """
+            Int w: Any = [
+        
+            ]
+            Int q: T = [
+                1 w: q
+            ]
+        """.trimIndent()
+        assertFails {
+            val (_, _) = resolveWithResolver(source)
+        }
     }
     @Test
     fun anyCantGoInPlaceOfGeneric_OnlyTheOpposite2() {

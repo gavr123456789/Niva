@@ -2,9 +2,7 @@
 
 package frontend.resolver
 
-import com.sun.tools.javac.tree.TreeInfo.args
 import frontend.parser.types.ast.KeyPragma
-import frontend.resolver.add
 import main.codogenjs.EMIT_JS_PRAGMA
 import main.codogenjs.RENAME_JS_PRAGMA
 import main.frontend.meta.Position
@@ -529,6 +527,7 @@ fun createAnyProtocols(
     stringType: Type.InternalType
 
 ): MutableMap<String, Protocol> {
+    val nullableAny = Type.NullableType(any)
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -538,8 +537,8 @@ fun createAnyProtocols(
 
             ),
         binaryMsgs = mutableMapOf(
-            createBinary("==", any, boolType),
-            createBinary("!=", any, boolType),
+            createBinary("==", nullableAny, boolType),
+            createBinary("!=", nullableAny, boolType),
         ),
         keywordMsgs = mutableMapOf(),
     )
