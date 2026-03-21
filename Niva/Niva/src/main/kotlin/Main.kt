@@ -16,10 +16,10 @@ import utils.testingLS
 fun main(args: Array<String>) {
 
 
-        val args = arrayOf("build","")
+//        val args = arrayOf("build","")
 //        testingLS()
-//    if (help(args))
-//        return
+    if (help(args))
+        return
     run(args)
 
 }
