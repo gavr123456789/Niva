@@ -38,6 +38,16 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+    @Test
+    fun callOnNullable() {
+        val source = """
+            v::Int? = 12
+            v inc
+        """.trimIndent()
+        assertFails {
+            val (_, _) = resolveWithResolver(source)
+        }
+    }
 
     @Test
     fun T_Can_goInto_Any() {
