@@ -2,6 +2,7 @@
 
 // type itself + number of flags
 type TypeInfo t: NivaType isMut: Bool listOfErrors: List::NivaType
+
 extend TypeInfo [
   on toString =
     t toString +

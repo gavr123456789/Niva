@@ -36,10 +36,41 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+    @Test
+    fun returnAlwaysChecked() {
+        val source = """
+            Unit makeString -> String = [
+                1
+            ]
+            
+            ()makeString echo
+        """.trimIndent()
+        assertFails {
+            val (statements, resolver) = resolveWithResolver(source)
+        }
+    }
 
 
-
-
+    @Test
+    fun matchOnAlias() {
+        val source = """
+            type Meow v: String
+            type Nya = Meow
+        
+            Unit panic = Error throwWithMessage: "Explicit Panic", orPANIC
+        
+            Unit nyaFromAny: Any -> Nya =
+            | nyaFromAny
+            | Nya => nyaFromAny
+            |=> ()panic
+        
+            v::Nya = Meow v: "heyo"
+            v2::Any = v
+            v3 = ()nyaFromAny: v2
+            v3 echo
+        """.trimIndent()
+        val (statements, resolver) = resolveWithResolver(source)
+    }
     @Test
     fun globalsConstantsInScope() {
         val source = """

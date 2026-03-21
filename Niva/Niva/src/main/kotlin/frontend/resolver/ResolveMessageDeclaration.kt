@@ -385,13 +385,16 @@ fun Resolver.resolveMessageDeclaration(
                 statement.token.compileError("Return(^) used inside codeblock, but there is no return at the top level")
             }
         }
-        if (statement.body.isNotEmpty()) {
+        val lastStatementIsNothingType = if (statement.body.isNotEmpty()) {
             val last = statement.body.last()
-            val lastStatementIsNothingType = last is Expression && last.type?.name == InternalTypes.Nothing.name
-            if (!lastStatementIsNothingType) {
-               checkThatTypeGenericsResolvable()
-            }
+            last is Expression && last.type?.name == InternalTypes.Nothing.name
         } else {
+            false
+        }
+        if (statement.body.isNotEmpty() && !lastStatementIsNothingType) {
+            checkThatTypeGenericsResolvable()
+        }
+        if (!statement.isSingleExpression && !lastStatementIsNothingType) {
             checkThatReturnTypesMatch()
         }
 
