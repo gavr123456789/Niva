@@ -47,6 +47,21 @@ import kotlin.test.assertTrue
 class ParserTest {
 
     @Test
+    fun sas() {
+        val source = """
+                transform do: |.
+                |A1 => [A1 v: "nya" + .v]
+                |B1 => 12
+                |D1 => D1 v: 12
+                |C1 => .
+
+
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+    }
+
+    @Test
     fun parseUnitExprBeforeDeclaration() {
         val source = """
 Environment dont_construct: ()
