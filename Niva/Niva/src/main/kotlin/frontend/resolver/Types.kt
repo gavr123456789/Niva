@@ -1011,8 +1011,12 @@ fun TypeAST.toType(
                         else
                             it
                     }
-                    validateAstTypeHasGenericsDeclared(result)
-                    return result
+                    val resultWithErrors = if (this.errors != null)
+                        result.copyAndAddErrors(getRealErrorsTypes(typeTable))
+                    else
+                        result
+                    validateAstTypeHasGenericsDeclared(resultWithErrors)
+                    return resultWithErrors
                 } else {
                     this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
                 }
