@@ -6,12 +6,11 @@ import frontend.parser.types.ast.KeyPragma
 import frontend.parser.types.ast.Pragma
 import frontend.parser.types.ast.SingleWordPragma
 import main.codogen.Pragmas
-
+import main.codogen.replaceCollectionWithMutable
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
-import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.*
 
 

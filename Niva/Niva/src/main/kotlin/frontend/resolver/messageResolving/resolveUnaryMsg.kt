@@ -3,6 +3,7 @@ package main.frontend.resolver.messageResolving
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.parser.types.ast.SingleWordPragma
 import frontend.resolver.*
+import main.codogen.replaceCollectionWithMutable
 
 import main.utils.CYAN
 import main.utils.RESET
@@ -24,7 +25,6 @@ import main.frontend.parser.types.ast.UnaryMsgKind
 import main.frontend.resolver.findAnyMethod
 import main.frontend.resolver.findAnyMsgType
 import main.frontend.resolver.findStaticMessageType
-import main.frontend.typer.replaceCollectionWithMutable
 import kotlin.Pair
 
 fun Resolver.resolveUnaryMsg(
@@ -197,7 +197,7 @@ fun Resolver.resolveUnaryMsg(
             }
         }
         statement.kind = UnaryMsgKind.Getter
-        val result = field!!.type
+        val result = field.type
         statement.type = result
         return Pair(result, null)
     }

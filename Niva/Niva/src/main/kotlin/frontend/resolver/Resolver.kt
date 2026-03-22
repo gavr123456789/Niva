@@ -7,12 +7,12 @@ import frontend.resolver.Type.Union
 import frontend.resolver.messageResolving.resolveCodeBlock
 import languageServer.devModeSetInlineRepl
 import main.codogen.GeneratorKt
+import main.codogen.replaceCollectionWithMutable
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.*
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
-import main.frontend.typer.replaceCollectionWithMutable
 import main.frontend.typer.resolveDeclarations
 import main.frontend.typer.resolveDestruction
 import main.frontend.typer.resolveVarDeclaration

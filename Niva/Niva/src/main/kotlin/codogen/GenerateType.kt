@@ -3,6 +3,14 @@ package main.codogen
 import main.frontend.parser.types.ast.TypeAST
 
 
+fun replaceCollectionWithMutable(name: String) = when(name) {
+    "List" -> "MutableList"
+    "Set" -> "MutableSet"
+    "Map" -> "MutableMap"
+    else -> name
+}
+
+
 fun TypeAST.generateType(
     realName: String?,
     generateGeneric: Boolean = true,
@@ -12,7 +20,9 @@ fun TypeAST.generateType(
      when (this@generateType) {
         is TypeAST.InternalType -> append(name)
         is TypeAST.UserType -> {
-            append(realName ?: names.joinToString("."))
+            val baseName = realName ?: names.joinToString(".")
+            val finalName = if (isMutable) replaceCollectionWithMutable(baseName) else baseName
+            append(finalName)
             if (generateGeneric && typeArgumentList.isNotEmpty()) {
                 append("<")
                 val renderedArgs = typeArgumentList.asSequence().map { it.generateType(null) }.toMutableList()

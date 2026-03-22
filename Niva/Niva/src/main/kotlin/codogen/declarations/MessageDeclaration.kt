@@ -7,7 +7,6 @@ import frontend.resolver.isCollection
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
-import main.frontend.typer.replaceCollectionWithMutable
 import main.utils.appendnl
 import main.utils.isGeneric
 
@@ -173,7 +172,8 @@ fun MessageDeclarationBinary.generateBinaryDeclaration(isStatic: Boolean = false
 
     // args
     if (arg.typeAST != null) {
-        append(": ", arg.typeAST.name)
+        val realName = (arg.type as? Type.UserLike)?.emitName
+        append(": ", arg.typeAST.generateType(realName))
     }
 
     pragmas.addInvisibleArgsToMethodDeclaration(listOf(arg), this)
