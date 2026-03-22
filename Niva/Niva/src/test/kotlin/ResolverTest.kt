@@ -64,16 +64,16 @@ class ResolverTest {
         val (_, _) = resolveWithResolver(source)
     }
 
-//    @Test
-//    fun qwf() {
-//        val source = """
-//            type Cell v: V?
-//            Cell(V) meow -> Cell(V) = Cell v: this
-//        """.trimIndent()
+    @Test
+    fun qwf() {
+        val source = """
+            type Cell v: V?
+            Cell(V) meow -> Cell(V) = Cell v: this
+        """.trimIndent()
 //        assertFails {
-//            val (_, _) = resolveWithResolver(source)
+            val (_, _) = resolveWithResolver(source)
 //        }
-//    }
+    }
 
     @Test
     fun simpleGenericGet() {
