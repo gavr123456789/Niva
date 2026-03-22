@@ -190,7 +190,7 @@ fun Resolver.resolveVarDeclaration(
         typeForScope is Type.UserLike &&
         run {
             val unresolvedGenerics = mutableSetOf<Type.UnknownGenericType>()
-            typeForScope.collectGenericParamsRecursivelyFRFR(unresolvedGenerics)
+            typeForScope.collectGenericParamsRecursively(unresolvedGenerics)
             unresolvedGenerics.isNotEmpty()
         }
 

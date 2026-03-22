@@ -514,7 +514,7 @@ fun createDynamicProtocol(currentType: Type, dynamicType: Type): Protocol {
         name = "common",
         staticMsgs = mutableMapOf(
             createKeyword(KeywordArg("toDynamic", currentType), dynamicType, "Creates Dynamic from current type"),
-            createKeyword(KeywordArg("fromDynamic", dynamicType), currentType, "Creates Dynamic from current type")
+            createKeyword(KeywordArg("fromDynamic", dynamicType), currentType, "Creates Dynamic from current type, can PANIC")
         )
     )
     return protocol

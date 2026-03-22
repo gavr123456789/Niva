@@ -62,7 +62,7 @@ fun MessageDeclaration.getGenericsFromMessageDeclaration(): Set<String> {
     val forTypeVal = forType
     if (forTypeVal is Type.UserLike && forTypeVal.typeArgumentList.isNotEmpty()) {
         val receiverGenerics = mutableSetOf<String>()
-        forTypeVal.collectGenericParamsRecursively(receiverGenerics)
+        forTypeVal.collectGenericParamsRecursivelyCodegenKt(receiverGenerics)
         receiverGenerics.forEach { addGeneric(it) }
     }
 
@@ -76,14 +76,14 @@ fun MessageDeclaration.collectGenericsFromArgs (set: MutableSet<String>) {
         is MessageDeclarationBinary -> {
             val type = x.arg.type
             if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
-                type.collectGenericParamsRecursively(set)
+                type.collectGenericParamsRecursivelyCodegenKt(set)
             }
         }
         is MessageDeclarationKeyword -> {
             x.args.forEach { arg ->
                 val type = arg.type
                 if (type is Type.UserLike && type.typeArgumentList.isNotEmpty()) {
-                    type.collectGenericParamsRecursively(set)
+                    type.collectGenericParamsRecursivelyCodegenKt(set)
                 }
             }
         }

@@ -524,7 +524,7 @@ private fun Type.hasUnresolvedGenerics(): Boolean = when (this) {
     is Type.NullableType -> realType.hasUnresolvedGenerics()
     is Type.UserLike -> {
         val unresolved = mutableSetOf<Type.UnknownGenericType>()
-        collectGenericParamsRecursivelyFRFR(unresolved)
+        collectGenericParamsRecursively(unresolved)
         unresolved.isNotEmpty()
     }
     else -> false

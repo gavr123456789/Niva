@@ -1,0 +1,17 @@
+type Wallet money: Int
+type Person name: String wallet: Wallet
+
+w = Wallet money: 123
+x = Person toDynamic: (Person name: "Alice" wallet: w)
+x echo
+| x
+| DynamicStr => []
+| DynamicInt => []
+| DynamicBoolean => []
+| DynamicDouble => []
+| DynamicList => []
+| DynamicObj => [
+  name = x value at: "name"
+  name echo
+  | name | DynamicStr => [name value echo] |=>[]
+]

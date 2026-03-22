@@ -528,19 +528,6 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         data class DynamicBoolean(val value: Boolean): Dynamic()
         data class DynamicList(val value: List<Dynamic>): Dynamic()
         data class DynamicObj(val value: MutableMap<String, Dynamic>): Dynamic()
-
-       //class Dynamic(val name: String, val fields: Map<String, Any?>) {
-//            override fun toString(): String {
-//                val fields = fields.map { (k, v) ->
-//                    val w = if (v is Dynamic) {
-//                        "    $k: \n" + v.toString().prependIndent("        ")
-//                    } else "    $k: $v"
-//                    w
-//                }.joinToString("\n")
-//                return "Dynamic$name\n" +
-//                        "$fields"
-//            }
-//        }
         
         fun throwWithMessage(message: String): Nothing {
             //@ core.niva:::0

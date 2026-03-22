@@ -12,7 +12,6 @@ Test callNewFromOtherFile = [
                           entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  js debug
   Assert that: (js contains: "const alice = new person.Person(\"Alice\")") equals: true
 ]
 

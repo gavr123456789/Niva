@@ -244,22 +244,15 @@ fun Type.unpackNull(): Type =
 // when generic, we need to reassign it to AST's Type field, instead of type's typeField
 fun generateGenerics(x: Type, sb: StringBuilder): String {
     val toStringWithRecursiveCheck = { x: Type, currentTypeName: String, currentTypePkg: String ->
-//        if (x.name == currentTypeName && x.pkg == currentTypePkg) {
-//            x.name
-//        } else {
-//            x.toString()
 
             val isNullable = if (x is Type.NullableType) "?" else ""
             val isMut = if (x.isMutable) "mut " else ""
             isMut + x.name + isNullable
-//        }
     }
     if (x is Type.UserLike) {
 
         val str = if (x.typeArgumentList.count() == 1) {
-//        sb.append("::", toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg))
             "::" + toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg)
-//                    generateGenerics(this, StringBuilder())
 
         } else if (x.typeArgumentList.count() > 1) {
             "(" + x.typeArgumentList.joinToString(", ") {
@@ -282,7 +275,7 @@ fun generateGenerics(x: Type, sb: StringBuilder): String {
 
         return sb.toString()
     } else {
-        return "::$x"// toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg)
+        return "($x)"// toStringWithRecursiveCheck(x.typeArgumentList[0], x.name, x.pkg)
     }
 }
 
@@ -462,13 +455,13 @@ sealed class Type(
 
     }
 
-    /// replace List::List::Int to List::T
+    /// replace List(List(Int)) to List(T)
     fun replaceInitializedGenericToUnInitialized(resolver: Resolver, token: Token): Type {
         val x = this
         if (x !is UserLike) return x
         if (x.typeArgumentList.isEmpty()) return x
 
-        // check that we deal with complex generic type like Box::Box::T, not Box::T
+        // check that we deal with complex generic type like Box(Box(T)), not Box(T)
         val first = x.typeArgumentList.first()
         if (first is UnknownGenericType || first.name.isGeneric()) return x
         // now find the actual type in db
@@ -620,7 +613,7 @@ sealed class Type(
 
         // will get T from types like List::List::T
         // takes mutable list and return it
-        fun collectGenericParamsRecursively(x: MutableSet<String>) {
+        fun collectGenericParamsRecursivelyCodegenKt(x: MutableSet<String>) {
             typeArgumentList.forEach {
                 if (it.name.isGeneric()) {
                     var name = it.name
@@ -630,17 +623,17 @@ sealed class Type(
                     x.add(name)
                 }
                 if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
-                    it.collectGenericParamsRecursively(x)
+                    it.collectGenericParamsRecursivelyCodegenKt(x)
                 }
             }
         }
         // use real types instead of strings
-        fun collectGenericParamsRecursivelyFRFR(x: MutableSet<UnknownGenericType>) {
+        fun collectGenericParamsRecursively(x: MutableSet<UnknownGenericType>) {
             typeArgumentList.forEach {
                 if (it is UnknownGenericType) {
                     x.add(it)
                 } else if (it is UserLike && it.typeArgumentList.isNotEmpty()) {
-                    it.collectGenericParamsRecursivelyFRFR(x)
+                    it.collectGenericParamsRecursively(x)
                 }
             }
         }
