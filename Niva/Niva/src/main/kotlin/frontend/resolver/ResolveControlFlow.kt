@@ -424,7 +424,7 @@ fun Resolver.resolveControlFlow(
 
                         val lastExpr = it.body.statements.last()
                         if (lastExpr.isNotExpression()) {
-                            lastExpr.token.compileError("In if expression body last statement must be an expression")
+                            lastExpr.token.compileError("In match `|` expression body last statement must be an expression")
                         }
                     } else {
                         it.body.type = Resolver.defaultTypes[InternalTypes.Unit]

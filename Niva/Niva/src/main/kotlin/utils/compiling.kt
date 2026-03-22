@@ -522,12 +522,12 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
         // Dynamic
         sealed class Dynamic()
 
-        class DynamicStr(val value: String): Dynamic()
-        class DynamicInt(val value: Int): Dynamic()
-        class DynamicDouble(val value: Double): Dynamic()
-        class DynamicBoolean(val value: Boolean): Dynamic()
-        class DynamicList(val value: List<Dynamic>): Dynamic()
-        class DynamicObj(val value: MutableMap<String, Dynamic>): Dynamic()
+        data class DynamicStr(val value: String): Dynamic()
+        data class DynamicInt(val value: Int): Dynamic()
+        data class DynamicDouble(val value: Double): Dynamic()
+        data class DynamicBoolean(val value: Boolean): Dynamic()
+        data class DynamicList(val value: List<Dynamic>): Dynamic()
+        data class DynamicObj(val value: MutableMap<String, Dynamic>): Dynamic()
 
        //class Dynamic(val name: String, val fields: Map<String, Any?>) {
 //            override fun toString(): String {
