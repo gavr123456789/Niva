@@ -183,7 +183,7 @@ fun Resolver.resolveControlFlow(
             if (isStatement) {
                 val ifType = ifExpr.type!!
                 if (ifType !is Type.NullableType && ifType != Resolver.defaultTypes[InternalTypes.Bool] && ifType != Resolver.defaultTypes[InternalTypes.Nothing]) {
-                    ifExpr.token.compileError("if branch ${WHITE}${ifExpr}$RESET must be of the ${YEL}Boolean$RESET or nullable type, but found ${YEL}$ifType")
+                    ifExpr.token.compileError("if branch ${WHITE}${ifExpr}$RESET must be of the ${YEL}Bool$RESET or nullable type, but found ${YEL}$ifType")
                 }
             }
 
