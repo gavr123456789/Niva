@@ -999,16 +999,39 @@ fun TypeAST.toType(
 
 
                     copy.replaceTypeArguments(typeArgs)
-                    // replace fields types from T to real
-                    copy.fields.forEachIndexed { i, field ->
-                        val fieldType = letterToTypeMap[field.type.name]
-                        if (fieldType != null) {
-                            field.type = if (field.type is Type.NullableType) {
-                                if (fieldType is Type.NullableType) fieldType else Type.NullableType(fieldType)
-                            } else {
-                                fieldType
-                            }
+                    // replace fields types from generics to real (deeply)
+                    fun replaceGenericsDeep(type: Type): Type = when (type) {
+                        is Type.UnknownGenericType -> letterToTypeMap[type.name] ?: type
+                        is Type.NullableType -> {
+                            val replaced = replaceGenericsDeep(type.realType)
+                            if (replaced is Type.NullableType) replaced else Type.NullableType(replaced)
                         }
+                        is Type.UserLike -> {
+                            if (type.typeArgumentList.isNotEmpty()) {
+                                val newArgs = type.typeArgumentList.map { replaceGenericsDeep(it) }.toMutableList()
+                                type.replaceTypeArguments(newArgs)
+                            }
+                            type.fields.forEach { field ->
+                                field.type = replaceGenericsDeep(field.type)
+                            }
+                            type
+                        }
+                        is Type.Lambda -> {
+                            val newArgs = type.args.map { KeywordArg(it.name, replaceGenericsDeep(it.type)) }.toMutableList()
+                            val newReturnType = replaceGenericsDeep(type.returnType)
+                            Type.Lambda(
+                                args = newArgs,
+                                returnType = newReturnType,
+                                pkg = type.pkg,
+                                extensionOfType = type.extensionOfType?.let { replaceGenericsDeep(it) },
+                                specialFlagForLambdaWithDestruct = type.specialFlagForLambdaWithDestruct,
+                                alias = type.alias
+                            )
+                        }
+                        else -> type
+                    }
+                    copy.fields.forEach { field ->
+                        field.type = replaceGenericsDeep(field.type)
                     }
                     val result =  copy.also {
                         if (isMutable) it.isMutable = true
@@ -1264,6 +1287,24 @@ fun SomeTypeDeclaration.toType(
         return result2
     }
 
+    // to infer cases like `type Mwrrp2 v1: K v2: Mwrrp(V)` correctly
+    fun collectGenericNamesFromTypeAst(typeAst: TypeAST, out: MutableSet<String>) {
+        when (typeAst) {
+            is TypeAST.UserType -> {
+                if (typeAst.name.isGeneric()) {
+                    out.add(typeAst.name)
+                }
+                typeAst.typeArgumentList.forEach { collectGenericNamesFromTypeAst(it, out) }
+            }
+            is TypeAST.Lambda -> {
+                typeAst.inputTypesList.forEach { collectGenericNamesFromTypeAst(it, out) }
+                collectGenericNamesFromTypeAst(typeAst.returnType, out)
+                typeAst.extensionOfType?.let { collectGenericNamesFromTypeAst(it, out) }
+            }
+            is TypeAST.InternalType -> {}
+        }
+    }
+
     val genericsDeclarated = fieldsTyped.asSequence()
         .filter { it.type is Type.UnknownGenericType }
         .map { it.type }
@@ -1271,6 +1312,14 @@ fun SomeTypeDeclaration.toType(
 
 
     val genericsFromFieldsAndDecl = (genericsDeclarated + genericsFromFieldsTypes).toMutableList()
+
+    val genericsFromFieldsAst = mutableSetOf<String>()
+    fields.asSequence()
+        .mapNotNull { it.typeAST }
+        .forEach { collectGenericNamesFromTypeAst(it, genericsFromFieldsAst) }
+    genericsFromFieldsAst
+        .filter { name -> genericsFromFieldsAndDecl.none { it.name == name } }
+        .forEach { genericsFromFieldsAndDecl.add(Type.UnknownGenericType(it)) }
 
     unresolvedSelfTypeFields.forEach {
         it.type = if ((it.type !is Type.NullableType)) result else Type.NullableType(result)
