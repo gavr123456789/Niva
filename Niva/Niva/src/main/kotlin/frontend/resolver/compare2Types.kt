@@ -142,10 +142,15 @@ fun compare2Types(
             type2 is Type.UnknownGenericType ||
                 (type2 is Type.NullableType && type2.realType is Type.UnknownGenericType)
         val expectedIsNonNullableAny = type1IsAny && type1OrChildOf2 !is Type.NullableType
+        val actualIsNullableAny = type2IsAny && type2 is Type.NullableType
         if (type2IsAny && expectedIsGeneric) {
             return false
         }
         if (expectedIsNonNullableAny && actualIsGeneric) {
+            return false
+        }
+        // expected Any (non-nullable), but actual is Any? (nullable) - only fail for return (isOut)
+        if (expectedIsNonNullableAny && actualIsNullableAny && isOut) {
             return false
         }
         return true

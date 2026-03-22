@@ -999,6 +999,7 @@ fun TypeAST.toType(
 
                     copy.replaceTypeArguments(typeArgs)
                     // replace fields types from generics to real (deeply)
+                    val visited = mutableSetOf<Type.UserLike>()
                     fun replaceGenericsDeep(type: Type): Type = when (type) {
                         is Type.UnknownGenericType -> letterToTypeMap[type.name] ?: type
                         is Type.NullableType -> {
@@ -1006,6 +1007,8 @@ fun TypeAST.toType(
                             if (replaced is Type.NullableType) replaced else Type.NullableType(replaced)
                         }
                         is Type.UserLike -> {
+                            if (type in visited) return type
+                            visited.add(type)
                             if (type.typeArgumentList.isNotEmpty()) {
                                 val newArgs = type.typeArgumentList.map { replaceGenericsDeep(it) }.toMutableList()
                                 type.replaceTypeArguments(newArgs)

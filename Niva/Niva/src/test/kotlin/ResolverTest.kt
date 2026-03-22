@@ -1528,15 +1528,15 @@ class ResolverTest {
     @Test
     fun mapNotOverride() {
         val source = """
-            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }m
-            sas::MutableMap(Int,Int) = #{}
+            group1 = #{ 1 "sas" 2 "sus" 3 "ses" }!
+            sas::mut Map(Int,Int) = #{}!
         """.trimIndent()
         val ast = getAstTest(source)
         val resolver = createDefaultResolver(ast)
         val statements = resolver.resolve(resolver.statements, mutableMapOf())
         assert(statements.count() == 2)
 
-        val q = resolver.projects["common"]!!.packages["core"]!!.types["MutableMap"] as Type.UserType
+        val q = resolver.projects["common"]!!.packages["core"]!!.types["Map"] as Type.UserType
         assertTrue { q.typeArgumentList[0].name == "T" }
     }
 
@@ -2697,14 +2697,15 @@ class ResolverTest {
 
     @Test
     fun localMutableMatching() {
+        // we should create local to match, since in kotlin all fields generated as mutable
         val source = """
             union Color = Red data: Int | Blue data: String
             type Wall c: Color
             Wall paint = [
-                locC = c
-                | locC
-                | Red => locC data inc echo
-                | Blue => locC data + "!"
+                c
+                | c
+                | Red => c data inc echo
+                | Blue => c data + "!"
             ]
         """.trimIndent()
         assertThrows<CompilerError> {
