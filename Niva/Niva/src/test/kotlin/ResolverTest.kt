@@ -37,8 +37,43 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 )
 
 class ResolverTest {
+    @Test
+    fun nnhnhnh() {
+        val source = """
+            type Sas x: List(Int)
+            constructor Sas qqq = Sas x: {}
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
 
+    @Test
+    fun emptyListGenericUnification() {
+        val source = """
+            Unit sas -> List(Int) = {1}
+            x = 1 > 2 ifTrue: [() sas]
+                      ifFalse: [{}]
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
+    @Test
+    fun rasw() {
+        val source = """
+            type Cell meow: List(V) meow2: List(K)
+            x = Cell meow: {1} meow2: {1}
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
 
+//    @Test
+//    fun qwf() {
+//        val source = """
+//            type Cell v: V?
+//            Cell(V) meow -> Cell(V) = Cell v: this
+//        """.trimIndent()
+//        assertFails {
+//            val (_, _) = resolveWithResolver(source)
+//        }
+//    }
 
     @Test
     fun simpleGenericGet() {
@@ -53,6 +88,7 @@ class ResolverTest {
         """.trimIndent()
         val (_, _) = resolveWithResolver(source)
     }
+
     @Test
     fun inferGenericsParamsFromArgsCorrectly() {
         val source = """
@@ -412,10 +448,8 @@ class ResolverTest {
               ^ 1
             ]
         """.trimIndent()
-        assertFails {
-            val (statements, _) = resolveWithResolver(source)
-            assert(statements.count() == 2)
-        }
+        val (statements, _) = resolveWithResolver(source)
+        assert(statements.count() == 2)
     }
 
     @Test
@@ -435,7 +469,7 @@ class ResolverTest {
     }
 
     @Test
-    fun unhelukar() {
+    fun usingTypeInsteadOfValue() {
 
         val source = """
             type Sas
@@ -461,10 +495,11 @@ class ResolverTest {
 
     @Test
     fun noMutabilityCompareBetweenGenericArgs(){
+        // there is no point to create type without fields as mutable anyway
         val source = """
             type Ball
         
-            balls::List(mut Ball) = {(Ball new)}
+            balls::List(mut Ball) = {(Ball new toMut)}
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
@@ -515,7 +550,7 @@ class ResolverTest {
             list = {1 2 3}
         """.trimIndent()
         val statements = resolve(source)
-        assert(statements.count() == 1)
+        assert(statements.count() == 2)
 
     }
 
@@ -591,28 +626,6 @@ class ResolverTest {
         assert((msg as UnaryMsg).kind == UnaryMsgKind.Getter)
     }
 
-//    @Test
-//    fun projectSetting() {
-//        val source = """
-//            Project package: "files" protocol: "path"
-//            type Person name: String age: Int
-//        """.trimIndent()
-//
-//        val ast = getAstTest(source)
-//        val resolver = createDefaultResolver(ast)
-//        resolver.resolveDeclarationsOnly(resolver.statements)
-//        resolver.resolve(resolver.statements, mutableMapOf())
-//        val proj = resolver.projects["common"]!!
-//        val pack = proj.packages["files"]!!
-//        val protocol = (pack.types["Person"]!!) as Type.UserType //!!.protocols["path"]!!
-//
-//        assert(resolver.currentProtocolName == "path")
-//        assert(resolver.currentPackageName == "files")
-//        assert(pack.packageName == "files")
-//        assert(protocol.fields[0].name == "name")
-//        assert(protocol.fields[1].name == "age")
-//    }
-
     @Test
     fun defaultTypesInCorePackage() {
         val source = """
@@ -636,131 +649,6 @@ class ResolverTest {
         assert(e["Compiler"] != null)
 
     }
-
-//    @Test
-//    fun registerUnary() {
-//
-//        val source = """
-//            Project package: "files" protocol: "path"
-//            type Person name: String age: Int
-//            Person filePath -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//
-//        val ast = getAstTest(source)
-//        val resolver = createDefaultResolver(ast)
-//        val statements = resolver.resolve(resolver.statements, mutableMapOf())
-//
-//        assert(statements.count() == 3)
-//        assert(resolver.currentPackageName == "files")
-//        assert(resolver.currentProjectName == "common")
-//        assert(resolver.currentProtocolName == "path")
-//
-//        val proj = resolver.projects["common"]!!
-//        val pack = proj.packages["files"]!!
-//        val protocol = pack.types["Person"]!!.protocols["path"]!!
-//        val unary = protocol.unaryMsgs["filePath"]!!
-//        assert(unary.name == "filePath")
-//    }
-
-//    @Test
-//    fun registerTopLevelStatements() {
-//
-//        val source = """
-//            1 echo
-//            9 echo
-//            Project package: "files" protocol: "path"
-//            x = 8
-//            type Person name: String age: Int
-//            Person filePath -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//
-//        val ast = getAstTest(source)
-//        val resolver = createDefaultResolver(ast)
-//        resolver.resolve(resolver.statements, mutableMapOf())
-//
-//        assert(resolver.currentPackageName == "files")
-//        assert(resolver.currentProjectName == "common")
-//        assert(resolver.currentProtocolName == "path")
-//
-//        val proj = resolver.projects["common"]!!
-//        val pack = proj.packages["files"]!!
-//        val protocol = pack.types["Person"]!!.protocols["path"]!!
-//        val unary = protocol.unaryMsgs["filePath"]!!
-//        assert(unary.name == "filePath")
-//
-//        assert(resolver.topLevelStatements.isNotEmpty())
-//        assert(resolver.topLevelStatements.count() == 3)
-//    }
-
-//
-//    @Test
-//    fun recreateKtFolder() {
-//        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
-//
-//        val source = """
-//            1 echo
-//            9 echo
-//            Project package: "files" protocol: "path"
-//            x = 8
-//            type Person name: String age: Int
-//            Person filePath -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//
-//        val ast = getAstTest(source).toMutableList()
-//
-//        val resolver = createDefaultResolver(ast)
-//        resolver.resolve(resolver.statements, mutableMapOf())
-//
-//        resolver.generateKtProject(path)
-//    }
-
-//    @Test
-//    fun manySources() {
-//        val path = "C:\\Users\\gavr\\Documents\\Projects\\Fun\\NivaExperiments\\exampleProj\\src\\main\\kotlin"
-//
-//        val source1 = """
-//            1 echo
-//            9 echo
-//            Project package: "files" protocol: "path"
-//            x = 8
-//            type Person name: String age: Int
-//            Person filePath -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//        val source2 = """
-//            1 echo
-//            9 echo
-//            Project package: "collections"
-//            x = 8
-//            type MegaMassive count: Int
-//            MegaMassive add -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//        val source3 = """
-//            1 echo
-//            9 echo
-//            Project package: "collectionsUnlim"
-//            x = 8
-//            type MegaMassive2 count: Int
-//            MegaMassive2 add -> Unit = [1 echo]
-//        """.trimIndent()
-//
-//        val ast1 = getAstTest(source1).toMutableList()
-//        val ast2 = getAstTest(source2).toMutableList()
-//        val ast3 = getAstTest(source3).toMutableList()
-//
-//        val ast = ast3 + ast2
-//
-//        val resolver = createDefaultResolver(ast)
-//
-//        resolver.resolve(resolver.statements, mutableMapOf())
-//
-//        resolver.generateKtProject(path)
-//    }
-
 
     @Test
     fun codeBlockEval() {
@@ -1062,7 +950,7 @@ class ResolverTest {
         y field + "sas"
         """.trimIndent()
 
-        val statements = resolve(source)
+        val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 5)
         assert((statements[0] as TypeDeclaration).genericFields.first() == "T")
     }
@@ -1173,11 +1061,9 @@ class ResolverTest {
     @Test
     fun msgForGenericType() {
         val source = """
-            MutableList::Int bogosort = [
-               
-            ]
+            mut List(Int) bogosort = []
 
-            list = {9 8 7}m
+            list = {9 8 7}!
             list bogosort
         """.trimIndent()
 
@@ -2746,9 +2632,9 @@ class ResolverTest {
     @Test
     fun messageForTypeWithNestedGeneric() {
         val source = """
-            MutableList::MutableList::T unzip = [
-                first::MutableList::T = {}
-                second::MutableList::T = {}
+            List(List(T)) unzip = [
+                first::mut List(T) = {}
+                second::mut List(T) = {}
             
                 this forEach: [
                     first add: (it at: 0)
@@ -2758,7 +2644,7 @@ class ResolverTest {
                 ^ { first second }
             ]
             
-            {({1 2 3}m) ({4 5 6}m) ({7 8 9}m)}m unzip echo
+            {({1 2 3}) ({4 5 6}) ({7 8 9})} unzip echo
         """.trimIndent()
         val (_) = resolveWithResolver(source)
     }
@@ -2772,24 +2658,6 @@ class ResolverTest {
         """.trimIndent()
         val (_) = resolveWithResolver(source)
     }
-//    @Test
-//    fun str() {
-
-//        val _source = """
-//            type Sas x: T
-//
-//            extend Sas [
-//                on inc -> T = [
-//                   Error throwWithMessage: "Index out of bounds!" |> orPANIC
-//                   ^ x
-//                ]
-//                on kek -> Unit = [
-//                    .inc
-//                ]
-//            ]
-//        """.trimIndent()
-//        val (x) = resolveWithResolver(source)
-//    }
 
     @Test
     fun mutListnotEqualList() {
@@ -2879,14 +2747,14 @@ class ResolverTest {
     @Test
     fun fpgfpg(){
         val source = """
-            List::List::T unzip -> List::List::T = [
-                first::MutableList::T = {}
+            List(List(T)) unzip -> List(List(T)) = [
+                first::mut List(T) = {}!
                 q = first toList
               
                 ^ { (first toList) } toList
             ]
             q = {"1 2" "1 2" "1 2"} toList
-            lists = q map: [it  split: " " |> map: [it toInt]] |> unzip
+            lists = q map: [it  split: " ", map: [it toInt]], unzip
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 3)

@@ -11,7 +11,6 @@ import main.frontend.resolver.messageResolving.resolveKeywordMsg
 import main.frontend.resolver.messageResolving.resolveStaticBuilder
 import main.frontend.resolver.messageResolving.resolveUnaryMsg
 import main.utils.GlobalVariables
-import main.utils.RESET
 import main.utils.YEL
 import main.utils.isGeneric
 
@@ -87,54 +86,107 @@ fun getTableOfLettersFromType(type: Type.UserLike, typeFromDb: Type.UserLike, re
     }
 }
 
-fun resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
+fun replaceGenericsDeep(type: Type, letterToTypeMap: Map<String, Type>, visited: MutableSet<Type.UserLike> = mutableSetOf()): Type = when (type) {
+    is Type.UnknownGenericType -> letterToTypeMap[type.name] ?: type
+    is Type.NullableType -> {
+        val replaced = replaceGenericsDeep(type.realType, letterToTypeMap, visited)
+        if (replaced is Type.NullableType) replaced else Type.NullableType(replaced)
+    }
+    is Type.UserLike -> {
+        if (type in visited) return type
+        visited.add(type)
+        if (type.typeArgumentList.isNotEmpty()) {
+            val newArgs = type.typeArgumentList.map { replaceGenericsDeep(it, letterToTypeMap, visited) }.toMutableList()
+            type.replaceTypeArguments(newArgs)
+        }
+        type.fields.forEach { field ->
+            field.type = replaceGenericsDeep(field.type, letterToTypeMap, visited)
+        }
+        type
+    }
+    is Type.Lambda -> {
+        val newArgs = type.args.map { KeywordArg(it.name, replaceGenericsDeep(it.type, letterToTypeMap, visited)) }.toMutableList()
+        val newReturnType = replaceGenericsDeep(type.returnType, letterToTypeMap, visited)
+        Type.Lambda(
+            args = newArgs,
+            returnType = newReturnType,
+            pkg = type.pkg,
+            extensionOfType = type.extensionOfType?.let { replaceGenericsDeep(it, letterToTypeMap, visited) },
+            specialFlagForLambdaWithDestruct = type.specialFlagForLambdaWithDestruct,
+            alias = type.alias
+        )
+    }
+    else -> type
+}
+
+fun Resolver.resolveReceiverGenericsFromArgs(receiverType: Type, args: List<KeywordArgAst>, tok: Token): Type {
     if (receiverType !is Type.UserLike) return receiverType
     // replace every Generic type with real
     if (receiverType.typeArgumentList.isEmpty()) {
         return receiverType
     }
+    // Deep copy to avoid mutating the original type
     val replacerTypeIfItGeneric = receiverType.copy()
+    // Replace fields list with a new mutableList to avoid mutating original
+    val originalFields = replacerTypeIfItGeneric.fields.toList()
+    replacerTypeIfItGeneric.fields.clear()
+    replacerTypeIfItGeneric.fields.addAll(originalFields)
 
-    // match every type argument with fields
+    // match every type argument with fields using getTableOfLettersFromType
     val map = mutableMapOf<String, Type>()
-    replacerTypeIfItGeneric.typeArgumentList.forEach { typeArg ->
-        val fieldsOfThisType =
-            replacerTypeIfItGeneric.fields.filter { it.type.name == typeArg.name }
-        fieldsOfThisType.forEach { genericField ->
-            // find real type from arguments
-            val real = args.find { it.name == genericField.name }
-                ?: tok.compileError("Can't find real type for field: ${YEL}${genericField.name}${RESET} of generic type: ${YEL}${genericField.type.name}${RESET}")
-            val rawRealType = real.keywordArg.type
-                ?: real.keywordArg.token.compileError("Compiler bug: ${YEL}${real.name}${RESET} doesn't have type")
-            val realTypeForGeneric = if (genericField.type is Type.NullableType && rawRealType is Type.NullableType) {
-                rawRealType.realType
-            } else {
-                rawRealType
+
+    // Helper function to recursively extract generics from field type vs real type
+    fun extractGenerics(fieldType: Type, realType: Type, result: MutableMap<String, Type>) {
+        when {
+            // If field type is a generic parameter, map it to the real type
+            fieldType is Type.UnknownGenericType -> {
+                result[fieldType.name] = realType
             }
-            if (genericField.type is Type.NullableType &&
-                (realTypeForGeneric.name == InternalTypes.Any.name || realTypeForGeneric.name == InternalTypes.Null.name)
-            ) {
-                return@forEach
+            // If both are UserLike, recursively compare their type arguments
+            fieldType is Type.UserLike && realType is Type.UserLike -> {
+                getTableOfLettersFromType(fieldType, realType, result)
             }
-            map[typeArg.name] = realTypeForGeneric
+            // Handle nullable types
+            fieldType is Type.NullableType && realType is Type.NullableType -> {
+                extractGenerics(fieldType.realType, realType.realType, result)
+            }
         }
     }
+
+    // Compare each field type with actual argument type to extract generics
+    replacerTypeIfItGeneric.fields.forEach { field ->
+        val realArg = args.find { it.name == field.name }
+        if (realArg != null) {
+            val realArgType = realArg.keywordArg.type
+            if (realArgType != null) {
+                extractGenerics(field.type, realArgType, map)
+            }
+        }
+    }
+
     // replace typeFields to real ones
     val realTypes = replacerTypeIfItGeneric.typeArgumentList.toMutableList()
     map.forEach { (fieldName, fieldRealType) ->
         val fieldIndex = realTypes.indexOfFirst { it.name == fieldName }
-        realTypes[fieldIndex] = fieldRealType
-        // replace all fields of generic type
-        replacerTypeIfItGeneric.fields.forEach {
-            if (it.type.name == fieldName) {
-                it.type = if (it.type is Type.NullableType) {
-                    if (fieldRealType is Type.NullableType) fieldRealType else Type.NullableType(fieldRealType)
-                } else {
-                    fieldRealType
-                }
-            }
+        if (fieldIndex != -1) {
+            realTypes[fieldIndex] = fieldRealType
         }
     }
+
+    val newFields = replacerTypeIfItGeneric.fields.map { field ->
+        val newFieldType = replaceGenericsDeep(field.type, map)
+        if (newFieldType === field.type) {
+            field
+        } else {
+            KeywordArg(
+                name = field.name,
+                type = newFieldType
+            )
+        }
+    }.toMutableList()
+
+    replacerTypeIfItGeneric.fields.clear()
+    replacerTypeIfItGeneric.fields.addAll(newFields)
 //    replacerTypeIfItGeneric.typeArgumentList = realTypes
     replacerTypeIfItGeneric.replaceTypeArguments(realTypes)
     return replacerTypeIfItGeneric
