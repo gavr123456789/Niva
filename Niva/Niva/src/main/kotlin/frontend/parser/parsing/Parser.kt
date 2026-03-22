@@ -130,7 +130,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
     }
 
     if (kind == TokenType.EndOfFile) {
-        tok.compileError("Nothing to compile :(")
+        tok.compileError("EndOfFile, or critical parser error")
     }
 
 
