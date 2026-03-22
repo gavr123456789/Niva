@@ -178,7 +178,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
 
     /// Override toString
-    generateToStringOverride(this@generateTypeDeclaration, receiverType)
+    val wasToStringOverride = generateToStringOverride(this@generateTypeDeclaration, receiverType)
 
     // to\from Dynamic
     if (receiverType is Type.UserLike && receiverType !is Type.EnumRootType && receiverType !is Type.EnumBranchType) {
@@ -188,23 +188,26 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
             generateDynamicForUnionRoot(this, receiverType)
         }
     }
-
-    appendLine("    }")
+    if (wasToStringOverride)
+        appendLine("    }")
     append("\n}\n")
 }
 
 
+// returns true if toString was overridden
 private fun StringBuilder.generateToStringOverride(
     declaration: SomeTypeDeclaration,
     receiverType: Type
-) {
-    append("\t" + "override fun toString(): String")
+): Boolean {
+    var result = false
 
     val toStringMethod =
         findAnyMethod(receiverType, "toString", Package(receiverType.pkg), MessageDeclarationType.Unary)
-    
+
+    // Custom toString implementation exists
     if (toStringMethod != null && toStringMethod.declaration != null && toStringMethod.declaration.body.isNotEmpty()) {
-        // Custom toString implementation exists
+        append("\t" + "override fun toString(): String ")
+
         val returnTypeName = toStringMethod.declaration.returnType?.name
         if (returnTypeName != "String") {
             toStringMethod.declaration.token.compileError(
@@ -216,10 +219,16 @@ private fun StringBuilder.generateToStringOverride(
         generateBody(toStringMethod.declaration, sb)
         append(sb)
         appendLine("\n    companion object {")
+        result = true
     } else {
         // generate default toString implementation
-        generateDefaultToString(declaration, receiverType)
+        if (receiverType !is Type.EnumRootType) {
+            append("\t" + "override fun toString(): String")
+            generateDefaultToString(declaration, receiverType)
+            result = true
+        }
     }
+    return result
 }
 
 private fun StringBuilder.generateDefaultToString(
