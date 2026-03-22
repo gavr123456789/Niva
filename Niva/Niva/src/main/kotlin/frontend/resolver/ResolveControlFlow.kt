@@ -32,6 +32,14 @@ fun Statement.isNotExpression(): Boolean =
 fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
 
     if (branchReturnTypes.isEmpty()) throw Exception("Compiler bug: 0 branches in ControlFlow")
+    val allBranchesMutable = branchReturnTypes
+        .filterNot { typeIsNull(it) }
+        .all {
+            when (it) {
+                is Type.NullableType -> it.realType.isMutable
+                else -> it.isMutable
+            }
+        }
     var resultIsNullable = false
     val branchesWithoutNull = branchReturnTypes.filter {
         if (typeIsNull(it)) {
@@ -41,10 +49,11 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     }
     if (branchesWithoutNull.count() == 1) {
         val result = branchesWithoutNull.first()
-        return if (resultIsNullable && result !is Type.NullableType) {
+        val baseResult = if (resultIsNullable && result !is Type.NullableType) {
             Type.NullableType(result)
         } else
             result
+        return if (allBranchesMutable) makeTypeMutableIfNeeded(baseResult) else baseResult
     }
 
     // find the general root
@@ -73,14 +82,34 @@ fun findGeneralRootMany(branchReturnTypes: List<Type>, tok: Token): Type  {
     // all types same reference
     val cgr = currentGeneralRoot
     if (cgr != null) {
-        if (resultIsNullable && cgr !is Type.NullableType) {
-            return Type.NullableType(cgr)
+        val baseResult = if (resultIsNullable && cgr !is Type.NullableType) {
+            Type.NullableType(cgr)
+        } else {
+            cgr
         }
-        return cgr
+        return if (allBranchesMutable) makeTypeMutableIfNeeded(baseResult) else baseResult
     }
 
     tok.compileError("Cant find general root between $YEL$branchesWithoutNull$RESET")
 
+}
+
+private fun makeTypeMutableIfNeeded(type: Type): Type {
+    return when (type) {
+        is Type.NullableType -> {
+            val real = type.realType
+            val mutableReal = if (real is Type.UserLike && !real.isMutable) {
+                real.copyAnyType().also { it.isMutable = true }
+            } else {
+                real
+            }
+            if (mutableReal === real) type else Type.NullableType(mutableReal)
+        }
+        is Type.UserLike -> {
+            if (!type.isMutable) type.copyAnyType().also { it.isMutable = true } else type
+        }
+        else -> type
+    }
 }
 
 

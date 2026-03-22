@@ -38,6 +38,16 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+    @Test
+    fun anyCoercion() {
+        val source = """
+           Unit meow: Any? -> Any = meow
+        """.trimIndent()
+        assertFails {
+            val (statements, _) = resolveWithResolver(source)
+            assert(statements.count() == 1)
+        }
+    }
 
     @Test
     fun returnNullableGeneric() {
@@ -55,11 +65,11 @@ class ResolverTest {
         val source = """
             union Meow = Zero v2: Int | Other v: Int
             
-            Unit makeMeow: Int -> mut Meow = [
+            Unit makeMeow: Int -> mut Meow = 
               |makeMeow
               |0 => Zero v2: 12, toMut
               |=> Other v: makeMeow, toMut
-            ]
+            
         """.trimIndent()
         val (_, _) = resolveWithResolver(source)
     }
@@ -89,7 +99,7 @@ class ResolverTest {
     }
 
     @Test
-    fun genericCantGoIntoNonNullableAny() {
+    fun genericCanGoIntoNonNullableAny() {
         val source = """
             Int w: Any = [
         
@@ -105,7 +115,7 @@ class ResolverTest {
     @Test
     fun anyCantGoInPlaceOfGeneric_OnlyTheOpposite2() {
         val source = """
-            Int any: Any = 1
+            Int any: Any? = 1
             Int q: T = [
               1 any: q
             ]
@@ -251,7 +261,7 @@ class ResolverTest {
             assert(statements.count() == 3)
     }
     @Test
-    fun sasas() {
+    fun manyBranchesChecksForExhaustivness() {
         val source = """
             union Sas = Sus | Sos | Ses
 
@@ -266,17 +276,7 @@ class ResolverTest {
         }
     }
 
-    @Test
-    fun anyCoercion() {
-        val source = """
-           Unit meow: Any? -> Any = meow
-        """.trimIndent()
-        assertFails {
-            val (statements, _) = resolveWithResolver(source)
-            assert(statements.count() == 1)
-        }
 
-    }
 
 
     @Test
