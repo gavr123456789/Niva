@@ -40,6 +40,9 @@ fun generateMainKotlin(source: String): String {
 }
 
 class CodogenTest {
+
+
+
     @Test
     fun pipedBinaryDoesNotEmitExtraReceiver() {
         val source = """

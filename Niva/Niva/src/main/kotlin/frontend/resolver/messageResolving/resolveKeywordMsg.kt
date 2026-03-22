@@ -827,7 +827,8 @@ fun GenericTable.genericAdd(str: String, type: Type, errorTok: Token, pkg: Packa
 fun resolveReturnTypeIfGeneric(
     returnTypeFromDb: Type, letterToRealType: MutableMap<String, Type>, receiverGenericsTable: MutableMap<String, Type>
 ): Type {
-    return when (val returnTypeOrNullUnwrap = returnTypeFromDb.unpackNull()) {
+    val wasNullable = returnTypeFromDb is Type.NullableType
+    val resolved = when (val returnTypeOrNullUnwrap = returnTypeFromDb.unpackNull()) {
         is Type.UnknownGenericType -> {
             val realTypeFromTable =
                 letterToRealType[returnTypeOrNullUnwrap.name] ?: receiverGenericsTable[returnTypeOrNullUnwrap.name]
@@ -842,5 +843,6 @@ fun resolveReturnTypeIfGeneric(
 
         else -> returnTypeFromDb
     } // return without changes
+    return if (wasNullable && resolved !is Type.NullableType) Type.NullableType(resolved) else resolved
 
 }

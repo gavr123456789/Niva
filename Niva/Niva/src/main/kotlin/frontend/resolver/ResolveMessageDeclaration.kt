@@ -128,7 +128,15 @@ fun Resolver.resolveMessageDeclaration(
     }
     // amm, actually here we still did not resolve args
     unResolvedMessageDeclarations.remove(currentPackageName, statement)
-    statement.forType = copyTypeIfGenerics
+    statement.forType = if (isNullableGeneric)
+        Type.NullableType(Type.UnknownGenericType(forTypeAst.name))
+    else
+        copyTypeIfGenerics
+
+    val receiverTypeForDb = if (isNullableGeneric)
+        Resolver.nullableUnknownGenericType
+    else
+        typeFromDB
 
     var hasUnresolvedArgType = false
     fun resolveArgType(astType: TypeAST): Type? {
@@ -405,27 +413,27 @@ fun Resolver.resolveMessageDeclaration(
                 val typeOfSingleExpr = expr.type!!
                 val mdgData = when (statement) {
                     is ConstructorDeclaration -> findStaticMessageType(
-                        typeFromDB,
+                        receiverTypeForDb,
                         statement.name,
                         statement.token
                     ).first
 
                     is MessageDeclarationUnary -> findAnyMsgType(
-                        typeFromDB,
+                        receiverTypeForDb,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Unary
                     )
 
                     is MessageDeclarationBinary -> findAnyMsgType(
-                        typeFromDB,
+                        receiverTypeForDb,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Binary
                     )
 
                     is MessageDeclarationKeyword -> findAnyMsgType(
-                        typeFromDB,
+                        receiverTypeForDb,
                         statement.name,
                         statement.token,
                         MessageDeclarationType.Keyword
@@ -534,15 +542,15 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         // check that message is unique for type
         val declType = statement.getDeclType()
-        if (statement !is ConstructorDeclaration && typeFromDB !is Type.InternalType) {
-            findAnyMethod(typeFromDB, statement.name, Package(typeFromDB.pkg), declType, false)?.let {
+        if (statement !is ConstructorDeclaration && receiverTypeForDb !is Type.InternalType) {
+            findAnyMethod(receiverTypeForDb, statement.name, Package(receiverTypeForDb.pkg), declType, false)?.let {
                 if (it.declaration?.getDeclType() == declType) {
-                    statement.token.compileError("Method ${it.name} for type $typeFromDB already exists in pkg: ${it.pkg} in file: ${it.declaration.token.file} on line ${it.declaration.token.line}")
+                    statement.token.compileError("Method ${it.name} for type $receiverTypeForDb already exists in pkg: ${it.pkg} in file: ${it.declaration.token.file} on line ${it.declaration.token.line}")
                 }
             }
 
             // forbid overriding methods from ancestors
-            var parent = typeFromDB.parent
+            var parent = receiverTypeForDb.parent
             while (parent != null) {
 //                if (parent !is Type.InternalType) {
                     findAnyMethod(parent, statement.name, Package(parent.pkg), declType, false)?.let { parentMsg ->
@@ -553,7 +561,7 @@ fun Resolver.resolveMessageDeclaration(
                             "in pkg: ${parentMsg.pkg}"
                         }
                         statement.token.compileError(
-                            "Method ${statement.name} for type $typeFromDB already exists in root $parent $place"
+                            "Method ${statement.name} for type $receiverTypeForDb already exists in root $parent $place"
                         )
                     }
 //                }
@@ -563,7 +571,7 @@ fun Resolver.resolveMessageDeclaration(
 
         try {
 
-            val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = typeFromDB)
+            val x = addNewAnyMessage(statement, isGetter = false, isSetter = false, forType = receiverTypeForDb)
             val errors = statement.returnType?.errors
             if (errors != null && x.errors == null ) {
                 x.addErrors(errors)
@@ -590,7 +598,7 @@ fun Resolver.resolveMessageDeclaration(
         val newReturnType = statement.returnType
         // return type of expression changed after body resolved
         if (newReturnType != null && newReturnType != currentReturnType) {
-            val msgData = findAnyMsgType(typeFromDB, statement.name, statement.token, statement.getDeclType())
+            val msgData = findAnyMsgType(receiverTypeForDb, statement.name, statement.token, statement.getDeclType())
             // change return type inside db
             msgData.returnType = newReturnType
         }

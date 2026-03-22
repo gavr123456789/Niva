@@ -31,8 +31,8 @@ PrintingVisitor visit(st): Statement = [
 /// entryPointStatements just all statements from the main.niva
 /// not only expr
 TypeDeclVisitor
-  visitAllTypesThenTypesAndMethods(fileToStatements): Map(String, List::Statement)
-  entryPointStatements::List::Statement
+  visitAllTypesThenTypesAndMethods(fileToStatements): Map(String, List(Statement))
+  entryPointStatements: List(Statement)
   -> List(Tuple(String, MessageDecl)) = [
 
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!

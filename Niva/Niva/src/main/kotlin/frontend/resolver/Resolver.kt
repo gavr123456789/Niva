@@ -1443,6 +1443,9 @@ class Resolver(
             createDefaultType(InternalTypes.Test),
         )
 
+        val nullableUnknownGenericType: Type.NullableType =
+            Type.NullableType(Type.UnknownGenericType("T"))
+
         init {
             val intType = defaultTypes[InternalTypes.Int]!!
             val stringType = defaultTypes[InternalTypes.String]!!
