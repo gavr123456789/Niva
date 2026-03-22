@@ -38,6 +38,32 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+
+    @Test
+    fun returnNullableGeneric() {
+        val source = """
+            Unit meow -> List(Int)? = null
+            () meow at: 0
+        """.trimIndent()
+
+        assertFails {
+            val (_, _) = resolveWithResolver(source)
+        }
+    }
+    @Test
+    fun mutReturn() {
+        val source = """
+            union Meow = Zero v2: Int | Other v: Int
+            
+            Unit makeMeow: Int -> mut Meow = [
+              |makeMeow
+              |0 => Zero v2: 12, toMut
+              |=> Other v: makeMeow, toMut
+            ]
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
+
     @Test
     fun callOnNullable() {
         val source = """
@@ -364,10 +390,12 @@ class ResolverTest {
                 | null => null
                 |=> this
             ]
+            x::Int? = 1
+            x myUnpack
         """.trimIndent()
 
         val statements = resolve(source)
-        assert(statements.count() == 1)
+        assert(statements.count() == 3)
     }
 
     @Test

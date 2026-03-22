@@ -156,6 +156,11 @@ fun checkForT(selectorName: String, pkg: Package, kind: MessageDeclarationType):
     return findAnyMethod(unknownGenericType, selectorName, pkg, kind)
 }
 
+fun checkForNullableT(selectorName: String, pkg: Package, kind: MessageDeclarationType): MessageMetadata? {
+    val nullableGenericType = Resolver.nullableUnknownGenericType
+    return findAnyMethod(nullableGenericType, selectorName, pkg, kind)
+}
+
 fun throwNotFoundError(receiverType: Type, selectorName: String, token: Token, msgType: String): Nothing {
     val cantFind = "Can't find ${PURP}$msgType${RESET} message ${CYAN}$selectorName${RESET}"
     val errorText = if (receiverType is Type.NullableType)
@@ -289,6 +294,14 @@ fun Resolver.findAnyMsgType(
     }
     if (!receiverHasUnknownGeneric) {
         checkForAny(selectorName, pkg, msgType)?.let {
+            return it
+        }
+    }
+
+    // there is a method for T?, like T? myUnpack = [...]
+    if (receiverType is Type.NullableType) {
+        checkForNullableT(selectorName, pkg, msgType)?.let {
+            it.forGeneric = true
             return it
         }
     }

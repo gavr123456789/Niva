@@ -1,7 +1,6 @@
 package main.codogen
 
 import main.frontend.parser.types.ast.TypeAST
-import main.utils.isGeneric
 
 
 fun TypeAST.generateType(
@@ -15,11 +14,12 @@ fun TypeAST.generateType(
         is TypeAST.UserType -> {
             append(realName ?: names.joinToString("."))
             if (generateGeneric && typeArgumentList.isNotEmpty()) {
-                val (genericSingleLetters, genericNames) =
-                    typeArgumentList.asSequence().map { it.name }.partition { it.isGeneric() }
-                val genericsNames = genericNames + genericSingleLetters.toSet()
                 append("<")
-                append((genericsNames + (customGenerics ?: setOf())).joinToString(", ") { it })
+                val renderedArgs = typeArgumentList.asSequence().map { it.generateType(null) }.toMutableList()
+                if (customGenerics != null) {
+                    renderedArgs.addAll(customGenerics)
+                }
+                append(renderedArgs.joinToString(", ") { it })
                 append(">")
             }
         }
