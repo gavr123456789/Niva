@@ -386,9 +386,14 @@ fun Resolver.resolveMessageDeclaration(
 
 
         fun checkThatReturnTypesMatch() {
+            val wasThereReturn = wasThereReturn
             if(!statement.isSingleExpression && wasThereReturn == null && statement.returnTypeAST != null && statement.returnTypeAST.name != InternalTypes.Unit.name) {
                 statement.token.compileError("You missed returning(^) a value of type: ${YEL}${statement.returnTypeAST.name}")
-            } else if (!statement.isSingleExpression && wasThereReturn != null && !wasThereTopLevelReturn) {
+            } else if (
+                !statement.isSingleExpression && wasThereReturn != null
+                &&( wasThereReturn.name != InternalTypes.Unit.name && wasThereReturn.name != InternalTypes.Nothing.name)
+                && !wasThereTopLevelReturn)
+            {
                 statement.token.compileError("Return(^) used inside codeblock, but there is no return at the top level")
             }
         }
