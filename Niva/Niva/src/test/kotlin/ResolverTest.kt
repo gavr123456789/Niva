@@ -38,6 +38,18 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 
 class ResolverTest {
 
+
+    @Test
+    fun nullabilityBug_genericTable_were_poisoning_different_already_resolved_generics_bruhhh() {
+        val source = """
+            type Nya v: V?
+            Nya(V) withValue: V? -> Nya(V) = Nya v: withValue
+            Unit doNya: [Nya(V) -> Nya(V)] withV: V = doNya do: (Nya v: withV)
+            ()doNya: [it withValue: it v] withV: 12, echo
+        """.trimIndent()
+            val (_, _) = resolveWithResolver(source)
+    }
+
     @Test
     fun anyCoercion() {
         val source = """

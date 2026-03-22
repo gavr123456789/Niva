@@ -680,6 +680,19 @@ fun Resolver.resolveKwArgsGenerics(
         val argType = it.keywordArg.type!!
         val typeFromDBForThisArg = argTypesFromDb.getOrNull(argNum) ?: return
 
+        // if expected type is a nullable generic (V?), resolve V to the nonnullable real type
+        if (typeFromDBForThisArg is Type.NullableType && typeFromDBForThisArg.realType is Type.UnknownGenericType) {
+            val genericName = typeFromDBForThisArg.realType.name
+            letterToRealType.genericAdd(
+                genericName,
+                argType.unpackNull(),
+                statement.token,
+                currentPkg,
+                "nullable generic argument"
+            )
+            return@forEachIndexed
+        }
+
 
         // this is T
         if (typeFromDBForThisArg.name.isGeneric()) {
