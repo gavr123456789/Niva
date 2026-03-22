@@ -364,7 +364,7 @@ fun replaceAllGenericsToRealTypeRecursive(
 
 private fun Type.UserLike.hasUnresolvedGenericParams(): Boolean {
     val unresolved = mutableSetOf<Type.UnknownGenericType>()
-    collectGenericParamsRecursivelyFRFR(unresolved)
+    collectGenericParamsRecursively(unresolved)
     return unresolved.isNotEmpty()
 }
 

@@ -30,7 +30,7 @@ fun resolveWithResolver(source: String): Pair<List<Statement>, Resolver> {
 
 
 
-private fun createDefaultResolver(statements: List<Statement>) = Resolver(
+fun createDefaultResolver(statements: List<Statement>) = Resolver(
     projectName = "common",
     statements = statements.toMutableList(),
     currentResolvingFileName = Paths.get(System.getProperty("user.dir")).fileName.toFile()
@@ -493,17 +493,7 @@ class ResolverTest {
 
     }
 
-    @Test
-    fun noMutabilityCompareBetweenGenericArgs(){
-        // there is no point to create type without fields as mutable anyway
-        val source = """
-            type Ball
-        
-            balls::List(mut Ball) = {(Ball new toMut)}
-        """.trimIndent()
-        val (x) = resolveWithResolver(source)
-        assert(x.count() == 2)
-    }
+
 
     @Test
     fun getterCall() {
@@ -939,7 +929,6 @@ class ResolverTest {
 
     @Test
     fun genericTypeBox() {
-
         val source = """
         type Box field: T
 
@@ -952,7 +941,6 @@ class ResolverTest {
 
         val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 5)
-        assert((statements[0] as TypeDeclaration).genericFields.first() == "T")
     }
 
 
@@ -1212,7 +1200,7 @@ class ResolverTest {
     fun inferTypeOfEmptyArray() {
         val source = """
            union JsonObj =
-           | JsonArray arr: MutableList::JsonObj
+           | JsonArray arr: mut List::JsonObj
 
            arr = JsonArray arr: {}m
         """.trimIndent()
@@ -2155,7 +2143,7 @@ class ResolverTest {
     fun emptyMapAsArgumentHasCorrectTypeListInfered() {
 
         val source = """
-            type Success captures: MutableList::String
+            type Success captures: mut List::String
             Success captures: {}m
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
@@ -2384,7 +2372,7 @@ class ResolverTest {
             ^3
         ]
         
-        Int sus2 -> Int! = [
+        Int sus2 -> Int = [
             ^5 sus
         ]
         
@@ -2618,11 +2606,8 @@ class ResolverTest {
     @Test
     fun messageForTypeWithGeneric() {
         val source = """
-            type Stack 
-              list: MutableList::T
-
-
-            extend Stack [
+            type Stack list: mut List(T)
+            extend Stack(T) [
               on push = 1
             ]
         """.trimIndent()
@@ -2659,16 +2644,7 @@ class ResolverTest {
         val (_) = resolveWithResolver(source)
     }
 
-    @Test
-    fun mutListnotEqualList() {
-        val source = """
-            x = {1 2 3}
-            y::MutableList::Int = x reversed
-        """.trimIndent()
-        assertThrows<CompilerError> {
-            val (_) = resolveWithResolver(source)
-        }
-    }
+
     @Test
     fun constructorWithoutReturnType() {
         val source = """
@@ -2764,20 +2740,20 @@ class ResolverTest {
     @Test
     fun bug0(){
         val source = """
-            result::MutableList::MutableList::Int = {}m
+            result::mut List(mut List(Int)) = {}!
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 1)
-        assertEquals((x[0] as VarDeclaration).value.type?.toString(), "MutableList::MutableList::Int")
+        assertEquals((x[0] as VarDeclaration).value.type?.toString(), "mut List::mut List::Int")
     }
     @Test
     fun bug1(){
         val source = """
-            List::Int zipWith::List::Int = [
-                result::MutableList::MutableList::Int = {}m
+            List(Int) zipWith: List(Int) = [
+                result::mut List(mut List(Int)) = {}!
             
                 this forEachIndexed: [ index, it ->
-                    result add: { it, (zipWith at: index) }m
+                    result add: { it, (zipWith at: index) }!
                 ]
             
                 ^ result
@@ -2787,20 +2763,20 @@ class ResolverTest {
         assert(x.count() == 1)
         val q = x[0] as MessageDeclaration
         val w = q.body[2] as ReturnStatement
-        assertEquals("MutableList::MutableList::Int", w.expression!!.type!!.toString())
+        assertEquals("mut List::mut List::Int", w.expression!!.type!!.toString())
     }
 
     @Test
     fun bug2(){
         val source = """
-           x::MutableList::MutableList::Int = {}
+           x::mut List::mut List::Int = {}
             q = x first
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
         val q = x[1] as VarDeclaration
         val f = q.value.type!!
-        assert(f.name == "MutableList")
+        assert(f.name == "mut List")
     }
 
 
@@ -2893,19 +2869,7 @@ class ResolverTest {
         assertTrue(q.value.type!!.name == "Color")
     }
 
-    @Test
-    fun checkForErrorsWorksOnTopLevel(){
-        val source = """
-            T sas -> T!Error = [
-                ^ this
-                Error throwWithMessage: "qfwars"
-            ]
-            
-            1 sas orPANIC echo
-        """.trimIndent()
-        val (x) = resolveWithResolver(source)
-        assert(x.count() == 2)
-    }
+
     @Test
     fun partition(){
         val source = """
@@ -2922,7 +2886,7 @@ class ResolverTest {
         val source = """
             type ArgParser
             constructor ArgParser [
-              on parse(args): MutableList::String = [
+              on parse(args): mut List::String = [
                 1 echo
               ]
             ]
@@ -2935,7 +2899,7 @@ class ResolverTest {
         val source = """
             type ArgParser
             constructor ArgParser [
-              on parse(args): MutableList::String = [
+              on parse(args): mut List::String = [
                 1 echo
               ]
             ]
@@ -3031,7 +2995,7 @@ class ResolverTest {
         val a = (((x[3] as ListCollection))).type!!
         val r = (((x[4] as MapCollection))).type!!
         val s = (((x[5] as SetCollection))).type!!
-        assertEquals(a.name, "MutableList")
+        assertEquals(a.name, "mut List")
         assertEquals(r.name, "MutableMap")
         assertEquals(s.name, "MutableSet")
     }

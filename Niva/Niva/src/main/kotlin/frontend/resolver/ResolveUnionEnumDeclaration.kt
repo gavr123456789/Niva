@@ -78,7 +78,7 @@ fun Resolver.resolveUnionDeclaration(statement: UnionRootDeclaration, isError: B
         }).also { branchType ->
             branchType.parent = rootType
             val set = mutableSetOf<Type.UnknownGenericType>()
-            rootType.collectGenericParamsRecursivelyFRFR(set)
+            rootType.collectGenericParamsRecursively(set)
             branchType.addAllTypeArguments(set)
         }
 

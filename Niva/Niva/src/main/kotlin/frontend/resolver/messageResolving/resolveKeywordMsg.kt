@@ -27,6 +27,23 @@ import kotlin.collections.mutableMapOf
 //    return this
 //}
 
+private fun markNeedGenerateDynamicRecursive(type: Type, visited: MutableSet<Type.UserLike> = mutableSetOf()) {
+    when (type) {
+        is Type.NullableType -> markNeedGenerateDynamicRecursive(type.realType, visited)
+        is Type.UserLike -> {
+            if (!visited.add(type)) return
+            type.needGenerateDynamic = true
+
+            if (isCollection(type.name)) {
+                type.typeArgumentList.forEach { markNeedGenerateDynamicRecursive(it, visited) }
+            }
+
+            type.fields.forEach { field -> markNeedGenerateDynamicRecursive(field.type, visited) }
+        }
+        else -> Unit
+    }
+}
+
 fun Resolver.resolveKeywordMsg(
     statement: KeywordMsg, previousScope: MutableMap<String, Type>, currentScope: MutableMap<String, Type>
 
@@ -577,7 +594,7 @@ fun Resolver.resolveKeywordMsg(
 
             // generate dynamic or not
             if ((statement.selectorName == "toDynamic" || statement.selectorName == "fromDynamic") && receiverType is Type.UserLike) {
-                receiverType.needGenerateDynamic = true
+                markNeedGenerateDynamicRecursive(receiverType)
             }
             return Pair(statement.type!!, kwFromDB)
         }
