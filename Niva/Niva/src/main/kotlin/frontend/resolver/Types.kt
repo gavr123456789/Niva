@@ -799,24 +799,26 @@ sealed class Type(
     ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
 
 
-    sealed class GenericType(
-        name: String,
-        typeArgumentList: List<Type>,
-        pkg: String,
-        fields: MutableList<KeywordArg> = mutableListOf(),
-        protocols: MutableMap<String, Protocol> = mutableMapOf(),
-        typeDeclaration: TypeDeclaration?
-    ) : UserLike(name, typeArgumentList, fields, pkg, protocols, typeDeclaration = typeDeclaration,)
-
     class UnknownGenericType(
         name: String,
-        typeArgumentList: List<Type> = mutableListOf(),
+        typeArgumentList: List<Type> = emptyList(),
         pkg: String = "common",
-    ) : GenericType(name, typeArgumentList, pkg, typeDeclaration = null) {
+        fields: MutableList<KeywordArg> = mutableListOf(),
+        protocols: MutableMap<String, Protocol> = mutableMapOf(),
+        typeDeclaration: TypeDeclaration? = null
+    ) : UserLike(
+        name,
+        typeArgumentList,
+        fields = fields,
+        pkg = pkg,
+        protocols = protocols,
+        typeDeclaration = typeDeclaration
+    ) {
         override fun toString(): String {
             return name
         }
     }
+
 }
 
 data class Protocol(

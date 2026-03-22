@@ -542,7 +542,8 @@ fun Resolver.resolveMessageDeclaration(
     if (addToDb) {
         // check that message is unique for type
         val declType = statement.getDeclType()
-        if (statement !is ConstructorDeclaration && receiverTypeForDb !is Type.InternalType) {
+        val unpacked = receiverTypeForDb.unpackNull()// unpack nullable internals to prevent doubling of declarations inside
+        if (statement !is ConstructorDeclaration && unpacked !is Type.InternalType && unpacked == receiverTypeForDb) {
             findAnyMethod(receiverTypeForDb, statement.name, Package(receiverTypeForDb.pkg), declType, false)?.let {
                 if (it.declaration?.getDeclType() == declType) {
                     statement.token.compileError("Method ${it.name} for type $receiverTypeForDb already exists in pkg: ${it.pkg} in file: ${it.declaration.token.file} on line ${it.declaration.token.line}")
