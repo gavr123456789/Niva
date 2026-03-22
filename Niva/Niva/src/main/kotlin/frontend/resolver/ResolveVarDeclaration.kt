@@ -3,6 +3,7 @@
 package main.frontend.typer
 
 import frontend.resolver.*
+import main.codogen.replaceCollectionWithMutable
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 import main.utils.RED
@@ -28,12 +29,6 @@ fun checkThatCollectionIsTyped(statement: VarDeclaration) {
     }
 }
 
-fun replaceCollectionWithMutable(name: String) = when(name) {
-    "List" -> "MutableList"
-    "Set" -> "MutableSet"
-    "Map" -> "MutableMap"
-    else -> name
-}
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
