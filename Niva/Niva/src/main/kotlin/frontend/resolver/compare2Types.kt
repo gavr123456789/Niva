@@ -31,8 +31,14 @@ fun compare2Types(
     if (type1OrChildOf2 === type2) return true
 
 
-    if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable))
-        tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()} $YEL$type1OrChildOf2$WHITE = ...")
+    if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable)) {
+        // allow assigning mutable union root when branch is returned
+        if (type1OrChildOf2 is Type.UnionRootType && type2 is Type.UnionBranchType) {
+            // mark expected as satisfied, but keep going for other checks
+        } else {
+            tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()} $YEL$type1OrChildOf2$WHITE = ...")
+        }
+    }
 
     if (type2.errors != type1OrChildOf2.errors && type1OrChildOf2.errors?.isNotEmpty() == true){ // if declared return type errors are empty and not null - its just any error inferring
         val expectedTypeErrors = type1OrChildOf2.errors
