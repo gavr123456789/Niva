@@ -1000,40 +1000,8 @@ fun TypeAST.toType(
                     copy.replaceTypeArguments(typeArgs)
                     // replace fields types from generics to real (deeply)
                     val visited = mutableSetOf<Type.UserLike>()
-                    fun replaceGenericsDeep(type: Type): Type = when (type) {
-                        is Type.UnknownGenericType -> letterToTypeMap[type.name] ?: type
-                        is Type.NullableType -> {
-                            val replaced = replaceGenericsDeep(type.realType)
-                            if (replaced is Type.NullableType) replaced else Type.NullableType(replaced)
-                        }
-                        is Type.UserLike -> {
-                            if (type in visited) return type
-                            visited.add(type)
-                            if (type.typeArgumentList.isNotEmpty()) {
-                                val newArgs = type.typeArgumentList.map { replaceGenericsDeep(it) }.toMutableList()
-                                type.replaceTypeArguments(newArgs)
-                            }
-                            type.fields.forEach { field ->
-                                field.type = replaceGenericsDeep(field.type)
-                            }
-                            type
-                        }
-                        is Type.Lambda -> {
-                            val newArgs = type.args.map { KeywordArg(it.name, replaceGenericsDeep(it.type)) }.toMutableList()
-                            val newReturnType = replaceGenericsDeep(type.returnType)
-                            Type.Lambda(
-                                args = newArgs,
-                                returnType = newReturnType,
-                                pkg = type.pkg,
-                                extensionOfType = type.extensionOfType?.let { replaceGenericsDeep(it) },
-                                specialFlagForLambdaWithDestruct = type.specialFlagForLambdaWithDestruct,
-                                alias = type.alias
-                            )
-                        }
-                        else -> type
-                    }
                     copy.fields.forEach { field ->
-                        field.type = replaceGenericsDeep(field.type)
+                        field.type = replaceGenericsDeep(field.type, letterToTypeMap, visited)
                     }
                     val result =  copy.also {
                         if (isMutable) it.isMutable = true

@@ -17,8 +17,8 @@ val typeIsNull = { type: Type ->
 // if this is compare for assign, then type1 = type2, so if t1 is nullable, and t2 is null, it's true
 // type from db must be always first, because Int -> arg::Number, but not the other way around
 fun compare2Types(
-    type1OrChildOf2: Type, // expected type
-    type2: Type, // real type
+    expectedT: Type, // expected type
+    actualT: Type, // real type
     tokenForErrors: Token,
     unpackNull: Boolean = false,
     isOut: Boolean = false, // checking for return type, where type1OrChildOf2 - declared return type, type2 - real
@@ -28,21 +28,21 @@ fun compare2Types(
     compareMutability: Boolean = true,
     unpackNullForFirst: Boolean = false,
 ): Boolean {
-    if (type1OrChildOf2 === type2) return true
+    if (expectedT === actualT) return true
 
 
-    if (compareMutability && type1OrChildOf2.isMutable && (type2 !is Type.UnknownGenericType && !type2.isMutable)) {
+    if (compareMutability && expectedT.isMutable && (actualT !is Type.UnknownGenericType && !actualT.isMutable)) {
         // allow assigning mutable union root when branch is returned
-        if (type1OrChildOf2 is Type.UnionRootType && type2 is Type.UnionBranchType) {
+        if (expectedT is Type.UnionRootType && actualT is Type.UnionBranchType) {
             // mark expected as satisfied, but keep going for other checks
         } else {
-            tokenForErrors.compileError("mutable type expected, create it like $YEL${type1OrChildOf2.name.lowercase()} $YEL$type1OrChildOf2$WHITE = ...")
+            tokenForErrors.compileError("mutable type expected, create it like $YEL${expectedT.name.lowercase()} $YEL$expectedT$WHITE = ...")
         }
     }
 
-    if (type2.errors != type1OrChildOf2.errors && type1OrChildOf2.errors?.isNotEmpty() == true){ // if declared return type errors are empty and not null - its just any error inferring
-        val expectedTypeErrors = type1OrChildOf2.errors
-        val realTypeReturnErrors = type2.errors
+    if (actualT.errors != expectedT.errors && expectedT.errors?.isNotEmpty() == true){ // if declared return type errors are empty and not null - its just any error inferring
+        val expectedTypeErrors = expectedT.errors
+        val realTypeReturnErrors = actualT.errors
         if (expectedTypeErrors != null && realTypeReturnErrors != null) {
             if (realTypeReturnErrors.count() > expectedTypeErrors.count()) {
                 return false
@@ -50,7 +50,7 @@ fun compare2Types(
         }
     }
 
-    if (type1OrChildOf2 is Type.Lambda && type2 is Type.Lambda) {
+    if (expectedT is Type.Lambda && actualT is Type.Lambda) {
 
         fun stripUnitArgForComparison(type: Type.Lambda): List<KeywordArg> {
             val args = type.args
@@ -68,13 +68,13 @@ fun compare2Types(
             return if (args.size == 1 && isUnitType(args.first().type)) emptyList() else args
         }
 
-        val argsOf1 = stripUnitArgForComparison(type1OrChildOf2)
-        val argsOf2 = stripUnitArgForComparison(type2)
+        val argsOf1 = stripUnitArgForComparison(expectedT)
+        val argsOf2 = stripUnitArgForComparison(actualT)
 
-        if (type1OrChildOf2.extensionOfType != null && type2.extensionOfType != null) {
-            if (!compare2Types(type1OrChildOf2.extensionOfType, type2.extensionOfType, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
+        if (expectedT.extensionOfType != null && actualT.extensionOfType != null) {
+            if (!compare2Types(expectedT.extensionOfType, actualT.extensionOfType, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes)) {
                 val text =
-                    "extension types of codeblocs are not the same: ${type1OrChildOf2.extensionOfType} != ${type2.extensionOfType}"
+                    "extension types of codeblocs are not the same: ${expectedT.extensionOfType} != ${actualT.extensionOfType}"
                 tokenForErrors.compileError(text)
             }
         }
@@ -85,11 +85,11 @@ fun compare2Types(
         }
 
         // temp for adding "(k,v)" for map, filter for hash maps
-        if (type2.specialFlagForLambdaWithDestruct) {
-            type1OrChildOf2.specialFlagForLambdaWithDestruct = true
+        if (actualT.specialFlagForLambdaWithDestruct) {
+            expectedT.specialFlagForLambdaWithDestruct = true
         }
-        if (type1OrChildOf2.specialFlagForLambdaWithDestruct) {
-            type2.specialFlagForLambdaWithDestruct = true
+        if (expectedT.specialFlagForLambdaWithDestruct) {
+            actualT.specialFlagForLambdaWithDestruct = true
         }
         //
 
@@ -114,8 +114,8 @@ fun compare2Types(
         }
 
         // check return types
-        val return1 = type1OrChildOf2.returnType
-        val return2 = type2.returnType
+        val return1 = expectedT.returnType
+        val return2 = actualT.returnType
         val isReturnTypesEqual =
             (return2.name == InternalTypes.Unit.name || return1.name == InternalTypes.Unit.name) || compare2Types(
                 return1,
@@ -132,17 +132,17 @@ fun compare2Types(
     }
 
     // one of the types is top type Any
-    val type1IsAny = type1OrChildOf2.name == InternalTypes.Any.name
-    val type2IsAny = type2.name == InternalTypes.Any.name
+    val type1IsAny = expectedT.name == InternalTypes.Any.name
+    val type2IsAny = actualT.name == InternalTypes.Any.name
     if (type1IsAny || type2IsAny) {
         val expectedIsGeneric =
-            type1OrChildOf2 is Type.UnknownGenericType ||
-                (type1OrChildOf2 is Type.NullableType && type1OrChildOf2.realType is Type.UnknownGenericType)
+            expectedT is Type.UnknownGenericType ||
+                (expectedT is Type.NullableType && expectedT.realType is Type.UnknownGenericType)
         val actualIsGeneric =
-            type2 is Type.UnknownGenericType ||
-                (type2 is Type.NullableType && type2.realType is Type.UnknownGenericType)
-        val expectedIsNonNullableAny = type1IsAny && type1OrChildOf2 !is Type.NullableType
-        val actualIsNullableAny = type2IsAny && type2 is Type.NullableType
+            actualT is Type.UnknownGenericType ||
+                (actualT is Type.NullableType && actualT.realType is Type.UnknownGenericType)
+        val expectedIsNonNullableAny = type1IsAny && expectedT !is Type.NullableType
+        val actualIsNullableAny = type2IsAny && actualT is Type.NullableType
         if (type2IsAny && expectedIsGeneric) {
             return false
         }
@@ -155,35 +155,35 @@ fun compare2Types(
         }
         return true
     }
-    if (type1OrChildOf2.name == InternalTypes.Nothing.name || type2.name == InternalTypes.Nothing.name) {
+    if (expectedT.name == InternalTypes.Nothing.name || actualT.name == InternalTypes.Nothing.name) {
         return true
     }
 
     // if one of them null and second is nullable
-    if ((typeIsNull(type1OrChildOf2) && type2 is Type.NullableType ||
-                typeIsNull(type2) && type1OrChildOf2 is Type.NullableType)
+    if ((typeIsNull(expectedT) && actualT is Type.NullableType ||
+                typeIsNull(actualT) && expectedT is Type.NullableType)
     ) {
         return true
     }
 
     // in switch one branch can return Int and the other null
-    if (nullIsFirstOrSecond && (typeIsNull(type1OrChildOf2) || typeIsNull(type2))) {
+    if (nullIsFirstOrSecond && (typeIsNull(expectedT) || typeIsNull(actualT))) {
         return true
     }
 
     // expected nullable generic can accept non-nullable generic with the same name
-    if (type1OrChildOf2 is Type.NullableType &&
-        type1OrChildOf2.realType is Type.UnknownGenericType &&
-        type2 is Type.UnknownGenericType &&
-        type1OrChildOf2.realType.name == type2.name
+    if (expectedT is Type.NullableType &&
+        expectedT.realType is Type.UnknownGenericType &&
+        actualT is Type.UnknownGenericType &&
+        expectedT.realType.name == actualT.name
     ) {
         return true
     }
     // non-nullable generic cannot accept nullable value unless explicitly allowed by unpackNull flags
 
     if (!unpackNull && !unpackNullForFirst && !unpackNullForSecond &&
-        type1OrChildOf2 is Type.UnknownGenericType &&
-        type2 is Type.NullableType && type2.realType is Type.UnknownGenericType
+        expectedT is Type.UnknownGenericType &&
+        actualT is Type.NullableType && actualT.realType is Type.UnknownGenericType
     ) {
         return false
     }
@@ -196,11 +196,11 @@ fun compare2Types(
 
 
     // if one of them is generic
-    if ((type1OrChildOf2 is Type.UnknownGenericType && type2 !is Type.UnknownGenericType  || //&& type2 !is Type.NullableType
-                type2 is Type.UnknownGenericType && type1OrChildOf2 !is Type.UnknownGenericType ) //&& type1OrChildOf2 !is Type.NullableType // NOW comparing generics with Nullable types is OK
+    if ((expectedT is Type.UnknownGenericType && actualT !is Type.UnknownGenericType  || //&& type2 !is Type.NullableType
+                actualT is Type.UnknownGenericType && expectedT !is Type.UnknownGenericType ) //&& type1OrChildOf2 !is Type.NullableType // NOW comparing generics with Nullable types is OK
     ) {
-        if (type1OrChildOf2 is Type.UnknownGenericType) {
-            val actual = type2.unpackNull()
+        if (expectedT is Type.UnknownGenericType) {
+            val actual = actualT.unpackNull()
             if (actual is Type.InternalType && actual.name == InternalTypes.Any.name) {
                 return false
             }
@@ -213,7 +213,7 @@ fun compare2Types(
     }
 
     // if both are generics of the different letters
-    if (type1OrChildOf2 is Type.UnknownGenericType && type2 is Type.UnknownGenericType && type1OrChildOf2.name != type2.name) {
+    if (expectedT is Type.UnknownGenericType && actualT is Type.UnknownGenericType && expectedT.name != actualT.name) {
         // if we return than its wrong
         // -> G, but T is returned
         // if we get than it's ok
@@ -224,11 +224,11 @@ fun compare2Types(
     }
 
 
-    val pkg1 = type1OrChildOf2.pkg
-    val pkg2 = type2.pkg
+    val pkg1 = expectedT.pkg
+    val pkg2 = actualT.pkg
     val isDifferentPkgs = pkg1 != pkg2 && pkg1 != "core" && pkg2 != "core"
-    if (type1OrChildOf2 is Type.UserLike && type2 is Type.UserLike) {
-        val bothTypesAreBindings = type1OrChildOf2.isBinding && type2.isBinding
+    if (expectedT is Type.UserLike && actualT is Type.UserLike) {
+        val bothTypesAreBindings = expectedT.isBinding && actualT.isBinding
         // if types from different packages, and it's not core
         // bindings can be still compatible, because there is inheritance in Java
         if (!bothTypesAreBindings && isDifferentPkgs) {
@@ -237,24 +237,24 @@ fun compare2Types(
         }
 
         // if both types has generic params
-        if (type1OrChildOf2.typeArgumentList.isNotEmpty() && type2.typeArgumentList.isNotEmpty()) {
-            val args1 = type1OrChildOf2.typeArgumentList
-            val args2 = type2.typeArgumentList
+        if (expectedT.typeArgumentList.isNotEmpty() && actualT.typeArgumentList.isNotEmpty()) {
+            val args1 = expectedT.typeArgumentList
+            val args2 = actualT.typeArgumentList
             if (args1.count() != args2.count()) {
 //                tokenForErrors.compileError("Types: ${YEL}$type1OrChildOf2${RESET} and ${YEL}$type2${RESET} have a different number of generic parameters")
                 return false
             }
 
-            val isSameNames = type1OrChildOf2.toString() == type2.toString()
+            val isSameNames = expectedT.toString() == actualT.toString()
             args1.forEachIndexed { index, arg1 ->
                 val arg2 = args2[index]
                 if (isSameNames) {
                     if (arg1 is Type.UnknownGenericType) {
-                        type1OrChildOf2.replaceTypeArguments(type2.typeArgumentList)
+                        expectedT.replaceTypeArguments(actualT.typeArgumentList)
                         return true
                     }
                     if (arg2 is Type.UnknownGenericType) {
-                        type2.replaceTypeArguments(type1OrChildOf2.typeArgumentList)
+                        actualT.replaceTypeArguments(expectedT.typeArgumentList)
                         return true
                     }
                 }
@@ -272,16 +272,16 @@ fun compare2Types(
                 //} //type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg // List::Int and List::T are the same
             }
 
-            val hasGeneralRoot_Or_itsListTAndListInt = type1OrChildOf2.name == type2.name && type2.pkg == type1OrChildOf2.pkg || findGeneralRoot(type1OrChildOf2, type2) != null
+            val hasGeneralRoot_Or_itsListTAndListInt = expectedT.name == actualT.name && actualT.pkg == expectedT.pkg || findGeneralRoot(expectedT, actualT) != null
             return hasGeneralRoot_Or_itsListTAndListInt
         }
 
 
         // first is parent of the second
         if (compareParentsOfBothTypes) {
-            var parent1: Type? = type1OrChildOf2.parent
+            var parent1: Type? = expectedT.parent
             while (parent1 != null) {
-                if (compare2Types(type2, parent1, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false)) {
+                if (compare2Types(actualT, parent1, tokenForErrors,compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false)) {
                     return true
                 }
                 parent1 = parent1.parent
@@ -291,9 +291,9 @@ fun compare2Types(
         // actually, we can't compare parents of second
         // this will lead to Number -> arg::Widget
 
-        var parent2: Type? = type2.parent
+        var parent2: Type? = actualT.parent
         while (parent2 != null) {
-            if (compare2Types(type1OrChildOf2, parent2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false, isOut = isOut)) {
+            if (compare2Types(expectedT, parent2, tokenForErrors, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = false, isOut = isOut)) {
                 return true
             }
             parent2 = parent2.parent
@@ -311,24 +311,24 @@ fun compare2Types(
 
 
     // x::Int? = null
-    if (type1OrChildOf2 is Type.NullableType && typeIsNull(type2)) {
+    if (expectedT is Type.NullableType && typeIsNull(actualT)) {
         return true
     }
 
     // Ins sas -> Int? = ^42
     if (unpackNull) {
-        if ((type1OrChildOf2 is Type.NullableType && type2 !is Type.NullableType)) {
-            val win = compare2Types(type1OrChildOf2.realType, type2, tokenForErrors)
+        if ((expectedT is Type.NullableType && actualT !is Type.NullableType)) {
+            val win = compare2Types(expectedT.realType, actualT, tokenForErrors)
             if (win) return true
         }
-        if ((type2 is Type.NullableType && type1OrChildOf2 !is Type.NullableType)) {
-            val win = compare2Types(type1OrChildOf2, type2.realType, tokenForErrors)
+        if ((actualT is Type.NullableType && expectedT !is Type.NullableType)) {
+            val win = compare2Types(expectedT, actualT.realType, tokenForErrors)
             if (win) return true
         }
-        if (type1OrChildOf2 is Type.NullableType && type2 is Type.NullableType) {
+        if (expectedT is Type.NullableType && actualT is Type.NullableType) {
             val win = compare2Types(
-                type1OrChildOf2.realType,
-                type2.realType,
+                expectedT.realType,
+                actualT.realType,
                 tokenForErrors,
                 unpackNull = true,
                 isOut = isOut,
@@ -338,23 +338,23 @@ fun compare2Types(
             if (win) return true
         }
         // both are nullable: Int? vs Int?
-    } else if (type1OrChildOf2 is Type.NullableType && type2 is Type.NullableType) {
-        return compare2Types(type1OrChildOf2.realType, type2.realType, tokenForErrors)
+    } else if (expectedT is Type.NullableType && actualT is Type.NullableType) {
+        return compare2Types(expectedT.realType, actualT.realType, tokenForErrors)
     }
     else if (unpackNullForSecond) {
-        if ((type2 is Type.NullableType )) { //&& type1OrChildOf2 !is Type.NullableType
-            val win = compare2Types(type2.realType, type1OrChildOf2, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
+        if ((actualT is Type.NullableType )) { //&& type1OrChildOf2 !is Type.NullableType
+            val win = compare2Types(actualT.realType, expectedT, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
             if (win) return true
         }
     } else if (unpackNullForFirst) {
-        if ((type1OrChildOf2 is Type.NullableType )) { //&& type2 !is Type.NullableType
-            val win = compare2Types(type1OrChildOf2.realType, type2, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
+        if ((expectedT is Type.NullableType )) { //&& type2 !is Type.NullableType
+            val win = compare2Types(expectedT.realType, actualT, tokenForErrors, isOut = isOut, compareParentsOfBothTypes = compareParentsOfBothTypes, compareMutability = compareMutability)
             if (win) return true
         }
     }
 
 
-    if (type1OrChildOf2.toStringWithoutErrors() == type2.toStringWithoutErrors() && !isDifferentPkgs) {
+    if (expectedT.toStringWithoutErrors() == actualT.toStringWithoutErrors() && !isDifferentPkgs) {
         return true
     }
 
