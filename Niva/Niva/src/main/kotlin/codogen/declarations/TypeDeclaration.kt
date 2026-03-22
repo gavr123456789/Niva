@@ -178,9 +178,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
 
 
     /// Override toString
-    if (enumRoot == null) {
-        generateToStringOverride(this@generateTypeDeclaration, receiverType)
-    }
+    generateToStringOverride(this@generateTypeDeclaration, receiverType)
 
     // to\from Dynamic
     if (receiverType is Type.UserLike && receiverType !is Type.EnumRootType && receiverType !is Type.EnumBranchType) {
@@ -191,9 +189,7 @@ fun SomeTypeDeclaration.generateTypeDeclaration(
         }
     }
 
-    if (receiverType !is Type.EnumRootType) {
-        appendLine("    }")
-    }
+    appendLine("    }")
     append("\n}\n")
 }
 
