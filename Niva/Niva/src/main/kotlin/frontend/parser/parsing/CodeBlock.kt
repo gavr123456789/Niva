@@ -1,14 +1,32 @@
 package frontend.parser.parsing
 
+import main.frontend.meta.Token
 import main.utils.RESET
 import main.utils.WHITE
 import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
-private fun Parser.statementsUntilCloseBracket(bracketType: TokenType, parseMsgDecls: Boolean = true): List<Statement> {
+private fun Parser.failIfEofExpectedClose(bracketType: TokenType, openTok: Token?) {
+    if (!check(TokenType.EndOfFile)) return
+    val expected = when (bracketType) {
+        TokenType.CloseBracket -> "]"
+        TokenType.CloseParen -> ")"
+        TokenType.CloseBrace -> "}"
+        else -> bracketType.name
+    }
+    val errTok = openTok ?: peek()
+    errTok.compileError("Expected $expected before end of file")
+}
+
+private fun Parser.statementsUntilCloseBracket(
+    bracketType: TokenType,
+    parseMsgDecls: Boolean = true,
+    openTok: Token? = null
+): List<Statement> {
     val result = mutableListOf<Statement>()
         do {
+        failIfEofExpectedClose(bracketType, openTok)
         val (a, _) = methodBody()
         result.addAll(a)
         result.add(statementWithEndLine(parseMsgDecls))
@@ -23,12 +41,16 @@ private fun Parser.statementsUntilCloseBracket(bracketType: TokenType, parseMsgD
 }
 
 // returns defaultAction = []
-fun Parser.statementsUntilCloseBracketWithDefaultAction(bracketType: TokenType): Pair<MutableList<Statement>, CodeBlock?> {
+fun Parser.statementsUntilCloseBracketWithDefaultAction(
+    bracketType: TokenType,
+    openTok: Token? = null
+): Pair<MutableList<Statement>, CodeBlock?> {
     val result = mutableListOf<Statement>()
     var defaultAction: CodeBlock? = null
     if (match(bracketType))
         return Pair(mutableListOf(), null)
     do {
+        failIfEofExpectedClose(bracketType, openTok)
         val q = statementWithEndLine()
         result.add(q)
         if (q is VarDeclaration && q.name == "defaultAction") {
@@ -90,7 +112,7 @@ fun Parser.codeBlock(): CodeBlock {
     skipNewLinesAndComments()
 
     val statements = if (!match(TokenType.CloseBracket))
-        statementsUntilCloseBracket(TokenType.CloseBracket)
+        statementsUntilCloseBracket(TokenType.CloseBracket, openTok = openBracket)
     else
         emptyList()
 
@@ -107,7 +129,7 @@ fun Parser.codeBlock(): CodeBlock {
 fun Parser.bracketExpression(): ExpressionInBrackets {
     val openBracket = matchAssert(TokenType.OpenParen)
 
-    val statements = statementsUntilCloseBracket(TokenType.CloseParen, false)
+    val statements = statementsUntilCloseBracket(TokenType.CloseParen, false, openTok = openBracket)
     if (statements.count() != 1) openBracket.compileError("Expected one expression in brackets but got ${statements.count()}")
     val expr = statements.first()
     if (expr !is Expression) openBracket.compileError("Expected expression, not a statement")

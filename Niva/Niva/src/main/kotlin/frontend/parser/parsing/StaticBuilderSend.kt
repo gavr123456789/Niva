@@ -13,8 +13,8 @@ fun Parser.staticBuilderFromBuilder(msg: StaticBuilder): StaticBuilder {
 
     val name = matchAssert(TokenType.Identifier)
 
-    matchAssert(TokenType.OpenBracket)
-    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+    val openBracket = matchAssert(TokenType.OpenBracket)
+    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
 
     val result = StaticBuilder(
         name = name.lexeme,
@@ -50,8 +50,8 @@ fun Parser.staticBuilderFromUnary(msg: MessageSend): StaticBuilder {
     }
 
 
-    matchAssert(TokenType.OpenBracket)
-    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+    val openBracket = matchAssert(TokenType.OpenBracket)
+    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
 
     val result = StaticBuilder(
         name = builderMsg.selectorName,
@@ -84,10 +84,10 @@ fun Parser.staticBuilderFromUnaryWithArgs(msg: MessageSendUnary): StaticBuilder 
     val (args, _) = keywordSendArgs(b)
 
     matchAssert(TokenType.CloseParen)
-    matchAssert(TokenType.OpenBracket)
+    val openBracket = matchAssert(TokenType.OpenBracket)
 
 
-    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
 
     // TODO can name can be from another package? probably
     val result = StaticBuilder(
@@ -105,51 +105,52 @@ fun Parser.staticBuilderFromUnaryWithArgs(msg: MessageSendUnary): StaticBuilder 
     return result
 }
 
-fun Parser.staticBuilder(): StaticBuilder {
-    val q = dotSeparatedIdentifiers()!!
-    matchAssert(TokenType.OpenBracket)
-    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+//fun Parser.staticBuilder(): StaticBuilder {
+//    val q = dotSeparatedIdentifiers()!!
+//    val openBracket = matchAssert(TokenType.OpenBracket)
+//    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
+//
+//    // TODO can name can be from another package
+//    val result = StaticBuilder(
+//        name = q.name,
+//        statements = statements,
+//        defaultAction = defaultAction,
+//        args = emptyList(),
+//        type = null,
+//        receiverOfBuilder = null,
+//        token = q.token,
+//        declaration = null
+//
+//    )
+//
+//    return result
+//}
 
-    // TODO can name can be from another package
-    val result = StaticBuilder(
-        name = q.name,
-        statements = statements,
-        defaultAction = defaultAction,
-        args = emptyList(),
-        type = null,
-        receiverOfBuilder = null,
-        token = q.token,
-        declaration = null
-
-    )
-
-    return result
-}
-fun Parser.staticBuilderWithArgs(): StaticBuilder {
-    val q = dotSeparatedIdentifiers()!!
-    matchAssert(TokenType.OpenParen)
-
-    val b = StringBuilder()
-    val (args, _) = keywordSendArgs(b)
-
-    matchAssert(TokenType.CloseParen)
-    matchAssert(TokenType.OpenBracket)
-
-
-    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
-
-    // TODO can name can be from another package
-    val result = StaticBuilder(
-        name = q.name,
-        statements = statements,
-        defaultAction = defaultAction,
-        args = args,
-        type = null,
-        receiverOfBuilder = null,
-        token = q.token,
-        declaration = null
-
-    )
-
-    return result
-}
+//fun Parser.staticBuilderWithArgs(): StaticBuilder {
+//    val q = dotSeparatedIdentifiers()!!
+//    matchAssert(TokenType.OpenParen)
+//
+//    val b = StringBuilder()
+//    val (args, _) = keywordSendArgs(b)
+//
+//    matchAssert(TokenType.CloseParen)
+//    val openBracket = matchAssert(TokenType.OpenBracket)
+//
+//
+//    val (statements, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
+//
+//    // TODO can name can be from another package
+//    val result = StaticBuilder(
+//        name = q.name,
+//        statements = statements,
+//        defaultAction = defaultAction,
+//        args = args,
+//        type = null,
+//        receiverOfBuilder = null,
+//        token = q.token,
+//        declaration = null
+//
+//    )
+//
+//    return result
+//}

@@ -518,8 +518,8 @@ fun Parser.builderDeclaration(pragmas: MutableList<Pragma>, receiver: TypeAST? =
 
     val returnType = returnType()
     matchAssert(TokenType.Assign)
-    matchAssert(TokenType.OpenBracket, "builder cant be single expression")
-    val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket)
+    val openBracket = matchAssert(TokenType.OpenBracket, "builder cant be single expression")
+    val (body, defaultAction) = statementsUntilCloseBracketWithDefaultAction(TokenType.CloseBracket, openTok = openBracket)
 
     val x = MessageDeclarationKeyword(
         name = name,
