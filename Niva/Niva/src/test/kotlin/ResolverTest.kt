@@ -39,6 +39,30 @@ private fun createDefaultResolver(statements: List<Statement>) = Resolver(
 class ResolverTest {
 
 
+
+    @Test
+    fun simpleGenericGet() {
+        val source = """
+            type Box v: V
+            type Box2 v1: K v2: Box(V)
+            
+            q = Box v: ""
+            w = Box2(Int, String) v1: 2 v2: q
+            f = w v2
+            g = w v2
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
+    @Test
+    fun inferGenericsParamsFromArgsCorrectly() {
+        val source = """
+            type Mwrrp2 v1: K v2: Mwrrp(V)
+            type Mwrrp v: V
+        
+            Mwrrp2(K, V) makeMeow -> Mwrrp2(K, V) = this
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
     @Test
     fun nullabilityBug_genericTable_were_poisoning_different_already_resolved_generics_bruhhh() {
         val source = """
