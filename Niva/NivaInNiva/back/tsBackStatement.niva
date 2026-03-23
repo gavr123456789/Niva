@@ -1,9 +1,9 @@
 
 
 
-Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
+TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
     | this
-    | TypeDecl => [
+    | TypeDeclT => [
         // class Person {
         //     constructor(name, age) {
         //         this.name = name;
@@ -35,8 +35,8 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         // and probably function CLASS_new_C()
         sb toString
     ]
-    | EnumDecl => [TO DO]
-    | UnionDecl => [
+    | EnumDeclT => [TO DO]
+    | UnionDeclT => [
         sb = StringBuilder new
 
         commonFields = this commonUnionFields
@@ -120,7 +120,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         sb toString
     ]
-    | MessageDecl => [
+    | MessageDeclT => [
 
         //export function Person__withAge(_this, withAge) {
         //  //destruct this age, name
@@ -132,7 +132,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb = StringBuilder new
 
         // resolve receiver type to get mangled name
-        receiverType = db findByTypeName: receiver name inPkg: null
+        receiverType = receiver
         receiverFields =
             | receiverType
             | Complex => [receiverType fields]
@@ -185,7 +185,7 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
             ] do
         ]
 
-        this body typedBody2 forEach: [expr ->
+        this body v forEach: [expr::TypedExpr2 ->
             sb append: "    "
             sb appendLine: (expr toTSFromPkg: currentPkg db: db)
         ]
@@ -193,13 +193,17 @@ Statement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         sb append: "}"
         sb toString
     ]
-    | ExtendDecl => [
+    | ExtendDeclT => [
       sb = StringBuilder new
       sb appendLine: "// extend declaration"
       this messages forEach: [
         sb appendLine: (it toTSFromPkg: currentPkg :db)
       ]
       sb toString
+    ]
+    | TypedExpr2 => [
+        expr::TypedExpr2 = this
+        expr toTSExprFromPkg: currentPkg :db
     ]
     |=> [
         //"toTS: skipping top level expr: " + this token toString, log

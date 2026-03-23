@@ -1,10 +1,14 @@
 
 
 AstType2 toNivaTypefromDB(db): TyperDB inPkg: String? -> NivaType = [
+  ^ this toNivaTypefromDB2: db inPkg: inPkg knownTypes: null
+]
 
+AstType2 toNivaTypefromDBWithKnown(db): TyperDB knownTypes: Map(String, TypeT) -> NivaType = [
+  ^ this toNivaTypefromDB2: db inPkg: null knownTypes: knownTypes
+]
 
-
-
+AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, TypeT)? -> NivaType = [
   x = | this
   | AstType => [
     name isGeneric ifTrue: [
@@ -12,23 +16,32 @@ AstType2 toNivaTypefromDB(db): TyperDB inPkg: String? -> NivaType = [
       ^ isNullable ifTrue: [NullableT v: base] ifFalse: [base]
     ]
 
-    typeT = db findByTypeName: name :inPkg
+    baseTypeMaybe = | knownTypes
+    | null => null
+    |=> knownTypes at: name
+
+    baseType = | baseTypeMaybe
+    | null => db findByTypeName: name :inPkg
+    |=> baseTypeMaybe
+
     result = genericParams isNotEmpty ifTrue: [
       // transform each generic astType to real type
       // create table of them
       // replace T with real types from the table
-      | typeT
+      | baseType
       | TypeT => [
-        Assert that: typeT genericArgs count
+        genericArgs2 = baseType genericArgs isEmpty
+          ifTrue: [baseType collectGenerics toMutableList]
+          ifFalse: [baseType genericArgs]
+
+        Assert that: genericArgs2 count
              equals: genericParams count
-
-
 
         idToType:: mut Map(String, NivaType) = #{}!
         mut hasConcreteGeneric = false
 
-        typeT genericArgs forEachIndexed: [ i, it ->
-          sas = genericParams at: i, toNivaTypefromDB: db inPkg: inPkg
+        genericArgs2 forEachIndexed: [ i, it ->
+          sas = genericParams at: i, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
           | sas
           | UnresolvedGenericT => []
           |=> [hasConcreteGeneric <- true]
@@ -36,37 +49,37 @@ AstType2 toNivaTypefromDB(db): TyperDB inPkg: String? -> NivaType = [
         ]
 
         hasConcreteGeneric
-          ifTrue: [db addGenericInstantiationIfAbsent: typeT letterToType: idToType]
-          ifFalse: [typeT]
+          ifTrue: [db addGenericInstantiationIfAbsent: baseType letterToType: idToType]
+          ifFalse: [baseType]
       ]
       | ListT => [
         genericParams count != 1 ifTrue: [
           db addErrorFromTok: tok withMsg: "List expects 1 generic param, got " + genericParams count toString
-          ^ typeT
+          ^ baseType
         ]
-        inner = genericParams first, toNivaTypefromDB: db inPkg: inPkg
+        inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
         ListT t: inner
       ]
       | SetT => [
         genericParams count != 1 ifTrue: [
           db addErrorFromTok: tok withMsg: "Set expects 1 generic param, got " + genericParams count toString
-          ^ typeT
+          ^ baseType
         ]
-        inner = genericParams first, toNivaTypefromDB: db inPkg: inPkg
+        inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
         SetT t: inner
       ]
       | MapT => [
         genericParams count != 2 ifTrue: [
           db addErrorFromTok: tok withMsg: "Map expects 2 generic params, got " + genericParams count toString
-          ^ typeT
+          ^ baseType
         ]
-        keyType = genericParams at: 0, toNivaTypefromDB: db inPkg: inPkg
-        valType = genericParams at: 1, toNivaTypefromDB: db inPkg: inPkg
+        keyType = genericParams at: 0, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+        valType = genericParams at: 1, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
         MapT k: keyType v: valType
       ]
       |=> [TO DO: "only TypeT/ListT/SetT/MapT can have generics"]
     ] ifFalse: [
-      typeT
+      baseType
     ]
 
     finalType = isNullable ifTrue: [NullableT v: result] ifFalse: [result]
@@ -94,3 +107,14 @@ AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
     ]
   ]
   | AstLambdaType => {NivaType}
+
+
+
+AstType2 toTypeInfoFromDb(db): TyperDB inPkg: String? -> TypeInfo = [
+  t = this toNivaTypefromDB: db inPkg: inPkg
+  errorsList = this toErrorsFromDb: db inPkg: inPkg
+  isMut = | this
+           | AstType => this isMut
+           |=> false
+  ^ TypeInfo t: t isMut: isMut listOfErrors: errorsList
+]

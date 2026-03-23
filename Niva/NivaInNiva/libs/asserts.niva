@@ -27,9 +27,3 @@ Bool assert(msg): String = [
   this == false =>
     Error throwWithMessage: x + "\n" + msg, orPANIC
 ]
-
-Int clampFrom(min): Int to(max): Int =
-  | true
-  | (this < min) => min
-  | (this > max) => max
-  |=> this

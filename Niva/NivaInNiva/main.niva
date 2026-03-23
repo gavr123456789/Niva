@@ -69,7 +69,7 @@ callNewFromOtherFile = [
 compilerTry = [
   path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
   NivaCompiler runArgs: path withIO: IO_Container new
-] do
+]
 
 compilerTry2 = [
   path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
@@ -80,99 +80,33 @@ compilerTry2 = [
   //diff echo // 60 toLong / 1000 toLong, echo
 ]
 
-genericsReceiverAndKwArg = [
+emptyListTypeInference = [
   fileMain = """
-    type Box x: T
-    box = Box x: 42
-    Box(T) tGeneric::T -> T = [
-        ^ tGeneric
-    ]
-    res = box tGeneric: 1
+    type Sas x: List(Int)
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+  sasType = db packages at: "main", unpackOrPANIC,
+               types at: "Sas", unpackOrPANIC asTypeT
+  fieldType = sasType fields first typeT asListT t
+  Assert that: fieldType name equals: "Int"
+]
+
+empty2 = [
+  fileMain = """
+    type Sas x: List(Int)
+    Sas x: {}
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
   typedAst = result entryPointExpressions
 
-  boxDecl = typedAst at: 0
-  | boxDecl
-  | VarDeclarationT => [
-      t = boxDecl value typeInfo t
-      Assert that: t name equals: "Box"
-      | t
-      | TypeT => [
-        Assert that: t genericArgs count equals: 1
-        Assert that: t genericArgs first name equals: "Int"
-      ]
-      |=> Assert that: false equals: true
-  ]
-  |=> Assert that: false equals: true
 
-  // 2) check 'res' type
-  resDecl = typedAst at: 1
-  | resDecl
-  | VarDeclarationT => [
-      t = resDecl value typeInfo t
-      Assert that: t name equals: "Int"
-  ]
-  |=> [ Assert that: false equals: true ]
-
-]
-
-
-mapCollection = [
-  fileMain = """
-    Int from(local): Int = []
-  """
-
-  //result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  result = fileMain resolveNivaCode
-
-  db = result db
-  typedAst = result fileToStatements
-  typedAst debug
-]
-
-untypedArgsResolve = [
-  fileMain = """
-    // untyped args with expected type - map infers types from [Int -> Int]
-    list = {1 2 3}
-    doubled = list map: [x -> x * 2]
-    tripled = list map: [x -> x inc inc inc]
-    //[x: Int -> x inc inc inc]
-  """
-
-  result = fileMain resolveNivaCode
-  db = result db
-  typedAst = result entryPointExpressions
-  last = typedAst last
-  //last debug
-  //Assert that: last typeInfo t name equals: "Int"
-]
-
-sas = [
-  fileMain = """
-    list map: [x -> x * 2]
-    list map: [x -> x inc inc inc]
-  """
-
-  result = fileMain resolveNivaCode
-  db = result db
-  typedAst = result entryPointExpressions
-  last = typedAst last
-  //last debug
-  //Assert that: last typeInfo t name equals: "Int"
-]
-
-
-codeBlockStatementWithNewSyntax = [
-  input = """
-    // call with args
-    [x: Int, y: Int -> x + y] x: 1 y: 2
-  """ trimIndent
-  statements = TestParse withInput: input expectedCount: 1
-  > statements
-]
+  >typedAst last typeInfo t toString
+] do
 
 
 
@@ -189,13 +123,4 @@ odin = [
     |=> []
   ]
   "The program $program calculates the value $acc" echo
-]
-
-
-[
-
-  //true ifTrue: [5] ifFalse: [ true ]
-  //v = #{} toMut // whats the type of v
-  ////v get: 12 orPut: ["meow"] // what's the type of v
-  //meow = v at: 13 // what's the type of meow
 ]

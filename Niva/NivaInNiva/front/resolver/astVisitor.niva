@@ -346,7 +346,7 @@ TypeDeclVisitor
           defaultConstructorWithName: msg name
           receiverType: receiverType
           args: argsT
-          returnType: (msg getReturnTypeFromDb: db)
+          returnType: (msg getReturnTypeIfDeclaredOrUnknown: db)
           decl: msg
           protocolName: "constructors"
           pkgName: pkg
@@ -363,7 +363,7 @@ TypeDeclVisitor
           name: msg name
           receiverType: receiverType
           args: argsT
-          returnType: (msg getReturnTypeFromDb: db) // if generic need to resolve
+          returnType: (msg getReturnTypeIfDeclaredOrUnknown: db) // if generic need to resolve
           returnErrors: returnErrors
           forMut: isMutable
           possibleErrors: {}
@@ -379,45 +379,22 @@ TypeDeclVisitor
     ]
 
 // resolve main
-    mainBody::mut Body = (Body unTypedBody: entryPointExpressions typedBody2: {}!)
-    // create entry point pkg
-    entryPointPkg = db addNewPkgIfNotExists: "entryPoint"
-    typedMain = mainBody
-      resolveBody2: db
-      withContext: (Context rootWithPkg: entryPointPkg)
-
-    // mainBody typedBody2 addAll:
-
-
-    fakeUnitAstType = AstType2 unitType
-
-
-    fakeMsgDecl = MessageDecl receiver: fakeUnitAstType
-      name: "entryPoint" args: {}
-      returnType: fakeUnitAstType body: mainBody
-      isSingleExpr: false isConstructor: false
-      token: (mainBody unTypedBody isNotEmpty ifTrue: [mainBody unTypedBody first token]  ifFalse: [Token fake])
-
-
-
-
-    msgDecls2 add: (Tuple x: "entryPoint" y: fakeMsgDecl)
+// resolve main moved to ResolverHelper
   ] do
   ^ msgDecls2
 ]
 
 /// if no return type and has body then its Unit
 /// if no return type and isSingleExpr then its unknown
-MessageDecl getReturnTypeFromDb(db): TyperDB -> NivaType = [
-
+MessageDecl getReturnTypeIfDeclaredOrUnknown(db): TyperDB -> NivaType = [
   rt = returnType
- ^| rt
-  | null => [
-    | isSingleExpr
-    | true => Unknown new
-    | false => db dtc unit
-  ]
-  |=> db findByTypeName: rt name inPkg: null
+  ^ | rt
+      | null => [
+        | isSingleExpr
+        | true => Unknown new
+        | false => db dtc unit
+      ]
+    |=> db findByTypeName: rt name inPkg: null
 ]
 
 /// returns a type with fields filled with real types, ready to add to db
@@ -437,14 +414,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
 
 
     st fields forEach: [
-      fieldName = it astType name
-      knownNames = knownTypes keys
-      // search in known types, if not found search in db, db always has core types,
-      // known types contains every type from AST decls
-      maybeFieldType = knownTypes at: fieldName
-      fieldType = | maybeFieldType
-      | null => db findByTypeName: fieldName inPkg: null
-      |=> maybeFieldType
+      fieldType = it astType toNivaTypefromDBWithKnown: db knownTypes: knownTypes
 
       field = TypeTField name: it name typeT: fieldType
       typeStub fields add: field
@@ -500,9 +470,9 @@ type MessagesWithContext
   data: Map(MessageDecl, Context)
 
 /// fills typedBody inside body
-MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) = [
+MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) -> TypedBody = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log
-
+  db typedBodiesCache at: this, unpack: [^ it]
   // put extra types to db
   db localGenericScope putAll: extraTypes
 
@@ -537,32 +507,62 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 // resolve body
   c = createContextWithThisAndArgs do
 
-  body resolveBody2: db withContext: c
+typedBody = body resolveBody2: db withContext: c
 
-  isSingleExpr ifTrue: [
-    bodyExprs = body typedBody2
-    bodyExprs isNotEmpty ifTrue: [
-      lastExpr = bodyExprs last
-      | lastExpr
-      | ReturnStatementT => []
-      | VarDeclarationT
-      | AssignT
-      | DestructingAssignT => [
-        bodyExprs add: (ReturnStatementT
-                          value: null
+  finalTypedBody =
+    isSingleExpr ifTrue: [
+      bodyExprs::mut List::TypedExpr2 = typedBody v toMutableList
+      bodyExprs isNotEmpty ifTrue: [
+        lastExpr = bodyExprs last
+        | lastExpr
+        | ReturnStatementT => []
+        | VarDeclarationT
+        | AssignT
+        | DestructingAssignT => [
+          bodyExprs add: (ReturnStatementT
+                            value: null
+                            token: lastExpr token
+                            typeInfo: db dtc unit toTypeInfoDefault)
+          ()
+        ]
+        |=> [
+          newBody = (bodyExprs dropLast: 1, toMutableList)
+          newBody add: (ReturnStatementT
+                          value: lastExpr
                           token: lastExpr token
-                          typeInfo: db dtc unit toTypeInfoDefault)
-        ()
+                          typeInfo: lastExpr typeInfo)
+          bodyExprs clear
+          bodyExprs addAll: newBody
+          ()
+        ]
       ]
+      TypedBody v: bodyExprs toList t: typedBody t
+    ] ifFalse: [typedBody]
+
+  noDeclaredReturnType = returnType == null
+  shouldInferSingleExprReturnType =
+    isConstructor ifTrue: [false] ifFalse: [
+      isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty
+    ]
+
+  shouldInferSingleExprReturnType ifTrue: [
+    receiverType = receiver toNivaTypefromDB: db inPkg: null
+    methodsMaybe = db typeToMethodNameToMethod at: receiverType
+    | methodsMaybe
+    | null => []
+    |=> [
+      methods::mut Map(String, NivaMethod) = methodsMaybe
+      existingMethod = methods at: name
+      | existingMethod
+      | null => []
       |=> [
-        newBody = (bodyExprs dropLast: 1, toMutableList)
-        newBody add: (ReturnStatementT
-                        value: lastExpr
-                        token: lastExpr token
-                        typeInfo: lastExpr typeInfo)
-        bodyExprs clear
-        bodyExprs addAll: newBody
-        ()
+        | existingMethod returnType
+        | Unknown => [
+          inferredRt = finalTypedBody t
+          updatedMethod = existingMethod copyWithDifferentReturnType: inferredRt
+          db replaceMethod: updatedMethod inType: receiverType
+        ]
+        |=> []
       ]
     ]
   ]
@@ -571,6 +571,8 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   extraTypes keys forEach: [
     db localGenericScope remove: it
   ]
+  db typedBodiesCache at: this put: finalTypedBody
+  ^ finalTypedBody
 ]
 
 

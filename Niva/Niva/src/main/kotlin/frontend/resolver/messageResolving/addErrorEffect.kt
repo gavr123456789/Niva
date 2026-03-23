@@ -25,14 +25,13 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
         return returnType
     }
 
-    // if its a codeblock then add errors to it and exit, do not add error effects to currentMsgDecl
-    val codeBlock = findNearestCodeBlockInStack()
-    if (codeBlock != null) {
-        if (errors?.isNotEmpty() == true)
-            codeBlock.errors += errors
-        return returnType
-    }
-
+    // no more inside error poisoning a codeblock
+    val inCodeBlock = findNearestCodeBlockInStack() != null
+//    if (inCodeBlock != null) {
+//        if (errors?.isNotEmpty() == true)
+//            inCodeBlock.errors += errors
+//        return returnType
+//    }
     val currentMsgDecl = resolvingMessageDeclaration
     if (errors == null && returnType.errors != null && (msgFromDB?.returnType?.name?.isGeneric() == false)) {
         statement.token.compileError("Compiler bug: msgFromDB doesnt contain errors, but return type contain")
@@ -51,12 +50,12 @@ fun Resolver.addErrorEffect(msgFromDB: MessageMetadata?, returnType: Type, state
         // maybe we are on the top level, so no decl to add errors
         currentMsgDecl?.stackOfPossibleErrors?.add(pairOfStAndErrorSet)
         val returnTypeWithErrors =
-            if(statement.selectorName == "throwWithMessage" && errors == returnType.errors)
+            if (statement.selectorName == "throwWithMessage" && errors == returnType.errors)
                 returnType
             else
                 returnType.copyAndAddErrors(errors)
 
-        return returnTypeWithErrors
+        return if (inCodeBlock && currentMsgDecl != null) returnType else returnTypeWithErrors
     }
 
     // if current method is null then its top level function!

@@ -1,48 +1,5 @@
 type TypeScript
 
-String operatorToString -> String =
-  | this
-  | "+" => "plus"
-  | "-" => "minus"
-  | "*" => "times"
-  | "/" => "div"
-  | "%" => "rem"
-  | ".." => "rangeTo"
-  | "==" => "equals"
-  | "!=" => "notEquals"
-  | ">" => "gt"
-  | "<" => "lt"
-  | ">=" => "gte"
-  | "<=" => "lte"
-  | "||" => "or"
-  | "&&" => "and"
-  | "apply" => "invoke"
-  |=> this
-
-
-NivaType isCoreTypeNamed(name): String -> Bool = [
-  base = this unwrapNullable
-  ^ (base name == name) && (base pkgName == "core")
-]
-
-NivaType isNumericType -> Bool = [
-  ^ (this isCoreTypeNamed: "Int") ||
-    (this isCoreTypeNamed: "Double") ||
-    (this isCoreTypeNamed: "Float")
-]
-
-NivaType isStringType -> Bool = this isCoreTypeNamed: "String"
-NivaType isBoolType -> Bool = this isCoreTypeNamed: "Bool"
-
-String unquoteLiteral -> String = [
-  len = this count
-  ^ len >= 2 ifTrue: [
-    (this drop: 1) dropLast: 1
-  ] ifFalse: [
-    this
-  ]
-]
-
 NivaType tryEmitNativeBinary(op): String recvExpr: String argExpr: String argType: NivaType -> String? = [
   rNum = this isNumericType
   aNum = argType isNumericType
@@ -158,6 +115,10 @@ TypedExpr2 toTSFromPkg(currentPkg): String db: TyperDB -> String =
   | CodeBlockT         => .codeBlockToTSFromPkg: currentPkg db: db
   | MatchT             => .matchToTSFromPkg: currentPkg db: db
 
+// Wrapper to avoid recursive dispatch when called from TypedStatement
+TypedExpr2 toTSExprFromPkg(currentPkg): String db: TyperDB -> String = [
+  ^ this toTSFromPkg: currentPkg db: db
+]
 /// checks if it a field of receiver than generates _this.field = ...
 AssignT generateTSAssignFromPkg(currentPkg): String db: TyperDB -> String = [
   need_this = | kind

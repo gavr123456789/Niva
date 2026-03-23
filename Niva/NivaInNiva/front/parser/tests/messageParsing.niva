@@ -31,7 +31,6 @@ Test pipesAgain = [
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  > statements at: 0
 ]
 
 Test pipes = [
