@@ -10,9 +10,6 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
     ^ TypedBody v: {} t: db dtc unit
   ]
 
-
-  Assert that: typedBody2 isEmpty equals: true
-
   // stackOfVisited::mut Set::MessageDecl = #()
   listOfTypedExpr2 = unTypedBody map: [ expr ->
     typed = expr toTypedExprFromDb2: db withContext: c
@@ -26,11 +23,6 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
     typed
   ]
 
-  typedBody2 addAll: listOfTypedExpr2
-  unTypedBody clear
-
-  Assert that: typedBody2 isNotEmpty equals: true
-  Assert that: unTypedBody isEmpty equals: true
 
   returnTypes::mut List::NivaType = {}!
   listOfTypedExpr2 forEach: [expr ->
@@ -179,19 +171,46 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                   ],
                   map: [it typeT]
 
-  typedBody2 = body resolveBody2: db withContext: c
-  returnType = typedBody2 t
+typedUntypedArgs = untypedArgs isNotEmpty
+    ifTrue: [
+      expectedFields count == untypedArgs count
+        ifTrue: [
+          untypedArgs mapIndexed: [i, ident ->
+            expectedField = expectedFields at: i
+            IdentifierT
+              name: ident name
+              path: ident path
+              token: ident token
+              typeInfo: expectedField typeT toTypeInfoDefault
+              isNameOfTheType: false
+          ]
+        ]
+        ifFalse: [
+          untypedArgs map: [ident ->
+            IdentifierT
+              name: ident name
+              path: ident path
+              token: ident token
+              typeInfo: db dtc any toTypeInfoDefault
+              isNameOfTheType: false
+          ]
+        ]
+    ]
+    ifFalse: [{}]
+
+  typedBody = body resolveBody2: db withContext: c
+  returnType = typedBody t
 
   name = args isNotEmpty
     ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
     ifFalse: [
-      untypedArgs isNotEmpty
-        ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+      typedUntypedArgs isNotEmpty
+        ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
         ifFalse: [expectedType name]
     ]
 
-  ^ CodeBlockT :args :untypedArgs
-    body: typedBody2
+  ^ CodeBlockT :args untypedArgs: typedUntypedArgs
+    body: typedBody
     :token
     typeInfo: (FuntionT
                 fields: typeTFields toMutableList
@@ -201,9 +220,11 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                 pkgName: c currentPkg name) toTypeInfoDefault
 ]
 
-Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
-  x = db dtc list toTypeInfoDefault
-  db dtc char toTypeInfoDefault
+
+Expr toTypedExprFromDb2: TyperDB withContext: Context -> TypedExpr2 =
+  .:toTypedExprFromDb2 :withContext expectedType: null
+
+Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaType? -> TypedExpr2 = [
   // todo optimize by adding core pkg to the TyperDB
   result = | this
   | CharExpr    => CharExprT :token typeInfo: db dtc char toTypeInfoDefault
@@ -321,7 +342,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
     // resolve
     // compere each first and each second
     typedBody = elements resolveBody2: db withContext: c
-    Assert that: elements unTypedBody count equals: 0
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -360,13 +380,35 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
       elements: typedBody
       typeInfo: mapType toTypeInfoDefault
   ]
-  // false positive warning since now ListLiteral | SetLiteral gives collection
   | ListLiteral | SetLiteral => [
     this elements unTypedBody isEmpty ? [
-      TO DO: "Can't infer type of the Collection collection without elements"
+      // if expectedType is null then error, if not then
+      //
+      | expectedType
+      | null => TO DO: "Can't infer type of the ListLiteral | SetLiteral without elements"
+      |=> [
+        | expectedType
+        | ListT | SetT => [
+          typedBody = TypedBody v: {} t: db dtc unit
+          astType =
+          | this
+          | ListLiteral => [
+            db addCollectionInstantiationIfAbsent: expectedType
+            ListLiteralT :token elements: typedBody typeInfo: expectedType toTypeInfoDefault
+          ]
+          | SetLiteral => [
+            db addCollectionInstantiationIfAbsent: expectedType
+            SetLiteralT :token elements: typedBody typeInfo: expectedType toTypeInfoDefault
+          ]
+          |=> [TO DO]
+
+            ^astType
+        ]
+        |=>[TO DO: "Compiler bug, in empty list type List|Set expected bug got" + expectedType toString]
+
+      ]
     ]
     typedBody = elements resolveBody2: db withContext: c
-    Assert that: elements unTypedBody count equals: 0
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -524,20 +566,34 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context -> TypedExpr2 = [
                     ],
                     map: [it typeT]
 
+    typedUntypedArgs = untypedArgs isNotEmpty
+      ifTrue: [
+        untypedArgs mapIndexed: [i, ident ->
+          typeField = typeTFields at: i
+          IdentifierT
+            name: ident name
+            path: ident path
+            token: ident token
+            typeInfo: typeField typeT toTypeInfoDefault
+            isNameOfTheType: false
+        ]
+      ]
+      ifFalse: [{}]
 
-    typedBody2 = body resolveBody2: db withContext: c
-    returnType = typedBody2 t
+
+    typedBody = body resolveBody2: db withContext: c
+    returnType = typedBody t
 
     name = args isNotEmpty
       ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
       ifFalse: [
-        untypedArgs isNotEmpty
-          ifTrue: [untypedArgs joinWith: ":" transform: [it name], + ":"]
+        typedUntypedArgs isNotEmpty
+          ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
           ifFalse: [""]
       ]
 
-    CodeBlockT :args :untypedArgs
-      body: typedBody2
+    CodeBlockT :args untypedArgs: typedUntypedArgs
+      body: typedBody
       :token
       typeInfo: (FuntionT
                   fields: typeTFields toMutableList

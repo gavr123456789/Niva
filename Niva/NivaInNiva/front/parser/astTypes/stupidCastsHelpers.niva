@@ -1,14 +1,20 @@
-Expr toTyped -> TypedExpr = 
-| this 
-| TypedExpr => this
-|=> TO DO: "Its not typed, its $this"
+NivaType asTypeT -> TypeT =
+  | this | TypeT => this
+  |=> TO DO: "Its not TypeT, its $this"
 
-Statement toTyped -> TypedExpr = 
-| this 
-| TypedExpr => this
-|=> TO DO: "Its not typed, its $this"
+NivaType asListT -> ListT =
+  | this | ListT => this
+  |=> TO DO: "Its not ListT, its $this"
+
+Expr toTyped -> TypedExpr =
+  | this | TypedExpr => this
+  |=> TO DO: "Its not TypedExpr, its $this"
+
+Statement toTyped -> TypedExpr =
+  | this | TypedExpr => this
+  |=> TO DO: "Its not TypedExpr, its $this"
 
 
-TypedExpr2 isIdentifierConstructor = | this 
+TypedExpr2 isIdentifierConstructor = | this
 | IdentifierT => [this isNameOfTheType]
 |=> [false]

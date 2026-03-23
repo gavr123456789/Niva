@@ -8,12 +8,11 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
   ^ .resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride
 ]
 
-KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped::TypedExpr2 nameOverride: String?  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String?  -> KeywordMsgT = [
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
   argTypesAndExprs :: mut List::CheckMethodArg = {}!
-
 
   msgName = | nameOverride
   | null => .getNameFromArgs
@@ -30,7 +29,6 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
 
 
-  // Всю эту часть потом нужно перенести в checkRealArgs: чтобы оно работало и для байнари
 
   // GENERICS
 
@@ -46,7 +44,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: argTypeFromDb
         |=> expr toTypedExprFromDb2: db withContext: c
       ]
-      |=> expr toTypedExprFromDb2: db withContext: c
+      |=> expr toTypedExprFromDb2: db withContext: c expectedType: argTypeFromDb
 
     realType = typedExpr typeInfo t
     argTypesAndExprs add: (CheckMethodArg
@@ -143,7 +141,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           // Create new MessageDecl
 
           // create new body with same expressions but empty typed body
-          newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList) typedBody2: {}!
+          newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
 
           // create args
           // args is List<NameAndAstType>

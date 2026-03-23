@@ -278,12 +278,12 @@ extend mut Lexer [
     ^ tok
   ]
 
-  on lex -> mut List::Token = [
+  on lex -> mut List(Token) = [
     mut newTok = .nextToken orPANIC
-    mut tokens::mut List::Token = {newTok}!
+    mut tokens::mut List(Token) = {newTok}!
 
     [newTok kind != TokenType.EndOfFile] whileTrue: [
-      newTok <- .nextToken
+      newTok <- .nextToken orPANIC
       tokens add: newTok
     ]
     ^ tokens

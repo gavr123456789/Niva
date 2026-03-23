@@ -97,7 +97,7 @@ fun Parser.binaryDeclaration(forType: TypeAST): MessageDeclarationBinary {
 }
 
 
-// returns kw args before `->` or `=`
+// returns kw args before `->` or `=` or `]`
 fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
     val args = mutableListOf<KeywordDeclarationArg>()
 
@@ -109,7 +109,7 @@ fun Parser.keywordArgs(): MutableList<KeywordDeclarationArg> {
         args.add(keyArg())
         skipNewLinesAndComments()
 
-    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow) || check(">>")))
+    } while (!(check(TokenType.Assign) || check(TokenType.ReturnArrow) || check(">>") || check(TokenType.OpenBracket)))
     return args
 }
 
@@ -198,7 +198,8 @@ fun Parser.methodBody(
     val isSingleExpression: Boolean
     val messagesOrVarStatements = mutableListOf<Statement>()
     // Person from: x ^= []
-    val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual
+    // For constructors: `new(ctx): Type [...]` - bracket can appear without `=`
+    val isThereAssignOrThen = match(TokenType.Assign) || doNotExpectEqual || check(TokenType.OpenBracket)
 //    skipNewLinesAndComments() // `[` on the new line
 
     if (!isThereAssignOrThen) {
@@ -254,8 +255,6 @@ fun Parser.isThereEndOfMessageDeclaration(isConstructorOrOn: Boolean): Boolean {
     val equal = match(TokenType.Assign)
     if (equal) isThereEqual = true
 
-//    return
-
     return isThereEqual
 }
 
@@ -286,7 +285,6 @@ fun Parser.tryBinary(isConstructor: Boolean): Boolean {
         if (isThereEndOfMessageDeclaration(isConstructor))
             return true
     }
-
 
     current = savepoint
     return false

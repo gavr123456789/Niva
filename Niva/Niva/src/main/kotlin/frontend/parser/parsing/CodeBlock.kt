@@ -7,6 +7,29 @@ import main.frontend.meta.TokenType
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.*
 
+private fun Parser.statementsUntilCloseBracket(
+    bracketType: TokenType,
+    parseMsgDecls: Boolean = true,
+    openTok: Token? = null
+): List<Statement> {
+    val result = mutableListOf<Statement>()
+
+    while (!match(bracketType)) {
+        failIfEofExpectedClose(bracketType, openTok)
+        result.add(statementWithEndLine(parseMsgDecls))
+    }
+
+//    do {
+//        failIfEofExpectedClose(bracketType, openTok)
+//        val (a, _) = methodBody()
+//        result.addAll(a)
+//        result.add(statementWithEndLine(parseMsgDecls))
+//    } while (!match(bracketType))
+
+    return result
+}
+
+// better missing paren reports
 private fun Parser.failIfEofExpectedClose(bracketType: TokenType, openTok: Token?) {
     if (!check(TokenType.EndOfFile)) return
     val expected = when (bracketType) {
@@ -18,28 +41,6 @@ private fun Parser.failIfEofExpectedClose(bracketType: TokenType, openTok: Token
     val errTok = openTok ?: peek()
     errTok.compileError("Expected $expected before end of file")
 }
-
-private fun Parser.statementsUntilCloseBracket(
-    bracketType: TokenType,
-    parseMsgDecls: Boolean = true,
-    openTok: Token? = null
-): List<Statement> {
-    val result = mutableListOf<Statement>()
-        do {
-        failIfEofExpectedClose(bracketType, openTok)
-        val (a, _) = methodBody()
-        result.addAll(a)
-        result.add(statementWithEndLine(parseMsgDecls))
-    } while (!match(bracketType))
-
-//    while (!match(bracketType)) {
-//        result.add(statementWithEndLine(parseMsgDecls = false))
-//    }
-
-
-    return result
-}
-
 // returns defaultAction = []
 fun Parser.statementsUntilCloseBracketWithDefaultAction(
     bracketType: TokenType,

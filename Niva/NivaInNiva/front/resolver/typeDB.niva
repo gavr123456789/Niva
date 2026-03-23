@@ -22,6 +22,7 @@ type TyperDB
 
   // generated
   generatedMessageDecls: mut List::MessageDecl
+  typedBodiesCache: mut Map(MessageDecl, TypedBody)
 
   // local scope for generic resolution
   localGenericScope: mut Map(String, NivaType)
@@ -111,6 +112,7 @@ constructor TyperDB new -> TyperDB = [
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
     generatedMessageDecls: {}!
+    typedBodiesCache: #{}!
     localGenericScope: #{}!
 
 ]
@@ -685,11 +687,11 @@ extend TyperDB [
           Assert that: decl isSingleExpr equals: true
 
 
-          decl resolveBodyWithDb: this pkg: pkg extraTypes: #{}!
+          typedBody = decl resolveBodyWithDb: this pkg: pkg extraTypes: #{}!
 
-          Assert that: decl body typedBody2 isNotEmpty equals: true
+          Assert that: typedBody v isNotEmpty equals: true
 
-          returnType = decl body typedBody2 last typeInfo t
+          returnType = typedBody v last typeInfo t
 
           methodToReplace = method copyWithDifferentReturnType: returnType
           this replaceMethod: methodToReplace inType: receiverType
@@ -810,7 +812,7 @@ extend TyperDB [
 ]
 
 type ResolverHelper
-  fileToStatements: Map(String, List::Statement)  // по сути это список аст деклараций типов и методов, в которых боди теперь типизированы
+  fileToStatements: Map(String, List::TypedStatement)  // fully typed declarations
   db: TyperDB
   entryPointExpressions: List::TypedExpr2
   entryPointName: String
@@ -842,19 +844,27 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     entryPointStatements: entryPointStatements
 
 
-  // find main and replace statements from fileToStatements with typed
-  // да просто стейтменты ентри поинта отдельно класть в резалте
-  // fileToStatements
-  //   at: "entryPoint"
-  //   put: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2 // todo
+ // entry point expressions are resolved separately
 
 
   MsgDeclVisitor new
     processBodyes: msgDecls
     db: db
 
-  // merge entryPoint imports into the real entry file pkg
+  // resolve entry point expressions
+  entryPointExprs::mut List::Expr = {}!
+  entryPointStatements forEach: [
+    | it
+    | Expr => entryPointExprs add: it
+    |=> []
+  ]
+  entryPointBody = Body unTypedBody: entryPointExprs
   entryPointPkg = db addNewPkgIfNotExists: "entryPoint"
+  typedMain = entryPointBody
+    resolveBody2: db
+    withContext: (Context rootWithPkg: entryPointPkg)
+
+  // merge entryPoint imports into the real entry file pkg
   realEntryPkg = db addNewPkgIfNotExists: entryPoint
 
   entryPointPkg imports forEach: [
@@ -876,10 +886,105 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     |=> listMaybe add: it
   ]
 
+// build typed declarations map
+  toTypeFieldT = [field::TypeField ->
+    TypeFieldT
+      name: field name
+      typeInfo: (field astType toTypeInfoFromDb: db inPkg: null)
+  ]
+
+  toUnionBranchT = [branch::UnionBranch ->
+    UnionBranchT
+      name: branch name
+      fields: (branch fields map: [f -> toTypeFieldT field: f])
+      isInclude: branch isInclude
+      token: branch token
+  ]
+
+  toTypedMessageDecl = [msgDecl::MessageDecl pkg::NivaPkg ->
+    receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
+    argsTyped = msgDecl args map: [arg ->
+      NameAndTypeInfo
+        name: arg name
+        typeInfo: (arg astType toTypeInfoFromDb: db inPkg: null)
+    ]
+    typedBodyMaybe = db typedBodiesCache at: msgDecl
+    typedBody =
+      | typedBodyMaybe
+      | null => [
+        extraTypes::mut Map(String, NivaType) = #{}!
+        | receiverType
+        | TypeT => [
+          receiverType genericArgs forEach: [
+            extraTypes at: it name put: it
+          ]
+        ]
+        |=> []
+        msgDecl resolveBodyWithDb: db pkg: pkg extraTypes: extraTypes
+      ]
+      |=> typedBodyMaybe
+    fallbackReturnInfo = [
+      noDeclaredReturnType = msgDecl returnType == null
+      shouldUseBodyType = msgDecl isSingleExpr && noDeclaredReturnType
+      inferredReturnType = shouldUseBodyType ifTrue: [typedBody t] ifFalse: [msgDecl getReturnTypeIfDeclaredOrUnknown: db]
+      inferredReturnType toTypeInfoDefault
+    ] do
+    returnInfo = msgDecl returnType unpack: [
+      it toTypeInfoFromDb: db inPkg: null
+    ] or: fallbackReturnInfo
+    MessageDeclT
+      receiver: receiverType
+      name: msgDecl name
+      args: argsTyped
+      returnType: returnInfo
+      body: typedBody
+      isSingleExpr: msgDecl isSingleExpr
+      isConstructor: msgDecl isConstructor
+      token: msgDecl token
+  ]
+
+  fileToTypedStatements::mut Map(String, mut List::TypedStatement) = #{}!
+  fileToStatements forEach: [file, statements ->
+    pkg = db packages at: file, unpackOrPANIC
+    typedList::mut List::TypedStatement = {}!
+    statements forEach: [
+      | it
+      | TypeDecl => [
+        typedList add: (TypeDeclT
+                          name: it name
+                          fields: (it fields map: [f -> toTypeFieldT field: f])
+                          token: it token)
+      ]
+      | EnumDecl => [
+        typedList add: (EnumDeclT token: it token)
+      ]
+      | UnionDecl => [
+        typedList add: (UnionDeclT
+                          name: it name
+                          commonUnionFields: (it commonUnionFields map: [f -> toTypeFieldT field: f])
+                          branches: (it branches map: [b -> toUnionBranchT branch: b])
+                          token: it token)
+      ]
+      | ExtendDecl => [
+        receiverType = it receiver toNivaTypefromDB: db inPkg: null
+        typedMsgs = it messages map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
+        typedList add: (ExtendDeclT
+                          receiver: receiverType
+                          messages: typedMsgs
+                          token: it token)
+      ]
+      | MessageDecl => [
+        typedList add: (toTypedMessageDecl msgDecl: it pkg: pkg)
+      ]
+      |=> []
+    ]
+    fileToTypedStatements at: file put: typedList
+  ]
+
   ^ ResolverHelper
-    fileToStatements: fileToStatements
+    fileToStatements: fileToTypedStatements
     db: db
-    entryPointExpressions: (msgDecls find: [it x == "entryPoint"], unpackOrPANIC) y body typedBody2
+    entryPointExpressions: typedMain v
     entryPointName: entryPoint
 ]
 

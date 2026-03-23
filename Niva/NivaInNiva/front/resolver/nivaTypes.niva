@@ -44,9 +44,9 @@ union Complex
 extend NivaType [
 
   on unwrapNullable -> NivaType = [
-    ^| this
-    | NullableT => v
-    |=> this
+    ^  | this
+       | NullableT => v
+       |=> this
   ]
 
   on generateId -> String = [
@@ -84,7 +84,6 @@ extend NivaType [
     |=> [
       pkgName + "_" + name
     ]
-    > this
     ^ result
   ]
 

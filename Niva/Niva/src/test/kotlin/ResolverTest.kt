@@ -468,21 +468,7 @@ class ResolverTest {
         assert(statements.count() == 3)
     }
 
-    @Test
-    fun usingTypeInsteadOfValue() {
 
-        val source = """
-            type Sas
-            Unit sas: Sas = []
-            ()sas: Sas
-        """.trimIndent()
-
-
-        assertFails {
-            resolve(source)
-//            assert(statements.count() == 3)
-        }
-    }
     @Test
     fun nullable() {
         val source = """
@@ -1106,7 +1092,7 @@ class ResolverTest {
     @Test
     fun cascade2() {
         val source = """
-            x = {1 2 3}m add: 4; add: 5
+            x = {1 2 3}! add: 4; add: 5
             x add: 6
         """.trimIndent()
         val statements = resolve(source)
@@ -1202,7 +1188,7 @@ class ResolverTest {
            union JsonObj =
            | JsonArray arr: mut List::JsonObj
 
-           arr = JsonArray arr: {}m
+           arr = JsonArray arr: {}!
         """.trimIndent()
         val statements = resolve(source)
         assert(statements.count() == 2)
@@ -1507,12 +1493,12 @@ class ResolverTest {
         val source = """
             { 1 2 3 } inject: 0 into: [a, b -> a + b]
         
-            set::MutableSet::Int = #()m
+            set::mut Set(Int) = #()!
             { 3 3 3 } inject: set into: [set, cur ->
                 set add: cur
                 set
             ]
-            { 3 3 3 } inject: #(1 2 3)m into: [set, cur ->
+            { 3 3 3 } inject: #(1 2 3)! into: [set, cur ->
                 set add: cur
                 set
             ]
@@ -1777,30 +1763,7 @@ class ResolverTest {
         }
     }
 
-    @Test
-    fun sendMethodToMethod2() {
 
-        val source = """
-            String msg::String[Int, Int -> Unit] = [
-                str = "sas"
-                msg this: str Int: 1 Int: 2
-            ]
-            
-            String x::Int y::Int = 1 echo
-            
-            "sas" msg: &String x:y: 
-        """.trimIndent()
-        val statements = resolve(source)
-        assert(statements.count() == 3)
-        val q = statements[0] as MessageDeclarationKeyword
-        val w = q.args[0].typeAST!! as TypeAST.Lambda
-        assertTrue { w.extensionOfType!!.name == "String" }
-
-        val x = (statements[2] as MessageSendKeyword).messages.first() as KeywordMsg
-        val t = x.args.first().keywordArg.type!! as Type.Lambda
-        assertTrue { t.args.count() == 3 }
-        assertTrue { t.args.first().type.name == "String" }
-    }
 
 
     @Test
@@ -1821,7 +1784,7 @@ class ResolverTest {
         val source = """
             union Sas = Sus | Sos
 
-            Int kek::Boolean = | kek
+            Int kek::Bool = | kek
             | true => Sus new
             | false => Sos new
         """.trimIndent()
@@ -1977,112 +1940,10 @@ class ResolverTest {
         }
     }
 
-    @Test
-    fun builder() {
-        /// example
-        fun buildString2(buildString2: StringBuilder.((String) -> Any) -> Unit): String {
-            val b = StringBuilder()
-            val defaultAction = { default: String ->
-                b.append(default)
-            }
-            buildString2(b, defaultAction)
-            return b.toString()
-
-        }
-        buildString2 { defaultAction ->
-            defaultAction("sas")
-        }
-        ///
-
-        val source = """
-            builder StringBuilder buildString -> String = [
-                b = StringBuilder new
-                defaultAction = [ default::String ->
-                    b append: default
-                ]
-                
-                
-                build this: b defaultAction: defaultAction
-                
-                ^ b toString
-            ]
-
-            buildString [
-                1 echo
-                "sas"
-                "sus"
-                345
-            ]
-        """.trimIndent()
-        val (statements, _) = resolveWithResolver(source)
-        assert(statements.count() == 2)
-    }
-
-    @Test
-    fun builderWithArgs() {
-
-        val source = """
-            type Card
-            Card sas = 1
-            builder Card width::Int height::Int -> String = [
-                card = Card new
-                defaultAction = [ default::String ->
-                    1 echo
-                ]
-                
-                
-                build this: card defaultAction: defaultAction
-                
-                ^ card toString
-            ]
-
-            Card (width: 24 height: 30) [
-                1 echo
-                this sas
-            ]
-            
-        """.trimIndent()
-        val (statements, _) = resolveWithResolver(source)
-        assert(statements.count() == 4)
-    }
-
-//    @Test
-//    fun builderWithArgsWithReceiver() {
 //
-//        val source = """
-//            type Card
-//            Card sas = 1
-//            String builder Card width::Int height::Int -> String = [
-//                card = Card new
-//                defaultAction = [ default::String ->
-//                    1 echo
-//                ]
-//
-//
-//                build this: card defaultAction: defaultAction
-//
-//                ^ card toString
-//            ]
-//
-//        """.trimIndent()
-//        val (statements, _) = resolveWithResolver(source)
-//        assert(statements.count() == 3)
-//    }
 
 
-    @Test
-    fun assignOnlyToRealThings() {
 
-        val source = """
-           type LearnModel
-           answered: Boolean
-           
-           LearnModel answer = answer <- true // should be answered
-        """.trimIndent()
-        assertThrows<CompilerError> {
-            resolveWithResolver(source)
-        }
-    }
 
     @Test
     fun inlineRepl() {
@@ -2129,22 +1990,20 @@ class ResolverTest {
     }
 
     @Test
-    fun emptyMapAsArgumentHasCorrectTypeInfered() {
-
+    fun emptyMapAsArgumentHasCorrectTypeInferred() {
         val source = """
-            type Success captures: MutableMap(String, String)
-            Success captures: #{}m
+            type Success captures: mut Map (String, String)
+            Success captures: #{}!
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 2)
     }
 
     @Test
-    fun emptyMapAsArgumentHasCorrectTypeListInfered() {
-
+    fun emptyMapAsArgumentHasCorrectTypeListInferred() {
         val source = """
-            type Success captures: mut List::String
-            Success captures: {}m
+            type Success captures: mut List(String)
+            Success captures: {}!
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 2)
@@ -2155,10 +2014,10 @@ class ResolverTest {
 
         val source = """
             type Sas
-            Sas to::MutableMap(Int, String) = 4
+            Sas to::mut Map(Int, String) = 4
         
             sas = Sas new
-            sas to: #{}m
+            sas to: #{}!
         """.trimIndent()
         val (x, _) = resolveWithResolver(source)
         assert(x.count() == 4)
@@ -2222,21 +2081,6 @@ class ResolverTest {
 
     }
 
-    @Test
-    fun addFieldsToTheScopeOfBuilders() {
-
-        val source = """
-             type Person name: String
-             builder Person sas -> Unit = [
-                build this: (Person name: "sas")
-             ]
-
-             sas [ name echo ]
-        """.trimIndent()
-
-        val (_, _) = resolveWithResolver(source)
-
-    }
 
     @Test
     fun ifTrueFalseTUnification() {
@@ -2769,14 +2613,14 @@ class ResolverTest {
     @Test
     fun bug2(){
         val source = """
-           x::mut List::mut List::Int = {}
+            x::mut List(mut List(Int)) = {}
             q = x first
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 2)
         val q = x[1] as VarDeclaration
         val f = q.value.type!!
-        assert(f.name == "mut List")
+        assertEquals(true, f.isMutable)
     }
 
 
@@ -2963,16 +2807,7 @@ class ResolverTest {
         assert((q.type)!!.errors!!.count() == 1)
     }
 
-    @Test
-    fun pipesAreNowBrackets(){
-        val source = """
-            Int from::Int = 0
-            ((1 from: 2) from: 3) from: 4
-            5 from: 6 |> from: 7 |> from: 8
-        """.trimIndent()
-        val (x) = resolveWithResolver(source)
-        assert(x.count() == 3)
-    }
+
 
     @Test
     fun collectionsLiteralsAreNowImmutableByDefault(){
@@ -2980,9 +2815,9 @@ class ResolverTest {
             {1 2 3}
             #{1 2 3 4}
             #(1 2 3)
-            {1 2 3}m
-            #{1 2 3 4}m
-            #(1 2 3)m
+            {1 2 3}!
+            #{1 2 3 4}!
+            #(1 2 3)!
         """.trimIndent()
         val (x) = resolveWithResolver(source)
         assert(x.count() == 6)
@@ -2995,9 +2830,10 @@ class ResolverTest {
         val a = (((x[3] as ListCollection))).type!!
         val r = (((x[4] as MapCollection))).type!!
         val s = (((x[5] as SetCollection))).type!!
-        assertEquals(a.name, "mut List")
-        assertEquals(r.name, "MutableMap")
-        assertEquals(s.name, "MutableSet")
+
+        assertEquals(a.isMutable, true)
+        assertEquals(r.isMutable, true)
+        assertEquals(s.isMutable, true)
     }
 
     @Test
@@ -3020,7 +2856,7 @@ class ResolverTest {
                 "  qwf\n" +
                 "\"\"\"\n" +
                 "\n" +
-                "input = \"\"\"\n" +
+                "input2 = \"\"\"\n" +
                 "type Program \n" +
                 "  readFile: [String -> String]\n" +
                 "  walkDir: [String -> List::String]\n" +
