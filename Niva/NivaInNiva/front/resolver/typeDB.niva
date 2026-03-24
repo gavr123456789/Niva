@@ -23,6 +23,7 @@ type TyperDB
   // generated
   generatedMessageDecls: mut List::MessageDecl
   typedBodiesCache: mut Map(MessageDecl, TypedBody)
+  declToMethod: mut Map(MessageDecl, NivaMethod)
 
   // local scope for generic resolution
   localGenericScope: mut Map(String, NivaType)
@@ -113,6 +114,7 @@ constructor TyperDB new -> TyperDB = [
     instantiatedCache: #{}!
     generatedMessageDecls: {}!
     typedBodiesCache: #{}!
+    declToMethod: #{}!
     localGenericScope: #{}!
 
 ]
@@ -308,6 +310,13 @@ extend TyperDB [
       addMethod: m
       toProtocol: (inProtocol unpackOrValue: "common")
       forType: forType
+
+    m decl unpack: [
+      existing = declToMethod at: it
+      | existing
+      | null => declToMethod at: it put: m
+      |=> []
+    ]
   ]
 
   on addErrorMessage(e): ResolveErrors = [
@@ -345,6 +354,13 @@ extend TyperDB [
 
     x::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: forType, unpackOrPANIC
     x at: m name put: m
+
+    m decl unpack: [
+      existing = declToMethod at: it
+      | existing
+      | null => declToMethod at: it put: m
+      |=> []
+    ]
 
     //"addNewConstructor: added constructor " + m name + " for type " + forType name, log
   ]
@@ -932,6 +948,8 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     returnInfo = msgDecl returnType unpack: [
       it toTypeInfoFromDb: db inPkg: null
     ] or: fallbackReturnInfo
+
+    "создали MessageDeclT для " + msgDecl name, log
     MessageDeclT
       receiver: receiverType
       name: msgDecl name

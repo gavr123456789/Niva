@@ -106,6 +106,25 @@ empty2 = [
 
 
   >typedAst last typeInfo t toString
+]
+      //x = 1 > 2 ifTrue: [() sas]
+           //           ifFalse: [{}]
+resolverTest3 = [
+  fileMain = """
+            Unit sas -> List(Int) = {}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  >result fileToStatements at: "main", unpackOrPANIC, first
+
+  //typedAst isEmpty ifTrue: [
+  //  "resolverTest3: no entry point expressions" log
+  //] ifFalse: [
+  //  >typedAst first typeInfo t toString
+  //]
 ] do
 
 
