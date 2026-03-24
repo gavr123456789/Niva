@@ -1,7 +1,18 @@
+
+
+
+Body resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
+  .resolveBody2: db withContext: upperContext expectedType: null
+
+Body resolveBody2(db): TyperDB withContext(upperContext): Context declaration: MessageDeclT? -> TypedBody = [
+  expectedType = declaration unpack: [it returnType t] or: null
+  ^ .resolveBody2: db withContext: upperContext expectedType: expectedType
+]
+
 /// used only for resolving body insied expressions, not for resolve body from message declarations
-Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody = [
-  // StackTrace get log
-  // Compiler getPlace log
+Body resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
+   //StackTrace get log
+   //Compiler getPlace log
 
   c = Context fromParent: upperContext
 
@@ -11,8 +22,19 @@ Body resolveBody2(db): TyperDB withContext(upperContext): Context -> TypedBody =
   ]
 
   // stackOfVisited::mut Set::MessageDecl = #()
-  listOfTypedExpr2 = unTypedBody map: [ expr ->
-    typed = expr toTypedExprFromDb2: db withContext: c
+  lastIndex = unTypedBody count - 1
+  listOfTypedExpr2 = unTypedBody mapIndexed: [ i, expr ->
+    isLast = i == lastIndex
+    expectedForExpr =
+      | expectedType
+      | null => [null]
+      |=> [
+        | expr
+        | ReturnStatement => expectedType
+        |=> (isLast ifTrue: [expectedType] ifFalse: [null])
+      ]
+
+    typed = expr toTypedExprFromDb2: db withContext: c expectedType: expectedForExpr
     typeOfExpr = typed typeInfo t
     // check that type is not Unknown
     | typeOfExpr | Unknown => [
@@ -198,7 +220,8 @@ typedUntypedArgs = untypedArgs isNotEmpty
     ]
     ifFalse: [{}]
 
-  typedBody = body resolveBody2: db withContext: c
+  expectedReturnType = expectedType returnType
+  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
   returnType = typedBody t
 
   name = args isNotEmpty
@@ -384,27 +407,29 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     this elements unTypedBody isEmpty ? [
       // if expectedType is null then error, if not then
       //
-      | expectedType
+      expectedCollectionType =
+        expectedType unpack: [t ->
+          | t
+          | NullableT => t v
+          | Unknown => null
+          |=> t
+        ] or: null
+
+      | expectedCollectionType
       | null => TO DO: "Can't infer type of the ListLiteral | SetLiteral without elements"
       |=> [
-        | expectedType
-        | ListT | SetT => [
+        | expectedCollectionType
+        | ListT => [
           typedBody = TypedBody v: {} t: db dtc unit
-          astType =
-          | this
-          | ListLiteral => [
-            db addCollectionInstantiationIfAbsent: expectedType
-            ListLiteralT :token elements: typedBody typeInfo: expectedType toTypeInfoDefault
-          ]
-          | SetLiteral => [
-            db addCollectionInstantiationIfAbsent: expectedType
-            SetLiteralT :token elements: typedBody typeInfo: expectedType toTypeInfoDefault
-          ]
-          |=> [TO DO]
-
-            ^astType
+          db addCollectionInstantiationIfAbsent: expectedCollectionType
+          ^ ListLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
         ]
-        |=>[TO DO: "Compiler bug, in empty list type List|Set expected bug got" + expectedType toString]
+        | SetT => [
+          typedBody = TypedBody v: {} t: db dtc unit
+          db addCollectionInstantiationIfAbsent: expectedCollectionType
+          ^ SetLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
+        ]
+        |=> [TO DO: "Expected List|Set for empty collection, got " + expectedCollectionType toString]
 
       ]
     ]
@@ -521,7 +546,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       typeInfo: db dtc unit toTypeInfoDefault
   ]
   | ReturnStatement =>[
-    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c] or: null
+    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c expectedType: expectedType] or: null
     returnInfo =
       | valueT
       | null => db dtc unit toTypeInfoDefault
@@ -637,7 +662,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
         ]
         |=> []
-        typedElseBody = elseb resolveBody2: db withContext: elseContext
+        typedElseBody = elseb resolveBody2: db withContext: elseContext expectedType: expectedType
         typedElseBody
       ]
 
@@ -645,7 +670,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     branchesT = branches map: [
 
       conditionsT = it conditions resolveBody2: db withContext: c
-      bodyT = it body resolveBody2: db withContext: c
+      bodyT = it body resolveBody2: db withContext: c expectedType: expectedType
 
       returnTypes add: bodyT t
 

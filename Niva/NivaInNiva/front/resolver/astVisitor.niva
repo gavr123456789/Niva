@@ -309,24 +309,21 @@ TypeDeclVisitor
       receiverAst = msg receiver
       receiverType = receiverAst toNivaTypefromDB: db inPkg: null
 
+      checkThatReceiverSpecifiedGenerics = [
+        receiverNeedsGenerics = | receiverType
+                                | TypeT => receiverType genericArgs isNotEmpty
+                                |=> false
 
-      | receiverType | TypeT => []
-      |=> []
+        receiverDeclaresGenerics = | receiverAst
+                                   | AstType => receiverAst genericParams isNotEmpty
+                                   |=> false
 
-      receiverNeedsGenerics = | receiverType
-      | TypeT => receiverType genericArgs isNotEmpty
-      |=> false
-
-      receiverDeclaresGenerics = | receiverAst
-      | AstType => receiverAst genericParams isNotEmpty
-      |=> false
-
-      receiverNeedsGenerics ifTrue: [
-        receiverDeclaresGenerics ifFalse: [
+        receiverNeedsGenerics && receiverDeclaresGenerics not ifTrue: [
           db addErrorFromTok: receiverAst tok
             withMsg: "Receiver type " + receiverType name + " requires generic params"
         ]
-      ]
+      ] do
+
 
       // get real type for each arg
       argsT = msg args map: [ arg ->
@@ -337,8 +334,8 @@ TypeDeclVisitor
 
       astOfReceiver = msg receiver
       isMutable = | astOfReceiver
-      | AstType => astOfReceiver isMut
-      | AstLambdaType => false
+                  | AstType => astOfReceiver isMut
+                  | AstLambdaType => false
 
 
       msg isConstructor ifTrue: [
@@ -450,15 +447,15 @@ MsgDeclVisitor processBodyes(pkg2Msg): List(Tuple(String, MessageDecl)) db::Type
     msgDecl = tuple y
 
     receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
-    extraTypes::mut Map(String, NivaType) = #{}!
-    | receiverType
-    | TypeT => [
-       receiverType genericArgs forEach: [
-         extraTypes at: it name put: it
-       ]
-    ]
-    |=> []
-
+    extraTypes =
+      | receiverType
+      | TypeT => [
+        generics::mut Map(String, NivaType) = #{}!
+        receiverType genericArgs forEach: [
+          generics at: it name put: it
+        ]
+        generics
+      ] |=> #{}!
     msgDecl resolveBodyWithDb: db :pkg :extraTypes
   ]
 ]
@@ -469,12 +466,19 @@ MsgDeclVisitor processBodyes(pkg2Msg): List(Tuple(String, MessageDecl)) db::Type
 type MessagesWithContext
   data: Map(MessageDecl, Context)
 
-/// fills typedBody inside body
 MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) -> TypedBody = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log
   db typedBodiesCache at: this, unpack: [^ it]
   // put extra types to db
   db localGenericScope putAll: extraTypes
+
+  methodFromDb = db declToMethod at: this
+  resolvedArgsFromDb = methodFromDb unpack: [it args] or: null
+  canUseDbArgs =
+    | resolvedArgsFromDb
+    | null => false
+    |=> resolvedArgsFromDb count == args count
+  expectedReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null] or: null
 
 // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
@@ -487,8 +491,16 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     c defineVar: "this" withType: receiverType toTypeInfoDefault
 
 
-    args forEach: [
-      argType = it astType toNivaTypefromDB: db inPkg: null
+    args forEachIndexed: [i, it ->
+      argType =
+        | resolvedArgsFromDb
+        | null => it astType toNivaTypefromDB: db inPkg: null
+        |=> [
+          canUseDbArgs
+            ifTrue: [resolvedArgsFromDb at: i, typeT]
+            ifFalse: [it astType toNivaTypefromDB: db inPkg: null]
+        ]
+
       errorsList = it astType toErrorsFromDb: db inPkg: null
       c defineVar: it name withType: (TypeInfo t: argType isMut: false listOfErrors: errorsList)
     ]
@@ -507,7 +519,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 // resolve body
   c = createContextWithThisAndArgs do
 
-typedBody = body resolveBody2: db withContext: c
+  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
 
   finalTypedBody =
     isSingleExpr ifTrue: [
@@ -541,9 +553,8 @@ typedBody = body resolveBody2: db withContext: c
 
   noDeclaredReturnType = returnType == null
   shouldInferSingleExprReturnType =
-    isConstructor ifTrue: [false] ifFalse: [
-      isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty
-    ]
+    isConstructor ifTrue:  [false]
+                  ifFalse: [isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty]
 
   shouldInferSingleExprReturnType ifTrue: [
     receiverType = receiver toNivaTypefromDB: db inPkg: null
@@ -567,7 +578,7 @@ typedBody = body resolveBody2: db withContext: c
     ]
   ]
 
-  // clean up local scope
+  // clean up local scope from generics, probably a bad solution, thats stupidly a global mutable
   extraTypes keys forEach: [
     db localGenericScope remove: it
   ]
