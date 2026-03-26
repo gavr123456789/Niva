@@ -63,7 +63,7 @@ callNewFromOtherFile = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
   js debug
-  //Assert that: (js contains: "const {age, name} = alice") equals: true
+  Assert that: (js contains: "const {age, name} = alice") equals: true
 ]
 
 compilerTry = [
@@ -78,7 +78,7 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
+] do
 
 emptyListTypeInference = [
   fileMain = """
@@ -107,8 +107,7 @@ empty2 = [
 
   >typedAst last typeInfo t toString
 ]
-      //x = 1 > 2 ifTrue: [() sas]
-           //           ifFalse: [{}]
+
 resolverTest3 = [
   fileMain = """
             Unit sas -> List(Int) = {}
@@ -119,13 +118,34 @@ resolverTest3 = [
   typedAst = result entryPointExpressions
 
   >result fileToStatements at: "main", unpackOrPANIC, first
+]
 
-  //typedAst isEmpty ifTrue: [
-  //  "resolverTest3: no entry point expressions" log
-  //] ifFalse: [
-  //  >typedAst first typeInfo t toString
-  //]
-] do
+resolverTest4 = [
+  fileMain = """
+      Unit sas -> List(Int) = {}
+      x = 1 > 2 ifTrue: [() sas]
+                ifFalse: [{}]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  >typedAst last
+]
+
+resolverTest5 = [
+  fileMain = """
+     type Cell meow: List(V) meow2: List(K)
+     Cell meow: {1} meow2: {1}
+     //x meow first + 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  >typedAst last log
+]
 
 
 

@@ -148,6 +148,33 @@ extend NivaType [
     |=> false
   ]
 
+  on collectUnresolvedGenerics -> List(NivaType) = [
+    ^ | this
+      | UnresolvedGenericT => {this}
+      | ListT => this t collectUnresolvedGenerics
+      | SetT => this t collectUnresolvedGenerics
+      | MapT => [
+        res::mut List::NivaType = {}!
+        this k collectUnresolvedGenerics forEach: [res add: it]
+        this v collectUnresolvedGenerics forEach: [res add: it]
+        res toList
+      ]
+      | FuntionT => [
+        res::mut List::NivaType = {}!
+        fields forEach: [it typeT collectUnresolvedGenerics forEach: [res add: it]]
+        returnType collectUnresolvedGenerics forEach: [res add: it]
+        res toList
+      ]
+      | TypeT => [
+        res::mut List::NivaType = {}!
+        genericArgs forEach: [it collectUnresolvedGenerics forEach: [res add: it]]
+        fields forEach: [it typeT collectUnresolvedGenerics forEach: [res add: it]]
+        res toList
+      ]
+      | NullableT => this v collectUnresolvedGenerics
+      |=> {NivaType} // empty list
+  ]
+
   on collectGenericMappingsFrom(actual): NivaType into: mut Map(String, NivaType) db: TyperDB = [
     | this
     | UnresolvedGenericT => [
@@ -266,26 +293,19 @@ extend TypeT [
 
 
 
-  on collectGenerics -> List::NivaType = [
-    genericFields = fields filter: [
-      nivaType = it typeT
-      | nivaType
-      | UnresolvedGenericT => true
-      |=> false
-    ]
+  on collectGenerics -> List(NivaType) = [
+    set::mut Set(String) = #()!
+    result::mut List(NivaType) = {}!
 
-    set = #(String)!
-    result = {NivaType}!
-    genericFields forEach: [
-      set contains: it typeT name, ifFalse: [
-        set add: it typeT name
-        result add: it typeT
+    fields forEach: [
+      it typeT collectUnresolvedGenerics forEach: [g ->
+        set contains: g name, ifFalse: [
+          set add: g name
+          result add: g
+        ]
       ]
     ]
 
-    // result = genericFields map: [it name], toSet, map: [
-    //    UnresolvedGenericT name: it
-    // ]
     ^ result
   ]
   /// creates unique identificator

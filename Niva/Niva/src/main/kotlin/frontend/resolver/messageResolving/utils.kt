@@ -41,7 +41,7 @@ fun markCollectionsAsMutable(expr: Receiver) {
     when (expr) {
         is CollectionAst -> expr.isMutableCollection = true
         is MapCollection -> expr.isMutable = true
-        is ExpressionInBrackets -> markCollectionsAsMutable(expr.expr as Receiver)
+        is ExpressionInBrackets -> if (expr.expr is Receiver) markCollectionsAsMutable(expr.expr)
         is MessageSendKeyword -> {
             markCollectionsAsMutable(expr.receiver)
             expr.messages.forEach { msg ->

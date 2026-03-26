@@ -1,0 +1,40 @@
+String operatorToString -> String =
+  | this
+  | "+" => "plus"
+  | "-" => "minus"
+  | "*" => "times"
+  | "/" => "div"
+  | "%" => "rem"
+  | ".." => "rangeTo"
+  | "==" => "equals"
+  | "!=" => "notEquals"
+  | ">" => "gt"
+  | "<" => "lt"
+  | ">=" => "gte"
+  | "<=" => "lte"
+  | "||" => "or"
+  | "&&" => "and"
+  |=> this
+
+NivaType isCoreTypeNamed(name): String -> Bool = [
+  base = this unwrapNullable
+  ^ (base name == name) && (base pkgName == "core")
+]
+
+NivaType isNumericType -> Bool = [
+  ^ (this isCoreTypeNamed: "Int") ||
+    (this isCoreTypeNamed: "Double") ||
+    (this isCoreTypeNamed: "Float")
+]
+
+NivaType isStringType -> Bool = this isCoreTypeNamed: "String"
+NivaType isBoolType -> Bool = this isCoreTypeNamed: "Bool"
+
+String unquoteLiteral -> String = [
+  len = this count
+  ^ len >= 2 ifTrue: [
+    (this drop: 1) dropLast: 1
+  ] ifFalse: [
+    this
+  ]
+]

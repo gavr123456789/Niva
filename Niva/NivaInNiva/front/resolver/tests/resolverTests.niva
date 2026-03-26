@@ -42,6 +42,79 @@ Test findingGenericRoot = [
   Assert that: boxDecl typeInfo t name equals: "Sas"
 ]
 
+Test ifTrueIfFalseEmptyListInfer = [
+  fileMain = """
+    Unit sas -> List(Int) = {}
+    x = 1 > 2 ifTrue: [() sas]
+              ifFalse: [{}]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  Assert that: db listOfErrors count equals: 0
+
+  typedStmts = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedStmts at: 0
+  | msgDecl
+  | MessageDeclT => [
+    rt = msgDecl returnType t
+    | rt
+    | ListT => Assert that: rt t name equals: "Int"
+    |=> [TO DO: "List expected for sas return"]
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+
+  xDecl = typedAst at: 0
+  | xDecl
+  | VarDeclarationT => [
+    t = xDecl value typeInfo t
+    | t
+    | ListT => Assert that: t t name equals: "Int"
+    |=> [TO DO: "List expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test constructorInfersNestedGenerics = [
+  fileMain = """
+    type Cell meow: List(V) meow2: List(K)
+    x = Cell meow: {1} meow2: {1}
+    y = x meow at: 0 + 2
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  Assert that: db listOfErrors count equals: 0
+
+  xDecl = typedAst at: 0
+  | xDecl
+  | VarDeclarationT => [
+    t = xDecl value typeInfo t
+    | t
+    | TypeT => [
+      f1 = t fields at: 0, typeT
+      f2 = t fields at: 1, typeT
+      | f1
+      | ListT => Assert that: f1 t name equals: "Int"
+      |=> [TO DO: "List expected for meow"]
+      | f2
+      | ListT => Assert that: f2 t name equals: "Int"
+      |=> [TO DO: "List expected for meow2"]
+    ]
+    |=> [TO DO: "TypeT expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  yDecl = typedAst at: 1
+  | yDecl
+  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected for y"]
+]
+
 Test unionIncludeMismatchFields = [
   fileMain = """
     union Vehicle speed: Int =

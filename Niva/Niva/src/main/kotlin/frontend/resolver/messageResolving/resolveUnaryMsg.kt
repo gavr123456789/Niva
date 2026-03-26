@@ -12,6 +12,7 @@ import main.utils.YEL
 import main.frontend.meta.compileError
 import main.frontend.parser.types.ast.CollectionAst
 import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.ControlFlow
 import main.frontend.parser.types.ast.ExpressionInBrackets
 import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.InternalTypes
@@ -50,6 +51,9 @@ fun Resolver.resolveUnaryMsg(
             is CollectionAst, is MapCollection -> true
             is KeywordMsg -> {
                 actualReceiver.kind == KeywordLikeType.Constructor || actualReceiver.kind == KeywordLikeType.CustomConstructor
+            }
+            is ControlFlow.Switch -> {
+                true
             }
             is UnaryMsg -> {
                 val decl = actualReceiver.declaration
