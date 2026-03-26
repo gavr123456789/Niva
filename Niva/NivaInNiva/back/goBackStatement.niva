@@ -1,0 +1,130 @@
+ 
+
+TypedStatement toGoFromPkg(currentPkg): String db: TyperDB -> String =
+    | this
+    | TypeDeclT => [
+        sb = StringBuilder new
+
+        generics::mut Set::String = #()!
+        this fields forEach: [
+          t = it typeInfo t
+          t collectUnresolvedGenerics: generics
+        ]
+        genericList = generics toList sortedBy: [it]
+        genericsStr = genericList isNotEmpty
+          ifTrue: ["[" + (genericList joinWith: ", " transform: [it + " any"]) + "]"]
+          ifFalse: [""]
+
+        sb append: "type "
+        sb append: this name
+        sb append: genericsStr
+        sb append: " struct {\n"
+
+        this fields isNotEmpty ifTrue: [
+          this fields forEach: [
+            fieldType = it typeInfo t
+            fieldName = it name toGoExportedName
+            sb append: "  "
+            sb append: fieldName
+            sb append: " "
+            sb append: (fieldType toGoTypeFromPkg: currentPkg)
+            sb appendLine: ""
+          ]
+        ]
+
+        sb append: "}"
+
+        sb toString
+    ]
+    | EnumDeclT => [TO DO]
+    | UnionDeclT => [""]
+    | MessageDeclT => [
+        sb = StringBuilder new
+
+        receiverType = receiver
+        receiverFields =
+            | receiverType
+            | Complex => [receiverType fields]
+            |=> {TypeTField}
+
+        suffix = name substringAfter: "__"
+        hasSuffix = suffix != name
+        baseName = hasSuffix ifTrue: [name substringBefore: "__"] ifFalse: [name]
+
+        finalBaseName = (baseName contains: ":")
+            ifTrue:  [args joinWith: "__" transform: [it name]]
+            ifFalse: [baseName operatorToString]
+
+        methodName = receiverType name + "__" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
+
+        argsStr =
+        isConstructor
+            ifTrue: [
+                args joinWith: ", " transform: [
+                  t = it typeInfo t
+                  it name + " " + (t toGoTypeFromPkg: currentPkg)
+                ]
+            ]
+            ifFalse: [
+                receiverArg = "this " + (receiverType toGoTypeFromPkg: currentPkg)
+                otherArgs = args joinWith: ", " transform: [
+                  t = it typeInfo t
+                  it name + " " + (t toGoTypeFromPkg: currentPkg)
+                ]
+                otherArgs == "" ifTrue: [receiverArg] ifFalse: [receiverArg + ", " + otherArgs]
+            ]
+
+        retType = isConstructor
+          ifTrue:  [receiverType]
+          ifFalse: [this returnType t]
+
+        retTypeStr = retType toGoTypeFromPkg: currentPkg
+        retSuffix = retType isGoVoidType ifTrue: [""] ifFalse: [" (result " + retTypeStr + ")"]
+
+        generics::mut Set(String) = #()!
+        receiverType collectUnresolvedGenerics: generics
+        args forEach: [
+          t = it typeInfo t
+          t collectUnresolvedGenerics: generics
+        ]
+        retType collectUnresolvedGenerics: generics
+        genericList = generics toList sortedBy: [it]
+        genericsStr = genericList isNotEmpty
+          ifTrue: ["[" + (genericList joinWith: ", " transform: [it + " any"]) + "]"]
+          ifFalse: [""]
+
+        sb appendLine: "func " + methodName + genericsStr + "(" + argsStr + ")" + retSuffix + " {"
+
+        isConstructor ifFalse: [
+            receiverFields forEach: [
+               fieldName = it name
+               exported = fieldName toGoExportedName
+               sb appendLine: "  " + fieldName + " := this." + exported
+               sb appendLine: "  _ = " + fieldName
+            ]
+        ]
+
+        bodyExprs = this body v
+        bodyStr = bodyExprs buildGoBody: retType currentPkg: currentPkg db: db
+        bodyStr != "" ifTrue: [
+            sb appendLine: (bodyStr indentLines: "  ")
+        ]
+
+        sb appendLine: "}"
+        sb toString
+    ]
+    | ExtendDeclT => [
+      sb = StringBuilder new
+      sb appendLine: "// extend declaration"
+      this messages forEach: [
+        sb appendLine: (it toGoFromPkg: currentPkg :db)
+      ]
+      sb toString
+    ]
+    | TypedExpr2 => [
+        expr::TypedExpr2 = this
+        expr toGoFromPkg: currentPkg :db
+    ]
+    |=> [
+        ""
+    ]

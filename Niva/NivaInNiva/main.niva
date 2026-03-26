@@ -75,13 +75,21 @@ compilerTry = [
   NivaCompiler runArgs: path withIO: IO_Container new
 ]
 
+type AnyLambda = []
+AnyLambda measureTimeMillisAndPrint(text): String = [
+  t1 = System currentTimeMillis
+  x = this do
+  diff = System currentTimeMillis - t1
+  "[info] time is " + diff toString, echo
+  ^ x
+]
+
 compilerTry2 = [
+  //path = {"run" ".niva_js/testss.niva" "--js"} //"~/Documents/Fun/niva_demo/main.niva"
   path = {"run" ".niva_go/testss.niva" "--go"} //"~/Documents/Fun/niva_demo/main.niva"
-  //t1 = System currentTimeMillis
-  //t1 echo
+  //path = {"run" ".niva_nim/testss.niva" "--nim"} //"~/Documents/Fun/niva_demo/main.niva"
   NivaCompiler runArgs: path withIO: IO_Container new
-  //diff = System currentTimeMillis - t1
-  //diff echo // 60 toLong / 1000 toLong, echo
+  
 ] do
 
 genericsReceiverAndKwArg = [
@@ -176,21 +184,4 @@ codeBlockStatementWithNewSyntax = [
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 1
   > statements
-]
-
-
-
-odin = [
-  program = "+ + * ) - /"
-  acc <- 0
-  program forEach: [
-    | it
-    | '+' => acc <- acc inc
-    | '-' => acc <- acc dec
-    | '*' => acc <- acc * 2
-    | '/' => acc <- acc / 2
-    | ')'=> acc <- acc * acc
-    |=> []
-  ]
-  "The program $program calculates the value $acc" echo
 ]

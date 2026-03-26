@@ -21,7 +21,7 @@ type TyperDB
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
 
   // generated
-  generatedMessageDecls: mut List::MessageDecl
+  generatedMessageDecls: mut List(MessageDecl)
   typedBodiesCache: mut Map(MessageDecl, TypedBody)
 
   // local scope for generic resolution

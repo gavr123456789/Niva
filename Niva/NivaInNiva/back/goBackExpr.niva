@@ -1,0 +1,655 @@
+type Go
+
+String toGoExportedName -> String = [
+  this count == 0 ifTrue: [^ this]
+  firstChar = this first
+  upper = firstChar uppercaseChar
+  rest = this drop: 1
+  ^ upper toString + rest
+]
+
+NivaType isGoVoidType -> Bool =
+  | this
+  | UnitT
+  | NothingT => true
+  |=> false
+
+NivaType toGoTypeFromPkg(currentPkg): String -> String = [
+  ^ | this
+    | NullableT => (this v) toGoTypeFromPkg: currentPkg
+    | IntegerT => "int"
+    | FloatT => "float32"
+    | DoubleT => "float64"
+    | BoolT => "bool"
+    | CharT => "rune"
+    | StringT => "string"
+    | UnitT => "struct{}"
+    | AnyT => "any"
+    | NothingT => "struct{}"
+    | Unknown => TO DO: "Compiler bug: (go backend) all Unknown types should be resolved"
+    | ListT => [
+        inner = this t
+        "[]" + (inner toGoTypeFromPkg: currentPkg)
+      ]
+    | SetT => [
+        inner = this t
+        "map[" + (inner toGoTypeFromPkg: currentPkg) + "]struct{}"
+      ]
+    | MapT => [
+        "map[" + (k toGoTypeFromPkg: currentPkg) + "]" + (v toGoTypeFromPkg: currentPkg)
+      ]
+    | UnresolvedGenericT => this name
+    | FuntionT => [
+        argsStr = this fields
+                        mapIndexed: [i, f ->
+                                      argName = f name == "" ifTrue: ["arg" + (i toString)] ifFalse: [f name]
+                                      argName + " " + (f typeT toGoTypeFromPkg: currentPkg)
+                                    ],
+                                    joinWith: ", "
+        retType = this returnType
+        retStr = retType isGoVoidType ifTrue: [""] ifFalse: [retType toGoTypeFromPkg: currentPkg]
+        retStr == ""
+          ifTrue:  ["func(" + argsStr + ")"]
+          ifFalse: ["func(" + argsStr + ") " + retStr]
+      ]
+    | TypeT => [
+        (this pkgName == "core") ifTrue: [
+          (this name == "Error") ifTrue: [^ "error"]
+          ^ "any"
+        ]
+        hasPkg = this pkgName != ""
+        isOtherPkg = this pkgName != currentPkg
+        qual = (hasPkg && isOtherPkg)
+          ifTrue: [this pkgName + "."]
+          ifFalse: [""]
+        genStr = this genericArgs isNotEmpty
+          ifTrue: ["[" + (this genericArgs joinWith: ", " transform: [it toGoTypeFromPkg: currentPkg]) + "]"]
+          ifFalse: [""]
+        "*" + qual + this name + genStr
+      ]
+    |=> this name
+]
+
+NivaType tryEmitNativeBinaryGo(op): String recvExpr: String argExpr: String argType: NivaType -> String? = [
+  rNum = this isNumericType
+  aNum = argType isNumericType
+  rStr = this isStringType
+  aStr = argType isStringType
+  rBool = this isBoolType
+  aBool = argType isBoolType
+
+  ^ | op
+    | "==" => "((" + recvExpr + ") == (" + argExpr + "))"
+    | "!=" => "((" + recvExpr + ") != (" + argExpr + "))"
+    | "+" => [
+        (rNum && aNum) || (rStr && aStr)
+          ifTrue: ["((" + recvExpr + ") + (" + argExpr + "))"]
+          ifFalse: [null]
+      ]
+    | "-" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") - (" + argExpr + "))"] ifFalse: [null]
+    | "*" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") * (" + argExpr + "))"] ifFalse: [null]
+    | "/" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") / (" + argExpr + "))"] ifFalse: [null]
+    | "%" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") % (" + argExpr + "))"] ifFalse: [null]
+    | ">" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") > (" + argExpr + "))"] ifFalse: [null]
+    | "<" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") < (" + argExpr + "))"] ifFalse: [null]
+    | ">=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") >= (" + argExpr + "))"] ifFalse: [null]
+    | "<=" => (rNum && aNum) ifTrue: ["((" + recvExpr + ") <= (" + argExpr + "))"] ifFalse: [null]
+    | "||" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") || (" + argExpr + "))"] ifFalse: [null]
+    | "&&" => (rBool && aBool) ifTrue: ["((" + recvExpr + ") && (" + argExpr + "))"] ifFalse: [null]
+    |=> null
+]
+
+List(TypedExpr2) buildGoBody(retType): NivaType currentPkg: String db: TyperDB -> String = [
+  isVoid = retType isGoVoidType
+  this isEmpty ifTrue: [
+    ^ isVoid ifTrue: [""] ifFalse: ["return"]
+  ]
+
+  lastIndex = this count - 1
+  ^ this mapIndexed: [i, expr ->
+    isLast = i == lastIndex
+    isLast
+      ifTrue: [
+        | expr
+        | ReturnStatementT => [
+            expr value
+              unpack: [val -> "return " + (val toGoFromPkg: currentPkg db: db)]
+              or: "return"
+          ]
+        | VarDeclarationT
+        | AssignT
+        | DestructingAssignT => [
+            stmt = expr toGoStmtFromPkg: currentPkg db: db
+            isVoid ifTrue: [stmt] ifFalse: [stmt + "\nreturn"]
+          ]
+        |=> [
+          isVoid
+            ifTrue: [expr toGoStmtFromPkg: currentPkg db: db]
+            ifFalse: ["return " + (expr toGoFromPkg: currentPkg db: db)]
+        ]
+      ]
+      ifFalse: [
+        expr toGoStmtFromPkg: currentPkg db: db
+      ]
+  ], joinWith: "\n"
+]
+
+constructor Go [
+
+    on fullFromResolver(rh): ResolverHelper -> Map(String, String) = [
+        db = rh db
+        packages = db packages
+        moduleName = "niva"
+
+        generateImports = [pkg::NivaPkg sb::StringBuilder codeStr::String ->
+            needed::mut Set(String) = #()!
+            qualifierToPath::mut Map(String, String) = #{}!
+
+            addImport = [importName::String ->
+                isLocal = packages at: importName
+                importPath =
+                | isLocal
+                | null => importName
+                |=> moduleName + "/" + importName
+                qual = (importPath split: "/") last
+                qualifierToPath at: qual put: importPath
+            ]
+
+            pkg packageImports forEach: [addImport :it ]
+            pkg imports forEach: [addImport :it]
+
+            qualifierToPath forEach: [qual, path ->
+              codeStr contains: (qual + "."), ifTrue: [needed add: path]
+            ]
+
+            sortedImports = needed toList sortedBy: [it]
+            sortedImports isNotEmpty ifTrue: [
+                sb appendLine: "import ("
+                sortedImports forEach: [
+                    sb appendLine: "    \"" + it + "\""
+                ]
+                sb appendLine: ")"
+                sb appendLine: ""
+            ]
+        ]
+
+        outputFileToCode::mut Map(String, String) = #{}!
+
+        rh fileToStatements forEach: [file, statement ->
+            sb = StringBuilder new
+            statement forEach: [
+                x = it toGoFromPkg: file db: db
+                x != "" ifTrue: [
+                    sb appendLine: x
+                    sb appendLine: ""
+                ]
+            ]
+            outputFileToCode at: file put: sb toString
+        ]
+
+        entryPointName = rh entryPointName
+        exprs = rh entryPointExpressions joinWith: "\n" transform: [it toGoStmtFromPkg: entryPointName db: db]
+        entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs]
+
+        mainBlock = "func main() {\n" + (entryPointExprs indentLines: "  ") + "\n}\n"
+
+        outputFileToGo::mut Map(String, String) = #{}!
+        rh fileToStatements forEach: [file, statement ->
+            sb = StringBuilder new
+            pkg = packages at: file, unpackOrPANIC
+            pkgName = file == entryPointName ifTrue: ["main"] ifFalse: [file]
+            sb appendLine: "package " + pkgName
+            sb appendLine: ""
+            codeStr = outputFileToCode at: file, unpackOrPANIC
+            fullCode = file == entryPointName ifTrue: [codeStr + mainBlock] ifFalse: [codeStr]
+            generateImports :pkg :sb codeStr: fullCode
+            sb append: fullCode
+            outputFileToGo at: file put: sb toString
+        ]
+
+        ^ outputFileToGo
+    ]
+]
+
+
+TypedExpr2 toGoFromPkg(currentPkg): String db: TyperDB -> String =
+  | this
+  | LiteralExprT       => .literalToGo
+  | IdentifierT        => .identToGo
+  | ExprInBracketsT    => "(" + (value toGoFromPkg: currentPkg db: db) + ")"
+  | VarDeclarationT    => .varDeclToGoFromPkg: currentPkg db: db
+  | AssignT            => .generateGoAssignFromPkg: currentPkg db: db
+  | DestructingAssignT => .destructToGoFromPkg: currentPkg db: db
+  | CollectionLiteralT => .collectionToGoFromPkg: currentPkg db: db
+  | MessageSendT       => .msgSendToGoFromPkg: currentPkg db: db
+  | ReturnStatementT   => .returnToGoFromPkg: currentPkg db: db
+  | CodeBlockT         => .codeBlockToGoFromPkg: currentPkg db: db
+  | MatchT             => .matchToGoFromPkg: currentPkg db: db
+
+TypedExpr2 shouldEmitDiscardInGoStmt -> Bool = [
+  ^ | this
+    | VarDeclarationT
+    | AssignT
+    | DestructingAssignT
+    | ReturnStatementT => false
+    | MessageSendT => [
+      | dbMsg returnType
+      | UnitT
+      | NothingT => false
+      |=> true
+    ]
+    |=> [
+      | typeInfo t
+      | UnitT
+      | NothingT => false
+      |=> true
+    ]
+]
+
+TypedExpr2 toGoStmtFromPkg(currentPkg): String db: TyperDB -> String = [
+  exprStr = this toGoFromPkg: currentPkg db: db
+  ^ this shouldEmitDiscardInGoStmt
+            ifTrue:  ["_ = " + exprStr]
+            ifFalse: [exprStr]
+]
+
+AssignT generateGoAssignFromPkg(currentPkg): String db: TyperDB -> String = [
+  need_this = | kind
+              | AssignKind.TO_LOCAL_MUT  => ""
+              | AssignKind.TO_THIS_FIELD => "this."
+  fieldName = name toGoExportedName
+  finalName = kind == AssignKind.TO_THIS_FIELD ifTrue: [fieldName] ifFalse: [name]
+  ^ need_this + finalName + " = " + (value toGoFromPkg: currentPkg db: db)
+]
+
+CollectionLiteralT collectionToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+  elementsStr = elements v joinWith: ", " transform: [
+    it toGoFromPkg: currentPkg db: db
+  ]
+  listType = typeInfo t
+  ^ | this
+    | ListLiteralT => [
+      innerType = | listType | ListT => [listType t toGoTypeFromPkg: currentPkg] |=> "any"
+      "[]" + innerType + "{ " + elementsStr + " }"
+    ]
+    | SetLiteralT => [
+      innerType = | listType | SetT => [listType t toGoTypeFromPkg: currentPkg] |=> "any"
+      elems = elements v map: [
+        (it toGoFromPkg: currentPkg db: db) + ": struct{}{}"
+      ]
+      "map[" + innerType + "]struct{}{" + (elems joinWith: ", ") + "}"
+    ]
+    | MapLiteralT => [
+      elems = elements v
+      elems count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
+      keyType = | listType | MapT => [listType k toGoTypeFromPkg: currentPkg] |=> "any"
+      valType = | listType | MapT => [listType v toGoTypeFromPkg: currentPkg] |=> "any"
+      pairs = elems asSequence
+                chunked: 2, joinTransform: [
+                  key = it at: 0
+                  value = it at: 1
+                  (key toGoFromPkg: currentPkg db: db) + ": " + (value toGoFromPkg: currentPkg db: db)
+                ]
+      "map[" + keyType + "]" + valType + "{" + pairs + "}"
+    ]
+]
+
+ReturnStatementT returnToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+  exprStr = value unpack: [it toGoFromPkg: currentPkg db: db] or: ""
+  ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
+]
+
+CodeBlockT codeBlockToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+    argsStr = args isNotEmpty
+      ifTrue: [
+        args joinWith: ", " transform: [
+          t = it astType toNivaTypefromDB: db inPkg: null
+          it name + " " + (t toGoTypeFromPkg: currentPkg)
+        ]
+      ] ifFalse: [
+        untypedArgs isNotEmpty
+          ifTrue: [
+            untypedArgs joinWith: ", " transform: [
+              argT = it typeInfo t
+              it name + " " + (argT toGoTypeFromPkg: currentPkg)
+            ]
+          ] ifFalse: [
+              p = typeInfo t
+            implicitArg =
+              | p
+              | FuntionT => [
+                p fields count == 1
+                  ifTrue: [
+                    fieldName = p fields first name
+                    fieldName2 = fieldName == "" ifTrue: ["it"] ifFalse: [fieldName]
+                    fieldType = p fields first typeT
+                    fieldName2 + " " + (fieldType toGoTypeFromPkg: currentPkg)
+                  ]
+                  ifFalse: [""]
+              ]
+              |=> ""
+            implicitArg
+          ]
+      ]
+
+    funType = typeInfo t
+    retType = | funType
+      | FuntionT => funType returnType
+      |=> TO DO: "Compiler bug? non FunctionT but $funType"
+    retTypeStr = retType toGoTypeFromPkg: currentPkg
+    isVoid = retType isGoVoidType
+    retSuffix = isVoid ifTrue: [""] ifFalse: [" (result " + retTypeStr + ")"]
+
+    bodyExprs = body v
+    bodyStr = bodyExprs buildGoBody: retType currentPkg: currentPkg db: db
+    bodyIndented = bodyStr indentLines: "  "
+
+    ^ "func(" + argsStr + ")" + retSuffix + " {\n" + bodyIndented + "\n}"
+]
+
+MatchT matchToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+    subjectStr = subject toGoFromPkg: currentPkg db: db
+
+    resultType = typeInfo t
+    retTypeStr = resultType toGoTypeFromPkg: currentPkg
+    isVoid = resultType isGoVoidType
+    retSuffix = isVoid ifTrue: [""] ifFalse: [" (result " + retTypeStr + ")"]
+
+    buildBody = [body::TypedBody ->
+      body v buildGoBody: resultType currentPkg: currentPkg db: db
+    ]
+
+    conditionToGo = [branch::MatchBranchT ->
+      conds::mut List::String = {}!
+      condExpr = branch condition
+      condStr =
+        | condExpr
+        | IdentifierT => [
+          condExpr isNameOfTheType
+            ifTrue: [
+              condType = condExpr typeInfo t
+              condTypeStr = condType toGoTypeFromPkg: currentPkg
+              "(func() bool { _, ok := any(" + subjectStr + ").(" + condTypeStr + "); return ok }())"
+            ]
+            ifFalse: ["(" + subjectStr + " == " + (condExpr toGoFromPkg: currentPkg db: db) + ")"]
+        ]
+        |=> [
+          "(" + subjectStr + " == " + (condExpr toGoFromPkg: currentPkg db: db) + ")"
+        ]
+      conds add: condStr
+      branch conditions v forEach: [
+        conds add: "(" + (it toGoFromPkg: currentPkg db: db) + ")"
+      ]
+      conds joinWith: " && "
+    ]
+
+    sb = StringBuilder new
+    branches forEachIndexed: [i, branch ->
+      condStr = conditionToGo branch: branch
+      bodyStr = buildBody body: branch body
+      prefix = i == 0 ifTrue: ["if "] ifFalse: [" else if "]
+      sb append: prefix
+      sb append: condStr
+      sb appendLine: " {"
+      sb appendLine: (bodyStr indentLines: "  ")
+      sb append: "}"
+    ]
+
+    elseBranch unpack: [
+      elseBodyStr = buildBody body: it
+      sb appendLine: " else {"
+      sb appendLine: (elseBodyStr indentLines: "  ")
+      sb append: "}"
+    ]
+
+    body = sb toString
+    bodyFinal = isVoid ifTrue: [body] ifFalse: [body + "\nreturn"]
+    ^ "func()" + retSuffix + " {\n" + (bodyFinal indentLines: "  ") + "\n}()"
+]
+
+
+VarDeclarationT varDeclToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+    decl = name + " := " + (value toGoFromPkg: currentPkg db: db)
+    ^ decl + "\n_ = " + name
+]
+
+DestructingAssignT destructToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+    valueStr = value toGoFromPkg: currentPkg db: db
+    parts = names map: [n ->
+      fieldName = n toGoExportedName
+      n + " := " + valueStr + "." + fieldName + "\n_ = " + n
+    ]
+    ^ parts joinWith: "\n"
+]
+
+
+IdentifierT identToGo -> String =
+    | name
+    | "this" => "this"
+    |=> name
+
+
+LiteralExprT literalToGo -> String =
+  | this
+  | UnitExprT => "struct{}{}"
+  | NullExprT => "nil"
+  |=> token lexeme
+
+
+MessageSendT msgSendToGoFromPkg(currentPkg): String db: TyperDB -> String = [
+    rec = receiver
+    isDefaultConstructor = dbMsg kind == MessageSendKind.DefaultConstructor
+    useNewCtor = isDefaultConstructor && (dbMsg decl == null)
+    receiverType = dbMsg receiverType
+    isReceiverFunction = | dbMsg receiverType
+        | FuntionT => true
+        |=> false
+    isBindReceiver = dbMsg receiverType isCoreTypeNamed: "Bind"
+
+    getReceiverGo = [
+        isDefaultConstructor
+            ifFalse: [receiver toGoFromPkg: currentPkg db: db]
+            ifTrue:  [""]
+    ]
+
+    pkg_qualifier = currentPkg == dbMsg pkgName ifFalse: [dbMsg pkgName + "."] ifTrue: [""]
+
+    | this
+    | UnaryMsgT => [
+
+        dbMsg kind == MessageSendKind.Getter
+            ifTrue: [
+                fieldName = selector name toGoExportedName
+                ^ (receiver toGoFromPkg: currentPkg db: db) + "." + fieldName
+            ]
+
+        isReceiverFunction && (selector name == "do")
+            ifTrue: [
+                ^ "(" + (receiver toGoFromPkg: currentPkg db: db) + ")()"
+            ]
+
+        | rec
+        | CodeBlockT => [
+            selector name == "do" ifTrue: [
+                ^ "()"
+            ]
+        ]
+        |=> []
+
+        isDefaultConstructor ifTrue: [
+            ^ useNewCtor ifTrue: [
+                | receiverType
+                | IntegerT
+                | FloatT
+                | DoubleT => "0"
+                | BoolT => "false"
+                | StringT => "\"\""
+                | CharT => "rune(0)"
+                | ListT => [
+                    innerType = receiverType t toGoTypeFromPkg: currentPkg
+                    "[]" + innerType + "{}"
+                  ]
+                | SetT => [
+                    innerType = receiverType t toGoTypeFromPkg: currentPkg
+                    "map[" + innerType + "]struct{}{}"
+                  ]
+                | MapT => [
+                    keyType = receiverType k toGoTypeFromPkg: currentPkg
+                    valType = receiverType v toGoTypeFromPkg: currentPkg
+                    "map[" + keyType + "]" + valType + "{}"
+                  ]
+                |=> "&" + pkg_qualifier + receiverType name + "{}"
+            ] ifFalse: [
+                newSelector = dbMsg receiverType name + "__" + selector name
+                pkg_qualifier + newSelector + "(" + getReceiverGo do + ")"
+            ]
+        ]
+
+        newSelector = dbMsg receiverType name + "__" +  selector name
+        ^ pkg_qualifier + newSelector + "(" + getReceiverGo do + ")"
+    ]
+    | BinaryMsgT => [
+        receiverStr = receiver toGoFromPkg: currentPkg db: db
+        mut currentExpr::String = receiverStr
+        currentType = receiver typeInfo t
+
+        args forEach: [arg ->
+            op = arg name name
+            argExpr = arg expr toGoFromPkg: currentPkg db: db
+            argType = arg expr typeInfo t
+            native = currentType tryEmitNativeBinaryGo: op recvExpr: currentExpr argExpr: argExpr argType: argType
+            | native
+            | null => [
+                selector = op operatorToString
+                currentExpr <- pkg_qualifier + (currentType name) + "__" + selector + "(" + currentExpr + ", " + argExpr + ")"
+            ]
+            |=> [
+                currentExpr <- native
+            ]
+        ]
+
+        ^ currentExpr
+    ]
+    | KeywordMsgT => [
+        isBindReceiver && (dbMsg name == "emit:")
+            ifTrue: [
+                argExpr = args first expr
+                ^ | argExpr
+                  | StringExprT => argExpr token lexeme unquoteLiteral
+                  |=> argExpr toGoFromPkg: currentPkg db: db
+            ]
+        isBindReceiver && (dbMsg name == "addImport:")
+            ifTrue: [
+                argExpr = args first expr
+                | argExpr
+                | StringExprT => [
+                    importName = argExpr token lexeme unquoteLiteral
+                    pkg = db packages at: currentPkg, unpackOrPANIC
+                    pkg addPackageImport: importName
+                  ]
+                |=> [
+                    TO DO: "Bind addImport expects String literal"
+                  ]
+                ^ ""
+            ]
+
+        isBindReceiver && (dbMsg name == "emit:args:")
+            ifTrue: [
+                templateExpr = args first expr
+                argsListExpr = (args at: 1) expr
+
+                template = | templateExpr
+                  | StringExprT => templateExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:args: expects String literal as first argument"]
+
+                argsValues = | argsListExpr
+                  | ListLiteralT => argsListExpr elements v map: [it toGoFromPkg: currentPkg db: db]
+                  |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
+
+                mut maxPlaceholder = 0
+                mut i = 0
+                template count repeat: [
+                    (template at: i) == '$' ifTrue: [
+                        (i + 1) < (template count) ifTrue: [
+                            nextChar = template at: (i + 1)
+                            nextChar isDigit ifTrue: [
+                                mut digitStr = nextChar toString
+                                mut j = i + 2
+                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
+                                    digitStr <- digitStr + ((template at: j) toString)
+                                    j <- j + 1
+                                ]
+                                placeholderNum = digitStr toInt
+                                placeholderNum > maxPlaceholder ifTrue: [
+                                    maxPlaceholder <- placeholderNum
+                                ]
+                            ]
+                        ]
+                    ]
+                    i <- i + 1
+                ]
+
+                argsCount = argsValues count
+                maxPlaceholder > argsCount ifTrue: [
+                    TO DO: "Bind emit:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
+                ]
+
+                mut result = template
+                argsValues forEachIndexed: [i, argValue ->
+                    placeholder = "$" + ((i + 1) toString)
+                    result <- result replace: placeholder with: argValue
+                ]
+                ^ result
+            ]
+
+        dbMsg name == "whileTrue:" ifTrue: [
+            condStr = receiver toGoFromPkg: currentPkg db: db
+            bodyStr = (args first expr) toGoFromPkg: currentPkg db: db
+            ^ "for (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
+        ]
+
+        isReceiverFunction ifTrue: [
+            argsExprStr = args map: [
+                it expr toGoFromPkg: currentPkg db: db
+            ]
+            ^ "(" + (receiver toGoFromPkg: currentPkg db: db) + ")(" + (argsExprStr joinWith: ", ") + ")"
+        ]
+
+        selectorFromArgs = args joinWith: "__" transform: [
+            it name name
+        ]
+        suffix = dbMsg name substringAfter: "__"
+        hasSuffix = suffix != dbMsg name
+        suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+
+        newSelector = isDefaultConstructor
+            ifTrue: [
+                useNewCtor
+                  ifTrue:  [dbMsg receiverType name]
+                  ifFalse: [dbMsg receiverType name + "__" + selectorFromArgs + suffixStr]
+            ] ifFalse: [
+                dbMsg receiverType name + "__" + selectorFromArgs + suffixStr
+            ]
+
+        receiverStr = getReceiverGo do
+        receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
+
+        argsExprStr = args map: [
+            it expr toGoFromPkg: currentPkg db: db
+        ]
+
+        useNewCtor ifTrue: [
+            namedArgs = args joinWith: ", " transform: [
+                fieldName = it name name toGoExportedName
+                fieldName + ": " + (it expr toGoFromPkg: currentPkg db: db)
+            ]
+            ^ "&" + pkg_qualifier + dbMsg receiverType name + "{" + namedArgs + "}"
+        ]
+
+        args = receiverWithComma + (argsExprStr joinWith: ", ")
+        ^ pkg_qualifier + newSelector + "(" + args + ")"
+    ]
+
+
+    ^ getReceiverGo do
+]

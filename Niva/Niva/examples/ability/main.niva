@@ -1,12 +1,13 @@
-Project capabilities: true
+mut Set(T) get: T orPut: T -> T =
+    this contains: get,
+        ifFalse: [
+            this add: orPut
+            orPut
+        ]
+        ifTrue:  [get]
 
-type IO
-  read: [String -> String]
-
-
-type Program
-
-
-io = IO read: [File path: it, readText orPANIC] 
-
-Program new foo: io
+q = #(1 2 3)!
+w = q get: 2 orPut: 2
+q echo
+f = q get: 4 orPut: 4
+q echo
