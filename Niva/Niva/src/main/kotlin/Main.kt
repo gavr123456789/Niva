@@ -18,7 +18,6 @@ fun main(args: Array<String>) {
     if (help(args))
         return
     run(args)
-
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root

@@ -1,7 +1,7 @@
 /// takes main/entry file and collects all the files for compilation
 type NivaBuildSystem
 constructor NivaBuildSystem [
-    on findAllWilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
+    on findAllFilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
         // path is to main.niva, need to get its paret to start search
         p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
@@ -27,14 +27,17 @@ type NivaCompiler
 
 constructor NivaCompiler [
     on runArgs(args): List(String) withIO(io): IO_Container = [
-
+        TIME-Start = System currentTimeMillis
         argsParsed = ArgParser args: args
         {option path backend} = argsParsed
 
         realJSPath = io currentDir + "/.niva_js"
         realNimPath = io currentDir + "/.niva_nim"
         realGoPath = io currentDir + "/.niva_go"
-
+        
+        TIME-Args-Parsed = System currentTimeMillis
+        
+        
         buildFromResolver = [res: ResolverHelper ->
             | backend
             | Backend.Nim => [
@@ -59,13 +62,13 @@ constructor NivaCompiler [
                 FileSystem createDirectories: (realGoPath toPath)
                 goModPath = realGoPath + "/go.mod"
                 FileSystem exists: (goModPath toPath), ifFalse: [
-                  io writeFile file: goModPath content: "module niva\n\ngo 1.20\n"
+                  io writeFile file: goModPath content: "module niva\n\ngo 1.26\n"
                 ]
                 fileToGoContent = Go fullFromResolver: res
 
                 fileToGoContent forEach: [file, goContent ->
                     destDir = realGoPath + "/" + file
-                    FileSystem createDirectories: (destDir toPath)
+                    FileSystem createDirectories: destDir toPath
                     destination = destDir + "/" + file + ".go"
                     io writeFile file: destination content: goContent
                 ]
@@ -76,15 +79,24 @@ constructor NivaCompiler [
         | CompilerOption.Run | CompilerOption.Build => [
             rootFile = path unpackOrValue: "main.niva"
             entryPoint = rootFile toPath name substringBeforeLast: "."
-            pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
-
+            pathToContent = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
+            
+            TIME-Resolve-Start = System currentTimeMillis
             resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+            TIME-Resolve-End = System currentTimeMillis
+            "[info] resolved in " + (TIME-Resolve-End - TIME-Resolve-Start) toString, echo
+            
             resolver db listOfErrors isNotEmpty ifTrue: [
               resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
               TO DO: "Resolver errors: " + resolver_errors
             ]
 
+            TIME-Codegen-Start = System currentTimeMillis
             buildFromResolver res: resolver
+            TIME-Codegen-End = System currentTimeMillis
+            "[info] codegen in " + (TIME-Codegen-End - TIME-Codegen-Start) toString, echo
+            
+            TIME-Execute-Start = System currentTimeMillis
             option == CompilerOption.Run ifTrue: [
               | backend
               | Backend.Nim => [
@@ -100,6 +112,9 @@ constructor NivaCompiler [
                 goRunCmd = "cd " + realGoPath + " && go run ./" + entryPoint
                 io runProgram args: {"bash" "-lc" goRunCmd}
               ]
+              TIME-Execute-End = System currentTimeMillis
+              "[info] execute in " + (TIME-Execute-End - TIME-Execute-Start) toString, echo
+              
             ]
         ]
         | CompilerOption.Help => []

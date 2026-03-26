@@ -46,7 +46,7 @@ constructor TypeScript  [
                 sb append: "\"\n"
             ]
             pkg imports forEach: [
-                // import * as core from "./core.js"
+                // import * as example from "./example.js"
                 sb append: "import * as "
                 sb append: it
                 sb append: " from \"./$it.js\"\n"

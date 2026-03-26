@@ -1,0 +1,44 @@
+type Person name: String age: Int
+
+Person hello = [
+    "hello my name is 321 " + name, echo
+]
+
+p = Person name: "Alice" age: 24
+p hello
+
+list = {1 2 3}
+hashSet = #(1 2 3)
+hashMap = #{1 2 3 4}
+
+list echo 
+hashSet echo  
+hashMap echo
+
+list map: [it * 2], echo
+
+
+//// unary
+//"foo-bar" count
+//"drawer" reversed
+//"BAOBAB" lowercase
+//// binary
+//"ee" == "ee"
+//"foo" + "bar"
+//// keyword
+//"foo-bar" split: "-"
+//"abcdef" forEach: [char -> char echo]
+//"baobab" filter: [it == 'b'] // it - implicit param
+//"foo-bar-baz" replace: "-" with: " "
+//"chocolate" contains: "late"
+
+//String binaryToAscii = [
+//  result = this
+//    split: " ",
+//    map: [it toInt: 2, toChar],
+//    joinWith: ""
+
+//  ^ result
+//]
+
+//"01001000 01100101 01101100 01101100 01101111" binaryToAscii echo

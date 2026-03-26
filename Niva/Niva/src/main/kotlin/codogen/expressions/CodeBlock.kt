@@ -13,7 +13,7 @@ fun CodeBlock.generateCodeBlock(withTypeDeclaration: Boolean = true, putArgListI
 
     if (putArgListInBrackets) append("(")
     // ^x: Int, ->
-    inputList.forEach({ append(", ") }) {
+    inputList.forEachExceptLastDo({ append(", ") }) {
         append(it.name.ifKtKeywordAddBackTicks())
 
         if (withTypeDeclaration) {

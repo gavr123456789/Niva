@@ -91,7 +91,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
 }
 
 
-inline fun <T> Iterable<T>.forEach(exceptLastDo: (T) -> Unit, action: (T) -> Unit) {
+inline fun <T> Iterable<T>.forEachExceptLastDo(exceptLastDo: (T) -> Unit, action: (T) -> Unit) {
     val c = count()
     this.forEachIndexed { index, t ->
         action(t)
@@ -147,7 +147,7 @@ fun ListCollection.generateList() = buildString {
     append("(")
 
     filteredInitElements
-        .forEach(exceptLastDo = { append(", ") }) {
+        .forEachExceptLastDo(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())
     }
 
@@ -196,7 +196,7 @@ fun MapCollection.generateMap() = buildString {
     append("(")
 
     filteredInitElements
-        .forEach(exceptLastDo = { append(", ") }) {
+        .forEachExceptLastDo(exceptLastDo = { append(", ") }) {
         append(it.first.generateExpression(), " to ", it.second.generateExpression())
     }
 
@@ -221,7 +221,7 @@ fun SetCollection.generateSet() = buildString {
     append("(")
 
     filteredInitElements
-        .forEach(exceptLastDo = { append(", ") }) {
+        .forEachExceptLastDo(exceptLastDo = { append(", ") }) {
         append(it.generateExpression())
     }
 

@@ -1,13 +1,11 @@
-mut Set(T) get: T orPut: T -> T =
-    this contains: get,
+mut Set(T) getOrPut: T =
+    this contains: getOrPut,
         ifFalse: [
-            this add: orPut
-            orPut
+            this add: getOrPut
         ]
-        ifTrue:  [get]
 
 q = #(1 2 3)!
-w = q get: 2 orPut: 2
+w = q getOrPut: 2
 q echo
-f = q get: 4 orPut: 4
+f = q getOrPut: 4
 q echo
