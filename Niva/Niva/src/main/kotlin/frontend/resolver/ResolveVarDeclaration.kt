@@ -29,6 +29,61 @@ fun checkThatCollectionIsTyped(statement: VarDeclaration) {
     }
 }
 
+private fun Type.checkDeepImmutability(
+    visited: MutableSet<Type> = mutableSetOf(),
+    contextField: FieldWithType? = null
+): Pair<Boolean, FieldWithType?> {
+    val unpacked = this.unpackNull()
+    if (unpacked.isMutable) return false to contextField
+
+    return when (unpacked) {
+        is Type.InternalType -> true to null
+        is Type.UnresolvedType -> true to null
+        is Type.Lambda -> {
+            val ext = unpacked.extensionOfType
+            if (ext != null) {
+                val res = ext.checkDeepImmutability(visited, contextField)
+                if (!res.first) return res
+            }
+            unpacked.args.forEach { arg ->
+                val res = arg.type.checkDeepImmutability(visited, contextField)
+                if (!res.first) return res
+            }
+            val res = unpacked.returnType.checkDeepImmutability(visited, contextField)
+            if (!res.first) return res
+            true to null
+        }
+        is Type.UserLike -> {
+            if (!visited.add(unpacked)) return true to null
+            unpacked.fields.forEach { field ->
+                val res = field.type.checkDeepImmutability(visited, field)
+                if (!res.first) return res
+            }
+            unpacked.typeArgumentList.forEach { arg ->
+                val res = arg.checkDeepImmutability(visited, contextField)
+                if (!res.first) return res
+            }
+            when (unpacked) {
+                is Type.UnionRootType -> {
+                    unpacked.branches.forEach { branch ->
+                        val res = branch.checkDeepImmutability(visited, contextField)
+                        if (!res.first) return res
+                    }
+                }
+                is Type.EnumRootType -> {
+                    unpacked.branches.forEach { branch ->
+                        val res = branch.checkDeepImmutability(visited, contextField)
+                        if (!res.first) return res
+                    }
+                }
+                else -> {}
+            }
+            true to null
+        }
+        else -> true to null
+    }
+}
+
 
 fun Resolver.resolveVarDeclaration(
     statement: VarDeclaration,
@@ -174,12 +229,17 @@ fun Resolver.resolveVarDeclaration(
 
     }
     if (statement.isGlobal) {
-        val typeForCheck = when (typeOfValueInVarDecl) {
-            is Type.NullableType -> typeOfValueInVarDecl.realType
-            else -> typeOfValueInVarDecl
-        }
-        if (typeForCheck.isMutable) {
-            statement.token.compileError("Global variable `${statement.name}` cannot have mutable type $YEL$typeForCheck$RESET")
+        val rhsType = valueOfVarDecl.type ?: typeOfValueInVarDecl
+        val (isImmutable, mutableField) = rhsType.checkDeepImmutability()
+        if (!isImmutable) {
+            val fieldInfo = if (mutableField != null) {
+                "Mutable field: $YEL${mutableField.name}$RESET ($YEL${mutableField.type}$RESET)"
+            } else {
+                "Mutable type: $YEL$rhsType$RESET"
+            }
+            statement.token.compileError(
+                "Global variable `${statement.name}` cannot have mutable type (including nested fields). $fieldInfo"
+            )
         }
     }
 

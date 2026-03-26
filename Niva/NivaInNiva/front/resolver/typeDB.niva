@@ -949,7 +949,6 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
       it toTypeInfoFromDb: db inPkg: null
     ] or: fallbackReturnInfo
 
-    "создали MessageDeclT для " + msgDecl name, log
     MessageDeclT
       receiver: receiverType
       name: msgDecl name

@@ -37,14 +37,18 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   typedArgs = args mapIndexed: [ i, kwArg ->
     {name expr} = kwArg
     argTypeFromDb = kwMsgDB args at: i, typeT
+    expectedArgType =
+      (letterToType isNotEmpty && argTypeFromDb containsUnresolvedGeneric)
+        ifTrue: [argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db]
+        ifFalse: [argTypeFromDb]
     typedExpr =
       | expr
       | CodeBlock => [
-        | argTypeFromDb
-        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: argTypeFromDb
-        |=> expr toTypedExprFromDb2: db withContext: c
+        | expectedArgType
+        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+        |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
       ]
-      |=> expr toTypedExprFromDb2: db withContext: c expectedType: argTypeFromDb
+      |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
 
     realType = typedExpr typeInfo t
     argTypesAndExprs add: (CheckMethodArg

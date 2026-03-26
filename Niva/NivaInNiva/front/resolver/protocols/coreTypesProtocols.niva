@@ -4,6 +4,9 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP = NivaProtocol name: "common"
   // unary
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
+  // can throw
+  collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
+  collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
   collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
   collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
   // binary
@@ -301,6 +304,8 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
   errProto = NivaProtocol name: "common"
   errProto addMethod: (NivaMethod unary: "throw" receiverType: errorType returnT: nothing)
   errProto addMethod: (NivaMethod singleArgKw: "throwWithMsg" receiverType: errorType argT: str returnT: nothing)
+  // just for backwards compatibility with first niva
+  errProto addMethod: (NivaMethod singleArgKw: "throwWithMessage" receiverType: errorType argT: str returnT: nothing)
 
   ^ errProto methods
 ]

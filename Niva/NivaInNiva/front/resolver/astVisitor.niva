@@ -391,7 +391,7 @@ MessageDecl getReturnTypeIfDeclaredOrUnknown(db): TyperDB -> NivaType = [
         | true => Unknown new
         | false => db dtc unit
       ]
-    |=> db findByTypeName: rt name inPkg: null
+    |=> rt toNivaTypefromDB: db inPkg: null
 ]
 
 /// returns a type with fields filled with real types, ready to add to db

@@ -152,7 +152,7 @@ fun Resolver.resolveEnumDeclaration(statement: EnumDeclarationRoot, previousScop
             val rootFieldWithSameName = rootType.fields.find { x -> x.name == fieldAST.name }
                 ?: fieldAST.token.compileError("Each branch of enum must define values for each field,${YEL} ${rootType.name} ${WHITE}${rootType.fields.map { x -> x.name }}")
 
-            if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type, fieldAST.token)) {
+            if (!compare2Types(fieldAST.value.type!!, rootFieldWithSameName.type, fieldAST.token, compareParentsOfBothTypes = true)) {
                 fieldAST.token.compileError("In enum branch: `$YEL${it.typeName}$RED` field `$WHITE${fieldAST.name}$RED` has type `$YEL${fieldAST.value.type}$RED` but `$YEL${rootFieldWithSameName.type}$RED` expected")
             }
 
