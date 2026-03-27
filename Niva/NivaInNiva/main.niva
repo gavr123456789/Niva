@@ -80,6 +80,7 @@ compilerTry2 = [
   //diff echo // 60 toLong / 1000 toLong, echo
 ] do
 
+
 emptyListTypeInference = [
   fileMain = """
     type Sas x: List(Int)

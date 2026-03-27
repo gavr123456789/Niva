@@ -274,6 +274,7 @@ fun createStringProtocols(
             createUnary("first", charType, "Returns the first character or panic"),
             createUnary("last", charType, "Returns the last character or panic"),
             createUnary("indices", intRangeType).emit("$0.indices"), // not a function, no need `()`
+            createUnary("hashCode", intType),
 
             ),
         binaryMsgs = mutableMapOf(
