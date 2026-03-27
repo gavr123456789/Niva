@@ -161,7 +161,7 @@ CollectionLiteralT collectionToTSFromPkg(currentPkg): String db: TyperDB -> Stri
 
 ReturnStatementT returnToTSFromPkg(currentPkg): String db: TyperDB -> String = [
   exprStr = value unpack: [it toTSFromPkg: currentPkg db: db] or: ""
-  ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr]
+  ^ exprStr == "" ifTrue: ["return"] ifFalse: ["return " + exprStr + ""]
 ]
 
 CodeBlockT codeBlockToTSFromPkg(currentPkg): String db: TyperDB -> String = [
@@ -171,9 +171,9 @@ CodeBlockT codeBlockToTSFromPkg(currentPkg): String db: TyperDB -> String = [
           it name
         ]
       ] ifFalse: [
-        untypedArgs isNotEmpty
+        typedArgs isNotEmpty
           ifTrue: [
-            untypedArgs joinWith: ", " transform: [
+            typedArgs joinWith: ", " transform: [
               it name
             ]
           ] ifFalse: [
@@ -263,7 +263,7 @@ MatchT matchToTSFromPkg(currentPkg): String db: TyperDB -> String = [
           "(" + subjectStr + " == " + (condExpr toTSFromPkg: currentPkg db: db) + ")"
         ]
       conds add: condStr
-      branch conditions v forEach: [
+      branch additionalConditions v forEach: [
         conds add: "(" + (it toTSFromPkg: currentPkg db: db) + ")"
       ]
       conds joinWith: " && "

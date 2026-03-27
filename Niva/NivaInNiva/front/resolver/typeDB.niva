@@ -11,13 +11,15 @@ type TyperDB
   typesWithSameNames: mut Map(String, mut Set::NivaType)
   // key = typeId ("pkg.Type"), value = branch typeIds
   unionRootToBranches: mut Map(String, mut Set::String)
+  // reverse: branch typeId -> direct parent typeId
+  branchIdToParentId: mut Map(String, String)
 
   typesById: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
   // utils
   dtc: DefaultTypesContainer
   // methods
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
-  constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB
+  constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
 
   // generated
@@ -107,6 +109,7 @@ constructor TyperDB new -> TyperDB = [
     internalTypesCache: corePkg types
     typesWithSameNames: typesWithSameNames
     unionRootToBranches: #{}!
+    branchIdToParentId: #{}!
     typesById: #{}!
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
@@ -120,6 +123,7 @@ constructor TyperDB new -> TyperDB = [
 ]
 
 extend TyperDB [
+  /// for generic instantiation
   on addGeneratedMessageDecl(m): MessageDecl = [
     generatedMessageDecls add: m
   ]
@@ -130,6 +134,7 @@ extend TyperDB [
     branches forEach: [
       branchId = pkgName + "." + it
       set add: branchId
+      branchIdToParentId at: branchId put: rootId
     ]
     unionRootToBranches at: rootId put: set
   ]
@@ -141,13 +146,8 @@ extend TyperDB [
 
   on findUnionParent(branch): TypeT -> TypeT? = [
     branchId = branch toIdString
-    mut parent::TypeT? = null
-    unionRootToBranches forEach: [rootId, branches ->
-      branches contains: branchId, ifTrue: [
-        parent <- typesById at: rootId
-      ]
-    ]
-    ^ parent
+    parentId = branchIdToParentId at: branchId
+    ^ parentId unpack: [typesById at: it] or: null
   ]
 
   on unionBranchesDeep(root): TypeT -> Set::String = [
@@ -639,7 +639,34 @@ extend TyperDB [
 
     //StackTrace get echo
     //"Methods: found method $name in $lookupType" log
-    ^ y at: name
+    methodMaybe = y at: name
+    result =
+      | methodMaybe
+      | null => [
+        | lookupType
+        | TypeT => [
+          // search union parents if method not found on the branch
+          chain = this unionAncestorChain: lookupType
+          rest = chain drop: 1
+          parentWithMethod = rest find: [t ->
+            methodsMaybe = this typeToMethodNameToMethod at: t
+            | methodsMaybe
+            | null => false
+            |=> [
+              methods::mut Map(String, NivaMethod) = methodsMaybe
+              method = methods at: name
+              method != null
+            ]
+          ]
+          parentWithMethod unpack: [
+            methods::mut Map(String, NivaMethod) = (this typeToMethodNameToMethod at: it), unpackOrPANIC
+            methods at: name
+          ] or: null
+        ]
+        |=> null
+      ]
+      |=> methodMaybe
+    ^ result
   ]
 
   on findMsgFromReceiver(receiver): TypedExpr2
@@ -710,7 +737,7 @@ extend TyperDB [
           returnType = typedBody v last typeInfo t
 
           methodToReplace = method copyWithDifferentReturnType: returnType
-          this replaceMethod: methodToReplace inType: receiverType
+          this replaceMethod: methodToReplace inType: method receiverType
           methodToReplace
         ]
       ]
@@ -858,10 +885,6 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   msgDecls = TypeDeclVisitor db: db,
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
-
-
- // entry point expressions are resolved separately
-
 
   MsgDeclVisitor new
     processBodyes: msgDecls

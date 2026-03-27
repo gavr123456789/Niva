@@ -638,7 +638,8 @@ Test resolveAFewDeclarations = [
     mainPkg types at: "Wallet", unpackOrPANIC
   ] do
 
-  makeSas = msgDecls at: 0, y
+  msgList = msgDecls at: "main", unpackOrPANIC
+  makeSas = msgList at: 0
   typedBodyMaybe = db typedBodiesCache at: makeSas
   typedBody = typedBodyMaybe unpackOrPANIC
   checkExpressionsTypes = [

@@ -6,13 +6,7 @@ union Statement token: Token =
 | ^Expr
 | ^Declaration
 
-// TODO maybe replace with union
-// union Body2 =
-// | TypedBody v: List::TypedExpr
-// | UntypedBody v: List::Expr
-
 type Body
-  // typedBody: mut List::TypedExpr
   unTypedBody: mut List::Expr
 
 
@@ -99,7 +93,7 @@ KeywordMsg toString -> String = [
 
 type MatchBranch
   condition: Expr
-  conditions: Body
+  additionalConditions: Body
   body: Body
 
 
@@ -120,7 +114,7 @@ union Expr token: Token =
 | CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: Body
 | Match
   subject: Expr
-  branches: List::MatchBranch
+  branches: List(MatchBranch)
   elseBranch: Body? // possible body
 | TypedExpr
   exprAst: Expr

@@ -7,7 +7,6 @@ TypeTField toString -> String =
 constructor TypeTField binary(t): NivaType = TypeTField name: "" typeT: t
 
 union NivaType name: String pkgName: String =
-// complex
 | ^Complex
 | UnitT
 | IntegerT
@@ -36,9 +35,9 @@ union Complex
   fields: mut List::TypeTField
   genericArgs: mut List::NivaType =
 | TypeT
-   // args: List::TypeTField
 | FuntionT
   returnType: NivaType // method or lambda
+// for now unions are just TypeT, u should look into a table from TyperDB to see does it have childrens
 //| UnionT  branches: List::UnionTBranch
 
 extend NivaType [
@@ -129,22 +128,22 @@ extend NivaType [
     |=> this
   ]
 
-  on containsUnresolvedGeneric -> Bool = [
+  on isContainsUnresolvedGenerics -> Bool = [
     ^| this
     | UnresolvedGenericT => true
-    | ListT => this t containsUnresolvedGeneric
-    | SetT => this t containsUnresolvedGeneric
-    | MapT => (this k containsUnresolvedGeneric) || (this v containsUnresolvedGeneric)
+    | ListT => this t isContainsUnresolvedGenerics
+    | SetT => this t isContainsUnresolvedGenerics
+    | MapT => (this k isContainsUnresolvedGenerics) || (this v isContainsUnresolvedGenerics)
     | FuntionT => [
-      hasGenericInFields = fields any: [ it typeT containsUnresolvedGeneric ]
-      hasGenericInReturn = returnType containsUnresolvedGeneric
+      hasGenericInFields = fields any: [ it typeT isContainsUnresolvedGenerics ]
+      hasGenericInReturn = returnType isContainsUnresolvedGenerics
 
       hasGenericInFields || hasGenericInReturn
     ]
     | TypeT => [
-      genericArgs any: [ it containsUnresolvedGeneric ]
+      genericArgs any: [ it isContainsUnresolvedGenerics ]
     ]
-    | NullableT => this v containsUnresolvedGeneric
+    | NullableT => this v isContainsUnresolvedGenerics
     |=> false
   ]
 
@@ -273,6 +272,12 @@ extend NivaType [
             |=> null
     ^ field
   ]
+
+  on collectFields -> List(TypeTField) =
+    | this
+    | Complex => [fields toList]
+    |=> {}
+
 ]
 
 constructor TypeT noFieldsWithName(name): String pkgName: String  = TypeT
@@ -293,6 +298,7 @@ extend TypeT [
 
 
 
+  /// collect unresolved generics from fields
   on collectGenerics -> List(NivaType) = [
     set::mut Set(String) = #()!
     result::mut List(NivaType) = {}!
@@ -322,7 +328,7 @@ extend TypeT [
 
 constructor UnresolvedGenericT name: String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
-constructor IntegerT new = IntegerT name: "Int" pkgName: "core"
+constructor IntegerT new = IntegerT name: "Int"     pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
 constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
 constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"

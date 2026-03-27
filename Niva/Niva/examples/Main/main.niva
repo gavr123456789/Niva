@@ -1,13 +1,17 @@
-mut Set(T) get: T orPut: T -> T =
-    this contains: get,
-        ifFalse: [
-            this add: orPut
-            orPut
-        ]
-        ifTrue:  [get]
+type Pair x: T y: G
 
-q = #(1 2 3)!
-w = q get: 2 orPut: 2
-q echo
-f = q get: 4 orPut: 4
-q echo
+T && x: G -> Pair(T, G) = Pair x: this y: x
+
+constructor Map(T, G) fromList: List(Pair(T, G)) = [
+  x::mut Map(T, G) = #{}!
+  fromList forEach: [
+    x at: it x put: it y
+  ]
+  ^x toMap
+]
+
+
+Map(Int, Int) fromList: {
+  (1 && 2)
+  (3 && 4)
+}, echo

@@ -38,7 +38,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     {name expr} = kwArg
     argTypeFromDb = kwMsgDB args at: i, typeT
     expectedArgType =
-      (letterToType isNotEmpty && argTypeFromDb containsUnresolvedGeneric)
+      (letterToType isNotEmpty && argTypeFromDb isContainsUnresolvedGenerics)
         ifTrue: [argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db]
         ifFalse: [argTypeFromDb]
     typedExpr =
@@ -59,10 +59,10 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     // infer generics from nested types (function return types)
     argTypeFromDb collectGenericMappingsFrom: realType into: letterToType db: db
 
-    argTypeFromDb containsUnresolvedGeneric
+    argTypeFromDb isContainsUnresolvedGenerics
       ifTrue: [
         expectedResolved = argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db
-        expectedResolved containsUnresolvedGeneric ifFalse: [
+        expectedResolved isContainsUnresolvedGenerics ifFalse: [
           db isAssignable: realType toExpected: expectedResolved, ifFalse: [
             db addErrorMessage: (ErrorWrongArgType
                                   tok: expr token
@@ -109,8 +109,8 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     // instantiate method and its type if needed
     // replaceGenericsFromTable also instantiates receiver type and registers it in DB
     dontMangle = | receiverType
-    | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
-    |=> #(String)!
+                 | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
+                 |=> #(String)!
 
     newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: true db: db
 

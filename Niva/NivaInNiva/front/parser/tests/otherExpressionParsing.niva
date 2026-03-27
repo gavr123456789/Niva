@@ -77,9 +77,19 @@ Test returnStatement -> Unit = [
     [
       ^ 1 + 2
       ^ result
+      ^ | 1
+        | 2 => 2
+        |=> 3
     ]
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 1
+  codeblock = statements first
+  | codeblock
+  | CodeBlock => [
+    returnWithSas = codeblock body unTypedBody last
+    Assert that: returnWithSas token kind  equals: TokenType.Return
+  ]
+  |=> [TO DO]
 ]
 
 Test codeBlockStatement -> Unit = [
