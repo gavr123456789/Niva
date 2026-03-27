@@ -153,6 +153,17 @@ Test identifierDoubleColon = [
   ]
 ]
 
+Test matchWithoutSpace = [
+  tokens = LexTest input: "|abcd"
+  expectedKinds = {TokenType.If TokenType.Identifier}
+  expectedLexemes = {"|" "abcd"}
+
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
 Test identifierNullable = [
   tokens = LexTest input: "sas::Int?"
   expectedKinds = {TokenType.IdentifierDoubleColon TokenType.NullableIdentifier}

@@ -218,7 +218,7 @@ twelve prettyPrint echo
 x = [1 + 2]
 x do echo // 3
 
-[x * 2] // capture
+[x do * 2] // capture
 
 // to run block with args send their names
 add2nums = [a: Int, b: Int -> a + b]

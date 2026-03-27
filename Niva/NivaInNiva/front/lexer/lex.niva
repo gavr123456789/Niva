@@ -117,24 +117,36 @@ extend mut Lexer [
     | '\u0000' => [
       ^.createToken: TokenType.EndOfFile lexeme: l]
     | '=' => [
-      .step
-      | ch
-      | '=' => .createToken: TokenType.BinarySymbol lexeme: "=="
-      | '>' => .createToken: TokenType.Then lexeme: "=>"
-      |=> .createToken: TokenType.Assign lexeme: "="
+      .peekChar == '=', ifTrue: [
+        .step
+        .createToken: TokenType.BinarySymbol lexeme: "=="
+      ] ifFalse: [
+        .peekChar == '>', ifTrue: [
+          .step
+          .createToken: TokenType.Then lexeme: "=>"
+        ] ifFalse: [
+          .createToken: TokenType.Assign lexeme: "="
+        ]
+      ]
     ]
 
     | '|' => [
-      .step
-      | ch
-      | '=' => [
+      .peekChar == '=', ifTrue: [
         .step
-        | ch
-        | '>' => .createToken: TokenType.Else lexeme: "|=>"
-        |=> Error throwWithMessage: "expected |=>"
+        .peekChar == '>', ifTrue: [
+          .step
+          .createToken: TokenType.Else lexeme: "|=>"
+        ] ifFalse: [
+          Error throwWithMessage: "expected |=>"
+        ]
+      ] ifFalse: [
+        .peekChar == '|', ifTrue: [
+          .step
+          .createToken: TokenType.BinarySymbol lexeme: "||"
+        ] ifFalse: [
+          .createToken: TokenType.If lexeme: "|"
+        ]
       ]
-      | '|' => .createToken: TokenType.BinarySymbol lexeme: "||"
-      |=> .createToken: TokenType.If lexeme: "|"
     ]
 
     | '"' => [
@@ -163,9 +175,14 @@ extend mut Lexer [
         .createToken: TokenType.Bang lexeme: "!"
       ]
     ]
-    | '&' => .stepMatch: '&',
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "&&"]
-      ifFalse: [.createToken: TokenType.Ampersand lexeme: "&"]
+    | '&' => [
+      .peekChar == '&', ifTrue: [
+        .step
+        .createToken: TokenType.BinarySymbol lexeme: "&&"
+      ] ifFalse: [
+        .createToken: TokenType.Ampersand lexeme: "&"
+      ]
+    ]
 
     // parens
     | '(' => [
@@ -201,19 +218,28 @@ extend mut Lexer [
         ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
     ]
 
-    |'<' => .stepMatch: '=',
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: "<="]
-      ifFalse: [
-        .match: '-',
-          ifTrue:  [.createToken: TokenType.AssignArrow lexeme: "<-"]
-          ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "<"]
-
-
+    |'<' => [
+      .peekChar == '=', ifTrue: [
+        .step
+        .createToken: TokenType.BinarySymbol lexeme: "<="
+      ] ifFalse: [
+        .peekChar == '-', ifTrue: [
+          .step
+          .createToken: TokenType.AssignArrow lexeme: "<-"
+        ] ifFalse: [
+          .createToken: TokenType.BinarySymbol lexeme: "<"
+        ]
       ]
+    ]
 
-    |'>' => .stepMatch: '=',
-      ifTrue:  [.createToken: TokenType.BinarySymbol lexeme: ">="]
-      ifFalse: [.createToken: TokenType.BinarySymbol lexeme: ">"]
+    |'>' => [
+      .peekChar == '=', ifTrue: [
+        .step
+        .createToken: TokenType.BinarySymbol lexeme: ">="
+      ] ifFalse: [
+        .createToken: TokenType.BinarySymbol lexeme: ">"
+      ]
+    ]
 
 
     |'+'|'*'|'%' => .createToken: TokenType.BinarySymbol lexeme: l
