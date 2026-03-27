@@ -33,12 +33,11 @@ PrintingVisitor visit(st): Statement = [
 TypeDeclVisitor
   visitAllTypesThenTypesAndMethods(fileToStatements): Map(String, List(Statement))
   entryPointStatements: List(Statement)
-  -> List(Tuple(String, MessageDecl)) = [
+  -> Map(String, mut List::MessageDecl) = [
 
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
-  msgDecls2::mut List(Tuple(String, MessageDecl)) = {}!
-  unionNameToBranchNames::mut Map(String, List::String) = #{}!
+  msgDeclsByPkg::mut Map(String, mut List::MessageDecl) = #{}!
   unionIncludes::mut Map(String, mut List(Tuple(String, Token))) = #{}!
   unionRoots::mut Set::String = #()!
 
@@ -60,6 +59,22 @@ TypeDeclVisitor
     ]
   ]
 
+  getMsgList = [pkg::String ->
+    listMaybe = msgDeclsByPkg at: pkg
+    | listMaybe
+    | null => [
+      newList::mut List::MessageDecl = {}!
+      msgDeclsByPkg at: pkg put: newList
+      newList
+    ]
+    |=> listMaybe
+  ]
+
+  addMsgDecl = [pkg::String, msgDecl::MessageDecl ->
+    list = getMsgList pkg: pkg
+    list add: msgDecl
+  ]
+
   processDeclarations = [file::String, statements::List::Statement ->
     pkgName = file
 
@@ -76,12 +91,12 @@ TypeDeclVisitor
         ()
       ]
       | MessageDecl => [
-        msgDecls2 add: (Tuple x: pkgName y: it)
+        addMsgDecl pkg: pkgName msg: it
         Unit
       ]
       | ExtendDecl => [
         it messages forEach: [
-          msgDecls2 add: (Tuple x: pkgName y: it)
+          addMsgDecl pkg: pkgName msg: it
         ]
       ]
       // msgDecls at: pkgName put: it debug
@@ -133,7 +148,6 @@ TypeDeclVisitor
           ]
         ]
 
-        unionNameToBranchNames at: rootId put: branchNames toList
         db registerUnion: it name inPkg: pkgName branches: branchNames toList
       ]
       | EnumDecl => TO DO: "EnumDecl"
@@ -241,68 +255,15 @@ TypeDeclVisitor
     ]
   ] do
 
-  // expand union branches for method copy
-  unionNameToBranchNamesExpanded::mut Map(String, List::String) = #{}!
-  unionNameToBranchNames keys forEach: [rootId ->
-    rootTypeMaybe = db typesById at: rootId
-    | rootTypeMaybe
-    | null => []
-    |=> [
-      branchesSet = db unionBranchesDeep: rootTypeMaybe
-      names::mut List::String = {}!
-      branchesSet forEach: [branchId ->
-        branchType = db typesById at: branchId
-        | branchType
-        | null => []
-        |=> [names add: branchType name
-             ()]
-      ]
-      unionNameToBranchNamesExpanded at: rootId put: names toList
-    ]
-  ]
-
-  // copy methods from union root to its branches
-  extraMsgDecls::mut List(Tuple(String, MessageDecl)) = {}!
-  msgDecls2 forEach: [tuple ->
-    pkg = tuple x
-    msg = tuple y
-    receiverAst = msg receiver
-    | receiverAst | AstType => [
-      rootId = pkg + "." + receiverAst name
-      branchNames = unionNameToBranchNamesExpanded at: rootId
-      | branchNames
-      | null => []
-      |=> [
-        branchNames
-          forEach: [branchName ->
-                      newReceiver = AstType
-                                      name: branchName
-                                      isNullable: receiverAst isNullable
-                                      genericParams: {}
-                                      tok: receiverAst tok
-                                      isMut: receiverAst isMut
-                                      errors: receiverAst errors
-
-                      newMsgDecl = msg receiver: newReceiver // copy with field changed, cool right?
-
-                      extraMsgDecls add: (Tuple x: pkg y: newMsgDecl)
-                      db addGeneratedMessageDecl: newMsgDecl
-                   ]
-      ]
-    ] |=> []
-  ]
-  msgDecls2 addAll: extraMsgDecls
-
   // msg decls resolving
   // here we should have all the types resolved
-  // msgDecls2 addFirst: (Tuple x: "main" y: entry)
+  // msgDeclsByPkg at: "main" put: entryList
 
 // first resolve all the declarations
 // then resolve main "body"
 // then resolve all others method's bodies
-    msgDecls2 forEach: [ tuple ->
-      pkg = tuple x
-      msg = tuple y
+    msgDeclsByPkg forEach: [pkg, msgList ->
+    msgList forEach: [ msg ->
 
       // get real type for receiver
 
@@ -373,12 +334,12 @@ TypeDeclVisitor
         //"Methods: added method " + method name + " in pkg: " + pkg, log
         ()
       ]
-    ]
+    ]]
 
 // resolve main
 // resolve main moved to ResolverHelper
   ] do
-  ^ msgDecls2
+  ^ msgDeclsByPkg
 ]
 
 /// if no return type and has body then its Unit
@@ -439,24 +400,23 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
   ]
 ]
 
-MsgDeclVisitor processBodyes(pkg2Msg): List(Tuple(String, MessageDecl)) db::TyperDB = [
-  pkg2Msg forEach: [tuple ->
-    pkgStr = tuple x
+MsgDeclVisitor processBodyes(pkg2Msg): Map(String, mut List::MessageDecl) db::TyperDB = [
+  pkg2Msg forEach: [pkgStr, msgList ->
     pkg = db packages at: pkgStr, unpackOrPANIC
 
-    msgDecl = tuple y
-
-    receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
-    extraTypes =
-      | receiverType
-      | TypeT => [
-        generics::mut Map(String, NivaType) = #{}!
-        receiverType genericArgs forEach: [
-          generics at: it name put: it
-        ]
-        generics
-      ] |=> #{}!
-    msgDecl resolveBodyWithDb: db :pkg :extraTypes
+    msgList forEach: [msgDecl ->
+      receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
+      extraTypes =
+        | receiverType
+        | TypeT => [
+          generics::mut Map(String, NivaType) = #{}!
+          receiverType genericArgs forEach: [
+            generics at: it name put: it
+          ]
+          generics
+        ] |=> #{}!
+      msgDecl resolveBodyWithDb: db :pkg :extraTypes
+    ]
   ]
 ]
 

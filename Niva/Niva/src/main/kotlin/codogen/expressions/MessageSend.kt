@@ -417,7 +417,19 @@ fun generateSingleKeyword(
 
             // Json::Person encode = Json.encode<Person>
             if (receiver is IdentifierExpr && receiver.typeAST != null) {
-                append("<", receiver.typeAST.name, ">")
+//                append("<", receiver.typeAST.name, ">")
+                val typeAst = receiver.typeAST
+                val renderedTypeArgs = when (typeAst) {
+                    is TypeAST.UserType -> {
+                        if (typeAst.typeArgumentList.isNotEmpty()) {
+                            typeAst.typeArgumentList.joinToString(", ") { it.generateType(null) }
+                        } else {
+                            typeAst.generateType(null)
+                        }
+                    }
+                    else -> typeAst.generateType(null)
+                }
+                append("<", renderedTypeArgs, ">")
             }
         }
 

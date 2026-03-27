@@ -1,70 +1,69 @@
 
 
-
-Body resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
-  .resolveBody2: db withContext: upperContext expectedType: null
-
-Body resolveBody2(db): TyperDB withContext(upperContext): Context declaration: MessageDeclT? -> TypedBody = [
-  expectedType = declaration unpack: [it returnType t] or: null
-  ^ .resolveBody2: db withContext: upperContext expectedType: expectedType
-]
-
-/// used only for resolving body insied expressions, not for resolve body from message declarations
-Body resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
-   //StackTrace get log
-   //Compiler getPlace log
-
-  c = Context fromParent: upperContext
-
-  // [] nothing to resolve
-  unTypedBody isEmpty ifTrue: [
-    ^ TypedBody v: {} t: db dtc unit
+extend Body [
+  on resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
+    .resolveBody2: db withContext: upperContext expectedType: null
+  on resolveBody2(db): TyperDB withContext(upperContext): Context declaration: MessageDeclT? -> TypedBody = [
+    expectedType = declaration unpack: [it returnType t] or: null
+    ^ .resolveBody2: db withContext: upperContext expectedType: expectedType
   ]
+  /// used only for resolving body inside expressions, not for resolve body from message declarations
+  on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
+    //StackTrace get log
+    //Compiler getPlace log
 
-  // stackOfVisited::mut Set::MessageDecl = #()
-  lastIndex = unTypedBody count - 1
-  listOfTypedExpr2 = unTypedBody mapIndexed: [ i, expr ->
-    isLast = i == lastIndex
-    expectedForExpr =
-      | expectedType
-      | null => [null]
-      |=> [
-        | expr
-        | ReturnStatement => expectedType
-        |=> (isLast ifTrue: [expectedType] ifFalse: [null])
-      ]
+    c = Context fromParent: upperContext
 
-    typed = expr toTypedExprFromDb2: db withContext: c expectedType: expectedForExpr
-    typeOfExpr = typed typeInfo t
-    // check that type is not Unknown
-    | typeOfExpr | Unknown => [
-      TO DO: "Unknown type of expr is not possible $expr"
-    ] |=> []
-    // if it is, then go and resolve the body, with remembering stack
+    // [] nothing to resolve
+    unTypedBody isEmpty ifTrue: [
+      ^ TypedBody v: {} t: db dtc unit
+    ]
 
-    typed
+    // stackOfVisited::mut Set::MessageDecl = #()
+    lastIndex = unTypedBody count - 1
+    listOfTypedExpr2 = unTypedBody mapIndexed: [ i, expr ->
+      isLast = i == lastIndex
+      expectedForExpr =
+        | expectedType
+        | null => [null]
+        |=> [
+          | expr
+          | ReturnStatement => expectedType
+          |=> (isLast ifTrue: [expectedType] ifFalse: [null])
+        ]
+
+      typed = expr toTypedExprFromDb2: db withContext: c expectedType: expectedForExpr
+      typeOfExpr = typed typeInfo t
+      // check that type is not Unknown
+      | typeOfExpr | Unknown => [
+        TO DO: "Unknown type of expr is not possible $expr"
+      ] |=> []
+      // if it is, then go and resolve the body, with remembering stack
+
+      typed
+    ]
+
+
+    returnTypes::mut List::NivaType = {}!
+    listOfTypedExpr2 forEach: [expr ->
+      | expr
+      | ReturnStatementT => returnTypes add: expr typeInfo t
+      |=> []
+    ]
+
+    bodyType =
+      returnTypes isNotEmpty
+        ifTrue: [
+          merged = db mergeTypesByUnion: returnTypes
+          | merged
+          | null => returnTypes first
+          |=> merged
+        ]
+        ifFalse: [listOfTypedExpr2 last typeInfo t]
+
+    ^ TypedBody v: listOfTypedExpr2
+                t: bodyType
   ]
-
-
-  returnTypes::mut List::NivaType = {}!
-  listOfTypedExpr2 forEach: [expr ->
-    | expr
-    | ReturnStatementT => returnTypes add: expr typeInfo t
-    |=> []
-  ]
-
-  bodyType =
-    returnTypes isNotEmpty
-      ifTrue: [
-        merged = db mergeTypesByUnion: returnTypes
-        | merged
-        | null => returnTypes first
-        |=> merged
-      ]
-      ifFalse: [listOfTypedExpr2 last typeInfo t]
-
-  ^ TypedBody v: listOfTypedExpr2
-              t: bodyType
 ]
 
 // returns the number of wrong type element, if all good returns null
@@ -113,7 +112,7 @@ extend TyperDB [
 
         branches forEach: [branch ->
           addCheckedBranch expr: branch condition
-          branch conditions v forEach: [cond ->
+          branch additionalConditions v forEach: [cond ->
             addCheckedBranch expr: cond
           ]
         ]
@@ -193,7 +192,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                   ],
                   map: [it typeT]
 
-typedUntypedArgs = untypedArgs isNotEmpty
+  typedArgs = untypedArgs isNotEmpty
     ifTrue: [
       expectedFields count == untypedArgs count
         ifTrue: [
@@ -227,12 +226,12 @@ typedUntypedArgs = untypedArgs isNotEmpty
   name = args isNotEmpty
     ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
     ifFalse: [
-      typedUntypedArgs isNotEmpty
-        ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
+      typedArgs isNotEmpty
+        ifTrue: [typedArgs joinWith: ":" transform: [it name], + ":"]
         ifFalse: [expectedType name]
     ]
 
-  ^ CodeBlockT :args untypedArgs: typedUntypedArgs
+  ^ CodeBlockT :args typedArgs: typedArgs
     body: typedBody
     :token
     typeInfo: (FuntionT
@@ -617,7 +616,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ifFalse: [""]
       ]
 
-    CodeBlockT :args untypedArgs: typedUntypedArgs
+    CodeBlockT :args typedArgs: typedUntypedArgs
       body: typedBody
       :token
       typeInfo: (FuntionT
@@ -630,22 +629,27 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | Match     => [
 
     // TODO exhaustivness for unions and bool and enums and nullMatching
-    elseb = elseBranch // local smart cast
+    elseBranch = this elseBranch // local smart cast
+    isMatchingOnThis = subject token lexeme == "this"
 
     mut hasNullBranch = false
     branches forEach: [br ->
       br condition isNullExpr ifTrue: [hasNullBranch <- true]
-      br conditions unTypedBody forEach: [e ->
+      br additionalConditions unTypedBody forEach: [e ->
         e isNullExpr ifTrue: [hasNullBranch <- true]
       ]
     ]
 
     subjectT = subject toTypedExprFromDb2: db withContext: c
     subjectType = subjectT typeInfo t
+    > subjectT
+    > subject
+    > subjectType
+    //// resolve branches ////
 
     // type narrowing to non-nullable inside else branch
     elseBranchT =
-      | elseb
+      | elseBranch
       | null => [null]
       |=> [
         mut elseContext = c
@@ -662,20 +666,36 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
         ]
         |=> []
-        typedElseBody = elseb resolveBody2: db withContext: elseContext expectedType: expectedType
+        typedElseBody = elseBranch resolveBody2: db withContext: elseContext expectedType: expectedType
         typedElseBody
       ]
 
+
     returnTypes::mut List::NivaType = {}!
     branchesT = branches map: [
+      // if matching on `this` then add fields of `this` to the context
+      contextIfThisMatching = isMatchingOnThis
+                                ifTrue: [
+                                  newC = Context fromParent: c
+                                  subjectType collectFields forEach: [
+                                    newC defineVar: it name withType: it typeT toTypeInfoDefault
+                                  ]
+                                  newC
+                                ]
+                                ifFalse:[c]
+      //contextIfThisMatching vars keys toList isEmpty ifTrue: [
+      //                                                //TO DO: "First"
+      //                                              ] ifFalse: [
+      //                                                //TO DO: "second"
+      //                                              ]
+      //// resolve additionalConditions and branches ////
+      conditionsT = it additionalConditions resolveBody2: db withContext: contextIfThisMatching
 
-      conditionsT = it conditions resolveBody2: db withContext: c
-      bodyT = it body resolveBody2: db withContext: c expectedType: expectedType
-
+      bodyT = it body resolveBody2: db withContext: contextIfThisMatching expectedType: expectedType
       returnTypes add: bodyT t
 
-      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: c)
-                   conditions: conditionsT
+      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: contextIfThisMatching)
+                   additionalConditions: conditionsT
                    body: bodyT
     ]
 
@@ -721,10 +741,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
   ^ result
 ]
-
-
-
-
 
 type CheckMethodArg nivaType: NivaType expr: Expr argName: String
 

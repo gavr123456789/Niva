@@ -40,11 +40,10 @@ extend mut Parser [
 
     // is that `^ value` or just `^`
     savePosition = current
-    isThereAValue = (.primary: .peek) != null
+    isThereAValue = (.peek kind == TokenType.If) || ((.primary: .peek) != null)
     .restoreFrom: savePosition
 
     value = isThereAValue ifTrue: [.nextExperssion: .step] ifFalse: [null]
-
     result = ReturnStatement value: value token: tok
     ^ result
   ]
@@ -371,13 +370,13 @@ extend mut Parser [
       [c] whileTrue: [
         c <- .match: TokenType.If
         exprs = .parseManyExprSplitBy: TokenType.If
-        exprs isEmpty ifTrue: [TO DO: "One or more conditions (separated by `|`) expected"]
+        exprs isEmpty ifTrue: [TO DO: "One or more additionalConditions (separated by `|`) expected"]
 
         .matchAssert: TokenType.Then
 
         body = .parseBodyOrSingleExpr
-        conditions = Body unTypedBody: (exprs drop: 1, toMutableList)
-        mb = MatchBranch condition: exprs first conditions: conditions body: body
+        additionalConditions = Body unTypedBody: (exprs drop: 1, toMutableList)
+        mb = MatchBranch condition: exprs first additionalConditions: additionalConditions body: body
         branches add: mb
 
         c <- .match: TokenType.If
@@ -507,54 +506,56 @@ extend mut Parser [
         ]
 
         ^ expr
-    ]
-    | TokenType.If => [
-      ^ .parseMatch: tok
-    ]
-    |=> [
+   ]
 
-      tok kind == TokenType.OpenBrace ifTrue: [
+   | TokenType.If => [
+     ^ .parseMatch: tok
+   ]
+
+   |=> [
+
+     tok kind == TokenType.OpenBrace ifTrue: [
         .tryParseDestructingAssign: tok, unpack: [^ it]
-      ]
+     ]
 
-      // VarDeclaration: `x::Int`
-      tok kind == TokenType.IdentifierDoubleColon ifTrue: [
-        ^.parseVarDeclExpr: tok name: tok lexeme isMut: false
-      ]
+     // VarDeclaration: `x::Int`
+     tok kind == TokenType.IdentifierDoubleColon ifTrue: [
+       ^.parseVarDeclExpr: tok name: tok lexeme isMut: false
+     ]
 
-      // assign
-      primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
-      .peek kind == TokenType.Assign, ifTrue: [
-        ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
-      ]
-      //TO DO: "ТАк посмотреть по истории как тут было последний раз в этом месте, весто праймари пробовать еще и запятую а потом уже выбрасывать и добавить тест с замятыми всех мастей"
-      .peek kind == TokenType.AssignArrow, ifTrue: [
-        .step
-        value = .nextExperssion: .step
-        | primaryReceiver
-        | Identifier => [
-          ^ Assign name: primaryReceiver name value: value token: tok
-        ]
-        |=> [
-          TO DO: "<- expected identifier on the left side"
-        ]
-      ]
-      // any expr
-      firstExpr = .nextExperssion2: tok receiver: primaryReceiver
+     // assign
+     primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
+     .peek kind == TokenType.Assign, ifTrue: [
+       ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
+     ]
+     //TO DO: "ТАк посмотреть по истории как тут было последний раз в этом месте, весто праймари пробовать еще и запятую а потом уже выбрасывать и добавить тест с замятыми всех мастей"
+     .peek kind == TokenType.AssignArrow, ifTrue: [
+       .step
+       value = .nextExperssion: .step
+       | primaryReceiver
+       | Identifier => [
+         ^ Assign name: primaryReceiver name value: value token: tok
+       ]
+       |=> [
+         TO DO: "<- expected identifier on the left side"
+       ]
+     ]
+     // any expr
+     firstExpr = .nextExperssion2: tok receiver: primaryReceiver
 
-      // expr, expr (allow chaining)
-      mut expr = firstExpr
-      mut c = true
-      [c] whileTrue: [
-        .peek kind == TokenType.Comma, ifTrue: [
+     // expr, expr (allow chaining)
+     mut expr = firstExpr
+     mut c = true
+     [c] whileTrue: [
+       .peek kind == TokenType.Comma, ifTrue: [
           commaTok = .step // skip comma
           expr <- .nextExperssion2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
         ] ifFalse: [
           c <- false
         ]
-      ]
+     ]
 
-      ^ expr
+     ^ expr
     ]
   ]
 

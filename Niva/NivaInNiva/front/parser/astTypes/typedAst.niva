@@ -17,7 +17,7 @@ NivaType toTypeInfoWithErrors(errors): List(NivaType) -> TypeInfo = [^ TypeInfo 
 
 type MatchBranchT
   condition: TypedExpr2
-  conditions: TypedBody
+  additionalConditions: TypedBody
   body: TypedBody
 
 enum AssignKind = TO_THIS_FIELD | TO_LOCAL_MUT
@@ -36,7 +36,7 @@ union TypedExpr2 token: Token typeInfo: TypeInfo =
 // only one of the lists can be non empty
 // [a, b -> a + b] has `untyped args`, but not `args`
 // [a::Int, b::Int -> a + b] // the opposite
-| CodeBlockT args: List(NameAndAstType) untypedArgs: List(IdentifierT) body: TypedBody
+| CodeBlockT args: List(NameAndAstType) typedArgs: List(IdentifierT) body: TypedBody
 | MatchT
   subject: TypedExpr2
   branches: List(MatchBranchT)

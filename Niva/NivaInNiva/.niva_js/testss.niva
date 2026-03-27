@@ -1,35 +1,40 @@
 
-//Int read: String -> String = [
-//  Bind addImport: "fs"
-//  ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
-//]
-//x = 1 read: ".niva_js/testss.niva"
 
+union Sas = Sus x: Int | Ses y: Int
 
-//
-// |this parses as his
-//
-
-
-
-union Peano = Zero | Succ self: Peano
-
-extend Peano [
-  on prettyPrint -> String = | this
-    | Zero => ""
-    | Succ => "+" + self prettyPrint
-
-  on double -> Peano = | this
-    | Zero => Zero new
-    | Succ => Succ self: (Succ self: self double)
-
-  on quadruple = this double double
-  on succ = Succ self: this
+Sas sas = [
+  ^| this
+  | Sus => [
+    x + 1
+  ]
+  | Ses => [
+    y + 2
+  ]
 ]
 
-three = Zero new succ succ succ
-twelve = three quadruple
+sus = Sus x: 3
+sus sas echo
+sus2 = Ses y: 3
+sus2 sas echo
 
-three echo
-three prettyPrint echo
-twelve prettyPrint echo
+//union Peano = Zero | Succ self: Peano
+
+//extend Peano [
+//  on prettyPrint -> String = | this
+//    | Zero => ""
+//    | Succ => "+" + self prettyPrint
+
+//  on double -> Peano = | this
+//    | Zero => Zero new
+//    | Succ => Succ self: (Succ self: self double)
+
+//  on quadruple = this double double
+//  on succ = Succ self: this
+//]
+
+//three = Zero new succ succ succ
+//twelve = three quadruple
+
+//three echo
+//three prettyPrint echo
+//twelve prettyPrint echo
