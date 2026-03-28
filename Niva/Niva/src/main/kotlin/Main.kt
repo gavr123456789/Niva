@@ -15,13 +15,11 @@ import utils.testingLS
 
 fun main(args: Array<String>) {
 
-
-//        val args = arrayOf("build","")
+//        val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/1_rareLangs/NIN/main.niva")
 //        testingLS()
-    if (help(args))
-        return
+//    if (help(args))
+//        return
     run(args)
-
 }
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
