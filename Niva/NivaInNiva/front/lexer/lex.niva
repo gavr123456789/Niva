@@ -12,14 +12,14 @@ type Lexer
   line: Int
   posOnLine: Int
 
-constructor Lexer input: String = [
-  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0
-  l step
+constructor Lexer lex-input: String = [
+  l::mut Lexer = Lexer input: lex-input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0, toMut
+  l step // add EOF, probably
   ^l
 ]
 
-constructor Lexer newLex(input): String -> List::Token = [
-  ^ Lexer input: input, lex toList
+constructor Lexer get-tokens(input): String -> List(Token) = [
+  ^ Lexer lex-input: input, lex toList
 ]
 
 extend mut Lexer [
@@ -62,6 +62,10 @@ extend mut Lexer [
   on peekChar = readPos == input count
     ifTrue:  ['\u0000']
     ifFalse: [input at: (.readPos)]
+
+  on peekSecondChar = (readPos + 1) >= input count
+    ifTrue:  ['\u0000']
+    ifFalse: [input at: (readPos + 1)]
 
   on match(char): Char -> Bool =
     .ch == char
@@ -333,16 +337,53 @@ enum StrMode = Single | Multi
 /// assume that delimiter was already eaten
 mut Lexer parseStringLike(delimiter): Char -> String = [
   mut mode = StrMode.Single
+  mut escaped = false
   localPos = pos
 
-  .match: delimiter // eat the first "
-  [ch != delimiter] whileTrue: [
-    ch == '\n' ifTrue: [mode <- StrMode.Multi]
-    .step
-  ]
-  .match: delimiter // eat the last "
+  isRaw = (delimiter == '"') && (.peekChar == '"') && (.peekSecondChar == '"')
+  ^ isRaw ifTrue: [
+    mut found = false
+    .match: '"'
+    .match: '"'
+    .match: '"'
+    [(ch != '\u0000') && (found == false)] whileTrue: [
+      ((ch == '"') && (.peekChar == '"') && (.peekSecondChar == '"')) ifTrue: [
+        found <- true
+      ] ifFalse: [
+        .step
+      ]
+    ]
+    found == false ifTrue: [
+      TO DO: "unterminated string literal"
+    ]
+    .match: '"'
+    .match: '"'
+    .match: '"'
+    input slice: localPos..<pos
+  ] ifFalse: [
+    .match: delimiter // eat the first "
+    [(ch != delimiter) || escaped] whileTrue: [
+      ch == '\u0000' ifTrue: [
+        TO DO: "unterminated string literal"
+      ]
+      ch == '\n' ifTrue: [mode <- StrMode.Multi]
 
-  ^ input slice: localPos..<pos
+      escaped ifTrue: [
+        escaped <- false
+        .step
+      ] ifFalse: [
+        ch == '\\' ifTrue: [
+          escaped <- true
+          .step
+        ] ifFalse: [
+          .step
+        ]
+      ]
+    ]
+
+    .match: delimiter // eat the last "
+    input slice: localPos..<pos
+  ]
 ]
 
 mut Lexer readIdentifier -> String = [
