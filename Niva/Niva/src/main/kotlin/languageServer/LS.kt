@@ -84,6 +84,20 @@ class LS(val info: ((String) -> Unit)? = null) {
     // keys: "file:varName" values: VarDeclaration tokens
     val varNameToDeclarationToken: MutableMap<String, Token> = mutableMapOf()
 
+    // from message declaration token position to its usage tokens
+    // keys: "file:line:char" values: usage tokens keyed by usage position
+    val messageDeclarationUsages: MutableMap<String, MutableMap<String, Token>> = mutableMapOf()
+
+    fun registerMessageUsage(declarationToken: Token, usageToken: Token) {
+        if (!GlobalVariables.isLspMode) return
+        val declarationKey = declarationToken.toPositionKey()
+        val usageKey = usageToken.toPositionKey()
+        val usages = messageDeclarationUsages.getOrPut(declarationKey) { mutableMapOf() }
+        if (!usages.containsKey(usageKey)) {
+            usages[usageKey] = usageToken
+        }
+    }
+
     fun runDevModeWatching(scope: CoroutineScope, info: ((String) -> Unit)?) {
         val pm = pm ?: return
         val watchDirPath = pm.nivaRootFolder
@@ -516,6 +530,7 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     fileToDecl.clear()
     varUsageToDeclaration.clear()
     varNameToDeclarationToken.clear()
+    messageDeclarationUsages.clear()
 
     clearNonIncrementalStoreFromTypes(nonIncrementalStore)
     //    0) clear AST from types
@@ -618,6 +633,7 @@ fun LS.resolveAllFirstTime(
     megaStore.data.clear()
     varUsageToDeclaration.clear()
     varNameToDeclarationToken.clear()
+    messageDeclarationUsages.clear()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))

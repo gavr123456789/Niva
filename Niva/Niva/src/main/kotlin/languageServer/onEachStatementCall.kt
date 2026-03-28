@@ -12,7 +12,10 @@ import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
+import main.frontend.parser.types.ast.MethodReference
+import main.frontend.meta.Token
 import java.io.File
+import main.utils.GlobalVariables
 
 fun LS.onEachStatementCall(
     st: Statement,
@@ -90,16 +93,33 @@ fun LS.onEachStatementCall(
 //        }
     }
 
+    fun registerMessageUsageIfPossible(decl: MessageDeclaration?, usageToken: Token) {
+        if (!GlobalVariables.isLspMode || decl == null) return
+        this.registerMessageUsage(decl.token, usageToken)
+    }
+
+    fun registerMethodReferenceUsage(ref: MethodReference) {
+        if (!GlobalVariables.isLspMode) return
+        val declaration = ref.method?.declaration ?: return
+        this.registerMessageUsage(declaration.token, ref.token)
+    }
+
     when (st) {
         is Expression, is VarDeclaration -> {
             addStToMegaStore(st)
 
             when (st) {
-                is Message -> st.declaration?.messageData?.msgSends?.add(st)
+                is Message -> {
+                    st.declaration?.messageData?.msgSends?.add(st)
+                    registerMessageUsageIfPossible(st.declaration, st.token)
+                }
                 is VarDeclaration -> {
                     val key = "${st.token.file.absolutePath}:${st.name}"
                     varNameToDeclarationToken[key] = st.token
 //                    registerIdentifierUsages(st.value)
+                }
+                is MethodReference -> {
+                    registerMethodReferenceUsage(st)
                 }
                 is Expression -> registerIdentifierUsages(st)
             }

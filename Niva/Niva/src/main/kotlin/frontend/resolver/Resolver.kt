@@ -448,6 +448,10 @@ private fun Resolver.resolveStatement(
 
             val method = statement.method ?: statement.token.compileError("Can't find method $CYAN${statement.name}")
             statement.type = method.toLambda(forType, statement.forIdentifier.isType)
+
+            if (GlobalVariables.isLspMode) {
+                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // method reference
+            }
         }
 
     }
