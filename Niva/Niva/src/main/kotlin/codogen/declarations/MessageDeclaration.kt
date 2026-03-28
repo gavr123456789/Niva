@@ -13,7 +13,7 @@ import main.utils.isGeneric
 
 fun String.ifKtKeywordAddBackTicks(): String {
     return when (val withDashReplaced = this.replace("-", "_dash_")) {
-        "do", "val", "var", "class", "in", "for", "throw", "continue" -> "`$withDashReplaced`"
+        "do", "val", "var", "in", "for", "throw", "if", "else", "continue", "when" -> "`$withDashReplaced`"
         else -> withDashReplaced
     }
 }
@@ -212,7 +212,7 @@ fun MessageDeclarationKeyword.generateKeywordDeclaration(isStatic: Boolean = fal
     // Args
     val c = args.count() - 1
     args.forEachIndexed { i, arg ->
-        append(arg.name())
+        append(arg.name().ifKtKeywordAddBackTicks())
         if (arg.typeAST != null) {
             val realName = (arg.type as? Type.UserLike)?.emitName
             val name = arg.typeAST.generateType(realName)

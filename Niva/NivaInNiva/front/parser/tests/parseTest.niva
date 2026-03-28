@@ -1,10 +1,10 @@
 type TestParse
-constructor TestParse withInput::String expectedCount::Int -> mut List::Statement = [
-  tokens = Lexer newLex: withInput
+constructor TestParse withInput: String expectedCount: Int -> mut List::Statement = [
+  tokens = Lexer get-tokens: withInput
   // tokens debug
   // {statements} = Parser newParseTokens: tokens
   parser = Parser newParseTokens: tokens
-  statements::mut List::Statement = parser statements //::mut List::Statement
+  statements::mut List(Statement) = parser statements
 
   expectedCount > 0 ifTrue: [
     Assert that: statements count equals: expectedCount
@@ -14,7 +14,7 @@ constructor TestParse withInput::String expectedCount::Int -> mut List::Statemen
 ]
 
 constructor TestParse expression::String -> Expr = [
-  expr = Parser newParseTokens: (Lexer newLex: expression), statements at: 0
+  expr = Parser newParseTokens: (Lexer get-tokens: expression), statements at: 0
 
   ^ | expr
     | Expr => expr
@@ -64,7 +64,7 @@ Test parseNumber = [
   123
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
@@ -77,7 +77,7 @@ Test parseNumber = [
 ]
 
 Test parseString = [
-  tokens = Lexer newLex: """ "sas" """
+  tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
@@ -98,7 +98,7 @@ Test parseAstTypeList = [
     List::List::Int
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   // tokens debug
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
@@ -120,7 +120,7 @@ Test parseAstTypeMap = [
     Map(Int, String)
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   // tokens debug
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
@@ -148,7 +148,7 @@ Test parseAstTypeErrorAny = [
     Int!
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
@@ -165,7 +165,7 @@ Test parseAstTypeErrorSingle = [
     Int!OutOfMemory
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
@@ -183,7 +183,7 @@ Test parseAstTypeErrorList = [
     Int!{Error1 Error2 Error3}
   """ trimIndent
 
-  tokens = Lexer newLex: input
+  tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType

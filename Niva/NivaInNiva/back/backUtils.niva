@@ -38,3 +38,33 @@ String unquoteLiteral -> String = [
     this
   ]
 ]
+
+String escapeForTemplateLiteral -> String = [
+  sb = StringBuilder new
+  mut i = 0
+  len = this count
+  bs = '\\' toString
+  dollar = '$' toString
+  brace = '{' toString
+  [i < len] whileTrue: [
+    c = this at: i
+    c == '\\' ifTrue: [
+      sb append: bs + bs
+      i <- i inc
+    ] ifFalse: [
+      (c == '$') && (i + 1 < len) && ((this at: (i + 1)) == '{') ifTrue: [
+        sb append: bs + dollar + brace
+        i <- i + 2
+      ] ifFalse: [
+        c == '`' ifTrue: [
+          sb append: bs + "`"
+          i <- i inc
+        ] ifFalse: [
+          sb append: c toString
+          i <- i inc
+        ]
+      ]
+    ]
+  ]
+  ^ sb toString
+]

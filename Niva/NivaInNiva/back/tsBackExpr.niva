@@ -315,6 +315,21 @@ IdentifierT identToTS -> String =
 LiteralExprT literalToTS -> String =
   | this
   | UnitExprT => "core.Unit"
+  | StringExprT => [
+      lex = token lexeme
+      len = lex count
+      quote = '"' toString
+      triple = quote + quote + quote
+      isRaw = (len >= 6) &&
+              ((lex slice: 0..<3) == triple) &&
+              ((lex slice: (len - 3)..<len) == triple)
+      isRaw ifTrue: [
+        content = lex slice: 3..<(len - 3)
+        "`" + (content escapeForTemplateLiteral) + "`"
+      ] ifFalse: [
+        lex
+      ]
+    ]
   |=> token lexeme
 
 
@@ -481,7 +496,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         ]
 
         // selector
-        selectorFromArgs = args joinWith: "_" transform: [
+        selectorFromArgs = args joinWith: "__" transform: [
             it name name
         ]
         suffix = dbMsg name substringAfter: "__"

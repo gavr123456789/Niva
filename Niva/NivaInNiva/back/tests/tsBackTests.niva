@@ -15,6 +15,44 @@ Test callNewFromOtherFile = [
   Assert that: (js contains: "const alice = new person.Person(\"Alice\")") equals: true
 ]
 
+Test multilineStrings = [
+  quote = '"' toString
+  triple = quote + quote + quote
+  fileMain = triple + "escaped\n \\n \\t\nString" + triple
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  Assert that: (js contains: "`escaped") equals: true
+  Assert that: (js contains: "\\\\n \\\\t") equals: true
+  Assert that: (js contains: "String`") equals: true
+]
+
+Test keywordCallMangled = [
+  fileMain = """
+    String escape =
+      this replace: "\\" with: "\\\\"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  Assert that: (js contains: "String__replace__with") equals: true
+]
+
+Test keywordDeclExternalName = [
+  fileMain = """
+    String surroundWith(x): String =
+      x + this + x
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  Assert that: (js contains: "export function String__surroundWith") equals: true
+]
+
+
 Test tsGetterCodegen = [
   fileMain = """
     type Person age: Int
