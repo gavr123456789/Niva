@@ -1012,6 +1012,79 @@ fun Resolver.changeProtocol(protocolName: String) {
     currentProtocolName = protocolName
 }
 
+fun Resolver.recordMessageDeclarationContext(statement: MessageDeclaration) {
+    if (!msgDeclContext.containsKey(statement)) {
+        msgDeclContext[statement] = MsgDeclContext(
+            pkg = currentPackageName,
+            protocol = currentProtocolName,
+            file = statement.token.file
+        )
+    }
+}
+
+fun Resolver.registerDependency(callee: MessageDeclaration, caller: MessageDeclaration) {
+    if (callee == caller) return
+    msgDependents.getOrPut(callee) { mutableSetOf() }.add(caller)
+}
+
+fun Resolver.enqueueDependents(changed: MessageDeclaration) {
+    val dependents = msgDependents[changed] ?: return
+    dependents.forEach { dep ->
+        if (pendingMsgDeclSet.add(dep)) {
+            pendingMsgDeclReResolve.add(dep)
+        }
+    }
+}
+
+fun Resolver.enqueueForReResolve(decls: Collection<MessageDeclaration>) {
+    decls.forEach { decl ->
+        if (pendingMsgDeclSet.add(decl)) {
+            pendingMsgDeclReResolve.add(decl)
+        }
+    }
+}
+
+fun Resolver.clearDependenciesFor(decls: Collection<MessageDeclaration>) {
+    if (decls.isEmpty()) return
+    decls.forEach { msgDependents.remove(it) }
+    msgDependents.values.forEach { it.removeAll(decls) }
+}
+
+fun Resolver.processPendingMessageReResolves(
+    globalConstScope: MutableMap<String, Type>,
+    callOnEachStatement: Boolean = true
+) {
+    if (pendingMsgDeclReResolve.isEmpty()) return
+    val fakeTok = createFakeToken()
+    var safety = 0
+    while (pendingMsgDeclReResolve.isNotEmpty()) {
+        if (safety++ > 10000) {
+            fakeTok.compileError("Too many dependent re-resolves, possible cycle")
+        }
+        val decl = pendingMsgDeclReResolve.removeFirst()
+        pendingMsgDeclSet.remove(decl)
+        val ctx = msgDeclContext[decl]
+        if (ctx != null) {
+            changePackage(ctx.pkg, fakeTok)
+            changeProtocol(ctx.protocol)
+            currentResolvingFileName = ctx.file
+        }
+        val savedLevel = currentLevel
+        currentLevel++
+        try {
+            resolveMessageDeclaration(
+                decl,
+                needResolveOnlyBody = true,
+                previousScope = globalConstScope.toMutableMap(),
+                addToDb = false,
+                callOnEachStatement = callOnEachStatement
+            )
+        } finally {
+            currentLevel = savedLevel
+        }
+    }
+}
+
 fun Resolver.usePackage(packageName: String) {
     val currentPkg = getCurrentPackage(this.statements.last().token)
     currentPkg.addUseImport(packageName)
@@ -1227,6 +1300,12 @@ inline fun createDefaultType(type: InternalTypes): Pair<InternalTypes, Type.Inte
 
 typealias PkgToUnresolvedDecl<T> = MutableMap<String, MutableSet<T>>
 
+data class MsgDeclContext(
+    val pkg: String,
+    val protocol: String,
+    val file: File,
+)
+
 fun <T> PkgToUnresolvedDecl<T>.add(pkg: String, decl: T) {
     val q = this[pkg]
     if (q == null) {
@@ -1341,6 +1420,11 @@ class Resolver(
     var compilationTarget: CompilationTarget = CompilationTarget.jvm,
     var compilationMode: CompilationMode = CompilationMode.debug,
 
+    val msgDependents: MutableMap<MessageDeclaration, MutableSet<MessageDeclaration>> = mutableMapOf(),
+    val msgDeclContext: MutableMap<MessageDeclaration, MsgDeclContext> = mutableMapOf(),
+    val pendingMsgDeclReResolve: ArrayDeque<MessageDeclaration> = ArrayDeque(),
+    val pendingMsgDeclSet: MutableSet<MessageDeclaration> = mutableSetOf(),
+
     // set to null before body resolve, set to real inside body, check after to know was there return or not
     var wasThereReturn: Type? = null,
     var wasThereTopLevelReturn: Boolean = false,
@@ -1374,6 +1458,9 @@ class Resolver(
         topLevelStatements.clear()
         wasThereReturn = null
         wasThereTopLevelReturn = false
+        resolvingMessageDeclaration = null
+        pendingMsgDeclReResolve.clear()
+        pendingMsgDeclSet.clear()
     }
 
     fun createFakeMsg(token: Token, type: Type): Message {

@@ -24,15 +24,15 @@ enum AssignKind = TO_THIS_FIELD | TO_LOCAL_MUT
 
 union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^LiteralExprT
-| IdentifierT     name: String path: List(String)? isNameOfTheType: Bool
-| ExprInBracketsT value: TypedExpr2
+| IdentifierT        name: String path: List(String)? isNameOfTheType: Bool
+| ExprInBracketsT    value: TypedExpr2
 | VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool
 | AssignT            name: String value: TypedExpr2 kind: AssignKind
 | DestructingAssignT names: List(String) value: TypedExpr2 // {name} = person
 
 | ^CollectionLiteralT
 | ^MessageSendT
-| ReturnStatementT value: TypedExpr2?
+| ReturnStatementT   value: TypedExpr2?
 // only one of the lists can be non empty
 // [a, b -> a + b] has `untyped args`, but not `args`
 // [a::Int, b::Int -> a + b] // the opposite

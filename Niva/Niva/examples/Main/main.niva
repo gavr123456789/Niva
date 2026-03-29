@@ -1,17 +1,5 @@
-type Pair x: T y: G
+Unit nya = ()meow
 
-T && x: G -> Pair(T, G) = Pair x: this y: x
-
-constructor Map(T, G) fromList: List(Pair(T, G)) = [
-  x::mut Map(T, G) = #{}!
-  fromList forEach: [
-    x at: it x put: it y
-  ]
-  ^x toMap
+Unit meow = [
+    ^false
 ]
-
-
-Map(Int, Int) fromList: {
-  (1 && 2)
-  (3 && 4)
-}, echo

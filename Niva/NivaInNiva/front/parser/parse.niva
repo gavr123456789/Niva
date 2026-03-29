@@ -3,7 +3,7 @@ type Parser
   current: Int
   statements: mut List::Statement
 
-constructor Parser newParseTokens::List::Token = [
+constructor Parser newParseTokens: List(Token) = [
   statements::mut List::Statement = {}!
   parser2:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
 
@@ -120,6 +120,7 @@ extend mut Parser [
     ] ifFalse: [
       Identifier name: tok lexeme token: tok path: null
     ]
+
   ]
 
   /// "", 1, 1.1, true, []
@@ -528,7 +529,7 @@ extend mut Parser [
      .peek kind == TokenType.Assign, ifTrue: [
        ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
      ]
-     //TO DO: "ТАк посмотреть по истории как тут было последний раз в этом месте, весто праймари пробовать еще и запятую а потом уже выбрасывать и добавить тест с замятыми всех мастей"
+
      .peek kind == TokenType.AssignArrow, ifTrue: [
        .step
        value = .nextExperssion: .step

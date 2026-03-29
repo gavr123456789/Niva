@@ -158,6 +158,7 @@ fun Resolver.resolveWithBackTracking(
     mainFilePath: String,
     mainFileNameWithoutExtension: String,
     verbosePrinter: VerbosePrinter,
+    globalConstScopeOverride: MutableMap<String, Type>? = null,
 ) {
 
 //    verbosePrinter.print {
@@ -270,7 +271,8 @@ fun Resolver.resolveWithBackTracking(
         resolveDeclarationsOnly(unresolvedDecl.toMutableList())
     }
     // second time resolve single expressions, to add them to DB
-    val globalConstScope = buildGlobalConstScopeFromFiles(mainFileNameWithoutExtension, mainAST, otherASTs)
+    val globalConstScope = globalConstScopeOverride
+        ?: buildGlobalConstScopeFromFiles(mainFileNameWithoutExtension, mainAST, otherASTs)
     unResolvedSingleExprMessageDeclarations.forEach { (pkgName, unresolvedDecl) ->
         changePackage(pkgName, fakeTok)
         unresolvedDecl.forEach {
