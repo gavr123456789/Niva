@@ -21,8 +21,10 @@ fun Resolver.resolveMessageDeclaration(
     statement: MessageDeclaration,
     needResolveOnlyBody: Boolean,
     previousScope: MutableMap<String, Type>,
-    addToDb: Boolean = true
+    addToDb: Boolean = true,
+    callOnEachStatement: Boolean = true
 ): Boolean {
+    recordMessageDeclarationContext(statement)
     val forTypeAst = statement.forTypeAst
     var isNullableGeneric = false
     val initialTypeFromDB: Type? = if (forTypeAst is TypeAST.UserType) { //statement.forType ?:
@@ -478,7 +480,7 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
-        if (GlobalVariables.isLspMode) {
+        if (GlobalVariables.isLspMode && callOnEachStatement) {
             onEachStatement!!(statement, previousScope, previousScope, statement.token.file) // message decl
         }
     }
@@ -607,6 +609,7 @@ fun Resolver.resolveMessageDeclaration(
             val msgData = findAnyMsgType(receiverTypeForDb, statement.name, statement.token, statement.getDeclType())
             // change return type inside db
             msgData.returnType = newReturnType
+            enqueueDependents(statement)
         }
 
     }

@@ -504,7 +504,7 @@ constructor NivaProtocol [
 ]
 
 extend NivaProtocol [
-  on addMethod::NivaMethod = [
+  on addMethod: NivaMethod = [
     methods at: addMethod name put: addMethod
   ]
 ]

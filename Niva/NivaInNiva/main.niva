@@ -80,6 +80,16 @@ compilerTry2 = [
   //diff echo // 60 toLong / 1000 toLong, echo
 ] do
 
+multilineStrings = [
+  quote = '"' toString
+  triple = quote + quote + quote
+  fileMain = triple + "escaped\n \\n \\t\nString" + triple
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+  js log
+]
 
 emptyListTypeInference = [
   fileMain = """

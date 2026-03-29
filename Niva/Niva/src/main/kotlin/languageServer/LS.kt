@@ -32,6 +32,46 @@ fun Statement.unpackMessage() = if (this is VarDeclaration) {
 
 fun Token.toPositionKey(): String = "${file.absolutePath}:${line}:${relPos.start}"
 
+private fun collectMessageDeclarationsFromStatements(statements: List<Statement>): List<MessageDeclaration> {
+    val result = mutableListOf<MessageDeclaration>()
+    statements.forEach { st ->
+        when (st) {
+            is MessageDeclaration -> result.add(st)
+            is ExtendDeclaration -> result.addAll(st.messageDeclarations)
+            is ManyConstructorDecl -> result.addAll(st.messageDeclarations)
+            else -> {}
+        }
+    }
+    return result
+}
+
+private fun collectMessageDeclarationsFromDeclarations(decls: Collection<Declaration>): List<MessageDeclaration> {
+    val result = mutableListOf<MessageDeclaration>()
+    decls.forEach { d ->
+        when (d) {
+            is MessageDeclaration -> result.add(d)
+            is ExtendDeclaration -> result.addAll(d.messageDeclarations)
+            is ManyConstructorDecl -> result.addAll(d.messageDeclarations)
+            else -> {}
+        }
+    }
+    return result
+}
+
+private fun messageDeclSignature(md: MessageDeclaration): String {
+    val realDecl = if (md is ConstructorDeclaration) md.msgDeclaration else md
+    val receiverKey = when (val r = realDecl.forTypeAst) {
+        is TypeAST.UserType -> if (r.names.isNotEmpty()) r.names.joinToString(".") + "." + r.name else r.name
+        else -> r.name
+    }
+    val argsKey = when (realDecl) {
+        is MessageDeclarationKeyword -> realDecl.args.joinToString(",") { it.name }
+        is MessageDeclarationBinary -> realDecl.arg.name
+        else -> ""
+    }
+    return "$receiverKey|${realDecl.getDeclType()}|${realDecl.name}|$argsKey"
+}
+
 
 typealias Line = Int
 typealias Scope = Map<String, Type>
@@ -281,21 +321,35 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
 
 fun LS.removeDecl2(file: File) {
 
-    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages.keys}")
+//    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages.keys}")
 
 
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
     val declsOfTheFile = fileToDecl[file.absolutePath]
+    val fileAbsolutePath = file.absolutePath
 
     val typeDB = resolver.typeDB
     var pkgName: String? = null
+    fun canonicalizeType(type: Type?): Type? {
+        val direct = type?.unpackNull()
+        return when (direct) {
+            is Type.UserLike -> typeDB.userTypes[direct.name]?.find { it.pkg == direct.pkg } ?: direct
+            is Type.InternalType -> typeDB.internalTypes[direct.name] ?: direct
+            is Type.Lambda -> {
+                val alias = direct.alias
+                if (alias != null) typeDB.lambdaTypes[alias] ?: direct else direct
+            }
+            else -> direct
+        }
+    }
+
     declsOfTheFile?.forEach { d ->
 
         // remove message
         if (d is MessageDeclaration) {
-            val forType = d.forType
+            val forType = canonicalizeType(d.forType)
             when (d) {
                 is MessageDeclarationUnary -> {
                     when (forType) {
@@ -475,6 +529,29 @@ fun LS.removeDecl2(file: File) {
         resolver.projects[resolver.currentProjectName]!!.packages.remove(pkgName)
         info?.invoke("The whole package removed: $pkgName")
     }
+    // fallback: remove any methods declared in this file from all protocols
+    fun shouldRemove(meta: MessageMetadata?): Boolean =
+        meta?.declaration?.token?.file?.absolutePath == fileAbsolutePath
+
+    fun pruneProtocol(protocol: Protocol) {
+        protocol.unaryMsgs.entries.removeIf { shouldRemove(it.value) }
+        protocol.binaryMsgs.entries.removeIf { shouldRemove(it.value) }
+        protocol.keywordMsgs.entries.removeIf { shouldRemove(it.value) }
+        protocol.builders.entries.removeIf { shouldRemove(it.value) }
+        protocol.staticMsgs.entries.removeIf { shouldRemove(it.value) }
+    }
+
+    typeDB.userTypes.values.forEach { list ->
+        list.forEach { type ->
+            type.protocols.values.forEach { pruneProtocol(it) }
+        }
+    }
+    typeDB.internalTypes.values.forEach { type ->
+        type.protocols.values.forEach { pruneProtocol(it) }
+    }
+    typeDB.lambdaTypes.values.forEach { type ->
+        type.protocols.values.forEach { pruneProtocol(it) }
+    }
 
     fileToDecl.remove(file.absolutePath)
 }
@@ -482,12 +559,31 @@ fun LS.removeDecl2(file: File) {
 
 fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
     val file = File(URI(pathToChangedFile))
+    val fileAbsolutePath = file.absolutePath
 
     // let's assume user cant change packages names for now, so pkg name always == filename
     // remove everything that was declarated in this changed file
+    val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: emptySet()
+    val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
+    val oldDepsBySig = mutableMapOf<String, MutableSet<MessageDeclaration>>()
+    val affectedCallers = mutableSetOf<MessageDeclaration>()
+    oldMsgDecls.forEach { old ->
+        resolver.msgDependents[old]?.let { deps ->
+            oldDepsBySig[messageDeclSignature(old)] = deps
+            affectedCallers.addAll(deps)
+        }
+    }
+    val affectedIter = affectedCallers.iterator()
+    while (affectedIter.hasNext()) {
+        val next = affectedIter.next()
+        if (next.token.file.absolutePath == fileAbsolutePath) {
+            affectedIter.remove()
+        }
+    }
+    resolver.clearDependenciesFor(oldMsgDecls)
 
     removeDecl2(file)
-    megaStore.data.remove(file.absolutePath)
+    megaStore.data.remove(fileAbsolutePath)
     resolver.reset()
 
     val (mainAst) = parseFilesToAST(
@@ -497,6 +593,28 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
         resolveOnlyOneFile = true
     )
 
+    val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
+    val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
+    oldDepsBySig.forEach { (sig, deps) ->
+        val newDecl = sigToNew[sig]
+        if (newDecl != null) {
+            resolver.msgDependents[newDecl] = deps
+        }
+    }
+
+    val globalConstScope = if (pm != null && nonIncrementalStore.isNotEmpty()) {
+        val localpm = pm ?: throw Exception("Local pm == null")
+        val (allMainAst, otherAst) = getMainAstFromNIS(nonIncrementalStore, localpm.pathToNivaMainFile)
+        val mainPkgName = File(localpm.pathToNivaMainFile).nameWithoutExtension
+        resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
+    } else {
+        val savedPkg = resolver.currentPackageName
+        resolver.currentPackageName = file.nameWithoutExtension
+        val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
+        resolver.currentPackageName = savedPkg
+        scope
+    }
+
     // throws on
     resolver.resolveWithBackTracking(
         mainAst,
@@ -504,7 +622,14 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
         file.absolutePath,
         file.nameWithoutExtension,
         VerbosePrinter(false),
+        globalConstScopeOverride = globalConstScope,
     )
+
+    if (affectedCallers.isNotEmpty()) {
+        affectedCallers.forEach { it.clearFromType() }
+        resolver.enqueueForReResolve(affectedCallers)
+        resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+    }
 }
 
 
@@ -528,6 +653,16 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
     return Pair(mainAst, listOfStatements)
 }
 
+private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
+    return statements.any {
+        it is TypeDeclaration ||
+            it is TypeAliasDeclaration ||
+            it is UnionRootDeclaration ||
+            it is EnumDeclarationRoot ||
+            it is ErrorDomainDeclaration
+    }
+}
+
 
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
     megaStore.data.clear()
@@ -547,6 +682,14 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     val file = File(URI(uriOfChangedFile))
     val fileAbsolute = file.absolutePath
     val mainAst = getAst(source = source, file = file)
+
+    // if there are no type declarations, use incremental resolve for this file only
+    if (!hasTypeDeclarations(mainAst)) {
+        nonIncrementalStore[fileAbsolute] = mainAst
+        resolveIncremental(uriOfChangedFile, source)
+        return resolver
+    }
+
     nonIncrementalStore[fileAbsolute] = mainAst
     // resolve everything and return resolver
         val localpm = pm

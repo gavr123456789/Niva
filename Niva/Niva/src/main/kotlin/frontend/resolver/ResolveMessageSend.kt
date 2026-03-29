@@ -220,6 +220,12 @@ fun Resolver.resolveMessage(
     // if we see the method with possible errors but not resolved body
     // that means it was declared after currently resolving method
     if (msgFromDb != null) {
+        val caller = resolvingMessageDeclaration
+        val callee = msgFromDb.declaration
+        if (caller != null && callee != null) {
+            registerDependency(callee, caller)
+        }
+
         val decl = statement.declaration
         val receiver = statement.receiver
         val receiverType = receiver.type!!
