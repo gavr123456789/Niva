@@ -88,6 +88,10 @@ class LS(val info: ((String) -> Unit)? = null) {
     // keys: "file:line:char" values: usage tokens keyed by usage position
     val messageDeclarationUsages: MutableMap<String, MutableMap<String, Token>> = mutableMapOf()
 
+    // from keyword declaration arg token position to its usage tokens
+    // keys: "file:line:char" values: usage tokens keyed by usage position
+    val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>> = mutableMapOf()
+
     fun registerMessageUsage(declarationToken: Token, usageToken: Token) {
         if (!GlobalVariables.isLspMode) return
         val declarationKey = declarationToken.toPositionKey()
@@ -531,6 +535,7 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     varUsageToDeclaration.clear()
     varNameToDeclarationToken.clear()
     messageDeclarationUsages.clear()
+    keywordDeclarationUsages.clear()
 
     clearNonIncrementalStoreFromTypes(nonIncrementalStore)
     //    0) clear AST from types
@@ -634,6 +639,7 @@ fun LS.resolveAllFirstTime(
     varUsageToDeclaration.clear()
     varNameToDeclarationToken.clear()
     messageDeclarationUsages.clear()
+    keywordDeclarationUsages.clear()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))

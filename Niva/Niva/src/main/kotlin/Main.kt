@@ -15,7 +15,7 @@ import utils.testingLS
 
 fun main(args: Array<String>) {
 
-//        val args = arrayOf("run","/Users/gavriil.maksyutenko/Documents/Fun/1_rareLangs/NIN/main.niva")
+//        val args = arrayOf("run","")
 //        testingLS()
 //    if (help(args))
 //        return

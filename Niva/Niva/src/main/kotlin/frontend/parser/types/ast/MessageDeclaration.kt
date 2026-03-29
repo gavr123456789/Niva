@@ -47,6 +47,7 @@ sealed class MessageDeclaration(
         is ConstructorDeclaration -> this.msgDeclaration.getDeclType()
         is StaticBuilderDeclaration -> this.msgDeclaration.getDeclType()
     }
+
     fun findMetadata(resolver: Resolver): MessageMetadata {
 
         val msgKind = getDeclType()
