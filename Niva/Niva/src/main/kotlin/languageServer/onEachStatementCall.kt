@@ -10,6 +10,7 @@ import main.frontend.parser.types.ast.ManyConstructorDecl
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.KeywordMsg
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.VarDeclaration
 import main.frontend.parser.types.ast.MethodReference
@@ -104,6 +105,24 @@ fun LS.onEachStatementCall(
         this.registerMessageUsage(declaration.token, ref.token)
     }
 
+    fun unwrapKeywordDeclaration(decl: MessageDeclaration?): MessageDeclarationKeyword? = when (decl) {
+        is MessageDeclarationKeyword -> decl
+        is ConstructorDeclaration -> decl.msgDeclaration as? MessageDeclarationKeyword
+        else -> null
+    }
+
+    fun registerKeywordUsagesIfPossible(msg: Message) {
+        if (!GlobalVariables.isLspMode) return
+        val keywordDecl = unwrapKeywordDeclaration(msg.declaration) ?: return
+        val declArgsByName = keywordDecl.args.associateBy { it.name }
+        if (msg is KeywordMsg) {
+            msg.args.forEach { arg ->
+                val declArg = declArgsByName[arg.name] ?: return@forEach
+                this.registerMessageUsage(declArg.tok, arg.keyToken)
+            }
+        }
+    }
+
     when (st) {
         is Expression, is VarDeclaration -> {
             addStToMegaStore(st)
@@ -112,6 +131,7 @@ fun LS.onEachStatementCall(
                 is Message -> {
                     st.declaration?.messageData?.msgSends?.add(st)
                     registerMessageUsageIfPossible(st.declaration, st.token)
+                    registerKeywordUsagesIfPossible(st)
                 }
                 is VarDeclaration -> {
                     val key = "${st.token.file.absolutePath}:${st.name}"

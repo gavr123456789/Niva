@@ -97,7 +97,7 @@ class AstInlineTransformer(
                             msg.selectorName,
                             msg.type,
                             msg.token,
-                            msg.args.map { KeywordArgAst(it.name, transformExpression(it.keywordArg)) },
+                            msg.args.map { KeywordArgAst(it.name, transformExpression(it.keywordArg), it.keyToken) },
                             msg.path,
                             msg.kind,
                             msg.declaration

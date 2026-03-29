@@ -503,6 +503,7 @@ fun Parser.keywordSendArgs(stringBuilder: StringBuilder): Triple<MutableList<Key
         val x = KeywordArgAst(
             name = keywordPart.name,
             keywordArg = argument,
+            keyToken = keywordPart.token
         )
 
         keyWordArguments.add(x)
@@ -547,4 +548,3 @@ fun Parser.keywordMessageParsing(
     )
     return keywordMsg
 }
-
