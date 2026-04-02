@@ -179,7 +179,7 @@ enum class Pragmas(val v: String) {
 }
 
 // List of pragmas that wont be generated in kotlin code(all the others will just appear on the same place, even if they do not exist
-val builtInPragmas = setOf("rename", "emit", "arg", "debug", "noGetters", "emitJs", "renameJs")
+val builtInPragmas = setOf("rename", "emit", "arg", "debug", "noGetters")
 
 // adding invisible arg of codeplace
 //fun codePlace(msg: Message, keyPragmas: List<KeyPragma>): List<String>?  {

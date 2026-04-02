@@ -8,7 +8,6 @@ import kotlin.system.exitProcess
 import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
-import main.codogenjs.generateJsProject
 import main.utils.*
 import utils.testingLS
 
@@ -17,8 +16,8 @@ fun main(args: Array<String>) {
 
 //        val args = arrayOf("run","")
 //        testingLS()
-//    if (help(args))
-//        return
+    if (help(args))
+        return
     run(args)
 }
 
@@ -61,26 +60,6 @@ fun run(args2: Array<String>) {
             }
     val secondTime = System.currentTimeMillis()
     am.time(secondTime - startTime, false)
-
-    if (am.js) {
-        val workingDir = File(pm.nivaRootFolder)
-        val outputDir = if (am.jsDist) {
-            File(workingDir, "dist")
-        } else {
-            File(pm.pathWhereToGenerateKtAmper)
-        }
-        
-        val mainProject = resolver.projects[resolver.projectName] ?: resolver.projects.values.first()
-        generateJsProject(outputDir, mainProject, resolver.topLevelStatements)
-
-        val mainJsFile = outputDir.resolve("mainNiva.js").absolutePath
-        val command = if (am.jsRuntime == "gjs") "gjs -m $mainJsFile" else "${am.jsRuntime} $mainJsFile"
-
-        command.runCommand(workingDir, withOutputCapture = true)
-        am.time(System.currentTimeMillis() - secondTime, true)
-        return
-    }
-
 
     val compiler =
             CompilerRunner(

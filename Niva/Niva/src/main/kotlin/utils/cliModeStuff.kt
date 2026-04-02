@@ -35,14 +35,6 @@ const val OUT_NAME_ARG = "--out-name="
 class ArgsManager(val args: MutableList<String>) {
 
     val compileOnly = "-c" in args // args.find { it == "-c" } != null
-    val js = if ("--js" in args) {
-        args.remove("--js")
-        true
-    } else false
-    val jsDist = if ("--jsdist" in args) {
-        args.remove("--jsdist")
-        true
-    } else false
     val verbose = if ("--verbose" in args) {
         args.remove("--verbose")
         true
@@ -72,20 +64,6 @@ class ArgsManager(val args: MutableList<String>) {
         }
     }
 
-    val jsRuntime = run {
-        val jsRuntimeArg1 = this@ArgsManager.args.find { it.startsWith("--js-runtime=") }
-        if (jsRuntimeArg1 != null) {
-            this@ArgsManager.args.remove(jsRuntimeArg1)
-            jsRuntimeArg1.replaceFirst("--js-runtime=", "")
-        } else {
-            if (isCommandAvailable("bun")) "bun"
-            else if (isCommandAvailable("node")) "node"
-            else {
-                System.err.println("${RED}Error: neither bun nor node are available. Please install one of them or specify runtime with --js-runtime=")
-                exitProcess(1)
-            }
-        }
-    }
 
     val outputRename = run {
         val outputRename1 = this@ArgsManager.args.find { it.startsWith(OUT_NAME_ARG) }
@@ -440,8 +418,6 @@ Usage:
 
     ${WHITE}--verbose$RESET — with verbose printing
 
-    ${WHITE}--js$RESET — compile to js and run
-    ${WHITE}--js --js-runtime=bun$RESET — use specific js runtime
     ${WHITE}--nativeRelease$RESET — native Graal build with -O3
     ${WHITE}--nativeDebug$RESET   — native Graal build with -Ob
 

@@ -3,8 +3,6 @@
 package frontend.resolver
 
 import frontend.parser.types.ast.KeyPragma
-import main.codogenjs.EMIT_JS_PRAGMA
-import main.codogenjs.RENAME_JS_PRAGMA
 import main.frontend.meta.Position
 import main.frontend.meta.Token
 import main.frontend.meta.TokenType
@@ -199,26 +197,6 @@ fun addSelfConstructor(type: Type, protocolName: String = "common") {
         .second
 }
 
-
-
-fun Pair<String, UnaryMsgMetaData>.renameJsUnary(str: String): Pair<String, UnaryMsgMetaData> {
-    this.second.pragmas.add(createRenameJsAtttribure(str))
-    return this
-}
-
-fun Pair<String, UnaryMsgMetaData>.emitJs(str: String): Pair<String, UnaryMsgMetaData> {
-    this.second.pragmas.add(createEmitJsAtttribure(str))
-    return this
-}
-fun Pair<String, KeywordMsgMetaData>.emitJsKeyword(str: String): Pair<String, KeywordMsgMetaData> {
-    this.second.pragmas.add(createEmitJsAtttribure(str))
-    return this
-}
-
-fun Pair<String, KeywordMsgMetaData>.renameJs(str: String): Pair<String, KeywordMsgMetaData> {
-    this.second.pragmas.add(createRenameJsAtttribure(str))
-    return this
-}
 
 
 fun Pair<String, UnaryMsgMetaData>.emit(str: String): Pair<String, UnaryMsgMetaData> {
@@ -650,7 +628,6 @@ fun createExceptionForCustomErrors(
 fun throwWithMessageGenerate(stringType: Type, nothingType: Type) =
     createKeyword(KeywordArg("throwWithMessage", stringType), nothingType)
         .emitKeyword("throwWithMessage($1)")
-        .emitJsKeyword("common.throwWithMessage($1)")
 
 fun createExceptionProtocols(
     errorType: Type.UnionBranchType,
@@ -664,7 +641,7 @@ fun createExceptionProtocols(
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
-            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)").emitJs("throw &0")//.also { it.second.errors.add() }
+            createUnary("throw", nothingTypeWithError, ERROR_THROW_COMMENT).emit("(throw $0)")//.also { it.second.errors.add() }
         ),
         binaryMsgs = mutableMapOf(),
         keywordMsgs = mutableMapOf(
@@ -1288,12 +1265,6 @@ fun createRenameAtttribure(v: String) =
 
 fun createEmitAtttribure(v: String) =
     createStringPragma("emit", v)
-
-fun createEmitJsAtttribure(v: String) =
-    createStringPragma(EMIT_JS_PRAGMA, v)
-
-fun createRenameJsAtttribure(v: String) =
-    createStringPragma(RENAME_JS_PRAGMA, v)
 fun createMapProtocols(
     isMutable: Boolean,
     intType: Type.InternalType,
