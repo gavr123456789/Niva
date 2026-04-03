@@ -203,7 +203,11 @@ NivaType compareWithConsideringUnion(nivaType): NivaType db: TyperDB -> Bool = [
           fieldsMatch <- false
         ]
       ]
-      returnTypeMatch = returnType compareWithConsideringUnion: nivaType returnType db: db
+      // Kotlin-style Unit coercion: any return type is acceptable when Unit is expected.
+      returnTypeMatch =
+        | nivaType returnType
+        | UnitT => true
+        |=> returnType compareWithConsideringUnion: nivaType returnType db: db
       fieldsMatch && returnTypeMatch
     ]
     |=> false
