@@ -311,7 +311,7 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
 ]
 
 constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer rangeType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
-  {unit bool} = dtc
+  {unit bool t} = dtc
 
   rangeProto = NivaProtocol name: "range"
 
@@ -323,6 +323,24 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
                   pkgName: "core"
                   returnType: unit
   rangeProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: rangeType argT: foreachBlock returnT: unit)
+
+  // filter: (item) -> bool, returns List[item]
+  filterBlock = FuntionT
+                  fields: { itArg }!
+                  name: "filter"
+                  genericArgs: {}!
+                  pkgName: "core"
+                  returnType: bool
+  rangeProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: rangeType argT: filterBlock returnT: (ListT t: itemType))
+
+  // map: (item) -> T, returns List[T]
+  mapBlock = FuntionT
+              fields: { itArg }!
+              name: "map"
+              genericArgs: {}!
+              pkgName: "core"
+              returnType: t
+  rangeProto addMethod: (NivaMethod singleArgKw: "map" receiverType: rangeType argT: mapBlock returnT: (ListT t: t))
 
   rangeProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: rangeType argT: itemType returnT: bool)
   rangeProto addMethod: (NivaMethod unary: "isEmpty" receiverType: rangeType returnT: bool)

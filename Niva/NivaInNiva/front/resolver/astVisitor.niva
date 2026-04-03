@@ -18,7 +18,6 @@ union AstVisitor =
 
 AstVisitor run(statements): List::Statement = [
   statements forEach: [
-
     this visit: it
   ]
 ]

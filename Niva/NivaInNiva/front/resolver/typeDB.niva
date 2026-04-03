@@ -1,7 +1,6 @@
 type TyperDB
   // setOfTypeNames: mut Set::String
-  listOfErrors: mut List::ResolveErrors
-  listOfDeclaredTypes: mut List::TypeT
+  listOfErrors: mut List::ResolveErrors // across all packages?
 
   packages: mut Map(String, NivaPkg)
 
@@ -104,7 +103,6 @@ constructor TyperDB new -> TyperDB = [
 
   ^TyperDB
     listOfErrors: {}!
-    listOfDeclaredTypes: {}!
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: typesWithSameNames

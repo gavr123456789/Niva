@@ -125,7 +125,6 @@ extend mut Parser [
 
   /// "", 1, 1.1, true, []
   on literalExprFrom(tok): Token -> LiteralExpr? = [
-    mut isAdded = false
 
     x = | tok kind
     | TokenType.Integer =>
@@ -258,7 +257,7 @@ extend mut Parser [
     ]
 
     // wait, just check if there was an arrow, if not, then restore from tok
-    mut body = .parseManyExprUntilTok: TokenType.CloseBracket split: null
+    body = .parseManyExprUntilTok: TokenType.CloseBracket split: null
 
     result = CodeBlock
       args: args
@@ -351,12 +350,6 @@ extend mut Parser [
     current <- position
   ]
 
-  on skipComments = [
-    [.peek kind == TokenType.Comment] whileTrue: [
-      .step
-    ]
-  ]
-
   on parseMatch(tok): Token -> Match = [
     branches::mut List::MatchBranch = {}!
     mut elseBranch::Body? = null
@@ -404,72 +397,67 @@ extend mut Parser [
       ^ .nextExperssion: tok
     ]
 
-    | tok kind
-    | TokenType.Type => [^ .typeDeclaration: tok]
-    | TokenType.Union => [^ .unionTypeDeclaration: tok]
-    | TokenType.Extend => [
-      ^ .parseExtendBlock: tok
-    ]
-    | TokenType.Constructor => [
-      ^ .messageDeclarationOrExpression: .step savedPosition: savePosition isConstructor: true
-    ]
-    | TokenType.Identifier => [
-      firstChar = tok lexeme first
-      isTypeName = firstChar isUpperCase
-      isTypeName ifTrue: [
-        ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
-      ] ifFalse: [
-        ^ .nextExperssion: tok
+    ^ | tok kind
+      | TokenType.Type => [^ .typeDeclaration: tok]
+      | TokenType.Union => [^ .unionTypeDeclaration: tok]
+      | TokenType.Extend => [
+        .parseExtendBlock: tok
       ]
-    ]
-    | TokenType.Mut => [
-      nextTok = .peek
-      isTypeName = | nextTok kind
-                  | TokenType.Identifier
-                  | TokenType.NullableIdentifier
-                  | TokenType.IdentifierDoubleColon => [
-                    firstChar = nextTok lexeme first
-                    firstChar isUpperCase
-                  ]
-                  |=> false
-      isTypeName ifTrue: [
-        ^ .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
-      ] ifFalse: [
-        ^ .nextExperssion: tok
+      | TokenType.Constructor => [
+        .messageDeclarationOrExpression: .step savedPosition: savePosition isConstructor: true
       ]
-    ]
-    | TokenType.If => [
-      ^.parseMatch: tok
-    ]
-    | TokenType.Return => [
-      ^.parseReturnExpr: tok
-    ]
-    // commented since expression after is possible
-    // | TokenType .OpenBracket => [
-    //   ^.parseCodeBlock: tok
-    // ]
-    | TokenType.EndOfFile => [
-      TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
-    ]
-    | TokenType.Invalid => [
-      prevPrev = .peekAt: -2
-      prev = .peekAt: -1
-      cur = .peek
-      TO DO: "Got invalid token after $prevPrev $prev $cur"
-    ]
-    | TokenType.IdentifierDoubleColon => [
-      ^.parseVarDeclExpr: tok name: tok lexeme isMut: false // `::` for IdentifierDoubleColon is removed in lexer
-    ]
+      | TokenType.Identifier => [
+        firstChar = tok lexeme first
+        isTypeName = firstChar isUpperCase
+        isTypeName ifTrue: [
+          .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+        ] ifFalse: [
+          .nextExperssion: tok
+        ]
+      ]
+      | TokenType.Mut => [
+        nextTok = .peek
+        isTypeName = | nextTok kind
+                    | TokenType.Identifier
+                    | TokenType.NullableIdentifier
+                    | TokenType.IdentifierDoubleColon => [
+                      firstChar = nextTok lexeme first
+                      firstChar isUpperCase
+                    ]
+                    |=> false
+        isTypeName ifTrue: [
+          .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
+        ] ifFalse: [
+          .nextExperssion: tok
+        ]
+      ]
+      | TokenType.If => [
+        .parseMatch: tok
+      ]
+      | TokenType.Return => [
+        .parseReturnExpr: tok
+      ]
+      // commented since expression after is possible
+      // | TokenType .OpenBracket => [
+      //   ^.parseCodeBlock: tok
+      // ]
+      | TokenType.EndOfFile => [
+        TO DO: "its impossible to be here, whileTrue from top stack goes until `done`"
+      ]
+      | TokenType.Invalid => [
+        prevPrev = .peekAt: -2
+        prev = .peekAt: -1
+        cur = .peek
+        TO DO: "Got invalid token after $prevPrev $prev $cur"
+      ]
+      | TokenType.IdentifierDoubleColon => [
+        .parseVarDeclExpr: tok name: tok lexeme isMut: false // `::` for IdentifierDoubleColon is removed in lexer
+      ]
 
-    |=> [
-      //"Warning: Parser: fallback to expr parsing with tok: $tok" echo
-      ^ .nextExperssion: tok
-    ]
-    .peek kind != TokenType.EndOfFile, ifTrue: [
-      .step // just to evade infinity loop
-    ]
-
-
+      |=> [
+        //"Warning: Parser: fallback to expr parsing with tok: $tok" echo
+        .nextExperssion: tok
+      ]
 
     ^ TO DO: "top level $tok is not allowed"
   ]
