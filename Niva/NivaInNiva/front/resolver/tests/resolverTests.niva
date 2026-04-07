@@ -752,3 +752,48 @@ Test nullableMatchRequiresElse = [
 
   Assert that: db listOfErrors count equals: 1
 ]
+
+Test shadowCopyKind = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+
+  Assert that: db listOfErrors count equals: 0
+
+  stmt = typedAst at: 2
+  | stmt
+  | VarDeclarationT => [
+    msg = stmt value
+    | msg
+    | KeywordMsgT => [
+      Assert that: msg kind equals: MessageSendKind.ShadowCopy
+    ]
+    |=> [TO DO: "KeywordMsgT expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test shadowCopyAllFieldsError = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p name: "qwf" age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]

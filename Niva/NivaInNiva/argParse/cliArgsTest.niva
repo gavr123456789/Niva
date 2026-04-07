@@ -3,6 +3,7 @@ Test cliArgs = [
   result = ArgParser args: args
   Assert that: (result option) equals: CompilerOption.Run
   Assert that: (result verbose) equals: true
+  Assert that: result backend equals: CompilerBackend.Js
 ]
 
 
@@ -12,3 +13,10 @@ Test cliArgsHelp = [
   Assert that: result option equals: CompilerOption.Help
 ]
 
+Test cliArgsRunGoBackend = [
+  args = {"run" ".niva_go/testss.niva" "--backend" "go"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: ".niva_go/testss.niva"
+  Assert that: result backend equals: CompilerBackend.Go
+]
