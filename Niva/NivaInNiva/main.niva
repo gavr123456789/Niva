@@ -54,13 +54,49 @@ compilerTry = [
 ]
 
 compilerTry2 = [
-  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  //path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"run" ".niva_go/testss.niva" "--backend" "go"} //"~/Documents/Fun/niva_demo/main.niva"
   //t1 = System currentTimeMillis
   //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
+] do
+
+irTypeAndMethod = [
+  fileMain = """
+    type Person
+      name: String
+
+    Person greet -> String = [
+      ^ "hi"
+    ]
+
+    p = Person name: "Ada"
+    p greet
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModule
+  ir debug
+  typeDef = ir types first
+  Assert that: typeDef name equals: "Person"
+  Assert that: typeDef id equals: "main_Person"
+  Assert that: typeDef fields count equals: 1
+  field = typeDef fields at: 0
+  Assert that: field name equals: "name"
+
+  fnMaybe = ir functions find: [it name == "greet"]
+  | fnMaybe
+  | null => [TO DO: "greet function not found"]
+  |=> [
+    fn = fnMaybe
+    Assert that: fn args count equals: 1
+    firstArg = fn args at: 0
+    Assert that: firstArg name equals: "this"
+  ]
 ]
+
 
 
 //odin = [

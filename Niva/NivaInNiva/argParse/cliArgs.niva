@@ -2,11 +2,11 @@ type ArgParser
 type ArgsParsed 
   path: String? 
   option: CompilerOption
+  backend: CompilerBackend
   // flags
   verbose: Bool
-  lsp: Bool
 
-constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help verbose: false lsp: false
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -16,6 +16,9 @@ constructor ArgParser args::List::String -> ArgsParsed = [
       run — compile and run project from main.niva (recursive)
       run FILE — compile and run project from root file (recursive)
       build FILE — compile only the given file
+      ir — build IR from main.niva (recursive)
+      ir FILE — build IR from root file (recursive)
+      run FILE --backend go|js|lsp — select backend (default: js)
   """ trimIndent
 
   args contains: "--help", ifTrue: [
@@ -27,19 +30,50 @@ constructor ArgParser args::List::String -> ArgsParsed = [
   //           "--lsp"     false}
 
   mut verbose = false
-  mut lsp = false
-  filteredArgs = args filter: [
-    // flags at: it put: true
-    it == "--verbose" ifTrue: [verbose <- true]
-    it == "--lsp" ifTrue: [lsp <- true]
-    (verbose || lsp) not
+  mut backend = CompilerBackend.Js
+  mut filteredArgs2::mut List::String = {}!
+  mut skipNext = false
+  mut backendError = false
+
+  args forEachIndexed: [i, arg ->
+    skipNext
+      ifTrue: [skipNext <- false]
+      ifFalse: [
+        | arg
+        | "--verbose" => [
+          verbose <- true
+          ()
+        ]
+        | "--backend" => [
+            nextIndex = i + 1
+            nextIndex >= args count
+              ifTrue: [backendError <- true]
+              ifFalse: [
+                backendValue = args at: nextIndex
+                | backendValue
+                | "go" => backend <- CompilerBackend.Go
+                | "js" => backend <- CompilerBackend.Js
+                | "lsp" => backend <- CompilerBackend.Lsp
+                |=> backendError <- true
+                skipNext <- true
+              ]
+            ()
+          ]
+        |=> [
+          filteredArgs2 add: arg
+          ()
+        ]
+      ]
   ]
 
+  backendError ifTrue: [^ ArgsParsed help]
+
   getFirstArg = [
-    arg = args at: 0
+    arg = filteredArgs2 at: 0
     | arg
     | "run" => CompilerOption.Run
     | "build" => CompilerOption.Build
+    | "ir" => CompilerOption.Ir
     | "info" => CompilerOption.Info
     |=> [
       "$arg arg is unknown" echo
@@ -47,21 +81,24 @@ constructor ArgParser args::List::String -> ArgsParsed = [
     ]
   ]
 
-  ^ | args count
+  ^ | filteredArgs2 count
+    | 0 => [ArgsParsed help]
     | 1 => [
-      arg0 = args at: 0
+      arg0 = filteredArgs2 at: 0
       | arg0
-      | "run" => ArgsParsed path: null option: CompilerOption.Run verbose: verbose lsp: lsp
+      | "run" => ArgsParsed path: null option: CompilerOption.Run backend: backend verbose: verbose
       | "build" => ArgsParsed help
-      | "info" => ArgsParsed path: null option: CompilerOption.Info verbose: verbose lsp: lsp
+      | "ir" => ArgsParsed path: null option: CompilerOption.Ir backend: backend verbose: verbose
+      | "info" => ArgsParsed path: null option: CompilerOption.Info backend: backend verbose: verbose
       |=> ArgsParsed help
     ]
     | 2 => [
       arg1 = getFirstArg do
-      arg2 = args at: 1
-      ArgsParsed path: arg2 option: arg1 verbose: verbose lsp: lsp
+      arg2 = filteredArgs2 at: 1
+      ArgsParsed path: arg2 option: arg1 :backend :verbose
     ]
     |=> ArgsParsed help
 ]
 
-enum CompilerOption = Run | Build | Daemon | RunTests | Info | Help
+enum CompilerOption = Run | Build | Ir | Daemon | RunTests | Info | Help
+enum CompilerBackend = Go | Js | Lsp

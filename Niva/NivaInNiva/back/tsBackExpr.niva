@@ -410,6 +410,23 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         ^ currentExpr
     ]
     | KeywordMsgT => [
+        dbMsg kind == MessageSendKind.ShadowCopy
+            ifTrue: [
+                receiverStr = receiver toTSFromPkg: currentPkg db: db
+                fields = dbMsg receiverType collectFields
+                argsByName::mut Map(String, String) = #{}!
+                args forEach: [arg ->
+                    argsByName at: (arg name name) put: (arg expr toTSFromPkg: currentPkg db: db)
+                ]
+                argsExprs = fields map: [field ->
+                    argExpr = argsByName at: field name
+                    | argExpr
+                    | null => receiverStr + "." + field name
+                    |=> argExpr
+                ]
+                argsStr = argsExprs joinWith: ", "
+                ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + argsStr + ")"
+            ]
         isBindReceiver && (dbMsg name == "emit:")
             ifTrue: [
                 argExpr = args first expr

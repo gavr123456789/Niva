@@ -136,6 +136,24 @@ Test tsConstructorOnCoreTypeCodegen = [
   Assert that: (js contains: "new Int") equals: false
 ]
 
+Test tsShadowCopyCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "const p = new Person(\"Alice\", 24)") equals: true
+  Assert that: (js contains: "const p2 = new Person(p.name, 25)") equals: true
+]
+
 Test tsBindingsCodegen = [
   fileMain = """
     Int read: String -> String = [

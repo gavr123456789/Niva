@@ -29,9 +29,11 @@ constructor NivaCompiler [
     on runArgs(args): List(String) withIO(io): IO_Container = [
 
         argsParsed = ArgParser args: args
-        {option path} = argsParsed
+        {option path backend} = argsParsed
 
         realJSPath = io currentDir + "/.niva_js"
+        realIrPath = io currentDir + "/.niva_ir"
+        realGoPath = io currentDir + "/.niva_go"
 
         buildFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realJSPath toPath)
@@ -41,6 +43,21 @@ constructor NivaCompiler [
                 destanation = realJSPath + "/" + file + ".js"
                 io writeFile file: destanation content: jsContent
             ]
+        ]
+
+        buildIrFromResolver = [res::ResolverHelper ->
+            FileSystem createDirectories: (realIrPath toPath)
+            irModule = res toIrModule
+            irContent = irModule toDebugString
+            destanation = realIrPath + "/" + (res entryPointName) + ".nir"
+            io writeFile file: destanation content: irContent
+        ]
+
+        buildGoFromResolver = [res::ResolverHelper ->
+            FileSystem createDirectories: (realGoPath toPath)
+            goContent = GoBackend fullFromResolver: res
+            destanation = realGoPath + "/main.go"
+            io writeFile file: destanation content: goContent
         ]
 
         | option
@@ -55,12 +72,36 @@ constructor NivaCompiler [
               TO DO: "Resolver errors: " + resolver_errors
             ]
 
-            buildFromResolver res: resolver
-            option == CompilerOption.Run ifTrue: [
-              // run with bun
-              pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
-              io runProgram args: {"bun" pathToEntryPoint}
+            | backend
+            | CompilerBackend.Go => [
+                buildGoFromResolver res: resolver
+                option == CompilerOption.Run ifTrue: [
+                  pathToEntryPoint = realGoPath + "/main.go"
+                  io runProgram args: {"go" "run" pathToEntryPoint}
+                ]
+              ]
+            | CompilerBackend.Js => [
+                buildFromResolver res: resolver
+                option == CompilerOption.Run ifTrue: [
+                  // run with bun
+                  pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
+                  io runProgram args: {"bun" pathToEntryPoint}
+                ]
+              ]
+            | CompilerBackend.Lsp => []
+        ]
+        | CompilerOption.Ir => [
+            rootFile = path unpackOrValue: "main.niva"
+            entryPoint = rootFile toPath name substringBeforeLast: "."
+            pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
+
+            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+            resolver db listOfErrors isNotEmpty ifTrue: [
+              resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
+              TO DO: "Resolver errors: " + resolver_errors
             ]
+
+            buildIrFromResolver res: resolver
         ]
         | CompilerOption.Help => []
         | CompilerOption.Daemon => []
