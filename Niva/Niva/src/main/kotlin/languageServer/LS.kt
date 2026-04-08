@@ -72,6 +72,129 @@ private fun messageDeclSignature(md: MessageDeclaration): String {
     return "$receiverKey|${realDecl.getDeclType()}|${realDecl.name}|$argsKey"
 }
 
+private enum class ChangeLineKind {
+    Declaration,
+    MessageBody,
+    None
+}
+
+private fun isLineInMessageHeader(md: MessageDeclaration, line: Int): Boolean {
+    val realDecl = if (md is ConstructorDeclaration) md.msgDeclaration else md
+    if (realDecl.token.line == line) return true
+    if (realDecl.forTypeAst.token.line == line) return true
+    if (realDecl.returnTypeAST?.token?.line == line) return true
+    return when (realDecl) {
+        is MessageDeclarationKeyword -> realDecl.args.any {
+            it.tok.line == line || it.typeAST?.token?.line == line
+        }
+        is MessageDeclarationBinary -> realDecl.arg.tok.line == line || realDecl.arg.typeAST?.token?.line == line
+        else -> false
+    }
+}
+
+private fun isLineInTypeDeclaration(td: SomeTypeDeclaration, line: Int): Boolean {
+    if (td.token.line == line) return true
+    return when (td) {
+        is TypeAliasDeclaration -> td.realTypeAST.token.line == line
+        is UnionRootDeclaration -> {
+            td.fields.any { it.token.line == line } ||
+                td.branches.any { branch ->
+                    branch.token.line == line ||
+                        branch.fields.any { it.token.line == line }
+                }
+        }
+        is EnumDeclarationRoot -> {
+            td.fields.any { it.token.line == line } ||
+                td.branches.any { branch ->
+                    branch.token.line == line ||
+                        branch.fieldsValues.any { it.token.line == line }
+                }
+        }
+        is ErrorDomainDeclaration -> isLineInTypeDeclaration(td.unionDeclaration, line)
+        else -> td.fields.any { it.token.line == line }
+    }
+}
+
+private fun messageDeclBodyContainsLine(md: MessageDeclaration, line: Int): Boolean {
+    val realDecl = if (md is ConstructorDeclaration) md.msgDeclaration else md
+    if (realDecl.body.isEmpty()) return false
+    var minLine = Int.MAX_VALUE
+    var maxLine = Int.MIN_VALUE
+    realDecl.body.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        if (tok.line < minLine) minLine = tok.line
+        if (endLine > maxLine) maxLine = endLine
+    }
+    return line in minLine..maxLine
+}
+
+private fun findMessageDeclByBodyLine(
+    statements: List<Statement>,
+    line: Int
+): MessageDeclaration? {
+    val msgDecls = collectMessageDeclarationsFromStatements(statements)
+    return msgDecls.firstOrNull { messageDeclBodyContainsLine(it, line) }
+}
+
+private fun classifyChangeLine(statements: List<Statement>, line: Int): Pair<ChangeLineKind, MessageDeclaration?> {
+    val typeDeclHit = statements.filterIsInstance<SomeTypeDeclaration>().any { isLineInTypeDeclaration(it, line) }
+    if (typeDeclHit) return ChangeLineKind.Declaration to null
+
+    val msgDecls = collectMessageDeclarationsFromStatements(statements)
+    if (msgDecls.any { isLineInMessageHeader(it, line) }) {
+        return ChangeLineKind.Declaration to null
+    }
+
+    val bodyDecl = msgDecls.firstOrNull { messageDeclBodyContainsLine(it, line) }
+    return if (bodyDecl != null) ChangeLineKind.MessageBody to bodyDecl else ChangeLineKind.None to null
+}
+
+private fun LS.buildGlobalConstScopeForFile(file: File, mainAst: List<Statement>): MutableMap<String, Type> {
+    return if (pm != null && nonIncrementalStore.isNotEmpty()) {
+        val localpm = pm ?: throw Exception("Local pm == null")
+        val (allMainAst, otherAst) = getMainAstFromNIS(nonIncrementalStore, localpm.pathToNivaMainFile)
+        val mainPkgName = File(localpm.pathToNivaMainFile).nameWithoutExtension
+        resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
+    } else {
+        val savedPkg = resolver.currentPackageName
+        resolver.currentPackageName = file.nameWithoutExtension
+        val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
+        resolver.currentPackageName = savedPkg
+        scope
+    }
+}
+
+private fun LS.updateMessageBodyAndReResolve(
+    file: File,
+    mainAst: List<Statement>,
+    newDecl: MessageDeclaration
+): Boolean {
+    val fileAbsolutePath = file.absolutePath
+    val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: return false
+    val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
+    val oldBySig = oldMsgDecls.associateBy { messageDeclSignature(it) }
+    val oldDecl = oldBySig[messageDeclSignature(newDecl)] ?: return false
+
+    val oldReal = if (oldDecl is ConstructorDeclaration) oldDecl.msgDeclaration else oldDecl
+    val newReal = if (newDecl is ConstructorDeclaration) newDecl.msgDeclaration else newDecl
+    oldReal.body.clear()
+    oldReal.body.addAll(newReal.body)
+
+    resolver.clearDependenciesFor(listOf(oldDecl))
+
+    val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
+
+    resolver.enqueueForReResolve(listOf(oldDecl))
+    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+
+    resolver.enqueueDependents(oldDecl)
+    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+
+    return true
+}
+
+
 
 typealias Line = Int
 typealias Scope = Map<String, Type>
@@ -131,6 +254,7 @@ class LS(val info: ((String) -> Unit)? = null) {
     // from keyword declaration arg token position to its usage tokens
     // keys: "file:line:char" values: usage tokens keyed by usage position
     val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>> = mutableMapOf()
+
 
     fun registerMessageUsage(declarationToken: Token, usageToken: Token) {
         if (!GlobalVariables.isLspMode) return
@@ -557,9 +681,30 @@ fun LS.removeDecl2(file: File) {
 }
 
 
-fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
+fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: Int? = null) {
     val file = File(URI(pathToChangedFile))
     val fileAbsolutePath = file.absolutePath
+
+    val changeLine1Based = changeLine?.plus(1)
+    if (changeLine1Based != null) {
+        val (probeAst) = parseFilesToAST(
+            mainFileContent = text,
+            otherFileContents = resolver.otherFilesPaths,
+            mainFilePath = file.absolutePath,
+            resolveOnlyOneFile = true
+        )
+
+        val (kind, newDecl) = classifyChangeLine(probeAst, changeLine1Based)
+        if (kind == ChangeLineKind.Declaration) {
+            resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+            return
+        }
+        if (kind == ChangeLineKind.MessageBody && newDecl != null) {
+            val handled = updateMessageBodyAndReResolve(file, probeAst, newDecl)
+            if (handled) return
+        }
+        // fall through to full incremental if we couldn't handle it
+    }
 
     // let's assume user cant change packages names for now, so pkg name always == filename
     // remove everything that was declarated in this changed file
@@ -602,18 +747,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
         }
     }
 
-    val globalConstScope = if (pm != null && nonIncrementalStore.isNotEmpty()) {
-        val localpm = pm ?: throw Exception("Local pm == null")
-        val (allMainAst, otherAst) = getMainAstFromNIS(nonIncrementalStore, localpm.pathToNivaMainFile)
-        val mainPkgName = File(localpm.pathToNivaMainFile).nameWithoutExtension
-        resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
-    } else {
-        val savedPkg = resolver.currentPackageName
-        resolver.currentPackageName = file.nameWithoutExtension
-        val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
-        resolver.currentPackageName = savedPkg
-        scope
-    }
+    val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
 
     // throws on
     resolver.resolveWithBackTracking(
@@ -664,7 +798,7 @@ private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
 }
 
 
-fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
+fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull: Boolean = false): Resolver {
     megaStore.data.clear()
     fileToDecl.clear()
     varUsageToDeclaration.clear()
@@ -684,7 +818,7 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
     val mainAst = getAst(source = source, file = file)
 
     // if there are no type declarations, use incremental resolve for this file only
-    if (!hasTypeDeclarations(mainAst)) {
+    if (!forceFull && !hasTypeDeclarations(mainAst)) {
         nonIncrementalStore[fileAbsolute] = mainAst
         resolveIncremental(uriOfChangedFile, source)
         return resolver

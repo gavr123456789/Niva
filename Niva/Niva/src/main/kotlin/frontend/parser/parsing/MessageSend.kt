@@ -382,7 +382,7 @@ fun replacePipesWithBrackets(messages: MutableList<Message>): MessageSend {
             is StaticBuilder -> msg.token.compileError("Pipes with static builder not allowed yet")
         }
     }
-    return result!!
+    return result ?: messages.first().token.compileError("No result found for message send parsing")
 }
 
 fun Parser.keyword(
