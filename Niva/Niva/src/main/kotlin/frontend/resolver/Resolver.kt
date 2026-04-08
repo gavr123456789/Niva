@@ -896,16 +896,65 @@ fun Resolver.addNewType(
     // 2 check type for unique
     val typeName = if (alias) (statement as TypeAliasDeclaration).typeName else type.name
     if (!alreadyCheckedOnUnique) {
-        if (typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
-            val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
+        val alreadyRegistered = typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token)
+        val newDeclFile = statement?.token?.file?.absolutePath
+        val existingDeclFile = alreadyRegistered?.typeDeclaration?.token?.file?.absolutePath
+
+        val isLsp = GlobalVariables.isLspMode
+        val isSameFile = newDeclFile != null && newDeclFile == existingDeclFile
+
+        val canReplaceInLsp = isLsp && alreadyRegistered != null && isSameFile
+
+        val isInternalAlias =
+            statement is TypeAliasDeclaration &&
+                    type is Type.InternalType &&
+                    InternalTypes.entries.none { it.name == typeName }
+
+        val canReplaceInternal = isLsp && isInternalAlias
+
+        val isInternalType = typeName in typeDB.internalTypes
+
+        fun replaceTypeInSameFile(typeName: String, pkg: String, file: String?) {
+            typeDB.userTypes[typeName]?.removeIf { it.pkg == pkg }
+            pack.declarations.removeIf {
+                it is SomeTypeDeclaration &&
+                        it.typeName == typeName &&
+                        it.token.file.absolutePath == file
+            }
+        }
+
+        fun reportDuplicateType(statement: Statement?, typeName: String, pkgName: String) {
+            val err = "Type with name ${YEL}$typeName${RESET} already registered in package: ${WHITE}$pkgName"
             statement?.token?.compileError(err)
         }
-        // check for internal types
-        if (typeDB.internalTypes.keys.contains(typeName)) {
-            statement?.token?.compileError("Type $typeName is already registered as internal type")
+
+        fun removeInternalType(typeName: String) {
+            typeDB.internalTypes.remove(typeName)
+            pack.types.remove(typeName)
+            typeTable.remove(typeName)
+        }
+
+        // --- Processing of an already registered type ---
+        alreadyRegistered?.let {
+            if (canReplaceInLsp) {
+                replaceTypeInSameFile(typeName, it.pkg, newDeclFile)
+            } else {
+                reportDuplicateType(statement, typeName, currentPackageName)
+                return
+            }
+        }
+
+        // --- Processing of internal types ---
+        when {
+            canReplaceInternal && isInternalType -> {
+                removeInternalType(typeName)
+            }
+
+            !canReplaceInLsp && isInternalType -> {
+                statement?.token?.compileError("Type $typeName is already registered as internal type")
+            }
         }
     }
-
 
     // 3 add declaration to be generated
     if (statement != null) {
@@ -1069,6 +1118,10 @@ fun Resolver.processPendingMessageReResolves(
             changeProtocol(ctx.protocol)
             currentResolvingFileName = ctx.file
         }
+        // Ensure no stale stack from previous failed resolves affects return checks
+        stack.clear()
+        wasThereReturn = null
+        wasThereTopLevelReturn = false
         val savedLevel = currentLevel
         currentLevel++
         try {
@@ -1348,9 +1401,6 @@ fun createTypeListOfUserLikeType(name: String, elementType: Type.UserLike, listT
     }
 }
 val createTypeListOfType = { name: String, elementType: Type.InternalType, listTypeProtocolDonor: Type.UserType, emitName: String ->
-//    val q = listTypeProtocolDonor.protocols.isNotEmpty()
-//    println(q)
-//    assert(q)
     Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
@@ -1821,7 +1871,6 @@ class Resolver(
         ).also {
             it.isMutable = true
             it.emitName = "MutableSet"
-            File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
         }
 
 
@@ -1849,7 +1898,6 @@ class Resolver(
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform") // sequence doesn't have such methods
-
             }
         )
 
