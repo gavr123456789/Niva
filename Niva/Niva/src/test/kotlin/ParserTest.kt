@@ -936,6 +936,29 @@ Environment makeChild = Environment parent: this map: #{}
     }
 
     @Test
+    fun staticConstructor() {
+        val source = """
+        static Person new = Person name: "" age: 0
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val constr = ast[0] as ConstructorDeclaration
+        assert(constr.forTypeAst.name == "Person")
+        assert(constr.body.size == 1)
+    }
+
+    @Test
+    fun staticGlobalVar() {
+        val source = """
+        static GlobalData = 42
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val decl = ast[0] as VarDeclaration
+        assert(decl.isGlobal)
+    }
+
+    @Test
     fun nullableValue() {
 
         val source = """

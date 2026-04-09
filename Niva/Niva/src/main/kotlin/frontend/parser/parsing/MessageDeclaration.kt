@@ -434,12 +434,16 @@ fun Parser.extendDeclaration(pragmasForExtend: MutableList<Pragma>): ExtendDecla
 }
 
 
-const val ConstructorExpected = "Constructor expected"
+const val ConstructorExpected = "Constructor or static expected"
 
 // constructor TYPE messageDeclaration
 fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDeclaration {
     val isFun = check(TokenType.Fun)
-    val constructorKeyword = if (isFun) matchAssert(TokenType.Fun) else matchAssert(TokenType.Constructor, ConstructorExpected)
+    val constructorKeyword = if (isFun) {
+        matchAssert(TokenType.Fun)
+    } else {
+        matchAssertOr(TokenType.Constructor, TokenType.Static, errorMessage = ConstructorExpected)
+    }
 
     val messageDeclarationType =
         checkTypeOfMessageDeclaration2(true)//checkTypeOfMessageDeclaration(isConstructor = true)
@@ -459,7 +463,7 @@ fun Parser.constructorDeclaration(pragmas: MutableList<Pragma>): ConstructorDecl
 }
 
 fun Parser.manyConstructorsDecl(pragmas: MutableList<Pragma>): ManyConstructorDecl {
-    matchAssert(TokenType.Constructor, ConstructorExpected)
+    matchAssertOr(TokenType.Constructor, TokenType.Static, errorMessage = ConstructorExpected)
     val forTypeAst = parseTypeAST(true)
     skipNewLinesAndComments()
     matchAssert(TokenType.OpenBracket)

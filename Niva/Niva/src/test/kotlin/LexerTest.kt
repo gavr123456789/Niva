@@ -158,7 +158,7 @@ class LexerTest {
 
     @Test
     fun keywords() {
-        checkWithEnd("true false type union constructor errordomain", listOf(True, False, Type, Union, Constructor, ErrorDomain))
+        checkWithEnd("true false type union constructor static errordomain", listOf(True, False, Type, Union, Constructor, Static, ErrorDomain))
     }
 
     @Test

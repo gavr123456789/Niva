@@ -13,7 +13,7 @@ import main.utils.RESET
 fun Parser.varDeclaration(): VarDeclaration? {
     val savePoint = current
 //    try {
-        val isGlobal = match(TokenType.Global)
+        val isGlobal = match(listOf(TokenType.Global, TokenType.Static))
         // skip mut
         val isMutable = match(TokenType.Mut)
         if (isGlobal && isMutable) {
