@@ -83,7 +83,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
-    if (kind == TokenType.Constructor || kind == TokenType.Fun) {
+    if (kind == TokenType.Constructor || kind == TokenType.Fun || kind == TokenType.Static) {
         if (check(TokenType.OpenBracket, 2)) {
             return manyConstructorsDecl(pragmas)
         }
@@ -182,7 +182,7 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 fun Parser.isVarDeclarationStart(): Boolean {
     val savePoint = current
-    match(TokenType.Global)
+    match(listOf(TokenType.Global, TokenType.Static))
     match(TokenType.Mut)
 
     val isVarDeclaration = when {
