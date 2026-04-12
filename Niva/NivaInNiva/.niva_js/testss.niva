@@ -1,18 +1,43 @@
-String surroundWith: String and: String =
-  surroundWith + this + and
+type Point
+  x: Int
+  y: Int
 
-String surroundWith(x): String =
-  x + this + x
+union Shape =
+| Rectangle width: Int height: Int id: Int
+| Circle radius: Int
 
-String packForJson -> String =
-   this escape surroundWith: "\""
+Shape area -> Int =
+| this
+| Rectangle => width * height
+| Circle => radius * radius * 3
 
-String escape =
-  this replace: "\\" with: "\\\\",
-  replace: "\"" with: "\\\"",
-  replace: "\n" with: "\\n",
-  replace: "\r" with: "\\r",
-  replace: "\t" with: "\\t",
-  replace: "\'" with: "\\'"
+Rectangle width: 2
+          height: 2
+          id: 42, area echo
 
-""" {"sas": 1} """ packForJson echo
+x = Rectangle width: 2
+              height: 2
+              id: 42
+y = x width: 4
+x echo
+y echo
+
+
+//String surroundWith: String and: String =
+//  surroundWith + this + and
+
+//String surroundWith(x): String =
+//  x + this + x
+
+//String packForJson -> String =
+//   this escape surroundWith: "\""
+
+//String escape =
+//  this replace: "\\" with: "\\\\",
+//  replace: "\"" with: "\\\"",
+//  replace: "\n" with: "\\n",
+//  replace: "\r" with: "\\r",
+//  replace: "\t" with: "\\t",
+//  replace: "\'" with: "\\'"
+
+//""" {"sas": 1} """ packForJson echo
