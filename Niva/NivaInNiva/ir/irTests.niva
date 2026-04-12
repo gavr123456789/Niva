@@ -1,0 +1,33 @@
+Test irTypeAndMethod = [
+  fileMain = """
+    type Person
+      name: String
+
+    Person greet -> String = [
+      ^ "hi"
+    ]
+
+    p = Person name: "Ada"
+    p greet
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModule
+
+  typeDef = ir types first
+  Assert that: typeDef name equals: "Person"
+  Assert that: typeDef id equals: "main_Person"
+  Assert that: typeDef fields count equals: 1
+  field = typeDef fields at: 0
+  Assert that: field name equals: "name"
+
+  fnMaybe = ir functions find: [it name == "greet"]
+  | fnMaybe
+  | null => [TO DO: "greet function not found"]
+  |=> [
+    fn = fnMaybe
+    Assert that: fn args count equals: 1
+    firstArg = fn args at: 0
+    Assert that: firstArg name equals: "this"
+  ]
+]

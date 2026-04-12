@@ -60,13 +60,19 @@ constructor NivaCompiler [
             io writeFile file: destanation content: goContent
         ]
 
+        backendStr = | backend
+        | CompilerBackend.Go => "go"
+        | CompilerBackend.Js => "js"
+        | CompilerBackend.Lsp => "lsp"
+        |=> "js"
+
         | option
         | CompilerOption.Run | CompilerOption.Build => [
             rootFile = path unpackOrValue: "main.niva"
             entryPoint = rootFile toPath name substringBeforeLast: "."
             pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
 
-            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
             resolver db listOfErrors isNotEmpty ifTrue: [
               resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
               TO DO: "Resolver errors: " + resolver_errors
@@ -95,7 +101,7 @@ constructor NivaCompiler [
             entryPoint = rootFile toPath name substringBeforeLast: "."
             pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
 
-            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint
+            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
             resolver db listOfErrors isNotEmpty ifTrue: [
               resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
               TO DO: "Resolver errors: " + resolver_errors

@@ -293,6 +293,9 @@ constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: any)
   bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
   bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: any)
+  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "backend" receiverType: bind argT1: str argT2: str returnType: any)
+  bindProto addMethod: (NivaMethod threeArgCtorKw: "emit" name2: "backend" name3: "args" receiverType: bind argT1: str argT2: str argT3: list returnType: any)
+  bindProto addMethod: (NivaMethod twoArgCtorKw: "addImport" name2: "backend" receiverType: bind argT1: any argT2: str returnType: any)
 
   ^bindProto methods
 ]
@@ -448,6 +451,16 @@ constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: N
     defaultConstructorWithName: name1 + ":" + name2 + ":"
     :receiverType
     args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2)}
+    :returnType
+    decl: null
+    protocolName: "constructors"
+    pkgName: "core"
+
+constructor NivaMethod threeArgCtorKw(name1): String name2: String name3: String receiverType: NivaType argT1: NivaType argT2: NivaType argT3: NivaType returnType: NivaType =
+  NivaMethod
+    defaultConstructorWithName: name1 + ":" + name2 + ":" + name3 + ":"
+    :receiverType
+    args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2), (TypeTField name: name3 typeT: argT3)}
     :returnType
     decl: null
     protocolName: "constructors"

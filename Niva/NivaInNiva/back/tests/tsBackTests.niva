@@ -157,8 +157,8 @@ Test tsShadowCopyCodegen = [
 Test tsBindingsCodegen = [
   fileMain = """
     Int read: String -> String = [
-      Bind addImport: "fs"
-      ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
+      Bind addImport: "fs" backend: "js"
+      ^ Bind emit: "fs.readFileSync($1, $2)" backend: "js" args: {read "UTF-8"}
     ]
     x = 1 read: ".niva_js/testss.niva"
     x echo
@@ -174,10 +174,42 @@ Test tsBindingsCodegen = [
   Assert that: (js contains: "const x = Int__read(1, \".niva_js/testss.niva\")") equals: true
 ]
 
+Test tsBindingsBackendFilter = [
+  fileMain = """
+    Int read: String -> String = [
+      Bind addImport: "fs" backend: "go"
+      ^ Bind emit: "fs.readFileSync($1, $2)" backend: "go" args: {read "UTF-8"}
+    ]
+    x = 1 read: ".niva_js/testss.niva"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "import * as fs from \"fs\"") equals: false
+  Assert that: (js contains: "fs.readFileSync") equals: false
+]
+
+Test tsBindingsEmitBackendNoArgs = [
+  fileMain = """
+    Int now -> Int = [
+      ^ Bind emit: "Date.now()" backend: "js"
+    ]
+    x = 1 now
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "Date.now()") equals: true
+]
+
 Test tsBindingsPlaceholderValidation = [
   fileMain = """
     Int mul: Int -> Int = [
-      ^ Bind emit: "$1 * $4" args: {this mul}
+      ^ Bind emit: "$1 * $4" backend: "js" args: {this mul}
     ]
     x = 21 mul: 2
   """

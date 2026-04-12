@@ -25,7 +25,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   | receiverType
   | TypeT => [
-    isTypeReceiver ifFalse: [
+    (isTypeReceiver || args isEmpty) ifFalse: [
       fieldNames = receiverType collectFields map: [it name]
       fieldNameSet = fieldNames toSet
       argNames = args map: [it name name]

@@ -86,6 +86,10 @@ TypeDeclVisitor
       | it
       | TypeDecl => [
         noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
+        isBind = db isBindStatement: it
+        isBind ifTrue: [
+          db markBindTypeId: (noFieldsType toMangledName)
+        ]
         noFieldsTypes at: it name put: noFieldsType
         pkgTotypeDecls2 add: (Tuple x: pkgName y: it)
         ()
@@ -110,6 +114,10 @@ TypeDeclVisitor
           fields: common
           token: it token
         rootStub = TypeT noFieldsWithName: rootDecl name pkgName: pkgName
+        isBind = db isBindStatement: it
+        isBind ifTrue: [
+          db markBindTypeId: (rootStub toMangledName)
+        ]
         noFieldsTypes at: rootDecl name put: rootStub
         pkgTotypeDecls2 add: (Tuple x: pkgName y: rootDecl)
 
@@ -143,6 +151,10 @@ TypeDeclVisitor
               token: branch token
 
             noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
+            isBind = db isBindStatement: it
+            isBind ifTrue: [
+              db markBindTypeId: (noFieldsType toMangledName)
+            ]
             noFieldsTypes at: fullDecl name put: noFieldsType
             pkgTotypeDecls2 add: (Tuple x: pkgName y: fullDecl)
           ]

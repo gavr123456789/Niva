@@ -29,8 +29,21 @@ type TyperDB
   // local scope for generic resolution
   localGenericScope: mut Map(String, NivaType)
 
+  // bind metadata
+  bindMeta: BindMeta
 
 
+
+
+type BindMeta
+  bindFiles: mut Set(String)
+  bindFileToPkg: mut Map(String, String)
+  bindStatements: mut Set(Statement)
+  bindMessageDecls: mut Set(MessageDecl)
+  bindTypeIds: mut Set(String)
+
+constructor BindMeta new =
+  BindMeta bindFiles: #()! bindFileToPkg: #{}! bindStatements: #()! bindMessageDecls: #()! bindTypeIds: #()!
 
 
 constructor TyperDB new -> TyperDB = [
@@ -117,10 +130,43 @@ constructor TyperDB new -> TyperDB = [
     typedBodiesCache: #{}!
     declToMethod: #{}!
     localGenericScope: #{}!
+    bindMeta: BindMeta new
 
 ]
 
 extend TyperDB [
+  on addBindFile(fileName): String pkgName: String = [
+    bindMeta bindFiles add: fileName
+    bindMeta bindFileToPkg at: fileName put: pkgName
+  ]
+
+  on isBindFile(fileName): String -> Bool = bindMeta bindFiles contains: fileName
+
+  on pkgNameForFile(fileName): String -> String = [
+    maybe = bindMeta bindFileToPkg at: fileName
+    ^ maybe unpack: [it] or: fileName
+  ]
+
+  on markBindStatement(st): Statement = [
+    bindMeta bindStatements add: st
+  ]
+
+  on isBindStatement(st): Statement -> Bool = bindMeta bindStatements contains: st
+
+  on markBindMessageDecl(m): MessageDecl = [
+    bindMeta bindMessageDecls add: m
+  ]
+
+  on isBindMessageDecl(m): MessageDecl -> Bool = bindMeta bindMessageDecls contains: m
+
+  on markBindTypeId(typeId): String = [
+    bindMeta bindTypeIds add: typeId
+  ]
+
+  on isBindTypeId(typeId): String -> Bool = bindMeta bindTypeIds contains: typeId
+
+  on isBindType(t): NivaType -> Bool = this isBindTypeId: (t toMangledName)
+
   /// for generic instantiation
   on addGeneratedMessageDecl(m): MessageDecl = [
     generatedMessageDecls add: m
@@ -864,12 +910,76 @@ String resolveNivaCode =
   ResolverHelper resolve: #{"main" this} entryPoint: "main"
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
-  fileToStatements::mut Map(String, mut List::Statement) = #{}!
+  ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
+]
 
-  // parsing
+String parseBindFileName -> Tuple(String, String)? = [
+  markerDot = ".bind."
+  markerDash = "-bind-"
+  hasDot = this contains: markerDot
+  hasDot ifTrue: [
+    pkg = this substringBefore: markerDot
+    backend = this substringAfter: markerDot
+    (pkg count == 0) || (backend count == 0) ifTrue: [^ null]
+    ^ Tuple x: pkg y: backend
+  ]
+  hasDash = this contains: markerDash
+  hasDash ifTrue: [
+    pkg = this substringBefore: markerDash
+    backend = this substringAfter: markerDash
+    (pkg count == 0) || (backend count == 0) ifTrue: [^ null]
+    ^ Tuple x: pkg y: backend
+  ]
+  ^ null
+]
+
+constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String backend: String -> ResolverHelper  = [
+  fileToStatements::mut Map(String, mut List::Statement) = #{}!
+  db = TyperDB new
+
+  getStatementsList = [pkgName::String ->
+    listMaybe = fileToStatements at: pkgName
+    | listMaybe
+    | null => [
+        newList::mut List::Statement = {}!
+        fileToStatements at: pkgName put: newList
+        newList
+      ]
+    |=> listMaybe
+  ]
+
+  // scan bind files first
   fileToContent forEach: [ file, content ->
-    statements = TestParse withInput: content expectedCount: -1
-    fileToStatements at: file put: statements
+    bindInfo = file parseBindFileName
+    | bindInfo
+    | null => []
+    |=> [
+      pkgName = bindInfo x
+      backendName = bindInfo y
+      backendName == backend ifTrue: [
+        db addBindFile: file pkgName: pkgName
+        statements = TestParse withInput: content expectedCount: -1
+        list = getStatementsList pkgName: pkgName
+        statements forEach: [
+          list add: it
+          db markBindStatement: it
+          | it
+          | MessageDecl => db markBindMessageDecl: it
+          | ExtendDecl => it messages forEach: [db markBindMessageDecl: it]
+          |=> []
+        ]
+      ]
+    ]
+  ]
+
+  // scan normal files
+  fileToContent forEach: [ file, content ->
+    bindInfo = file parseBindFileName
+    bindInfo == null ifTrue: [
+      statements = TestParse withInput: content expectedCount: -1
+      list = getStatementsList pkgName: file
+      statements forEach: [list add: it]
+    ]
   ]
 
   entryPointStatementsMaybe = fileToStatements at: entryPoint
@@ -877,8 +987,6 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     | entryPointStatementsMaybe
     | null => [TO DO: "trying to find entryPoint: " + entryPoint + " but not found in " + fileToStatements toString]
     |=> [ entryPointStatementsMaybe ]
-
-  db = TyperDB new
 
   msgDecls = TypeDeclVisitor db: db,
     visitAllTypesThenTypesAndMethods: fileToStatements
@@ -915,12 +1023,15 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   db generatedMessageDecls forEach: [
     receiverType = db findByTypeName: it receiver name inPkg: null
     pkgName = receiverType pkgName
-    listMaybe = fileToStatements at: pkgName
-    | listMaybe
-    | null => [
-      (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+    isBindType = db isBindType: receiverType
+    isBindType ifFalse: [
+      listMaybe = fileToStatements at: pkgName
+      | listMaybe
+      | null => [
+        (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+      ]
+      |=> listMaybe add: it
     ]
-    |=> listMaybe add: it
   ]
 
 // build typed declarations map
@@ -982,19 +1093,38 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   ]
 
   fileToTypedStatements::mut Map(String, mut List::TypedStatement) = #{}!
+  entryExprsTyped = typedMain v
   fileToStatements forEach: [file, statements ->
     pkg = db packages at: file, unpackOrPANIC
+    isEntryPointFile = file == entryPoint
+    mut entryExprIndex = 0
     typedList::mut List::TypedStatement = {}!
+    mut hasNonBind = false
     statements forEach: [
-      | it
-      | TypeDecl => [
-        typedList add: (TypeDeclT
-                          name: it name
-                          fields: (it fields map: [f -> toTypeFieldT field: f])
-                          token: it token)
-      ]
+      isBind = db isBindStatement: it
+      isBind ifFalse: [
+        hasNonBind <- true
+        | it
+        | Expr => [
+          isEntryPointFile ifTrue: [
+            entryExprIndex < (entryExprsTyped count) ifFalse: [
+              TO DO: "Entry point expressions count mismatch for " + entryPoint
+            ]
+            typedList add: (entryExprsTyped at: entryExprIndex)
+            entryExprIndex <- entryExprIndex + 1
+          ]
+          ()
+        ]
+        | TypeDecl => [
+          typedList add: (TypeDeclT
+                            name: it name
+                            fields: (it fields map: [f -> toTypeFieldT field: f])
+                            token: it token)
+          ()
+        ]
       | EnumDecl => [
         typedList add: (EnumDeclT token: it token)
+        ()
       ]
       | UnionDecl => [
         typedList add: (UnionDeclT
@@ -1002,6 +1132,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
                           commonUnionFields: (it commonUnionFields map: [f -> toTypeFieldT field: f])
                           branches: (it branches map: [b -> toUnionBranchT branch: b])
                           token: it token)
+        ()
       ]
       | ExtendDecl => [
         receiverType = it receiver toNivaTypefromDB: db inPkg: null
@@ -1010,13 +1141,18 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
                           receiver: receiverType
                           messages: typedMsgs
                           token: it token)
+        ()
       ]
       | MessageDecl => [
         typedList add: (toTypedMessageDecl msgDecl: it pkg: pkg)
+        ()
       ]
       |=> []
+      ]
     ]
-    fileToTypedStatements at: file put: typedList
+    hasNonBind ifTrue: [
+      fileToTypedStatements at: file put: typedList
+    ]
   ]
 
   ^ ResolverHelper
