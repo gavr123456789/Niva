@@ -349,15 +349,15 @@ class LS(val info: ((String) -> Unit)? = null) {
         fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
             fun <T> checkElementsFromEnd(set: List<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
                 val list = set
-                info?.invoke("-------\nfind, list = $list")
+//                info?.invoke("-------\nfind, list = $list")
                 for (i in list.size - 1 downTo 1) {
-                    info?.invoke("i = $i")
+//                    info?.invoke("i = $i")
                     if (check(list[i], list[i - 1])) {
                         return if (returnLast) list[i]
                         else list[i - 1]
                     }
                 }
-                info?.invoke("-------")
+//                info?.invoke("-------")
                 return null
             }
 

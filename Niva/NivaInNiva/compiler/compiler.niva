@@ -76,8 +76,8 @@ constructor NivaCompiler [
             | CompilerBackend.Go => [
                 buildGoFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
-                  pathToEntryPoint = realGoPath + "/main.go"
-                  io runProgram args: {"go" "run" pathToEntryPoint}
+                  pathToEntryPoint = realGoPath //+ "/main.go"
+                  io runProgramFromPath path: pathToEntryPoint args: {"go" "run" "."}
                 ]
               ]
             | CompilerBackend.Js => [
