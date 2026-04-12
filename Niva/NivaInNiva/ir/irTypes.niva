@@ -1,0 +1,119 @@
+enum IrImportKind = Local | Package
+
+type IrImport
+  name: String
+  kind: IrImportKind
+
+enum IrTypeRefKind = Builtin | Custom | Function
+
+type IrTypeRef
+  kind: IrTypeRefKind
+  typeId: String
+  args: List::IrTypeRef
+  returnType: IrTypeRef?
+  isMut: Bool
+  nullable: Bool
+  errors: List::IrTypeRef
+
+type IrField
+  name: String
+  typeRef: IrTypeRef
+
+type IrTypeDef
+  id: String
+  name: String
+  typeParams: List::String
+  fields: List::IrField
+
+type IrUnionBranch
+  name: String
+  fields: List::IrField
+  isInclude: Bool
+
+type IrUnionDef
+  id: String
+  pkgId: String
+  name: String
+  typeParams: List::String
+  commonFields: List::IrField
+  branches: List::IrUnionBranch
+
+type IrEnumDef
+  id: String
+  name: String
+  values: List::String
+
+type IrArg
+  name: String
+  typeRef: IrTypeRef
+
+type IrInstantiation
+  receiverType: IrTypeRef
+  argTypes: List::IrTypeRef
+  returnType: IrTypeRef
+
+type IrFunction
+  id: String
+  name: String
+  args: List::IrArg
+  returnType: IrTypeRef
+  returnErrors: List::IrTypeRef
+  requiresMutReceiver: Bool
+  generics: List::String
+  instantiations: List::IrInstantiation
+  body: IrBlock
+
+type IrBlock
+  stmts: List::IrStmt
+  result: IrExpr?
+  resultType: IrTypeRef
+
+enum IrBindingKind = Local | FieldAlias
+
+enum IrMatchKind = ByType | ByValue | ByBool
+
+enum IrCollectionKind = List | Set | Map
+
+enum IrLiteralKind = Char | Int | Float | Double | String | Bool | Null | Unit
+
+type IrLiteral
+  kind: IrLiteralKind
+  lexeme: String
+
+type IrMatchCase
+  condition: IrExpr
+  additionalConditions: List::IrExpr
+  body: IrBlock
+
+union IrStmt =
+| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool bindingKind: IrBindingKind
+| IrSetLocal name: String value: IrExpr
+| IrSetField receiver: IrExpr field: String value: IrExpr
+| IrDestructure bindings: List::IrArg value: IrExpr
+| IrExprStmt expr: IrExpr
+| IrReturn expr: IrExpr?
+| IrWhile cond: IrExpr body: IrExpr
+
+union IrExpr typeRef: IrTypeRef =
+| IrLiteralExpr literal: IrLiteral
+| IrVarRef name: String
+| IrThisRef
+| IrFieldGet receiver: IrExpr field: String
+| IrCall funcId: String? callee: IrExpr? args: List::IrExpr isConstructor: Bool
+| IrLambda args: List::IrArg body: IrBlock
+| IrBlockExpr block: IrBlock
+| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List::IrMatchCase elseBranch: IrBlock?
+| IrNewExpr typeId: String args: List::IrExpr
+| IrCollectionLiteral kind: IrCollectionKind items: List::IrExpr
+| IrOpBin op: String left: IrExpr right: IrExpr
+| IrTypeRefExpr ref: IrTypeRef
+
+type IrModule
+  version: String
+  pkg: String
+  imports: List::IrImport
+  types: List::IrTypeDef
+  unions: List::IrUnionDef
+  enums: List::IrEnumDef
+  functions: List::IrFunction
+  entry: IrBlock?

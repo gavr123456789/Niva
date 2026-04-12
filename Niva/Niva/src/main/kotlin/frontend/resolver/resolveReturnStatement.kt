@@ -20,7 +20,7 @@ fun Resolver.resolveReturnStatement(statement: ReturnStatement, previousAndCurre
     if (expr != null) {
         resolveSingle((expr), previousAndCurrentScope, statement)
         if (expr.type == null) {
-            throw Exception("Cant infer type of return statement on line: ${expr.token.line}")
+            expr.token.compileError("Cant infer type of return statement: ${expr}")
         }
     }
     val unit = Resolver.defaultTypes[InternalTypes.Unit]!!
