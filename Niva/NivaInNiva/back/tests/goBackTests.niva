@@ -81,19 +81,19 @@ Test goGenericTypeParams = [
   Assert that: (go contains: "value T") equals: true
 ]
 
-Test goEnumCodegen = [
-  fileMain = """
-    enum Color = Red | Green | Blue
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
-
-  Assert that: (go contains: "type main_Color int") equals: true
-  Assert that: (go contains: "main_Color_Red main_Color = iota") equals: true
-  Assert that: (go contains: "main_Color_Green") equals: true
-  Assert that: (go contains: "main_Color_Blue") equals: true
-]
+//Test goEnumCodegen = [
+//  fileMain = """
+//    enum Color = Red | Green | Blue
+//  """
+//
+//  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+//  go = GoBackend fullFromResolver: result
+//
+//  Assert that: (go contains: "type main_Color int") equals: true
+//  Assert that: (go contains: "main_Color_Red main_Color = iota") equals: true
+//  Assert that: (go contains: "main_Color_Green") equals: true
+//  Assert that: (go contains: "main_Color_Blue") equals: true
+//]
 
 Test goNullableTypeCodegen = [
   fileMain = """

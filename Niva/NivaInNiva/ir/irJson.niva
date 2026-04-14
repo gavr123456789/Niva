@@ -3,5 +3,5 @@ IrModule toJson -> String = [
 ]
 
 IrModule toDebugString -> String = [
-  ^ "IrModule " + pkg + " (functions: " + (functions count toString) + ", types: " + (types count toString) + ")"
+  ^ "IrModule " + pkg + " (packages: " + (packages count toString) + ", functions: " + (functions count toString) + ", types: " + (types count toString) + ")"
 ]

@@ -21,6 +21,7 @@ type IrField
 
 type IrTypeDef
   id: String
+  pkgId: String
   name: String
   typeParams: List::String
   fields: List::IrField
@@ -40,6 +41,7 @@ type IrUnionDef
 
 type IrEnumDef
   id: String
+  pkgId: String
   name: String
   values: List::String
 
@@ -54,6 +56,7 @@ type IrInstantiation
 
 type IrFunction
   id: String
+  pkgId: String
   name: String
   args: List::IrArg
   returnType: IrTypeRef
@@ -99,18 +102,30 @@ union IrExpr typeRef: IrTypeRef =
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List::IrExpr isConstructor: Bool
+// IrCall isConstructor: true => ctor function call without receiver arg
+// IrCall isBindCall: true => call to core_Bind.* (binds external modules)
+| IrCall funcId: String? callee: IrExpr? args: List::IrExpr isConstructor: Bool isBindCall: Bool
 | IrLambda args: List::IrArg body: IrBlock
 | IrBlockExpr block: IrBlock
 | IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List::IrMatchCase elseBranch: IrBlock?
+// IrNewExpr => "new Type(...)" (default ctor without decl / shadow copy)
 | IrNewExpr typeId: String args: List::IrExpr
 | IrCollectionLiteral kind: IrCollectionKind items: List::IrExpr
 | IrOpBin op: String left: IrExpr right: IrExpr
 | IrTypeRefExpr ref: IrTypeRef
 
+type IrPackage
+  name: String
+  imports: List::IrImport
+  types: List::IrTypeDef
+  unions: List::IrUnionDef
+  enums: List::IrEnumDef
+  functions: List::IrFunction
+
 type IrModule
   version: String
   pkg: String
+  packages: List::IrPackage
   imports: List::IrImport
   types: List::IrTypeDef
   unions: List::IrUnionDef
