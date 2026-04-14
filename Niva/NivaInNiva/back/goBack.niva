@@ -485,12 +485,35 @@ String bindApply(argsValues): List(String) -> String = [
       TO DO: "Bind emit: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
   ]
 
-  mut result = template
-  argsValues forEachIndexed: [i, argValue ->
-      placeholder = "$" + ((i + 1) toString)
-      result <- result replace: placeholder with: argValue
+  sb = StringBuilder new
+  len = template count
+  i <- 0
+  [i < len] whileTrue: [
+      ch = template at: i
+      ch == '$' ifTrue: [
+          (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+              mut digitStr = ""
+              mut j = i + 1
+              [j < len && ((template at: j) isDigit)] whileTrue: [
+                  digitStr <- digitStr + ((template at: j) toString)
+                  j <- j + 1
+              ]
+              placeholderNum = digitStr toInt
+              isValid = (placeholderNum >= 1) && (placeholderNum <= argsCount)
+              isValid
+                ifTrue: [sb append: (argsValues at: (placeholderNum - 1))]
+                ifFalse: [sb append: "$" + digitStr]
+              i <- j
+          ] ifFalse: [
+              sb append: "$"
+              i <- i + 1
+          ]
+      ] ifFalse: [
+          sb append: (ch toString)
+          i <- i + 1
+      ]
   ]
-  ^ result
+  ^ sb toString
 ]
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
@@ -830,14 +853,12 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
     ]
   | IrDestructure => [
       tmpName = "__destructTmp" uniqueName: scope locals
-      valueStr = value toGoExpr: ctx scope: scope
+      valueStr = value toGoExpr: ctx :scope
       sb appendLineIndent: indent line: (tmpName + " := " + valueStr)
       bindings forEach: [b ->
         goName = b name toSafeGoIdent
         scope locals add: b name
-        sb appendLineIndent: indent line: ("var " + goName + " " + (b typeRef toGoType: ctx))
-        sb appendLineIndent: indent line: ("_ = " + goName)
-        sb appendLineIndent: indent line: (goName + " = " + tmpName + "." + (b name toGoFieldName))
+        sb appendLineIndent: indent line: ("var " + goName + " " + (b typeRef toGoType: ctx) + " = " + tmpName + "." + (b name toGoFieldName))
       ]
     ]
   | IrExprStmt => [
@@ -858,6 +879,8 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       bodyExpr = body toGoExpr: ctx scope: scope
       condRef = cond
       bodyRef = body
+      // whileTrue: is typically used as `[cond] whileTrue: [body]`, which arrives as IrLambda
+      // for both parts, so we must invoke lambdas to preserve semantics.
       condIsLambda = | condRef | IrLambda => true |=> false
       bodyIsLambda = | bodyRef | IrLambda => true |=> false
       condStr = condIsLambda ifTrue: ["(" + condExpr + ")()"] ifFalse: [condExpr]
@@ -963,22 +986,23 @@ constructor GoBackend [
     scope = GoScope new
     fn args forEach: [scope locals add: it name]
     fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
-    fn returnType isGoUnitType ifFalse: [
-      fnBodyResult = fn body result
-      hasTrailingReturn = fn body hasTrailingReturn
-      fnBodyResult == null
-        ifTrue: [
-          hasTrailingReturn ifFalse: [
-            ctx emitResult: null sb: sb indent: 1 retType: fn returnType scope: scope
+    fn returnType isGoUnitType
+      ifTrue: [
+        ctx emitResult: (fn body result) sb: sb indent: 1 retType: fn returnType scope: scope
+      ]
+      ifFalse: [
+        fnBodyResult = fn body result
+        hasTrailingReturn = fn body hasTrailingReturn
+        fnBodyResult == null
+          ifTrue: [
+            hasTrailingReturn ifFalse: [
+              ctx emitResult: null sb: sb indent: 1 retType: fn returnType scope: scope
+            ]
           ]
-        ]
-        ifFalse: [
-          ctx emitResult: fnBodyResult sb: sb indent: 1 retType: fn returnType scope: scope
-        ]
-    ]
-    fn returnType isGoUnitType ifTrue: [
-      ctx emitResult: (fn body result) sb: sb indent: 1 retType: fn returnType scope: scope
-    ]
+          ifFalse: [
+            ctx emitResult: fnBodyResult sb: sb indent: 1 retType: fn returnType scope: scope
+          ]
+      ]
 
     sb appendLine: "}"
     sb appendLine: ""

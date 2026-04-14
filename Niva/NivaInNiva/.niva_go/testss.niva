@@ -1,0 +1,10 @@
+//String readFileGo -> String = [
+//  Bind addImport: "os" backend: "go"
+//  ^ Bind emit: "func() string { b,_:=os.ReadFile($1); return string(b) }()" backend: "go" args: {this}
+//]
+
+//content = "../testss.txt" readFileGo
+//content echo
+
+x = #{1 2  3 4}
+x echo
