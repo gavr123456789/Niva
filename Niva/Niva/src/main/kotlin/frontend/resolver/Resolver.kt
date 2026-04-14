@@ -900,18 +900,15 @@ fun Resolver.addNewType(
         val newDeclFile = statement?.token?.file?.absolutePath
         val existingDeclFile = alreadyRegistered?.typeDeclaration?.token?.file?.absolutePath
 
-        val isLsp = GlobalVariables.isLspMode
         val isSameFile = newDeclFile != null && newDeclFile == existingDeclFile
-
-        val canReplaceInLsp = isLsp && alreadyRegistered != null && isSameFile
+        val canReplaceInLsp = GlobalVariables.isLspMode && alreadyRegistered != null && isSameFile
 
         val isInternalAlias =
             statement is TypeAliasDeclaration &&
-                    type is Type.InternalType &&
-                    InternalTypes.entries.none { it.name == typeName }
+            type is Type.InternalType &&
+            InternalTypes.entries.none { it.name == typeName }
 
-        val canReplaceInternal = isLsp && isInternalAlias
-
+        val canReplaceInternal = GlobalVariables.isLspMode && isInternalAlias
         val isInternalType = typeName in typeDB.internalTypes
 
         fun replaceTypeInSameFile(typeName: String, pkg: String, file: String?) {
@@ -934,7 +931,7 @@ fun Resolver.addNewType(
             typeTable.remove(typeName)
         }
 
-        // --- Processing of an already registered type ---
+        // processing of an already registered type
         alreadyRegistered?.let {
             if (canReplaceInLsp) {
                 replaceTypeInSameFile(typeName, it.pkg, newDeclFile)
@@ -944,7 +941,9 @@ fun Resolver.addNewType(
             }
         }
 
-        // --- Processing of internal types ---
+        // processing of internal types
+        // btw duplicate types that can't be replaced return above, so this runs only when no duplicate exists
+        // or when we already replaced the declaration in LSP mode
         when {
             canReplaceInternal && isInternalType -> {
                 removeInternalType(typeName)
@@ -969,10 +968,6 @@ fun Resolver.addNewType(
     // alias
     if (alias) {
         type.isAlias = true
-//        val realNonAliasType = typeTable[type.name]
-//        if (realNonAliasType != null) {
-//            type.protocols = realNonAliasType.protocols
-//        }
     }
     // 5 put type to all type sources
     pack.types[typeName] = type
@@ -988,25 +983,22 @@ fun Resolver.addNewType(
             unresolved.remove(typeToRemove)
         }
     }
-
 }
 
 
 fun Resolver.changeProject(newCurrentProject: String, token: Token) {
     // clear all current, load project
     currentProjectName = newCurrentProject
-    // check that there are no such project already
 
+    // check that there are no such project already
     if (projects[newCurrentProject] != null) {
         token.compileError("Project with name: $newCurrentProject already exists")
     }
     val commonProject = projects["common"] ?: token.compileError("Can't find common project")
 
-
     projects[newCurrentProject] = Project(
         name = newCurrentProject, usingProjects = mutableListOf(commonProject)
     )
-
     TODO()
 }
 
@@ -1118,7 +1110,7 @@ fun Resolver.processPendingMessageReResolves(
             changeProtocol(ctx.protocol)
             currentResolvingFileName = ctx.file
         }
-        // Ensure no stale stack from previous failed resolves affects return checks
+        // ensure no stale stack from previous failed resolves affects return checks
         stack.clear()
         wasThereReturn = null
         wasThereTopLevelReturn = false

@@ -99,15 +99,13 @@ private fun isLineInTypeDeclaration(td: SomeTypeDeclaration, line: Int): Boolean
         is UnionRootDeclaration -> {
             td.fields.any { it.token.line == line } ||
                 td.branches.any { branch ->
-                    branch.token.line == line ||
-                        branch.fields.any { it.token.line == line }
+                    branch.token.line == line || branch.fields.any { it.token.line == line }
                 }
         }
         is EnumDeclarationRoot -> {
             td.fields.any { it.token.line == line } ||
                 td.branches.any { branch ->
-                    branch.token.line == line ||
-                        branch.fieldsValues.any { it.token.line == line }
+                    branch.token.line == line || branch.fieldsValues.any { it.token.line == line }
                 }
         }
         is ErrorDomainDeclaration -> isLineInTypeDeclaration(td.unionDeclaration, line)

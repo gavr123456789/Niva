@@ -68,3 +68,65 @@ String escapeForTemplateLiteral -> String = [
   ]
   ^ sb toString
 ]
+
+String bindApply(argsValues): List(String) -> String = [
+  template = this
+  // Validate placeholder count
+  mut maxPlaceholder = 0
+  mut i = 0
+  template count repeat: [
+      (template at: i) == '$' ifTrue: [
+          (i + 1) < (template count) ifTrue: [
+              nextChar = template at: (i + 1)
+              nextChar isDigit ifTrue: [
+                  mut digitStr = nextChar toString
+                  mut j = i + 2
+                  [j < (template count) && ((template at: j) isDigit)] whileTrue: [
+                      digitStr <- digitStr + ((template at: j) toString)
+                      j <- j + 1
+                  ]
+                  placeholderNum = digitStr toInt
+                  placeholderNum > maxPlaceholder ifTrue: [
+                      maxPlaceholder <- placeholderNum
+                  ]
+              ]
+          ]
+      ]
+      i <- i + 1
+  ]
+
+  argsCount = argsValues count
+  maxPlaceholder > argsCount ifTrue: [
+      TO DO: "Bind emit: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
+  ]
+
+  sb = StringBuilder new
+  len = template count
+  i <- 0
+  [i < len] whileTrue: [
+      ch = template at: i
+      ch == '$' ifTrue: [
+          (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+              mut digitStr = ""
+              mut j = i + 1
+              [j < len && ((template at: j) isDigit)] whileTrue: [
+                  digitStr <- digitStr + ((template at: j) toString)
+                  j <- j + 1
+              ]
+              placeholderNum = digitStr toInt
+              isValid = (placeholderNum >= 1) && (placeholderNum <= argsCount)
+              isValid
+                ifTrue: [sb append: (argsValues at: (placeholderNum - 1))]
+                ifFalse: [sb append: "$" + digitStr]
+              i <- j
+          ] ifFalse: [
+              sb append: "$"
+              i <- i + 1
+          ]
+      ] ifFalse: [
+          sb append: (ch toString)
+          i <- i + 1
+      ]
+  ]
+  ^ sb toString
+]
