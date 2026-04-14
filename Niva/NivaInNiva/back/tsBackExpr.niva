@@ -508,41 +508,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                   | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
                   |=> [TO DO: "Bind emit:backend:args: expects List literal as third argument"]
 
-                // Validate placeholder count
-                mut maxPlaceholder = 0
-                mut i = 0
-                template count repeat: [
-                    (template at: i) == '$' ifTrue: [
-                        (i + 1) < (template count) ifTrue: [
-                            nextChar = template at: (i + 1)
-                            nextChar isDigit ifTrue: [
-                                mut digitStr = nextChar toString
-                                mut j = i + 2
-                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
-                                    digitStr <- digitStr + ((template at: j) toString)
-                                    j <- j + 1
-                                ]
-                                placeholderNum = digitStr toInt
-                                placeholderNum > maxPlaceholder ifTrue: [
-                                    maxPlaceholder <- placeholderNum
-                                ]
-                            ]
-                        ]
-                    ]
-                    i <- i + 1
-                ]
-
-                argsCount = argsValues count
-                maxPlaceholder > argsCount ifTrue: [
-                    TO DO: "Bind emit:backend:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
-                ]
-
-                mut result = template
-                argsValues forEachIndexed: [i, argValue ->
-                    placeholder = "$" + ((i + 1) toString)
-                    result <- result replace: placeholder with: argValue
-                ]
-                ^ result
+                ^ template bindApply: argsValues
             ]
 
         isBindReceiver && (dbMsg name == "emit:args:")
@@ -558,41 +524,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                   | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
                   |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
 
-                // Validate placeholder count
-                mut maxPlaceholder = 0
-                mut i = 0
-                template count repeat: [
-                    (template at: i) == '$' ifTrue: [
-                        (i + 1) < (template count) ifTrue: [
-                            nextChar = template at: (i + 1)
-                            nextChar isDigit ifTrue: [
-                                mut digitStr = nextChar toString
-                                mut j = i + 2
-                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
-                                    digitStr <- digitStr + ((template at: j) toString)
-                                    j <- j + 1
-                                ]
-                                placeholderNum = digitStr toInt
-                                placeholderNum > maxPlaceholder ifTrue: [
-                                    maxPlaceholder <- placeholderNum
-                                ]
-                            ]
-                        ]
-                    ]
-                    i <- i + 1
-                ]
-
-                argsCount = argsValues count
-                maxPlaceholder > argsCount ifTrue: [
-                    TO DO: "Bind emit:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
-                ]
-
-                mut result = template
-                argsValues forEachIndexed: [i, argValue ->
-                    placeholder = "$" + ((i + 1) toString)
-                    result <- result replace: placeholder with: argValue
-                ]
-                ^ result
+                ^ template bindApply: argsValues
             ]
 
         dbMsg name == "whileTrue:" ifTrue: [
