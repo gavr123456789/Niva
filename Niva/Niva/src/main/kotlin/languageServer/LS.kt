@@ -129,6 +129,19 @@ private fun messageDeclBodyContainsLine(md: MessageDeclaration, line: Int): Bool
     return line in minLine..maxLine
 }
 
+private fun collectLinesForStatements(statements: List<Statement>): Set<Int> {
+    if (statements.isEmpty()) return emptySet()
+    val lines = mutableSetOf<Int>()
+    statements.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        for (line in tok.line..endLine) {
+            lines.add(line)
+        }
+    }
+    return lines
+}
+
 private fun findMessageDeclByBodyLine(
     statements: List<Statement>,
     line: Int
@@ -178,6 +191,7 @@ private fun LS.updateMessageBodyAndReResolve(
 
     val oldReal = if (oldDecl is ConstructorDeclaration) oldDecl.msgDeclaration else oldDecl
     val newReal = if (newDecl is ConstructorDeclaration) newDecl.msgDeclaration else newDecl
+    val oldBodyLines = collectLinesForStatements(oldReal.body)
     oldReal.body.clear()
     oldReal.body.addAll(newReal.body)
 
@@ -186,7 +200,8 @@ private fun LS.updateMessageBodyAndReResolve(
     val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
 
     resolver.enqueueForReResolve(listOf(oldDecl))
-    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+    megaStore.removeLines(fileAbsolutePath, oldBodyLines)
+    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = true)
 
     resolver.enqueueDependents(oldDecl)
     resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
@@ -297,6 +312,14 @@ class LS(val info: ((String) -> Unit)? = null) {
         // file absolute path to line to a pair of statement + scope of it's line
         val data: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>> = mutableMapOf()
 
+        fun removeLines(path: String, lines: Set<Line>) {
+            if (lines.isEmpty()) return
+            val file = data[path] ?: return
+            lines.forEach { file.remove(it) }
+            if (file.isEmpty()) {
+                data.remove(path)
+            }
+        }
 
         fun addNew(s: Statement, scope: Scope, prepend: Boolean) {
             val sFile = s.token.file.absolutePath
