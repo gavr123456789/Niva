@@ -551,11 +551,10 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         newSelector = isDefaultConstructor
             ifTrue: [
                 useNewCtor
-                  ifTrue:  ["new " + dbMsg receiverType name]
-                  ifFalse: [dbMsg receiverType name + "__" + selectorFromArgs + suffixStr]
-            ] ifFalse: [
-                dbMsg receiverType name + "__" + selectorFromArgs + suffixStr
+                  ifTrue:  [ "new " + dbMsg receiverType name ]
+                  ifFalse: [ dbMsg receiverType name + "__" + selectorFromArgs + suffixStr ]
             ]
+            ifFalse: [ dbMsg receiverType name + "__" + selectorFromArgs + suffixStr ]
 
         receiverStr = getReceiverTs do
         receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
@@ -564,13 +563,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         argsExprStr = args map: [
             it expr toTSFromPkg: currentPkg db: db
         ]
-        args = receiverWithComma + (argsExprStr joinWith: ", ")
+        args = "(" + receiverWithComma + (argsExprStr joinWith: ", ") + ")"
 
-        useNewCtor ifTrue: [
-            ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + args + ")"
-        ]
 
-        ^ pkg_qualifier + newSelector + "(" + args + ")"
+        ^ useNewCtor
+            ifTrue:  [ "new " + pkg_qualifier + dbMsg receiverType name + args ]
+            ifFalse: [ pkg_qualifier + newSelector + args ]
     ]
 
 
