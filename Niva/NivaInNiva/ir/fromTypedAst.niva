@@ -841,6 +841,8 @@ ResolverHelper toIrModule -> IrModule = [
 
   types forEach: [ t ->
     list = typesByPkg get: t pkgId orPut: [{}!]
+
+
     list add: t
   ]
 
