@@ -65,3 +65,124 @@ Test goBindingsReadFile = [
   Assert that: (go contains: "os.ReadFile(read)") equals: true
   Assert that: (go contains: "main__Int__read(1, \"file.txt\")") equals: true
 ]
+
+Test goGenericTypeParams = [
+  fileMain = """
+    type Box
+      value: T
+
+    box = Box value: 1
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "type main_Box[T any] struct {") equals: true
+  Assert that: (go contains: "value T") equals: true
+]
+
+Test goEnumCodegen = [
+  fileMain = """
+    enum Color = Red | Green | Blue
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "type main_Color int") equals: true
+  Assert that: (go contains: "main_Color_Red main_Color = iota") equals: true
+  Assert that: (go contains: "main_Color_Green") equals: true
+  Assert that: (go contains: "main_Color_Blue") equals: true
+]
+
+Test goNullableTypeCodegen = [
+  fileMain = """
+    type Person
+      name: String
+
+    type Holder
+      maybeAge: Int?
+      maybePerson: Person?
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "maybeAge *int") equals: true
+  Assert that: (go contains: "maybePerson *main_Person") equals: true
+]
+
+Test goWhileTrueCodegen = [
+  fileMain = """
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "for {") equals: true
+  Assert that: (go contains: "if !(") equals: true
+  Assert that: (go contains: ") { break }") equals: true
+  Assert that: (go contains: ")()") equals: true
+]
+
+Test goDestructureCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "var age int = __destructTmp.age") equals: true
+  Assert that: (go contains: "var name string = __destructTmp.name") equals: true
+]
+
+Test goNestedMatchCodegen = [
+  fileMain = """
+    x = 1
+    y = 2
+    res = | x
+    | 1 => | y
+            | 2 => 10
+            |=> 20
+    |=> 30
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "__matchSubject :=") equals: true
+  Assert that: (go contains: "return func()") equals: true
+]
+
+Test goLambdaArgCodegen = [
+  fileMain = """
+    {1 2 3} forEach: [item::Int -> item echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "func(item int)") equals: true
+]
+
+Test goBindPlaceholder10 = [
+  fileMain = """
+    Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int = [
+      ^ Bind emit: "$10 + $1" backend: "go" args: {a b c d e f g h i j k}
+    ]
+    x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  Assert that: (go contains: "return j + a") equals: true
+]

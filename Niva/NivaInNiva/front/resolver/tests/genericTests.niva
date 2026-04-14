@@ -1,0 +1,16 @@
+Test list_generic_has_been_inferred_as_a_field = [
+  fileMain = """
+    type Sas x: List(Int)
+    Sas x: {}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+  sasType = db packages at: "main", unpackOrPANIC,
+               types at: "Sas", unpackOrPANIC asTypeT
+  fieldType = sasType fields first typeT asListT t
+  Assert that: fieldType name equals: "Int"
+  // check that Sas x: {} has List(Int)
+  Assert that: typedAst last typeInfo t toString equals: " Type(Sas x:  Type(List < Type(Int)>))"
+]
