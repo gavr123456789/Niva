@@ -189,7 +189,6 @@ Test goBindPlaceholder10 = [
 
 Test goFuncNameFromId = [
   Assert that: ("main.main_Int.add" goFuncNameFromId) equals: "main__Int__add"
-  Assert that: ("util_util_List.add" goFuncNameFromId) equals: "util__List__add"
   Assert that: ("math.core_Int.plus" goFuncNameFromId) equals: "math__Int__plus"
   Assert that: ("core_Int.==" goFuncNameFromId) equals: "core__Int__equals"
   Assert that: ("main_Point.set:" goFuncNameFromId) equals: "main__Point__set"

@@ -183,53 +183,6 @@ String stripPkgPrefix(prefix): String -> String = [
 String goFuncNameFromId -> String = [
   mut funcId = this
 
-  // Normalize duplicated pkg prefix in funcId: <pkg>.<pkg>_<recv>.<name> -> <pkg>_<recv>.<name>
-  lenNorm = funcId count
-  mut iNorm = 0
-  mut firstDot = -1
-  mut lastDot = -1
-  [iNorm < lenNorm] whileTrue: [
-    (funcId at: iNorm) == '.' ifTrue: [
-      firstDot == -1 ifTrue: [firstDot <- iNorm]
-      lastDot <- iNorm
-    ]
-    iNorm <- iNorm + 1
-  ]
-  hasTwoDotsNorm = (firstDot != -1) && (lastDot != -1) && (lastDot != firstDot)
-  mut skipFallback = false
-  hasTwoDotsNorm ifTrue: [
-    pkg = funcId slice: 0..<firstDot
-    recvId = funcId slice: (firstDot + 1)..<lastDot
-    name = funcId slice: (lastDot + 1)..<lenNorm
-    prefix = pkg + "_"
-    recvId startsWith: prefix, ifTrue: [
-      funcId <- recvId + "." + name
-      skipFallback <- true
-    ]
-  ]
-
-  skipFallback ifFalse: [
-    // Fallback for already-sanitized ids: drop duplicated "<pkg>_" prefix.
-    lenNorm2 = funcId count
-    mut j = 0
-    mut firstUnderscore = -1
-    [j < lenNorm2] whileTrue: [
-      (funcId at: j) == '_' ifTrue: [
-        firstUnderscore <- j
-        j <- lenNorm2
-      ] ifFalse: [
-        j <- j + 1
-      ]
-    ]
-    firstUnderscore != -1 ifTrue: [
-      firstSeg = funcId slice: 0..<firstUnderscore
-      doublePrefix = firstSeg + "_" + firstSeg + "_"
-      funcId startsWith: doublePrefix, ifTrue: [
-        funcId <- funcId slice: (firstUnderscore + 1)..<lenNorm2
-      ]
-    ]
-  ]
-
   // parse funcId: <recvId>.<name> or <declPkg>.<recvId>.<name>
   len = funcId count
   mut i = 0
