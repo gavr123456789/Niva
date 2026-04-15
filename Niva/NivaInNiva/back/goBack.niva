@@ -62,28 +62,15 @@ String goNormalizeTypeId -> String = [
       ifFalse: [this]
 ]
 
-String isCoreFuncId -> Bool = [
-  len = this count
-  ^ len >= 5 && ((this slice: 0..<5) == "core_")
-]
-
-String coreFuncNameFromId -> String = [
-  len = this count
-  mut i = 0
-  mut lastDot = -1
-  [i < len] whileTrue: [
-    (this at: i) == '.' ifTrue: [lastDot <- i]
-    i <- i + 1
-  ]
-  lastDot == -1 ifTrue: [^ this toSafeGoIdent]
-  recvId = this slice: 0..<lastDot
-  name = this slice: (lastDot + 1)..<len
-
+IrTypeRef coreFuncNameFromCall(name): String -> String = [
+  recvId = typeId
   recvLen = recvId count
   hasCorePrefix = recvLen >= 5 && ((recvId slice: 0..<5) == "core_")
   recvBase = hasCorePrefix ifTrue: [recvId slice: 5..<recvLen] ifFalse: [recvId]
   recvBaseSafe = recvBase toSafeGoIdent
 
+
+  name log
   mut normalized = name replace: ":" with: "__"
   normalized count >= 2 ifTrue: [
     tail = normalized slice: (normalized count - 2)..<normalized count
@@ -180,52 +167,9 @@ String stripPkgPrefix(prefix): String -> String = [
       ifFalse: [this]
 ]
 
-String goFuncNameFromId -> String = [
-  mut funcId = this
-
-  // parse funcId: <recvId>.<name> or <declPkg>.<recvId>.<name>
-  len = funcId count
-  mut i = 0
-  mut first = -1
-  mut last = -1
-  [i < len] whileTrue: [
-    (funcId at: i) == '.' ifTrue: [
-      first == -1 ifTrue: [first <- i]
-      last <- i
-    ]
-    i <- i + 1
-  ]
-  first == -1 ifTrue: [^ funcId toSafeGoIdent]
-
-  mut declPkg = ""
-  mut recvId = ""
-  mut name = ""
-  hasTwoDots = (first != -1) && (last != -1) && (last != first)
-  hasTwoDots ifTrue: [
-    declPkg <- funcId slice: 0..<first
-    recvId <- funcId slice: (first + 1)..<last
-    name <- funcId slice: (last + 1)..<len
-  ] ifFalse: [
-    recvId <- funcId slice: 0..<first
-    name <- funcId slice: (first + 1)..<len
-  ]
-
-  mut pkgForName = declPkg
-  pkgForName == "" ifTrue: [
-    mut j = 0
-    mut firstUnderscore = -1
-    [j < (recvId count)] whileTrue: [
-      (recvId at: j) == '_' ifTrue: [
-        firstUnderscore <- j
-        j <- recvId count
-      ] ifFalse: [
-        j <- j + 1
-      ]
-    ]
-    firstUnderscore != -1 ifTrue: [
-      pkgForName <- recvId slice: 0..<firstUnderscore
-    ]
-  ]
+IrFunction goFuncNameFromIr -> String = [
+  recvId = receiverType typeId
+  pkgForName = pkgId
 
   mut recvBase = recvId
   pkgForName != "" ifTrue: [
@@ -245,15 +189,22 @@ String goFuncNameFromId -> String = [
   ^ full toSafeGoIdent
 ]
 
+GoContext goFuncNameForFn(fn): IrFunction -> String = [
+  existing = funcNames at: fn id
+  ^ | existing
+  | null => [
+      raw = fn goFuncNameFromIr
+      name = raw uniqueName: usedFuncNames
+      funcNames at: fn id put: name
+      ^ name
+    ]
+  |=> existing
+]
+
 GoContext goFuncNameFor(funcId): String -> String = [
   existing = funcNames at: funcId
   ^ | existing
-  | null => [
-      raw = funcId goFuncNameFromId
-      name = raw uniqueName: usedFuncNames
-      funcNames at: funcId put: name
-      ^ name
-    ]
+  | null => [TO DO: "Go funcId not registered: " + funcId]
   |=> existing
 ]
 
@@ -340,7 +291,7 @@ IrTypeRef goBaseType(ctx): GoContext -> String = [
 ]
 
 IrTypeRef toGoType(ctx): GoContext -> String = [
-  base = this goBaseType: ctx
+  base = .goBaseType: ctx
   ^ nullable
       ifTrue: [
         // already reference-like types can be nil without pointer
@@ -348,7 +299,7 @@ IrTypeRef toGoType(ctx): GoContext -> String = [
         isIfaceStr = base == "interface{}"
         isIface = isAny || isIfaceStr
 
-        isRefLike = (this isGoRefLikeType) || isIface
+        isRefLike = (.isGoRefLikeType) || isIface
         isRefLike ifTrue: [base] ifFalse: ["*" + base]
       ]
       ifFalse: [base]
@@ -366,12 +317,12 @@ IrTypeRef toGoZeroValue(ctx): GoContext -> String = [
         | "struct{}" => "struct{}{}"
         | "any" | "interface{}" => "nil"
         |=> [
-            this isGoRefLikeType ifTrue: ["nil"] ifFalse: [base + "{}"]
+            .isGoRefLikeType ifTrue: ["nil"] ifFalse: [base + "{}"]
           ]
       ]
 ]
 
-String toGoFieldName -> String = this toSafeGoIdent
+String toGoFieldName -> String = .toSafeGoIdent
 
 IrLiteral toGoLiteral -> String =
   | kind
@@ -380,85 +331,88 @@ IrLiteral toGoLiteral -> String =
   | IrLiteralKind.Bool => lexeme
   | IrLiteralKind.Int => lexeme
   | IrLiteralKind.Double => lexeme
-  | IrLiteralKind.Float => [
-      lexeme endsWith: "f", ifTrue: [lexeme dropLast: 1] ifFalse: [lexeme]
-    ]
+  | IrLiteralKind.Float => lexeme endsWith: "f",
+                                  ifTrue:  [lexeme dropLast: 1]
+                                  ifFalse: [lexeme]
   | IrLiteralKind.Char => lexeme
   | IrLiteralKind.String => lexeme
 
-IrExpr irStringLiteralValue -> String? = [
-  ^ | this
-    | IrLiteralExpr => [
-        literal kind == IrLiteralKind.String
-          ifTrue: [literal lexeme unquoteLiteral]
-          ifFalse: [null]
-      ]
-    |=> null
-]
+IrExpr irStringLiteralValue -> String? = | this
+  | IrLiteralExpr => [
+      literal kind == IrLiteralKind.String
+        ifTrue: [literal lexeme unquoteLiteral]
+        ifFalse: [null]
+    ]
+  |=> null
 
-IrExpr irListLiteralItems -> List::IrExpr = [
-  ^ | this
-    | IrCollectionLiteral => [
-        kind == IrCollectionKind.List ifTrue: [items] ifFalse: [TO DO: "Bind emit:args: expects List literal as second argument"]
-      ]
-    |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
-]
+
+IrExpr irListLiteralItems -> List::IrExpr = | this
+  | IrCollectionLiteral => [
+      kind == IrCollectionKind.List ifTrue: [items] ifFalse: [TO DO: "Bind emit:args: expects List literal as second argument"]
+    ]
+  |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
+
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
-  funcId == null ifTrue: [^ null]
-  funcIdLocal = funcId unpackOrPANIC
-  ^ | funcIdLocal
-    | "core_Bind.emit:" => [
-        templateExpr = args first
-        templateVal = templateExpr irStringLiteralValue
-        | templateVal
-        | null => (templateExpr toGoExpr: ctx scope: scope)
-        |=> templateVal
-      ]
-    | "core_Bind.emit:args:" => [
-        templateExpr = args first
-        argsListExpr = args at: 1
-        template = templateExpr irStringLiteralValue unpackOrPANIC
-        items = argsListExpr irListLiteralItems
-        argsValues = items map: [it toGoExpr: ctx scope: scope]
-        template bindApply: argsValues
-      ]
-    | "core_Bind.emit:backend:" => [
-        templateExpr = args first
-        backendExpr = args at: 1
-        backendName = backendExpr irStringLiteralValue unpackOrPANIC
-        backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
-        templateVal = templateExpr irStringLiteralValue
-        | templateVal
-        | null => (templateExpr toGoExpr: ctx scope: scope)
-        |=> templateVal
-      ]
-    | "core_Bind.emit:backend:args:" => [
-        templateExpr = args first
-        backendExpr = args at: 1
-        argsListExpr = args at: 2
-        backendName = backendExpr irStringLiteralValue unpackOrPANIC
-        backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
-        template = templateExpr irStringLiteralValue unpackOrPANIC
-        items = argsListExpr irListLiteralItems
-        argsValues = items map: [it toGoExpr: ctx scope: scope]
-        template bindApply: argsValues
-      ]
-    | "core_Bind.addImport:" => [
-        importExpr = args first
-        importName = importExpr irStringLiteralValue unpackOrPANIC
-        ctx addImport: importName
-        ""
-      ]
-    | "core_Bind.addImport:backend:" => [
-        importExpr = args first
-        backendExpr = args at: 1
-        backendName = backendExpr irStringLiteralValue unpackOrPANIC
-        backendName != "go" ifTrue: [^ ""]
-        importName = importExpr irStringLiteralValue unpackOrPANIC
-        ctx addImport: importName
-        ""
-      ]
+  isBindCall ifFalse: [^ null]
+
+  | receiverType
+  | null => []
+  |=> receiverType typeId == "core_Bind" ifFalse: [^ null]
+
+  msgNameLocal = msgName unpackOrPANIC
+  ^ | msgNameLocal
+    | "emit:" => [
+      templateExpr = args first
+      templateVal = templateExpr irStringLiteralValue
+      | templateVal
+      | null => (templateExpr toGoExpr: ctx scope: scope)
+      |=> templateVal
+    ]
+    | "emit:args:" => [
+      templateExpr = args first
+      argsListExpr = args at: 1
+      template = templateExpr irStringLiteralValue unpackOrPANIC
+      items = argsListExpr irListLiteralItems
+      argsValues = items map: [it toGoExpr: ctx scope: scope]
+      template bindApply: argsValues
+    ]
+    | "emit:backend:" => [
+      templateExpr = args first
+      backendExpr = args at: 1
+      backendName = backendExpr irStringLiteralValue unpackOrPANIC
+      backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
+      templateVal = templateExpr irStringLiteralValue
+      | templateVal
+      | null => (templateExpr toGoExpr: ctx scope: scope)
+      |=> templateVal
+    ]
+    | "emit:backend:args:" => [
+      templateExpr = args first
+      backendExpr = args at: 1
+      argsListExpr = args at: 2
+      backendName = backendExpr irStringLiteralValue unpackOrPANIC
+      backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
+      template = templateExpr irStringLiteralValue unpackOrPANIC
+      items = argsListExpr irListLiteralItems
+      argsValues = items map: [it toGoExpr: ctx scope: scope]
+      template bindApply: argsValues
+    ]
+    | "addImport:" => [
+      importExpr = args first
+      importName = importExpr irStringLiteralValue unpackOrPANIC
+      ctx addImport: importName
+      ""
+    ]
+    | "addImport:backend:" => [
+      importExpr = args first
+      backendExpr = args at: 1
+      isGo = backendExpr irStringLiteralValue unpackOrPANIC == "go"
+      isGo ifFalse: [^ ""]
+      importName = importExpr irStringLiteralValue unpackOrPANIC
+      ctx addImport: importName
+      ""
+    ]
     |=> null
 ]
 
@@ -502,9 +456,12 @@ IrExpr toGoExpr(ctx): GoContext scope: GoScope -> String =
           ]
         ]
       |=> [
-          funcIdLocal isCoreFuncId
+          declPkgLocal = declPkg unpackOrPANIC
+          declPkgLocal == "core"
             ifTrue: [
-              coreFn = funcIdLocal coreFuncNameFromId
+              msgNameLocal = msgName unpackOrPANIC
+              recvTypeLocal = receiverType unpackOrPANIC
+              coreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal
               "core." + coreFn + "(" + argsStr + ")"
             ]
             ifFalse: [
@@ -863,7 +820,7 @@ constructor GoBackend [
   ]
 
   on emitFunction(fn): IrFunction ctx: GoContext sb: StringBuilder -> Unit = [
-    name = ctx goFuncNameFor: fn id
+    name = ctx goFuncNameForFn: fn
     typeParams = fn generics goTypeParams
     argsStr = fn args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoType: ctx)]
     retStr = fn returnType isGoUnitType ifTrue: [""] ifFalse: [" " + (fn returnType toGoType: ctx)]
@@ -910,6 +867,9 @@ constructor GoBackend [
     ctx addImport: "niva_go/core"
 
     bodySb = StringBuilder new
+
+    // Pre-register function names to avoid parsing funcId strings during codegen.
+    ir functions forEach: [ctx goFuncNameForFn: it]
 
     ir types forEach: [GoBackend emitTypeDef: it ctx: ctx sb: bodySb]
     ir unions forEach: [GoBackend emitUnionDef: it ctx: ctx sb: bodySb]
