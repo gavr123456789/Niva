@@ -17,16 +17,16 @@ Test goTaggedUnionShapes = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "type main_Point struct {") equals: true
-  Assert that: (go contains: "type main_Shape interface { ismain_Shape() }") equals: true
-  Assert that: (go contains: "type main_Rectangle struct {") equals: true
-  Assert that: (go contains: "type main_Circle struct {") equals: true
-  Assert that: (go contains: "func (main_Rectangle) ismain_Shape() {}") equals: true
-  Assert that: (go contains: "func (main_Circle) ismain_Shape() {}") equals: true
-  Assert that: (go contains: "func main__Shape__area") equals: true
-  Assert that: (go contains: "switch __matchSubject.(type) {") equals: true
-  Assert that: (go contains: "case main_Rectangle:") equals: true
-  Assert that: (go contains: "case main_Circle:") equals: true
+  go contains: "type main_Point struct {", assertTrue
+  go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
+  go contains: "type main_Rectangle struct {", assertTrue
+  go contains: "type main_Circle struct {", assertTrue
+  go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
+  go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
+  go contains: "func main__Shape__area", assertTrue
+  go contains: "switch __matchSubject.(type) {", assertTrue
+  go contains: "case main_Rectangle:", assertTrue
+  go contains: "case main_Circle:", assertTrue
 ]
 
 Test goShadowCopyCodegen = [
@@ -42,7 +42,7 @@ Test goShadowCopyCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "main_Person{p.name, 25}") equals: true
+  go contains: "main_Person{p.name, 25}", assertTrue
 ]
 
 Test goBindingsReadFile = [
@@ -58,12 +58,12 @@ Test goBindingsReadFile = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "import (") equals: true
-  Assert that: (go contains: "\"niva_go/core\"") equals: true
-  Assert that: (go contains: "\"os\"") equals: true
-  Assert that: (go contains: "func main__Int__read") equals: true
-  Assert that: (go contains: "os.ReadFile(read)") equals: true
-  Assert that: (go contains: "main__Int__read(1, \"file.txt\")") equals: true
+  go contains: "import (", assertTrue
+  go contains: "\"niva_go/core\"", assertTrue
+  go contains: "\"os\"", assertTrue
+  go contains: "func main__Int__read", assertTrue
+  go contains: "os.ReadFile(read)", assertTrue
+  go contains: "main__Int__read(1, \"file.txt\")", assertTrue
 ]
 
 Test goGenericTypeParams = [
@@ -77,8 +77,8 @@ Test goGenericTypeParams = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "type main_Box[T any] struct {") equals: true
-  Assert that: (go contains: "value T") equals: true
+  go contains: "type main_Box[T any] struct {", assertTrue
+  go contains: "value T", assertTrue
 ]
 
 //Test goEnumCodegen = [
@@ -89,10 +89,10 @@ Test goGenericTypeParams = [
 //  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
 //  go = GoBackend fullFromResolver: result
 //
-//  Assert that: (go contains: "type main_Color int") equals: true
-//  Assert that: (go contains: "main_Color_Red main_Color = iota") equals: true
-//  Assert that: (go contains: "main_Color_Green") equals: true
-//  Assert that: (go contains: "main_Color_Blue") equals: true
+//  go contains: "type main_Color int", assertTrue
+//  go contains: "main_Color_Red main_Color = iota", assertTrue
+//  go contains: "main_Color_Green", assertTrue
+//  go contains: "main_Color_Blue", assertTrue
 //]
 
 Test goNullableTypeCodegen = [
@@ -108,8 +108,8 @@ Test goNullableTypeCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "maybeAge *int") equals: true
-  Assert that: (go contains: "maybePerson *main_Person") equals: true
+  go contains: "maybeAge *int", assertTrue
+  go contains: "maybePerson *main_Person", assertTrue
 ]
 
 Test goWhileTrueCodegen = [
@@ -121,10 +121,10 @@ Test goWhileTrueCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "for {") equals: true
-  Assert that: (go contains: "if !(") equals: true
-  Assert that: (go contains: ") { break }") equals: true
-  Assert that: (go contains: ")()") equals: true
+  go contains: "for {", assertTrue
+  go contains: "if !(", assertTrue
+  go contains: ") { break }", assertTrue
+  go contains: ")()", assertTrue
 ]
 
 Test goDestructureCodegen = [
@@ -140,8 +140,8 @@ Test goDestructureCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "var age int = __destructTmp.age") equals: true
-  Assert that: (go contains: "var name string = __destructTmp.name") equals: true
+  go contains: "var age int = __destructTmp.age", assertTrue
+  go contains: "var name string = __destructTmp.name", assertTrue
 ]
 
 Test goNestedMatchCodegen = [
@@ -158,8 +158,8 @@ Test goNestedMatchCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "__matchSubject :=") equals: true
-  Assert that: (go contains: "return func()") equals: true
+  go contains: "__matchSubject :=", assertTrue
+  go contains: "return func()", assertTrue
 ]
 
 Test goLambdaArgCodegen = [
@@ -170,7 +170,7 @@ Test goLambdaArgCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "func(item int)") equals: true
+  go contains: "func(item int)", assertTrue
 ]
 
 Test goBindPlaceholder10 = [
@@ -184,7 +184,7 @@ Test goBindPlaceholder10 = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  Assert that: (go contains: "return j + a") equals: true
+  go contains: "return j + a", assertTrue
 ]
 
 Test goFuncNameFromId = [
