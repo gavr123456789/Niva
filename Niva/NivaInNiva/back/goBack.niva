@@ -25,38 +25,35 @@ constructor GoScope new = GoScope locals: #()! fieldAliases: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
-  locals forEach: [newLocals add: it]
   newAliases::mut Set(String) = #()!
-  fieldAliases forEach: [newAliases add: it]
+  newLocals addAll: locals
+  newAliases addAll: fieldAliases
+
   ^ GoScope locals: newLocals fieldAliases: newAliases
 ]
 
-GoContext emitResult(result): IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
-  retType isGoUnitType ifFalse: [
-    result == null
-      ifTrue: [sb appendLineIndent: indent line: ("return " + (retType toGoZeroValue: this))]
-      ifFalse: [
-        res = result unpackOrPANIC
-        sb appendLineIndent: indent line: ("return " + (res toGoExpr: this scope: scope))
-      ]
-  ]
-  retType isGoUnitType ifTrue: [
-    result == null
-      ifFalse: [
-        res = result unpackOrPANIC
-        sb appendLineIndent: indent line: (res toGoStatement: this scope: scope)
-      ]
-  ]
+GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
+  retType isGoUnitType
+    ifFalse: [
+      | emitResult
+      | null => [sb appendLineIndent: indent line: ("return " + (retType toGoZeroValue: this))]
+      |=> [sb appendLineIndent: indent
+              line: ("return " + (emitResult toGoExpr: this :scope))]
+    ]
+    ifTrue: [
+      | emitResult
+      | null => []
+      |=> [ sb appendLineIndent: indent
+            line: (emitResult toGoStatement: this :scope) ]
+    ]
 ]
 
-String isGoKeyword -> Bool =
-  | this
-  | "break" | "default" | "func" | "interface" | "select"
-  | "case" | "defer" | "go" | "map" | "struct"
-  | "chan" | "else" | "goto" | "package" | "switch"
-  | "const" | "fallthrough" | "if" | "range" | "type"
-  | "continue" | "for" | "import" | "return" | "var" => true
-  |=> false
+static GO_KEYWORDS = #("break" "default" "func" "interface" "select"
+                        "case" "defer" "go" "map" "struct"
+                        "chan" "else" "goto" "package" "switch"
+                        "const" "fallthrough" "if" "range" "type"
+                        "continue" "for" "import" "return" "var")
+String isGoKeyword -> Bool = GO_KEYWORDS contains: this
 
 String goNormalizeTypeId -> String = [
   hasGeneric = this contains: "__"
