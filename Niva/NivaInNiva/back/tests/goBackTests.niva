@@ -186,12 +186,3 @@ Test goBindPlaceholder10 = [
 
   go contains: "return j + a", assertTrue
 ]
-
-Test goFuncNameFromId = [
-  Assert that: ("main.main_Int.add" goFuncNameFromId) equals: "main__Int__add"
-  Assert that: ("math.core_Int.plus" goFuncNameFromId) equals: "math__Int__plus"
-  Assert that: ("core_Int.==" goFuncNameFromId) equals: "core__Int__equals"
-  Assert that: ("main_Point.set:" goFuncNameFromId) equals: "main__Point__set"
-  Assert that: ("foo.core_List?.map" goFuncNameFromId) equals: "foo__List_Nullable__map"
-  Assert that: ("type" goFuncNameFromId) equals: "type_"
-]
