@@ -1,3 +1,12 @@
+/// addImport:backend: -> addImport__backend
+String replaceDoubleWithUnderscore -> String = [
+  replaced = .replace: ":" with: "__"
+  normalized = replaced endsWith: "__",
+               ifTrue:  [replaced dropLast: 2]
+               ifFalse: [replaced]
+  ^ normalized
+]
+
 String operatorToString -> String =
   | this
   | "+" => "plus"

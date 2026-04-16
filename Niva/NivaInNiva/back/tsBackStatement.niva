@@ -144,12 +144,7 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         // if keyword (has colons), reconstruct baseName from name parts, not local arg names
         finalBaseName = (baseName contains: ":")
-            ifTrue:  [
-              tmp = baseName replace: ":" with: "__"
-              len = tmp count
-              endsWith = (len >= 2) && ((tmp slice: (len - 2)..<len) == "__")
-              endsWith ifTrue: [tmp slice: 0..<(len - 2)] ifFalse: [tmp]
-            ]
+            ifTrue:  [baseName replaceDoubleWithUnderscore]
             ifFalse: [baseName operatorToString]
 
         methodName = receiverType name + "__" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
