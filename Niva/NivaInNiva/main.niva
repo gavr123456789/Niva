@@ -69,6 +69,26 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
+]
+goBindingsReadFile = [
+  fileMain = """
+    Int read: String -> String = [
+      Bind addImport: "os" backend: "go"
+      ^ Bind emit: "os.ReadFile($1)" backend: "go" args: {read}
+    ]
+    x = 1 read: "file.txt"
+    x echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+  go log
+  go contains: "import (", assertTrue
+  go contains: "\"niva_go/core\"", assertTrue
+  go contains: "\"os\"", assertTrue
+  go contains: "func main__Int__read", assertTrue
+  go contains: "os.ReadFile(read)", assertTrue
+  go contains: "main__Int__read(1, \"file.txt\")", assertTrue
 ] do
 
 irTypeAndMethod = [

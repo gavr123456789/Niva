@@ -2,18 +2,20 @@
 
 package main.languageServer
 
-import frontend.resolver.*
-import main.codogen.BuildSystem
-import main.frontend.meta.Token
-import main.frontend.meta.compileError
-import main.frontend.meta.createFakeToken
-import main.frontend.meta.removeColors
-import main.frontend.parser.types.ast.*
-import main.utils.*
-import java.io.File
-import java.net.URI
-import java.util.*
-
+import frontend.resolver.MessageMetadata
+import frontend.resolver.Protocol
+import frontend.resolver.Resolver
+import frontend.resolver.Type
+import frontend.resolver.buildGlobalConstScopeFromFiles
+import frontend.resolver.buildGlobalConstScopeFromStatements
+import frontend.resolver.clearDependenciesFor
+import frontend.resolver.enqueueDependents
+import frontend.resolver.enqueueForReResolve
+import frontend.resolver.getAst
+import frontend.resolver.parseFilesToAST
+import frontend.resolver.processPendingMessageReResolves
+import frontend.resolver.resolveWithBackTracking
+import frontend.resolver.unpackNull
 import io.github.irgaly.kfswatch.KfsDirectoryWatcher
 import io.github.irgaly.kfswatch.KfsEvent
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,44 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import languageServer.readFromJson
 import languageServer.toIdentifierExpr
+import main.codogen.BuildSystem
+import main.frontend.meta.Token
+import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
+import main.frontend.meta.removeColors
+import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.EnumBranch
+import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.ErrorDomainDeclaration
+import main.frontend.parser.types.ast.ExtendDeclaration
+import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.ManyConstructorDecl
+import main.frontend.parser.types.ast.Message
+import main.frontend.parser.types.ast.MessageDeclaration
+import main.frontend.parser.types.ast.MessageDeclarationBinary
+import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.MessageSend
+import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.StaticBuilderDeclaration
+import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeAliasDeclaration
+import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnionBranchDeclaration
+import main.frontend.parser.types.ast.UnionRootDeclaration
+import main.frontend.parser.types.ast.VarDeclaration
+import main.utils.GlobalVariables
+import main.utils.MainArgument
+import main.utils.PathManager
+import main.utils.VerbosePrinter
+import main.utils.compileProjFromFile
+import main.utils.div
+import main.utils.listFilesDownUntilNivaIsFoundRecursively
+import java.io.File
+import java.net.URI
+import java.util.*
 
 
 fun Statement.unpackMessage() = if (this is VarDeclaration) {
@@ -703,87 +743,96 @@ fun LS.removeDecl2(file: File) {
 
 
 fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: Int? = null) {
-    val file = File(URI(pathToChangedFile))
-    val fileAbsolutePath = file.absolutePath
+    try {
+        val file = File(URI(pathToChangedFile))
+        val fileAbsolutePath = file.absolutePath
 
-    val changeLine1Based = changeLine?.plus(1)
-    if (changeLine1Based != null) {
-        val (probeAst) = parseFilesToAST(
+        val changeLine1Based = changeLine?.plus(1)
+        if (changeLine1Based != null) {
+            val (probeAst) = parseFilesToAST(
+                mainFileContent = text,
+                otherFileContents = resolver.otherFilesPaths,
+                mainFilePath = file.absolutePath,
+                resolveOnlyOneFile = true
+            )
+
+            val (kind, newDecl) = classifyChangeLine(probeAst, changeLine1Based)
+            if (kind == ChangeLineKind.Declaration) {
+                resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+                return
+            }
+            if (kind == ChangeLineKind.MessageBody && newDecl != null) {
+                val handled = updateMessageBodyAndReResolve(file, probeAst, newDecl)
+                if (handled) {
+                    completionFromScope = emptyMap()
+                    return
+                }
+            }
+            // fall through to full incremental if we couldn't handle it
+        }
+
+        // let's assume user cant change packages names for now, so pkg name always == filename
+        // remove everything that was declarated in this changed file
+        val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: emptySet()
+        val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
+        val oldDepsBySig = mutableMapOf<String, MutableSet<MessageDeclaration>>()
+        val affectedCallers = mutableSetOf<MessageDeclaration>()
+        oldMsgDecls.forEach { old ->
+            resolver.msgDependents[old]?.let { deps ->
+                oldDepsBySig[messageDeclSignature(old)] = deps
+                affectedCallers.addAll(deps)
+            }
+        }
+        val affectedIter = affectedCallers.iterator()
+        while (affectedIter.hasNext()) {
+            val next = affectedIter.next()
+            if (next.token.file.absolutePath == fileAbsolutePath) {
+                affectedIter.remove()
+            }
+        }
+        resolver.clearDependenciesFor(oldMsgDecls)
+
+        removeDecl2(file)
+        megaStore.data.remove(fileAbsolutePath)
+        resolver.reset()
+
+        val (mainAst) = parseFilesToAST(
             mainFileContent = text,
             otherFileContents = resolver.otherFilesPaths,
             mainFilePath = file.absolutePath,
             resolveOnlyOneFile = true
         )
 
-        val (kind, newDecl) = classifyChangeLine(probeAst, changeLine1Based)
-        if (kind == ChangeLineKind.Declaration) {
-            resolveNonIncremental(pathToChangedFile, text, forceFull = true)
-            return
+        val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
+        val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
+        oldDepsBySig.forEach { (sig, deps) ->
+            val newDecl = sigToNew[sig]
+            if (newDecl != null) {
+                resolver.msgDependents[newDecl] = deps
+            }
         }
-        if (kind == ChangeLineKind.MessageBody && newDecl != null) {
-            val handled = updateMessageBodyAndReResolve(file, probeAst, newDecl)
-            if (handled) return
+
+        val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
+
+        // throws on
+        resolver.resolveWithBackTracking(
+            mainAst,
+            emptyList(),
+            file.absolutePath,
+            file.nameWithoutExtension,
+            VerbosePrinter(false),
+            globalConstScopeOverride = globalConstScope,
+        )
+
+        if (affectedCallers.isNotEmpty()) {
+            affectedCallers.forEach { it.clearFromType() }
+            resolver.enqueueForReResolve(affectedCallers)
+            resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
         }
-        // fall through to full incremental if we couldn't handle it
-    }
-
-    // let's assume user cant change packages names for now, so pkg name always == filename
-    // remove everything that was declarated in this changed file
-    val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: emptySet()
-    val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
-    val oldDepsBySig = mutableMapOf<String, MutableSet<MessageDeclaration>>()
-    val affectedCallers = mutableSetOf<MessageDeclaration>()
-    oldMsgDecls.forEach { old ->
-        resolver.msgDependents[old]?.let { deps ->
-            oldDepsBySig[messageDeclSignature(old)] = deps
-            affectedCallers.addAll(deps)
-        }
-    }
-    val affectedIter = affectedCallers.iterator()
-    while (affectedIter.hasNext()) {
-        val next = affectedIter.next()
-        if (next.token.file.absolutePath == fileAbsolutePath) {
-            affectedIter.remove()
-        }
-    }
-    resolver.clearDependenciesFor(oldMsgDecls)
-
-    removeDecl2(file)
-    megaStore.data.remove(fileAbsolutePath)
-    resolver.reset()
-
-    val (mainAst) = parseFilesToAST(
-        mainFileContent = text,
-        otherFileContents = resolver.otherFilesPaths,
-        mainFilePath = file.absolutePath,
-        resolveOnlyOneFile = true
-    )
-
-    val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
-    val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
-    oldDepsBySig.forEach { (sig, deps) ->
-        val newDecl = sigToNew[sig]
-        if (newDecl != null) {
-            resolver.msgDependents[newDecl] = deps
-        }
-    }
-
-    val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
-
-    // throws on
-    resolver.resolveWithBackTracking(
-        mainAst,
-        emptyList(),
-        file.absolutePath,
-        file.nameWithoutExtension,
-        VerbosePrinter(false),
-        globalConstScopeOverride = globalConstScope,
-    )
-
-    if (affectedCallers.isNotEmpty()) {
-        affectedCallers.forEach { it.clearFromType() }
-        resolver.enqueueForReResolve(affectedCallers)
-        resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+        completionFromScope = emptyMap()
+    } catch (e: Throwable) {
+        // fallback to full resolve to recover a consistent state
+        resolveNonIncremental(pathToChangedFile, text, forceFull = true)
     }
 }
 
@@ -820,33 +869,38 @@ private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
 
 
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull: Boolean = false): Resolver {
-    megaStore.data.clear()
-    fileToDecl.clear()
-    varUsageToDeclaration.clear()
-    varNameToDeclarationToken.clear()
-    messageDeclarationUsages.clear()
-    keywordDeclarationUsages.clear()
-
-    clearNonIncrementalStoreFromTypes(nonIncrementalStore)
-    //    0) clear AST from types
-    //    1) lex parse new changed file
-    //    2) replace its ast in the NIS
-    //    3) resolve everything again
-
-    val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
-    val file = File(URI(uriOfChangedFile))
-    val fileAbsolute = file.absolutePath
-    val mainAst = getAst(source = source, file = file)
-
-    // if there are no type declarations, use incremental resolve for this file only
-    if (!forceFull && !hasTypeDeclarations(mainAst)) {
-        nonIncrementalStore[fileAbsolute] = mainAst
-        resolveIncremental(uriOfChangedFile, source)
-        return resolver
+    if (pm == null) {
+        return resolveAllFirstTime(uriOfChangedFile, fillNonIncrementalStore = true, changedFileContent = source)
     }
 
-    nonIncrementalStore[fileAbsolute] = mainAst
-    // resolve everything and return resolver
+    try {
+        megaStore.data.clear()
+        fileToDecl.clear()
+        varUsageToDeclaration.clear()
+        varNameToDeclarationToken.clear()
+        messageDeclarationUsages.clear()
+        keywordDeclarationUsages.clear()
+
+        clearNonIncrementalStoreFromTypes(nonIncrementalStore)
+        //    0) clear AST from types
+        //    1) lex parse new changed file
+        //    2) replace its ast in the NIS
+        //    3) resolve everything again
+
+        val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
+        val file = File(URI(uriOfChangedFile))
+        val fileAbsolute = file.absolutePath
+        val mainAst = getAst(source = source, file = file)
+
+        // if there are no type declarations, use incremental resolve for this file only
+        if (!forceFull && !hasTypeDeclarations(mainAst)) {
+            nonIncrementalStore[fileAbsolute] = mainAst
+            resolveIncremental(uriOfChangedFile, source)
+            return resolver
+        }
+
+        nonIncrementalStore[fileAbsolute] = mainAst
+        // resolve everything and return resolver
         val localpm = pm
         if (localpm != null) {
             // adding the current file, if its a new one
@@ -866,8 +920,12 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
                 buildSystem = BuildSystem.Amper,// it doesnt matter, since we dont generate the code
                 previousFilePath = previousFilePath
             )
+            completionFromScope = emptyMap()
         } else throw Exception("Local pm == null")
-    return resolver
+        return resolver
+    } catch (e: Throwable) {
+        throw e
+    }
 }
 
 // if we have changed content then replace the read from disc with it, to not to read the old one
@@ -932,24 +990,22 @@ fun LS.resolveAllFirstTime(
     fillNonIncrementalStore: Boolean = false,
     changedFileContent: String? // is null when we re-resolve everything on file closed
 ): Resolver {
+    info?.invoke("LSP resolveAllFirstTime: start uri=$pathToChangedFileURI textLen=${changedFileContent?.length ?: -1}")
     GlobalVariables.enableLspMode()
     megaStore.data.clear()
     varUsageToDeclaration.clear()
     varNameToDeclarationToken.clear()
     messageDeclarationUsages.clear()
     keywordDeclarationUsages.clear()
+    fileToDecl.clear()
+    nonIncrementalStore.clear()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))
     assert(changedFile.exists())
-
-
     val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, pathToChangedFileURI, changedFileContent)
-
-//    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
     val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
-//    info?.invoke("allFiles is ${allFiles.joinToString(", ") { it.name }} ") //all files is ${allFiles.joinToString(", ") { it.name }}
-
+    info?.invoke("LSP resolveAllFirstTime: main=${mainFile.absolutePath} others=${allFiles.size}")
 
     // Resolve
     // buildSystem doesn't matter here
@@ -957,7 +1013,6 @@ fun LS.resolveAllFirstTime(
     this.pm = pm
 
     try {
-
         // custom ast
         val customAst = parseFilesToAST(
             mainFileContent = if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null) changedFileContent else {
@@ -970,34 +1025,44 @@ fun LS.resolveAllFirstTime(
             pathToChangedFile = changedFile,
             changedFileContent = changedFileContent
         )
+        info?.invoke("LSP resolveAllFirstTime: parsed mainAst=${customAst.first.size} otherAst=${customAst.second.size}")
 
         if (fillNonIncrementalStore)
             fillNonIncrementalStore(customAst, mainFile)
+        info?.invoke("LSP resolveAllFirstTime: NIS size=${nonIncrementalStore.size}")
 
+        info?.invoke("LSP resolveAllFirstTime: compileProjFromFile start previousFilePath=${allFiles.size}")
         this.resolver = compileProjFromFile(
             pm,
             dontRunCodegen = true,
             compileOnlyOneFile = false,
             onEachStatement = ::onEachStatementCall,
             customAst = Pair(customAst.first, customAst.second),
-            buildSystem = BuildSystem.Amper // doesnt matter since we dont generate code
+            buildSystem = BuildSystem.Amper, // doesnt matter since we dont generate code
+            previousFilePath = allFiles
         )
+        info?.invoke("LSP resolveAllFirstTime: compileProjFromFile ok otherFilesPaths=${resolver.otherFilesPaths.size}")
         info?.invoke("After first compilation resolver.otherFilesPaths = ${resolver.otherFilesPaths} ")
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     }
     catch (s: OnCompletionException) {
-        if (s.token != null && s.errorMessage != null) {
-            s.token.compileError(s.errorMessage)
-        }
-        val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
-        this.resolver = emptyResolver
+        info?.invoke("LSP resolveAllFirstTime: OnCompletionException")
+        this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
         this.completionFromScope = s.scope
 
         info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope , error message = ${s.errorMessage?.removeColors()}")
+        if (s.token != null && s.errorMessage != null) {
+            s.token.compileError(s.errorMessage)
+        }
         return resolver
+    }
+    catch (e: Throwable) {
+        info?.invoke("LSP resolveAllFirstTime: error ${e::class.simpleName} ${e.message?.removeColors()}")
+        this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
+        this.completionFromScope = emptyMap()
+        throw e
     }
 
 }

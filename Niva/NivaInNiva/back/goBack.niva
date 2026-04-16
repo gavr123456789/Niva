@@ -63,27 +63,24 @@ String goNormalizeTypeId -> String = [
 ]
 
 IrTypeRef coreFuncNameFromCall(name): String -> String = [
-  recvId = typeId
-  recvLen = recvId count
-  hasCorePrefix = recvLen >= 5 && ((recvId slice: 0..<5) == "core_")
-  recvBase = hasCorePrefix ifTrue: [recvId slice: 5..<recvLen] ifFalse: [recvId]
+  baseId = typeId goNormalizeTypeId
+  recvBase = baseId stripPkgPrefix: "core"
   recvBaseSafe = recvBase toSafeGoIdent
 
 
   name log
-  mut normalized = name replace: ":" with: "__"
-  normalized count >= 2 ifTrue: [
-    tail = normalized slice: (normalized count - 2)..<normalized count
-    tail == "__" ifTrue: [normalized <- normalized dropLast: 2]
-  ]
-  normalized <- normalized goSanitizeIdent
+  normalized = name replaceDoubleWithUnderscore goSanitizeIdent
+  normalized log
 
-  mut coreName = recvBaseSafe + "__" + normalized
-  recvBaseSafe == "Any" && (normalized == "echo") ifTrue: [
-    coreName <- recvBaseSafe + "_" + normalized
-  ]
-  ^ coreName
+  ^ recvBaseSafe + "__" + normalized
+  //mut coreName = recvBaseSafe + "__" + normalized
+  //recvBaseSafe == "Any" && (normalized == "echo") ifTrue: [
+  //  coreName <- recvBaseSafe + "_" + normalized
+  //]
+  //^ coreName
 ]
+
+
 
 String goSanitizeIdent -> String =
         .replace: ".." with: "rangeTo"
@@ -100,7 +97,7 @@ String goSanitizeIdent -> String =
         ,replace: "*" with: "times"
         ,replace: "/" with: "div"
         ,replace: "%" with: "rem"
-        ,replace: ":" with: "_"
+        //,replace: ":" with: "__"
         ,replace: "." with: "_"
         ,replace: "/" with: "_"
         ,replace: "?" with: "_Nullable"
@@ -149,15 +146,6 @@ GoContext goTypeNameFor(typeId): String -> String = [
   |=> existing
 ]
 
-String goSelectorName -> String = [
-  mut s = this replace: ":" with: "__"
-  s count >= 2 ifTrue: [
-    tail = s slice: (s count - 2)..<s count
-    tail == "__" ifTrue: [s <- s dropLast: 2]
-  ]
-  s <- s goSanitizeIdent
-  ^ s
-]
 
 String stripPkgPrefix(prefix): String -> String = [
   pre = prefix + "_"
@@ -180,7 +168,7 @@ IrFunction goFuncNameFromIr -> String = [
   ]
 
   recvBase <- recvBase goSanitizeIdent
-  sel = name goSelectorName
+  sel = name replaceDoubleWithUnderscore goSanitizeIdent
 
   mut full = recvBase + "__" + sel
   pkgForName != "" ifTrue: [
@@ -354,13 +342,16 @@ IrExpr irListLiteralItems -> List::IrExpr = | this
 
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
-  isBindCall ifFalse: [^ null]
-
-  | receiverType
+  receiverTypeLocal = receiverType
+  | receiverTypeLocal
   | null => []
-  |=> receiverType typeId == "core_Bind" ifFalse: [^ null]
+  |=> [
+      recvType = receiverTypeLocal
+      recvType typeId == "core_Bind" ifFalse: [^ null]
+  ]
 
   msgNameLocal = msgName unpackOrPANIC
+  "$msgNameLocal $isBindCall" log
   ^ | msgNameLocal
     | "emit:" => [
       templateExpr = args first

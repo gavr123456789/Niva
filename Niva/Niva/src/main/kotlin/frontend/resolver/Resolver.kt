@@ -1238,7 +1238,6 @@ fun Resolver.getTypeForIdentifier(
         getCurrentPackage(x.token).addImport(typeFromDB.pkg)
     }
 
-
     // replace the JSON::T with JSON::Person
     val typeWithGenericResolved = when {
         x.typeAST is TypeAST.UserType &&
@@ -1253,14 +1252,12 @@ fun Resolver.getTypeForIdentifier(
             typeFromDB.typeArgumentList.count() == 1 -> {
             val e = x.typeAST.toType(typeDB, typeTable, resolver = this)
             val copy = typeFromDB.copy()
-//            copy.typeArgumentList = mutableListOf(e)
             copy.replaceTypeArguments(mutableListOf(e))
             copy
         }
 
         else -> typeFromDB
     }
-//    x.type = type
     return typeWithGenericResolved
 }
 
