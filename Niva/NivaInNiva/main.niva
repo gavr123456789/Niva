@@ -70,25 +70,35 @@ compilerTry2 = [
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
 ]
-goBindingsReadFile = [
+goTaggedUnionShapes = [
   fileMain = """
-    Int read: String -> String = [
-      Bind addImport: "os" backend: "go"
-      ^ Bind emit: "os.ReadFile($1)" backend: "go" args: {read}
-    ]
-    x = 1 read: "file.txt"
-    x echo
+    type Point
+      x: Int
+      y: Int
+
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    Shape area -> Int =
+    | this
+    | Rectangle => width * height
+    | Circle => radius * radius * 3
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
-  go log
-  go contains: "import (", assertTrue
-  go contains: "\"niva_go/core\"", assertTrue
-  go contains: "\"os\"", assertTrue
-  go contains: "func main__Int__read", assertTrue
-  go contains: "os.ReadFile(read)", assertTrue
-  go contains: "main__Int__read(1, \"file.txt\")", assertTrue
+
+  go contains: "type main_Point struct {", assertTrue
+  go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
+  go contains: "type main_Rectangle struct {", assertTrue
+  go contains: "type main_Circle struct {", assertTrue
+  go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
+  go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
+  go contains: "func main__Shape__area", assertTrue
+  go contains: "switch __matchSubject.(type) {", assertTrue
+  go contains: "case main_Rectangle:", assertTrue
+  go contains: "case main_Circle:", assertTrue
 ] do
 
 irTypeAndMethod = [
