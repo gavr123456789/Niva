@@ -180,6 +180,24 @@ private fun collectLinesForStatements(statements: List<Statement>): Set<Int> {
     return lines
 }
 
+private fun collectFullLineRangeForStatements(statements: List<Statement>): Set<Int> {
+    if (statements.isEmpty()) return emptySet()
+    var minLine = Int.MAX_VALUE
+    var maxLine = Int.MIN_VALUE
+    statements.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        if (tok.line < minLine) minLine = tok.line
+        if (endLine > maxLine) maxLine = endLine
+    }
+    if (minLine == Int.MAX_VALUE || maxLine == Int.MIN_VALUE) return emptySet()
+    val lines = mutableSetOf<Int>()
+    for (line in minLine..maxLine) {
+        lines.add(line)
+    }
+    return lines
+}
+
 private fun findMessageDeclByBodyLine(
     statements: List<Statement>,
     line: Int
@@ -229,7 +247,7 @@ private fun LS.updateMessageBodyAndReResolve(
 
     val oldReal = if (oldDecl is ConstructorDeclaration) oldDecl.msgDeclaration else oldDecl
     val newReal = if (newDecl is ConstructorDeclaration) newDecl.msgDeclaration else newDecl
-    val oldBodyLines = collectLinesForStatements(oldReal.body)
+    val oldBodyLines = collectLinesForStatements(oldReal.body) + collectFullLineRangeForStatements(oldReal.body)
     oldReal.body.clear()
     oldReal.body.addAll(newReal.body)
 
@@ -330,10 +348,9 @@ class LS(val info: ((String) -> Unit)? = null) {
             val watcher = KfsDirectoryWatcher(this, dispatcher = Dispatchers.IO)
             watcher.add(watchDirPath)
             watcher.onEventFlow.collect { event ->
-                info?.invoke("watching, got event: " + event.toString())
+//                info?.invoke("watching, got event: " + event.toString())
                 if (event.path.endsWith("json") && (event.event == KfsEvent.Modify || event.event == KfsEvent.Create)) {
                     readDevDataFromFile(jsonDevFilePath, info)
-                    info?.invoke("33333333333333333333")
                 }
             }
         }
@@ -345,6 +362,25 @@ class LS(val info: ((String) -> Unit)? = null) {
 
     // since one file can contain many pkgs, we need file to declaration map
     val fileToDecl: MutableMap<String, MutableSet<Declaration>> = mutableMapOf()
+
+    fun debugCountsLine(): String {
+        val megaEntries = megaStore.data.values.sumOf { it.values.sumOf { line -> line.size } }
+        val megaUniqueStatements = run {
+            val seen = IdentityHashMap<Statement, Boolean>()
+            megaStore.data.values.forEach { lineMap ->
+                lineMap.values.forEach { list ->
+                    list.forEach { pair -> seen[pair.first] = true }
+                }
+            }
+            seen.size
+        }
+
+
+
+        return "LS counts: " +
+            "megaStore.entries=$megaEntries, " +
+            "megaStore.uniqueStatements=$megaUniqueStatements \n--------"
+    }
 
     class MegaStore(val info: ((String) -> Unit)? = null) {
         // file absolute path to line to a pair of statement + scope of it's line
@@ -409,16 +445,12 @@ class LS(val info: ((String) -> Unit)? = null) {
         // use scope if there is no expression on line
         fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
             fun <T> checkElementsFromEnd(set: List<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
-                val list = set
-//                info?.invoke("-------\nfind, list = $list")
-                for (i in list.size - 1 downTo 1) {
-//                    info?.invoke("i = $i")
-                    if (check(list[i], list[i - 1])) {
-                        return if (returnLast) list[i]
-                        else list[i - 1]
+                for (i in set.size - 1 downTo 1) {
+                    if (check(set[i], set[i - 1])) {
+                        return if (returnLast) set[i]
+                        else set[i - 1]
                     }
                 }
-//                info?.invoke("-------")
                 return null
             }
 
@@ -505,10 +537,6 @@ fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspRe
 }
 
 fun LS.removeDecl2(file: File) {
-
-//    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages.keys}")
-
-
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
@@ -583,7 +611,7 @@ fun LS.removeDecl2(file: File) {
                         is Type.UserLike -> {
                             val usrLikeTypes = typeDB.userTypes[forType.name]
                             if (usrLikeTypes != null) {
-                                info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
+                                //info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
                                 val w = usrLikeTypes.find { it.pkg == forType.pkg }
                                 val protocolWithMethod = w?.protocols?.values?.find { it.keywordMsgs.contains(d.name) }
                                 protocolWithMethod?.keywordMsgs?.remove(d.name)
@@ -712,7 +740,7 @@ fun LS.removeDecl2(file: File) {
     // remove the whole package
     if (pkgName != null && pkgName != "core") {
         resolver.projects[resolver.currentProjectName]!!.packages.remove(pkgName)
-        info?.invoke("The whole package removed: $pkgName")
+        //info?.invoke("The whole package removed: $pkgName")
     }
     // fallback: remove any methods declared in this file from all protocols
     fun shouldRemove(meta: MessageMetadata?): Boolean =
@@ -990,7 +1018,7 @@ fun LS.resolveAllFirstTime(
     fillNonIncrementalStore: Boolean = false,
     changedFileContent: String? // is null when we re-resolve everything on file closed
 ): Resolver {
-    info?.invoke("LSP resolveAllFirstTime: start uri=$pathToChangedFileURI textLen=${changedFileContent?.length ?: -1}")
+    //info?.invoke("LSP resolveAllFirstTime: start uri=$pathToChangedFileURI textLen=${changedFileContent?.length ?: -1}")
     GlobalVariables.enableLspMode()
     megaStore.data.clear()
     varUsageToDeclaration.clear()
@@ -1005,7 +1033,7 @@ fun LS.resolveAllFirstTime(
     assert(changedFile.exists())
     val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, pathToChangedFileURI, changedFileContent)
     val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
-    info?.invoke("LSP resolveAllFirstTime: main=${mainFile.absolutePath} others=${allFiles.size}")
+    //info?.invoke("LSP resolveAllFirstTime: main=${mainFile.absolutePath} others=${allFiles.size}")
 
     // Resolve
     // buildSystem doesn't matter here
@@ -1015,23 +1043,19 @@ fun LS.resolveAllFirstTime(
     try {
         // custom ast
         val customAst = parseFilesToAST(
-            mainFileContent = if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null) changedFileContent else {
-//                info?.invoke("!!! main file reread $mainFile")
-                mainFile.readText()
-            },
+            mainFileContent =
+                if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null)
+                    changedFileContent
+                else { mainFile.readText() },
             otherFileContents = allFiles.toList(),
             mainFilePath = mainFile.absolutePath,
             resolveOnlyOneFile = false,
             pathToChangedFile = changedFile,
             changedFileContent = changedFileContent
         )
-        info?.invoke("LSP resolveAllFirstTime: parsed mainAst=${customAst.first.size} otherAst=${customAst.second.size}")
 
         if (fillNonIncrementalStore)
             fillNonIncrementalStore(customAst, mainFile)
-        info?.invoke("LSP resolveAllFirstTime: NIS size=${nonIncrementalStore.size}")
-
-        info?.invoke("LSP resolveAllFirstTime: compileProjFromFile start previousFilePath=${allFiles.size}")
         this.resolver = compileProjFromFile(
             pm,
             dontRunCodegen = true,
@@ -1041,18 +1065,13 @@ fun LS.resolveAllFirstTime(
             buildSystem = BuildSystem.Amper, // doesnt matter since we dont generate code
             previousFilePath = allFiles
         )
-        info?.invoke("LSP resolveAllFirstTime: compileProjFromFile ok otherFilesPaths=${resolver.otherFilesPaths.size}")
-        info?.invoke("After first compilation resolver.otherFilesPaths = ${resolver.otherFilesPaths} ")
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     }
     catch (s: OnCompletionException) {
-        info?.invoke("LSP resolveAllFirstTime: OnCompletionException")
         this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
         this.completionFromScope = s.scope
-
-        info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope , error message = ${s.errorMessage?.removeColors()}")
         if (s.token != null && s.errorMessage != null) {
             s.token.compileError(s.errorMessage)
         }

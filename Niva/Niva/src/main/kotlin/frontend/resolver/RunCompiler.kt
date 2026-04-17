@@ -84,7 +84,8 @@ private fun Resolver.buildGlobalConstScope(globalDeclarations: List<Pair<String,
     val previousScope = mutableMapOf<String, Type>()
     val unresolved = globalDeclarations.toMutableList()
     var lastError: CompilerError? = null
-
+    val savedSuppress = suppressOnEachStatement
+    suppressOnEachStatement = true
     do {
         var progress = false
         val iter = unresolved.iterator()
@@ -111,6 +112,7 @@ private fun Resolver.buildGlobalConstScope(globalDeclarations: List<Pair<String,
         }
         if (!progress) break
     } while (unresolved.isNotEmpty())
+    suppressOnEachStatement = savedSuppress
 
     if (unresolved.isNotEmpty()) {
         if (lastError != null) {

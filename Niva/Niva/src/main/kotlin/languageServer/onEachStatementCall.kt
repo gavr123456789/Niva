@@ -37,7 +37,7 @@ fun LS.onEachStatementCall(
     }
 
     // recursively register all IdentifierExpr usages within an expression
-    fun registerIdentifierUsages(expr: Expression) {
+//    fun registerIdentifierUsages(expr: Expression) {
 //        val scope =
 //            if (currentScope != null && previousScope != null)
 //                currentScope + previousScope
@@ -92,7 +92,7 @@ fun LS.onEachStatementCall(
 //            }
 //            else -> {}
 //        }
-    }
+//    }
 
     fun registerMessageUsageIfPossible(decl: MessageDeclaration?, usageToken: Token) {
         if (!GlobalVariables.isLspMode || decl == null) return
@@ -141,7 +141,7 @@ fun LS.onEachStatementCall(
                 is MethodReference -> {
                     registerMethodReferenceUsage(st)
                 }
-                is Expression -> registerIdentifierUsages(st)
+                is Expression -> {} //registerIdentifierUsages(st)
             }
 
         }

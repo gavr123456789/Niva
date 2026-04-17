@@ -114,7 +114,7 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // var
             }
             stack.pop()
         }
@@ -126,7 +126,7 @@ private fun Resolver.resolveStatement(
             currentLevel--
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // var
             }
 
             addToTopLevelStatements(statement)
@@ -201,7 +201,7 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // identifier
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // identifier
             }
 
             if (!statement.isType)
@@ -213,7 +213,7 @@ private fun Resolver.resolveStatement(
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // (expr)
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // (expr)
             }
             addToTopLevelStatements(statement)
         }
@@ -224,7 +224,7 @@ private fun Resolver.resolveStatement(
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // codeblock
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // codeblock
             }
             addToTopLevelStatements(statement)
             stack.pop()
@@ -234,7 +234,7 @@ private fun Resolver.resolveStatement(
             val collectionName = "List"
             resolveCollection(statement, collectionName, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // list
             }
             addToTopLevelStatements(statement)
         }
@@ -242,7 +242,7 @@ private fun Resolver.resolveStatement(
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // set
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // set
             }
             addToTopLevelStatements(statement)
         }
@@ -250,7 +250,7 @@ private fun Resolver.resolveStatement(
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // map
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // map
             }
             addToTopLevelStatements(statement)
         }
@@ -291,7 +291,7 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // literal
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // literal
             }
         }
 
@@ -306,7 +306,7 @@ private fun Resolver.resolveStatement(
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // if
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // if
             }
 
             addToTopLevelStatements(statement)
@@ -450,7 +450,7 @@ private fun Resolver.resolveStatement(
             statement.type = method.toLambda(forType, statement.forIdentifier.isType)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // method reference
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // method reference
             }
         }
 
@@ -1096,6 +1096,8 @@ fun Resolver.processPendingMessageReResolves(
     callOnEachStatement: Boolean = true
 ) {
     if (pendingMsgDeclReResolve.isEmpty()) return
+    val savedSuppress = suppressOnEachStatement
+    if (!callOnEachStatement) suppressOnEachStatement = true
     val fakeTok = createFakeToken()
     var safety = 0
     while (pendingMsgDeclReResolve.isNotEmpty()) {
@@ -1128,6 +1130,7 @@ fun Resolver.processPendingMessageReResolves(
             currentLevel = savedLevel
         }
     }
+    suppressOnEachStatement = savedSuppress
 }
 
 fun Resolver.usePackage(packageName: String) {
@@ -1481,6 +1484,19 @@ class Resolver(
 
     val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, currentFile: File) -> Unit)? = null
 ) {
+    var suppressOnEachStatement: Boolean = false
+
+    fun emitOnEachStatement(
+        statement: Statement,
+        currentScope: Map<String, Type>?,
+        previousScope: Map<String, Type>?,
+        currentFile: File
+    ) {
+        if (!suppressOnEachStatement) {
+            onEachStatement?.invoke(statement, currentScope, previousScope, currentFile)
+        }
+    }
+
     fun reset() {
         statements = mutableListOf()
         unResolvedSingleExprMessageDeclarations.clear()
