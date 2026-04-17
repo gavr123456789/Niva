@@ -480,8 +480,10 @@ fun Resolver.resolveMessageDeclaration(
             }
         }
 
-        if (GlobalVariables.isLspMode && callOnEachStatement) {
-            onEachStatement!!(statement, previousScope, previousScope, statement.token.file) // message decl
+        // When we re-resolve only the body, we must not re-add the declaration
+        // to LSP caches (e.g., megaStore) to avoid duplicates/leaks.
+        if (GlobalVariables.isLspMode && callOnEachStatement && !needResolveOnlyBody) {
+            emitOnEachStatement(statement, previousScope, previousScope, statement.token.file) // message decl
         }
     }
 
