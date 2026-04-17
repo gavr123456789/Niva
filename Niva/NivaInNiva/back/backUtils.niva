@@ -4,6 +4,11 @@ String replaceDoubleWithUnderscore -> String = [
   normalized = replaced endsWith: "__",
                ifTrue:  [replaced dropLast: 2]
                ifFalse: [replaced]
+
+  areEqual = this == normalized
+  areEqual ifFalse: [
+    "replaceDoubleWithUnderscore: areEqual = $areEqual this = $this normalized = $normalized" log
+  ]
   ^ normalized
 ]
 

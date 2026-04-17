@@ -248,29 +248,28 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   isReceiverFunction = | receiverType
     | FuntionT => true
     |=> false
-
   isIfTrue = dbMsg name == "ifTrue:"
   isIfFalse = dbMsg name == "ifFalse:"
   isIfTrueIfFalse = dbMsg name == "ifTrue:ifFalse:"
+  condIf = isIfTrue || isIfFalse || isIfTrueIfFalse
 
   mut result::IrExpr? = null
 
   // ifTrue / ifFalse / ifTrue:ifFalse:
-  condIf = isIfTrue || isIfFalse || isIfTrueIfFalse
   condIf ifTrue: [
     mut trueCase::IrMatchCase? = null
     mut falseCase::IrMatchCase? = null
 
     argsList = | this
-      | KeywordMsgT => args
-      |=> {NameAndExprT}
+               | KeywordMsgT => args
+               |=> {NameAndExprT}
 
     isIfTrue ifTrue: [
       argExpr = argsList first expr
       trueCase <- IrMatchCase
         condition: (true toIrBoolLiteralExpr: db)
         additionalConditions: {}
-        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
     ]
 
     isIfFalse ifTrue: [
@@ -278,7 +277,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
       falseCase <- IrMatchCase
         condition: (false toIrBoolLiteralExpr: db)
         additionalConditions: {}
-        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
     ]
 
     isIfTrueIfFalse ifTrue: [

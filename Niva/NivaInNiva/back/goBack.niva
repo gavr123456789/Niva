@@ -36,7 +36,7 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
   retType isGoUnitType
     ifFalse: [
       | emitResult
-      | null => [sb appendLineIndent: indent line: ("return " + (retType toGoZeroValue: this))]
+      | null => [TO DO: "Go emitResult: missing result for non-Unit return"]
       |=> [sb appendLineIndent: indent
               line: ("return " + (emitResult toGoExpr: this :scope))]
     ]
@@ -57,21 +57,21 @@ String isGoKeyword -> Bool = GO_KEYWORDS contains: this
 
 String goNormalizeTypeId -> String = [
   hasGeneric = this contains: "__"
-  ^ hasGeneric
+  result = hasGeneric
       ifTrue: [this substringBefore: "__"]
       ifFalse: [this]
+  areEqual = this == result
+  areEqual ifFalse: [
+    "goNormalizeTypeId: areEqual = $areEqual before = $this, after = $result" log
+  ]
+  ^ result
 ]
 
 IrTypeRef coreFuncNameFromCall(name): String -> String = [
   baseId = typeId goNormalizeTypeId
   recvBase = baseId stripPkgPrefix: "core"
   recvBaseSafe = recvBase toSafeGoIdent
-
-
-  name log
   normalized = name replaceDoubleWithUnderscore goSanitizeIdent
-  normalized log
-
   ^ recvBaseSafe + "__" + normalized
   //mut coreName = recvBaseSafe + "__" + normalized
   //recvBaseSafe == "Any" && (normalized == "echo") ifTrue: [
@@ -114,6 +114,10 @@ String toSafeGoIdent -> String = [
     first isDigit ifTrue: [s <- "_" + s]
   ]
   s isGoKeyword ifTrue: [s <- s + "_"]
+  areEqual = . == s
+  areEqual ifTrue: [
+    "toSafeGoIdent: before = $this after = $s"
+  ]
   ^ s
 ]
 
@@ -137,13 +141,13 @@ GoContext goTypeNameFor(typeId): String -> String = [
   baseId = typeId goNormalizeTypeId
   existing = typeNames at: baseId
   ^ | existing
-  | null => [
-      raw = baseId toSafeGoIdent
-      name = raw uniqueName: usedTypeNames
-      typeNames at: baseId put: name
-      ^ name
+    | null => [
+        raw = baseId toSafeGoIdent
+        name = raw uniqueName: usedTypeNames
+        typeNames at: baseId put: name
+        ^ name
     ]
-  |=> existing
+    |=> existing
 ]
 
 
@@ -211,71 +215,71 @@ StringBuilder appendLineIndent(level): Int line: String -> Unit = [
   this appendLine: line
 ]
 
-IrTypeRef isGoRefLikeType -> Bool = [
-  ^ | kind
+IrTypeRef isGoRefLikeType -> Bool =
+  | kind
   | IrTypeRefKind.Function => true
   | IrTypeRefKind.Builtin => [
+      "before normalized: $typeId" log
       baseId = typeId goNormalizeTypeId
+      "after normalized: $baseId" log
       | baseId
       | "core_List" | "core_Set" | "core_Map" => true
       |=> false
     ]
   |=> false
-]
 
-IrTypeRef isGoUnitType -> Bool = [
-  baseId = typeId goNormalizeTypeId
-  isBuiltin = kind == IrTypeRefKind.Builtin
-  isUnitId = baseId == "core_Unit"
-  ^ isBuiltin && isUnitId
-]
+
+IrTypeRef isGoUnitType -> Bool =
+  (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
+
 
 IrTypeRef goBaseType(ctx): GoContext -> String = [
   baseId = typeId goNormalizeTypeId
   ^ | kind
-  | IrTypeRefKind.Function => [
-      argsStr = args joinWith: ", " transform: [it toGoType: ctx]
-      retTypeMaybe = returnType
-      retStr = | retTypeMaybe
-        | null => ""
-        |=> retTypeMaybe toGoType: ctx
-      retStr == "" ifTrue: ["func(" + argsStr + ")"] ifFalse: ["func(" + argsStr + ") " + retStr]
-    ]
-  | IrTypeRefKind.Builtin => [
-      | baseId
-      | "core_Int" => "int"
-      | "core_Double" => "float64"
-      | "core_Float" => "float32"
-      | "core_String" => "string"
-      | "core_Bool" => "bool"
-      | "core_Char" => "rune"
-      | "core_Unit" => "struct{}"
-      | "core_Any" => "any"
-      | "core_Nothing" => "any"
-      | "core_Null" => "any"
-      | "core_Error" => "error"
-      | "core_List" => [
-          elem = args isNotEmpty ifTrue: [(args first) toGoType: ctx] ifFalse: ["any"]
-          "[]" + elem
-        ]
-      | "core_Set" => [
-          elem = args isNotEmpty ifTrue: [(args first) toGoType: ctx] ifFalse: ["any"]
-          "map[" + elem + "]struct{}"
-        ]
-      | "core_Map" => [
-          keyType = args count > 0 ifTrue: [(args at: 0) toGoType: ctx] ifFalse: ["any"]
-          valType = args count > 1 ifTrue: [(args at: 1) toGoType: ctx] ifFalse: ["any"]
-          "map[" + keyType + "]" + valType
-        ]
-      |=> ctx goTypeNameFor: baseId
-    ]
-  | IrTypeRefKind.Custom => [
-      name = ctx goTypeNameFor: baseId
-      argsStr = args isNotEmpty
-        ifTrue: ["[" + (args joinWith: ", " transform: [it toGoType: ctx]) + "]"]
-        ifFalse: [""]
-      name + argsStr
-    ]
+    | IrTypeRefKind.Function => [
+        argsStr = args joinWith: ", " transform: [it toGoType: ctx]
+        retTypeMaybe = returnType
+        retStr = | retTypeMaybe
+                 | null => ""
+                 |=> retTypeMaybe toGoType: ctx
+        retStr == "" ifTrue:  ["func(" + argsStr + ")"]
+                     ifFalse: ["func(" + argsStr + ") " + retStr]
+      ]
+    | IrTypeRefKind.Builtin => [
+        | baseId
+        | "core_Int" => "int"
+        | "core_Double" => "float64"
+        | "core_Float" => "float32"
+        | "core_String" => "string"
+        | "core_Bool" => "bool"
+        | "core_Char" => "rune"
+        | "core_Unit" => "struct{}"
+        | "core_Any" => "any"
+        | "core_Nothing" => "any"
+        | "core_Null" => "any"
+        | "core_Error" => "error"
+        | "core_List" => [
+            elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]
+            "[]" + elem
+          ]
+        | "core_Set" => [
+            elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]
+            "map[" + elem + "]struct{}"
+          ]
+        | "core_Map" => [
+            keyType = args count > 0 ifTrue: [args at: 0, toGoType: ctx] ifFalse: ["any"]
+            valType = args count > 1 ifTrue: [args at: 1, toGoType: ctx] ifFalse: ["any"]
+            "map[" + keyType + "]" + valType
+          ]
+        |=> ctx goTypeNameFor: baseId
+      ]
+    | IrTypeRefKind.Custom => [
+        name = ctx goTypeNameFor: baseId
+        argsStr = args isNotEmpty
+          ifTrue:  ["[" + (args joinWith: ", " transform: [it toGoType: ctx]) + "]"]
+          ifFalse: [""]
+        name + argsStr
+      ]
 ]
 
 IrTypeRef toGoType(ctx): GoContext -> String = [
@@ -291,23 +295,6 @@ IrTypeRef toGoType(ctx): GoContext -> String = [
         isRefLike ifTrue: [base] ifFalse: ["*" + base]
       ]
       ifFalse: [base]
-]
-
-IrTypeRef toGoZeroValue(ctx): GoContext -> String = [
-  base = this goBaseType: ctx
-  ^ nullable
-      ifTrue: ["nil"]
-      ifFalse: [
-        | base
-        | "int" | "float64" | "float32" | "rune" => "0"
-        | "bool" => "false"
-        | "string" => "\"\""
-        | "struct{}" => "struct{}{}"
-        | "any" | "interface{}" => "nil"
-        |=> [
-            .isGoRefLikeType ifTrue: ["nil"] ifFalse: [base + "{}"]
-          ]
-      ]
 ]
 
 String toGoFieldName -> String = .toSafeGoIdent
@@ -342,16 +329,13 @@ IrExpr irListLiteralItems -> List::IrExpr = | this
 
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
-  receiverTypeLocal = receiverType
-  | receiverTypeLocal
-  | null => []
-  |=> [
-      recvType = receiverTypeLocal
-      recvType typeId == "core_Bind" ifFalse: [^ null]
-  ]
+  r = receiverType
+  | r | null => []
+      |=> r typeId == "core_Bind"
+            ifFalse: [^ null]
+
 
   msgNameLocal = msgName unpackOrPANIC
-  "$msgNameLocal $isBindCall" log
   ^ | msgNameLocal
     | "emit:" => [
       templateExpr = args first
@@ -372,7 +356,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       templateExpr = args first
       backendExpr = args at: 1
       backendName = backendExpr irStringLiteralValue unpackOrPANIC
-      backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
+      backendName != "go" ifTrue: [^ ""]
       templateVal = templateExpr irStringLiteralValue
       | templateVal
       | null => (templateExpr toGoExpr: ctx scope: scope)
@@ -383,7 +367,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       backendExpr = args at: 1
       argsListExpr = args at: 2
       backendName = backendExpr irStringLiteralValue unpackOrPANIC
-      backendName != "go" ifTrue: [^ typeRef toGoZeroValue: ctx]
+      backendName != "go" ifTrue: [^ ""]
       template = templateExpr irStringLiteralValue unpackOrPANIC
       items = argsListExpr irListLiteralItems
       argsValues = items map: [it toGoExpr: ctx scope: scope]
@@ -564,6 +548,10 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
     |=> false
   subjectExpr = subjectLocal toGoExpr: ctx scope: innerScope
   sb appendLineIndent: 1 line: ("" + subjectName + " := " + subjectExpr)
+  elseBranchLocal = elseBranch
+  hasElse = | elseBranchLocal
+    | null => false
+    |=> true
 
   | kind
   | IrMatchKind.ByType => [
@@ -586,7 +574,6 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
             ctx emitResult: (c body result) sb: sb indent: 2 retType: retType scope: caseScope
           ]
       ]
-      elseBranchLocal = elseBranch
       | elseBranchLocal
       | null => []
       |=> [
@@ -605,10 +592,6 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   |=> [
       // ByValue or ByBool -> if/else chain
       casesCount = cases count
-      elseBranchLocal = elseBranch
-      hasElse = | elseBranchLocal
-        | null => false
-        |=> true
       cases forEachIndexed: [i, c ->
         isFirst = i == 0
         isLast = i == (casesCount - 1)
@@ -645,10 +628,6 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
         sb appendLineIndent: 1 line: "}"
       ]
     ]
-
-  retType isGoUnitType ifFalse: [
-    sb appendLineIndent: 1 line: ("return " + (retType toGoZeroValue: ctx))
-  ]
 
   sb appendLine: "}()"
   ^ sb toString
