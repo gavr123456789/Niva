@@ -220,7 +220,7 @@ Test parseExtendMessageDeclarations = [
     third = extendDecl messages at: 2
 
     Assert that: first receiver name equals: "FooBar"
-    Assert that: first name equals: "foo:bar:"
+    Assert that: first name equals: "foo__bar"
     Assert that: second receiver name equals: "FooBar"
     Assert that: second name equals: "foo"
     Assert that: third receiver name equals: "FooBar"

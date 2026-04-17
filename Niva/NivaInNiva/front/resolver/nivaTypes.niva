@@ -287,8 +287,8 @@ extend TypeT [
   on generateDefaultConstructor -> NivaMethod =
     NivaMethod
       defaultConstructorWithName: (fields isEmpty ifTrue: ["new"]
-                                                  ifFalse: [fields joinWith: ":"
-                                                                   transform: [it name], + ":"])
+                                                  ifFalse: [fields joinWith: "__"
+                                                                   transform: [it name]])
       receiverType: this
       args: fields
       returnType: this

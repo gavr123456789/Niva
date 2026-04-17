@@ -1,17 +1,3 @@
-/// addImport:backend: -> addImport__backend
-String replaceDoubleWithUnderscore -> String = [
-  replaced = .replace: ":" with: "__"
-  normalized = replaced endsWith: "__",
-               ifTrue:  [replaced dropLast: 2]
-               ifFalse: [replaced]
-
-  areEqual = this == normalized
-  areEqual ifFalse: [
-    "replaceDoubleWithUnderscore: areEqual = $areEqual this = $this normalized = $normalized" log
-  ]
-  ^ normalized
-]
-
 String operatorToString -> String =
   | this
   | "+" => "plus"

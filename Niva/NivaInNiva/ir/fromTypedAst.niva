@@ -439,7 +439,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
 ]
 
 MessageSendT toIrWhileStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrStmt? = [
-  isWhile = dbMsg name == "whileTrue:"
+  isWhile = dbMsg name == "whileTrue"
   ^ isWhile ifTrue: [
     | this
     | KeywordMsgT => [

@@ -138,16 +138,41 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
             | Complex => [receiverType fields]
             |=> {TypeTField}!
 
-        suffix = name substringAfter: "__"
-        hasSuffix = suffix != name
-        baseName = hasSuffix ifTrue: [name substringBefore: "__"] ifFalse: [name]
+        selectorFromArgs =
+            args isNotEmpty
+                ifTrue: [args joinWith: "__" transform: [it name]]
+                ifFalse: [""]
+        keywordPrefix = selectorFromArgs + "__"
+        isKeyword =
+            (args isNotEmpty) &&
+            ((name == selectorFromArgs) || ((name substringBefore: keywordPrefix) == ""))
 
-        // if keyword (has colons), reconstruct baseName from name parts, not local arg names
-        finalBaseName = (baseName contains: ":")
-            ifTrue:  [baseName replaceDoubleWithUnderscore]
-            ifFalse: [baseName operatorToString]
+        maybeSuffix = name substringAfter: "__"
+        hasNonKeywordSuffix = maybeSuffix != name
+        baseNameNonKeyword = hasNonKeywordSuffix ifTrue: [name substringBefore: "__"] ifFalse: [name]
 
-        methodName = receiverType name + "__" + finalBaseName + (hasSuffix ifTrue: ["__" + suffix] ifFalse: [""])
+        keywordSuffix =
+            isKeyword
+                ifTrue: [
+                    name == selectorFromArgs
+                        ifTrue: [""]
+                        ifFalse: [name substringAfter: keywordPrefix]
+                ]
+                ifFalse: [""]
+
+        suffix = isKeyword
+            ifTrue: [keywordSuffix]
+            ifFalse: [hasNonKeywordSuffix ifTrue: [maybeSuffix] ifFalse: [""]]
+
+        suffixStr = suffix != "" ifTrue: ["__" + suffix] ifFalse: [""]
+
+        baseName = isKeyword
+            ifTrue: [selectorFromArgs]
+            ifFalse: [baseNameNonKeyword]
+
+        finalBaseName = baseName operatorToString
+
+        methodName = receiverType name + "__" + finalBaseName + suffixStr
 
         sb append: "export function "
         sb append: methodName

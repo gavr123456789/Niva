@@ -721,7 +721,7 @@ extend TyperDB [
     // resolve do if this is message for a codeblock
     | receiverType
     | FuntionT => [
-      name == "whileTrue:" ifTrue: [
+      name == "whileTrue" ifTrue: [
         {unit bool} = dtc
 
         receiverType returnType compareWith: bool, ifFalse: [
@@ -729,7 +729,7 @@ extend TyperDB [
         ]
 
         whileTrueProto = NivaProtocol whileTrueFromDefaultTypes: dtc
-        whileTrueMethod = whileTrueProto at: "whileTrue:", unpackOrPANIC
+        whileTrueMethod = whileTrueProto at: "whileTrue", unpackOrPANIC
         bodyArgType = whileTrueMethod args first typeT
 
         ^ NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit

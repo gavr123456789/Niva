@@ -427,7 +427,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 argsStr = argsExprs joinWith: ", "
                 ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + argsStr + ")"
             ]
-        isBindReceiver && (dbMsg name == "emit:backend:")
+        isBindReceiver && (dbMsg name == "emit__backend")
             ifTrue: [
                 templateExpr = args first expr
                 backendExpr = (args at: 1) expr
@@ -443,14 +443,14 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                   |=> templateExpr toTSFromPkg: currentPkg db: db
             ]
 
-        isBindReceiver && (dbMsg name == "emit:")
+        isBindReceiver && (dbMsg name == "emit")
             ifTrue: [
                 argExpr = args first expr
                 ^ | argExpr
                   | StringExprT => argExpr token lexeme unquoteLiteral
                   |=> argExpr toTSFromPkg: currentPkg db: db
             ]
-        isBindReceiver && (dbMsg name == "addImport:backend:")
+        isBindReceiver && (dbMsg name == "addImport__backend")
             ifTrue: [
                 importExpr = args first expr
                 backendExpr = (args at: 1) expr
@@ -473,7 +473,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 ^ ""
             ]
 
-        isBindReceiver && (dbMsg name == "addImport:")
+        isBindReceiver && (dbMsg name == "addImport")
             ifTrue: [
                 argExpr = args first expr
                 | argExpr
@@ -488,7 +488,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 ^ ""
             ]
 
-        isBindReceiver && (dbMsg name == "emit:backend:args:")
+        isBindReceiver && (dbMsg name == "emit__backend__args")
             ifTrue: [
                 templateExpr = args first expr
                 backendExpr = (args at: 1) expr
@@ -511,7 +511,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 ^ template bindApply: argsValues
             ]
 
-        isBindReceiver && (dbMsg name == "emit:args:")
+        isBindReceiver && (dbMsg name == "emit__args")
             ifTrue: [
                 templateExpr = args first expr
                 argsListExpr = (args at: 1) expr
@@ -527,7 +527,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 ^ template bindApply: argsValues
             ]
 
-        dbMsg name == "whileTrue:" ifTrue: [
+        dbMsg name == "whileTrue" ifTrue: [
             condStr = receiver toTSFromPkg: currentPkg db: db
             bodyStr = (args first expr) toTSFromPkg: currentPkg db: db
             ^ "while (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
@@ -544,9 +544,22 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         selectorFromArgs = args joinWith: "__" transform: [
             it name name
         ]
-        suffix = dbMsg name substringAfter: "__"
-        hasSuffix = suffix != dbMsg name
-        suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+        keywordPrefix = selectorFromArgs + "__"
+        isKeyword =
+          (args isNotEmpty) &&
+          ((dbMsg name == selectorFromArgs) || ((dbMsg name substringBefore: keywordPrefix) == ""))
+        suffix =
+          isKeyword
+            ifTrue: [
+              dbMsg name == selectorFromArgs
+                ifTrue: [""]
+                ifFalse: [dbMsg name substringAfter: keywordPrefix]
+            ]
+            ifFalse: [
+              maybeSuffix = dbMsg name substringAfter: "__"
+              maybeSuffix != dbMsg name ifTrue: [maybeSuffix] ifFalse: [""]
+            ]
+        suffixStr = suffix != "" ifTrue: ["__" + suffix] ifFalse: [""]
 
         newSelector = isDefaultConstructor
             ifTrue: [

@@ -412,13 +412,13 @@ constructor NivaMethod binary(name): String receiverType: NivaType argT: NivaTyp
   NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
-  NivaMethod name: name + ":" :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 
 
 constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: NivaType  =
   NivaMethod
-    name: (manyArgKw joinWith: ":" transform: [it name]) + ":"
+    name: (manyArgKw joinWith: "__" transform: [it name])
     :receiverType
     args: manyArgKw
     returnType: returnT
@@ -428,7 +428,7 @@ constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: N
 
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType =
   NivaMethod
-    defaultConstructorWithName: name + ":"
+    defaultConstructorWithName: name
     :receiverType
     args: {(TypeTField name: name typeT: argT)}
     returnType: receiverType
@@ -438,7 +438,7 @@ constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT
 
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType returnType: NivaType =
   NivaMethod
-    defaultConstructorWithName: name + ":"
+    defaultConstructorWithName: name
     :receiverType
     args: {(TypeTField name: name typeT: argT)}
     :returnType
@@ -448,7 +448,7 @@ constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT
 
 constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: NivaType argT1: NivaType argT2: NivaType returnType: NivaType =
   NivaMethod
-    defaultConstructorWithName: name1 + ":" + name2 + ":"
+    defaultConstructorWithName: name1 + "__" + name2
     :receiverType
     args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2)}
     :returnType
@@ -458,7 +458,7 @@ constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: N
 
 constructor NivaMethod threeArgCtorKw(name1): String name2: String name3: String receiverType: NivaType argT1: NivaType argT2: NivaType argT3: NivaType returnType: NivaType =
   NivaMethod
-    defaultConstructorWithName: name1 + ":" + name2 + ":" + name3 + ":"
+    defaultConstructorWithName: name1 + "__" + name2 + "__" + name3
     :receiverType
     args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2), (TypeTField name: name3 typeT: argT3)}
     :returnType
