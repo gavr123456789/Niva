@@ -70,36 +70,20 @@ compilerTry2 = [
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
 ]
-goTaggedUnionShapes = [
+goWhileTrueCodegen = [
   fileMain = """
-    type Point
-      x: Int
-      y: Int
-
-    union Shape =
-    | Rectangle width: Int height: Int
-    | Circle radius: Int
-
-    Shape area -> Int =
-    | this
-    | Rectangle => width * height
-    | Circle => radius * radius * 3
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromResolver: result
 
-  go contains: "type main_Point struct {", assertTrue
-  go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
-  go contains: "type main_Rectangle struct {", assertTrue
-  go contains: "type main_Circle struct {", assertTrue
-  go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
-  go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
-  go contains: "func main__Shape__area", assertTrue
-  go contains: "switch __matchSubject.(type) {", assertTrue
-  go contains: "case main_Rectangle:", assertTrue
-  go contains: "case main_Circle:", assertTrue
-] do
+  go contains: "for {", assertTrue
+  go contains: "if !(", assertTrue
+  go contains: ") { break }", assertTrue
+  go contains: ")()", assertTrue
+]do
 
 irTypeAndMethod = [
   fileMain = """

@@ -224,10 +224,10 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
   returnType = typedBody t
 
   name = args isNotEmpty
-    ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
+    ifTrue: [args joinWith: "__" transform: [it astType name]]
     ifFalse: [
       typedArgs isNotEmpty
-        ifTrue: [typedArgs joinWith: ":" transform: [it name], + ":"]
+        ifTrue: [typedArgs joinWith: "__" transform: [it name]]
         ifFalse: [expectedType name]
     ]
 
@@ -609,10 +609,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     returnType = typedBody t
 
     name = args isNotEmpty
-      ifTrue: [args joinWith: ":" transform: [it astType name], + ":"]
+      ifTrue: [args joinWith: "__" transform: [it astType name]]
       ifFalse: [
         typedUntypedArgs isNotEmpty
-          ifTrue: [typedUntypedArgs joinWith: ":" transform: [it name], + ":"]
+          ifTrue: [typedUntypedArgs joinWith: "__" transform: [it name]]
           ifFalse: [""]
       ]
 

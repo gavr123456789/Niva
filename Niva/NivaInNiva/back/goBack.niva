@@ -71,7 +71,7 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
   baseId = typeId goNormalizeTypeId
   recvBase = baseId stripPkgPrefix: "core"
   recvBaseSafe = recvBase toSafeGoIdent
-  normalized = name replaceDoubleWithUnderscore goSanitizeIdent
+  normalized = name goSanitizeIdent
   ^ recvBaseSafe + "__" + normalized
   //mut coreName = recvBaseSafe + "__" + normalized
   //recvBaseSafe == "Any" && (normalized == "echo") ifTrue: [
@@ -172,7 +172,7 @@ IrFunction goFuncNameFromIr -> String = [
   ]
 
   recvBase <- recvBase goSanitizeIdent
-  sel = name replaceDoubleWithUnderscore goSanitizeIdent
+  sel = name goSanitizeIdent
 
   mut full = recvBase + "__" + sel
   pkgForName != "" ifTrue: [
@@ -330,21 +330,26 @@ IrExpr irListLiteralItems -> List::IrExpr = | this
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   r = receiverType
-  | r | null => []
-      |=> r typeId == "core_Bind"
-            ifFalse: [^ null]
+  | r
+  | null => [^ null]
+  |=> r typeId == "core_Bind"
+        ifFalse: [^ null]
 
 
-  msgNameLocal = msgName unpackOrPANIC
-  ^ | msgNameLocal
-    | "emit:" => [
+  msgNameLocalMaybe = msgName
+  | msgNameLocalMaybe
+  | null => [^ null]
+  |=> [
+    msgNameLocal = msgNameLocalMaybe
+    ^ | msgNameLocal
+    | "emit" => [
       templateExpr = args first
       templateVal = templateExpr irStringLiteralValue
       | templateVal
       | null => (templateExpr toGoExpr: ctx scope: scope)
       |=> templateVal
     ]
-    | "emit:args:" => [
+    | "emit__args" => [
       templateExpr = args first
       argsListExpr = args at: 1
       template = templateExpr irStringLiteralValue unpackOrPANIC
@@ -352,7 +357,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       argsValues = items map: [it toGoExpr: ctx scope: scope]
       template bindApply: argsValues
     ]
-    | "emit:backend:" => [
+    | "emit__backend" => [
       templateExpr = args first
       backendExpr = args at: 1
       backendName = backendExpr irStringLiteralValue unpackOrPANIC
@@ -362,7 +367,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       | null => (templateExpr toGoExpr: ctx scope: scope)
       |=> templateVal
     ]
-    | "emit:backend:args:" => [
+    | "emit__backend__args" => [
       templateExpr = args first
       backendExpr = args at: 1
       argsListExpr = args at: 2
@@ -373,13 +378,13 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       argsValues = items map: [it toGoExpr: ctx scope: scope]
       template bindApply: argsValues
     ]
-    | "addImport:" => [
+    | "addImport" => [
       importExpr = args first
       importName = importExpr irStringLiteralValue unpackOrPANIC
       ctx addImport: importName
       ""
     ]
-    | "addImport:backend:" => [
+    | "addImport__backend" => [
       importExpr = args first
       backendExpr = args at: 1
       isGo = backendExpr irStringLiteralValue unpackOrPANIC == "go"
@@ -389,6 +394,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
       ""
     ]
     |=> null
+  ]
 ]
 
 IrExpr toGoExpr(ctx): GoContext scope: GoScope -> String =

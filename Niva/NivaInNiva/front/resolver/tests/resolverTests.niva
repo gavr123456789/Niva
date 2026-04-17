@@ -301,7 +301,7 @@ Test listMapFilterForEachChain = [
   chainExpr = typedAst at: 1
   | chainExpr
   | KeywordMsgT => [
-    Assert that: chainExpr dbMsg name equals: "forEach:"
+    Assert that: chainExpr dbMsg name equals: "forEach"
     Assert that: chainExpr typeInfo t name equals: "Unit"
 
     recv = chainExpr receiver
@@ -310,7 +310,7 @@ Test listMapFilterForEachChain = [
       inner = recv value
       | inner
       | KeywordMsgT => [
-        Assert that: inner dbMsg name equals: "filter:"
+        Assert that: inner dbMsg name equals: "filter"
         t = inner typeInfo t
         | t
         | ListT => Assert that: t t name equals: "Int"
@@ -399,7 +399,7 @@ Test listMapFilterForEachChain = [
       kVal = kDecl value
       | kVal
       | KeywordMsgT => [
-        Assert that: kVal dbMsg name equals: "add:"
+        Assert that: kVal dbMsg name equals: "add"
         Assert that: kVal typeInfo t name equals: "Int"
       ]
       |=> [TO DO: "KeywordMsgT expected"]
