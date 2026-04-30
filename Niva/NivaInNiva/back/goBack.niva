@@ -60,9 +60,8 @@ String goNormalizeTypeId -> String = [
   result = hasGeneric
       ifTrue: [this substringBefore: "__"]
       ifFalse: [this]
-  areEqual = this == result
-  areEqual ifFalse: [
-    "goNormalizeTypeId: areEqual = $areEqual before = $this, after = $result" log
+  this == result ifFalse: [
+    "goNormalizeTypeId: before = $this, after = $result" log
   ]
   ^ result
 ]
@@ -72,12 +71,15 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
   recvBase = baseId stripPkgPrefix: "core"
   recvBaseSafe = recvBase toSafeGoIdent
   normalized = name goSanitizeIdent
-  ^ recvBaseSafe + "__" + normalized
-  //mut coreName = recvBaseSafe + "__" + normalized
-  //recvBaseSafe == "Any" && (normalized == "echo") ifTrue: [
-  //  coreName <- recvBaseSafe + "_" + normalized
-  //]
-  //^ coreName
+
+  x = recvBaseSafe + "__" + normalized
+
+  name == x ifFalse: [
+    "coreFuncNameFromCall: was: $name became $x" log
+  ] ifTrue: ["coreFuncNameFromCall: no changes" log]
+
+  ^ x
+
 ]
 
 
@@ -161,43 +163,40 @@ String stripPkgPrefix(prefix): String -> String = [
 
 IrFunction goFuncNameFromIr -> String = [
   recvId = receiverType typeId
-  pkgForName = pkgId
 
-  mut recvBase = recvId
-  pkgForName != "" ifTrue: [
-    recvBase <- recvBase stripPkgPrefix: pkgForName
-  ]
-  (pkgForName != "core") && ((recvBase count >= 5) && ((recvBase slice: 0..<5) == "core_")) ifTrue: [
-    recvBase <- recvBase slice: 5..<recvBase count
-  ]
 
-  recvBase <- recvBase goSanitizeIdent
+  recvBase = pkgId != ""
+              ifTrue:  [ recvId stripPkgPrefix: pkgId ]
+              ifFalse: [ recvId ],
+              goSanitizeIdent
+
   sel = name goSanitizeIdent
 
-  mut full = recvBase + "__" + sel
-  pkgForName != "" ifTrue: [
-    full <- pkgForName + "__" + full
-  ]
+  full =
+    pkgId != ""
+      ifTrue: [ pkgId + "__" + recvBase + "__" + sel ]
+      ifFalse: [ recvBase + "__" + sel ]
+
   ^ full toSafeGoIdent
 ]
 
 GoContext goFuncNameForFn(fn): IrFunction -> String = [
   existing = funcNames at: fn id
   ^ | existing
-  | null => [
-      raw = fn goFuncNameFromIr
-      name = raw uniqueName: usedFuncNames
-      funcNames at: fn id put: name
-      ^ name
-    ]
-  |=> existing
+    | null => [
+        raw = fn goFuncNameFromIr
+        name = raw uniqueName: usedFuncNames
+        funcNames at: fn id put: name
+        ^ name
+      ]
+    |=> existing
 ]
 
 GoContext goFuncNameFor(funcId): String -> String = [
   existing = funcNames at: funcId
   ^ | existing
-  | null => [TO DO: "Go funcId not registered: " + funcId]
-  |=> existing
+    | null => [TO DO: "Go funcId not registered: " + funcId]
+    |=> existing
 ]
 
 Int goIndent -> String = [
@@ -219,9 +218,7 @@ IrTypeRef isGoRefLikeType -> Bool =
   | kind
   | IrTypeRefKind.Function => true
   | IrTypeRefKind.Builtin => [
-      "before normalized: $typeId" log
       baseId = typeId goNormalizeTypeId
-      "after normalized: $baseId" log
       | baseId
       | "core_List" | "core_Set" | "core_Map" => true
       |=> false
@@ -437,6 +434,7 @@ IrExpr toGoExpr(ctx): GoContext scope: GoScope -> String =
           ]
         ]
       |=> [
+          // if its from core => generate core.Type__funcname, if not then Pkg__
           declPkgLocal = declPkg unpackOrPANIC
           declPkgLocal == "core"
             ifTrue: [
@@ -807,6 +805,7 @@ constructor GoBackend [
     scope = GoScope new
     fn args forEach: [scope locals add: it name]
     fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
+
     fn returnType isGoUnitType
       ifTrue: [
         ctx emitResult: (fn body result) sb: sb indent: 1 retType: fn returnType scope: scope

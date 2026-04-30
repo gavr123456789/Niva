@@ -83,6 +83,22 @@ Test integers = [
     Assert that: it end equals: (expectedEnds at: i)
   ]
 ]
+
+Test integersWithUnderscore = [
+  tokens = LexTest input: "1_000_000 -2_345"
+
+  expectedKinds = {TokenType.Integer TokenType.Integer}
+  expectedLexemes = {"1_000_000" "-2_345"}
+  expectedStarts = {1 11}
+  expectedEnds =   {10 17}
+
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+    Assert that: it start equals: (expectedStarts at: i)
+    Assert that: it end equals: (expectedEnds at: i)
+  ]
+]
 // skiping spaces should append `pos` so tokens have correct start
 Test parseFromSpace = [
   tokens = LexTest input: "   1  "

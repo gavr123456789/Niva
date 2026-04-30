@@ -6,14 +6,15 @@ type IrImport
 
 enum IrTypeRefKind = Builtin | Custom | Function
 
+// IDEA: cacthe normilized type id here in additional field
 type IrTypeRef
   kind: IrTypeRefKind
   typeId: String
-  args: List::IrTypeRef
+  args: List(IrTypeRef)
   returnType: IrTypeRef?
   isMut: Bool
   nullable: Bool
-  errors: List::IrTypeRef
+  errors: List(IrTypeRef)
 
 type IrField
   name: String
@@ -23,27 +24,27 @@ type IrTypeDef
   id: String
   pkgId: String
   name: String
-  typeParams: List::String
-  fields: List::IrField
+  typeParams: List(String)
+  fields: List(IrField)
 
 type IrUnionBranch
   name: String
-  fields: List::IrField
+  fields: List(IrField)
   isInclude: Bool
 
 type IrUnionDef
   id: String
   pkgId: String
   name: String
-  typeParams: List::String
-  commonFields: List::IrField
-  branches: List::IrUnionBranch
+  typeParams: List(String)
+  commonFields: List(IrField)
+  branches: List(IrUnionBranch)
 
 type IrEnumDef
   id: String
   pkgId: String
   name: String
-  values: List::String
+  values: List(String)
 
 type IrArg
   name: String
@@ -51,24 +52,24 @@ type IrArg
 
 type IrInstantiation
   receiverType: IrTypeRef
-  argTypes: List::IrTypeRef
+  argTypes: List(IrTypeRef)
   returnType: IrTypeRef
 
-type IrFunction
-  id: String
-  pkgId: String
-  name: String
-  receiverType: IrTypeRef
-  args: List::IrArg
-  returnType: IrTypeRef
-  returnErrors: List::IrTypeRef
-  requiresMutReceiver: Bool
-  generics: List::String
-  instantiations: List::IrInstantiation
-  body: IrBlock
+  type IrFunction
+    id: String
+    pkgId: String
+    name: String
+    receiverType: IrTypeRef
+    args: List(IrArg)
+    returnType: IrTypeRef
+    returnErrors: List(IrTypeRef)
+    requiresMutReceiver: Bool
+    generics: List(String)
+    instantiations: List(IrInstantiation)
+    body: IrBlock
 
 type IrBlock
-  stmts: List::IrStmt
+  stmts: List(IrStmt)
   result: IrExpr?
   resultType: IrTypeRef
 

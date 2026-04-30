@@ -127,8 +127,10 @@ extend mut Parser [
   on literalExprFrom(tok): Token -> LiteralExpr? = [
 
     x = | tok kind
-    | TokenType.Integer =>
-      IntExpr num: tok lexeme toInt token: tok
+    | TokenType.Integer => [
+      numStr = tok lexeme replace: "_" with: ""
+      IntExpr num: numStr toInt token: tok
+    ]
 
     | TokenType.String =>
       StringExpr token: tok
