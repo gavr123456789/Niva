@@ -399,7 +399,7 @@ mut Lexer readIdentifier -> String = [
 
 mut Lexer parseNumber -> String = [
   localPos = pos
-  [ch isDigit] whileTrue: [
+  [ch isDigit || ((ch == '_') && (.peekChar isDigit))] whileTrue: [
     .step
   ]
 

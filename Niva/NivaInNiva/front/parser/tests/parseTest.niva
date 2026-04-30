@@ -76,6 +76,23 @@ Test parseNumber = [
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
 
+Test parseNumberWithUnderscore = [
+  input = """
+  1_000_000
+  """ trimIndent
+
+  tokens = Lexer get-tokens: input
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  | intExpr
+  | IntExpr =>
+    Assert
+      that: intExpr num
+      equals: 1000000
+  |=> [TO DO: "It should be int, but it $intExpr"]
+]
+
 Test parseString = [
   tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
