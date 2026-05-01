@@ -1,0 +1,918 @@
+NivaType isIrBuiltin -> Bool = [
+  ^ | this
+    | UnresolvedGenericT => false
+    | FuntionT => false
+    | NullableT => v isIrBuiltin
+    |=> pkgName == "core"
+]
+
+NivaType toIrTypeRefWithMutErrors(isMut): Bool errorsList: List::NivaType -> IrTypeRef = [
+  nullable = | this
+             | NullableT => true
+             |=> false
+  base = this unwrapNullable
+
+  kind = | base
+         | FuntionT => IrTypeRefKind.Function
+         |=> (base isIrBuiltin ifTrue: [IrTypeRefKind.Builtin] ifFalse: [IrTypeRefKind.Custom])
+
+  typeId = base toMangledName
+
+  args = | base
+    | ListT => { (base t toIrTypeRefWithMutErrors: false errorsList: {NivaType}) }
+    | SetT => { (base t toIrTypeRefWithMutErrors: false errorsList: {NivaType}) }
+    | MapT => { (base k toIrTypeRefWithMutErrors: false errorsList: {NivaType}) (base v toIrTypeRefWithMutErrors: false errorsList: {NivaType}) }
+    | TypeT => base genericArgs map: [it toIrTypeRefWithMutErrors: false errorsList: {NivaType}]
+    | FuntionT => base fields map: [it typeT toIrTypeRefWithMutErrors: false errorsList: {NivaType}]
+    |=> {IrTypeRef}
+
+  returnType = | base
+    | FuntionT => (base returnType toIrTypeRefWithMutErrors: false errorsList: {NivaType})
+    |=> null
+
+  errRefs = errorsList map: [it toIrTypeRefWithMutErrors: false errorsList: {NivaType}]
+
+  ^ IrTypeRef :kind typeId: typeId args: args returnType: returnType isMut: isMut nullable: nullable errors: errRefs
+]
+
+TypeInfo toIrTypeRef -> IrTypeRef = [
+  ^ t toIrTypeRefWithMutErrors: isMut errorsList: listOfErrors
+]
+
+TypeInfo toIrTypeRefNoErrors -> IrTypeRef = [
+  ^ t toIrTypeRefWithMutErrors: isMut errorsList: {NivaType}
+]
+
+MessageDecl toIrFunctionIdFromDecl(db): TyperDB -> String = [
+  receiverType = receiver toNivaTypefromDB: db inPkg: null
+  ^ receiverType toIrFunctionId: name
+]
+
+NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
+  declVal = decl
+  nameLocal = name
+  ^ | declVal
+    | null => [
+      receiverTypeLocal = receiverType
+      mut ownerMethod::NivaMethod? = null
+
+      getMethodFromType = [t::NivaType ->
+        methodsMaybe = db typeToMethodNameToMethod at: t
+        | methodsMaybe
+        | null => null
+        |=> [
+            methods::mut Map(String, NivaMethod) = methodsMaybe
+            methods at: nameLocal
+          ]
+      ]
+
+      | receiverTypeLocal
+      | TypeT => [
+        chain = db unionAncestorChain: receiverTypeLocal
+        chain forEach: [t ->
+          ownerMethod == null ifTrue: [
+            m = getMethodFromType t: t
+            m unpack: [
+              (it decl) != null ifTrue: [ownerMethod <- it]
+            ]
+          ]
+        ]
+        ownerMethod == null ifTrue: [
+          chain forEach: [t ->
+            ownerMethod == null ifTrue: [
+              m = getMethodFromType t: t
+              m unpack: [ownerMethod <- it]
+            ]
+          ]
+        ]
+      ]
+      |=> [
+        ownerMethod <- (getMethodFromType t: receiverTypeLocal)
+      ]
+
+      ownerMethod == null ifTrue: [
+        {any} = db dtc
+        ownerMethod <- (getMethodFromType t: any)
+      ]
+
+      ownerMethodVal = ownerMethod unpackOrValue: this
+      ^ ownerMethodVal toIrFunctionId
+    ]
+    |=> this toIrFunctionId
+]
+
+LiteralExprT toIrLiteralKind -> IrLiteralKind =
+  | this
+  | CharExprT => IrLiteralKind.Char
+  | IntExprT => IrLiteralKind.Int
+  | FloatExprT => IrLiteralKind.Float
+  | DoubleExprT => IrLiteralKind.Double
+  | StringExprT => IrLiteralKind.String
+  | BooleanExprT => IrLiteralKind.Bool
+  | NullExprT => IrLiteralKind.Null
+  | UnitExprT => IrLiteralKind.Unit
+
+LiteralExprT toIrLiteral -> IrLiteral = [
+  ^ IrLiteral
+    kind: (this toIrLiteralKind)
+    lexeme: token lexeme
+]
+
+Bool toIrBoolLiteralExpr(db): TyperDB -> IrExpr = [
+  lex = this ifTrue: ["true"] ifFalse: ["false"]
+  lit = IrLiteral kind: IrLiteralKind.Bool lexeme: lex
+  boolRef = db dtc bool toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+  ^ IrLiteralExpr literal: lit typeRef: boolRef
+]
+
+TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrExpr = [
+  exprType = typeInfo toIrTypeRef
+  result = | this
+    | LiteralExprT => [
+      IrLiteralExpr literal: (this toIrLiteral) typeRef: exprType
+    ]
+    | IdentifierT => [
+      isNameOfTheType
+        ifTrue: [
+          typeRefExpr = IrTypeRefExpr ref: (typeInfo toIrTypeRef) typeRef: exprType
+          typeRefExpr
+        ] ifFalse: [
+          name == "this"
+            ifTrue: [IrThisRef typeRef: (thisTypeRef unpackOrValue: ((Unknown new) toIrTypeRefWithMutErrors: false errorsList: {NivaType}))]
+            ifFalse: [IrVarRef name: name typeRef: exprType]
+        ]
+    ]
+    | ExprInBracketsT => value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    | VarDeclarationT
+    | AssignT
+    | DestructingAssignT
+    | ReturnStatementT => [
+      stmt = this toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      block = IrBlock stmts: {stmt} result: null resultType: exprType
+      IrBlockExpr block: block typeRef: exprType
+    ]
+    | CollectionLiteralT => [
+      items = elements v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
+      kind = | this
+        | ListLiteralT => IrCollectionKind.List
+        | SetLiteralT => IrCollectionKind.Set
+        | MapLiteralT => IrCollectionKind.Map
+      IrCollectionLiteral kind: kind items: items typeRef: exprType
+    ]
+    | MessageSendT => this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    | CodeBlockT => this toIrLambdaExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    | MatchT => this toIrMatchExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    |=> [TO DO: "Unhandled expr in toIrExpr"]
+  ^ result
+]
+
+CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrExpr = [
+  argsList = args isNotEmpty
+    ifTrue: [
+      args map: [arg ->
+        typeInfo = arg astType toTypeInfoFromDb: db inPkg: null
+        IrArg name: arg name typeRef: (typeInfo toIrTypeRef)
+      ]
+    ] ifFalse: [
+      typedArgs map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+    ]
+
+  bodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  exprType = typeInfo toIrTypeRef
+  ^ IrLambda args: argsList body: bodyBlock typeRef: exprType
+]
+
+TypedExpr2 toIrBlockFromExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrBlock = [
+  ^ | this
+  | CodeBlockT => this body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  |=> [
+    irExpr = this toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    IrBlock stmts: {} result: irExpr resultType: irExpr typeRef
+  ]
+]
+
+MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrExpr = [
+  subjectExpr = subject toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  subjectType = subject typeInfo t
+
+  mut allTypeBranches = true
+  branches forEach: [br ->
+    condExpr = br condition
+    | condExpr
+    | IdentifierT => condExpr isNameOfTheType ifFalse: [allTypeBranches <- false]
+    |=> allTypeBranches <- false
+  ]
+
+  kind = allTypeBranches
+    ifTrue: [IrMatchKind.ByType]
+    ifFalse: [
+      subjectType isBoolType
+        ifTrue: [IrMatchKind.ByBool]
+        ifFalse: [IrMatchKind.ByValue]
+    ]
+
+  cases = branches map: [br ->
+    condExpr = | kind
+      | IrMatchKind.ByType => [
+        | br condition
+        | IdentifierT => IrTypeRefExpr ref: (br condition typeInfo toIrTypeRef) typeRef: (br condition typeInfo toIrTypeRef)
+        |=> br condition toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      ]
+      |=> br condition toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+
+    addConds = br additionalConditions v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
+    bodyBlock = br body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+
+    IrMatchCase condition: condExpr additionalConditions: addConds body: bodyBlock
+  ]
+
+  elseBlock = elseBranch unpack: [
+    it toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  ] or: null
+
+  exprType = typeInfo toIrTypeRef
+  ^ IrMatchExpr kind: kind subject: subjectExpr cases: cases elseBranch: elseBlock typeRef: exprType
+]
+
+MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrExpr = [
+  receiverExpr = receiver toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  receiverType = receiver typeInfo t
+  receiverTypeRef = receiverType toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+  exprType = typeInfo toIrTypeRef
+
+  isDefaultCtor = dbMsg kind == MessageSendKind.DefaultConstructor
+  isCtor = (dbMsg kind == MessageSendKind.DefaultConstructor) || (dbMsg kind == MessageSendKind.CustomConstructor)
+  baseReceiverType = receiverType unwrapNullable
+  isBindReceiver = (baseReceiverType toMangledName) == "core_Bind"
+  useNewCtor = isDefaultCtor && (dbMsg decl == null) && (isBindReceiver not)
+  isReceiverFunction = | receiverType
+    | FuntionT => true
+    |=> false
+  isIfTrue = dbMsg name == "ifTrue:"
+  isIfFalse = dbMsg name == "ifFalse:"
+  isIfTrueIfFalse = dbMsg name == "ifTrue:ifFalse:"
+  condIf = isIfTrue || isIfFalse || isIfTrueIfFalse
+
+  mut result::IrExpr? = null
+
+  // ifTrue / ifFalse / ifTrue:ifFalse:
+  condIf ifTrue: [
+    mut trueCase::IrMatchCase? = null
+    mut falseCase::IrMatchCase? = null
+
+    argsList = | this
+               | KeywordMsgT => args
+               |=> {NameAndExprT}
+
+    isIfTrue ifTrue: [
+      argExpr = argsList first expr
+      trueCase <- IrMatchCase
+        condition: (true toIrBoolLiteralExpr: db)
+        additionalConditions: {}
+        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
+    ]
+
+    isIfFalse ifTrue: [
+      argExpr = argsList first expr
+      falseCase <- IrMatchCase
+        condition: (false toIrBoolLiteralExpr: db)
+        additionalConditions: {}
+        body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
+    ]
+
+    isIfTrueIfFalse ifTrue: [
+      argTrue = argsList at: 0, expr
+      argFalse = argsList at: 1, expr
+      trueCase <- IrMatchCase
+        condition: (true toIrBoolLiteralExpr: db)
+        additionalConditions: {}
+        body: (argTrue toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+      falseCase <- IrMatchCase
+        condition: (false toIrBoolLiteralExpr: db)
+        additionalConditions: {}
+        body: (argFalse toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+    ]
+
+    cases::mut List::IrMatchCase = {}!
+    trueCase unpack: [cases add: it]
+    falseCase unpack: [cases add: it]
+
+    result <- IrMatchExpr
+      kind: IrMatchKind.ByBool
+      subject: receiverExpr
+      cases: cases toList
+      elseBranch: null
+      typeRef: exprType
+  ]
+
+  result == null ifTrue: [
+    // whileTrue: as expression we must return IrExpr, so wrap stmt into IrBlockExpr
+    whileStmt = this toIrWhileStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    whileStmt unpack: [
+      block = IrBlock stmts: {it} result: null resultType: exprType
+      result <- IrBlockExpr block: block typeRef: exprType
+    ]
+  ]
+
+  result == null ifTrue: [
+    result <- | this
+      | UnaryMsgT => [
+        dbMsg kind == MessageSendKind.Getter
+          ifTrue: [
+            IrFieldGet receiver: receiverExpr field: selector name typeRef: exprType
+          ]
+          ifFalse: [
+            isReceiverFunction && (selector name == "do")
+              ifTrue: [
+                IrCall funcId: null callee: receiverExpr args: {} isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
+              ]
+              ifFalse: [
+                isCtor
+                  ifTrue: [
+                    useNewCtor
+                      ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {} typeRef: exprType]
+                      ifFalse: [
+                        callId = dbMsg toCanonicalIrFunctionId: db
+                        IrCall funcId: callId callee: null args: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                      ]
+                  ]
+                  ifFalse: [
+                    callId = dbMsg toCanonicalIrFunctionId: db
+                    IrCall funcId: callId callee: null args: {receiverExpr} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                  ]
+              ]
+          ]
+      ]
+      | BinaryMsgT => [
+        mut currentExpr = receiverExpr
+        mut currentType = receiver typeInfo t
+        args forEachIndexed: [i, arg ->
+          op = arg name name
+          argExpr = arg expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+          argType = arg expr typeInfo t
+
+          isLast = i == (args count - 1)
+
+          isNum = currentType isNumericType && argType isNumericType
+          isStr = currentType isStringType && argType isStringType
+          isBool = currentType isBoolType && argType isBoolType
+
+          opIsNative = | op
+            | "==" | "!=" | ">" | "<" | ">=" | "<=" => true
+            | "+" => (isNum || isStr)
+            | "-" | "*" | "/" | "%" => isNum
+            | "||" | "&&" => isBool
+            |=> false
+
+          opResultType = | op
+            | "==" | "!=" | ">" | "<" | ">=" | "<=" => db dtc bool
+            | "||" | "&&" => db dtc bool
+            | "+" => (isStr ifTrue: [db dtc str] ifFalse: [currentType])
+            | "-" | "*" | "/" | "%" => currentType
+            |=> (isLast ifTrue: [typeInfo t] ifFalse: [currentType])
+
+          newTypeRef = opResultType toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+
+          opIsNative
+            ifTrue: [
+              currentExpr <- IrOpBin op: op left: currentExpr right: argExpr typeRef: newTypeRef
+            ]
+            ifFalse: [
+              callId = currentType toIrFunctionId: op
+              currentTypeRef = currentType toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef
+            ]
+
+          currentType <- opResultType
+        ]
+
+        currentExpr
+      ]
+      | KeywordMsgT => [
+        shadowCopy = dbMsg kind == MessageSendKind.ShadowCopy
+        shadowCopy
+          ifTrue: [
+            shadowType = dbMsg receiverType
+            fields = shadowType collectFields
+            argsByName::mut Map(String, IrExpr) = #{}!
+            args forEach: [arg ->
+              argsByName at: (arg name name) put: (arg expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+            ]
+            argsExprs = fields map: [field ->
+              argExpr = argsByName at: field name
+              | argExpr
+              | null => [
+                fieldTypeRef = field typeT toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+                IrFieldGet receiver: receiverExpr field: field name typeRef: fieldTypeRef
+              ]
+              |=> argExpr
+            ]
+            IrNewExpr typeId: (shadowType toIrTypeId) args: argsExprs typeRef: exprType
+          ]
+          ifFalse: [
+            isReceiverFunction
+              ifTrue: [
+                argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
+                IrCall funcId: null callee: receiverExpr args: argsExprs isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
+              ]
+              ifFalse: [
+                argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
+                isCtor
+                  ifTrue: [
+                    useNewCtor
+                      ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs typeRef: exprType]
+                      ifFalse: [
+                        callId = dbMsg toCanonicalIrFunctionId: db
+                        IrCall funcId: callId callee: null args: argsExprs isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                      ]
+                  ]
+                  ifFalse: [
+                    callId = dbMsg toCanonicalIrFunctionId: db
+                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                  ]
+              ]
+          ]
+      ]
+  ]
+
+  ^ result unpackOrPANIC
+]
+
+MessageSendT toIrWhileStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrStmt? = [
+  isWhile = dbMsg name == "whileTrue"
+  ^ isWhile ifTrue: [
+    | this
+    | KeywordMsgT => [
+      condExpr = receiver toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      bodyExpr = (args first expr) toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      IrWhile cond: condExpr body: bodyExpr
+    ]
+    |=> null
+  ] ifFalse: [null]
+]
+
+TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrStmt = [
+  ^ | this
+  | VarDeclarationT => [
+    declaredInfo = astType unpack: [it toTypeInfoFromDb: db inPkg: null] or: value typeInfo
+    IrLet
+      name: name
+      typeRef: (declaredInfo toIrTypeRef)
+      value: (value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+      isMut: isMut
+      bindingKind: IrBindingKind.Local
+  ]
+  | AssignT => [
+    valExpr = value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    | kind
+    | AssignKind.TO_THIS_FIELD => IrSetField
+        receiver: (IrThisRef typeRef: (thisTypeRef unpackOrValue: ((Unknown new) toIrTypeRefWithMutErrors: false errorsList: {NivaType})))
+        field: name
+        value: valExpr
+    | AssignKind.TO_LOCAL_MUT => IrSetLocal name: name value: valExpr
+  ]
+  | DestructingAssignT => [
+    valueExpr = value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    valueType = value typeInfo t
+    bindings = names map: [fieldName ->
+      field = valueType findField: fieldName
+      fieldType = field unpack: [it typeT] or: (Unknown new)
+      IrArg name: fieldName typeRef: (fieldType toIrTypeRefWithMutErrors: false errorsList: {NivaType})
+    ]
+    IrDestructure
+      bindings: bindings
+      value: valueExpr
+  ]
+  | ReturnStatementT => [
+    expr = value unpack: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef] or: null
+    IrReturn expr: expr
+  ]
+  | MessageSendT => [
+    // whileTrue: as statement we keep IrWhile without extra block wrapper
+    whileStmt = this toIrWhileStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    whileStmt unpackOrValue: (IrExprStmt expr: (this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef))
+  ]
+  |=> [
+    IrExprStmt expr: (this toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+  ]
+]
+
+TypedBody toIrBlock(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrBlock = [
+  ^ this toIrBlockWithPrefix: {} db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+]
+
+TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) thisTypeRef: IrTypeRef? -> IrBlock = [
+  exprs = v
+  stmts::mut List::IrStmt = prefix toMutableList
+  mut resultExpr::IrExpr? = null
+
+  exprs isNotEmpty ifTrue: [
+    lastIndex = exprs count - 1
+    exprs forEachIndexed: [i, expr ->
+      isLast = i == lastIndex
+      | expr
+      | VarDeclarationT
+      | AssignT
+      | DestructingAssignT
+      | ReturnStatementT => [
+        stmt = expr toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+        stmts add: stmt
+        isLast ifTrue: [resultExpr <- null]
+      ]
+      |=> [
+        isLast ifTrue: [
+          resultExpr <- (expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        ]
+        isLast ifFalse: [
+          stmts add: (expr toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        ]
+      ]
+    ]
+  ]
+
+  blockType = t toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+  ^ IrBlock stmts: stmts toList result: resultExpr resultType: blockType
+]
+
+TypeFieldT toIrField -> IrField = [
+  ^ IrField name: name typeRef: (typeInfo toIrTypeRef)
+]
+
+UnionBranchT toIrUnionBranch -> IrUnionBranch = [
+  ^ IrUnionBranch name: name fields: (fields map: [it toIrField]) isInclude: isInclude
+]
+
+MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) -> IrFunction = [
+  receiverType = receiver
+  receiverTypeRef = receiverType toIrTypeRefWithMutErrors: false errorsList: {NivaType}
+
+  // lookup mut receiver requirement
+  mut requiresMutReceiver = false
+  methodsMaybe = isConstructor
+    ifTrue: [db constructorsTypeToMethodNameToMethod at: receiverType]
+    ifFalse: [db typeToMethodNameToMethod at: receiverType]
+
+  methodsMaybe unpack: [
+    method = it at: name
+    method unpack: [requiresMutReceiver <- it forMut]
+  ]
+
+  argsList = args map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+  finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverTypeRef)} + argsList]
+
+  // field aliases in scope
+  receiverTypeId = receiverType toIrTypeId
+  aliasFields = typeFieldsById at: receiverTypeId
+  prefixStmts::mut List::IrStmt = {}!
+  aliasFields unpack: [
+    it forEach: [field ->
+      prefixStmts add: (IrLet
+        name: field name
+        typeRef: field typeRef
+        value: null
+        isMut: false
+        bindingKind: IrBindingKind.FieldAlias)
+    ]
+  ]
+
+  bodyBlock = body toIrBlockWithPrefix: (prefixStmts toList) db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverTypeRef
+
+  returnTypeRef = returnType toIrTypeRefNoErrors
+  returnErrors = returnType listOfErrors map: [it toIrTypeRefWithMutErrors: false errorsList: {NivaType}]
+
+  genericTypes::mut List::NivaType = {}!
+  genericTypes add: receiverType
+  args forEach: [genericTypes add: it typeInfo t]
+  genericTypes add: returnType t
+
+  genericsSet::mut Set(String) = #()!
+  genericsList::mut List::String = {}!
+  genericTypes forEach: [t ->
+    t collectUnresolvedGenerics forEach: [g ->
+      genericsSet contains: g name, ifFalse: [
+        genericsSet add: g name
+        genericsList add: g name
+      ]
+    ]
+  ]
+
+  ^ IrFunction
+    id: (receiverType toIrFunctionId: name declPkg: currentPkg)
+    pkgId: currentPkg
+    name: name
+    receiverType: receiverTypeRef
+    args: finalArgs
+    returnType: returnTypeRef
+    returnErrors: returnErrors
+    requiresMutReceiver: requiresMutReceiver
+    generics: genericsList toList
+    instantiations: {}
+    body: bodyBlock
+]
+
+TypedStatement toIrFunctions(db): TyperDB currentPkg: String typeFieldsById: Map(String, List::IrField) -> List::IrFunction =
+  | this
+  | MessageDeclT => [
+      res::mut List::IrFunction = {}!
+      res add: (this toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById)
+      res toList
+    ]
+  | ExtendDeclT => messages map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
+  |=> {IrFunction}
+
+TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map(String, List(IrField)) -> List(IrTypeDef) =
+  | this
+  | TypeDeclT => [
+    typeFromDb = db findByTypeName: name inPkg: currentPkg
+    typeParams = | typeFromDb
+      | TypeT => typeFromDb collectGenerics map: [it name]
+      |=> {String}
+    fieldsIr = fields map: [it toIrField]
+    typeId = typeFromDb toIrTypeId
+    typeFieldsById at: typeId put: fieldsIr
+    res::mut List::IrTypeDef = {}!
+    res add: (IrTypeDef id: typeId pkgId: currentPkg name: name typeParams: typeParams fields: fieldsIr)
+    res toList
+  ]
+  |=> {IrTypeDef}
+
+TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Map(String, List(IrField)) -> List(IrUnionDef) =
+  | this
+  | UnionDeclT => [
+    rootType = db findByTypeName: name inPkg: currentPkg
+    rootTypeId = rootType toIrTypeId
+    typeParams = | rootType
+      | TypeT => rootType collectGenerics map: [it name]
+      |=> {String}
+
+    commonFieldsIr = commonUnionFields map: [it toIrField]
+    typeFieldsById at: rootTypeId put: commonFieldsIr
+
+    branchesIr = branches map: [b ->
+      branchIr = b toIrUnionBranch
+
+      branchType = db findByTypeName: b name inPkg: currentPkg
+      branchTypeId = branchType toIrTypeId
+      combinedFields = commonFieldsIr + (branchIr fields)
+      typeFieldsById at: branchTypeId put: combinedFields
+
+      branchIr
+    ]
+
+    res::mut List::IrUnionDef = {}!
+    res add: (IrUnionDef
+      id: rootTypeId
+      pkgId: currentPkg
+      name: name
+      typeParams: typeParams
+      commonFields: commonFieldsIr
+      branches: branchesIr
+    )
+    res toList
+  ]
+  |=> {IrUnionDef}
+
+TypedStatement toIrEnums(db): TyperDB currentPkg: String -> List(IrEnumDef) =
+  | this
+  | EnumDeclT => [
+    enumType = db findByTypeName: "" + token lexeme inPkg: currentPkg
+    enumId = enumType toIrTypeId
+    res::mut List(IrEnumDef) = {}!
+    res add: (IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String})
+    res toList
+  ]
+  |=> {IrEnumDef}
+
+IrTypeRef toKeyPart -> String = [
+  argsKey = args isNotEmpty
+    ifTrue: ["(" + (args joinWith: "," transform: [it toKeyPart]) + ")"]
+    ifFalse: [""]
+  ^ typeId + argsKey + (nullable ifTrue: ["?"] ifFalse: [""])
+]
+
+IrInstantiation toKey -> String = [
+  argKey = argTypes isNotEmpty
+    ifTrue: [argTypes joinWith: "," transform: [it toKeyPart]]
+    ifFalse: [""]
+  ^ receiverType toKeyPart + "|" + argKey + "|" + returnType toKeyPart
+]
+
+TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) -> Unit = [
+  | this
+  | MessageSendT => [
+    funcId = this dbMsg toCanonicalIrFunctionId: db
+
+    receiverType = this receiver typeInfo t
+    argExprs = | this
+      | UnaryMsgT => List(TypedExpr2) val: {}
+      | BinaryMsgT => args map: [it expr]
+      | KeywordMsgT => args map: [it expr]
+      |=> {TypedExpr2}
+
+    argTypes = argExprs map: [it typeInfo t]
+    returnType = this dbMsg returnType
+
+    mut instList = instMap at: funcId
+    | instList
+    | null => [
+      newList::mut List::IrInstantiation = {}!
+      instMap at: funcId put: newList
+      instList <- newList
+    ]
+    |=> []
+
+    inst = IrInstantiation
+      receiverType: (receiverType toIrTypeRefWithMutErrors: false errorsList: {NivaType})
+      argTypes: (argTypes map: [it toIrTypeRefWithMutErrors: false errorsList: {NivaType}])
+      returnType: (returnType toIrTypeRefWithMutErrors: false errorsList: {NivaType})
+
+    instListFinal = instList unpackOrPANIC
+    exists = instListFinal any: [it toKey == inst toKey]
+    exists ifFalse: [instListFinal add: inst]
+
+    receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+    argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+  ]
+  | VarDeclarationT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+  | AssignT =>            value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+  | DestructingAssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+  | ReturnStatementT =>   value unpack: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+  | CodeBlockT =>         body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+  | MatchT => [
+    subject collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+    branches forEach: [br ->
+      br condition collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+      br additionalConditions v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+      br body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+    ]
+    elseBranch unpack: [
+      it v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+    ]
+  ]
+  | CollectionLiteralT => elements v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+  | ExprInBracketsT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+  |=> []
+]
+
+List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) -> Unit = [
+  this forEach: [st ->
+    | st
+    | MessageDeclT => st body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+    | ExtendDeclT =>  st messages forEach: [msg ->
+        msg body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+      ]
+    |=> []
+  ]
+]
+
+ResolverHelper toIrModule -> IrModule = [
+  db = this db
+  packages = db packages
+
+  imports::mut List::IrImport = {}!
+  seenLocalImports::mut Set(String) = #()!
+  seenPackageImports::mut Set(String) = #()!
+
+  packages forEach: [pkgName, pkg ->
+    pkg imports forEach: [imp ->
+      seenLocalImports contains: imp, ifFalse: [
+        seenLocalImports add: imp
+        imports add: (IrImport name: imp kind: IrImportKind.Local)
+      ]
+    ]
+    pkg packageImports forEach: [imp ->
+      seenPackageImports contains: imp, ifFalse: [
+        seenPackageImports add: imp
+        imports add: (IrImport name: imp kind: IrImportKind.Package)
+      ]
+    ]
+  ]
+
+  typeFieldsById::mut Map(String, List::IrField) = #{}!
+  types::mut List::IrTypeDef = {}!
+  unions::mut List::IrUnionDef = {}!
+  enums::mut List::IrEnumDef = {}!
+  functions::mut List::IrFunction = {}!
+
+  // fileToStatements keys are pkg names (file names), not filesystem paths
+  fileToStatements forEach: [file, statements ->
+    statements forEach: [st ->
+      types addAll: (st toIrTypes: db currentPkg: file typeFieldsById: typeFieldsById)
+      unions addAll: (st toIrUnions: db currentPkg: file typeFieldsById: typeFieldsById)
+      enums addAll: (st toIrEnums: db currentPkg: file)
+      functions addAll: (st toIrFunctions: db currentPkg: file typeFieldsById: typeFieldsById)
+    ]
+  ]
+
+  instMap::mut Map(String, mut List::IrInstantiation) = #{}!
+
+  fileToStatements forEach: [file, statements ->
+    statements collectInstantiationsFromStatements: db currentPkg: file instMap: instMap
+  ]
+
+  // entry point
+  entryExprs = entryPointExpressions
+  entryType = entryExprs isEmpty
+    ifTrue: [db dtc unit]
+    ifFalse: [(entryExprs last) typeInfo t]
+
+  entryBody = TypedBody v: entryExprs t: entryType
+  entryBlock = entryBody toIrBlock: db currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
+
+  // attach instantiations
+  functionsWithInst = functions map: [f ->
+    instForFn = instMap at: f id
+    instList = instForFn unpack: [it toList] or: {}
+    IrFunction
+      id: f id
+      pkgId: f pkgId
+      name: f name
+      receiverType: f receiverType
+      args: f args
+      returnType: f returnType
+      returnErrors: f returnErrors
+      requiresMutReceiver: f requiresMutReceiver
+      generics: f generics
+      instantiations: instList
+      body: f body
+  ]
+
+  typesByPkg::mut Map(String, mut List::IrTypeDef)      = #{}!
+  unionsByPkg::mut Map(String, mut List::IrUnionDef)    = #{}!
+  enumsByPkg::mut Map(String, mut List::IrEnumDef)      = #{}!
+  functionsByPkg::mut Map(String, mut List::IrFunction) = #{}!
+
+  types forEach: [ t ->
+    list = typesByPkg get: t pkgId orPut: [{}!]
+
+
+    list add: t
+  ]
+
+  unions forEach: [ u ->
+    list = unionsByPkg get: u pkgId orPut: [{}!]
+    list add: u
+  ]
+
+
+  enums forEach: [ e ->
+    list = enumsByPkg get: e pkgId orPut: [{}!]
+    list add: e
+  ]
+
+  functionsWithInst forEach: [ f ->
+    list = functionsByPkg get: f pkgId orPut: [{}!]
+    list add: f
+  ]
+
+  packagesIr::mut List::IrPackage = {}!
+  // preserve per-pkg imports and membership
+  fileToStatements forEach: [file, statements ->
+    pkg = packages at: file, unpackOrPANIC
+    pkgImports::mut List::IrImport = {}!
+    seenLocal::mut Set(String) = #()!
+    seenPackage::mut Set(String) = #()!
+
+    pkg imports forEach: [imp ->
+      seenLocal contains: imp, ifFalse: [
+        seenLocal add: imp
+        pkgImports add: (IrImport name: imp kind: IrImportKind.Local)
+      ]
+    ]
+    pkg packageImports forEach: [imp ->
+      seenPackage contains: imp, ifFalse: [
+        seenPackage add: imp
+        pkgImports add: (IrImport name: imp kind: IrImportKind.Package)
+      ]
+    ]
+
+    typesMaybe = typesByPkg at: file
+    unionsMaybe = unionsByPkg at: file
+    enumsMaybe = enumsByPkg at: file
+    functionsMaybe = functionsByPkg at: file
+
+    typesList = typesMaybe unpack: [it toList] or: {}
+    unionsList = unionsMaybe unpack: [it toList] or: {}
+    enumsList = enumsMaybe unpack: [it toList] or: {}
+    functionsList = functionsMaybe unpack: [it toList] or: {}
+
+    packagesIr add: (IrPackage
+      name: file
+      imports: pkgImports toList
+      types: typesList
+      unions: unionsList
+      enums: enumsList
+      functions: functionsList)
+  ]
+
+  ^ IrModule
+      version: "nir/v0"
+      pkg: entryPointName
+      packages: packagesIr toList
+      imports: imports toList
+      types: types toList
+      unions: unions toList
+      enums: enums toList
+      functions: functionsWithInst
+      entry: entryBlock
+]

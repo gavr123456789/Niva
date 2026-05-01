@@ -1,0 +1,7 @@
+IrModule toJson -> String = [
+  TO DO: "IR JSON serialization is not implemented yet"
+]
+
+IrModule toDebugString -> String = [
+  ^ "IrModule " + pkg + " (packages: " + (packages count toString) + ", functions: " + (functions count toString) + ", types: " + (types count toString) + ")"
+]

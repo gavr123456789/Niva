@@ -3,9 +3,7 @@
 type Tuple x: T y: G 
 
 KeywordMsg getNameFromArgs -> String = [
-  ^ args joinWith: ":" transform: [
+  ^ args joinWith: "__" transform: [
     it name name
-  ], + ":"
+  ]
 ]
-
-

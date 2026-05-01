@@ -213,7 +213,7 @@ Test parseKeywordDecl -> Unit = [
   | MessageDecl => [
     Assert
       that: keyword name
-      equals: "from:to:"
+      equals: "from__to"
     Assert
       that: keyword args count
       equals: 2

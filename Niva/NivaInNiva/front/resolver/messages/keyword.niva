@@ -17,6 +17,123 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   msgName = | nameOverride
   | null => .getNameFromArgs
   |=> nameOverride
+
+  mut shadowCopy::KeywordMsgT? = null
+  isTypeReceiver = | receiverTypedExpr
+    | IdentifierT => receiverTypedExpr isNameOfTheType
+    |=> false
+
+  | receiverType
+  | TypeT => [
+    (isTypeReceiver || args isEmpty) ifFalse: [
+      fieldNames = receiverType collectFields map: [it name]
+      fieldNameSet = fieldNames toSet
+      argNames = args map: [it name name]
+      argNameSet = argNames toSet
+      missingField = argNames find: [fieldNameSet contains: it, not]
+      allArgsAreFields = missingField == null
+
+      allArgsAreFields ifTrue: [
+        argNameSet count != argNames count ifTrue: [
+          db addErrorMessage: (LazyError tok: token msg: "Shadow copy has duplicate fields")
+        ]
+
+        allFieldsMentioned = fieldNames count == argNameSet count
+        allFieldsMentioned ifTrue: [
+          db addErrorMessage: (LazyError tok: token msg: "Shadow copy must not mention all fields; use constructor")
+        ]
+
+        shadowLetterToType::mut Map(String, NivaType) = #{}!
+
+        typedShadowArgs = args map: [kwArg ->
+          {name expr} = kwArg
+          field = receiverType findField: name name
+          fieldType = field unpack: [it typeT] or: (Unknown new)
+          expectedArgType =
+            (shadowLetterToType isNotEmpty && fieldType isContainsUnresolvedGenerics)
+              ifTrue: [fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db]
+              ifFalse: [fieldType]
+
+          typedExpr =
+            | expr
+            | CodeBlock => [
+              | expectedArgType
+              | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+              |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
+            ]
+            |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
+
+          realType = typedExpr typeInfo t
+
+          fieldType collectGenericMappingsFrom: realType into: shadowLetterToType db: db
+
+          fieldType isContainsUnresolvedGenerics
+            ifTrue: [
+              expectedResolved = fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db
+              expectedResolved isContainsUnresolvedGenerics ifFalse: [
+                db isAssignable: realType toExpected: expectedResolved, ifFalse: [
+                  db addErrorMessage: (ErrorWrongArgType
+                                        tok: expr token
+                                        msg: "Expected " + expectedResolved toString + " but got " + realType toString)
+                ]
+              ]
+            ]
+            ifFalse: [
+              db isAssignable: realType toExpected: fieldType, ifFalse: [
+                kwName = kwArg name
+                db addErrorMessage: (ErrorWrongArgType
+                                      tok: expr token
+                                      msg: "wrong arg type for $kwName expected " + fieldType toString cyan + " but got "red + realType toString cyan)
+              ]
+            ]
+
+          NameAndExprT name: name expr: typedExpr
+        ]
+
+        resolvedReceiverType =
+          (shadowLetterToType isNotEmpty && receiverType isContainsUnresolvedGenerics)
+            ifTrue: [receiverType replaceGenericsFromTableDeep: shadowLetterToType db: db]
+            ifFalse: [receiverType]
+
+        shadowMsgArgs = typedShadowArgs map: [kwArg ->
+          field = receiverType findField: kwArg name name
+          fieldType = field unpack: [it typeT] or: (Unknown new)
+          resolvedFieldType =
+            (shadowLetterToType isNotEmpty && fieldType isContainsUnresolvedGenerics)
+              ifTrue: [fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db]
+              ifFalse: [fieldType]
+          TypeTField name: (kwArg name name) typeT: resolvedFieldType
+        ]
+
+        shadowMsg = NivaMethod
+          name: msgName
+          receiverType: resolvedReceiverType
+          args: shadowMsgArgs
+          returnType: resolvedReceiverType
+          returnErrors: {}!
+          forMut: false
+          possibleErrors: {}
+          kind: MessageSendKind.ShadowCopy
+          decl: null
+          protocolName: "shadowCopy"
+          pkgName: receiverType pkgName
+
+        shadowCopy <- KeywordMsgT
+          args: typedShadowArgs
+          kind: MessageSendKind.ShadowCopy
+          receiver: receiverTypedExpr
+          token: token
+          typeInfo: (TypeInfo
+                        t: resolvedReceiverType
+                        isMut: false
+                        listOfErrors: {}!)
+          dbMsg: shadowMsg
+      ]
+    ]
+  ]
+  |=> []
+
+  shadowCopy != null ifTrue: [^ shadowCopy unpackOrPANIC]
   mut kwMsgDB = db
     findMsgFromReceiver: receiverTypedExpr
     byName: msgName

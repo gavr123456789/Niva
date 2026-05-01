@@ -68,9 +68,9 @@ mut Parser
 
       isSingleExpr = .peek kind != TokenType.OpenBracket
       body = .parseBodyOrSingleExpr
-      kwName = kwParts2 nameParts joinWith: ":" transform: [
+      kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
-      ], + ":"
+      ]
       msgDecl = MessageDecl
         receiver: receiverType
         name: kwName
@@ -105,9 +105,9 @@ mut Parser
 
     isSingleExpr = .peek kind != TokenType.OpenBracket
     body = .parseBodyOrSingleExpr
-    kwName = kwParts2 nameParts joinWith: ":" transform: [
+    kwName = kwParts2 nameParts joinWith: "__" transform: [
       it
-    ], + ":"
+    ]
     msgDecl = MessageDecl
       receiver: receiverType
       name: kwName
@@ -221,9 +221,9 @@ extend mut Parser [
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
-        kwName = kwParts nameParts joinWith: ":" transform: [
+        kwName = kwParts nameParts joinWith: "__" transform: [
           it
-        ], + ":"
+        ]
 
         MessageDecl
           receiver: receiverType name: kwName args: kwParts args :returnType :token :body :isSingleExpr :isConstructor
@@ -242,9 +242,9 @@ extend mut Parser [
 
       isSingleExpr = .peek kind != TokenType.OpenBracket
       body = .parseBodyOrSingleExpr
-      kwName = kwParts2 nameParts joinWith: ":" transform: [
+      kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
-      ], + ":"
+      ]
       MessageDecl
           receiver: receiverType name: kwName args: kwParts2 args :returnType :token :body :isSingleExpr :isConstructor
     ]

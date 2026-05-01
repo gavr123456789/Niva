@@ -410,14 +410,70 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         ^ currentExpr
     ]
     | KeywordMsgT => [
-        isBindReceiver && (dbMsg name == "emit:")
+        dbMsg kind == MessageSendKind.ShadowCopy
+            ifTrue: [
+                receiverStr = receiver toTSFromPkg: currentPkg db: db
+                fields = dbMsg receiverType collectFields
+                argsByName::mut Map(String, String) = #{}!
+                args forEach: [arg ->
+                    argsByName at: (arg name name) put: (arg expr toTSFromPkg: currentPkg db: db)
+                ]
+                argsExprs = fields map: [field ->
+                    argExpr = argsByName at: field name
+                    | argExpr
+                    | null => receiverStr + "." + field name
+                    |=> argExpr
+                ]
+                argsStr = argsExprs joinWith: ", "
+                ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + argsStr + ")"
+            ]
+        isBindReceiver && (dbMsg name == "emit__backend")
+            ifTrue: [
+                templateExpr = args first expr
+                backendExpr = (args at: 1) expr
+
+                backendName = | backendExpr
+                  | StringExprT => backendExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:backend: expects String literal as backend"]
+
+                backendName != "js" ifTrue: [^ "undefined"]
+
+                ^ | templateExpr
+                  | StringExprT => templateExpr token lexeme unquoteLiteral
+                  |=> templateExpr toTSFromPkg: currentPkg db: db
+            ]
+
+        isBindReceiver && (dbMsg name == "emit")
             ifTrue: [
                 argExpr = args first expr
                 ^ | argExpr
                   | StringExprT => argExpr token lexeme unquoteLiteral
                   |=> argExpr toTSFromPkg: currentPkg db: db
             ]
-        isBindReceiver && (dbMsg name == "addImport:")
+        isBindReceiver && (dbMsg name == "addImport__backend")
+            ifTrue: [
+                importExpr = args first expr
+                backendExpr = (args at: 1) expr
+
+                backendName = | backendExpr
+                  | StringExprT => backendExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind addImport:backend: expects String literal as backend"]
+
+                backendName != "js" ifTrue: [^ ""]
+
+                | importExpr
+                | StringExprT => [
+                    importName = importExpr token lexeme unquoteLiteral
+                    pkg = db packages at: currentPkg, unpackOrPANIC
+                    pkg addPackageImport: importName
+                  ]
+                |=> [
+                    TO DO: "Bind addImport:backend: expects String literal"
+                  ]
+                ^ ""
+            ]
+
+        isBindReceiver && (dbMsg name == "addImport")
             ifTrue: [
                 argExpr = args first expr
                 | argExpr
@@ -432,7 +488,30 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 ^ ""
             ]
 
-        isBindReceiver && (dbMsg name == "emit:args:")
+        isBindReceiver && (dbMsg name == "emit__backend__args")
+            ifTrue: [
+                templateExpr = args first expr
+                backendExpr = (args at: 1) expr
+                argsListExpr = (args at: 2) expr
+
+                backendName = | backendExpr
+                  | StringExprT => backendExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:backend:args: expects String literal as backend"]
+
+                backendName != "js" ifTrue: [^ "undefined"]
+
+                template = | templateExpr
+                  | StringExprT => templateExpr token lexeme unquoteLiteral
+                  |=> [TO DO: "Bind emit:backend:args: expects String literal as first argument"]
+
+                argsValues = | argsListExpr
+                  | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
+                  |=> [TO DO: "Bind emit:backend:args: expects List literal as third argument"]
+
+                ^ template bindApply: argsValues
+            ]
+
+        isBindReceiver && (dbMsg name == "emit__args")
             ifTrue: [
                 templateExpr = args first expr
                 argsListExpr = (args at: 1) expr
@@ -445,44 +524,10 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                   | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
                   |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
 
-                // Validate placeholder count
-                mut maxPlaceholder = 0
-                mut i = 0
-                template count repeat: [
-                    (template at: i) == '$' ifTrue: [
-                        (i + 1) < (template count) ifTrue: [
-                            nextChar = template at: (i + 1)
-                            nextChar isDigit ifTrue: [
-                                mut digitStr = nextChar toString
-                                mut j = i + 2
-                                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
-                                    digitStr <- digitStr + ((template at: j) toString)
-                                    j <- j + 1
-                                ]
-                                placeholderNum = digitStr toInt
-                                placeholderNum > maxPlaceholder ifTrue: [
-                                    maxPlaceholder <- placeholderNum
-                                ]
-                            ]
-                        ]
-                    ]
-                    i <- i + 1
-                ]
-
-                argsCount = argsValues count
-                maxPlaceholder > argsCount ifTrue: [
-                    TO DO: "Bind emit:args: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
-                ]
-
-                mut result = template
-                argsValues forEachIndexed: [i, argValue ->
-                    placeholder = "$" + ((i + 1) toString)
-                    result <- result replace: placeholder with: argValue
-                ]
-                ^ result
+                ^ template bindApply: argsValues
             ]
 
-        dbMsg name == "whileTrue:" ifTrue: [
+        dbMsg name == "whileTrue" ifTrue: [
             condStr = receiver toTSFromPkg: currentPkg db: db
             bodyStr = (args first expr) toTSFromPkg: currentPkg db: db
             ^ "while (" + "(" + condStr + ")()" + ") { " + "(" + bodyStr + ")(); }"
@@ -499,18 +544,30 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         selectorFromArgs = args joinWith: "__" transform: [
             it name name
         ]
-        suffix = dbMsg name substringAfter: "__"
-        hasSuffix = suffix != dbMsg name
-        suffixStr = hasSuffix ifTrue: ["__" + suffix] ifFalse: [""]
+        keywordPrefix = selectorFromArgs + "__"
+        isKeyword =
+          (args isNotEmpty) &&
+          ((dbMsg name == selectorFromArgs) || ((dbMsg name substringBefore: keywordPrefix) == ""))
+        suffix =
+          isKeyword
+            ifTrue: [
+              dbMsg name == selectorFromArgs
+                ifTrue: [""]
+                ifFalse: [dbMsg name substringAfter: keywordPrefix]
+            ]
+            ifFalse: [
+              maybeSuffix = dbMsg name substringAfter: "__"
+              maybeSuffix != dbMsg name ifTrue: [maybeSuffix] ifFalse: [""]
+            ]
+        suffixStr = suffix != "" ifTrue: ["__" + suffix] ifFalse: [""]
 
         newSelector = isDefaultConstructor
             ifTrue: [
                 useNewCtor
-                  ifTrue:  ["new " + dbMsg receiverType name]
-                  ifFalse: [dbMsg receiverType name + "__" + selectorFromArgs + suffixStr]
-            ] ifFalse: [
-                dbMsg receiverType name + "__" + selectorFromArgs + suffixStr
+                  ifTrue:  [ "new " + dbMsg receiverType name ]
+                  ifFalse: [ dbMsg receiverType name + "__" + selectorFromArgs + suffixStr ]
             ]
+            ifFalse: [ dbMsg receiverType name + "__" + selectorFromArgs + suffixStr ]
 
         receiverStr = getReceiverTs do
         receiverWithComma = receiverStr == "" ifTrue: [""] ifFalse: [receiverStr + ", "]
@@ -519,13 +576,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         argsExprStr = args map: [
             it expr toTSFromPkg: currentPkg db: db
         ]
-        args = receiverWithComma + (argsExprStr joinWith: ", ")
+        args = "(" + receiverWithComma + (argsExprStr joinWith: ", ") + ")"
 
-        useNewCtor ifTrue: [
-            ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + args + ")"
-        ]
 
-        ^ pkg_qualifier + newSelector + "(" + args + ")"
+        ^ useNewCtor
+            ifTrue:  [ "new " + pkg_qualifier + dbMsg receiverType name + args ]
+            ifFalse: [ pkg_qualifier + newSelector + args ]
     ]
 
 

@@ -114,7 +114,7 @@ private fun Resolver.resolveStatement(
             stack.push(statement)
             resolveVarDeclaration(statement, currentScope, previousScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // var
             }
             stack.pop()
         }
@@ -126,7 +126,7 @@ private fun Resolver.resolveStatement(
             currentLevel--
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // var
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // var
             }
 
             addToTopLevelStatements(statement)
@@ -201,7 +201,7 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // identifier
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // identifier
             }
 
             if (!statement.isType)
@@ -213,7 +213,7 @@ private fun Resolver.resolveStatement(
         is ExpressionInBrackets -> {
             resolveExpressionInBrackets(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // (expr)
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // (expr)
             }
             addToTopLevelStatements(statement)
         }
@@ -224,7 +224,7 @@ private fun Resolver.resolveStatement(
             resolveCodeBlock(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // codeblock
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // codeblock
             }
             addToTopLevelStatements(statement)
             stack.pop()
@@ -234,7 +234,7 @@ private fun Resolver.resolveStatement(
             val collectionName = "List"
             resolveCollection(statement, collectionName, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // list
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // list
             }
             addToTopLevelStatements(statement)
         }
@@ -242,7 +242,7 @@ private fun Resolver.resolveStatement(
         is SetCollection -> {
             resolveSet(statement, (previousScope + currentScope).toMutableMap())
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // set
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // set
             }
             addToTopLevelStatements(statement)
         }
@@ -250,7 +250,7 @@ private fun Resolver.resolveStatement(
         is MapCollection -> {
             resolveMap(statement, rootStatement, previousScope, currentScope)
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // map
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // map
             }
             addToTopLevelStatements(statement)
         }
@@ -291,7 +291,7 @@ private fun Resolver.resolveStatement(
             }
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // literal
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // literal
             }
         }
 
@@ -306,7 +306,7 @@ private fun Resolver.resolveStatement(
             resolveControlFlow(statement, previousScope, currentScope, rootStatement)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // if
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // if
             }
 
             addToTopLevelStatements(statement)
@@ -450,7 +450,7 @@ private fun Resolver.resolveStatement(
             statement.type = method.toLambda(forType, statement.forIdentifier.isType)
 
             if (GlobalVariables.isLspMode) {
-                onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // method reference
+                emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // method reference
             }
         }
 
@@ -896,16 +896,64 @@ fun Resolver.addNewType(
     // 2 check type for unique
     val typeName = if (alias) (statement as TypeAliasDeclaration).typeName else type.name
     if (!alreadyCheckedOnUnique) {
-        if (typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token) != null) {
-            val err = "Type with name ${YEL}${typeName}${RESET} already registered in package: ${WHITE}$currentPackageName"
+        val alreadyRegistered = typeAlreadyRegisteredInCurrentPkg(typeName, pkg, statement?.token)
+        val newDeclFile = statement?.token?.file?.absolutePath
+        val existingDeclFile = alreadyRegistered?.typeDeclaration?.token?.file?.absolutePath
+
+        val isSameFile = newDeclFile != null && newDeclFile == existingDeclFile
+        val canReplaceInLsp = GlobalVariables.isLspMode && alreadyRegistered != null && isSameFile
+
+        val isInternalAlias =
+            statement is TypeAliasDeclaration &&
+            type is Type.InternalType &&
+            InternalTypes.entries.none { it.name == typeName }
+
+        val canReplaceInternal = GlobalVariables.isLspMode && isInternalAlias
+        val isInternalType = typeName in typeDB.internalTypes
+
+        fun replaceTypeInSameFile(typeName: String, pkg: String, file: String?) {
+            typeDB.userTypes[typeName]?.removeIf { it.pkg == pkg }
+            pack.declarations.removeIf {
+                it is SomeTypeDeclaration &&
+                        it.typeName == typeName &&
+                        it.token.file.absolutePath == file
+            }
+        }
+
+        fun reportDuplicateType(statement: Statement?, typeName: String, pkgName: String) {
+            val err = "Type with name ${YEL}$typeName${RESET} already registered in package: ${WHITE}$pkgName"
             statement?.token?.compileError(err)
         }
-        // check for internal types
-        if (typeDB.internalTypes.keys.contains(typeName)) {
-            statement?.token?.compileError("Type $typeName is already registered as internal type")
+
+        fun removeInternalType(typeName: String) {
+            typeDB.internalTypes.remove(typeName)
+            pack.types.remove(typeName)
+            typeTable.remove(typeName)
+        }
+
+        // processing of an already registered type
+        alreadyRegistered?.let {
+            if (canReplaceInLsp) {
+                replaceTypeInSameFile(typeName, it.pkg, newDeclFile)
+            } else {
+                reportDuplicateType(statement, typeName, currentPackageName)
+                return
+            }
+        }
+
+        // processing of internal types
+        // btw duplicate types that can't be replaced return above, so this runs only when no duplicate exists
+        // or when we already replaced the declaration in LSP mode
+        when {
+            canReplaceInternal && isInternalType -> {
+                removeInternalType(typeName)
+            }
+
+            !canReplaceInLsp && isInternalType -> {
+                statement?.token?.compileError("Type $typeName is already registered as internal type")
+            }
         }
     }
-
 
     // 3 add declaration to be generated
     if (statement != null) {
@@ -920,10 +968,6 @@ fun Resolver.addNewType(
     // alias
     if (alias) {
         type.isAlias = true
-//        val realNonAliasType = typeTable[type.name]
-//        if (realNonAliasType != null) {
-//            type.protocols = realNonAliasType.protocols
-//        }
     }
     // 5 put type to all type sources
     pack.types[typeName] = type
@@ -939,25 +983,22 @@ fun Resolver.addNewType(
             unresolved.remove(typeToRemove)
         }
     }
-
 }
 
 
 fun Resolver.changeProject(newCurrentProject: String, token: Token) {
     // clear all current, load project
     currentProjectName = newCurrentProject
-    // check that there are no such project already
 
+    // check that there are no such project already
     if (projects[newCurrentProject] != null) {
         token.compileError("Project with name: $newCurrentProject already exists")
     }
     val commonProject = projects["common"] ?: token.compileError("Can't find common project")
 
-
     projects[newCurrentProject] = Project(
         name = newCurrentProject, usingProjects = mutableListOf(commonProject)
     )
-
     TODO()
 }
 
@@ -1055,6 +1096,8 @@ fun Resolver.processPendingMessageReResolves(
     callOnEachStatement: Boolean = true
 ) {
     if (pendingMsgDeclReResolve.isEmpty()) return
+    val savedSuppress = suppressOnEachStatement
+    if (!callOnEachStatement) suppressOnEachStatement = true
     val fakeTok = createFakeToken()
     var safety = 0
     while (pendingMsgDeclReResolve.isNotEmpty()) {
@@ -1069,6 +1112,10 @@ fun Resolver.processPendingMessageReResolves(
             changeProtocol(ctx.protocol)
             currentResolvingFileName = ctx.file
         }
+        // ensure no stale stack from previous failed resolves affects return checks
+        stack.clear()
+        wasThereReturn = null
+        wasThereTopLevelReturn = false
         val savedLevel = currentLevel
         currentLevel++
         try {
@@ -1083,6 +1130,7 @@ fun Resolver.processPendingMessageReResolves(
             currentLevel = savedLevel
         }
     }
+    suppressOnEachStatement = savedSuppress
 }
 
 fun Resolver.usePackage(packageName: String) {
@@ -1193,7 +1241,6 @@ fun Resolver.getTypeForIdentifier(
         getCurrentPackage(x.token).addImport(typeFromDB.pkg)
     }
 
-
     // replace the JSON::T with JSON::Person
     val typeWithGenericResolved = when {
         x.typeAST is TypeAST.UserType &&
@@ -1208,14 +1255,12 @@ fun Resolver.getTypeForIdentifier(
             typeFromDB.typeArgumentList.count() == 1 -> {
             val e = x.typeAST.toType(typeDB, typeTable, resolver = this)
             val copy = typeFromDB.copy()
-//            copy.typeArgumentList = mutableListOf(e)
             copy.replaceTypeArguments(mutableListOf(e))
             copy
         }
 
         else -> typeFromDB
     }
-//    x.type = type
     return typeWithGenericResolved
 }
 
@@ -1348,9 +1393,6 @@ fun createTypeListOfUserLikeType(name: String, elementType: Type.UserLike, listT
     }
 }
 val createTypeListOfType = { name: String, elementType: Type.InternalType, listTypeProtocolDonor: Type.UserType, emitName: String ->
-//    val q = listTypeProtocolDonor.protocols.isNotEmpty()
-//    println(q)
-//    assert(q)
     Type.UserType(
         name = name,
         typeArgumentList = mutableListOf(elementType.cloneAndChangeBeforeGeneric("T")),
@@ -1442,6 +1484,19 @@ class Resolver(
 
     val onEachStatement: ((Statement, Map<String, Type>?, Map<String, Type>?, currentFile: File) -> Unit)? = null
 ) {
+    var suppressOnEachStatement: Boolean = false
+
+    fun emitOnEachStatement(
+        statement: Statement,
+        currentScope: Map<String, Type>?,
+        previousScope: Map<String, Type>?,
+        currentFile: File
+    ) {
+        if (!suppressOnEachStatement) {
+            onEachStatement?.invoke(statement, currentScope, previousScope, currentFile)
+        }
+    }
+
     fun reset() {
         statements = mutableListOf()
         unResolvedSingleExprMessageDeclarations.clear()
@@ -1821,7 +1876,6 @@ class Resolver(
         ).also {
             it.isMutable = true
             it.emitName = "MutableSet"
-            File("/tmp/niva_resolver_debug.txt").appendText("DEBUG: Resolver mutableSetType defined: name=${it.name} emit=${it.emitName} mut=${it.isMutable}\n")
         }
 
 
@@ -1849,7 +1903,6 @@ class Resolver(
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinTransform")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWith")
                 it["collectionProtocol"]?.keywordMsgs?.remove("joinWithTransform") // sequence doesn't have such methods
-
             }
         )
 

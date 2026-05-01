@@ -12,7 +12,7 @@ Test callNewFromOtherFile = [
                           entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  Assert that: (js contains: "const alice = new person.Person(\"Alice\")") equals: true
+  js contains: "const alice = new person.Person(\"Alice\")", assertTrue
 ]
 
 Test multilineStrings = [
@@ -23,9 +23,9 @@ Test multilineStrings = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  Assert that: (js contains: "`escaped") equals: true
-  Assert that: (js contains: "\\\\n \\\\t") equals: true
-  Assert that: (js contains: "String`") equals: true
+  js contains: "`escaped", assertTrue
+  js contains: "\\\\n \\\\t", assertTrue
+  js contains: "String`", assertTrue
 ]
 
 Test keywordCallMangled = [
@@ -37,7 +37,7 @@ Test keywordCallMangled = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  Assert that: (js contains: "String__replace__with") equals: true
+  js contains: "String__replace__with", assertTrue
 ]
 
 Test keywordDeclExternalName = [
@@ -49,7 +49,7 @@ Test keywordDeclExternalName = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  Assert that: (js contains: "export function String__surroundWith") equals: true
+  js contains: "export function String__surroundWith", assertTrue
 ]
 
 
@@ -71,16 +71,16 @@ Test tsGetterCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
-  Assert that: (js contains: "export class Person") equals: true
-  Assert that: (js contains: "constructor(age)") equals: true
-  Assert that: (js contains: "this.age = age") equals: true
-  Assert that: (js contains: "export function Int__twice") equals: true
-  Assert that: (js contains: "return ((_this) + (_this))") equals: true
+  js contains: "export class Person", assertTrue
+  js contains: "constructor(age)", assertTrue
+  js contains: "this.age = age", assertTrue
+  js contains: "export function Int__twice", assertTrue
+  js contains: "return ((_this) + (_this))", assertTrue
 
-  Assert that: (js contains: "const x = 5") equals: true
-  Assert that: (js contains: "const y = Int__twice(x)") equals: true
-  Assert that: (js contains: "const p = new Person(21)") equals: true
-  Assert that: (js contains: "const z = p.age") equals: true
+  js contains: "const x = 5", assertTrue
+  js contains: "const y = Int__twice(x)", assertTrue
+  js contains: "const p = new Person(21)", assertTrue
+  js contains: "const z = p.age", assertTrue
 ]
 
 Test tsDestructAssignCodegen = [
@@ -97,7 +97,7 @@ Test tsDestructAssignCodegen = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
 
-  Assert that: (js contains: "const {age, name} = alice") equals: true
+  js contains: "const {age, name} = alice", assertTrue
 ]
 
 Test tsSingleExprReturnCodegen = [
@@ -114,9 +114,9 @@ Test tsSingleExprReturnCodegen = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
 
-  Assert that: (js contains: "export function Square__perimeter") equals: true
-  Assert that: (js contains: "let side = _this.side") equals: true
-  Assert that: (js contains: "return core.Int__inc(side)") equals: true
+  js contains: "export function Square__perimeter", assertTrue
+  js contains: "let side = _this.side", assertTrue
+  js contains: "return core.Int__inc(side)", assertTrue
 ]
 
 Test tsConstructorOnCoreTypeCodegen = [
@@ -131,16 +131,34 @@ Test tsConstructorOnCoreTypeCodegen = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
 
-  Assert that: (js contains: "export function Int__answear") equals: true
-  Assert that: (js contains: "const x = Int__answear()") equals: true
+  js contains: "export function Int__answear", assertTrue
+  js contains: "const x = Int__answear()", assertTrue
   Assert that: (js contains: "new Int") equals: false
+]
+
+Test tsShadowCopyCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  js contains: "const p = new Person(\"Alice\", 24)", assertTrue
+  js contains: "const p2 = new Person(p.name, 25)", assertTrue
 ]
 
 Test tsBindingsCodegen = [
   fileMain = """
     Int read: String -> String = [
-      Bind addImport: "fs"
-      ^ Bind emit: "fs.readFileSync($1, $2)" args: {read "UTF-8"}
+      Bind addImport: "fs" backend: "js"
+      ^ Bind emit: "fs.readFileSync($1, $2)" backend: "js" args: {read "UTF-8"}
     ]
     x = 1 read: ".niva_js/testss.niva"
     x echo
@@ -150,16 +168,48 @@ Test tsBindingsCodegen = [
   fileToJs = TypeScript fullFromResolver: result
   js = fileToJs at: "main", unpackOrPANIC
 
-  Assert that: (js contains: "import * as fs from \"fs\"") equals: true
-  Assert that: (js contains: "export function Int__read(_this, read)") equals: true
-  Assert that: (js contains: "fs.readFileSync(read, \"UTF-8\")") equals: true
-  Assert that: (js contains: "const x = Int__read(1, \".niva_js/testss.niva\")") equals: true
+  js contains: "import * as fs from \"fs\"", assertTrue
+  js contains: "export function Int__read(_this, read)", assertTrue
+  js contains: "fs.readFileSync(read, \"UTF-8\")", assertTrue
+  js contains: "const x = Int__read(1, \".niva_js/testss.niva\")", assertTrue
+]
+
+Test tsBindingsBackendFilter = [
+  fileMain = """
+    Int read: String -> String = [
+      Bind addImport: "fs" backend: "go"
+      ^ Bind emit: "fs.readFileSync($1, $2)" backend: "go" args: {read "UTF-8"}
+    ]
+    x = 1 read: ".niva_js/testss.niva"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  Assert that: (js contains: "import * as fs from \"fs\"") equals: false
+  Assert that: (js contains: "fs.readFileSync") equals: false
+]
+
+Test tsBindingsEmitBackendNoArgs = [
+  fileMain = """
+    Int now -> Int = [
+      ^ Bind emit: "Date.now()" backend: "js"
+    ]
+    x = 1 now
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  js contains: "Date.now()", assertTrue
 ]
 
 Test tsBindingsPlaceholderValidation = [
   fileMain = """
     Int mul: Int -> Int = [
-      ^ Bind emit: "$1 * $4" args: {this mul}
+      ^ Bind emit: "$1 * $4" backend: "js" args: {this mul}
     ]
     x = 21 mul: 2
   """
@@ -172,7 +222,7 @@ Test tsBindingsPlaceholderValidation = [
   //Assert that: error isSome equals: true
   //error unpack: [
   //  errorMsg = it message
-  //  Assert that: (errorMsg contains: "placeholder $4") equals: true
-  //  Assert that: (errorMsg contains: "only 2 arguments") equals: true
+  //  errorMsg contains: "placeholder $4", assertTrue
+  //  errorMsg contains: "only 2 arguments", assertTrue
   //]
 ]

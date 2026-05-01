@@ -286,7 +286,7 @@ fun Resolver.resolveMessage(
 
 
     if (GlobalVariables.isLspMode) {
-        onEachStatement!!(statement, currentScope, previousScope, statement.token.file) // message
+        emitOnEachStatement(statement, currentScope, previousScope, statement.token.file) // message
     }
 }
 

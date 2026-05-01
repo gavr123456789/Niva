@@ -12,24 +12,26 @@ type NivaSourceFile
 type IO_Container
   readFile:   [FilePath -> String]
   writeFile:  [FilePath, FileContent -> Unit]
-  walkDir:    [FilePath -> List::NivaSourceFile]
+  walkDir:    [FilePath -> List(NivaSourceFile)]
   getParent:  [String -> String]
   currentDir: String
-  runProgram: [List::String -> ]
+  runProgram: [List(String) -> ]
+  runProgramFromPath: [String, List(String) -> ]
+
 
 constructor IO_Container new -> IO_Container = [
   readFile::[FilePath -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
 
-
   writeFile = [path::String , fileContent::FileContent ->
     FileSystem write: path toPath
                content: fileContent
+
     Unit
   ]
 
-  walkDir::[FilePath -> List::NivaSourceFile] = [path::String ->
+  walkDir::[FilePath -> List(NivaSourceFile)] = [path::String ->
     x = FileSystem listRecursively: path toPath
 
     x map: [
@@ -39,13 +41,19 @@ constructor IO_Container new -> IO_Container = [
 
   getParent = [path::String -> path toPath parent unpackOrPANIC toString]
 
-  runProgram = [args::List::String ->
+  runProgram = [args::List(String) ->
     processBuilder = ProcessBuilder command: args
     processBuilder redirectOutput start waitFor
     Unit
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
+  runProgramFromPath = [path: String, args: List(String) ->
+    processBuilder = ProcessBuilder command: args dir: path
+    processBuilder redirectOutput start waitFor
+    Unit
+  ]
+
+  ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram :runProgramFromPath
 ]
 
 compilerTry = [
@@ -54,13 +62,63 @@ compilerTry = [
 ]
 
 compilerTry2 = [
-  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  //path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
+  path = {"run" ".niva_go/testss.niva" "--backend" "go"} //"~/Documents/Fun/niva_demo/main.niva"
   //t1 = System currentTimeMillis
   //t1 echo
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
 ]
+goWhileTrueCodegen = [
+  fileMain = """
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "for {", assertTrue
+  go contains: "if !(", assertTrue
+  go contains: ") { break }", assertTrue
+  go contains: ")()", assertTrue
+]do
+
+irTypeAndMethod = [
+  fileMain = """
+    type Person
+      name: String
+
+    Person greet -> String = [
+      ^ "hi"
+    ]
+
+    p = Person name: "Ada"
+    p greet
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModule
+  ir debug
+  typeDef = ir types first
+  Assert that: typeDef name equals: "Person"
+  Assert that: typeDef id equals: "main_Person"
+  Assert that: typeDef fields count equals: 1
+  field = typeDef fields at: 0
+  Assert that: field name equals: "name"
+
+  fnMaybe = ir functions find: [it name == "greet"]
+  | fnMaybe
+  | null => [TO DO: "greet function not found"]
+  |=> [
+    fn = fnMaybe
+    Assert that: fn args count equals: 1
+    firstArg = fn args at: 0
+    Assert that: firstArg name equals: "this"
+  ]
+]
+
 
 
 //odin = [

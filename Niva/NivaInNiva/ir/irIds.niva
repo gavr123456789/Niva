@@ -1,0 +1,11 @@
+NivaMethod toIrFunctionId -> String             = receiverType toIrFunctionId: name declPkg: pkgName
+NivaType toIrFunctionId(name): String -> String = .toIrFunctionId: name declPkg: pkgName
+NivaType toIrTypeId -> String                   = .toMangledName
+
+NivaType toIrFunctionId(name): String declPkg: String -> String = [
+  receiverId = .toMangledName
+  recvPkg = .pkgName
+  ^ declPkg == recvPkg
+      ifTrue: [receiverId + "." + name]
+      ifFalse: [declPkg + "." + receiverId + "." + name]
+]
