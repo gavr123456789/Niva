@@ -126,12 +126,36 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
         val w = inputStream.readText()
 //        val e = process.errorStream.reader().readText()
 
-        val j = w.substringAfterLast(first).substringBefore(last).replace(upToDate, "").replace("BUILD SUCCESSFUL in", "").replace("STANDARD_OUT", "")
-        val l = j.replace("PASSED", "${GREEN}✅$RESET")
-        val u = l.replace("FAILED", "${RED}❌$RESET")
-            .replace("java.lang.Exception: ", "").trim()
+        val j = w.substringAfterLast(first).substringBefore(last)
+            .replace(upToDate, "")
+            .replace("BUILD SUCCESSFUL in", "")
+            .replace("STANDARD_OUT", "")
+//        val l = j.replace("PASSED", "${GREEN}✅$RESET")
+        val normalized = j.replace("FAILED", "${RED}❌$RESET")
+            .replace("java.lang.Exception: ", "")
+            .trim()
 
-        println(u)
+        val onlyFailed = normalized
+            .lineSequence()
+            .filter { line ->
+                val trimmed = line.trim()
+                trimmed.isNotBlank() &&
+                    !trimmed.contains("PASSED") &&
+                    (
+                        trimmed.contains("${RED}❌$RESET") ||
+                            trimmed.contains("failed", ignoreCase = true) ||
+                            trimmed.startsWith("at ") ||
+                            trimmed.startsWith("Caused by:")
+                        )
+            }
+            .joinToString("\n")
+            .trim()
+
+        if (onlyFailed.isBlank()) {
+            println("${GREEN}✅ All tests passed$RESET")
+        } else {
+            println(onlyFailed)
+        }
     }
 
 

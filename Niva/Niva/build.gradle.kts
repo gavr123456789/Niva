@@ -8,11 +8,11 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
-    kotlin("jvm") version "2.3.0"
+    kotlin("jvm") version "2.3.21"
     application
     id("org.graalvm.buildtools.native") version "0.11.1"
     id("maven-publish")
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.21"
 }
 
 group = "org.example"
