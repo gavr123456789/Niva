@@ -526,6 +526,57 @@ class LS(val info: ((String) -> Unit)? = null) {
     }
 }
 
+private data class LspStateSnapshot(
+    val megaStoreData: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>>,
+    val fileToDecl: MutableMap<String, MutableSet<Declaration>>,
+    val varUsageToDeclaration: MutableMap<String, Token>,
+    val varNameToDeclarationToken: MutableMap<String, Token>,
+    val messageDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
+    val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
+    val nonIncrementalStore: MutableMap<String, List<Statement>>? = null
+)
+
+private fun LS.snapshotLspState(includeNonIncrementalStore: Boolean = false): LspStateSnapshot =
+    LspStateSnapshot(
+        megaStoreData = megaStore.data.toMutableMap(),
+        fileToDecl = fileToDecl.toMutableMap(),
+        varUsageToDeclaration = varUsageToDeclaration.toMutableMap(),
+        varNameToDeclarationToken = varNameToDeclarationToken.toMutableMap(),
+        messageDeclarationUsages = messageDeclarationUsages.toMutableMap(),
+        keywordDeclarationUsages = keywordDeclarationUsages.toMutableMap(),
+        nonIncrementalStore = if (includeNonIncrementalStore) nonIncrementalStore.toMutableMap() else null
+    )
+
+private fun LS.clearLspIndexes() {
+    megaStore.data.clear()
+    fileToDecl.clear()
+    varUsageToDeclaration.clear()
+    varNameToDeclarationToken.clear()
+    messageDeclarationUsages.clear()
+    keywordDeclarationUsages.clear()
+}
+
+private fun LS.restoreLspState(snapshot: LspStateSnapshot) {
+    megaStore.data.clear()
+    megaStore.data.putAll(snapshot.megaStoreData)
+    fileToDecl.clear()
+    fileToDecl.putAll(snapshot.fileToDecl)
+    varUsageToDeclaration.clear()
+    varUsageToDeclaration.putAll(snapshot.varUsageToDeclaration)
+    varNameToDeclarationToken.clear()
+    varNameToDeclarationToken.putAll(snapshot.varNameToDeclarationToken)
+    messageDeclarationUsages.clear()
+    messageDeclarationUsages.putAll(snapshot.messageDeclarationUsages)
+    keywordDeclarationUsages.clear()
+    keywordDeclarationUsages.putAll(snapshot.keywordDeclarationUsages)
+
+    val previousNonIncrementalStore = snapshot.nonIncrementalStore
+    if (previousNonIncrementalStore != null) {
+        nonIncrementalStore.clear()
+        nonIncrementalStore.putAll(previousNonIncrementalStore)
+    }
+}
+
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
 fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspResult {
     // We don't need to resolve anything on completion, it happens when code changes
@@ -977,25 +1028,22 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
         return resolveAllFirstTime(uriOfChangedFile, fillNonIncrementalStore = true, changedFileContent = source)
     }
 
+    val previousLspState = snapshotLspState(includeNonIncrementalStore = true)
+
     try {
-        megaStore.data.clear()
-        fileToDecl.clear()
-        varUsageToDeclaration.clear()
-        varNameToDeclarationToken.clear()
-        messageDeclarationUsages.clear()
-        keywordDeclarationUsages.clear()
+        val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
+        val file = File(URI(uriOfChangedFile))
+        val fileAbsolute = file.absolutePath
+        val oldHadTypeDeclarations = hasTypeDeclarations(nonIncrementalStore[fileAbsolute] ?: emptyList())
+        val mainAst = getAst(source = source, file = file)
+
+        clearLspIndexes()
 
         clearNonIncrementalStoreFromTypes(nonIncrementalStore)
         //    0) clear AST from types
         //    1) lex parse new changed file
         //    2) replace its ast in the NIS
         //    3) resolve everything again
-
-        val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
-        val file = File(URI(uriOfChangedFile))
-        val fileAbsolute = file.absolutePath
-        val oldHadTypeDeclarations = hasTypeDeclarations(nonIncrementalStore[fileAbsolute] ?: emptyList())
-        val mainAst = getAst(source = source, file = file)
 
         // if there are no type declarations, use incremental resolve for this file only
         if (!forceFull && !oldHadTypeDeclarations && !hasTypeDeclarations(mainAst)) {
@@ -1004,7 +1052,8 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
             return resolver
         }
 
-        nonIncrementalStore[fileAbsolute] = mainAst
+        val newNonIncrementalStore = nonIncrementalStore.toMutableMap()
+        newNonIncrementalStore[fileAbsolute] = mainAst
         // resolve everything and return resolver
         val localpm = pm
         if (localpm != null) {
@@ -1021,14 +1070,17 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
                 compileOnlyOneFile = false,
                 dontRunCodegen = true,
                 onEachStatement = ::onEachStatementCall,
-                customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
+                customAst = getMainAstFromNIS(newNonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
                 buildSystem = BuildSystem.Amper,// it doesnt matter, since we dont generate the code
                 previousFilePath = previousFilePath
             )
+            nonIncrementalStore.clear()
+            nonIncrementalStore.putAll(newNonIncrementalStore)
             completionFromScope = emptyMap()
         } else throw Exception("Local pm == null")
         return resolver
     } catch (e: Throwable) {
+        restoreLspState(previousLspState)
         throw e
     }
 }
@@ -1066,8 +1118,7 @@ fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: Str
                 return Pair(nivaMain, listOfNivaFiles)
             }
 
-            val next = current.parentFile
-            if (next == null) break
+            val next = current.parentFile ?: break
             current = next
             depth++
         }
@@ -1097,13 +1148,8 @@ fun LS.resolveAllFirstTime(
 ): Resolver {
     //info?.invoke("LSP resolveAllFirstTime: start uri=$pathToChangedFileURI textLen=${changedFileContent?.length ?: -1}")
     GlobalVariables.enableLspMode()
-    megaStore.data.clear()
-    varUsageToDeclaration.clear()
-    varNameToDeclarationToken.clear()
-    messageDeclarationUsages.clear()
-    keywordDeclarationUsages.clear()
-    fileToDecl.clear()
-    nonIncrementalStore.clear()
+    val previousLspState = snapshotLspState()
+    clearLspIndexes()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))
@@ -1131,8 +1177,11 @@ fun LS.resolveAllFirstTime(
             changedFileContent = changedFileContent
         )
 
-        if (fillNonIncrementalStore)
-            fillNonIncrementalStore(customAst, mainFile)
+        val newNonIncrementalStore = if (fillNonIncrementalStore) {
+            buildNonIncrementalStore(customAst, mainFile)
+        } else {
+            null
+        }
         this.resolver = compileProjFromFile(
             pm,
             dontRunCodegen = true,
@@ -1142,11 +1191,16 @@ fun LS.resolveAllFirstTime(
             buildSystem = BuildSystem.Amper, // doesnt matter since we dont generate code
             previousFilePath = allFiles
         )
+        if (newNonIncrementalStore != null) {
+            nonIncrementalStore.clear()
+            nonIncrementalStore.putAll(newNonIncrementalStore)
+        }
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     }
     catch (s: OnCompletionException) {
+        restoreLspState(previousLspState)
         this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
         this.completionFromScope = s.scope
         if (s.token != null && s.errorMessage != null) {
@@ -1155,6 +1209,7 @@ fun LS.resolveAllFirstTime(
         return resolver
     }
     catch (e: Throwable) {
+        restoreLspState(previousLspState)
         info?.invoke("LSP resolveAllFirstTime: error ${e::class.simpleName} ${e.message?.removeColors()}")
         this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
         this.completionFromScope = emptyMap()
@@ -1164,24 +1219,30 @@ fun LS.resolveAllFirstTime(
 }
 
 
+fun buildNonIncrementalStore(
+    // main ast, other ast, otherFiles
+    customAst: Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>>,
+    mainFile: File
+): MutableMap<String, List<Statement>> {
+    val (mainAst, pkgToAst, otherFiles) = customAst
+    val store = mutableMapOf<String, List<Statement>>()
+    store[mainFile.absolutePath] = mainAst
+
+    // add othersAst
+    pkgToAst.forEachIndexed { index, pair ->
+        val file = otherFiles[index]
+        store[file.absolutePath] = pair.second
+    }
+    return store
+}
+
 fun LS.fillNonIncrementalStore(
     // main ast, other ast, otherFiles
     customAst: Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>>,
     mainFile: File
 ) {
-    val (mainAst, pkgToAst, otherFiles) = customAst
-    // add main
-//    val uri = mainFile.toURI().toString()
-    val uri = mainFile.absolutePath
-    nonIncrementalStore[uri] = mainAst
-
-    // add othersAst
-    pkgToAst.forEachIndexed { index, pair ->
-        val file = otherFiles[index]
-//        val uri = file.toURI().toString()
-        val uri = file.absolutePath
-        nonIncrementalStore[uri] = pair.second
-    }
+    nonIncrementalStore.clear()
+    nonIncrementalStore.putAll(buildNonIncrementalStore(customAst, mainFile))
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
 
 }

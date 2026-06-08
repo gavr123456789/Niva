@@ -5,6 +5,7 @@ import main.languageServer.resolveIncremental
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class LanguageServerIncrementalTest {
     @Test
@@ -33,5 +34,31 @@ class LanguageServerIncrementalTest {
         assertFailsWith<CompilerError> {
             ls.resolveIncremental(otherFile.toURI().toString(), withoutType, changeLine = 0)
         }
+    }
+
+    @Test
+    fun syntaxErrorDuringFullResolveKeepsLastGoodNonIncrementalStore() {
+        val dir = createTempDirectory("niva-ls-syntax-error").toFile()
+        val mainFile = dir.resolve("main.niva").also { it.writeText("") }
+        val otherFile = dir.resolve("models.niva")
+        val validSource = """
+            type Foo
+            Foo id -> Foo = this
+        """.trimIndent()
+        otherFile.writeText(validSource)
+
+        val ls = LS()
+        ls.resolveAllFirstTime(mainFile.toURI().toString(), fillNonIncrementalStore = true, changedFileContent = "")
+
+        assertFailsWith<CompilerError> {
+            ls.resolveAllFirstTime(
+                otherFile.toURI().toString(),
+                fillNonIncrementalStore = true,
+                changedFileContent = "$validSource\nFoo broken = ["
+            )
+        }
+
+        assertTrue(mainFile.absolutePath in ls.nonIncrementalStore)
+        ls.resolveIncremental(otherFile.toURI().toString(), validSource, changeLine = 0)
     }
 }

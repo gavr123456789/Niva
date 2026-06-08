@@ -24,14 +24,14 @@ constructor IO_Container new -> IO_Container = [
     FileSystem read: (path toPath)
   ]
 
-  writeFile = [path::String , fileContent::FileContent ->
+  writeFile = [path: String , fileContent: FileContent ->
     FileSystem write: path toPath
                content: fileContent
 
     Unit
   ]
 
-  walkDir::[FilePath -> List(NivaSourceFile)] = [path::String ->
+  walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
     x = FileSystem listRecursively: path toPath
 
     x map: [
@@ -39,9 +39,9 @@ constructor IO_Container new -> IO_Container = [
     ]
   ]
 
-  getParent = [path::String -> path toPath parent unpackOrPANIC toString]
+  getParent = [path: String -> path toPath parent unpackOrPANIC toString]
 
-  runProgram = [args::List(String) ->
+  runProgram = [args: List(String) ->
     processBuilder = ProcessBuilder command: args
     processBuilder redirectOutput start waitFor
     Unit
@@ -83,7 +83,7 @@ goWhileTrueCodegen = [
   go contains: "if !(", assertTrue
   go contains: ") { break }", assertTrue
   go contains: ")()", assertTrue
-]do
+]
 
 irTypeAndMethod = [
   fileMain = """

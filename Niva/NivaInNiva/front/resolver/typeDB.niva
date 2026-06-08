@@ -140,12 +140,12 @@ extend TyperDB [
     bindMeta bindFileToPkg at: fileName put: pkgName
   ]
 
-  on isBindFile(fileName): String -> Bool = bindMeta bindFiles contains: fileName
+  //on isBindFile(fileName): String -> Bool = bindMeta bindFiles contains: fileName
 
-  on pkgNameForFile(fileName): String -> String = [
-    maybe = bindMeta bindFileToPkg at: fileName
-    ^ maybe unpack: [it] or: fileName
-  ]
+  //on pkgNameForFile(fileName): String -> String = [
+  //  maybe = bindMeta bindFileToPkg at: fileName
+  //  ^ maybe unpack: [it] or: fileName
+  //]
 
   on markBindStatement(st): Statement = [
     bindMeta bindStatements add: st
@@ -157,7 +157,7 @@ extend TyperDB [
     bindMeta bindMessageDecls add: m
   ]
 
-  on isBindMessageDecl(m): MessageDecl -> Bool = bindMeta bindMessageDecls contains: m
+  //on isBindMessageDecl(m): MessageDecl -> Bool = bindMeta bindMessageDecls contains: m
 
   on markBindTypeId(typeId): String = [
     bindMeta bindTypeIds add: typeId
@@ -226,22 +226,22 @@ extend TyperDB [
     visited add: rootId
 
     direct = unionRootToBranches at: rootId
-    ^| direct
-    | null => #()!
-    |=> [
-      leaves = #()!
-      direct forEach: [branchId ->
-        sub = unionRootToBranches at: branchId
-        | sub
-        | null => leaves add: branchId
-        |=> [
-          nestedLeaves = this unionLeavesById: branchId visited: visited
-          leaves addAll: nestedLeaves
-          ()
+    ^ | direct
+      | null => #()!
+      |=> [
+        leaves = #()!
+        direct forEach: [branchId ->
+          sub = unionRootToBranches at: branchId
+          | sub
+          | null => leaves add: branchId
+          |=> [
+            nestedLeaves = this unionLeavesById: branchId visited: visited
+            leaves addAll: nestedLeaves
+            ()
+          ]
         ]
+        leaves
       ]
-      leaves
-    ]
   ]
 
   on unionAncestorChain(startType): TypeT -> List::TypeT = [
@@ -336,7 +336,7 @@ extend TyperDB [
     ] or: null
   ]
   /// adds method to protocol, if no such protocol - creates it
-  on addMethod(m): NivaMethod toProtocol(protocolName): String forType(forType): NivaType = [
+  on addMethod(m): NivaMethod forType(forType): NivaType = [
     methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
     methodNameToMethodMap containsKey: m name,
       ifTrue: [TO DO: "Type $forType already has method $m"]
@@ -352,7 +352,6 @@ extend TyperDB [
   on addNewMethod(m): NivaMethod forType::NivaType inProtocol::String? = [
     this
       addMethod: m
-      toProtocol: (inProtocol unpackOrValue: "common")
       forType: forType
 
     m decl unpack: [
@@ -380,17 +379,6 @@ extend TyperDB [
     "\n!!!!! ADDED ERROR $msg !!!!!\n" red log
     listOfErrors add: (LazyError :tok :msg)
     TO DO: "FATAL"
-  ]
-
-  on printAllErrorMessages = [
-    fakeFilePath = "main.niva"
-    listOfErrors forEach: [
-      tokStart = it tok start toString
-      tokLine = it tok line toString
-
-      "Error: ($fakeFilePath.$tokLine.$tokStart)" red + it msg cyan,
-        echo
-    ]
   ]
 
   on addNewConstructor(m): NivaMethod forType::NivaType = [
@@ -635,7 +623,7 @@ extend TyperDB [
 // методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
 // как ни крути походу лучше всего хранить пакет в самом методе
 
-  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 currentPkg::NivaPkg dtc::DefaultTypesContainer -> NivaMethod? = [
+  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
     lookupType = forType
 
     // constructorsTypeToMethodNameToMethod keys debug
@@ -749,12 +737,12 @@ extend TyperDB [
     |=> []
     pkg = packages at: receiverType pkgName, unpackOrPANIC
 
-    methodMaybe = this findMethodInAllProtocols: name forType: receiverType :receiver :currentPkg :dtc
+    methodMaybe = this findMethodInAllProtocols: name forType: receiverType :receiver
     method =
       | methodMaybe
       | null => [
           {any} = dtc
-          foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver :currentPkg :dtc
+          foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver
           | foundInAnyMaybe
           | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
           |=> foundInAnyMaybe
@@ -851,7 +839,7 @@ extend TyperDB [
   ]
 
 
-// INFO
+  // INFO
 
   /// returns md like documentation about every pkg -> type -> protocol -> method
   on structureInfo -> String = [
@@ -872,25 +860,7 @@ extend TyperDB [
             sb appendLine: "- " + method toString
           ]
         ]
-
       ]
-
-      // pkg protocols forEach: [t, protocolsOfType ->
-      //   sb appendLine: "## type: " + t toString
-
-      //   protocolsOfType forEach: [protocol ->
-      //     sb appendLine: "### protocol: " + protocol name
-
-      //     protocol methods values forEach: [ method ->
-      //       sb appendLine: "- " + method toString
-      //     ]
-      //   ]
-      // ]
-      // if no protocols, types would't be printed
-      // pkg protocols isEmpty ifTrue: [
-      //   x = pkg types keys toList joinWith: "\n" transform: ["## type: " + it]
-      //   sb appendLine: x
-      // ]
 
     ]
 
@@ -903,11 +873,6 @@ type ResolverHelper
   db: TyperDB
   entryPointExpressions: List::TypedExpr2
   entryPointName: String
-  // entryPointStatements: List::TypedExpr
-
-
-String resolveNivaCode =
-  ResolverHelper resolve: #{"main" this} entryPoint: "main"
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
   ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
@@ -1034,7 +999,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     ]
   ]
 
-// build typed declarations map
+  // build typed declarations map
   toTypeFieldT = [field::TypeField ->
     TypeFieldT
       name: field name
@@ -1122,37 +1087,35 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
                             token: it token)
           ()
         ]
-      | EnumDecl => [
-        typedList add: (EnumDeclT token: it token)
-        ()
-      ]
-      | UnionDecl => [
-        typedList add: (UnionDeclT
-                          name: it name
-                          commonUnionFields: (it commonUnionFields map: [f -> toTypeFieldT field: f])
-                          branches: (it branches map: [b -> toUnionBranchT branch: b])
-                          token: it token)
-        ()
-      ]
-      | ExtendDecl => [
-        receiverType = it receiver toNivaTypefromDB: db inPkg: null
-        typedMsgs = it messages map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
-        typedList add: (ExtendDeclT
-                          receiver: receiverType
-                          messages: typedMsgs
-                          token: it token)
-        ()
-      ]
-      | MessageDecl => [
-        typedList add: (toTypedMessageDecl msgDecl: it pkg: pkg)
-        ()
-      ]
-      |=> []
+        | EnumDecl => [
+          typedList add: (EnumDeclT token: it token)
+          ()
+        ]
+        | UnionDecl => [
+          typedList add: (UnionDeclT
+                            name: it name
+                            commonUnionFields: (it commonUnionFields map: [f -> toTypeFieldT field: f])
+                            branches: (it branches map: [b -> toUnionBranchT branch: b])
+                            token: it token)
+          ()
+        ]
+        | ExtendDecl => [
+          receiverType = it receiver toNivaTypefromDB: db inPkg: null
+          typedMsgs = it messages map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
+          typedList add: (ExtendDeclT
+                            receiver: receiverType
+                            messages: typedMsgs
+                            token: it token)
+          ()
+        ]
+        | MessageDecl => [
+          typedList add: (toTypedMessageDecl msgDecl: it pkg: pkg)
+          ()
+        ]
       ]
     ]
-    hasNonBind ifTrue: [
-      fileToTypedStatements at: file put: typedList
-    ]
+    hasNonBind
+      ifTrue: [ fileToTypedStatements at: file put: typedList ]
   ]
 
   ^ ResolverHelper

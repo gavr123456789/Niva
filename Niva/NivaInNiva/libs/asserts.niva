@@ -6,7 +6,7 @@ constructor Assert that: Any? equals: Any? -> Unit = [
   b = Compiler getName: 2
   codePlace = Compiler getPlace
   that != equals ifTrue: [
-    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \n\n$that\n\n----!=----\n\n$equals\n", orPANIC
+    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \t\t$that\t\t----!=----\t\t$equals\t", orPANIC
   ]
 ]
 

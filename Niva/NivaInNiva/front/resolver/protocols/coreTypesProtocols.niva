@@ -1,7 +1,7 @@
 constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
   {int str bool char unit t g} = dtc
 
-  collP = NivaProtocol name: "common"
+  collP = NivaProtocol common
   // unary
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
   // can throw
@@ -147,7 +147,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
 constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {int str bool char unit list} = dtc
 
-  strProto = NivaProtocol name: "common"
+  strProto = NivaProtocol common
   // unary
   strProto addMethod: (NivaMethod unary: "toInt" receiverType: str returnT: int)
   strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
@@ -208,7 +208,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
 constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit t} = dtc
 
-  boolProto = NivaProtocol name: "common"
+  boolProto = NivaProtocol common
 
   noArgsFunc = FuntionT
                 fields: {}!
@@ -272,7 +272,7 @@ constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  
 constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit any} = dtc
 
-  anyProto = NivaProtocol name: "common"
+  anyProto = NivaProtocol common
 
   // unary
   anyProto addMethod: (NivaMethod unary: "echo" receiverType: any returnT: unit)
@@ -304,7 +304,7 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
   {str nothing} = dtc
 
   // ITS NOT A METHOD ITS CONSTRUCTOR
-  errProto = NivaProtocol name: "common"
+  errProto = NivaProtocol common
   errProto addMethod: (NivaMethod unary: "throw" receiverType: errorType returnT: nothing)
   errProto addMethod: (NivaMethod singleArgKw: "throwWithMsg" receiverType: errorType argT: str returnT: nothing)
   // just for backwards compatibility with first niva
@@ -354,7 +354,7 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
 constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
   {str bool unit t int char charRange} = dtc
 
-  charProto = NivaProtocol name: "common"
+  charProto = NivaProtocol common
 
   // ===== unary (Kotlin-style) =====
   // fun Char.code: Int   (в Kotlin это property; тут оформим как unary-метод)

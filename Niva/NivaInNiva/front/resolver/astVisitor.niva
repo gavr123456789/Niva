@@ -16,12 +16,6 @@ union AstVisitor =
 | MsgDeclVisitor
 | GoBackendVisitor
 
-AstVisitor run(statements): List::Statement = [
-  statements forEach: [
-    this visit: it
-  ]
-]
-
 PrintingVisitor visit(st): Statement = [
   st echo
   "--------------" echo
@@ -172,7 +166,8 @@ TypeDeclVisitor
     processDeclarations file: file statements: statements
   ]
 
-  fillTypesAndMessages = [
+  fillTypesAndMessages =
+  [
     pkgTotypeDecls2 forEach: [ tuple ->
       pkgName = tuple x
       typeDecl = tuple y
@@ -221,7 +216,7 @@ TypeDeclVisitor
         name = typeDecl name
         TO DO: "cant fill fields for $name"
       ]
-    ]
+  ]
 
 
   sameFieldsAs = [rootType::TypeT, includedType::TypeT ->
@@ -431,12 +426,6 @@ MsgDeclVisitor processBodyes(pkg2Msg): Map(String, mut List::MessageDecl) db::Ty
     ]
   ]
 ]
-
-// every message with its context attached
-// context is a tree like structure with parents
-// every context contains all the symbols inside, resolved
-type MessagesWithContext
-  data: Map(MessageDecl, Context)
 
 MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) -> TypedBody = [
   //"resolving body of " + this name + " from pkg: " + pkg name, log

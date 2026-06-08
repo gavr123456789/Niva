@@ -3,10 +3,7 @@
 extend Body [
   on resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
     .resolveBody2: db withContext: upperContext expectedType: null
-  on resolveBody2(db): TyperDB withContext(upperContext): Context declaration: MessageDeclT? -> TypedBody = [
-    expectedType = declaration unpack: [it returnType t] or: null
-    ^ .resolveBody2: db withContext: upperContext expectedType: expectedType
-  ]
+
   /// used only for resolving body inside expressions, not for resolve body from message declarations
   on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
     //StackTrace get log
@@ -287,8 +284,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             findMethodInAllProtocols: name
             forType: thisType t
             receiver: thisIdent
-            currentPkg: c currentPkg
-            dtc: db dtc
 
           | methodMaybe
           | null => [
@@ -457,7 +452,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         db addCollectionInstantiationIfAbsent: newType
         SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
-      |=> [TO DO]
+      | MapLiteral => [TO DO:"Impossible, we are inside ListLiteral | SetLiteral, but niva dont shrinc enougth"]
 
       astType
   ]
@@ -743,24 +738,3 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 ]
 
 type CheckMethodArg nivaType: NivaType expr: Expr argName: String
-
-// both for binary and keywords
-/// checks that args from db and real args are the same
-TyperDB checkRealArgs(checkRealArgs): List::CheckMethodArg withExpectedArgs(withExpectedArgs): List::TypeTField = [
-  Assert that: checkRealArgs count equals: withExpectedArgs count
-
-  withExpectedArgs forEachIndexed: [ i, it ->
-    {nivaType, expr, argName} = checkRealArgs at: i
-
-    this isAssignable: nivaType toExpected: it typeT, ifFalse: [
-      expected = it typeT toString
-      sended = nivaType toString
-      exprStr = expr toString
-      msg = "($sended != $expected) $expected expected, but $argName $exprStr is $sended"
-      this addErrorMessage: (ErrorWrongArgType
-                              tok: expr token
-                              msg: msg)
-    ]
-  ]
-
-]

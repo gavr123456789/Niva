@@ -15,7 +15,7 @@ type Lexer
 constructor Lexer lex-input: String = [
   l::mut Lexer = Lexer input: lex-input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0, toMut
   l step // add EOF, probably
-  ^l
+  ^ l
 ]
 
 constructor Lexer get-tokens(input): String -> List(Token) = [
@@ -332,11 +332,9 @@ extend mut Lexer [
 ]
 
 
-enum StrMode = Single | Multi
 
 /// assume that delimiter was already eaten
 mut Lexer parseStringLike(delimiter): Char -> String = [
-  mut mode = StrMode.Single
   mut escaped = false
   localPos = pos
 
@@ -366,7 +364,6 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
       ch == '\u0000' ifTrue: [
         TO DO: "unterminated string literal"
       ]
-      ch == '\n' ifTrue: [mode <- StrMode.Multi]
 
       escaped ifTrue: [
         escaped <- false

@@ -206,12 +206,11 @@ Test strings = [
 ]
 
 Test keywords = [
-  LexTest checkThat: "type union constructor enum builder mut errordomain true false null Unit on"
+  LexTest checkThat: "type union constructor enum mut errordomain true false null Unit on"
           equals: {TokenType.Type
                    TokenType.Union
                    TokenType.Constructor
                    TokenType.Enum
-                   TokenType.Builder
                    TokenType.Mut
                    TokenType.ErrorDomain
                    TokenType.True

@@ -16,117 +16,121 @@ String operatorToString -> String =
   | "&&" => "and"
   |=> this
 
-NivaType isCoreTypeNamed(name): String -> Bool = [
-  base = this unwrapNullable
-  ^ (base name == name) && (base pkgName == "core")
-]
-
-NivaType isNumericType -> Bool = [
-  ^ (this isCoreTypeNamed: "Int") ||
-    (this isCoreTypeNamed: "Double") ||
-    (this isCoreTypeNamed: "Float")
-]
-
-NivaType isStringType -> Bool = this isCoreTypeNamed: "String"
-NivaType isBoolType -> Bool = this isCoreTypeNamed: "Bool"
-
-String unquoteLiteral -> String = [
-  len = this count
-  ^ len >= 2 ifTrue: [
-    (this drop: 1) dropLast: 1
-  ] ifFalse: [
-    this
+extend NivaType [
+  on isCoreTypeNamed(name): String -> Bool = [
+    base = .unwrapNullable
+    ^ (base name == name) && (base pkgName == "core")
   ]
+  on isNumericType -> Bool = [
+    ^ (.isCoreTypeNamed: "Int") ||
+      (.isCoreTypeNamed: "Double") ||
+      (.isCoreTypeNamed: "Float")
+  ]
+  on isStringType -> Bool = .isCoreTypeNamed: "String"
+  on isBoolType -> Bool = .isCoreTypeNamed: "Bool"
+  on isNullableType -> Bool = | this | NullableT => true |=> false
 ]
 
-String escapeForTemplateLiteral -> String = [
-  sb = StringBuilder new
-  mut i = 0
-  len = this count
-  bs = '\\' toString
-  dollar = '$' toString
-  brace = '{' toString
-  [i < len] whileTrue: [
-    c = this at: i
-    c == '\\' ifTrue: [
-      sb append: bs + bs
-      i <- i inc
+
+type NumAndStr str: String num: Int
+
+extend String [
+  on unquoteLiteral -> String = [
+    len = this count
+    ^ len >= 2 ifTrue: [
+      (this drop: 1) dropLast: 1
     ] ifFalse: [
-      (c == '$') && (i + 1 < len) && ((this at: (i + 1)) == '{') ifTrue: [
-        sb append: bs + dollar + brace
-        i <- i + 2
-      ] ifFalse: [
-        c == '`' ifTrue: [
-          sb append: bs + "`"
-          i <- i inc
-        ] ifFalse: [
-          sb append: c toString
-          i <- i inc
-        ]
-      ]
+      this
     ]
   ]
-  ^ sb toString
+  on escapedTemplateLiteralChunkAt(i): Int -> NumAndStr = [
+    bs = '\\' toString
+    dollar = '$' toString
+    brace = '{' toString
+    c = this at: i
+    ^ | true
+      | c == '\\' => [ NumAndStr str: "\\\\" num: 1 ]
+      | c == '`'  => [ NumAndStr str: "\\`"  num: 1 ]
+      | c == '$' && (i + 1 < .count) && ((.at: i + 1) == '{') => [ NumAndStr str: bs + dollar + brace num: 2 ]
+      |=> NumAndStr str: c toString num: 1
+  ]
+  on escapeForTemplateLiteral -> String = [
+    sb = StringBuilder new
+    mut i = 0
+    len = this count
+
+    [i < len] whileTrue: [
+      chunk = this escapedTemplateLiteralChunkAt: i
+
+      sb append: chunk str
+      i <- i + chunk num
+    ]
+
+    ^ sb toString
+  ]
+
+  on bindApply(argsValues): List(String) -> String = [
+    template = this
+    // validate placeholder count
+    mut maxPlaceholder = 0
+    mut i = 0
+    template count repeat: [
+        (template at: i) == '$' && ((i + 1) < (template count)) ifTrue: [
+            nextChar = template at: (i + 1)
+            nextChar isDigit ifTrue: [
+                mut digitStr = nextChar toString
+                mut j = i + 2
+                [j < (template count) && ((template at: j) isDigit)] whileTrue: [
+                    digitStr <- digitStr + ((template at: j) toString)
+                    j <- j + 1
+                ]
+                placeholderNum = digitStr toInt
+                placeholderNum > maxPlaceholder ifTrue: [
+                    maxPlaceholder <- placeholderNum
+                ]
+            ]
+        ]
+        i <- i + 1
+    ]
+
+    argsCount = argsValues count
+    maxPlaceholder > argsCount ifTrue: [
+        TO DO: "Bind emit: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
+    ]
+
+    sb = StringBuilder new
+    len = template count
+    i <- 0
+    [i < len] whileTrue: [
+        ch = template at: i
+        ch == '$' ifTrue: [
+            (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+                mut digitStr = ""
+                mut j = i + 1
+                [j < len && ((template at: j) isDigit)] whileTrue: [
+                    digitStr <- digitStr + ((template at: j) toString)
+                    j <- j + 1
+                ]
+                placeholderNum = digitStr toInt
+                isValid = (placeholderNum >= 1) && (placeholderNum <= argsCount)
+                isValid
+                  ifTrue: [sb append: (argsValues at: (placeholderNum - 1))]
+                  ifFalse: [sb append: "$" + digitStr]
+                i <- j
+            ] ifFalse: [
+                sb append: "$"
+                i <- i + 1
+            ]
+        ] ifFalse: [
+            sb append: (ch toString)
+            i <- i + 1
+        ]
+    ]
+    ^ sb toString
+  ]
+
 ]
 
-String bindApply(argsValues): List(String) -> String = [
-  template = this
-  // Validate placeholder count
-  mut maxPlaceholder = 0
-  mut i = 0
-  template count repeat: [
-      (template at: i) == '$' ifTrue: [
-          (i + 1) < (template count) ifTrue: [
-              nextChar = template at: (i + 1)
-              nextChar isDigit ifTrue: [
-                  mut digitStr = nextChar toString
-                  mut j = i + 2
-                  [j < (template count) && ((template at: j) isDigit)] whileTrue: [
-                      digitStr <- digitStr + ((template at: j) toString)
-                      j <- j + 1
-                  ]
-                  placeholderNum = digitStr toInt
-                  placeholderNum > maxPlaceholder ifTrue: [
-                      maxPlaceholder <- placeholderNum
-                  ]
-              ]
-          ]
-      ]
-      i <- i + 1
-  ]
+String
 
-  argsCount = argsValues count
-  maxPlaceholder > argsCount ifTrue: [
-      TO DO: "Bind emit: template contains placeholder $" + (maxPlaceholder toString) + " but only " + (argsCount toString) + " arguments provided"
-  ]
-
-  sb = StringBuilder new
-  len = template count
-  i <- 0
-  [i < len] whileTrue: [
-      ch = template at: i
-      ch == '$' ifTrue: [
-          (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
-              mut digitStr = ""
-              mut j = i + 1
-              [j < len && ((template at: j) isDigit)] whileTrue: [
-                  digitStr <- digitStr + ((template at: j) toString)
-                  j <- j + 1
-              ]
-              placeholderNum = digitStr toInt
-              isValid = (placeholderNum >= 1) && (placeholderNum <= argsCount)
-              isValid
-                ifTrue: [sb append: (argsValues at: (placeholderNum - 1))]
-                ifFalse: [sb append: "$" + digitStr]
-              i <- j
-          ] ifFalse: [
-              sb append: "$"
-              i <- i + 1
-          ]
-      ] ifFalse: [
-          sb append: (ch toString)
-          i <- i + 1
-      ]
-  ]
-  ^ sb toString
-]
+String
