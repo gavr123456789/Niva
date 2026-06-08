@@ -42,12 +42,14 @@ fun ControlFlow.If.generateIf(): String = buildString {
 
 
 fun ControlFlow.Switch.generateSwitch() = buildString {
+    val switchExprStr = switch.generateExpression()
+    val isTrueOrFalse = switchExprStr == "true" || switchExprStr == "false"
     append("when (")
-    append(switch.generateExpression())
+    append(switchExprStr)
     append(") {\n")
     ifBranches.forEach {
         append("    ")
-
+        if(isTrueOrFalse) append("(")
         val isTypeMatch =
             kind == ControlFlowKind.ExpressionTypeMatch ||
                 kind == ControlFlowKind.StatementTypeMatch ||
@@ -65,6 +67,7 @@ fun ControlFlow.Switch.generateSwitch() = buildString {
             }
         }
 
+        if(isTrueOrFalse) append(")")
         append(" -> ")
         when (it) {
             is IfBranch.IfBranchSingleExpr -> {

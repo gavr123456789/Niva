@@ -11,7 +11,6 @@ extend TypeInfo [
 ]
 
 NivaType toTypeInfoDefault -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: {}!]
-NivaType toTypeInfoWithErrors(errors): List(NivaType) -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: errors]
 // constructor TypeInfo default: t::NivaType =
 //   TypeInfo :t isMut: false
 
@@ -116,9 +115,3 @@ union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo dbMsg: N
 | KeywordMsgT
   args: List(NameAndExprT) // expr - Primary or UnaryMsg or BinaryMsg
   kind: MessageSendKind
-
-
-// constructors
-
-constructor IdentifierT fromToken: Token typeInfo: TypeInfo isNameOfTheType: Bool=
-  IdentifierT name: (fromToken lexeme) token: fromToken path: null :typeInfo :isNameOfTheType

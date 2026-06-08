@@ -1,6 +1,6 @@
-type ArgParser 
-type ArgsParsed 
-  path: String? 
+type ArgParser
+type ArgsParsed
+  path: String?
   option: CompilerOption
   backend: CompilerBackend
   // flags
@@ -11,22 +11,22 @@ constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
 constructor ArgParser args::List::String -> ArgsParsed = [
-  help = """
-    Usage:
-      run — compile and run project from main.niva (recursive)
-      run FILE — compile and run project from root file (recursive)
-      build FILE — compile only the given file
-      ir — build IR from main.niva (recursive)
-      ir FILE — build IR from root file (recursive)
-      run FILE --backend go|js|lsp — select backend (default: js)
-  """ trimIndent
-
   args contains: "--help", ifTrue: [
+    help = """
+      Usage:
+        run — compile and run project from main.niva (recursive)
+        run FILE — compile and run project from root file (recursive)
+        build FILE — compile only the given file
+        ir — build IR from main.niva (recursive)
+        ir FILE — build IR from root file (recursive)
+        run FILE --backend go|js|lsp — select backend (default: js)
+    """ trimIndent
+    help echo
     ^ ArgsParsed help
   ]
 
   // separate flags from args
-  // flags = #{"--verbose" false 
+  // flags = #{"--verbose" false
   //           "--lsp"     false}
 
   mut verbose = false

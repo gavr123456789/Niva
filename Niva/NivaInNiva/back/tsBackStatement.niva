@@ -230,7 +230,3 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
         expr::TypedExpr2 = this
         expr toTSExprFromPkg: currentPkg :db
     ]
-    |=> [
-        //"toTS: skipping top level expr: " + this token toString, log
-        ""
-    ]

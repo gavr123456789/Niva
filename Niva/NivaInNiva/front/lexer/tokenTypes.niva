@@ -12,7 +12,7 @@ enum TokenType =
 //    Binary| Octal| Hex|
 
   // Keywords
-  |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain|Extend
+  |Type|Union|Constructor|Enum|Mut|ErrorDomain|Extend
   |True|False|Null
   |On // on for many messages declarations
 
@@ -22,9 +22,6 @@ enum TokenType =
 
 
   |If // |
-  |PipeOperator // |>
-
-
   |Then // =>
   |Else // |=>
 
@@ -38,21 +35,15 @@ enum TokenType =
   |UnitTok // ()
 
   // punctuation
-  |Dot| Cascade| Comma| Colon| Apostrophe// . : `
-  |DotOpenBracket // .[
+  |Dot| Cascade| Comma| Colon// . :
   |Ampersand // &
 
-  |NoMatch  // Used internally by the symbol table
-  |Comment   // Useful for documentation comments| pragmas| etc.
   |DocComment   // Useful for documentation comments| pragmas| etc.
   |BinarySymbol    // A generic symbol
   |Assign // =
-  |DoubleColon
-  |EndOfLine // \n and next line starts not from the dot
 
   |InlineReplWithNum // >Number| >3
   |InlineReplWithQuestion // >?
-  |Underscore // _
   |Bang // !
   |Invalid // used for identifiers
 
@@ -88,14 +79,12 @@ extend Token [
 
 ]
 
-/// gets keyword name outputs token type, or identifier if its not kw
-constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
+static Token lookupKeyword: String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type
 | "mut" => TokenType.Mut
 | "union" => TokenType.Union
 | "enum" => TokenType.Enum
-| "builder" => TokenType.Builder
-| "constructor" => TokenType.Constructor
+| "constructor" | "static" => TokenType.Constructor
 | "errordomain" => TokenType.ErrorDomain
 | "extend" => TokenType.Extend
 | "on" => TokenType.On

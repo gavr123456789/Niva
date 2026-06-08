@@ -37,9 +37,6 @@ union Declaration token: Token =
   isConstructor: Bool
 
 
-// Messages
-enum MessageKind = Unary | Binary | Keyword
-
 TypeDecl toString -> String = [
   fields = fields joinWith: " "
   ^ "type " + name + (fields isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields
@@ -121,19 +118,6 @@ union Expr token: Token =
   nivaType: NivaType
   isMutable: Bool
 
-
-constructor TypedExpr nivaType::NivaType exprAst::Expr isMutable::Bool = TypedExpr
-  exprAst: exprAst
-  nivaType: nivaType
-  isMutable: isMutable
-  token: exprAst token
-
-constructor TypedExpr nivaType::NivaType exprAst::Expr = TypedExpr
-  exprAst: exprAst
-  nivaType: nivaType
-  isMutable: false
-  token: exprAst token
-
 Identifier toString = "$name"
 
 Expr isNullExpr -> Bool =
@@ -173,9 +157,6 @@ union AstType2 tok: Token name: String =
   args: List::AstType2
   returnType: AstType2
 
-constructor AstType2 unitType -> AstType2 =[
-  ^ AstType name: "Unit" tok: (Token fake)
-]
 AstType toString = [
   genericParamsStr = genericParams joinWith: ": " transform: [it toString]
   errors = this errors
@@ -189,14 +170,6 @@ AstType toString = [
   ]
   ^ "$name$genericParamsStr$errorsStr"
 ]
-
-constructor AstType name: String isNullable: Bool genericParams: List(AstType) tok: Token = AstType
-  name: name
-  isNullable: isNullable
-  genericParams: genericParams
-  isMut: false
-  errors: null
-  tok: tok
 
 constructor AstType name: String tok: Token = AstType
   name: name

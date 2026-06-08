@@ -12,7 +12,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
-  argTypesAndExprs :: mut List::CheckMethodArg = {}!
+  argTypesAndExprs :: mut List(CheckMethodArg) = {}!
 
   msgName = | nameOverride
   | null => .getNameFromArgs
@@ -244,7 +244,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     // addMethod:toProtocol:forType: handles insertion
 
 
-    methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr currentPkg: c currentPkg dtc: db dtc
+    methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr
 
     | methodAlreadyExists
     | null => [

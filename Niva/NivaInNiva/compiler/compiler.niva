@@ -60,23 +60,29 @@ constructor NivaCompiler [
             io writeFile file: destanation content: goContent
         ]
 
-        backendStr = | backend
-        | CompilerBackend.Go => "go"
-        | CompilerBackend.Js => "js"
-        | CompilerBackend.Lsp => "lsp"
-        |=> "js"
+        backendStr =
+          | backend
+          | CompilerBackend.Go => "go"
+          | CompilerBackend.Js => "js"
+          | CompilerBackend.Lsp => "lsp"
+
+        rootFile = path unpackOrValue: "main.niva"
+        entryPoint = rootFile toPath name substringBeforeLast: "."
+
+        runOrBuild = [
+          pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
+
+          resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
+          resolver db listOfErrors isNotEmpty ifTrue: [
+            resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
+            TO DO: "Resolver errors: " + resolver_errors
+          ]
+          resolver
+        ]
 
         | option
         | CompilerOption.Run | CompilerOption.Build => [
-            rootFile = path unpackOrValue: "main.niva"
-            entryPoint = rootFile toPath name substringBeforeLast: "."
-            pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
-
-            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
-            resolver db listOfErrors isNotEmpty ifTrue: [
-              resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
-              TO DO: "Resolver errors: " + resolver_errors
-            ]
+            resolver = runOrBuild do
 
             | backend
             | CompilerBackend.Go => [
@@ -97,16 +103,7 @@ constructor NivaCompiler [
             | CompilerBackend.Lsp => []
         ]
         | CompilerOption.Ir => [
-            rootFile = path unpackOrValue: "main.niva"
-            entryPoint = rootFile toPath name substringBeforeLast: "."
-            pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
-
-            resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
-            resolver db listOfErrors isNotEmpty ifTrue: [
-              resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
-              TO DO: "Resolver errors: " + resolver_errors
-            ]
-
+            resolver = runOrBuild do
             buildIrFromResolver res: resolver
         ]
         | CompilerOption.Help => []

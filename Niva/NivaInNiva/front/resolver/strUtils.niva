@@ -1,18 +1,1 @@
-/// if it is, we can get type from catche(core pkg)
-String isCoreType -> Bool = 
-  | this
-  | "String" 
-  | "Int" 
-  | "Bool"
-
-  | "Double" 
-  | "Float"
-
-  | "Unit"
-
-  | "List"
-  | "Map"
-  | "Set" => true
-  |=> false
-
 String isGeneric -> Bool = .count == 1 && .first isUpperCase

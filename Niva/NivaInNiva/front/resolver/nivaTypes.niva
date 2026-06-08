@@ -1,4 +1,3 @@
-type UnionTBranch name: String typeT: NivaType
 type TypeTField name: String typeT: NivaType
 TypeTField toString -> String =
   "$name: $typeT"
@@ -48,25 +47,6 @@ extend NivaType [
        |=> this
   ]
 
-  on generateId -> String = [
-
-    result = | this
-    | TypeT => [
-      genericArgsStr = genericArgs isNotEmpty
-                        ifTrue: ["(" + (genericArgs joinWith: "," transform: [it name]) + ")"]
-                        ifFalse: [""]
-
-      pkgName + "." + name + genericArgsStr
-    ]
-
-    | UnresolvedGenericT => [name]
-    | NullableT => [this v generateId + "?"]
-    | Unknown => [TO DO: "Can't get id of Unknown type, all types should be resolved"]
-    |=> [
-      pkgName + "." + name
-    ]
-    ^ result
-  ]
   /// generate unique identifiers for instantiated types (Box__Int)
   on toMangledName -> String = [
     result = | this
@@ -244,26 +224,6 @@ extend NivaType [
       |=> []
     ]
     |=> []
-  ]
-
-  on instantiateFromTable(table): Map(String, NivaType) -> String = [
-
-    result = | this
-    | TypeT => [
-      genericArgsStr = genericArgs isNotEmpty
-                        ifTrue: ["(" + (genericArgs joinWith: "," transform: [it name]) + ")"]
-                        ifFalse: [""]
-
-      pkgName + "." + name + genericArgsStr
-    ]
-
-    | UnresolvedGenericT => [name]
-    | NullableT => [this v generateId + "?"]
-    | Unknown => [TO DO: "Can't get id of Unknown type, all types should be resolved"]
-    |=> [
-      pkgName + "." + name
-    ]
-    ^ result
   ]
 
   on findField(fieldName): String -> TypeTField? = [
@@ -451,19 +411,6 @@ extend NivaMethod [
 ]
 
 constructor NivaMethod [
-  /// Create CALL
-  on name: String receiverType: NivaType args: List::TypeTField returnType: NivaType forMut: Bool decl: MessageDecl? protocolName: String pkgName: String = NivaMethod
-    name: name
-    receiverType: receiverType
-    args: args
-    returnType: returnType
-    returnErrors: {}!
-    forMut: forMut
-    possibleErrors: {}
-    kind: MessageSendKind.Call
-    decl: decl
-    protocolName: protocolName
-    pkgName: pkgName
 
   on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod
     name: name
@@ -615,17 +562,7 @@ DefaultTypesContainer collection-with-different-generic(collection): NivaType ->
     | ListT => list2
     | SetT => set2
     | MapT => map2
-    |=> [TO DO: "Compiler bug, use collectionm got $collection"]
-]
-
-constructor DefaultTypesContainer new-collection-with-different-generic(collection): NivaType -> NivaType = [
-  t = (UnresolvedGenericT name: "Q")
-  g = (UnresolvedGenericT name: "W")
-  ^ | collection
-    | ListT => ListT t: t
-    | SetT => SetT t: t
-    | MapT => MapT k: t v: g
-    |=> [TO DO: "Compiler bug, use collectionm got $collection"]
+    |=> [TO DO: "Compiler bug, use one of collections(list map set) got $collection"]
 ]
 
 
