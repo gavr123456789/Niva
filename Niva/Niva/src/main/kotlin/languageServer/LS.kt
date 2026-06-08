@@ -46,6 +46,7 @@ import main.frontend.parser.types.ast.SomeTypeDeclaration
 import main.frontend.parser.types.ast.Statement
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeDeclaration
 import main.frontend.parser.types.ast.UnionBranchDeclaration
@@ -774,16 +775,35 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
     try {
         val file = File(URI(pathToChangedFile))
         val fileAbsolutePath = file.absolutePath
+        val oldTypeDeclarations = nonIncrementalStore[fileAbsolutePath]?.typeDeclarationSignatures() ?: emptySet()
+        var parsedChangedFileAst: List<Statement>? = null
 
-        val changeLine1Based = changeLine?.plus(1)
-        if (changeLine1Based != null) {
-            val (probeAst) = parseFilesToAST(
+        fun parseChangedFileAst(): List<Statement> {
+            val alreadyParsed = parsedChangedFileAst
+            if (alreadyParsed != null) return alreadyParsed
+            val (mainAst) = parseFilesToAST(
                 mainFileContent = text,
                 otherFileContents = resolver.otherFilesPaths,
                 mainFilePath = file.absolutePath,
                 resolveOnlyOneFile = true
             )
+            parsedChangedFileAst = mainAst
+            return mainAst
+        }
 
+        fun typeDeclarationsChanged(mainAst: List<Statement>): Boolean {
+            val newTypeDeclarations = mainAst.typeDeclarationSignatures()
+            return oldTypeDeclarations != newTypeDeclarations
+        }
+
+        val changeLine1Based = changeLine?.plus(1)
+        if (changeLine1Based != null) {
+            val probeAst = parseChangedFileAst()
+
+            if (typeDeclarationsChanged(probeAst)) {
+                resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+                return
+            }
             val (kind, newDecl) = classifyChangeLine(probeAst, changeLine1Based)
             if (kind == ChangeLineKind.Declaration) {
                 resolveNonIncremental(pathToChangedFile, text, forceFull = true)
@@ -797,6 +817,12 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
                 }
             }
             // fall through to full incremental if we couldn't handle it
+        }
+
+        val mainAst = parseChangedFileAst()
+        if (typeDeclarationsChanged(mainAst)) {
+            resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+            return
         }
 
         // let's assume user cant change packages names for now, so pkg name always == filename
@@ -824,12 +850,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
         megaStore.data.remove(fileAbsolutePath)
         resolver.reset()
 
-        val (mainAst) = parseFilesToAST(
-            mainFileContent = text,
-            otherFileContents = resolver.otherFilesPaths,
-            mainFilePath = file.absolutePath,
-            resolveOnlyOneFile = true
-        )
+        nonIncrementalStore[fileAbsolutePath] = mainAst
 
         val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
         val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
@@ -895,6 +916,61 @@ private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
     }
 }
 
+private fun List<Statement>.typeDeclarationSignatures(): Set<String> {
+    fun TypeAST.key(): String {
+        val nullable = if (isNullable) "?" else ""
+        val mutable = if (isMutable) "mut " else ""
+        val errorsKey = errors?.joinToString(prefix = "!", separator = "|") ?: ""
+        return when (this) {
+            is TypeAST.UserType -> {
+                val args = typeArgumentList
+                    .map { it.key() }
+                    .sorted()
+                    .joinToString(prefix = "(", postfix = ")")
+                "$mutable${names.joinToString(".")}$args$nullable$errorsKey"
+            }
+            is TypeAST.InternalType -> "$mutable$name$nullable$errorsKey"
+            is TypeAST.Lambda -> {
+                val receiver = extensionOfType?.key()?.let { "$it." } ?: ""
+                val args = inputTypesList.joinToString(",") { it.key() }
+                "$mutable$receiver[$args->${returnType.key()}]$nullable$errorsKey"
+            }
+        }
+    }
+
+    fun List<TypeFieldAST>.key(): String =
+        joinToString(prefix = "(", postfix = ")") { "${it.name}:${it.typeAST?.key() ?: ""}" }
+
+    fun SomeTypeDeclaration.baseKey(kind: String): String {
+        val generics = genericFields.sorted().joinToString(prefix = "<", postfix = ">")
+        return "$kind:$typeName$generics:${fields.key()}"
+    }
+
+    val result = mutableSetOf<String>()
+    this.forEach { statement ->
+        when (statement) {
+            is TypeDeclaration -> result.add(statement.baseKey("type"))
+            is TypeAliasDeclaration -> result.add("${statement.baseKey("alias")}:${statement.realTypeAST.key()}")
+            is ErrorDomainDeclaration -> result.add(statement.unionDeclaration.baseKey("error"))
+            is UnionRootDeclaration -> {
+                result.add(statement.baseKey("union"))
+                statement.branches.forEach { result.add(it.baseKey("unionBranch")) }
+            }
+            is EnumDeclarationRoot -> {
+                result.add(statement.baseKey("enum"))
+                statement.branches.forEach {
+                    val values = it.fieldsValues.joinToString(prefix = "(", postfix = ")") { field ->
+                        "${field.name}:${field.value}"
+                    }
+                    result.add("${it.baseKey("enumBranch")}:$values")
+                }
+            }
+            else -> {}
+        }
+    }
+    return result
+}
+
 
 fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull: Boolean = false): Resolver {
     if (pm == null) {
@@ -918,10 +994,11 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
         val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
         val file = File(URI(uriOfChangedFile))
         val fileAbsolute = file.absolutePath
+        val oldHadTypeDeclarations = hasTypeDeclarations(nonIncrementalStore[fileAbsolute] ?: emptyList())
         val mainAst = getAst(source = source, file = file)
 
         // if there are no type declarations, use incremental resolve for this file only
-        if (!forceFull && !hasTypeDeclarations(mainAst)) {
+        if (!forceFull && !oldHadTypeDeclarations && !hasTypeDeclarations(mainAst)) {
             nonIncrementalStore[fileAbsolute] = mainAst
             resolveIncremental(uriOfChangedFile, source)
             return resolver
