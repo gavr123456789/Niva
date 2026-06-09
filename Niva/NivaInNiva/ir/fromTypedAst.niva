@@ -290,6 +290,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   receiverExpr = receiver toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
   receiverType = receiver typeInfo t
   receiverTypeRef = receiverType toIrTypeRefWithMutErrors: false errorsList: {}
+  methodReceiverTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: false errorsList: {}
   exprType = typeInfo toIrTypeRef
 
   isDefaultCtor = dbMsg kind == MessageSendKind.DefaultConstructor
@@ -385,12 +386,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                       ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {} typeRef: exprType]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall funcId: callId callee: null args: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                        IrCall funcId: callId callee: null args: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall funcId: callId callee: null args: {receiverExpr} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                    IrCall funcId: callId callee: null args: {receiverExpr} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                   ]
               ]
           ]
@@ -475,12 +476,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                       ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs typeRef: exprType]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall funcId: callId callee: null args: argsExprs isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                        IrCall funcId: callId callee: null args: argsExprs isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: receiverTypeRef typeRef: exprType
+                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                   ]
               ]
           ]

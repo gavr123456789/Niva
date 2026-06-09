@@ -27,6 +27,8 @@ Test goTaggedUnionShapes = [
   go contains: "switch __matchSubject.(type) {", assertTrue
   go contains: "case main_Rectangle:", assertTrue
   go contains: "case main_Circle:", assertTrue
+  go contains: "default:", assertTrue
+  go contains: "panic(\"invalid type assertion\")", assertTrue
 ]
 
 Test goShadowCopyCodegen = [
@@ -63,6 +65,18 @@ Test goBindingsReadFile = [
   go contains: "func main__core_Int__read", assertTrue
   go contains: "os.ReadFile(read)", assertTrue
   go contains: "main__core_Int__read(1, \"file.txt\")", assertTrue
+]
+
+Test goCoreAnyMethodOwnerCodegen = [
+  fileMain = """
+    1 echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "core.Any__echo(1)", assertTrue
+  Assert that: (go contains: "core.Int__echo(1)") equals: false
 ]
 
 Test goGenericTypeParams = [

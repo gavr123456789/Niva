@@ -569,7 +569,10 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
           ]
       ]
       | elseBranchLocal
-      | null => []
+      | null => [
+        sb appendIndent: 1 line: "default:"
+        sb appendIndent: 2 line: "panic(\"invalid type assertion\")"
+      ]
       |=> [
         elseBlock = elseBranchLocal
         sb appendIndent: 1 line: "default:"

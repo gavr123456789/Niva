@@ -54,6 +54,7 @@ constructor TypeScript  [
             sb appendLine: "\n" // 2
         ]
 
+        entryPointName = rh entryPointName
         outputFileToCode::mut Map(String, String) = #{}!
 
         rh fileToStatements forEach: [file, statement ->
@@ -61,17 +62,24 @@ constructor TypeScript  [
             sb = StringBuilder new
 
             statement forEach: [
-                x = it toTSFromPkg: file db: db
-                x != "" ifTrue: [
-                    sb appendLine: x
-                    sb appendLine: "\n"
+                isEntryPointExpr =
+                    file == entryPointName && [
+                        | it
+                        | TypedExpr2 => true
+                        |=> false
+                    ] do
+                isEntryPointExpr ifFalse: [
+                    x = it toTSFromPkg: file db: db
+                    x != "" ifTrue: [
+                        sb appendLine: x
+                        sb appendLine: "\n"
+                    ]
                 ]
             ]
 
             outputFileToCode at: file put: sb toString
         ]
 
-        entryPointName = rh entryPointName
         exprs = rh entryPointExpressions joinWith: ";\n" transform: [it toTSFromPkg: entryPointName db: db]
         entryPointExprs = exprs == "" ifTrue: [""] ifFalse: [exprs + ";"]
 

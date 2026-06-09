@@ -83,6 +83,19 @@ Test tsGetterCodegen = [
   js contains: "const z = p.age", assertTrue
 ]
 
+Test tsEntryPointExpressionsNotDuplicated = [
+  fileMain = """
+    1 echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  js contains: "core.Any__echo(1)", assertTrue
+  Assert that: ((js split: "core.Any__echo(1)") count) equals: 2
+]
+
 Test tsDestructAssignCodegen = [
   fileMain = """
     type Person
