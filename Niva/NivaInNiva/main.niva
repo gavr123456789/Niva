@@ -24,11 +24,10 @@ constructor IO_Container new -> IO_Container = [
     FileSystem read: (path toPath)
   ]
 
-  writeFile = [path: String , fileContent: FileContent ->
+  writeFile = [path: String, fileContent: FileContent ->
     FileSystem write: path toPath
                content: fileContent
-
-    Unit
+    ()
   ]
 
   walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
@@ -69,69 +68,4 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new
   //diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
-goWhileTrueCodegen = [
-  fileMain = """
-    mut c = 3
-    [c > 0] whileTrue: [c <- c - 1]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
-
-  go contains: "for {", assertTrue
-  go contains: "if !(", assertTrue
-  go contains: ") { break }", assertTrue
-  go contains: ")()", assertTrue
-]
-
-irTypeAndMethod = [
-  fileMain = """
-    type Person
-      name: String
-
-    Person greet -> String = [
-      ^ "hi"
-    ]
-
-    p = Person name: "Ada"
-    p greet
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  ir = result toIrModule
-  ir debug
-  typeDef = ir types first
-  Assert that: typeDef name equals: "Person"
-  Assert that: typeDef id equals: "main_Person"
-  Assert that: typeDef fields count equals: 1
-  field = typeDef fields at: 0
-  Assert that: field name equals: "name"
-
-  fnMaybe = ir functions find: [it name == "greet"]
-  | fnMaybe
-  | null => [TO DO: "greet function not found"]
-  |=> [
-    fn = fnMaybe
-    Assert that: fn args count equals: 1
-    firstArg = fn args at: 0
-    Assert that: firstArg name equals: "this"
-  ]
-]
-
-
-
-//odin = [
-//  program = "+ + * ) - /"
-//  acc <- 0
-//  program forEach: [
-//    | it
-//    | '+' => acc <- acc inc
-//    | '-' => acc <- acc dec
-//    | '*' => acc <- acc * 2
-//    | '/' => acc <- acc / 2
-//    | ')'=> acc <- acc * acc
-//    |=> []
-//  ]
-//  "The program $program calculates the value $acc" echo
-//]
+] do

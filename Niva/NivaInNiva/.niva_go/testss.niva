@@ -5,6 +5,29 @@
 
 //content = "../testss.txt" readFileGo
 //content echo
+//x = #{1 2  3 4}
 
-x = #{1 2  3 4}
+type Point
+  x: Int
+  y: Int
+
+union Shape =
+| Rectangle width: Int height: Int id: Int
+| Circle radius: Int
+
+Shape area -> Int =
+| this
+| Rectangle => width * height
+| Circle => radius * radius * 3
+
+Rectangle width: 2
+          height: 2
+          id: 42, area echo
+
+x = Rectangle width: 2
+              height: 2
+              id: 42
+
+y = x width: 4
 x echo
+y echo
