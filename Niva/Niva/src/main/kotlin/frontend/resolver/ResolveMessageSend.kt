@@ -234,19 +234,9 @@ fun Resolver.resolveMessage(
             statement.token.compileError("Can't use bindings outside of main entry point when capabilities enabled: ${YEL}${receiverType}")
         }
         //check that it was mutable call for mutable type
-        if (msgFromDb.forMutableType && receiver is IdentifierExpr) {
-            val receiverFromScope = previousAndCurrentScope[receiver.name]
-            if (receiverFromScope != null && !receiverFromScope.isMutable) {
-                val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
-                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
-            }
-        } else if (msgFromDb.forMutableType && receiver is MessageSend) {
-            val receiverType = receiver.type!!
-            if (!receiverType.isMutable) {
-                val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
-                statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
-
-            }
+        if (msgFromDb.forMutableType && !receiverType.isMutable) {
+            val decl = msgFromDb.declaration?.toString() ?: msgFromDb.name
+            statement.token.compileError("receiver type $receiverType is not mutable, but $decl declared for mutable type, use `x::mut $receiverType = ...`")
         }
         //
 
