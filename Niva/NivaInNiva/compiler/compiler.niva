@@ -1,7 +1,7 @@
 /// takes main/entry file and collects all the files for compilation
 type NivaBuildSystem
 constructor NivaBuildSystem [
-    on findAllWilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
+    on findAllFilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
         // path is to main.niva, need to get its paret to start search
         p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
@@ -26,16 +26,29 @@ constructor NivaBuildSystem [
 type NivaCompiler
 
 constructor NivaCompiler [
-    on runArgs(args): List(String) withIO(io): IO_Container = [
+    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: false
+    on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [
+        t1 = System currentTimeMillis
+
+        measureTimeFrom = [from: Long, text: String ->
+                            measureTime ifTrue: [
+                                            now = System currentTimeMillis
+                                            time = text + ": " + (now - from) toString
+                                            time debug
+                                            now]
+                                        ifFalse: [0 toLong]]
+
+
 
         argsParsed = ArgParser args: args
         {option path backend} = argsParsed
+
 
         realJSPath = io currentDir + "/.niva_js"
         realIrPath = io currentDir + "/.niva_ir"
         realGoPath = io currentDir + "/.niva_go"
 
-        buildFromResolver = [res::ResolverHelper ->
+        generateJsFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realJSPath toPath)
             fileToJSCOntent = TypeScript fullFromResolver: res
 
@@ -45,7 +58,7 @@ constructor NivaCompiler [
             ]
         ]
 
-        buildIrFromResolver = [res::ResolverHelper ->
+        generateIrFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realIrPath toPath)
             irModule = res toIrModule
             irContent = irModule toDebugString
@@ -53,7 +66,7 @@ constructor NivaCompiler [
             io writeFile file: destanation content: irContent
         ]
 
-        buildGoFromResolver = [res::ResolverHelper ->
+        generateGoFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realGoPath toPath)
             goContent = GoBackend fullFromResolver: res
             destanation = realGoPath + "/main.go"
@@ -68,32 +81,47 @@ constructor NivaCompiler [
 
         rootFile = path unpackOrValue: "main.niva"
         entryPoint = rootFile toPath name substringBeforeLast: "."
+        t2 = measureTimeFrom from: t1 text: "arg-parsed"
 
         runOrBuild = [
-          pathToContent = NivaBuildSystem findAllWilesFrom: rootFile withIO: io
+
+          pathToContent = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
+          t3 = measureTimeFrom from: t2 text: "collect-files"
 
           resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
           resolver db listOfErrors isNotEmpty ifTrue: [
             resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
             TO DO: "Resolver errors: " + resolver_errors
           ]
+
           resolver
         ]
 
         | option
         | CompilerOption.Run | CompilerOption.Build => [
+            t3 = System currentTimeMillis
+
             resolver = runOrBuild do
+            t4 = measureTimeFrom from: t3 text: "resolve"
 
             | backend
             | CompilerBackend.Go => [
-                buildGoFromResolver res: resolver
+                generateGoFromResolver res: resolver
+
+
+                t5 = measureTimeFrom from: t4 text: "generated-go"
+
                 option == CompilerOption.Run ifTrue: [
                   pathToEntryPoint = realGoPath //+ "/main.go"
                   io runProgramFromPath path: pathToEntryPoint args: {"go" "run" "."}
                 ]
+
+                t6 = System currentTimeMillis
+                t-run-go = t6 - t5
+                t-run-go debug
               ]
             | CompilerBackend.Js => [
-                buildFromResolver res: resolver
+                generateJsFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
                   // run with bun
                   pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
@@ -104,7 +132,7 @@ constructor NivaCompiler [
         ]
         | CompilerOption.Ir => [
             resolver = runOrBuild do
-            buildIrFromResolver res: resolver
+            generateIrFromResolver res: resolver
         ]
         | CompilerOption.Help => []
         | CompilerOption.Daemon => []

@@ -79,6 +79,21 @@ Test goCoreAnyMethodOwnerCodegen = [
   Assert that: (go contains: "core.Int__echo(1)") equals: false
 ]
 
+Test goEntryLastExprDoesNotReturn = [
+  fileMain = """
+    1 + 2
+    3 + 4
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "_ = (1 + 2)", assertTrue
+  go contains: "_ = (3 + 4)", assertTrue
+  Assert that: (go contains: "return (3 + 4)") equals: false
+  Assert that: (go contains: "\"niva_go/core\"") equals: false
+]
+
 Test goGenericTypeParams = [
   fileMain = """
     type Box
@@ -184,6 +199,20 @@ Test goLambdaArgCodegen = [
   go = GoBackend fullFromResolver: result
 
   go contains: "func(item int)", assertTrue
+]
+
+Test goImplicitLambdaArgCodegen = [
+  fileMain = """
+    {1 2 3} map: [it + 1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "core.List__map([]int{1, 2, 3}, func(it int) int {", assertTrue
+  go contains: "return (it + 1)", assertTrue
+  go contains: "},\n)", assertTrue
+  Assert that: (go contains: "func() int") equals: false
 ]
 
 Test goBindPlaceholder10 = [

@@ -219,6 +219,15 @@ class ResolverTest {
     }
 
     @Test
+    fun nonNullableValueCanGoIntoNullableGenericReceiverArg() {
+        val source = """
+            v::mut List(String?) = {}!
+            v add: "hewwo"
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
     fun checkForGenericsInArgumentsDeeply() {
         val source = """
             type Box t: [Int -> T]// ??? WHERE "Please declare missing generic arguments" ERROR
