@@ -117,8 +117,8 @@ constructor NivaCompiler [
                 ]
 
                 t6 = System currentTimeMillis
-                t-run-go = t6 - t5
-                t-run-go debug
+                t-full-run-go = t6 - t5
+                t-full-run-go debug
               ]
             | CompilerBackend.Js => [
                 generateJsFromResolver res: resolver

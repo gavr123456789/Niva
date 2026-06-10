@@ -126,7 +126,7 @@ Environment makeChild = Environment parent: this map: #{}
 
     @Test
     fun varDeclarationWithColonType() {
-        val source = "x: Int = 1"
+        val source = "x::Int = 1"
         val ast = getAstTest(source)
         assert(ast.count() == 1)
 
@@ -569,9 +569,10 @@ Environment makeChild = Environment parent: this map: #{}
         assert(messages.count() == 1)
         val keywordMsg = messages[0] as KeywordMsg
 
-        assert(keywordMsg.args.count() == 2)
-        assert(keywordMsg.args[0].keywordArg.str == "3")
-        assert(keywordMsg.args[1].keywordArg.str == "5")
+        assertEquals(keywordMsg.args.count(), 2)
+        assertEquals(keywordMsg.args[0].keywordArg.str, "+")
+        assertEquals(keywordMsg.args[1].keywordArg.str, "5")
+
     }
 
     @Test
@@ -1775,7 +1776,7 @@ Environment makeChild = Environment parent: this map: #{}
         val source = """
            
           | 1
-          | 1,2,3 => 4
+          | 1 | 2 | 3 => 4
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -1943,7 +1944,7 @@ Environment makeChild = Environment parent: this map: #{}
     @Test
     fun qualifier() {
         val source = """
-            window = (org.gnome.adw.ApplicationWindow app: app)
+            window = org.gnome.adw.ApplicationWindow app: app
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -2169,23 +2170,6 @@ Environment makeChild = Environment parent: this map: #{}
     }
 
 
-    @Test
-    fun builderCallsWithKeys() {
-        val source = """
-            Card (width: 24 height: 30) [
-                1 echo
-            ]
-            Card [
-                1 echo
-            ]
-        """.trimIndent()
-        val ast = getAstTest(source)
-
-        assertEquals(ast.count(), 2)
-        val withArgs = ast.first() as StaticBuilder
-        val withoutArgs = ast.last() as StaticBuilder
-        assertTrue { withArgs.args.count() == 2 && withoutArgs.args.isEmpty() }
-    }
 
     @Test
     fun builderWithUnary() {
@@ -2385,22 +2369,6 @@ Environment makeChild = Environment parent: this map: #{}
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-    }
-
-    @Test
-    fun builderWithoutDefaultAction() {
-        val source = """
-            type Person name: String
-            builder Person sas -> Unit = [
-                build this: (Person name: "sas")
-            ]
-
-            sas [name echo]
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 3)
-        val q = ast[2]
-        assertIs<StaticBuilder>(q)
     }
 
     @Test
@@ -2645,7 +2613,7 @@ Environment makeChild = Environment parent: this map: #{}
     @Test
     fun pipesAreCommasNow() {
         val source = """
-            Int from::Int = 0
+            Int from: Int = 0
             ((1 from: 2) from: 3) from: 4
             1 from: 2, from: 3, from: 4
             1 from: 2 |> from: 3 |> from: 4

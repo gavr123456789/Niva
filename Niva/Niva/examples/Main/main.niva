@@ -1,3 +1,13 @@
-v::mut List(String?) = {}!
-v add: "hewwo"
-v echo
+type Sas
+
+Sas == x: Sas =
+    true
+
+Sas new == Sas new, echo
+Sas new != Sas new, echo
+
+1 == 1, echo
+1 != 2, echo
+
+type Sus
+Sus new == Sus new, echo

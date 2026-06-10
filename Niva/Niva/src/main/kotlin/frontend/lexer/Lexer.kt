@@ -462,7 +462,7 @@ fun Lexer.next() {
             createToken(TokenType.InlineReplWithNum)
         }
 
-        check(":") && peek(1).first().isLetter() -> {
+        check(":") && peek(1).firstOrNull()?.isLetter() == true -> {
             // :sas -> sas: sas
 
             createToken(TokenType.Identifier, addToLexeme = "temp")
