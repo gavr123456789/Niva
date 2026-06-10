@@ -1,11 +1,11 @@
-NivaType asTypeT -> TypeT =
-  | this | TypeT => this
+NivaType asTypeT -> TypeT = | this
+  | TypeT => this
   |=> TO DO: "Its not TypeT, its $this"
 
-NivaType asListT -> ListT =
-  | this | ListT => this
+NivaType asListT -> ListT =| this
+  | ListT => this
   |=> TO DO: "Its not ListT, its $this"
 
 TypedExpr2 isIdentifierConstructor = | this
-| IdentifierT => [this isNameOfTheType]
-|=> [false]
+  | IdentifierT => this isNameOfTheType
+  |=> false

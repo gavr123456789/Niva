@@ -42,6 +42,27 @@ fun generateMainKotlin(source: String): String {
 class CodogenTest {
 
 
+    @Test
+    fun customEqualityUsesEqualNivaForInequality() {
+        val source = """
+            type Sas
+
+            Sas == x: Sas = true
+
+            Sas new == Sas new, echo
+            Sas new != Sas new, echo
+        """.trimIndent()
+        val ktCode = generateMainKotlin(source)
+        val expected = "\n" + """
+            //@ Niva.iml:::5
+            (Sas().equal_niva(Sas())).echo()
+
+            //@ Niva.iml:::6
+            (Sas().equal_niva(Sas()).not()).echo()
+        """.trimIndent() + "\n"
+        assertEquals(expected, ktCode)
+    }
+
 
     @Test
     fun pipedBinaryDoesNotEmitExtraReceiver() {

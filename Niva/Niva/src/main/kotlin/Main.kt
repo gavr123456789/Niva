@@ -128,6 +128,16 @@ enum class Option {
 const val MAIN_NIVA = "main.niva"
 fun getPathToMainOrSingleFile(args: List<String>): String {
     fun fileExists(path: String) = File(path).exists()
+    fun mainFileInDirectory(path: String): File = File(path, MAIN_NIVA)
+    fun pathToMainFileOrSelf(path: String): String {
+        val file = File(path)
+        if (!file.isDirectory) return path
+        val main = mainFileInDirectory(path)
+        return if (main.exists())
+            main.path
+        else
+            createFakeToken().compileError("Can't find `$MAIN_NIVA` in directory $path")
+    }
 
     fun findMainNivaOrDie(): String {
         val main = MAIN_NIVA
@@ -164,7 +174,7 @@ fun getPathToMainOrSingleFile(args: List<String>): String {
                     MAIN_NIVA
 
                 fileExists(fileNameArg) ->
-                    fileNameArg
+                    pathToMainFileOrSelf(fileNameArg)
 
                 cmd == "graphviz" ->
                     findMainNivaOrCompileError("File $fileNameArg doesn't exist and default $MAIN_NIVA not found")
