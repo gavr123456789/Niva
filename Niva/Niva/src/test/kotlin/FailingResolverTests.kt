@@ -110,6 +110,15 @@ class FailingResolverTests {
             resolveWithResolver(source)
         }
     }
+
+    @Test
+    fun mutableOnlyMessageFailsForImmutableCollectionLiteral() {
+        assertThrows<CompilerError> {
+            resolveWithResolver("#{1 2} clear")
+        }
+
+        resolveWithResolver("#{1 2}! clear")
+    }
 }
 
 
@@ -213,4 +222,3 @@ class FailingResolverTests {
 //        val (statements, _) = resolveWithResolver(source)
 //        assert(statements.count() == 3)
 //    }
-
