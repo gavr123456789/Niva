@@ -801,7 +801,8 @@ fun createListProtocols(
                     "indexOfFirst",
                     Type.Lambda(mutableListOf(KeywordArg("indexOfFirst", itType)), boolType)
                 ),
-                intType
+                intType,
+                "Returns index of the first element, or -1 if the list does not contain such element"
             ),
             createKeyword(
                 KeywordArg(
@@ -815,14 +816,16 @@ fun createListProtocols(
                     "any",
                     Type.Lambda(mutableListOf(KeywordArg("any", itType)), boolType)
                 ),
-                boolType
+                boolType,
+                "Returns true if collection has at least one element"
             ),
             createKeyword(
                 KeywordArg(
                     "indexOfLast",
                     Type.Lambda(mutableListOf(KeywordArg("indexOfLast", itType)), boolType)
                 ),
-                intType
+                intType,
+                "Returns index of the last element, or -1 if the list does not contain such element"
             ),
 
             createKeyword(
