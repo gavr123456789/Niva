@@ -63,9 +63,8 @@ compilerTry = [
 compilerTry2 = [
   //path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
   path = {"run" ".niva_go/testss.niva" "--backend" "go"} //"~/Documents/Fun/niva_demo/main.niva"
-  //t1 = System currentTimeMillis
-  //t1 echo
-  NivaCompiler runArgs: path withIO: IO_Container new
-  //diff = System currentTimeMillis - t1
+  t1 = System currentTimeMillis
+  NivaCompiler runArgs: path withIO: IO_Container new measureTime: true
+  diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
 ] do

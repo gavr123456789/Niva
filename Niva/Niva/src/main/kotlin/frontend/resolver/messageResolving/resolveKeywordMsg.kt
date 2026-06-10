@@ -405,7 +405,12 @@ fun Resolver.resolveKeywordMsg(
                 val currentArgType = kwArg.keywordArg.type
                 if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDb is Type.UnknownGenericType) {
                     val realTypeForKwFromDb = fromReceiverAndfromArgsTable[kwArgFromDb.name]!!
-                    val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType, statement.token)
+                    val isResolvedGenericParamEqualRealParam = compare2Types(
+                        realTypeForKwFromDb,
+                        currentArgType,
+                        statement.token,
+                        unpackNullForFirst = true
+                    )
                     if (!isResolvedGenericParamEqualRealParam) {
                         statement.token.compileError("Generic type error, type $YEL${kwArgFromDb.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
                     }
@@ -757,7 +762,7 @@ fun Resolver.resolveKwArgsGenerics(
                     receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
                 if (argTypeWithSameLetter != null) {
                     // receiver has the same generic param resolved
-                    if (!compare2Types( argTypeWithSameLetter, argType, it.keywordArg.token)) {
+                    if (!compare2Types(argTypeWithSameLetter, argType, it.keywordArg.token, unpackNullForFirst = true)) {
                         it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                     }
                 }

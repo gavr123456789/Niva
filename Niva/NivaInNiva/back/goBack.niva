@@ -424,7 +424,7 @@ extend IrExpr [
     | IrCall => [
         bindExpr = this tryGoBindExpr: ctx scope: scope
         bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
-        argsStr = args joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
+        argsStr = args map: [it toGoExpr: ctx scope: scope], goCallArgs
         funcIdLocal = funcId
         | funcIdLocal
         | null => [
@@ -441,6 +441,7 @@ extend IrExpr [
             declPkgLocal = declPkg unpackOrPANIC
             declPkgLocal == "core"
               ifTrue: [
+                ctx addImport: "niva_go/core"
                 msgNameLocal = msgName unpackOrPANIC
                 recvTypeLocal = receiverType unpackOrPANIC
                 coreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal
@@ -470,7 +471,7 @@ extend IrExpr [
         args forEach: [innerScope locals add: it name]
         body blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
         ctx emitResult: (body result) sb: sb indent: 1 retType: retType scope: innerScope
-        sb appendLine: "}"
+        sb append: "}"
         sb toString
       ]
     | IrBlockExpr => block blockToGoExpr: ctx scope: scope
@@ -743,6 +744,13 @@ List(String) goTypeArgs -> String = [
   ^ "[" + joined + "]"
 ]
 
+List(String) goCallArgs -> String = [
+  this isEmpty ifTrue: [^ ""]
+  joined = this joinWith: ", "
+  hasMultilineArg = this any: [it contains: "\n"]
+  ^ hasMultilineArg ifTrue: [joined + ",\n"] ifFalse: [joined]
+]
+
 constructor GoBackend [
   on fullFromResolver(rh): ResolverHelper -> String = GoBackend fullFromIrModule: (rh toIrModule)
 
@@ -840,14 +848,18 @@ constructor GoBackend [
     sb appendLine: "func main() {"
     scope = GoScope new
     entry blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: entry resultType
-    ctx emitResult: (entry result) sb: sb indent: 1 retType: entry resultType scope: scope
+    entryResult = entry result
+    | entryResult
+    | null => []
+    |=> [
+      sb appendIndent: 1 line: (entryResult toGoStatement: ctx scope: scope)
+    ]
     sb appendLine: "}"
     sb appendLine: ""
   ]
 
   on fullFromIrModule(ir): IrModule -> String = [
     ctx = GoContext new
-    ctx addImport: "niva_go/core"
 
     bodySb = StringBuilder new
 
@@ -873,15 +885,17 @@ constructor GoBackend [
     sb appendLine: ""
 
     imports = ctx imports
-    imports count == 1 ifTrue: [
-      imp = imports first
-      sb appendLine: ("import \"" + imp + "\"")
-    ] ifFalse: [
-      sb appendLine: "import ("
-      imports forEach: [imp -> sb appendIndent: 1 line: ("\"" + imp + "\"")]
-      sb appendLine: ")"
+    imports isEmpty ifFalse: [
+      imports count == 1 ifTrue: [
+        imp = imports first
+        sb appendLine: ("import \"" + imp + "\"")
+      ] ifFalse: [
+        sb appendLine: "import ("
+        imports forEach: [imp -> sb appendIndent: 1 line: ("\"" + imp + "\"")]
+        sb appendLine: ")"
+      ]
+      sb appendLine: ""
     ]
-    sb appendLine: ""
 
     sb append: (bodySb toString)
     ^ sb toString

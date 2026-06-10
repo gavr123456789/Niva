@@ -226,7 +226,21 @@ CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(St
         IrArg name: arg name typeRef: (typeInfo toIrTypeRef)
       ]
     ] ifFalse: [
-      typedArgs map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+      typedArgs isNotEmpty
+        ifTrue: [
+          typedArgs map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+        ]
+        ifFalse: [
+          lambdaType = typeInfo t
+          | lambdaType
+          | FuntionT => [
+              lambdaType fields map: [f ->
+                argName = f name == "" ifTrue: ["it"] ifFalse: [f name]
+                IrArg name: argName typeRef: (f typeT toIrType-immut-no-errors)
+              ]
+            ]
+          |=> {IrArg}
+        ]
     ]
 
   bodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
