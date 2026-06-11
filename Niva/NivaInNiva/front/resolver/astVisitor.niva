@@ -509,7 +509,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
           ()
         ]
       ]
-      TypedBody v: bodyExprs toList t: typedBody t
+      TypedBody v: bodyExprs toList t: typedBody t listOfErrors: typedBody listOfErrors
     ] ifFalse: [typedBody]
 
   noDeclaredReturnType = returnType == null
@@ -537,6 +537,30 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
         |=> []
       ]
     ]
+  ]
+
+  actualReturnErrors = finalTypedBody listOfErrors
+  hasAnyReturnErrors = returnType unpack: [it hasAnyErrorMarker] or: false
+  declaredReturnErrors =
+    hasAnyReturnErrors
+      ifTrue: [actualReturnErrors]
+      ifFalse: [returnType unpack: [it toErrorsFromDb: db inPkg: null] or: {}]
+
+  hasAnyReturnErrors ifTrue: [
+    methodFromDb unpack: [
+      updatedMethod = it copyWithDifferentReturnErrors: actualReturnErrors
+      db replaceMethod: updatedMethod inType: updatedMethod receiverType
+    ]
+  ]
+
+  (hasAnyReturnErrors not) && (declaredReturnErrors errorListEquals: actualReturnErrors, not), ifTrue: [
+    declaredStr = declaredReturnErrors errorsToString
+    actualStr = actualReturnErrors errorsToString
+    declaredShown = declaredStr == "" ifTrue: ["none"] ifFalse: [declaredStr]
+    actualShown = actualStr == "" ifTrue: ["none"] ifFalse: [actualStr]
+    db addErrorMessage: (LazyError
+      tok: token
+      msg: "Function " + name + " error effects mismatch: declared " + declaredShown + ", actual " + actualShown)
   ]
 
   // clean up local scope from generics, probably a bad solution, thats stupidly a global mutable

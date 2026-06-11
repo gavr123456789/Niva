@@ -92,21 +92,30 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
 
 AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
   | AstType => [
-    errors = errors// for smart cast of local, not global
-    | errors
+    astErrors = errors// for smart cast of local, not global
+    | astErrors
     | null => {NivaType} // empty list
     |=> [
-      {kind} = errors
+      {kind} = astErrors
       | kind
       | AstTypeErrorsKind.Any    => {}
       | AstTypeErrorsKind.Single => [
-                                      err = db findByTypeName: (errors names first) :inPkg
+                                      err = db findByTypeName: (astErrors names first) :inPkg
                                       {err}
                                     ]
-      | AstTypeErrorsKind.List   => errors names map: [db findByTypeName: it :inPkg]
+      | AstTypeErrorsKind.List   => astErrors names map: [db findByTypeName: it :inPkg]
     ]
   ]
   | AstLambdaType => {NivaType}
+
+AstType2 hasAnyErrorMarker -> Bool = | this
+  | AstType => [
+    astErrors = errors
+    | astErrors
+    | null => false
+    |=> astErrors kind == AstTypeErrorsKind.Any
+  ]
+  | AstLambdaType => false
 
 
 

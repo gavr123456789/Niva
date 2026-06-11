@@ -52,6 +52,7 @@ type NameAndExprT name: Identifier expr: TypedExpr2
 type TypedBody
   v: List(TypedExpr2)
   t: NivaType
+  listOfErrors: List::NivaType
 
 type NameAndTypeInfo name: String typeInfo: TypeInfo
 

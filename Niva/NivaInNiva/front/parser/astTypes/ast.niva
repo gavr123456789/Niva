@@ -159,14 +159,14 @@ union AstType2 tok: Token name: String =
 
 AstType toString = [
   genericParamsStr = genericParams joinWith: ": " transform: [it toString]
-  errors = this errors
-  errorsStr = | errors
+  astErrors = this errors
+  errorsStr = | astErrors
   | null => ""
   |=> [
-    | errors kind
+    | astErrors kind
     | AstTypeErrorsKind.Any    => "!"
-    | AstTypeErrorsKind.Single => "!"  + (errors names first)
-    | AstTypeErrorsKind.List   => "!{" + (errors names joinWith: " ") + "}"
+    | AstTypeErrorsKind.Single => "!"  + (astErrors names first)
+    | AstTypeErrorsKind.List   => "!{" + (astErrors names joinWith: " ") + "}"
   ]
   ^ "$name$genericParamsStr$errorsStr"
 ]

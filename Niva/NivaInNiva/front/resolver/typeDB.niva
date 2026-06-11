@@ -101,7 +101,7 @@ constructor TyperDB new -> TyperDB = [
     bind bindConstructors
     unit tempEmptyProto
     any tempEmptyProto
-    error tempEmptyProto
+    error errorProtocol
     list tempEmptyProto
     map tempEmptyProto
     set tempEmptyProto
@@ -1043,7 +1043,10 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
       inferredReturnType toTypeInfoDefault
     ] do
     returnInfo = msgDecl returnType unpack: [
-      it toTypeInfoFromDb: db inPkg: null
+      baseInfo = it toTypeInfoFromDb: db inPkg: null
+      it hasAnyErrorMarker
+        ifTrue: [TypeInfo t: baseInfo t isMut: baseInfo isMut listOfErrors: typedBody listOfErrors]
+        ifFalse: [baseInfo]
     ] or: fallbackReturnInfo
 
     MessageDeclT
