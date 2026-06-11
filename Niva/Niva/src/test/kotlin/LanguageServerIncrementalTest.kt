@@ -1,13 +1,150 @@
 import main.frontend.meta.CompilerError
+import main.frontend.parser.types.ast.IdentifierExpr
 import main.languageServer.LS
+import main.languageServer.LspResult
+import main.languageServer.onCompletion
 import main.languageServer.resolveAllFirstTime
 import main.languageServer.resolveIncremental
+import main.languageServer.resolveNonIncremental
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class LanguageServerIncrementalTest {
+    @Test
+    fun completionInsidePartialMessageNameUsesReceiverFromPreviousValidLineState() {
+        val dir = createTempDirectory("niva-ls-partial-message-completion").toFile()
+        val validSource = """
+            type Person name: String
+            person = Person name: "Alice"
+            person name
+        """.trimIndent()
+        val partialSource = """
+            type Person name: String
+            person = Person name: "Alice"
+            person nam
+        """.trimIndent()
+        val mainFile = dir.resolve("main.niva").also { it.writeText(validSource) }
+
+        val ls = LS()
+        val uri = mainFile.toURI().toString()
+        ls.resolveAllFirstTime(uri, fillNonIncrementalStore = true, changedFileContent = validSource)
+
+        val result = ls.onCompletion(uri, line = 2, character = "person nam".length, sourceText = partialSource)
+
+        assertTrue(result is LspResult.Found, "Expected Found, got ${result::class.simpleName}; ${ls.debugCountsLine()}")
+        val statement = result.statement
+        assertTrue(statement is IdentifierExpr)
+        assertEquals("person", statement.name)
+        assertEquals("Person", statement.type?.name)
+    }
+
+    @Test
+    fun completionInsidePartialMessageNameOnNewLineUsesReceiverFromPreviousScope() {
+        val dir = createTempDirectory("niva-ls-partial-message-new-line-completion").toFile()
+        val validSource = """
+            type Sas
+            Sas from: Int tooo: Int = from + tooo
+            sas = Sas new
+        """.trimIndent()
+        val partialSource = "$validSource\nsas fro"
+        val mainFile = dir.resolve("main.niva").also { it.writeText(validSource) }
+
+        val ls = LS()
+        val uri = mainFile.toURI().toString()
+        ls.resolveAllFirstTime(uri, fillNonIncrementalStore = true, changedFileContent = validSource)
+
+        val result = ls.onCompletion(uri, line = 3, character = "sas fro".length, sourceText = partialSource)
+
+        assertTrue(result is LspResult.Found, "Expected Found, got ${result::class.simpleName}; ${ls.debugCountsLine()}")
+        val statement = result.statement
+        assertTrue(statement is IdentifierExpr)
+        assertEquals("sas", statement.name)
+        assertEquals("Sas", statement.type?.name)
+    }
+
+    @Test
+    fun completionAfterUnresolvedFullMessageNameUsesReceiverFallback() {
+        val dir = createTempDirectory("niva-ls-unresolved-message-completion").toFile()
+        val validSource = """
+            type Sas
+            Sas from: Int tooo: Int = from + tooo
+            sas = Sas new
+        """.trimIndent()
+        val partialSource = "$validSource\nsas from"
+        val mainFile = dir.resolve("main.niva").also { it.writeText(validSource) }
+
+        val ls = LS()
+        val uri = mainFile.toURI().toString()
+        ls.resolveAllFirstTime(uri, fillNonIncrementalStore = true, changedFileContent = validSource)
+
+        val result = ls.onCompletion(uri, line = 3, character = "sas from".length, sourceText = partialSource)
+
+        assertTrue(result is LspResult.Found, "Expected Found, got ${result::class.simpleName}; ${ls.debugCountsLine()}")
+        val statement = result.statement
+        assertTrue(statement is IdentifierExpr)
+        assertEquals("sas", statement.name)
+        assertEquals("Sas", statement.type?.name)
+    }
+
+    @Test
+    fun failedTopLevelExpressionResolveKeepsPreviousTypedStateForCompletion() {
+        val dir = createTempDirectory("niva-ls-failed-expression-keeps-types").toFile()
+        val validSource = """
+            type Sas
+            Sas from: Int tooo: Int = from + tooo
+            sas = Sas new
+        """.trimIndent()
+        val invalidSource = "$validSource\nsas from"
+        val mainFile = dir.resolve("main.niva").also { it.writeText(validSource) }
+
+        val ls = LS()
+        val uri = mainFile.toURI().toString()
+        ls.resolveAllFirstTime(uri, fillNonIncrementalStore = true, changedFileContent = validSource)
+
+        assertFailsWith<CompilerError> {
+            ls.resolveIncremental(uri, invalidSource, changeLine = 3)
+        }
+
+        val result = ls.onCompletion(uri, line = 3, character = "sas from".length, sourceText = invalidSource)
+
+        assertTrue(result is LspResult.Found, "Expected Found, got ${result::class.simpleName}; ${ls.debugCountsLine()}")
+        val statement = result.statement
+        assertTrue(statement is IdentifierExpr)
+        assertEquals("sas", statement.name)
+        assertEquals("Sas", statement.type?.name)
+    }
+
+    @Test
+    fun failedFullResolveKeepsPreviousTypedMegaStoreStateForCompletion() {
+        val dir = createTempDirectory("niva-ls-failed-full-resolve-keeps-types").toFile()
+        val validSource = """
+            type Sas
+            Sas from: Int tooo: Int = from + tooo
+            sas = Sas new
+        """.trimIndent()
+        val invalidSource = "$validSource\nsas from"
+        val mainFile = dir.resolve("main.niva").also { it.writeText(validSource) }
+
+        val ls = LS()
+        val uri = mainFile.toURI().toString()
+        ls.resolveAllFirstTime(uri, fillNonIncrementalStore = true, changedFileContent = validSource)
+
+        assertFailsWith<CompilerError> {
+            ls.resolveNonIncremental(uri, invalidSource, forceFull = true)
+        }
+
+        val result = ls.onCompletion(uri, line = 3, character = "sas from".length, sourceText = invalidSource)
+
+        assertTrue(result is LspResult.Found, "Expected Found, got ${result::class.simpleName}; ${ls.debugCountsLine()}")
+        val statement = result.statement
+        assertTrue(statement is IdentifierExpr)
+        assertEquals("sas", statement.name)
+        assertEquals("Sas", statement.type?.name)
+    }
+
     @Test
     fun removingTypeDeclarationAgainInvalidatesIncrementalCache() {
         val dir = createTempDirectory("niva-ls-incremental").toFile()
