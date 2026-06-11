@@ -527,6 +527,7 @@ class LS(val info: ((String) -> Unit)? = null) {
 }
 
 private data class LspStateSnapshot(
+    val resolver: Resolver?,
     val megaStoreData: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>>,
     val fileToDecl: MutableMap<String, MutableSet<Declaration>>,
     val varUsageToDeclaration: MutableMap<String, Token>,
@@ -538,6 +539,7 @@ private data class LspStateSnapshot(
 
 private fun LS.snapshotLspState(includeNonIncrementalStore: Boolean = false): LspStateSnapshot =
     LspStateSnapshot(
+        resolver = runCatching { resolver }.getOrNull(),
         megaStoreData = megaStore.data.toMutableMap(),
         fileToDecl = fileToDecl.toMutableMap(),
         varUsageToDeclaration = varUsageToDeclaration.toMutableMap(),
@@ -557,6 +559,10 @@ private fun LS.clearLspIndexes() {
 }
 
 private fun LS.restoreLspState(snapshot: LspStateSnapshot) {
+    val previousResolver = snapshot.resolver
+    if (previousResolver != null) {
+        resolver = previousResolver
+    }
     megaStore.data.clear()
     megaStore.data.putAll(snapshot.megaStoreData)
     fileToDecl.clear()
@@ -823,6 +829,7 @@ fun LS.removeDecl2(file: File) {
 
 
 fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: Int? = null) {
+    val previousLspState = snapshotLspState(includeNonIncrementalStore = true)
     try {
         val file = File(URI(pathToChangedFile))
         val fileAbsolutePath = file.absolutePath
@@ -932,6 +939,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
         completionFromScope = emptyMap()
     } catch (e: Throwable) {
         // fallback to full resolve to recover a consistent state
+        restoreLspState(previousLspState)
         resolveNonIncremental(pathToChangedFile, text, forceFull = true)
     }
 }
@@ -955,6 +963,37 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
         createFakeToken().compileError("Bug: Can't find main in nonIncrementalStore ${nonIncrementalStore.keys}, main is $mainUrlStr")
 
     return Pair(mainAst, listOfStatements)
+}
+
+private fun buildOrderedAstFromStore(
+    nonIncrementalStore: MutableMap<String, List<Statement>>,
+    mainFile: File,
+    otherFiles: List<File>,
+    changedFile: File,
+    changedFileContent: String
+): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
+    fun astFor(file: File): List<Statement> {
+        val absolutePath = file.absolutePath
+        nonIncrementalStore[absolutePath]?.let { return it }
+
+        val source =
+            if (absolutePath == changedFile.absolutePath) changedFileContent
+            else file.readText()
+        val ast = getAst(source = source, file = file)
+        nonIncrementalStore[absolutePath] = ast
+        return ast
+    }
+
+    val mainAst = astFor(mainFile)
+    val mainFileAbsolutePath = mainFile.absolutePath
+    val otherAst = otherFiles
+        .asSequence()
+        .distinctBy { it.absolutePath }
+        .filter { it.absolutePath != mainFileAbsolutePath }
+        .map { file -> file.nameWithoutExtension to astFor(file) }
+        .toList()
+
+    return mainAst to otherAst
 }
 
 private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
@@ -1065,12 +1104,20 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull
                 .distinctBy { it.absolutePath }
                 .toMutableList()
 
+            val customAst = buildOrderedAstFromStore(
+                newNonIncrementalStore,
+                File(localpm.pathToNivaMainFile),
+                previousFilePath,
+                file,
+                source
+            )
+
             resolver = compileProjFromFile(
                 localpm,
                 compileOnlyOneFile = false,
                 dontRunCodegen = true,
                 onEachStatement = ::onEachStatementCall,
-                customAst = getMainAstFromNIS(newNonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
+                customAst = customAst, // astOfTheMain, Ast of everything
                 buildSystem = BuildSystem.Amper,// it doesnt matter, since we dont generate the code
                 previousFilePath = previousFilePath
             )

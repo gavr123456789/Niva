@@ -1,45 +1,45 @@
-// type NonEmptyList = List::T
-// constructor NonEmptyList first::T -> List::T =
+// type NonEmptyList = List(T)
+// constructor NonEmptyList first::T -> List(T) =
 //   {first}
 
 union Statement token: Token =
-| ^Expr
-| ^Declaration
+  | ^Expr
+  | ^Declaration
 
 type Body
-  unTypedBody: mut List::Expr
+  unTypedBody: mut List(Expr)
 
 
 type UnionBranch
   name: String
-  fields: List::TypeField
+  fields: List(TypeField)
   isInclude: Bool
   token: Token
 
 
 union Declaration token: Token =
-| TypeDecl name: String fields: List::TypeField
-| EnumDecl
-| UnionDecl
-  name: String
-  commonUnionFields: List::TypeField
-  branches: List::UnionBranch
-| ExtendDecl
-  receiver: AstType2
-  messages: List::MessageDecl
-| MessageDecl
-  receiver: AstType2
-  name: String
-  args: List::NameAndAstType // 0 = unary, 1 = binary, 2+ = keyword
-  returnType: AstType2?
-  body: Body
-  isSingleExpr: Bool
-  isConstructor: Bool
+  | TypeDecl name: String fields: List(TypeField)
+  | EnumDecl
+  | UnionDecl
+    name: String
+    commonUnionFields: List(TypeField)
+    branches: List(UnionBranch)
+  | ExtendDecl
+    receiver: AstType2
+    messages: List(MessageDecl)
+  | MessageDecl
+    receiver: AstType2
+    name: String
+    args: List(NameAndAstType) // 0 = unary, 1 = binary, 2+ = keyword
+    returnType: AstType2?
+    body: Body
+    isSingleExpr: Bool
+    isConstructor: Bool
 
 
 TypeDecl toString -> String = [
-  fields = fields joinWith: " "
-  ^ "type " + name + (fields isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields
+  fields2 = fields joinWith: " "
+  ^ "type " + name + (fields2 isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields2
 ]
 
 // simple keyword
@@ -56,15 +56,15 @@ TypeDecl toString -> String = [
 
 enum  MessageSendKind =  Call | Getter | DefaultConstructor | CustomConstructor | ShadowCopy
 union MessageSend receiver: Expr token: Token =
-// args: List::NameAndExpr // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
-| UnaryMsg
-    selector: Identifier
-    kind: MessageSendKind
-| BinaryMsg
-    args: List::NameAndExpr // expr - Primary or UnaryMsg
-| KeywordMsg
-    args: List::NameAndExpr // expr - Primary or UnaryMsg or BinaryMsg
-    kind: MessageSendKind
+  // args: List(NameAndExpr) // expr and name are the same Identifiers, this is done to be able to replace exprs with typed ones
+  | UnaryMsg
+      selector: Identifier
+      kind: MessageSendKind
+  | BinaryMsg
+      args: List(NameAndExpr) // expr - Primary or UnaryMsg
+  | KeywordMsg
+      args: List(NameAndExpr) // expr - Primary or UnaryMsg or BinaryMsg
+      kind: MessageSendKind
 
 UnaryMsg toString -> String = [
   // realArgs = args joinWith: " " transform: [it name name]
@@ -97,26 +97,26 @@ type MatchBranch
 
 // Expressions
 union Expr token: Token =
-| ^LiteralExpr
-| Identifier     name: String path: {String}?
-| ExprInBrackets value: Expr
-| VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
-| Assign            name: String value: Expr
-| DestructingAssign names: List::String value: Expr // {name} = person
+  | ^LiteralExpr
+  | Identifier     name: String path: {String}?
+  | ExprInBrackets value: Expr
+  | VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
+  | Assign            name: String value: Expr
+  | DestructingAssign names: List(String) value: Expr // {name} = person
 
-| ^CollectionLiteral
-| ^MessageSend
-| ReturnStatement value: Expr?
-// only one of the lists can be non empty
-| CodeBlock args: List::NameAndAstType untypedArgs: List::Identifier body: Body
-| Match
-  subject: Expr
-  branches: List(MatchBranch)
-  elseBranch: Body? // possible body
-| TypedExpr
-  exprAst: Expr
-  nivaType: NivaType
-  isMutable: Bool
+  | ^CollectionLiteral
+  | ^MessageSend
+  | ReturnStatement value: Expr?
+  // only one of the lists can be non empty
+  | CodeBlock args: List(NameAndAstType) untypedArgs: List(Identifier) body: Body
+  | Match
+    subject: Expr
+    branches: List(MatchBranch)
+    elseBranch: Body? // possible body
+  | TypedExpr
+    exprAst: Expr
+    nivaType: NivaType
+    isMutable: Bool
 
 Identifier toString = "$name"
 
@@ -145,7 +145,7 @@ NameAndAstType toString = [
 enum AstTypeErrorsKind = Any | Single | List
 type AstTypeErrors
   kind: AstTypeErrorsKind
-  names: List::String
+  names: List(String)
 
 union AstType2 tok: Token name: String =
 | AstType
@@ -154,7 +154,7 @@ union AstType2 tok: Token name: String =
   isMut: Bool
   errors: AstTypeErrors?
 | AstLambdaType
-  args: List::AstType2
+  args: List(AstType2)
   returnType: AstType2
 
 AstType toString = [
@@ -164,9 +164,9 @@ AstType toString = [
   | null => ""
   |=> [
     | errors kind
-    | AstTypeErrorsKind.Any => "!"
-    | AstTypeErrorsKind.Single => "!" + (errors names first)
-    | AstTypeErrorsKind.List => "!{" + (errors names joinWith: " ") + "}"
+    | AstTypeErrorsKind.Any    => "!"
+    | AstTypeErrorsKind.Single => "!"  + (errors names first)
+    | AstTypeErrorsKind.List   => "!{" + (errors names joinWith: " ") + "}"
   ]
   ^ "$name$genericParamsStr$errorsStr"
 ]
@@ -179,27 +179,21 @@ constructor AstType name: String tok: Token = AstType
   errors: null
   tok: tok
 
-//extend mut AstType [
-  //on setMutable: Bool = isMut <- setMutable
-  //on setErrors: AstTypeErrors? = errors <- setErrors
-//]
-
-
 
 union CollectionLiteral token: Token elements: Body =
-| ListLiteral
-| SetLiteral
-| MapLiteral
+  | ListLiteral
+  | SetLiteral
+  | MapLiteral
 
 union LiteralExpr token: Token =
-| CharExpr
-| IntExpr num: Int
-| FloatExpr
-| DoubleExpr
-| StringExpr
-| BooleanExpr
-| NullExpr
-| UnitExpr
+  | CharExpr
+  | IntExpr num: Int
+  | FloatExpr
+  | DoubleExpr
+  | StringExpr
+  | BooleanExpr
+  | NullExpr
+  | UnitExpr
 
 CharExpr    toString = "CharExpr " + "'" + token lexeme + "'"
 FloatExpr   toString = "FloatExpr " + token lexeme
@@ -209,48 +203,6 @@ BooleanExpr toString = "BoolExpr " + token lexeme
 NullExpr    toString = "NullExpr null"
 IntExpr     toString = "IntExpr $num"
 UnitExpr    toString = "UnitExpr ()"
-
-
-// Map(Int, String)
-// name: Map
-// genericParams: {
-//   (name: Int ...),
-//   (name: String, ...)
-//}
-
-// List::Set::Int
-// name: List
-// genericParams: {
-//    (name: Set,
-//     genericParams: {
-//       name: Int, ...
-//     }
-//    )
-//}
-
-// union Type =
-// | UserType name: String fields: Map(String, Type)
-// | ^InternalType
-
-// union InternalType =
-// | StringAstType
-// | IntAstType
-// | BooleanAstType
-// | FloatAstType
-// | DoubleAstType
-
-
-
-
-// Int ses -> Int = [
-//   Error throwWithMessage: "rst"
-//   ^ 5
-// ]
-
-// y = 1 ses inc
-// y
-
-
 
 // Pipes
 // 1 from: 2, inc

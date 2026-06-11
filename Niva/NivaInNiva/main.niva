@@ -68,4 +68,4 @@ compilerTry2 = [
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: true
   diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-] do
+]

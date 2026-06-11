@@ -1,9 +1,11 @@
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import frontend.resolver.resolveWithBackTracking
 import frontend.resolver.buildGlobalConstScopeFromStatements
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
+import main.utils.VerbosePrinter
 import org.junit.jupiter.api.assertThrows
 import java.nio.file.Paths
 import kotlin.test.Test
@@ -87,6 +89,24 @@ class ResolverTest {
             g = w v2
         """.trimIndent()
         val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
+    fun genericFieldCanReferenceTypeDeclaredLater() {
+        val source = """
+            type Other v: Meow(Int)
+            type Meow v: List(T)
+        """.trimIndent()
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+
+        resolver.resolveWithBackTracking(ast, emptyList<Pair<String, List<Statement>>>(), resolver.currentResolvingFileName.absolutePath, "main", VerbosePrinter(false))
+
+        val other = ast.filterIsInstance<TypeDeclaration>().first { it.typeName == "Other" }
+        val fieldType = other.fields.first { it.name == "v" }.type as Type.UserLike
+
+        assertEquals("Meow", fieldType.name)
+        assertEquals("Int", fieldType.typeArgumentList.single().name)
     }
 
     @Test
