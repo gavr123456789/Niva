@@ -98,6 +98,11 @@ fun Resolver.resolveVarDeclaration(
     if (currentScope.contains(statement.name)) {
         statement.token.compileError("This scope already contain varDeclaration with name ${statement.name}")
     }
+    val thisType = previousScope["this"]?.unpackNull()
+    val shadowsImplicitThisField = thisType is Type.UserLike && thisType.fields.any { it.name == statement.name }
+    if (shadowsImplicitThisField) {
+        statement.token.compileError("This scope already contain varDeclaration with name ${statement.name}")
+    }
     // currentNode, depth + 1
     currentLevel++
     resolveSingle((statement.value), previousAndCurrentScope, statement)
