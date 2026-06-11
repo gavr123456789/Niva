@@ -274,6 +274,21 @@ class ResolverTest {
     }
 
     @Test
+    fun varDeclarationCannotShadowImplicitThisField() {
+        val source = """
+            type Person name: String
+            
+            Person sas = [
+                name = 42
+            ]
+        """.trimIndent()
+        val error = assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+        assertEquals(error.message?.contains("already contain varDeclaration with name name"), true)
+    }
+
+    @Test
     fun resolverGoesBRRR() {
         val source = """
              String myCustomMessage = "heyo" echo

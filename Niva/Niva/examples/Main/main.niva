@@ -1,2 +1,5 @@
-type Meow v: List(T)
-type Other v: Meow(Int)
+type Person name: String
+
+Person sas = [
+    name = 42
+]
