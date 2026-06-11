@@ -1017,8 +1017,10 @@ fun TypeAST.toType(
                         result
                     validateAstTypeHasGenericsDeclared(resultWithErrors)
                     return resultWithErrors
+                } else if (typeFromDb is Type.UnresolvedType) {
+                    return replaceToNullableAndAddErrorsIfNeeded(typeFromDb)
                 } else {
-                    this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
+                    this.token.compileError("Type arguments can be used only with user types, but ${YEL}${this.name}${RED} resolved to $typeFromDb")
                 }
             }
             val type = findUserTypeOrUnresolved()

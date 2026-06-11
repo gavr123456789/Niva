@@ -3,7 +3,7 @@ type Parser
   current: Int
   statements: mut List::Statement
 
-constructor Parser newParseTokens: List(Token) = [
+constructor Parser newParseTokens: List(Token) -> Parser = [
   statements::mut List::Statement = {}!
   parser2:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
 
