@@ -222,8 +222,8 @@ CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(St
   argsList = args isNotEmpty
     ifTrue: [
       args map: [arg ->
-        typeInfo = arg astType toTypeInfoFromDb: db inPkg: null
-        IrArg name: arg name typeRef: (typeInfo toIrTypeRef)
+        argTypeInfo = arg astType toTypeInfoFromDb: db inPkg: null
+        IrArg name: arg name typeRef: (argTypeInfo toIrTypeRef)
       ]
     ] ifFalse: [
       typedArgs isNotEmpty
@@ -787,8 +787,8 @@ List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg
 ]
 
 ResolverHelper toIrModule -> IrModule = [
-  db = this db
-  packages = db packages
+  resolverDb = this db
+  packages = resolverDb packages
 
   imports::mut List::IrImport = {}!
   seenLocalImports::mut Set(String) = #()!
@@ -818,27 +818,27 @@ ResolverHelper toIrModule -> IrModule = [
   // fileToStatements keys are pkg names (file names), not filesystem paths
   fileToStatements forEach: [file, statements ->
     statements forEach: [st ->
-      types addAll: (st toIrTypes: db currentPkg: file typeFieldsById: typeFieldsById)
-      unions addAll: (st toIrUnions: db currentPkg: file typeFieldsById: typeFieldsById)
-      enums addAll: (st toIrEnums: db currentPkg: file)
-      functions addAll: (st toIrFunctions: db currentPkg: file typeFieldsById: typeFieldsById)
+      types addAll: (st toIrTypes: resolverDb currentPkg: file typeFieldsById: typeFieldsById)
+      unions addAll: (st toIrUnions: resolverDb currentPkg: file typeFieldsById: typeFieldsById)
+      enums addAll: (st toIrEnums: resolverDb currentPkg: file)
+      functions addAll: (st toIrFunctions: resolverDb currentPkg: file typeFieldsById: typeFieldsById)
     ]
   ]
 
   instMap::mut Map(String, mut List::IrInstantiation) = #{}!
 
   fileToStatements forEach: [file, statements ->
-    statements collectInstantiationsFromStatements: db currentPkg: file instMap: instMap
+    statements collectInstantiationsFromStatements: resolverDb currentPkg: file instMap: instMap
   ]
 
   // entry point
   entryExprs = entryPointExpressions
   entryType = entryExprs isEmpty
-    ifTrue: [db dtc unit]
+    ifTrue: [resolverDb dtc unit]
     ifFalse: [(entryExprs last) typeInfo t]
 
-  entryBody = TypedBody v: entryExprs t: entryType
-  entryBlock = entryBody toIrBlock: db currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
+  entryBody = TypedBody v: entryExprs t: entryType listOfErrors: {}
+  entryBlock = entryBody toIrBlock: resolverDb currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
 
   // attach instantiations
   functionsWithInst = functions map: [f ->

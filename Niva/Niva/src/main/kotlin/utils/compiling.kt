@@ -82,6 +82,95 @@ private fun String.toCommandArgs(): List<String> {
     }
 }
 
+private data class GradleTestOutputBlock(
+    val testId: String,
+    val event: String,
+    val lines: MutableList<String> = mutableListOf()
+)
+
+private val gradleTestEventRegex = Regex("^(.+ > .+) (PASSED|FAILED|SKIPPED|STANDARD_OUT|STANDARD_ERROR)$")
+
+private fun isGradleTestFooterLine(trimmed: String): Boolean =
+    trimmed.startsWith("> Task") ||
+        trimmed.startsWith("FAILURE:") ||
+        trimmed.startsWith("* ") ||
+        trimmed.startsWith("> Run with") ||
+        trimmed.startsWith("Execution failed") ||
+        trimmed.startsWith("There were failing tests") ||
+        trimmed.startsWith("See the report") ||
+        trimmed.startsWith("BUILD FAILED") ||
+        trimmed.startsWith("BUILD SUCCESSFUL") ||
+        trimmed.startsWith("Configuration cache") ||
+        trimmed.startsWith("Reusing configuration cache") ||
+        trimmed.matches(Regex("\\d+ tests? completed.*")) ||
+        trimmed.contains("actionable tasks")
+
+private fun cleanupGradleTestOutputLine(line: String): String =
+    line
+        .removePrefix("    ")
+        .replace("java.lang.Exception: ", "")
+        .trimEnd()
+
+internal fun formatFailedTestsOutput(gradleOutput: String): String {
+    val normalized = gradleOutput
+        .replace("UP-TO-DATE", "")
+        .replace("BUILD SUCCESSFUL in", "")
+
+    val blocks = mutableListOf<GradleTestOutputBlock>()
+    var currentBlock: GradleTestOutputBlock? = null
+
+    fun flushCurrentBlock() {
+        currentBlock?.let(blocks::add)
+        currentBlock = null
+    }
+
+    normalized.lineSequence().forEach { rawLine ->
+        val line = rawLine.trimEnd()
+        val trimmed = line.trim()
+        val eventMatch = gradleTestEventRegex.matchEntire(trimmed)
+
+        if (eventMatch != null) {
+            flushCurrentBlock()
+            currentBlock = GradleTestOutputBlock(
+                testId = eventMatch.groupValues[1],
+                event = eventMatch.groupValues[2]
+            )
+            return@forEach
+        }
+
+        if (trimmed.isBlank()) {
+            currentBlock?.lines?.add("")
+            return@forEach
+        }
+
+        if (line == trimmed && isGradleTestFooterLine(trimmed)) {
+            flushCurrentBlock()
+            return@forEach
+        }
+
+        currentBlock?.lines?.add(cleanupGradleTestOutputLine(line))
+    }
+    flushCurrentBlock()
+
+    val failedBlocks = blocks
+        .withIndex()
+        .filter { it.value.event == "FAILED" }
+
+    if (failedBlocks.isEmpty()) return ""
+
+    return failedBlocks.joinToString("\n") { failedBlock ->
+        val testId = failedBlock.value.testId
+        val outputLines = blocks
+            .take(failedBlock.index)
+            .filter { it.testId == testId && (it.event == "STANDARD_OUT" || it.event == "STANDARD_ERROR") }
+            .flatMap { it.lines }
+            .filter { it.isNotBlank() }
+
+        (listOf("$testId ${RED}❌$RESET") + outputLines + failedBlock.value.lines.filter { it.isNotBlank() })
+            .joinToString("\n")
+    }.trim()
+}
+
 // if we are running test we need to modify its output
 fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runTests: Boolean = false) {
 //    println("DEBUG: running command: $this")
@@ -119,37 +208,10 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
         process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
 
     if (runTests) {
-        val upToDate = "UP-TO-DATE"
-        val first = "> Task :test"
-        val last = "4 actionable tasks"
-
         val w = inputStream.readText()
 //        val e = process.errorStream.reader().readText()
 
-        val j = w.substringAfterLast(first).substringBefore(last)
-            .replace(upToDate, "")
-            .replace("BUILD SUCCESSFUL in", "")
-            .replace("STANDARD_OUT", "")
-//        val l = j.replace("PASSED", "${GREEN}✅$RESET")
-        val normalized = j.replace("FAILED", "${RED}❌$RESET")
-            .replace("java.lang.Exception: ", "")
-            .trim()
-
-        val onlyFailed = normalized
-            .lineSequence()
-            .filter { line ->
-                val trimmed = line.trim()
-                trimmed.isNotBlank() &&
-                    !trimmed.contains("PASSED") &&
-                    (
-                        trimmed.contains("${RED}❌$RESET") ||
-                            trimmed.contains("failed", ignoreCase = true) ||
-                            trimmed.startsWith("at ") ||
-                            trimmed.startsWith("Caused by:")
-                        )
-            }
-            .joinToString("\n")
-            .trim()
+        val onlyFailed = formatFailedTestsOutput(w)
 
         if (onlyFailed.isBlank()) {
             println("${GREEN}✅ All tests passed$RESET")

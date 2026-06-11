@@ -24,8 +24,8 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         // foreach arg
         this fields forEach: [
-            name = it name
-            sb append: "        this.$name = $name;\n"
+            fieldName = it name
+            sb append: "        this.$fieldName = $fieldName;\n"
         ]
 
 
@@ -74,8 +74,8 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
 
         parentUnion == null ifTrue: [
             commonFields forEach: [
-                name = it name
-                sb append: "        this.$name = $name;\n"
+                commonFieldName = it name
+                sb append: "        this.$commonFieldName = $commonFieldName;\n"
             ]
         ]
 
@@ -108,8 +108,8 @@ TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
                 sb append: ");\n"
 
                 branchFields forEach: [
-                    name = it name
-                    sb append: "        this.$name = $name;\n"
+                    branchFieldName = it name
+                    sb append: "        this.$branchFieldName = $branchFieldName;\n"
                 ]
 
                 sb append: "    }\n"

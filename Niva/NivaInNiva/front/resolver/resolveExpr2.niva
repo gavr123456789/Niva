@@ -13,7 +13,7 @@ extend Body [
 
     // [] nothing to resolve
     unTypedBody isEmpty ifTrue: [
-      ^ TypedBody v: {} t: db dtc unit
+      ^ TypedBody v: {} t: db dtc unit listOfErrors: {}
     ]
 
     // stackOfVisited::mut Set::MessageDecl = #()
@@ -41,11 +41,16 @@ extend Body [
     ]
 
 
-    returnTypes::mut List::NivaType = {}!
+    returnTypes::mut List(NivaType) = {}!
     listOfTypedExpr2 forEach: [expr ->
       | expr
       | ReturnStatementT => returnTypes add: expr typeInfo t
       |=> []
+    ]
+
+    bodyErrors::mut List(NivaType) = {}!
+    listOfTypedExpr2 forEach: [expr ->
+      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
     ]
 
     bodyType =
@@ -60,11 +65,43 @@ extend Body [
 
     ^ TypedBody v: listOfTypedExpr2
                 t: bodyType
+                listOfErrors: (bodyErrors normalizeErrorList)
   ]
 ]
 
+List(NivaType) normalizeErrorList -> List(NivaType) = [
+  seen::mut Set::String = #()!
+  result::mut List(NivaType) = {}!
+
+  this forEach: [err ->
+    errId = err pkgName + "." + err name
+    seen contains: errId, ifFalse: [
+      seen add: errId
+      result add: err
+    ]
+  ]
+
+  ^ result toList
+]
+
+List(NivaType) errorListEquals(other): List(NivaType) -> Bool = [
+  left = this normalizeErrorList
+  right = other normalizeErrorList
+  left count != right count ifTrue: [^ false]
+
+  rightIds = (right map: [it pkgName + "." + it name]) toSet
+  missing = left find: [err ->
+    rightIds contains: (err pkgName + "." + err name), not
+  ]
+
+  ^ missing == null
+]
+
+List(NivaType) errorsToString -> String =
+  this normalizeErrorList joinWith: ", " transform: [it name]
+
 // returns the number of wrong type element, if all good returns null
-NivaType compareWithMany(types): List::NivaType -> Int? = [
+NivaType compareWithMany(types): List(NivaType) -> Int? = [
   types forEachIndexed: [i, it ->
     x = this compareWith: it
     x ifFalse: [
@@ -75,7 +112,7 @@ NivaType compareWithMany(types): List::NivaType -> Int? = [
 ]
 
 extend TyperDB [
-  on checkUnionMatchExhaustiveness(subjectType): NivaType branches: List::MatchBranchT elseBranch: TypedBody? token: Token = [
+  on checkUnionMatchExhaustiveness(subjectType): NivaType branches: List(MatchBranchT) elseBranch: TypedBody? token: Token = [
     | subjectType
     | TypeT => [
       unionLeaves = this unionLeaves: subjectType
@@ -414,12 +451,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       |=> [
         | expectedCollectionType
         | ListT => [
-          typedBody = TypedBody v: {} t: db dtc unit
+          typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
           ^ ListLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
         ]
         | SetT => [
-          typedBody = TypedBody v: {} t: db dtc unit
+          typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
           ^ SetLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
         ]
@@ -624,7 +661,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | Match     => [
 
     // TODO exhaustivness for unions and bool and enums and nullMatching
-    elseBranch = this elseBranch // local smart cast
+    rawElseBranch = this elseBranch // local smart cast
     isMatchingOnThis = subject token lexeme == "this"
 
     mut hasNullBranch = false
@@ -637,16 +674,11 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     subjectT = subject toTypedExprFromDb2: db withContext: c
     subjectType = subjectT typeInfo t
-    > subjectT
-    > subject
-    > subjectType
     //// resolve branches ////
 
     // type narrowing to non-nullable inside else branch
     elseBranchT =
-      | elseBranch
-      | null => [null]
-      |=> [
+      rawElseBranch unpack: [elseBody ->
         mut elseContext = c
         | subjectType
         | NullableT => [
@@ -661,12 +693,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
         ]
         |=> []
-        typedElseBody = elseBranch resolveBody2: db withContext: elseContext expectedType: expectedType
+        typedElseBody = elseBody resolveBody2: db withContext: elseContext expectedType: expectedType
         typedElseBody
-      ]
+      ] or: null
 
 
-    returnTypes::mut List::NivaType = {}!
+    returnTypes::mut List(NivaType) = {}!
     branchesT = branches map: [
       // if matching on `this` then add fields of `this` to the context
       contextIfThisMatching = isMatchingOnThis
@@ -715,7 +747,21 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         ]
 
 
-    newAst = MatchT subject: subjectT branches: branchesT elseBranch: elseBranchT token: token typeInfo: matchType toTypeInfoDefault
+    matchErrors::mut List(NivaType) = {}!
+    branchesT forEach: [branch ->
+      branch additionalConditions listOfErrors forEach: [matchErrors add: it]
+      branch body listOfErrors forEach: [matchErrors add: it]
+    ]
+    elseBranchT unpack: [
+      it listOfErrors forEach: [matchErrors add: it]
+    ]
+
+    newAst = MatchT
+      subject: subjectT
+      branches: branchesT
+      elseBranch: elseBranchT
+      token: token
+      typeInfo: (TypeInfo t: matchType isMut: false listOfErrors: (matchErrors normalizeErrorList))
 
     // union exhaustiveness check
     db checkUnionMatchExhaustiveness: (subjectT typeInfo t) branches: branchesT elseBranch: elseBranchT token: token

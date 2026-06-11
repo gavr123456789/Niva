@@ -584,12 +584,12 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
         argsExprStr = args map: [
             it expr toTSFromPkg: currentPkg db: db
         ]
-        args = "(" + receiverWithComma + (argsExprStr joinWith: ", ") + ")"
+        callArgs = "(" + receiverWithComma + (argsExprStr joinWith: ", ") + ")"
 
 
         ^ useNewCtor
-            ifTrue:  [ "new " + pkg_qualifier + dbMsg receiverType name + args ]
-            ifFalse: [ pkg_qualifier + newSelector + args ]
+            ifTrue:  [ "new " + pkg_qualifier + dbMsg receiverType name + callArgs ]
+            ifFalse: [ pkg_qualifier + newSelector + callArgs ]
     ]
 
 

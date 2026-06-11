@@ -391,6 +391,9 @@ extend NivaMethod [
   on copyWithDifferentReturnType(rt): NivaType =
     NivaMethod :name  :receiverType :args returnType: rt returnErrors: returnErrors :forMut :possibleErrors :kind :decl :protocolName :pkgName
 
+  on copyWithDifferentReturnErrors(errors): List::NivaType =
+    NivaMethod :name :receiverType :args :returnType returnErrors: errors :forMut :possibleErrors :kind :decl :protocolName :pkgName
+
   /// sort args and checks them with fields, so any arg order should work probably
   on isConstructorForReceiver(receiver): TypeT -> Bool = [
     {fields} = receiver

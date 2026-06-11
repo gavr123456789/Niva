@@ -27,6 +27,86 @@ Test constructorReturnType = [
 
 ]
 
+Test errorEffectsMismatch = [
+  fileMain = """
+    Unit sas -> Int = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test errorEffectsDeclared = [
+  fileMain = """
+    Unit sas -> Int!Error = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+
+  typedStmts = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedStmts at: 0
+  | msgDecl
+  | MessageDeclT => [
+    Assert that: msgDecl returnType listOfErrors count equals: 1
+    Assert that: msgDecl body listOfErrors count equals: 1
+    Assert that: msgDecl body listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
+Test errorEffectsInferFromBang = [
+  fileMain = """
+    Unit sas -> Int! = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+
+  typedStmts = result fileToStatements at: "main", unpackOrPANIC
+  msgDecl = typedStmts at: 0
+  | msgDecl
+  | MessageDeclT => [
+    Assert that: msgDecl returnType listOfErrors count equals: 1
+    Assert that: msgDecl returnType listOfErrors first name equals: "Error"
+    Assert that: msgDecl body listOfErrors count equals: 1
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
+Test errorEffectsPropagateFromCall = [
+  fileMain = """
+    Unit throwing -> Int!Error = [
+      Error throw
+      ^ 42
+    ]
+
+    Unit caller -> Int = [
+      () throwing
+      ^ 1
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
+
 Test findingGenericRoot = [
   fileMain = """
     union Sas = Ses | Sis
