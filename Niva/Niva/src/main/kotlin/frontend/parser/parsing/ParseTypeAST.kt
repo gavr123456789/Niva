@@ -148,8 +148,7 @@ fun Parser.parseTypeAST(isExtendDeclaration: Boolean = false): TypeAST {
         else -> {}
     }
     val checkForErrors = {
-        val bang = match("!")
-        val errors = if (bang) {
+        val errors = if (match("!")) {
             val erTok = peek()
             when (erTok.kind) {
                 TokenType.OpenBrace -> {

@@ -27,14 +27,27 @@ import main.codogen.BuildSystem
 import main.frontend.meta.Token
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
+import main.frontend.meta.createFakeToken2
 import main.frontend.meta.removeColors
 import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.Assign
+import main.frontend.parser.types.ast.BinaryMsg
+import main.frontend.parser.types.ast.CodeBlock
+import main.frontend.parser.types.ast.CollectionAst
+import main.frontend.parser.types.ast.ControlFlow
 import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.DestructingAssign
+import main.frontend.parser.types.ast.DotReceiver
 import main.frontend.parser.types.ast.EnumBranch
 import main.frontend.parser.types.ast.EnumDeclarationRoot
 import main.frontend.parser.types.ast.ErrorDomainDeclaration
 import main.frontend.parser.types.ast.ExtendDeclaration
+import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.ExpressionInBrackets
+import main.frontend.parser.types.ast.IdentifierExpr
 import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.LiteralExpression
+import main.frontend.parser.types.ast.MapCollection
 import main.frontend.parser.types.ast.ManyConstructorDecl
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
@@ -42,13 +55,19 @@ import main.frontend.parser.types.ast.MessageDeclarationBinary
 import main.frontend.parser.types.ast.MessageDeclarationKeyword
 import main.frontend.parser.types.ast.MessageDeclarationUnary
 import main.frontend.parser.types.ast.MessageSend
+import main.frontend.parser.types.ast.NeedInfo
+import main.frontend.parser.types.ast.PairOfErrorAndMessage
 import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.MethodReference
+import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.StaticBuilder
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeFieldAST
 import main.frontend.parser.types.ast.TypeAliasDeclaration
 import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnaryMsg
 import main.frontend.parser.types.ast.UnionBranchDeclaration
 import main.frontend.parser.types.ast.UnionRootDeclaration
 import main.frontend.parser.types.ast.VarDeclaration
@@ -523,6 +542,44 @@ class LS(val info: ((String) -> Unit)? = null) {
                 LspResult.NotFoundFile()
             }
         }
+
+        fun findReceiverBeforePartial(path: String, line: Int, wordStart: Int): LspResult.Found? {
+            val statements = data[path]?.get(line) ?: return null
+            statements.asReversed().forEach { (statement, _) ->
+                val expression = if (statement is VarDeclaration) statement.value else statement
+                if (expression is Message) {
+                    if (expression.token.relPos.start <= wordStart && expression.receiver.token.relPos.end <= wordStart) {
+                        return LspResult.Found(expression.receiver, false)
+                    }
+                    return@forEach
+                }
+                if (expression is MessageSend) {
+                    if (expression.token.relPos.start > wordStart) return@forEach
+
+                    val completedMessage = expression.messages.lastOrNull { it.token.relPos.end <= wordStart }
+                    if (completedMessage != null) {
+                        return LspResult.Found(completedMessage, false)
+                    }
+                    if (expression.receiver.token.relPos.end <= wordStart) {
+                        return LspResult.Found(expression.receiver, false)
+                    }
+                }
+            }
+            return null
+        }
+
+        fun findTypeForNameBefore(path: String, line: Int, name: String): Type? {
+            val lines = data[path] ?: return null
+            lines.headMap(line + 1).toList().asReversed().forEach { (_, statements) ->
+                statements.asReversed().forEach { (statement, scope) ->
+                    scope[name]?.let { return it }
+                    if (statement is VarDeclaration && statement.name == name) {
+                        statement.value.type?.let { return it }
+                    }
+                }
+            }
+            return null
+        }
     }
 }
 
@@ -534,8 +591,193 @@ private data class LspStateSnapshot(
     val varNameToDeclarationToken: MutableMap<String, Token>,
     val messageDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
     val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
+    val astResolutionSnapshot: AstResolutionSnapshot,
     val nonIncrementalStore: MutableMap<String, List<Statement>>? = null
 )
+
+private data class MessageState(
+    val type: Type?,
+    val declaration: MessageDeclaration?,
+    val metadata: MessageMetadata?
+)
+
+private data class MessageDeclarationState(
+    val forType: Type?,
+    val returnType: Type?,
+    val messageData: MessageMetadata?,
+    val possibleErrors: List<PairOfErrorAndMessage>
+)
+
+private data class SomeTypeDeclarationState(
+    val receiver: Type?,
+    val realType: Type?
+)
+
+private data class AstResolutionSnapshot(
+    val expressionTypes: IdentityHashMap<Expression, Type?> = IdentityHashMap(),
+    val messageStates: IdentityHashMap<Message, MessageState> = IdentityHashMap(),
+    val methodReferences: IdentityHashMap<MethodReference, MessageMetadata?> = IdentityHashMap(),
+    val messageDeclarations: IdentityHashMap<MessageDeclaration, MessageDeclarationState> = IdentityHashMap(),
+    val typeDeclarations: IdentityHashMap<SomeTypeDeclaration, SomeTypeDeclarationState> = IdentityHashMap()
+) {
+    fun restore() {
+        expressionTypes.forEach { (expr, type) -> expr.type = type }
+        messageStates.forEach { (msg, state) ->
+            msg.type = state.type
+            msg.declaration = state.declaration
+            msg.msgMetaData = state.metadata
+        }
+        methodReferences.forEach { (ref, method) -> ref.method = method }
+        messageDeclarations.forEach { (decl, state) ->
+            decl.forType = state.forType
+            decl.returnType = state.returnType
+            decl.messageData = state.messageData
+            decl.stackOfPossibleErrors.clear()
+            decl.stackOfPossibleErrors.addAll(state.possibleErrors)
+        }
+        typeDeclarations.forEach { (decl, state) ->
+            decl.receiver = state.receiver
+            if (decl is TypeAliasDeclaration) {
+                decl.realType = state.realType
+            }
+        }
+    }
+}
+
+private fun collectAstResolutionSnapshot(statements: Collection<Statement>): AstResolutionSnapshot {
+    val snapshot = AstResolutionSnapshot()
+    val visited = Collections.newSetFromMap(IdentityHashMap<Statement, Boolean>())
+
+    fun visitExpression(expr: Expression) {
+        snapshot.expressionTypes[expr] = expr.type
+        if (expr is Message) {
+            snapshot.messageStates[expr] = MessageState(expr.type, expr.declaration, expr.msgMetaData)
+        }
+        if (expr is MethodReference) {
+            snapshot.methodReferences[expr] = expr.method
+        }
+    }
+
+    fun visitStatement(statement: Statement?) {
+        if (statement == null || !visited.add(statement)) return
+
+        if (statement is Expression) {
+            visitExpression(statement)
+        }
+
+        when (statement) {
+            is VarDeclaration -> visitStatement(statement.value)
+            is Assign -> visitStatement(statement.value)
+            is ExtendDeclaration -> statement.messageDeclarations.forEach { visitStatement(it) }
+            is ManyConstructorDecl -> statement.messageDeclarations.forEach { visitStatement(it) }
+            is ConstructorDeclaration -> {
+                snapshot.messageDeclarations[statement] = MessageDeclarationState(
+                    statement.forType,
+                    statement.returnType,
+                    statement.messageData,
+                    statement.stackOfPossibleErrors.toList()
+                )
+                statement.body.forEach { visitStatement(it) }
+                visitStatement(statement.msgDeclaration)
+            }
+            is MessageDeclaration -> {
+                snapshot.messageDeclarations[statement] = MessageDeclarationState(
+                    statement.forType,
+                    statement.returnType,
+                    statement.messageData,
+                    statement.stackOfPossibleErrors.toList()
+                )
+                statement.body.forEach { visitStatement(it) }
+            }
+            is SomeTypeDeclaration -> {
+                snapshot.typeDeclarations[statement] = SomeTypeDeclarationState(
+                    statement.receiver,
+                    (statement as? TypeAliasDeclaration)?.realType
+                )
+                when (statement) {
+                    is EnumDeclarationRoot -> statement.branches.forEach { visitStatement(it) }
+                    is ErrorDomainDeclaration -> visitStatement(statement.unionDeclaration)
+                    is UnionRootDeclaration -> statement.branches.forEach { visitStatement(it) }
+                    else -> {}
+                }
+            }
+            is DestructingAssign -> {
+                statement.names.forEach { visitStatement(it) }
+                visitStatement(statement.value)
+            }
+            is ControlFlow.If -> {
+                statement.ifBranches.forEach {
+                    visitStatement(it.ifExpression)
+                    it.otherIfExpressions.forEach { other -> visitStatement(other) }
+                    when (it) {
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchSingleExpr -> visitStatement(it.thenDoExpression)
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchWithBody -> visitStatement(it.body)
+                    }
+                }
+                statement.elseBranch?.forEach { visitStatement(it) }
+            }
+            is ControlFlow.Switch -> {
+                visitStatement(statement.switch)
+                statement.ifBranches.forEach {
+                    visitStatement(it.ifExpression)
+                    it.otherIfExpressions.forEach { other -> visitStatement(other) }
+                    when (it) {
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchSingleExpr -> visitStatement(it.thenDoExpression)
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchWithBody -> visitStatement(it.body)
+                    }
+                }
+                statement.elseBranch?.forEach { visitStatement(it) }
+            }
+            is CodeBlock -> {
+                statement.inputList.forEach { visitStatement(it) }
+                statement.statements.forEach { visitStatement(it) }
+            }
+            is CollectionAst -> statement.initElements.forEach { visitStatement(it) }
+            is ExpressionInBrackets -> visitStatement(statement.expr)
+            is MapCollection -> statement.initElements.forEach { (key, value) ->
+                visitStatement(key)
+                visitStatement(value)
+            }
+            is BinaryMsg -> {
+                visitStatement(statement.receiver)
+                visitStatement(statement.argument)
+                statement.unaryMsgsForArg.forEach { visitStatement(it) }
+                statement.unaryMsgsForReceiver.forEach { visitStatement(it) }
+            }
+            is KeywordMsg -> {
+                visitStatement(statement.receiver)
+                statement.args.forEach { visitStatement(it.keywordArg) }
+            }
+            is StaticBuilder -> visitStatement(statement.receiver)
+            is UnaryMsg -> visitStatement(statement.receiver)
+            is MessageSend -> {
+                visitStatement(statement.receiver)
+                statement.messages.forEach { visitStatement(it) }
+            }
+            is NeedInfo -> visitStatement(statement.expression)
+            is ReturnStatement -> visitStatement(statement.expression)
+            is DotReceiver, is IdentifierExpr, is LiteralExpression, is MethodReference -> {}
+            is TypeAST.InternalType, is TypeAST.Lambda, is TypeAST.UserType -> {}
+        }
+    }
+
+    statements.forEach { visitStatement(it) }
+    return snapshot
+}
+
+private fun LS.collectStatementsForAstResolutionSnapshot(includeNonIncrementalStore: Boolean): List<Statement> {
+    val statements = mutableListOf<Statement>()
+    megaStore.data.values.forEach { lineMap ->
+        lineMap.values.forEach { lineStatements ->
+            lineStatements.forEach { statements.add(it.first) }
+        }
+    }
+    fileToDecl.values.forEach { statements.addAll(it) }
+    if (includeNonIncrementalStore) {
+        nonIncrementalStore.values.forEach { statements.addAll(it) }
+    }
+    return statements
+}
 
 private fun LS.snapshotLspState(includeNonIncrementalStore: Boolean = false): LspStateSnapshot =
     LspStateSnapshot(
@@ -546,6 +788,7 @@ private fun LS.snapshotLspState(includeNonIncrementalStore: Boolean = false): Ls
         varNameToDeclarationToken = varNameToDeclarationToken.toMutableMap(),
         messageDeclarationUsages = messageDeclarationUsages.toMutableMap(),
         keywordDeclarationUsages = keywordDeclarationUsages.toMutableMap(),
+        astResolutionSnapshot = collectAstResolutionSnapshot(collectStatementsForAstResolutionSnapshot(includeNonIncrementalStore)),
         nonIncrementalStore = if (includeNonIncrementalStore) nonIncrementalStore.toMutableMap() else null
     )
 
@@ -558,38 +801,142 @@ private fun LS.clearLspIndexes() {
     keywordDeclarationUsages.clear()
 }
 
+private fun <K, V> MutableMap<K, V>.replaceWith(other: Map<K, V>) {
+    clear()
+    putAll(other)
+}
+
 private fun LS.restoreLspState(snapshot: LspStateSnapshot) {
+    snapshot.astResolutionSnapshot.restore()
     val previousResolver = snapshot.resolver
     if (previousResolver != null) {
         resolver = previousResolver
     }
-    megaStore.data.clear()
-    megaStore.data.putAll(snapshot.megaStoreData)
-    fileToDecl.clear()
-    fileToDecl.putAll(snapshot.fileToDecl)
-    varUsageToDeclaration.clear()
-    varUsageToDeclaration.putAll(snapshot.varUsageToDeclaration)
-    varNameToDeclarationToken.clear()
-    varNameToDeclarationToken.putAll(snapshot.varNameToDeclarationToken)
-    messageDeclarationUsages.clear()
-    messageDeclarationUsages.putAll(snapshot.messageDeclarationUsages)
-    keywordDeclarationUsages.clear()
-    keywordDeclarationUsages.putAll(snapshot.keywordDeclarationUsages)
+    megaStore.data.replaceWith(snapshot.megaStoreData)
+    fileToDecl.replaceWith(snapshot.fileToDecl)
+    varUsageToDeclaration.replaceWith(snapshot.varUsageToDeclaration)
+    varNameToDeclarationToken.replaceWith(snapshot.varNameToDeclarationToken)
+    messageDeclarationUsages.replaceWith(snapshot.messageDeclarationUsages)
+    keywordDeclarationUsages.replaceWith(snapshot.keywordDeclarationUsages)
 
     val previousNonIncrementalStore = snapshot.nonIncrementalStore
     if (previousNonIncrementalStore != null) {
-        nonIncrementalStore.clear()
-        nonIncrementalStore.putAll(previousNonIncrementalStore)
+        nonIncrementalStore.replaceWith(previousNonIncrementalStore)
     }
 }
 
+private fun LS.replaceLspStateFrom(other: LS) {
+    resolver = other.resolver
+    pm = other.pm
+    megaStore.data.replaceWith(other.megaStore.data)
+    fileToDecl.replaceWith(other.fileToDecl)
+    varUsageToDeclaration.replaceWith(other.varUsageToDeclaration)
+    varNameToDeclarationToken.replaceWith(other.varNameToDeclarationToken)
+    messageDeclarationUsages.replaceWith(other.messageDeclarationUsages)
+    keywordDeclarationUsages.replaceWith(other.keywordDeclarationUsages)
+    nonIncrementalStore.replaceWith(other.nonIncrementalStore)
+    completionFromScope = other.completionFromScope
+}
+
+private fun LS.resolveFreshInScratch(uriOfChangedFile: String, source: String) {
+    val changedFile = File(URI(uriOfChangedFile))
+    val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, uriOfChangedFile, source)
+    val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
+    val scratch = LS(info)
+    val scratchPm = PathManager(mainFile.absolutePath, MainArgument.LSP, null)
+    scratch.pm = scratchPm
+
+    val customAst = parseFilesToAST(
+        mainFileContent =
+            if (mainFile.absolutePath == changedFile.absolutePath)
+                source
+            else mainFile.readText(),
+        otherFileContents = allFiles.toList(),
+        mainFilePath = mainFile.absolutePath,
+        resolveOnlyOneFile = false,
+        pathToChangedFile = changedFile,
+        changedFileContent = source
+    )
+
+    scratch.resolver = compileProjFromFile(
+        scratchPm,
+        dontRunCodegen = true,
+        compileOnlyOneFile = false,
+        onEachStatement = { st, currentScope, previousScope, file ->
+            scratch.onEachStatementCall(st, currentScope, previousScope, file)
+        },
+        customAst = Pair(customAst.first, customAst.second),
+        buildSystem = BuildSystem.Amper,
+        previousFilePath = allFiles
+    )
+    scratch.fillNonIncrementalStore(customAst, mainFile)
+    scratch.completionFromScope = emptyMap()
+    replaceLspStateFrom(scratch)
+}
+
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
-fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspResult {
+private fun findCurrentWordStart(sourceText: String?, line: Int, character: Int): Int? {
+    if (sourceText == null) return null
+    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+    val cursor = character.coerceIn(0, sourceLine.length)
+    var start = cursor
+    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+        start--
+    }
+    return start.takeIf { it < cursor }
+}
+
+private fun Char.isNivaCompletionWordPart(): Boolean =
+    isLetterOrDigit() || this == '_' || this == '.'
+
+private fun findReceiverNameBeforePartial(sourceText: String?, line: Int, wordStart: Int): Pair<String, Int>? {
+    if (sourceText == null) return null
+    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+    var end = wordStart
+    while (end > 0 && sourceLine[end - 1].isWhitespace()) {
+        end--
+    }
+    var start = end
+    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+        start--
+    }
+    if (start == end) return null
+    return sourceLine.substring(start, end) to start
+}
+
+private fun LspResult.Found.expressionType(): Type? {
+    val expr = if (statement is VarDeclaration) statement.value else statement
+    return (expr as? Expression)?.type
+}
+
+fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int, sourceText: String? = null): LspResult {
     // We don't need to resolve anything on completion, it happens when code changes
     // find statement type
 
     val fileAbsolutePath = File(URI(pathToChangedFile)).absolutePath
     val a = megaStore.find(fileAbsolutePath, line + 1, character, completionFromScope) // vsc count lines from 0
+    if (a !is LspResult.Found || a.expressionType() == null) {
+        val wordStart = findCurrentWordStart(sourceText, line, character)
+        if (wordStart != null) {
+            val beforePartial = megaStore.find(fileAbsolutePath, line + 1, wordStart, completionFromScope)
+            if (beforePartial is LspResult.Found) {
+                return beforePartial
+            }
+            val receiverBeforePartial = megaStore.findReceiverBeforePartial(fileAbsolutePath, line + 1, wordStart)
+            if (receiverBeforePartial != null) {
+                return receiverBeforePartial
+            }
+            val receiverName = findReceiverNameBeforePartial(sourceText, line, wordStart)
+            if (receiverName != null) {
+                val (name, start) = receiverName
+                val type = megaStore.findTypeForNameBefore(fileAbsolutePath, line + 1, name)
+                if (type != null) {
+                    val token = createFakeToken2(name, line + 1, start, start + name.length, File(fileAbsolutePath))
+                    return LspResult.Found(IdentifierExpr(name, token = token).also { it.type = type }, false)
+                }
+            }
+        }
+    }
 
     return a
 }
@@ -873,6 +1220,10 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
                     completionFromScope = emptyMap()
                     return
                 }
+            }
+            if (kind == ChangeLineKind.None) {
+                resolveFreshInScratch(pathToChangedFile, text)
+                return
             }
             // fall through to full incremental if we couldn't handle it
         }
