@@ -92,7 +92,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
 
 AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
   | AstType => [
-    astErrors = errors// for smart cast of local, not global
+    astErrors = errors// for smart cast
     | astErrors
     | null => {NivaType} // empty list
     |=> [
@@ -123,7 +123,7 @@ AstType2 toTypeInfoFromDb(db): TyperDB inPkg: String? -> TypeInfo = [
   t = this toNivaTypefromDB: db inPkg: inPkg
   errorsList = this toErrorsFromDb: db inPkg: inPkg
   isMut = | this
-           | AstType => this isMut
-           |=> false
+          | AstType => this isMut
+          |=> false
   ^ TypeInfo t: t isMut: isMut listOfErrors: errorsList
 ]

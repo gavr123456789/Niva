@@ -441,7 +441,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     |=> resolvedArgsFromDb count == args count
   expectedReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null] or: null
 
-// add receiver as "this" and args to the context
+  // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context rootWithPkg: pkg
     receiverType = db findByTypeName: receiver name inPkg: null
@@ -477,7 +477,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
     c
   ]
-// resolve body
+  // resolve body
   c = createContextWithThisAndArgs do
 
   typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType

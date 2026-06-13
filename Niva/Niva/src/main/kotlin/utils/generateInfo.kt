@@ -2,11 +2,13 @@ package main.utils
 
 import main.frontend.meta.compileError
 import frontend.resolver.Package
+import frontend.resolver.MessageMetadata
 import frontend.resolver.Protocol
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import main.frontend.meta.createFakeToken
 import main.frontend.parser.types.ast.DocComment
+import main.frontend.parser.types.ast.InternalTypes
 
 fun StringBuilder.appendnl(s: String) = this.append("$s\n")
 fun StringBuilder.appendnlWithCodeBlock(s: String, doc: DocComment?) {
@@ -19,35 +21,42 @@ fun StringBuilder.appendnlWithCodeBlock(s: String, doc: DocComment?) {
 
 }
 
-private fun Protocol.generateInfoProtocol() = buildString {
+private fun MessageMetadata.isDeclaredForNullableReceiver(): Boolean =
+    declaration?.forTypeAst?.isNullable == true
+
+private fun Protocol.generateInfoProtocol(messageFilter: (MessageMetadata) -> Boolean = { true }) = buildString {
     val it = this@generateInfoProtocol
 //    appendnl("#### ${it.name} protocol\n")
-    if (it.unaryMsgs.isNotEmpty()) {
+    val unaryMsgs = it.unaryMsgs.values.filter(messageFilter)
+    if (unaryMsgs.isNotEmpty()) {
         appendnl("### unary")
-        it.unaryMsgs.values.forEach { u ->
+        unaryMsgs.forEach { u ->
             appendnlWithCodeBlock(u.toString(), u.docComment)
 //            appendnl("\t" + u.toString())
         }
     }
-    if (it.binaryMsgs.isNotEmpty()) {
+    val binaryMsgs = it.binaryMsgs.values.filter(messageFilter)
+    if (binaryMsgs.isNotEmpty()) {
         appendnl("### binary")
-        it.binaryMsgs.values.forEach { u ->
+        binaryMsgs.forEach { u ->
             appendnlWithCodeBlock(u.toString(), u.docComment)
 
 //            appendnl("\t" + u.toString())
         }
     }
-    if (it.keywordMsgs.isNotEmpty()) {
+    val keywordMsgs = it.keywordMsgs.values.filter(messageFilter)
+    if (keywordMsgs.isNotEmpty()) {
         appendnl("### keyword")
-        it.keywordMsgs.values.forEach { u ->
+        keywordMsgs.forEach { u ->
             appendnlWithCodeBlock(u.toString(), u.docComment)
 
 //            appendnl("\t" + u.toString())
         }
     }
-    if (it.staticMsgs.isNotEmpty()) {
+    val staticMsgs = it.staticMsgs.values.filter(messageFilter)
+    if (staticMsgs.isNotEmpty()) {
         appendnl("### static")
-        it.staticMsgs.values.forEach { u ->
+        staticMsgs.forEach { u ->
             appendnlWithCodeBlock(u.toString(), u.docComment)
 
 //            appendnl("\t" + u.toString())
@@ -61,8 +70,8 @@ private fun Type.EnumRootType.generateInfo() = buildString {
     fields.forEach {
         appendnl("- ${it.name}: ${it.type}  ")
     }
-    protocols.values.forEach {
-        append(it.generateInfoProtocol())
+    protocols.forEach { (_, protocol) ->
+        append(protocol.generateInfoProtocol())
     }
     if (this@generateInfo.branches.isNotEmpty()) {
         append("### branches")
@@ -77,12 +86,12 @@ private fun Type.EnumRootType.generateInfo() = buildString {
 
 fun Type.infoPrint() = buildString {
     append(when (this@infoPrint) {
-        is Type.UserType -> this@infoPrint.generateInfoType()
-        is Type.UnionRootType -> this@infoPrint.generateInfoUnionRoot()
+        is Type.UserType -> this@infoPrint.generateInfoType(userOnly = false)
+        is Type.UnionRootType -> this@infoPrint.generateInfoUnionRoot(userOnly = false)
         is Type.EnumRootType -> this@infoPrint.generateInfo()
-        is Type.InternalType -> this@infoPrint.generateInfoType()
-        is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfoType()
-        is Type.UnresolvedType -> this@infoPrint.realType().generateInfoType()
+        is Type.InternalType -> this@infoPrint.generateInfoType(userOnly = false)
+        is Type.NullableType -> this@infoPrint.getTypeOrNullType().generateInfoType(userOnly = false, nullableOnly = true)
+        is Type.UnresolvedType -> this@infoPrint.realType().generateInfoType(userOnly = false)
 
         is Type.Lambda -> TODO("Can't print lambda info yet")
 
@@ -99,38 +108,83 @@ fun Type.infoPrint() = buildString {
 
 }
 
+private fun Type.hasNullableReceiverInfo(userOnly: Boolean): Boolean =
+    protocols
+        .filterKeys { protocolName -> !userOnly || protocolName != "dynamic" }
+        .values
+        .any { protocol ->
+            protocol.unaryMsgs.values.any { it.isDeclaredForNullableReceiver() } ||
+                    protocol.binaryMsgs.values.any { it.isDeclaredForNullableReceiver() } ||
+                    protocol.keywordMsgs.values.any { it.isDeclaredForNullableReceiver() } ||
+                    protocol.staticMsgs.values.any { it.isDeclaredForNullableReceiver() }
+        }
+
 // only UserType and Internal
-private fun Type.generateInfoType() = buildString {
+private fun Type.generateInfoType(userOnly: Boolean, nullableOnly: Boolean = false) = buildString {
 //    this@generateInfo.name
 
+    val nullableSuffix = if (nullableOnly) "?" else ""
     if (this@generateInfoType is Type.UnionBranchType){
         appendnl("\n#### branch $name")
     } else {
-        appendnl("\n## type $name")
+        appendnl("\n## type $name$nullableSuffix")
     }
 
-    if (this@generateInfoType is Type.UserLike) {
+    if (!nullableOnly && this@generateInfoType is Type.UserLike) {
         fields.forEach {
             appendnl("- ${it.name}: ${it.type}  ")
         }
     }
-    protocols.values.forEach {
-        append(it.generateInfoProtocol())
+    protocols.forEach { (protocolName, protocol) ->
+        if (!userOnly || protocolName != "dynamic") {
+            append(protocol.generateInfoProtocol { it.isDeclaredForNullableReceiver() == nullableOnly })
+        }
     }
 }
 
-private fun Type.UnionRootType.generateInfoUnionRoot() = buildString {
+private fun Type.generateNullableReceiverInfoType(userOnly: Boolean): String =
+    if (hasNullableReceiverInfo(userOnly)) generateInfoType(userOnly = userOnly, nullableOnly = true) else ""
+
+private fun Type.hasGenericReceiverInfo(userOnly: Boolean, messageFilter: (MessageMetadata) -> Boolean): Boolean =
+    protocols
+        .filterKeys { protocolName -> !userOnly || protocolName != "dynamic" }
+        .values
+        .any { protocol ->
+            protocol.unaryMsgs.values.any(messageFilter) ||
+            protocol.binaryMsgs.values.any(messageFilter) ||
+            protocol.keywordMsgs.values.any(messageFilter) ||
+            protocol.staticMsgs.values.any(messageFilter)
+        }
+
+private fun Type.generateGenericReceiverInfoType(
+    typeName: String,
+    userOnly: Boolean,
+    messageFilter: (MessageMetadata) -> Boolean
+) = buildString {
+    if (!hasGenericReceiverInfo(userOnly, messageFilter)) return@buildString
+
+    appendnl("\n## type $typeName")
+    protocols.forEach { (protocolName, protocol) ->
+        if (!userOnly || protocolName != "dynamic") {
+            append(protocol.generateInfoProtocol(messageFilter))
+        }
+    }
+}
+
+private fun Type.UnionRootType.generateInfoUnionRoot(userOnly: Boolean) = buildString {
     appendnl("\n## union root $name")
     fields.forEach {
         appendnl("- ${it.name}: ${it.type}  ")
     }
-    protocols.values.forEach {
-        append(it.generateInfoProtocol())
+    protocols.forEach { (protocolName, protocol) ->
+        if (!userOnly || protocolName != "dynamic") {
+            append(protocol.generateInfoProtocol { !it.isDeclaredForNullableReceiver() })
+        }
     }
     if (branches.isNotEmpty()) {
         append("### branches")
         branches.forEach {
-            append(it.generateInfoType())
+            append(it.generateInfoType(userOnly = userOnly))
         }
     }
 }
@@ -143,7 +197,7 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (!userOnly) {
         val internalTypes = types.values.filterIsInstance<Type.InternalType>()
         internalTypes.forEach {
-            append(it.generateInfoType())
+            append(it.generateInfoType(userOnly = userOnly))
         }
     }
 
@@ -169,14 +223,16 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (notImportedUserLike.isNotEmpty()) {
         append("  \n")
         notImportedUserLike.forEach {
-            append(it.generateInfoType())
+            append(it.generateInfoType(userOnly = userOnly))
+            append(it.generateNullableReceiverInfoType(userOnly))
         }
     }
 
     if (importedUserLike.isNotEmpty()) {
         append("Bindings  \n")
         importedUserLike.forEach {
-            append(it.generateInfoType())
+            append(it.generateInfoType(userOnly = userOnly))
+            append(it.generateNullableReceiverInfoType(userOnly))
         }
     }
 
@@ -184,7 +240,8 @@ private fun Package.generateInfo(userOnly: Boolean) = buildString {
     if (unionTypes.isNotEmpty()) {
         append("  \n")
         unionTypes.forEach {
-            append(it.generateInfoUnionRoot())
+            append(it.generateInfoUnionRoot(userOnly))
+            append(it.generateNullableReceiverInfoType(userOnly))
         }
     }
 
@@ -204,4 +261,24 @@ fun generateInfo(resolver: Resolver, userOnly: Boolean) = buildString {
             append("\n", it.generateInfo(userOnly))
         }
     }
+
+    val userDeclaredGenericMessage = { message: MessageMetadata ->
+        !userOnly || message.declaration != null
+    }
+
+    val genericType = Resolver.defaultTypes[InternalTypes.UnknownGeneric]!!
+    append(
+        genericType.generateGenericReceiverInfoType(
+            typeName = "T",
+            userOnly = userOnly,
+            messageFilter = { userDeclaredGenericMessage(it) && !it.isDeclaredForNullableReceiver() }
+        )
+    )
+    append(
+        Resolver.nullableUnknownGenericType.generateGenericReceiverInfoType(
+            typeName = "T?",
+            userOnly = userOnly,
+            messageFilter = { userDeclaredGenericMessage(it) && it.isDeclaredForNullableReceiver() }
+        )
+    )
 }
