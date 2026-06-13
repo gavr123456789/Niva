@@ -53,8 +53,7 @@ Test errorEffectsDeclared = [
 
   Assert that: db listOfErrors count equals: 0
 
-  typedStmts = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedStmts at: 0
+  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
   | msgDecl
   | MessageDeclT => [
     Assert that: msgDecl returnType listOfErrors count equals: 1
@@ -77,8 +76,7 @@ Test errorEffectsInferFromBang = [
 
   Assert that: db listOfErrors count equals: 0
 
-  typedStmts = result fileToStatements at: "main", unpackOrPANIC
-  msgDecl = typedStmts at: 0
+  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
   | msgDecl
   | MessageDeclT => [
     Assert that: msgDecl returnType listOfErrors count equals: 1
