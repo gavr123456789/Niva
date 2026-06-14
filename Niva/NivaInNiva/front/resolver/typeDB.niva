@@ -1,5 +1,4 @@
 type TyperDB
-  // setOfTypeNames: mut Set::String
   listOfErrors: mut List::ResolveErrors // across all packages?
 
   packages: mut Map(String, NivaPkg)
@@ -108,10 +107,14 @@ constructor TyperDB new -> TyperDB = [
   }
 
   typesWithSameNames = #{}!
+  typesById::mut Map(String, TypeT) = #{}!
   // add core types to typesWithSameNames so they can be found by mangled name (e.g. core_String)
   corePkg types values forEach: [
     mangled = it toMangledName
     typesWithSameNames at: mangled put: #(it)!
+    | it
+    | TypeT => typesById at: it toIdString put: it
+    |=> []
   ]
 
   ^TyperDB
@@ -121,7 +124,7 @@ constructor TyperDB new -> TyperDB = [
     typesWithSameNames: typesWithSameNames
     unionRootToBranches: #{}!
     branchIdToParentId: #{}!
-    typesById: #{}!
+    typesById: typesById
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
     constructorsTypeToMethodNameToMethod: constructorsCache
@@ -174,9 +177,18 @@ extend TyperDB [
 
   on registerUnion(rootName): String inPkg(pkgName): String branches: List(String) = [
     rootId = pkgName + "." + rootName
-    set::mut Set::String = #()!
-    branches forEach: [
-      branchId = pkgName + "." + it
+    branchIds = branches map: [pkgName + "." + it]
+    this registerUnionIds: rootId branches: branchIds
+  ]
+
+  on registerUnionIds(rootId): String branches(branchIds): List(String) = [
+    existing = unionRootToBranches at: rootId
+    set::mut Set::String =
+      | existing
+      | null => #()!
+      |=> existing
+
+    branchIds forEach: [branchId ->
       set add: branchId
       branchIdToParentId at: branchId put: rootId
     ]
@@ -625,9 +637,6 @@ extend TyperDB [
 
   on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
     lookupType = forType
-
-    // constructorsTypeToMethodNameToMethod keys debug
-
     receiver isIdentifierConstructor ifTrue: [
       constructorsForType::mut Map(String, NivaMethod) = this constructorsTypeToMethodNameToMethod at: lookupType, unpackOrPANIC
       constructorDB = constructorsForType at: name
@@ -653,7 +662,6 @@ extend TyperDB [
       ]
     ]
 
-    typeToMethodNameToMethod //keys debug
     isNullable = | lookupType
       | NullableT => true
       |=> false
@@ -662,7 +670,7 @@ extend TyperDB [
     | x
     | null => [
       isNullable
-        ifTrue: [^ null]
+        ifTrue:  [^ null]
         ifFalse: [TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"]
     ]
     |=> []
@@ -692,7 +700,19 @@ extend TyperDB [
           ]
           parentWithMethod unpack: [
             methods::mut Map(String, NivaMethod) = (this typeToMethodNameToMethod at: it), unpackOrPANIC
-            methods at: name
+            inherited = methods at: name
+            | inherited
+            | null => null
+            |=> [
+              inheritsCoreErrorMethod =
+                inherited returnErrors count == 1 &&
+                (inherited returnErrors first name == "Error") &&
+                (inherited returnErrors first pkgName == "core")
+
+              inheritsCoreErrorMethod
+                ifTrue:  [inherited copyWithDifferentReturnErrors: {lookupType}]
+                ifFalse: [inherited]
+            ]
           ] or: null
         ]
         |=> null

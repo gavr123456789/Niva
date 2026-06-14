@@ -57,19 +57,13 @@ Test pipes = [
           first = expr args at: 0
           Assert that: first name token lexeme equals: "to"
           Assert that: first expr token lexeme equals: "2"
-        ]
-        |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
-      ]
-      |=> [
-        TO DO: "123"
-      ]
-    ]
-    |=> [TO DO: "It should be ExprInBrackets, but it " + receiver toString]
+        ] |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
+      ] |=> TO DO: "It should be ExprInBrackets, but it"
+    ] |=> [TO DO: "It should be UnaryMsg, but it " + receiver toString]
     Assert
       that: first selector name
       equals: "echo"
-  ]
-  |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
+  ] |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
 ]
 
 Test pipesMany -> Unit = [
@@ -84,6 +78,17 @@ Test pipesMany -> Unit = [
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 6
+
+]
+
+Test pipedUnaryOnNewLine = [
+  input = """
+    1 inc,
+      inc
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: -1
+  Assert that: statements count equals: 1
 
 ]
 
@@ -153,8 +158,6 @@ Test parseBinaryMsgWithUnary2 -> Unit = [
       | receiver
       | IntExpr => Assert that: receiver num  equals: 1
       |=> TO DO: "It should be IntExpr, but it " + receiver toString
-    ]
-    |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
-    ]
-  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+    ] |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
+  ] |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]

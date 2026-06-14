@@ -97,6 +97,20 @@ List(NivaType) errorListEquals(other): List(NivaType) -> Bool = [
   ^ missing == null
 ]
 
+List(NivaType) errorListCovers(actual): List(NivaType) db: TyperDB -> Bool = [
+  declared = this normalizeErrorList
+  actualNormalized = actual normalizeErrorList
+
+  missing = actualNormalized find: [actualError ->
+    covered = declared any: [declaredError ->
+      db isAssignable: actualError toExpected: declaredError
+    ]
+    covered not
+  ]
+
+  ^ missing == null
+]
+
 List(NivaType) errorsToString -> String =
   this normalizeErrorList joinWith: ", " transform: [it name]
 
@@ -166,6 +180,58 @@ extend TyperDB [
       ]
     ]
     |=> []
+  ]
+
+  on checkErrorMatchExhaustiveness(subjectErrors): List(NivaType) branches: List(MatchBranchT) token: Token = [
+    subjectErrors isEmpty ifTrue: [^ Unit]
+
+    leaves::mut Set::String = #()!
+    subjectErrors forEach: [err ->
+      | err
+      | TypeT => [
+        errLeaves = this unionLeaves: err
+        (errLeaves count == 0)
+          ifTrue: [
+            leaves add: err toIdString
+            Unit
+          ]
+          ifFalse: [
+            leaves addAll: errLeaves
+            Unit
+          ]
+      ]
+      |=> []
+    ]
+
+    checked::mut Set::String = #()!
+    branches forEach: [branch ->
+      branchType = branch condition typeInfo t
+      | branchType
+      | TypeT => [
+        leaves forEach: [leafId ->
+          leafType = typesById at: leafId
+          leafType unpack: [
+            this isAssignable: it toExpected: branchType, ifTrue: [
+              checked add: leafId
+            ]
+          ]
+        ]
+      ]
+      |=> []
+    ]
+
+    missing = leaves
+      filter: [leafId -> checked contains: leafId, not],
+      map: [leafId ->
+        branchType = typesById at: leafId
+        branchType unpack: [it name] or: leafId
+      ]
+
+    missing isNotEmpty ifTrue: [
+      missingSorted = missing sortedBy: [it]
+      msg = "Not all possible errors have been handled (" + (missingSorted joinWith: ", " transform: [it]) + ")"
+      this addErrorMessage: (LazyError tok: token msg: msg)
+    ]
   ]
 ]
 
@@ -674,12 +740,18 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     subjectT = subject toTypedExprFromDb2: db withContext: c
     subjectType = subjectT typeInfo t
+    subjectErrors = subjectT typeInfo listOfErrors
+    isErrorMatch = subjectErrors isNotEmpty
     //// resolve branches ////
 
     // type narrowing to non-nullable inside else branch
     elseBranchT =
       rawElseBranch unpack: [elseBody ->
         mut elseContext = c
+        isErrorMatch ifTrue: [
+          elseContext <- Context fromParent: c
+          elseContext defineVar: "it" withType: subjectType toTypeInfoDefault
+        ]
         | subjectType
         | NullableT => [
           hasNullBranch ifTrue: [
@@ -716,12 +788,23 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       //                                                //TO DO: "second"
       //                                              ]
       //// resolve additionalConditions and branches ////
+      conditionT = it condition toTypedExprFromDb2: db withContext: contextIfThisMatching
+
+      contextForBody =
+        isErrorMatch
+          ifTrue: [
+            newC = Context fromParent: contextIfThisMatching
+            newC defineVar: "it" withType: conditionT typeInfo
+            newC
+          ]
+          ifFalse: [contextIfThisMatching]
+
       conditionsT = it additionalConditions resolveBody2: db withContext: contextIfThisMatching
 
-      bodyT = it body resolveBody2: db withContext: contextIfThisMatching expectedType: expectedType
+      bodyT = it body resolveBody2: db withContext: contextForBody expectedType: expectedType
       returnTypes add: bodyT t
 
-      MatchBranchT condition: (it condition toTypedExprFromDb2: db withContext: contextIfThisMatching)
+      MatchBranchT condition: conditionT
                    additionalConditions: conditionsT
                    body: bodyT
     ]
@@ -765,6 +848,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     // union exhaustiveness check
     db checkUnionMatchExhaustiveness: (subjectT typeInfo t) branches: branchesT elseBranch: elseBranchT token: token
+    db checkErrorMatchExhaustiveness: subjectErrors branches: branchesT token: token
 
     // nullable exhaustiveness check
     | subjectType

@@ -1,8 +1,6 @@
 type TestParse
 constructor TestParse withInput: String expectedCount: Int -> mut List::Statement = [
   tokens = Lexer get-tokens: withInput
-  // tokens debug
-  // {statements} = Parser newParseTokens: tokens
   parser = Parser newParseTokens: tokens
   statements::mut List(Statement) = parser statements
 
@@ -116,7 +114,6 @@ Test parseAstTypeList = [
   """ trimIndent
 
   tokens = Lexer get-tokens: input
-  // tokens debug
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   astType = parser parseType
@@ -138,7 +135,6 @@ Test parseAstTypeMap = [
   """ trimIndent
 
   tokens = Lexer get-tokens: input
-  // tokens debug
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
   astType = parser parseType

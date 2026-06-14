@@ -26,12 +26,12 @@ extend mut Parser [
       ]
     ]
     // "parseManyIdent $result" echo
-    ^result
+    ^ result
   ]
 
   /// + 2 inc inc + 3 dec dec
-  on parseManyBinary -> List::NameAndExpr = [
-      result::mut List::NameAndExpr = {}!
+  on parseManyBinary -> List(NameAndExpr) = [
+      result::mut List(NameAndExpr) = {}!
       mut c = true
       [c] whileTrue: [
         tok = .peek
@@ -47,7 +47,7 @@ extend mut Parser [
           receiver =
             | rhsTok kind
             | TokenType.OpenParen => [
-              inner = .nextExperssion: .step
+              inner = .nextExpression: .step
               .matchAssert: TokenType.CloseParen
               ExprInBrackets value: inner token: rhsTok
             ]

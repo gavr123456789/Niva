@@ -215,6 +215,86 @@ Test goImplicitLambdaArgCodegen = [
   Assert that: (go contains: "func() int") equals: false
 ]
 
+Test goErrorDomainThrowCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "type main_MyError interface { error; ismain_MyError() }", assertTrue
+  go contains: "func (main_Error1) Error() string { return \"Error1\" }", assertTrue
+  go contains: "func main__core_Unit__foo(this struct{}) (int, error) {", assertTrue
+  go contains: "return 0, main_Error2{404}", assertTrue
+  go contains: "return 42, nil", assertTrue
+]
+
+Test goErrorDomainHandledMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
+  go contains: "__matchValue, __matchErr := main__core_Unit__foo(struct{}{})", assertTrue
+  go contains: "switch __matchErr.(type) {", assertTrue
+  go contains: "case main_Error1:", assertTrue
+  go contains: "it := __matchErr.(main_Error1)", assertTrue
+  go contains: "it := __matchValue", assertTrue
+  Assert that: (go contains: "func main__core_Unit__bar(this struct{}) (int, error)") equals: false
+]
+
+Test goErrorDomainMatchByCoreErrorCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "case error:", assertTrue
+  go contains: "it := __matchErr.(error)", assertTrue
+]
+
 Test goBindPlaceholder10 = [
   fileMain = """
     Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int = [

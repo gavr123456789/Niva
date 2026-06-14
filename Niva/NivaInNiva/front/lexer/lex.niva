@@ -77,22 +77,16 @@ extend mut Lexer [
       ]
 
   on stepMatch(char): Char -> Bool = [
-    // input count debug
     .step
     ^.match: char
   ]
 
   on createToken(kind): TokenType lexeme: String -> Token = [
-    // posOnLine - lexeme count, debug
-    // posOnLine debug
-    // line debug
     tok = Token
       kind: kind
       lexeme: lexeme
       line: line
       start: posOnLine - lexeme count end: posOnLine//lexeme count
-
-    // tok debug
     pos <- readPos
     ^ tok
   ]
