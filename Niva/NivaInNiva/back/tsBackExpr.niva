@@ -35,7 +35,6 @@ constructor TypeScript  [
     on fullFromResolver(rh): ResolverHelper -> Map(String, String) = [
         db = rh db
         packages = db packages
-        //"\n" + db structureInfo, debug
 
         generateImports = [pkg::NivaPkg sb::StringBuilder ->
             pkg packageImports forEach: [

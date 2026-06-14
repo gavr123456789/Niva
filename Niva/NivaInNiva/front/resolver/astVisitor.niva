@@ -97,8 +97,8 @@ TypeDeclVisitor
           addMsgDecl pkg: pkgName msg: it
         ]
       ]
-      // msgDecls at: pkgName put: it debug
       | UnionDecl => [
+        isErrorDomain = it token kind == TokenType.ErrorDomain
         common = it commonUnionFields
 
         rootId = pkgName + "." + it name
@@ -155,6 +155,9 @@ TypeDeclVisitor
         ]
 
         db registerUnion: it name inPkg: pkgName branches: branchNames toList
+        isErrorDomain ifTrue: [
+          db registerUnionIds: "core.Error" branches: {rootId}
+        ]
       ]
       | EnumDecl => TO DO: "EnumDecl"
       |=> []
@@ -553,7 +556,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     ]
   ]
 
-  (hasAnyReturnErrors not) && (declaredReturnErrors errorListEquals: actualReturnErrors, not), ifTrue: [
+  (hasAnyReturnErrors not) && (declaredReturnErrors errorListCovers: actualReturnErrors db: db, not), ifTrue: [
     declaredStr = declaredReturnErrors errorsToString
     actualStr = actualReturnErrors errorsToString
     declaredShown = declaredStr == "" ifTrue: ["none"] ifFalse: [declaredStr]

@@ -105,6 +105,116 @@ Test errorEffectsPropagateFromCall = [
   Assert that: db listOfErrors count equals: 1
 ]
 
+Test errorDomainDeclaredErrors = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainDeclaredRoot = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!MyError = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainDeclaredCoreError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!Error = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainMatch = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainMatchByCoreError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
 Test findingGenericRoot = [
   fileMain = """
     union Sas = Ses | Sis

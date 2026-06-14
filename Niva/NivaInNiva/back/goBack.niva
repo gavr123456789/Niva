@@ -33,12 +33,18 @@ GoScope copy -> GoScope = [
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
+  hasErrors = retType errors isNotEmpty
   retType isGoUnitType
     ifFalse: [
       | emitResult
-      | null => [TO DO: "Go emitResult: missing result for non-Unit return"]
-      |=> [sb appendIndent: indent
-              line: ("return " + (emitResult toGoExpr: this :scope))]
+      | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
+      |=> [
+        exprStr = emitResult toGoExpr: this :scope
+        line = hasErrors
+          ifTrue:  ["return " + exprStr + ", nil"]
+          ifFalse: ["return " + exprStr]
+        sb appendIndent: indent line: line
+      ]
     ]
     ifTrue: [
       | emitResult
@@ -231,6 +237,39 @@ extend IrTypeRef [
 
   on isGoUnitType -> Bool =
     (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
+
+  on hasGoErrors -> Bool = errors isNotEmpty
+
+  on goZeroValue(ctx): GoContext -> String = [
+    ^ nullable ifTrue: ["nil"] ifFalse: [
+      | kind
+      | IrTypeRefKind.Builtin => [
+          baseId = typeId goNormalizeTypeId
+          | baseId
+          | "core_Int" | "core_Double" | "core_Float" | "core_Char" => "0"
+          | "core_String" => "\"\""
+          | "core_Bool" => "false"
+          | "core_Unit" => "struct{}{}"
+          |=> "nil"
+        ]
+      | IrTypeRefKind.Custom => (ctx goTypeNameFor: (typeId goNormalizeTypeId)) + "{}"
+      | IrTypeRefKind.Function => "nil"
+    ]
+  ]
+
+  on goReturnTypes(ctx): GoContext -> String = [
+    hasErr = errors isNotEmpty
+    isUnit = this isGoUnitType
+    ^ hasErr
+      ifTrue: [
+        isUnit
+          ifTrue: [" error"]
+          ifFalse: [" (" + (this toGoType: ctx) + ", error)"]
+      ]
+      ifFalse: [
+        isUnit ifTrue: [""] ifFalse: [" " + (this toGoType: ctx)]
+      ]
+  ]
 
   on goBaseType(ctx): GoContext -> String = [
     baseId = typeId goNormalizeTypeId
@@ -492,6 +531,112 @@ extend IrExpr [
 
   on isIrLambda = | this | IrLambda => true |=> false
 
+  on isGoThrowCall -> Bool =
+    | this
+    | IrCall => [
+        msg = msgName
+        pkg = declPkg
+        (msg unpack: [it == "throw"] or: false) && (pkg unpack: [it == "core"] or: false)
+      ]
+    |=> false
+
+  on throwErrorExpr(ctx): GoContext scope: GoScope -> String = [
+    ^ | this
+    | IrCall => [
+        errArg = args isNotEmpty ifTrue: [args first] ifFalse: [null]
+        | errArg
+          | null => [
+              ctx addImport: "fmt"
+              "fmt.Errorf(\"Error\")"
+            ]
+          | IrTypeRefExpr => [
+              ctx addImport: "fmt"
+              "fmt.Errorf(\"" + (errArg ref typeId goNormalizeTypeId) + "\")"
+            ]
+          |=> errArg toGoExpr: ctx scope: scope
+      ]
+    |=> [
+        ctx addImport: "fmt"
+        "fmt.Errorf(\"Error\")"
+      ]
+  ]
+
+  on goErrorReturnLine(ctx): GoContext errExpr: String returnType: IrTypeRef -> String = [
+    returnType isGoUnitType
+      ifTrue: [^ "return " + errExpr]
+    ^ "return " + (returnType goZeroValue: ctx) + ", " + errExpr
+  ]
+
+  on emitPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String? -> String? = [
+    this isGoThrowCall ifTrue: [
+      errExpr = this throwErrorExpr: ctx scope: scope
+      sb appendIndent: indent line: (this goErrorReturnLine: ctx errExpr: errExpr returnType: returnType)
+      ^ null
+    ]
+
+    callStr = this toGoExpr: ctx scope: scope
+    errName = "__err" uniqueName: scope locals
+    retIsUnit = typeRef isGoUnitType
+    boundName = bindTo
+
+    | boundName
+    | null => [
+      retIsUnit
+        ifTrue: [sb appendIndent: indent line: (errName + " := " + callStr)]
+        ifFalse: [
+          tmpName = "__callResult" uniqueName: scope locals
+          sb appendIndent: indent line: (tmpName + ", " + errName + " := " + callStr)
+          sb appendIndent: indent line: ("if " + errName + " != nil { " + (this goErrorReturnLine: ctx errExpr: errName returnType: returnType) + " }")
+          ^ tmpName
+        ]
+    ]
+    |=> [
+      retIsUnit
+        ifTrue: [
+          sb appendIndent: indent line: ("var " + boundName + " " + (typeRef toGoType: ctx) + " = " + (typeRef goZeroValue: ctx))
+          sb appendIndent: indent line: (errName + " := " + callStr)
+        ]
+        ifFalse: [sb appendIndent: indent line: (boundName + ", " + errName + " := " + callStr)]
+    ]
+
+    sb appendIndent: indent line: ("if " + errName + " != nil { " + (this goErrorReturnLine: ctx errExpr: errName returnType: returnType) + " }")
+    ^ boundName
+  ]
+
+  on emitReturn(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
+    hasErrors = returnType errors isNotEmpty
+    typeRef hasGoErrors ifTrue: [
+      resultName = this emitPropagatingCall: ctx :scope :sb :indent :returnType bindTo: null
+      resultName unpack: [
+        line = hasErrors
+          ifTrue: ["return " + it + ", nil"]
+          ifFalse: ["return " + it]
+        sb appendIndent: indent line: line
+      ]
+      ^ Unit
+    ]
+
+    exprStr = this toGoExpr: ctx scope: scope
+    line =
+      hasErrors
+        ifTrue: [
+          returnType isGoUnitType
+            ifTrue: ["return nil"]
+            ifFalse: ["return " + exprStr + ", nil"]
+        ]
+        ifFalse: ["return " + exprStr]
+    sb appendIndent: indent line: line
+  ]
+
+  on emitAsStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
+    typeRef hasGoErrors ifTrue: [
+      this emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: null
+      ^ Unit
+    ]
+    stmtStr = this toGoStatement: ctx scope: scope
+    sb appendIndent: indent line: stmtStr
+  ]
+
   on toGoStatement(ctx): GoContext scope: GoScope -> String = [
     exprStr = this toGoExpr: ctx scope: scope
     isCallLike = this isGoCallLike
@@ -529,7 +674,8 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
 
 IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   retType = typeRef
-  retStr = retType isGoUnitType ifTrue: [""] ifFalse: [" " + (retType toGoType: ctx)]
+  retErrors = typeRef errors
+  retStr = retType goReturnTypes: ctx
   sb = StringBuilder new
   sb append: "func()"
   sb append: retStr
@@ -542,13 +688,100 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
     | IrThisRef => true
     |=> false
   subjectExpr = subjectLocal toGoExpr: ctx scope: innerScope
-  sb appendIndent: 1 line: ("" + subjectName + " := " + subjectExpr)
+  kind != IrMatchKind.ByError ifTrue: [
+    sb appendIndent: 1 line: ("" + subjectName + " := " + subjectExpr)
+  ]
   elseBranchLocal = elseBranch
   hasElse = | elseBranchLocal
     | null => false
     |=> true
 
   | kind
+  | IrMatchKind.ByError => [
+      valueName = "__matchValue"
+      errName = "__matchErr"
+      subjectCall = subjectExpr
+      subjectRetIsUnit = subject typeRef isGoUnitType
+      subjectRetIsUnit
+        ifTrue: [
+          sb appendIndent: 1 line: (errName + " := " + subjectCall)
+        ]
+        ifFalse: [
+          sb appendIndent: 1 line: (valueName + ", " + errName + " := " + subjectCall)
+        ]
+
+      sb appendIndent: 1 line: ("if " + errName + " != nil {")
+      sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
+      cases forEach: [c ->
+        condType = c condition
+        typeStr = | condType
+          | IrTypeRefExpr => condType ref toGoType: ctx
+          |=> (condType toGoExpr: ctx scope: innerScope)
+        sb appendIndent: 2 line: ("case " + typeStr + ":")
+        caseScope = innerScope copy
+        caseScope locals add: "it"
+        sb appendIndent: 3 line: ("it := " + errName + ".(" + typeStr + ")")
+        c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
+        retType isGoUnitType
+          ifTrue: [
+            retErrors isNotEmpty
+              ifTrue: [sb appendIndent: 3 line: "return nil"]
+              ifFalse: [sb appendIndent: 3 line: "return"]
+          ]
+          ifFalse: [
+            ctx emitResult: (c body result) sb: sb indent: 3 retType: retType scope: caseScope
+          ]
+      ]
+      sb appendIndent: 2 line: "default:"
+      sb appendIndent: 3 line: (this goErrorReturnLine: ctx errExpr: errName returnType: retType)
+      sb appendIndent: 2 line: "}"
+      sb appendIndent: 1 line: "}"
+
+      | elseBranchLocal
+      | null => [
+        subjectRetIsUnit
+          ifTrue: [
+            retType isGoUnitType
+              ifTrue: [
+                retErrors isNotEmpty
+                  ifTrue: [sb appendIndent: 1 line: "return nil"]
+                  ifFalse: [sb appendIndent: 1 line: "return"]
+              ]
+              ifFalse: [sb appendIndent: 1 line: ("return " + (retType goZeroValue: ctx))]
+          ]
+          ifFalse: [
+            retType isGoUnitType
+              ifTrue: [
+                retErrors isNotEmpty
+                  ifTrue: [sb appendIndent: 1 line: "return nil"]
+                  ifFalse: [sb appendIndent: 1 line: "return"]
+              ]
+              ifFalse: [
+                retErrors isNotEmpty
+                  ifTrue: [sb appendIndent: 1 line: ("return " + valueName + ", nil")]
+                  ifFalse: [sb appendIndent: 1 line: ("return " + valueName)]
+              ]
+          ]
+      ]
+      |=> [
+        elseBlock = elseBranchLocal
+        elseScope = innerScope copy
+        elseScope locals add: "it"
+        subjectRetIsUnit ifFalse: [
+          sb appendIndent: 1 line: ("it := " + valueName)
+        ]
+        elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 1 returnType: retType
+        retType isGoUnitType
+          ifTrue: [
+            retErrors isNotEmpty
+              ifTrue: [sb appendIndent: 1 line: "return nil"]
+              ifFalse: [sb appendIndent: 1 line: "return"]
+          ]
+          ifFalse: [
+            ctx emitResult: (elseBlock result) sb: sb indent: 1 retType: retType scope: elseScope
+          ]
+      ]
+    ]
   | IrMatchKind.ByType => [
       sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
       cases forEach: [c ->
@@ -631,7 +864,7 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   ^ sb toString
 ]
 
-IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int -> Unit =
+IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit =
   | this
   | IrLet => [
       | bindingKind
@@ -644,13 +877,21 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int -> 
           goName = name toSafeGoIdent
           scope locals add: name
           valueLocal = value
-          valueStr = | valueLocal
-                     | null => null
-                     |=> (valueLocal toGoExpr: ctx scope: scope)
           typeStr = typeRef toGoType: ctx
-          | valueStr
+          | valueLocal
           | null => [sb appendIndent: indent line: ("var " + goName + " " + typeStr)]
-          |=> [sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)]
+          |=> [
+            valueExpr = valueLocal
+            valueExpr typeRef hasGoErrors
+              ifTrue: [
+                valueExpr emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
+                Unit
+              ]
+              ifFalse: [
+                valueStr = valueExpr toGoExpr: ctx scope: scope
+                sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
+              ]
+          ]
           sb appendIndent: indent line: ("_ = " + goName)
         ]
     ]
@@ -675,17 +916,21 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int -> 
       ]
   ]
   | IrExprStmt => [
-      stmtStr = expr toGoStatement: ctx scope: scope
-      sb appendIndent: indent line: stmtStr
+      expr emitAsStmt: ctx scope: scope sb: sb indent: indent returnType: returnType
   ]
   | IrReturn => [
       exprLocal = expr
-      exprStr = | exprLocal
-        | null => null
-        |=> (exprLocal toGoExpr: ctx scope: scope)
-      | exprStr
-      | null => sb appendIndent: indent line: "return"
-      |=> sb appendIndent: indent line: ("return " + exprStr)
+      hasErrors = returnType errors isNotEmpty
+      | exprLocal
+      | null => [
+        hasErrors
+          ifTrue: [sb appendIndent: indent line: "return nil"]
+          ifFalse: [sb appendIndent: indent line: "return"]
+      ]
+      |=> [
+        exprVal = exprLocal
+        exprVal emitReturn: ctx scope: scope sb: sb indent: indent returnType: returnType
+      ]
   ]
   | IrWhile => [
       condExpr = cond toGoExpr: ctx scope: scope
@@ -719,7 +964,7 @@ extend IrBlock [
   ]
 
   on blockToGoStatements(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
-    stmts forEach: [st -> st toGoStmt: ctx scope: scope sb: sb indent: indent]
+    stmts forEach: [st -> st toGoStmt: ctx scope: scope sb: sb indent: indent returnType: returnType]
     // return handling is done by caller
   ]
 
@@ -769,7 +1014,9 @@ constructor GoBackend [
     name = ctx goTypeNameFor: def id
     typeParams = def typeParams goTypeParams
     typeArgs = def typeParams goTypeArgs
-    sb appendLine: ("type " + name + typeParams + " interface { is" + name + "() }")
+    def isErrorDomain
+      ifTrue: [sb appendLine: ("type " + name + typeParams + " interface { error; is" + name + "() }")]
+      ifFalse: [sb appendLine: ("type " + name + typeParams + " interface { is" + name + "() }")]
 
     def branches forEach: [br ->
       br isInclude ifTrue: [] ifFalse: [
@@ -788,6 +1035,9 @@ constructor GoBackend [
         sb appendLine: "}"
         receiverType = branchName + (typeArgs == "" ifTrue: [""] ifFalse: [typeArgs])
         sb appendLine: ("func (" + receiverType + ") is" + name + "() {}")
+        def isErrorDomain ifTrue: [
+          sb appendLine: ("func (" + receiverType + ") Error() string { return \"" + br name + "\" }")
+        ]
         sb appendLine: ""
         ()
       ]
@@ -813,7 +1063,7 @@ constructor GoBackend [
     name = ctx goFuncNameForFn: fn
     typeParams = fn generics goTypeParams
     argsStr = fn args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoType: ctx)]
-    retStr = fn returnType isGoUnitType ifTrue: [""] ifFalse: [" " + (fn returnType toGoType: ctx)]
+    retStr = fn returnType goReturnTypes: ctx
 
     sb appendLine: ("// funcId: " + fn id + " goName: " + name)
     sb appendLine: ("func " + name + typeParams + "(" + argsStr + ")" + retStr + " {")
@@ -825,6 +1075,11 @@ constructor GoBackend [
     fn returnType isGoUnitType
       ifTrue: [
         ctx emitResult: (fn body result) sb: sb indent: 1 retType: fn returnType scope: scope
+        fn returnType errors isNotEmpty ifTrue: [
+          (fn body hasTrailingReturn) ifFalse: [
+            sb appendIndent: 1 line: "return nil"
+          ]
+        ]
       ]
       ifFalse: [
         fnBodyResult = fn body result

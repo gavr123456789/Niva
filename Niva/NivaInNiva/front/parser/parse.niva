@@ -5,14 +5,11 @@ type Parser
 
 constructor Parser newParseTokens: List(Token) -> Parser = [
   statements::mut List::Statement = {}!
-  parser2:: mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
+  parser2::mut Parser = Parser tokens: newParseTokens current: 0 statements: statements // {}! error TODO
 
   [ parser2 done not ] whileTrue: [
     parser2 statements add: parser2 nextStatement
   ]
-
-  // parser statements debug
-
   ^ parser2
 ]
 
@@ -43,7 +40,7 @@ extend mut Parser [
     isThereAValue = (.peek kind == TokenType.If) || ((.primary: .peek) != null)
     .restoreFrom: savePosition
 
-    value = isThereAValue ifTrue: [.nextExperssion: .step] ifFalse: [null]
+    value = isThereAValue ifTrue: [.nextExpression: .step] ifFalse: [null]
     result = ReturnStatement value: value token: tok
     ^ result
   ]
@@ -56,7 +53,7 @@ extend mut Parser [
     ] ifFalse: [null]
 
     .matchAssert: TokenType.Assign
-    value = .nextExperssion: .step
+    value = .nextExpression: .step
     result = VarDeclaration :name :value :token :astType :isMut
     ^ result
   ]
@@ -101,7 +98,7 @@ extend mut Parser [
       ^ null
     ]
 
-    value = .nextExperssion: .step
+    value = .nextExpression: .step
     ^ DestructingAssign names: names toList value: value token: tok
   ]
 
@@ -283,7 +280,7 @@ extend mut Parser [
       ] ifFalse: [
         // parse statement
         nextTok = .step
-        statement = .nextExperssion: nextTok
+        statement = .nextExpression: nextTok
         split unpack: [.match: it]
         body add: statement
         Unit
@@ -299,9 +296,8 @@ extend mut Parser [
 
     mut c = true
     [c] whileTrue: [
-      tok = .peek
       nextTok = .step
-      statement = .nextExperssion: nextTok
+      statement = .nextExpression: nextTok
       body add: statement
 
       c <- .match: split
@@ -319,7 +315,7 @@ extend mut Parser [
       .parseManyExprUntilTok: TokenType.CloseBracket split: null
     ] ifFalse: [
       // single expression
-      Body unTypedBody: {(.nextExperssion: .step)}!
+      Body unTypedBody: {(.nextExpression: .step)}!
     ]
   ]
 
@@ -355,13 +351,10 @@ extend mut Parser [
   on parseMatch(tok): Token -> Match = [
     branches::mut List::MatchBranch = {}!
     mut elseBranch::Body? = null
-    subject = .nextExperssion: .step
+    subject = .nextExpression: .step
 
     parseBranches = [
       mut c = true
-      exprConditions::mut List::Expr = {}!
-      body::mut List::Expr = {}!
-
       // match ifs
       [c] whileTrue: [
         c <- .match: TokenType.If
@@ -396,12 +389,13 @@ extend mut Parser [
 
     // optimization for expr that starts from 1 | ""
     .isLiteralExpr: tok, ifTrue: [
-      ^ .nextExperssion: tok
+      ^ .nextExpression: tok
     ]
 
     ^ | tok kind
-      | TokenType.Type => [^ .typeDeclaration: tok]
-      | TokenType.Union => [^ .unionTypeDeclaration: tok]
+      | TokenType.Type => [.typeDeclaration: tok]
+      | TokenType.Union => [.unionTypeDeclaration: tok]
+      | TokenType.ErrorDomain => [.unionTypeDeclaration: tok]
       | TokenType.Extend => [
         .parseExtendBlock: tok
       ]
@@ -414,7 +408,7 @@ extend mut Parser [
         isTypeName ifTrue: [
           .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
         ] ifFalse: [
-          .nextExperssion: tok
+          .nextExpression: tok
         ]
       ]
       | TokenType.Mut => [
@@ -430,7 +424,7 @@ extend mut Parser [
         isTypeName ifTrue: [
           .messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
         ] ifFalse: [
-          .nextExperssion: tok
+          .nextExpression: tok
         ]
       ]
       | TokenType.If => [
@@ -458,71 +452,68 @@ extend mut Parser [
 
       |=> [
         //"Warning: Parser: fallback to expr parsing with tok: $tok" echo
-        .nextExperssion: tok
+        .nextExpression: tok
       ]
 
-    ^ TO DO: "top level $tok is not allowed"
+  ]
+  // msg, msg, msg -> (((msg) msg) msg)
+  on commaChainedExprs(tok): Token receiver: Expr = [
+     firstExpr = .nextExpression2: tok receiver: receiver
+     mut expr = firstExpr
+     mut c = true
+     [c] whileTrue: [
+       .peek kind == TokenType.Comma, ifTrue: [
+          commaTok = .step // skip comma
+
+          expr <- .nextExpression2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
+          ()
+        ] ifFalse: [
+          c <- false
+        ]
+     ]
+
+     ^ expr
   ]
 
   /// `^ expr` | `expr`
-  on nextExperssion(tok): Token -> Expr = [
+  on nextExpression(tok): Token -> Expr = [
     // return expr
    ^| tok kind
-    | TokenType.Return => [
+   | TokenType.Return => [
       e = .parseReturnExpr: tok
       e
     ]
-    | TokenType.Mut => [
+   | TokenType.Mut => [
         name = .step // tok is mut here, so we need name
-        ^ .parseVarDeclExpr: name name: name lexeme isMut: true
+        .parseVarDeclExpr: name name: name lexeme isMut: true
     ]
    | TokenType.OpenParen => [
-        inner = .nextExperssion: .step
+        inner = .nextExpression: .step
         .matchAssert: TokenType.CloseParen
 
         exprInBrackets = ExprInBrackets value: inner token: tok
 
-        firstExpr = .nextExperssion2: tok receiver: exprInBrackets
-
-        // не уверен что тут нужна обработка запятой
-        mut expr = firstExpr
-        mut c = true
-        [c] whileTrue: [
-          .peek kind == TokenType.Comma, ifTrue: [
-            commaTok = .step // skip comma
-            expr <- .nextExperssion2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
-          ] ifFalse: [
-            c <- false
-          ]
-        ]
-
-        ^ expr
+        comma-chained-expr1 = .commaChainedExprs: tok receiver: exprInBrackets
+        comma-chained-expr1
    ]
-
-   | TokenType.If => [
-     ^ .parseMatch: tok
-   ]
-
+   | TokenType.If => .parseMatch: tok
+   | TokenType.IdentifierDoubleColon => .parseVarDeclExpr: tok name: tok lexeme isMut: false // VarDeclaration: `x::Int`
    |=> [
 
      tok kind == TokenType.OpenBrace ifTrue: [
         .tryParseDestructingAssign: tok, unpack: [^ it]
      ]
 
-     // VarDeclaration: `x::Int`
-     tok kind == TokenType.IdentifierDoubleColon ifTrue: [
-       ^.parseVarDeclExpr: tok name: tok lexeme isMut: false
-     ]
-
+     primaryReceiver = .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
+     //primaryReceiver token lexeme == "inc" ifTrue: [TO DO]
      // assign
-     primaryReceiver = .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
      .peek kind == TokenType.Assign, ifTrue: [
        ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
      ]
 
      .peek kind == TokenType.AssignArrow, ifTrue: [
        .step
-       value = .nextExperssion: .step
+       value = .nextExpression: .step
        | primaryReceiver
        | Identifier => [
          ^ Assign name: primaryReceiver name value: value token: tok
@@ -532,32 +523,18 @@ extend mut Parser [
        ]
      ]
      // any expr
-     firstExpr = .nextExperssion2: tok receiver: primaryReceiver
-
-     // expr, expr (allow chaining)
-     mut expr = firstExpr
-     mut c = true
-     [c] whileTrue: [
-       .peek kind == TokenType.Comma, ifTrue: [
-          commaTok = .step // skip comma
-          expr <- .nextExperssion2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
-        ] ifFalse: [
-          c <- false
-        ]
-     ]
-
-     ^ expr
+     comma-chained-expr2 = .commaChainedExprs: tok receiver: primaryReceiver
+     comma-chained-expr2
     ]
   ]
 
-  on nextExperssion2(tok): Token receiver: Expr? -> Expr = [
+  on nextExpression2(tok): Token receiver: Expr? -> Expr = [
     // return expr
     tok kind == TokenType.Return ifTrue: [
       ^ .parseReturnExpr: tok
     ]
     // message expr
     primaryUnaryBinary = .parsePrimaryOrUnaryOrBinary: tok receiver: receiver
-
    ^| .peek kind
     | TokenType.IdentifierColon => [
 
@@ -568,20 +545,16 @@ extend mut Parser [
         colon = .peek
         | colon kind
         | TokenType.IdentifierColon => [
-
           result add:
             (NameAndExpr
               name: (Identifier fromToken: .step)
               expr: (.parsePrimaryOrUnaryOrBinary: .step))
           Unit
-
         ]
         |=> [
           c <- false
         ]
       ]
-      // current debug
-
       KeywordMsg
         args: result toList
         receiver: primaryUnaryBinary
@@ -598,25 +571,31 @@ extend mut Parser [
   // UnaryMsg
   // BinaryMsg
   on parsePrimaryOrUnaryOrBinary(tok): Token -> Expr = .parsePrimaryOrUnaryOrBinary: tok receiver: null
-  on parsePrimaryOrUnaryOrBinary(tok): Token receiver::Expr? -> Expr = [
-    maybePrimary = | receiver
-    | null => [
-      tok kind == TokenType.OpenParen ifTrue: [
-        inner = .nextExperssion: .step
-        .matchAssert: TokenType.CloseParen
-        ExprInBrackets value: inner token: tok
-      ] ifFalse: [
-        .primary: tok, unpackOrMsg: "nextExperssion: no primary ($tok)"
-      ]
-    ]
-    |=> receiver
+  on parsePrimaryOrUnaryOrBinary(tok): Token receiver: Expr? -> Expr = [
+    maybePrimary =  | receiver
+                    | null => [
+                      tok kind == TokenType.OpenParen ifTrue: [
+                        inner = .nextExpression: .step
+                        .matchAssert: TokenType.CloseParen
+                        ExprInBrackets value: inner token: tok
+                      ] ifFalse: [
+                        .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
+                      ]
+                    ]
+                    |=> receiver
 
     next = .peek
+
     // single primary before new line
     // or in other words just `42`
-    next line > tok line, ifTrue: [
-      ^ maybePrimary
-    ]
+
+    // here, we need to know that it is not a `p` unary for "Ada", but new msg
+    //        Person name: "Ada"
+    //        p greet
+    (next line > tok line) && ((.peekAt: -1) lexeme != ","),
+      ifTrue: [
+        ^ maybePrimary
+      ]
 
     // 1 ^
 
@@ -630,10 +609,6 @@ extend mut Parser [
       | tok kind
       | TokenType.Identifier => [
         unaryList = .parseManyIdentSeparated: null
-        unaryIdentifiers = unaryList,
-                            map: [
-                              NameAndExpr name: it expr: it
-                            ]
 
         mut tempUnary = UnaryMsg
           selector: unaryList first
@@ -662,11 +637,6 @@ extend mut Parser [
             token: maybePrimary token
           ^binary
         ]
-
-        // .peek kind == TokenType.IdentifierColon, ifTrue: [
-        //   // 1 inc from: 2
-        //   TO DO: "parse keyword after unary"
-        // ]
         ^ unary
         Unit
       ]
@@ -677,18 +647,11 @@ extend mut Parser [
           args: binaryList toList
           receiver: maybePrimary
           token: maybePrimary token
-        // statements add: binary
-        // TODO нужно трекать уровень вложенности, и если вложенность больше 0, то не добавлять
-        // .peek kind == TokenType.IdentifierColon, ifTrue: [
-        //   // 1 inc from: 2
-        //   TO DO: "parse keyword after binary1"
-        // ]
+
         ^ binary
-        Unit
-      ]
-      |=> [
-        Unit
-      ]
+        ()
+      ] |=> ()
+
 
       TO DO: "parse unary"
     ]
@@ -713,18 +676,8 @@ extend mut Parser [
 
       ^ binary
       // kw possible
-
       // if while parsing binary got keyword than continue keyword parsing
     ]
-    // | TokenType.IdentifierColon => [
-    //   // primary keyword
-    //   // 1 from: 2
-    //   // 1 inc from: 2
-    //   // 1 + 1 from: 2
-    //   // binaryList = .parseManyBinary
-    //   // binaryList debug
-    //   TO DO: "parse simple keyword1"
-    // ]
     |=> []
 
     ^ maybePrimary
@@ -770,9 +723,8 @@ extend mut Parser [
     peek kind == matchAssert, ifTrue: [
       ^ .step
     ]
-    kind = peek kind
     {line start} = peek
-    ^ TO DO: "$matchAssert expected but got $peek at: $line:$start"
+    TO DO: "$matchAssert expected but got $peek at: $line:$start"
   ]
 
   on matchString::String -> Bool = [

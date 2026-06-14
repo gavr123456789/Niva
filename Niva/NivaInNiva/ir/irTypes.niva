@@ -39,6 +39,7 @@ type IrUnionDef
   typeParams: List(String)
   commonFields: List(IrField)
   branches: List(IrUnionBranch)
+  isErrorDomain: Bool
 
 type IrEnumDef
   id: String
@@ -62,7 +63,6 @@ type IrInstantiation
     receiverType: IrTypeRef
     args: List(IrArg)
     returnType: IrTypeRef
-    returnErrors: List(IrTypeRef)
     requiresMutReceiver: Bool
     generics: List(String)
     instantiations: List(IrInstantiation)
@@ -75,7 +75,7 @@ type IrBlock
 
 enum IrBindingKind = Local | FieldAlias
 
-enum IrMatchKind = ByType | ByValue | ByBool
+enum IrMatchKind = ByType | ByValue | ByBool | ByError
 
 enum IrCollectionKind = List | Set | Map
 

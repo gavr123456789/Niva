@@ -40,7 +40,7 @@ mut Parser
 
       .match: TokenType.Assign, ifFalse: [
         .restoreFrom: savePosition
-        ^ .nextExperssion: .step
+        ^ .nextExpression: .step
       ]
       // Int inc ->? = ^[]
       isSingleExpr = .peek kind != TokenType.OpenBracket
@@ -63,7 +63,7 @@ mut Parser
 
       .match: TokenType.Assign, ifFalse: [
         .restoreFrom: savePosition
-        ^ .nextExperssion: .step
+        ^ .nextExpression: .step
       ]
 
       isSingleExpr = .peek kind != TokenType.OpenBracket
@@ -91,7 +91,7 @@ mut Parser
     kwParts = .parseKeywordDeclArgsFrom: tok2
     kwParts == null ifTrue: [
       .restoreFrom: savePosition
-      ^ .nextExperssion: .step
+      ^ .nextExpression: .step
     ]
     kwParts2 = kwParts unpackOrPANIC
 
@@ -99,7 +99,7 @@ mut Parser
 
     .match: TokenType.Assign, ifFalse: [
       .restoreFrom: savePosition
-      ^ .nextExperssion: .step
+      ^ .nextExpression: .step
     ]
     // Int a::Int b::Int ->? = ^[]
 
@@ -130,7 +130,7 @@ mut Parser
       (arg kind == TokenType.IdentifierColon)
     isArgName ifFalse: [
       .restoreFrom: savePosition
-      ^.nextExperssion: .step
+      ^.nextExpression: .step
     ]
     argType = .parseType
 
@@ -159,7 +159,7 @@ mut Parser
   ]
   |=> [
     .restoreFrom: savePosition
-    ^.nextExperssion: .step
+    ^.nextExpression: .step
   ]
 
   ^ result

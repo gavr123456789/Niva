@@ -270,7 +270,11 @@ MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String,
   ]
 
   kind = allTypeBranches
-    ifTrue: [IrMatchKind.ByType]
+    ifTrue: [
+      subject typeInfo listOfErrors isNotEmpty
+        ifTrue: [IrMatchKind.ByError]
+        ifFalse: [IrMatchKind.ByType]
+    ]
     ifFalse: [
       subjectType isBoolType
         ifTrue: [IrMatchKind.ByBool]
@@ -599,8 +603,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
 
   bodyBlock = body toIrBlockWithPrefix: (prefixStmts toList) db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverTypeRef
 
-  returnTypeRef = returnType toIrTypeRefNoErrors
-  returnErrors = returnType listOfErrors map: [it toIrTypeRefWithMutErrors: false errorsList: {}]
+  returnTypeRef = returnType toIrTypeRef
 
   genericTypes::mut List::NivaType = {}!
   genericTypes add: receiverType
@@ -625,7 +628,6 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     receiverType: receiverTypeRef
     args: finalArgs
     returnType: returnTypeRef
-    returnErrors: returnErrors
     requiresMutReceiver: requiresMutReceiver
     generics: genericsList toList
     instantiations: {}
@@ -689,6 +691,7 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
       typeParams: typeParams
       commonFields: commonFieldsIr
       branches: branchesIr
+      isErrorDomain: (token kind == TokenType.ErrorDomain)
     )
     res toList
   ]
@@ -851,7 +854,6 @@ ResolverHelper toIrModule -> IrModule = [
       receiverType: f receiverType
       args: f args
       returnType: f returnType
-      returnErrors: f returnErrors
       requiresMutReceiver: f requiresMutReceiver
       generics: f generics
       instantiations: instList

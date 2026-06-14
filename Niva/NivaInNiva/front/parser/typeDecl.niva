@@ -31,8 +31,6 @@ extend mut Parser [
       name: (.step lexeme)
       fields: (.typeFields)
       token: tok
-    // res debug
-    // .statements add: res
     ^ res
   ]
   /// union name = (| (field1: astType)*)*

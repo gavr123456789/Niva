@@ -184,7 +184,12 @@ NivaType compareWithConsideringUnion(nivaType): NivaType db: TyperDB -> Bool = [
                    (genericArgs toString == nivaType genericArgs toString)
 
       exactMatch ifTrue: [true] ifFalse: [
-        db isUnionBranch: this ofRoot: nivaType
+        (db isUnionBranch: this ofRoot: nivaType) || [
+          parent = db findUnionParent: this
+          | parent
+          | null => false
+          |=> parent compareWithConsideringUnion: nivaType db: db
+        ] do
       ]
     ]
     |=> false
