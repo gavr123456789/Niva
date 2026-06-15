@@ -771,14 +771,11 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
 
     returnTypes::mut List(NivaType) = {}!
-    branchesT = branches map: [
+    branchesT = branches map: [br ->
       // if matching on `this` then add fields of `this` to the context
       contextIfThisMatching = isMatchingOnThis
                                 ifTrue: [
                                   newC = Context fromParent: c
-                                  subjectType collectFields forEach: [
-                                    newC defineVar: it name withType: it typeT toTypeInfoDefault
-                                  ]
                                   newC
                                 ]
                                 ifFalse:[c]
@@ -788,23 +785,91 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       //                                                //TO DO: "second"
       //                                              ]
       //// resolve additionalConditions and branches ////
-      conditionT = it condition toTypedExprFromDb2: db withContext: contextIfThisMatching
+      conditionT = br condition toTypedExprFromDb2: db withContext: contextIfThisMatching
 
-      contextForBody =
-        isErrorMatch
+      isTypeBranch = | conditionT
+        | IdentifierT => conditionT isNameOfTheType
+        |=> false
+
+      conditionTypeInfo = conditionT typeInfo
+      mut narrowedTypeInfo = conditionTypeInfo
+      (isTypeBranch && (isErrorMatch not)) ifTrue: [
+        conditionType = conditionTypeInfo t
+        | conditionType
+        | TypeT => [
+          | subjectType
+          | TypeT => [
+            letterToType::mut Map(String, NivaType) = #{}!
+            sameType = ((conditionType name) == (subjectType name)) && ((conditionType pkgName) == (subjectType pkgName))
+            sameType ifTrue: [
+              conditionType collectGenericMappingsFrom: subjectType into: letterToType db: db
+            ] ifFalse: [
+              parentMaybe = db findUnionParent: subjectType
+              genericSource = parentMaybe unpackOrValue: subjectType
+              ((genericSource genericArgs count) == (subjectType genericArgs count)) ifTrue: [
+                genericSource genericArgs forEachIndexed: [i, g ->
+                  letterToType at: g name put: (subjectType genericArgs at: i)
+                ]
+              ]
+            ]
+            letterToType isNotEmpty ifTrue: [
+              narrowed = conditionType replaceGenericsFromTableDeep: letterToType db: db
+              narrowedTypeInfo <- TypeInfo t: narrowed isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+            ]
+          ]
+          |=> []
+        ]
+        |=> []
+      ]
+      conditionForBranch =
+        (isTypeBranch && (isErrorMatch not))
+          ifTrue: [
+            | conditionT
+            | IdentifierT => [
+              IdentifierT
+                name: conditionT name
+                path: conditionT path
+                token: conditionT token
+                typeInfo: narrowedTypeInfo
+                isNameOfTheType: conditionT isNameOfTheType
+            ]
+            |=> conditionT
+          ]
+          ifFalse: [conditionT]
+
+      contextWithNarrowedSubject =
+        (isTypeBranch && (isErrorMatch not))
           ifTrue: [
             newC = Context fromParent: contextIfThisMatching
-            newC defineVar: "it" withType: conditionT typeInfo
+            | subjectT
+            | IdentifierT => [
+              (subjectT isNameOfTheType || (subjectT name == "this")) ifFalse: [
+                newC defineVar: subjectT name withType: narrowedTypeInfo
+              ]
+            ]
+            |=> []
+            isMatchingOnThis ifTrue: [
+              newC defineVar: "this" withType: narrowedTypeInfo
+            ]
             newC
           ]
           ifFalse: [contextIfThisMatching]
 
-      conditionsT = it additionalConditions resolveBody2: db withContext: contextIfThisMatching
+      contextForBody =
+        isErrorMatch
+          ifTrue: [
+            newC = Context fromParent: contextWithNarrowedSubject
+            newC defineVar: "it" withType: conditionForBranch typeInfo
+            newC
+          ]
+          ifFalse: [contextWithNarrowedSubject]
 
-      bodyT = it body resolveBody2: db withContext: contextForBody expectedType: expectedType
+      conditionsT = br additionalConditions resolveBody2: db withContext: contextWithNarrowedSubject
+
+      bodyT = br body resolveBody2: db withContext: contextForBody expectedType: expectedType
       returnTypes add: bodyT t
 
-      MatchBranchT condition: conditionT
+      MatchBranchT condition: conditionForBranch
                    additionalConditions: conditionsT
                    body: bodyT
     ]

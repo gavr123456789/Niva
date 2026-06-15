@@ -941,6 +941,44 @@ Test nullableMatchRequiresElse = [
   Assert that: db listOfErrors count equals: 1
 ]
 
+Test unionMatchVariableNarrowsSubject = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test explicitGenericUnionMatchVariableNarrowsSubject = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [x t echo]
+    | Baad => [x x echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
 Test shadowCopyKind = [
   fileMain = """
     type Person

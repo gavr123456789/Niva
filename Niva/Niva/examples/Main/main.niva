@@ -1,5 +1,7 @@
-type Person name: String
+union Result(T) =
+| Ok t: T
+| Baad x: T
 
-Person sas = [
-    name = 42
-]
+type Box(T, G) x: T y: G
+
+x = Ok t: 42

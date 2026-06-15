@@ -8,4 +8,14 @@
 //x = #{1 2  3 4}
 
 
-{1 2 3} map: [it + 2], filter: [it > 2], echo
+union Result(T) =
+| Ok t: T
+| Baad x: T
+
+type Box(T, G) x: T y: G
+
+x = Ok t: 42
+
+| x
+| Ok =>   [x t echo]
+| Baad => [x x echo]

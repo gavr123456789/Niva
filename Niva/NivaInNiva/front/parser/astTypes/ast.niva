@@ -18,10 +18,11 @@ type UnionBranch
 
 
 union Declaration token: Token =
-  | TypeDecl name: String fields: List(TypeField)
+  | TypeDecl name: String genericParams: List(String) fields: List(TypeField)
   | EnumDecl
   | UnionDecl
     name: String
+    genericParams: List(String)
     commonUnionFields: List(TypeField)
     branches: List(UnionBranch)
   | ExtendDecl
@@ -38,8 +39,11 @@ union Declaration token: Token =
 
 
 TypeDecl toString -> String = [
+  generics = genericParams isNotEmpty
+    ifTrue: ["(" + (genericParams joinWith: ", ") + ")"]
+    ifFalse: [""]
   fields2 = fields joinWith: " "
-  ^ "type " + name + (fields2 isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields2
+  ^ "type " + name + generics + (fields2 isNotEmpty ifTrue: [" "] ifFalse: [""]) + fields2
 ]
 
 // simple keyword
