@@ -202,8 +202,23 @@ extend TyperDB [
 
   on findUnionParent(branch): TypeT -> TypeT? = [
     branchId = branch toIdString
-    parentId = branchIdToParentId at: branchId
-    ^ parentId unpack: [typesById at: it] or: null
+    mut parentId::String? = branchIdToParentId at: branchId
+    parentId == null ifTrue: [
+      parentId <- branchIdToParentId at: (branch pkgName + "." + branch name)
+    ]
+    ^ parentId unpack: [
+      exact = typesById at: it
+      | exact
+      | null => [
+        pkg = it substringBefore: "."
+        typeName = it substringAfter: "."
+        found = this findByTypeName: typeName inPkg: pkg
+        | found
+        | TypeT => found
+        |=> null
+      ]
+      |=> exact
+    ] or: null
   ]
 
   on unionBranchesDeep(root): TypeT -> Set::String = [
@@ -1106,6 +1121,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
         | TypeDecl => [
           typedList add: (TypeDeclT
                             name: it name
+                            genericParams: it genericParams
                             fields: (it fields map: [f -> toTypeFieldT field: f])
                             token: it token)
           ()
@@ -1117,6 +1133,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
         | UnionDecl => [
           typedList add: (UnionDeclT
                             name: it name
+                            genericParams: it genericParams
                             commonUnionFields: (it commonUnionFields map: [f -> toTypeFieldT field: f])
                             branches: (it branches map: [b -> toUnionBranchT branch: b])
                             token: it token)

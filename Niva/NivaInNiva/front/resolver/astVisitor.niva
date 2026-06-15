@@ -80,6 +80,7 @@ TypeDeclVisitor
       | it
       | TypeDecl => [
         noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
+        noFieldsType genericArgs addAll: (it genericParams map: [UnresolvedGenericT name: it])
         isBind = db isBindStatement: it
         isBind ifTrue: [
           db markBindTypeId: (noFieldsType toMangledName)
@@ -105,9 +106,11 @@ TypeDeclVisitor
 
         rootDecl = TypeDecl
           name: it name
+          genericParams: it genericParams
           fields: common
           token: it token
         rootStub = TypeT noFieldsWithName: rootDecl name pkgName: pkgName
+        rootStub genericArgs addAll: (it genericParams map: [UnresolvedGenericT name: it])
         isBind = db isBindStatement: it
         isBind ifTrue: [
           db markBindTypeId: (rootStub toMangledName)
@@ -141,10 +144,12 @@ TypeDeclVisitor
 
             fullDecl = TypeDecl
               name: branch name
+              genericParams: it genericParams
               fields: fields toList
               token: branch token
 
             noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
+            noFieldsType genericArgs addAll: (it genericParams map: [UnresolvedGenericT name: it])
             isBind = db isBindStatement: it
             isBind ifTrue: [
               db markBindTypeId: (noFieldsType toMangledName)
@@ -403,9 +408,16 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
     ]
 
 
-    // пока шо с стейтментом ниче не делаем, нагенерим мономорфных типов потом когда будет сас
-
-    typeStub genericArgs addAll: typeStub collectGenerics
+    // Keep explicitly declared generics and add any field-inferred generics that
+    // old syntax relied on.
+    knownGenerics::mut Set(String) = #()!
+    typeStub genericArgs forEach: [knownGenerics add: it name]
+    typeStub collectGenerics forEach: [
+      knownGenerics contains: it name, ifFalse: [
+        knownGenerics add: it name
+        typeStub genericArgs add: it
+      ]
+    ]
     ^ typeStub
   ]
 ]

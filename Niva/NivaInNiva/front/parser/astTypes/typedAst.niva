@@ -65,10 +65,11 @@ type UnionBranchT
   token: Token
 
 union TypedDeclaration token: Token =
-| TypeDeclT name: String fields: List::TypeFieldT
+| TypeDeclT name: String genericParams: List(String) fields: List::TypeFieldT
 | EnumDeclT
 | UnionDeclT
   name: String
+  genericParams: List(String)
   commonUnionFields: List::TypeFieldT
   branches: List::UnionBranchT
 | ExtendDeclT

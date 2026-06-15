@@ -26,7 +26,11 @@ Test goTaggedUnionShapes = [
   go contains: "func main__Shape__area", assertTrue
   go contains: "switch __matchSubject.(type) {", assertTrue
   go contains: "case main_Rectangle:", assertTrue
+  go contains: "this := __matchSubject.(main_Rectangle)", assertTrue
+  go contains: "return (this.width * this.height)", assertTrue
   go contains: "case main_Circle:", assertTrue
+  go contains: "this := __matchSubject.(main_Circle)", assertTrue
+  go contains: "return ((this.radius * this.radius) * 3)", assertTrue
   go contains: "default:", assertTrue
   go contains: "panic(\"invalid type assertion\")", assertTrue
 ]
@@ -107,6 +111,105 @@ Test goGenericTypeParams = [
 
   go contains: "type main_Box[T any] struct {", assertTrue
   go contains: "value T", assertTrue
+  go contains: "var box main_Box[int] = main_Box[int]{1}", assertTrue
+]
+
+Test goExplicitGenericTypeParams = [
+  fileMain = """
+    type Box(T, G) x: T y: G
+
+    box = Box x: 1 y: "two"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "type main_Box[T any, G any] struct {", assertTrue
+  go contains: "x T", assertTrue
+  go contains: "y G", assertTrue
+  go contains: "var box main_Box[int, string] = main_Box[int, string]{1, \"two\"}", assertTrue
+]
+
+Test goGenericUnionBranchTypeParams = [
+  fileMain = """
+    union Result =
+    | Ok t: T
+    | Baad x: T
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "type main_Result interface { ismain_Result() }", assertTrue
+  go contains: "type main_Ok[T any] struct {", assertTrue
+  go contains: "t T", assertTrue
+  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
+  go contains: "type main_Baad[T any] struct {", assertTrue
+  go contains: "x T", assertTrue
+  go contains: "func (main_Baad[T]) ismain_Result() {}", assertTrue
+]
+
+Test goExplicitGenericUnionBranchTypeParams = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "type main_Result[T any] interface { ismain_Result() }", assertTrue
+  go contains: "type main_Ok[T any] struct {", assertTrue
+  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
+  go contains: "var x main_Ok[int] = main_Ok[int]{42}", assertTrue
+]
+
+Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [x t echo]
+    | Baad => [x x echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "var __matchSubject any = x", assertTrue
+  go contains: "case main_Ok[int]:", assertTrue
+  go contains: "x := __matchSubject.(main_Ok[int])", assertTrue
+  go contains: "case main_Baad[int]:", assertTrue
+  go contains: "x := __matchSubject.(main_Baad[int])", assertTrue
+]
+
+Test goUnitMatchBranchResultIsEmitted = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [1 echo]
+    | Baad => [2 echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "case main_Ok[int]:", assertTrue
+  go contains: "core.Any__echo(1)", assertTrue
+  go contains: "case main_Baad[int]:", assertTrue
+  go contains: "core.Any__echo(2)", assertTrue
 ]
 
 //Test goEnumCodegen = [
@@ -188,6 +291,30 @@ Test goNestedMatchCodegen = [
 
   go contains: "__matchSubject :=", assertTrue
   go contains: "return func()", assertTrue
+]
+
+Test goMatchVariableSubjectNarrowsAlias = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "case main_Rectangle:", assertTrue
+  go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
+  go contains: "return (shape.width * shape.height)", assertTrue
+  go contains: "case main_Circle:", assertTrue
+  go contains: "shape := __matchSubject.(main_Circle)", assertTrue
+  go contains: "return shape.radius", assertTrue
 ]
 
 Test goLambdaArgCodegen = [

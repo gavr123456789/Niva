@@ -649,7 +649,7 @@ TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map
   | TypeDeclT => [
     typeFromDb = db findByTypeName: name inPkg: currentPkg
     typeParams = | typeFromDb
-      | TypeT => typeFromDb collectGenerics map: [it name]
+      | TypeT => typeFromDb genericArgs map: [it name]
       |=> {String}
     fieldsIr = fields map: [it toIrField]
     typeId = typeFromDb toIrTypeId
@@ -666,7 +666,7 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
     rootType = db findByTypeName: name inPkg: currentPkg
     rootTypeId = rootType toIrTypeId
     typeParams = | rootType
-      | TypeT => rootType collectGenerics map: [it name]
+      | TypeT => rootType genericArgs map: [it name]
       |=> {String}
 
     commonFieldsIr = commonUnionFields map: [it toIrField]

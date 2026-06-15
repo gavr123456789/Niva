@@ -24,11 +24,28 @@ extend mut Parser [
     ^ result toList
   ]
 
+  on declarationGenericParams -> List(String) = [
+    .match: TokenType.OpenParen, ifFalse: [^ {}]
+
+    params::mut List(String) = {}!
+    mut c = true
+    [c] whileTrue: [
+      tok = .matchAssertAnyIdent: "generic param name expected"
+      params add: tok lexeme
+      c <- .match: TokenType.Comma
+    ]
+
+    .matchAssert: TokenType.CloseParen
+    ^ params toList
+  ]
+
   /// type ^name (field1: astType)*
   on typeDeclaration(tok): Token -> TypeDecl = [
+    nameTok = .step
 
     res = TypeDecl
-      name: (.step lexeme)
+      name: nameTok lexeme
+      genericParams: (.declarationGenericParams)
       fields: (.typeFields)
       token: tok
     ^ res
@@ -39,6 +56,7 @@ extend mut Parser [
   /// union Vehicle = ^Car | Plane
   on unionTypeDeclaration(tok): Token -> UnionDecl = [
     name = .step lexeme
+    genericParams = .declarationGenericParams
     commonUnionFields = .typeFields
 
     .matchAssert: TokenType.Assign
@@ -72,7 +90,7 @@ extend mut Parser [
 
 
 
-    res = UnionDecl name: name commonUnionFields: commonUnionFields branches: branches token: tok
+    res = UnionDecl name: name genericParams: genericParams commonUnionFields: commonUnionFields branches: branches token: tok
 
 
     ^ res

@@ -112,6 +112,45 @@ Test parseUnion -> Unit = [
 
 ]
 
+Test parseTypeDeclarationGenerics -> Unit = [
+  input = """
+    type Box(T, G) x: T y: G
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  typeDecl = statements at: 0
+
+  | typeDecl
+  | TypeDecl => [
+      Assert that: typeDecl name equals: "Box"
+      Assert that: typeDecl genericParams count equals: 2
+      Assert that: (typeDecl genericParams at: 0) equals: "T"
+      Assert that: (typeDecl genericParams at: 1) equals: "G"
+      Assert that: typeDecl fields count equals: 2
+  ]
+  |=> []
+]
+
+Test parseUnionDeclarationGenerics -> Unit = [
+  input = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  unionDecl = statements at: 0
+
+  | unionDecl
+  | UnionDecl => [
+      Assert that: unionDecl name equals: "Result"
+      Assert that: unionDecl genericParams count equals: 1
+      Assert that: (unionDecl genericParams first) equals: "T"
+      Assert that: unionDecl branches count equals: 2
+  ]
+  |=> []
+]
+
 
 Test parseUnaryConstructor -> Unit = [
   input = """

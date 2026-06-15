@@ -211,13 +211,13 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
         val w = inputStream.readText()
 //        val e = process.errorStream.reader().readText()
 
-        val onlyFailed = formatFailedTestsOutput(w)
-
-        if (onlyFailed.isBlank()) {
-            println("${GREEN}✅ All tests passed$RESET")
-        } else {
-            println(onlyFailed)
-        }
+//        val onlyFailed = formatFailedTestsOutput(w)
+        println(w)
+//        if (onlyFailed.isBlank()) {
+//            println("${GREEN}✅ All tests passed$RESET")
+//        } else {
+//            println(onlyFailed)
+//        }
     }
 
 

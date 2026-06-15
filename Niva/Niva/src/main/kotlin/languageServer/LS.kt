@@ -875,33 +875,97 @@ private fun LS.resolveFreshInScratch(uriOfChangedFile: String, source: String) {
 }
 
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
-private fun findCurrentWordStart(sourceText: String?, line: Int, character: Int): Int? {
+//private fun findCurrentWordStart(sourceText: String?, line: Int, character: Int): Int? {
+//    if (sourceText == null) return null
+//    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+//    val cursor = character.coerceIn(0, sourceLine.length)
+//    var start = cursor
+//    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+//        start--
+//    }
+//    return start.takeIf { it < cursor }
+//}
+
+private fun findCurrentWordStart(
+    sourceText: String?,
+    line: Int,
+    character: Int
+): Int? {
     if (sourceText == null) return null
-    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
-    val cursor = character.coerceIn(0, sourceLine.length)
+
+    var lineStart = 0
+    repeat(line) {
+        lineStart = sourceText.indexOf('\n', lineStart)
+        if (lineStart == -1) return null
+        lineStart++
+    }
+
+    val cursor = (lineStart + character)
+        .coerceAtMost(sourceText.length)
+
     var start = cursor
-    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+    while (start > lineStart &&
+        sourceText[start - 1].isNivaCompletionWordPart()
+    ) {
         start--
     }
+
     return start.takeIf { it < cursor }
 }
 
 private fun Char.isNivaCompletionWordPart(): Boolean =
     isLetterOrDigit() || this == '_' || this == '.'
 
-private fun findReceiverNameBeforePartial(sourceText: String?, line: Int, wordStart: Int): Pair<String, Int>? {
+//private fun findReceiverNameBeforePartial(sourceText: String?, line: Int, wordStart: Int): Pair<String, Int>? {
+//    if (sourceText == null) return null
+//    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+//    var end = wordStart
+//    while (end > 0 && sourceLine[end - 1].isWhitespace()) {
+//        end--
+//    }
+//    var start = end
+//    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+//        start--
+//    }
+//    if (start == end) return null
+//    return sourceLine.substring(start, end) to start
+//}
+
+private fun findReceiverNameBeforePartial(
+    sourceText: String?,
+    line: Int,
+    wordStart: Int
+): Pair<String, Int>? {
     if (sourceText == null) return null
-    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
-    var end = wordStart
-    while (end > 0 && sourceLine[end - 1].isWhitespace()) {
+
+    var lineStart = 0
+    repeat(line) {
+        val nl = sourceText.indexOf('\n', lineStart)
+        if (nl == -1) return null
+        lineStart = nl + 1
+    }
+
+    val lineEnd = sourceText.indexOf('\n', lineStart)
+        .takeIf { it != -1 }
+        ?: sourceText.length
+
+    val cursor = wordStart.coerceIn(0, lineEnd - lineStart)
+
+    var end = lineStart + cursor
+    while (end > lineStart && sourceText[end - 1].isWhitespace()) {
         end--
     }
+
     var start = end
-    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+    while (start > lineStart &&
+        sourceText[start - 1].isNivaCompletionWordPart()
+    ) {
         start--
     }
+
     if (start == end) return null
-    return sourceLine.substring(start, end) to start
+
+    return sourceText.substring(start, end) to (start - lineStart)
 }
 
 private fun LspResult.Found.expressionType(): Type? {
