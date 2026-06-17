@@ -30,7 +30,6 @@ import main.frontend.parser.types.ast.MessageSendUnary
 import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.SetCollection
 import main.frontend.parser.types.ast.Statement
-import main.frontend.parser.types.ast.StaticBuilder
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeDeclaration
@@ -133,6 +132,24 @@ Environment makeChild = Environment parent: this map: #{}
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
         assert(declaration.value.str == "1")
+    }
+
+    @Test
+    fun someRegression() {
+        val source = "(UnifyError left: (this key: key) right: (other key2: key))"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val bracketed = ast[0] as ExpressionInBrackets
+        val send = bracketed.expr as MessageSendKeyword
+        val message = send.messages.single() as KeywordMsg
+
+        assertEquals("UnifyError", (send.receiver as IdentifierExpr).name)
+        assertEquals("leftRight", message.selectorName)
+        assertEquals("left", message.args[0].name)
+        assertIs<ExpressionInBrackets>(message.args[0].keywordArg)
+        assertEquals("right", message.args[1].name)
+        assertIs<ExpressionInBrackets>(message.args[1].keywordArg)
     }
 
     @Test
@@ -922,6 +939,24 @@ Environment makeChild = Environment parent: this map: #{}
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
+    }
+
+    @Test
+    fun genericTypeAndUnionDeclarationsWithParens() {
+        val source = """
+        union Result(T) =
+        | Ok t: T
+        | Baad x: T
+
+        type Box(T, G) x: T y: G
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        val result = ast[0] as UnionRootDeclaration
+        val box = ast[1] as TypeDeclaration
+
+        assertEquals(setOf("T"), result.genericFields)
+        assertEquals(setOf("T", "G"), box.genericFields)
     }
 
     @Test
