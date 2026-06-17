@@ -235,12 +235,20 @@ fun Parser.unaryOrBinary(
 fun Parser.checkForKeyword(): Boolean {
     val savePoint = current
     var result = false
-    skipNewLinesAndComments()
-    if (match(TokenType.OpenParen)) {
-        this.skipUntilOnLineInclusive(TokenType.CloseParen)
+    var skippedLine = false
+    while (match(TokenType.EndOfLine) || match(TokenType.Comment)) {
+        skippedLine = true
+        if (check(TokenType.EndOfFile)) break
     }
-    if (check(TokenType.OpenBracket, -1)) {
-        this.skipUntilOnLineInclusive(TokenType.CloseBracket)
+    if (skippedLine && !checkMany(TokenType.Identifier, TokenType.Colon)) {
+        current = savePoint
+        return false
+    }
+    if (match(TokenType.OpenParen)) {
+        if (!skipBalancedParensOnLine()) {
+            current = savePoint
+            return false
+        }
     }
     val identTok = match(TokenType.Identifier)
     if (identTok) {
@@ -264,6 +272,28 @@ fun Parser.checkForKeyword(): Boolean {
 
     current = savePoint
     return result
+}
+
+private fun Parser.skipBalancedParensOnLine(): Boolean {
+    var depth = 1
+
+    while (true) {
+        if (check(TokenType.EndOfFile) || check(TokenType.EndOfLine) || check(TokenType.Comment)) {
+            return false
+        }
+
+        when {
+            match(TokenType.OpenParen) -> depth++
+            match(TokenType.CloseParen) -> {
+                depth--
+                if (depth == 0) {
+                    return true
+                }
+            }
+
+            else -> step()
+        }
+    }
 }
 
 

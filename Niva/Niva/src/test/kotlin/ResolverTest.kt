@@ -973,6 +973,25 @@ class ResolverTest {
         assert(statements.count() == 5)
     }
 
+    @Test
+    fun genericTypeAndUnionDeclarationsWithParens() {
+        val source = """
+        union Result(T) =
+        | Ok t: T
+        | Baad x: T
+
+        type Box(T, G) x: T y: G
+
+        x = Ok t: 42
+        box = Box x: 1 y: "q"
+        """.trimIndent()
+
+        val statements = resolve(source)
+
+        assertEquals(setOf("T"), (statements[0] as UnionRootDeclaration).genericFields)
+        assertEquals(setOf("T", "G"), (statements[1] as TypeDeclaration).genericFields)
+    }
+
 
     @Test
     fun inferReturnTypeOfSingleExpressionInMessageDeclaration() {

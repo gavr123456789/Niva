@@ -164,10 +164,10 @@ private fun Parser.inlineParsing(
 }
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
-    val x = step()
-    if (x.kind != TokenType.Identifier) {
+    if (!check(TokenType.Identifier)) {
         return null
     }
+    val x = step()
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
@@ -564,22 +564,6 @@ fun Parser.statements(): List<Statement> {
     }
 
     return this.tree
-}
-
-// Skips tokens on the current line until it matches [target], consuming it as well
-fun Parser.skipUntilOnLineInclusive(target: TokenType): Boolean {
-    while (true) {
-        // dont go outside of the line
-        if (check(TokenType.EndOfFile) || check(TokenType.EndOfLine) || check(TokenType.Comment)) {
-            return false
-        }
-
-        if (match(target)) {
-            return true
-        }
-
-        step(1)
-    }
 }
 
 fun Parser.checkEndOfLineOrFile(i: Int = 0) =
