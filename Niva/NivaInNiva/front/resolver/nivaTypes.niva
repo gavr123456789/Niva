@@ -162,7 +162,7 @@ extend NivaType [
       | null => into at: letter put: actual
 
       |=> [
-        existing compareWith: actual, ifFalse: [
+        existing sameTypeAs: actual, ifFalse: [
           merged = db mergeTypesByUnion: {existing actual}
           | merged
           | null => [

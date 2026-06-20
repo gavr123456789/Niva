@@ -320,7 +320,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   // do not check if they are generics
   // no, probably just replace expected args here with real args, if they are generics
 
-  // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "realType compareWith: argTypeFromDb"
+  // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "db isAssignable: realType toExpected: argTypeFromDb"
 
   newKeyword = KeywordMsgT
     args: typedArgs

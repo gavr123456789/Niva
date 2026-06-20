@@ -331,7 +331,7 @@ extend TyperDB [
 
     rest = types drop: 1
     rest forEach: [t ->
-      merged compareWith: t, ifFalse: [
+      merged sameTypeAs: t, ifFalse: [
         ancestor = this findFirstCommonUnionAncestor: {merged t}
         | ancestor
         | null => [^ null]
@@ -343,7 +343,7 @@ extend TyperDB [
   ]
 
   on isAssignable(actual): NivaType toExpected(expected): NivaType -> Bool = [
-    ^ actual compareWithConsideringUnion: expected db: this
+    ^ actual isAssignableTo: expected db: this
   ]
 
   // TODO replace with nullmatch + find
@@ -747,7 +747,7 @@ extend TyperDB [
       name == "whileTrue" ifTrue: [
         {unit bool} = dtc
 
-        receiverType returnType compareWith: bool, ifFalse: [
+        receiverType returnType sameTypeAs: bool, ifFalse: [
           TO DO: "whileTrue receiver must return Bool"
         ]
 
