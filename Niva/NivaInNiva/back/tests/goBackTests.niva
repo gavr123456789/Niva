@@ -388,7 +388,7 @@ Test goErrorDomainHandledMatchCodegen = [
   go = GoBackend fullFromResolver: result
 
   go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
-  go contains: "__matchValue, __matchErr := main__core_Unit__foo(struct{}{})", assertTrue
+  go contains: "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)", assertTrue
   go contains: "switch __matchErr.(type) {", assertTrue
   go contains: "case main_Error1:", assertTrue
   go contains: "it := __matchErr.(main_Error1)", assertTrue
