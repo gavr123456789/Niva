@@ -236,7 +236,7 @@ TypeDeclVisitor
           | incField
           | null => allOk <- false
           |=> [
-            f typeT compareWithConsideringUnion: incField typeT db: db, ifFalse: [
+            db isAssignable: (f typeT) toExpected: (incField typeT), ifFalse: [
               allOk <- false
             ]
           ]

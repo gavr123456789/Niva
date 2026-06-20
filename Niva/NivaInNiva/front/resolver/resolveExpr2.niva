@@ -115,9 +115,9 @@ List(NivaType) errorsToString -> String =
   this normalizeErrorList joinWith: ", " transform: [it name]
 
 // returns the number of wrong type element, if all good returns null
-NivaType compareWithMany(types): List(NivaType) -> Int? = [
+NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
   types forEachIndexed: [i, it ->
-    x = this compareWith: it
+    x = this sameTypeAs: it
     x ifFalse: [
       ^ i
     ]
@@ -473,13 +473,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     (typesOfElems drop: 2), forEachIndexed: [i, it ->
       i % 2 == 0 ? [
-        it compareWith: first, ifFalse: [
+        it sameTypeAs: first, ifFalse: [
           db addErrorMessage: (ErrorWrongArgType
                                 tok: this token
                                 msg: "Wront type of $it element, $second value type expected")
         ]
       ] ! [
-        it compareWith: second, ifFalse: [
+        it sameTypeAs: second, ifFalse: [
           db addErrorMessage: (ErrorWrongArgType
                                 tok: this token
                                 msg: "Wront type of $it element, $first key type expected")
@@ -537,7 +537,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     // take first and others
     // Compare all elements between each other
     f = typesOfElems first
-    numberOfWrongElementType = f compareWithMany: (typesOfElems drop: 1)
+    numberOfWrongElementType = f sameTypeAsMany: (typesOfElems drop: 1)
     numberOfWrongElementType unpack: [
       wrongElement = elems at: it
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")

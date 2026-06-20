@@ -1,262 +1,158 @@
-NivaType compareWith(nivaType): NivaType -> Bool = [
+NivaType needsDeepTypeCompare -> Bool = | this
+  | TypeT | FuntionT | ListT | SetT | MapT | NullableT => true
+  |=> false
+
+NivaType sameSimpleTypeAs(nivaType): NivaType -> Bool = | nivaType
+  | UnitT =>  | this
+              | UnitT => true
+              |=> false
+  | IntegerT => | this
+                | IntegerT => true
+                |=> false
+  | FloatT => | this
+              | FloatT => true
+              |=> false
+  | DoubleT => | this
+               | DoubleT => true
+               |=> false
+  | BoolT => | this
+             | BoolT => true
+             |=> false
+  | CharT =>  | this
+              | CharT => true
+              |=> false
+  | StringT =>  | this
+                | StringT => true
+                |=> false
+  | AnyT =>  true
+  | Unknown => TO DO: "Compiler bug: u cant compare Unknown"
+  | NothingT => true
+  | UnresolvedGenericT => | this
+                          | UnresolvedGenericT => letter == nivaType letter
+                          |=> false
+  | NullT =>  | this
+              | NullT => true
+              |=> false
+  |=> false
 
 
-
- ^| nivaType
-  | UnitT => [
-    | this
-    | UnitT => true
-    |=> false
-  ]
-  | IntegerT => [
-    | this
-    | IntegerT => [true]
-    |=> [false]
-  ]
-  | FloatT => [
-    | this
-    | FloatT => true
-    |=> false
-  ]
-  | DoubleT => [
-    | this
-    | DoubleT => true
-    |=> false
-  ]
-  | BoolT => [
-    | this
-    | BoolT => true
-    |=> false
-  ]
-  | CharT => [
-    | this
-    | CharT => true
-    |=> false
-  ]
-  | StringT => [
-    | this
-    | StringT => true
-    |=> false
-  ]
-  | AnyT => [
-    true
-  ]
-  | Unknown => [
-    TO DO: "Compiler bug: u cant compare Unknown"
-  ]
-  | NothingT => [
-    true
-  ]
-  // compare generics
+NivaType sameDeclaredTypeAs(nivaType): TypeT -> Bool = | this
   | TypeT => [
-    | this
-    | TypeT => [
-      (name == nivaType name) &&
-      (pkgName == nivaType pkgName) &&
-      (genericArgs toString == nivaType genericArgs toString)
-    ]
-    |=> false
+    (name == nivaType name) &&
+    (pkgName == nivaType pkgName) &&
+    (genericArgs toString == nivaType genericArgs toString)
   ]
-  //| UnionT => [
-  //  | this
-  //  | UnionT => true
-  //  |=> false
-  //]
-  // compare each arg and return type
-  | FuntionT => [
-    | this
+  |=> false
+
+
+NivaType sameTypeAs(nivaType): NivaType -> Bool = [
+  result = nivaType needsDeepTypeCompare ifTrue: [
+    | nivaType
+    | TypeT => this sameDeclaredTypeAs: nivaType
     | FuntionT => [
-      fields count != nivaType fields count
-        ifTrue: [^ false]
+      | this
+      | FuntionT => [
+        fields count != nivaType fields count
+          ifTrue: [^ false]
 
-      fieldsMatch <- true
-      fields forEachIndexed: [i, f1 ->
-        f2 = nivaType fields at: i
-        f1 typeT compareWith: f2 typeT, ifFalse: [
-          fieldsMatch <- false
+        fieldsMatch <- true
+        fields forEachIndexed: [i, f1 ->
+          f2 = nivaType fields at: i
+          f1 typeT sameTypeAs: f2 typeT, ifFalse: [
+            fieldsMatch <- false
+          ]
         ]
+        returnTypeMatch = returnType sameTypeAs: nivaType returnType
+        fieldsMatch && returnTypeMatch
       ]
-      returnTypeMatch = returnType compareWith: nivaType returnType
-      fieldsMatch && returnTypeMatch
+      |=> false
     ]
-    |=> false
-  ]
-  // compare generics
-  | ListT => [
-    | this
-    | ListT => this t compareWith: nivaType t
-    |=> false
-  ]
-  | SetT => [
-    | this
-    | SetT => this t compareWith: nivaType t
-    |=> false
-  ]
-  | MapT => [
-    | this
-    | MapT => [
-      (this k compareWith: nivaType k) &&
-      (this v compareWith: nivaType v)
-    ]
-    |=> false
-  ]
-  // ???
-  | UnresolvedGenericT => [
-    | this
-    | UnresolvedGenericT => letter == nivaType letter
-    |=> false
-  ]
-  // ???
-  | NullT => [
-    | this
-    | NullT => true
-    |=> false
-  ]
-  // compare internal types
-  | NullableT => [
-    | this
-    | NullableT => [
-      this v compareWith: nivaType v
-    ]
-    | NothingT => true
-    | NullT => true
-    |=> false
-  ]
+    | ListT =>  | this
+                | ListT => this t sameTypeAs: nivaType t
+                |=> false
 
+    | SetT => | this
+              | SetT => this t sameTypeAs: nivaType t
+              |=> false
+
+    | MapT => | this
+              | MapT => (.k sameTypeAs: nivaType k) &&
+                        (.v sameTypeAs: nivaType v)
+              |=> false
+
+    | NullableT => | this
+                   | NullableT => .v sameTypeAs: nivaType v
+                   | NothingT => true
+                   | NullT => true
+                   |=> false
+    |=> false
+  ] ifFalse: [
+    .sameSimpleTypeAs: nivaType
+  ]
+  ^ result
 ]
 
+NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
+  result = nivaType needsDeepTypeCompare ifTrue: [
+    | nivaType
+    | TypeT =>  | this
+                | TypeT => [
+                  | .sameDeclaredTypeAs: nivaType
+                  | true => true
+                  | false => (db isUnionBranch: this ofRoot: nivaType) ||
+                              [
+                                parent = db findUnionParent: this
+                                | parent
+                                | null => false
+                                |=> parent isAssignableTo: nivaType :db
+                              ] do
 
-// TODO separate comparing internal types and reuse its functionallity
-// for that we should add Internal subUnion into NivaType, same as it was done with Complex
-NivaType compareWithConsideringUnion(nivaType): NivaType db: TyperDB -> Bool = [
+                ]
+                |=> false
 
- ^| nivaType
-  | UnitT => [
-    | this
-    | UnitT => true
-    |=> false
-  ]
-  | IntegerT => [
-    | this
-    | IntegerT => [true]
-    |=> [false]
-  ]
-  | FloatT => [
-    | this
-    | FloatT => true
-    |=> false
-  ]
-  | DoubleT => [
-    | this
-    | DoubleT => true
-    |=> false
-  ]
-  | BoolT => [
-    | this
-    | BoolT => true
-    |=> false
-  ]
-  | CharT => [
-    | this
-    | CharT => true
-    |=> false
-  ]
-  | StringT => [
-    | this
-    | StringT => true
-    |=> false
-  ]
-  | AnyT => [
-    true
-  ]
-  | Unknown => [
-    TO DO: "Compiler bug: u cant compare Unknown"
-  ]
-  | NothingT => [
-    true
-  ]
-  // compare generics
-  | TypeT => [
-    | this
-    | TypeT => [
-      exactMatch = (name == nivaType name) &&
-                   (pkgName == nivaType pkgName) &&
-                   (genericArgs toString == nivaType genericArgs toString)
+    | FuntionT => | this
+                  | FuntionT => [
+                    fields count != nivaType fields count
+                      ifTrue: [^ false]
 
-      exactMatch ifTrue: [true] ifFalse: [
-        (db isUnionBranch: this ofRoot: nivaType) || [
-          parent = db findUnionParent: this
-          | parent
-          | null => false
-          |=> parent compareWithConsideringUnion: nivaType db: db
-        ] do
-      ]
-    ]
-    |=> false
-  ]
-  // compare each arg and return type
-  | FuntionT => [
-    | this
-    | FuntionT => [
-      fields count != nivaType fields count
-        ifTrue: [^ false]
+                    fieldsMatch <- true
+                    fields forEachIndexed: [i, f1 ->
+                      f2 = nivaType fields at: i
+                      f1 typeT isAssignableTo: f2 typeT :db,
+                        ifFalse: [fieldsMatch <- false]
+                    ]
 
-      fieldsMatch <- true
-      fields forEachIndexed: [i, f1 ->
-        f2 = nivaType fields at: i
-        f1 typeT compareWithConsideringUnion: f2 typeT db: db, ifFalse: [
-          fieldsMatch <- false
-        ]
-      ]
-      // Kotlin-style Unit coercion: any return type is acceptable when Unit is expected.
-      returnTypeMatch =
-        | nivaType returnType
-        | UnitT => true
-        |=> returnType compareWithConsideringUnion: nivaType returnType db: db
-      fieldsMatch && returnTypeMatch
-    ]
-    |=> false
-  ]
-  // compare generics
-  | ListT => [
-    | this
-    | ListT => this t compareWithConsideringUnion: nivaType t db: db
-    |=> false
-  ]
-  | SetT => [
-    | this
-    | SetT => this t compareWithConsideringUnion: nivaType t db: db
-    |=> false
-  ]
-  | MapT => [
-    | this
-    | MapT => [
-      (this k compareWithConsideringUnion: nivaType k db: db) &&
-      (this v compareWithConsideringUnion: nivaType v db: db)
-    ]
-    |=> false
-  ]
-  // ???
-  | UnresolvedGenericT => [
-    | this
-    | UnresolvedGenericT => letter == nivaType letter
-    |=> false
-  ]
-  // ???
-  | NullT => [
-    | this
-    | NullT => true
-    |=> false
-  ]
-  // compare internal types
-  | NullableT => [
-    | this
-    | NullableT => [
-      this v compareWithConsideringUnion: nivaType v db: db
-    ]
-    | NothingT => true
-    | NullT => true
-    |=> this compareWithConsideringUnion: nivaType v db: db
-  ]
+                    // ktlike Unit coercion: any return type is acceptable when Unit is expected
+                    returnTypeMatch = | nivaType returnType
+                                      | UnitT => true
+                                      |=> returnType isAssignableTo: nivaType returnType :db
 
+                    fieldsMatch && returnTypeMatch
+                  ]
+                  |=> false
+
+    | ListT => | this
+               | ListT => t isAssignableTo: nivaType t :db
+               |=> false
+
+    | SetT => | this
+              | SetT =>  t isAssignableTo: nivaType t :db
+              |=> false
+
+    | MapT => | this
+              | MapT => (this k isAssignableTo: nivaType k :db) &&
+                        (this v isAssignableTo: nivaType v :db)
+              |=> false
+
+    | NullableT =>  | this
+                    | NullableT => v isAssignableTo: nivaType v :db
+                    | NothingT => true
+                    | NullT => true
+                    |=> .isAssignableTo: nivaType v :db
+
+    |=> false
+  ] ifFalse: [
+    this sameSimpleTypeAs: nivaType
+  ]
+  ^ result
 ]
