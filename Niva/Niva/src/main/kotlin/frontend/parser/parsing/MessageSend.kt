@@ -244,7 +244,8 @@ fun Parser.checkForKeyword(): Boolean {
         current = savePoint
         return false
     }
-    if (match(TokenType.OpenParen)) {
+    val canSkipReceiverParens = peek(-1).kind == TokenType.Identifier || peek(-1).kind == TokenType.NullableIdentifier
+    if (canSkipReceiverParens && match(TokenType.OpenParen)) {
         if (!skipBalancedParensOnLine()) {
             current = savePoint
             return false
