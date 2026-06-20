@@ -46,6 +46,16 @@ import kotlin.test.assertTrue
 class ParserTest {
 
     @Test
+    fun ifTrueAfterBinaryWithBrackets() {
+        val source = """
+              genericSource = parentMaybe unpackOrValue: subjectType
+              ((genericSource genericArgs count) == (subjectType genericArgs count)) ifTrue: [
+              ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
+    @Test
     fun genericWithError() {
         val source = """
             Int sas -> List(Int)! = []
