@@ -459,10 +459,10 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): Muta
     val filesAndDirs = directory.listFiles() ?: return mutableListOf()
 
     for (file in filesAndDirs) {
-        if (file.isFile && (file.extension == ext)) {
-            fileList.add(file)
-        } else if (file.isDirectory) {
-            if (!file.name.startsWith(".")) {
+        if (!file.name.startsWith("_")) {
+            if (file.isFile && (file.extension == ext)) {
+                fileList.add(file)
+            } else if (file.isDirectory) {
                 fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
             }
         }

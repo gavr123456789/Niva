@@ -59,7 +59,7 @@ constructor IO_Container new -> IO_Container = [
 compilerTry = [
   path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
   NivaCompiler runArgs: path withIO: IO_Container new
-]
+] do
 
 compilerTry2 = [
   //path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
@@ -101,5 +101,4 @@ goErrorDomainHandledMatchCodegen = [
   go contains: "it := __matchErr.(main_Error1)", assertTrue
   go contains: "it := __matchValue", assertTrue
   Assert that: (go contains: "func main__core_Unit__bar(this struct{}) (int, error)") equals: false
-
-] do
+]

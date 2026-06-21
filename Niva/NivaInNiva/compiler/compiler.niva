@@ -50,12 +50,13 @@ constructor NivaCompiler [
 
         generateJsFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realJSPath toPath)
-            fileToJSCOntent = TypeScript fullFromResolver: res
+            TO DO: "JS backend temporarily disabled"
+            //fileToJSCOntent = TypeScript fullFromResolver: res
 
-            fileToJSCOntent forEach: [file, jsContent ->
-                destanation = realJSPath + "/" + file + ".js"
-                io writeFile file: destanation content: jsContent
-            ]
+            //fileToJSCOntent forEach: [file, jsContent ->
+            //    destanation = realJSPath + "/" + file + ".js"
+            //    io writeFile file: destanation content: jsContent
+            //]
         ]
 
         generateIrFromResolver = [res::ResolverHelper ->
@@ -116,9 +117,9 @@ constructor NivaCompiler [
                   io runProgramFromPath path: pathToEntryPoint args: {"go" "run" "."}
                 ]
 
-                t6 = System currentTimeMillis
-                t-full-run-go = t6 - t5
-                t-full-run-go debug
+                //t6 = System currentTimeMillis
+                //t-full-run-go = t6 - t5
+                //t-full-run-go debug
               ]
             | CompilerBackend.Js => [
                 generateJsFromResolver res: resolver
