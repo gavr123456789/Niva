@@ -1169,6 +1169,7 @@ TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): Type
   newFields = fields map: [
     TypeTField name: it name
               typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
+              isMut: it isMut
   ]
 
   newGenericArgs = genericArgs map: [

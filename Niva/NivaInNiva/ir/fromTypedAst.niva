@@ -24,7 +24,7 @@ extend NivaType [
            | SetT => { (base t toIrType-immut-no-errors) }
            | MapT => { (base k toIrType-immut-no-errors) (base v toIrType-immut-no-errors) }
            | TypeT => base genericArgs map: [it toIrType-immut-no-errors]
-           | FuntionT => base fields map: [it typeT toIrType-immut-no-errors]
+           | FuntionT => base fields map: [it typeT toIrTypeRefWithMutErrors: it isMut errorsList: {}]
            |=> {IrTypeRef}
 
     returnType = | base
@@ -41,6 +41,10 @@ extend NivaType [
 extend TypeInfo [
   on toIrTypeRef -> IrTypeRef = t toIrTypeRefWithMutErrors: isMut errorsList: listOfErrors
   on toIrTypeRefNoErrors -> IrTypeRef = t toIrTypeRefWithMutErrors: isMut errorsList: {}
+]
+
+extend TypeTField [
+  on toIrTypeRef -> IrTypeRef = typeT toIrTypeRefWithMutErrors: isMut errorsList: {}
 ]
 
 NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
@@ -310,6 +314,8 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   receiverType = receiver typeInfo t
   receiverTypeRef = receiverType toIrTypeRefWithMutErrors: false errorsList: {}
   methodReceiverTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: false errorsList: {}
+  methodReceiverParamTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: (dbMsg forMut) errorsList: {}
+  methodArgParamTypes = dbMsg args map: [it toIrTypeRef]
   exprType = typeInfo toIrTypeRef
 
   isDefaultCtor = dbMsg kind == MessageSendKind.DefaultConstructor
@@ -320,6 +326,9 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   isReceiverFunction = | receiverType
     | FuntionT => true
     |=> false
+  functionParamTypes = | receiverType
+    | FuntionT => receiverType fields map: [it toIrTypeRef]
+    |=> {IrTypeRef}
   isIfTrue = dbMsg name == "ifTrue:"
   isIfFalse = dbMsg name == "ifFalse:"
   isIfTrueIfFalse = dbMsg name == "ifTrue:ifFalse:"
@@ -396,7 +405,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
           ifFalse: [
             isReceiverFunction && (selector name == "do")
               ifTrue: [
-                IrCall funcId: null callee: receiverExpr args: {} isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
+                IrCall funcId: null callee: receiverExpr args: {} paramTypes: {} isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
               ]
               ifFalse: [
                 isCtor
@@ -405,12 +414,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                       ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {} typeRef: exprType]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall funcId: callId callee: null args: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
+                        IrCall funcId: callId callee: null args: {} paramTypes: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall funcId: callId callee: null args: {receiverExpr} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
+                    IrCall funcId: callId callee: null args: {receiverExpr} paramTypes: {methodReceiverParamTypeRef} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                   ]
               ]
           ]
@@ -452,7 +461,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             ifFalse: [
               callId = currentType toIrFunctionId: op
               currentTypeRef = currentType toIrTypeRefWithMutErrors: false errorsList: {}
-              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef
+              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef
             ]
 
           currentType <- opResultType
@@ -485,7 +494,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             isReceiverFunction
               ifTrue: [
                 argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
-                IrCall funcId: null callee: receiverExpr args: argsExprs isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
+                IrCall funcId: null callee: receiverExpr args: argsExprs paramTypes: functionParamTypes isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType
               ]
               ifFalse: [
                 argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
@@ -495,12 +504,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                       ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs typeRef: exprType]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall funcId: callId callee: null args: argsExprs isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
+                        IrCall funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
+                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) paramTypes: ({methodReceiverParamTypeRef} + methodArgParamTypes) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType
                   ]
               ]
           ]
@@ -585,7 +594,8 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   ]
 
   argsList = args map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
-  finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverTypeRef)} + argsList]
+  receiverArgTypeRef = receiverType toIrTypeRefWithMutErrors: requiresMutReceiver errorsList: {}
+  finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverArgTypeRef)} + argsList]
 
   // field aliases in scope
   receiverTypeId = receiverType toIrTypeId
@@ -603,7 +613,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     ]
   ]
 
-  bodyBlock = body toIrBlockWithPrefix: (prefixStmts toList) db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverTypeRef
+  bodyBlock = body toIrBlockWithPrefix: (prefixStmts toList) db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverArgTypeRef
 
   returnTypeRef = returnType toIrTypeRef
 

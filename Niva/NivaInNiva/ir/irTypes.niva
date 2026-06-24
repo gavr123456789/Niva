@@ -104,7 +104,7 @@ union IrExpr typeRef: IrTypeRef =
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
 | IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock?

@@ -304,7 +304,8 @@ TypeDeclVisitor
       // get real type for each arg
       argsT = msg args map: [ arg ->
         argType = arg astType toNivaTypefromDB: db inPkg: null // we cant know the concrete pkg here
-        TypeTField name: arg name typeT: argType
+        argTypeInfo = arg astType toTypeInfoFromDb: db inPkg: null
+        TypeTField name: arg name typeT: argType isMut: argTypeInfo isMut
       ]
 
 
@@ -389,7 +390,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
     st fields forEach: [
       fieldType = it astType toNivaTypefromDBWithKnown: db knownTypes: knownTypes
 
-      field = TypeTField name: it name typeT: fieldType
+      field = TypeTField name: it name typeT: fieldType isMut: (it astType toTypeInfoFromDb: db inPkg: null) isMut
       typeStub fields add: field
 
       // getter = NivaMethod
@@ -468,17 +469,18 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
 
     args forEachIndexed: [i, it ->
+      argTypeInfoFromAst = it astType toTypeInfoFromDb: db inPkg: null
       argType =
         | resolvedArgsFromDb
-        | null => it astType toNivaTypefromDB: db inPkg: null
+        | null => argTypeInfoFromAst t
         |=> [
           canUseDbArgs
             ifTrue: [resolvedArgsFromDb at: i, typeT]
-            ifFalse: [it astType toNivaTypefromDB: db inPkg: null]
+            ifFalse: [argTypeInfoFromAst t]
         ]
 
       errorsList = it astType toErrorsFromDb: db inPkg: null
-      c defineVar: it name withType: (TypeInfo t: argType isMut: false listOfErrors: errorsList)
+      c defineVar: it name withType: (TypeInfo t: argType isMut: argTypeInfoFromAst isMut listOfErrors: errorsList)
     ]
 
     receiverFields =
