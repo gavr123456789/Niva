@@ -57,48 +57,15 @@ constructor IO_Container new -> IO_Container = [
 ]
 
 compilerTry = [
-  path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
+  path = Compiler cliArgs
   NivaCompiler runArgs: path withIO: IO_Container new
 ]
 
 compilerTry2 = [
-  //path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
-  path = {"run" ".niva_go/testss.niva" "--backend" "go"} //"~/Documents/Fun/niva_demo/main.niva"
+  //path = {"run" ".niva_js/testss.niva"}
+  path = {"run" ".niva_go/testss.niva" "--backend" "go"}
   t1 = System currentTimeMillis
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: true
   diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
 ] do
-
-goErrorDomainHandledMatchCodegen = [
-  fileMain = """
-    errordomain MyError =
-    | Error1 text: String
-    | Error2 code: Int
-
-    Unit foo -> Int!{Error1 Error2} = [
-      (Error2 code: 404) throw
-      ^ 42
-    ]
-
-    Unit bar -> Int = [
-      default = | () foo
-                | Error1 => [0]
-                | Error2 => [1]
-                |=> [it]
-      ^ default
-    ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
-  go echo
-
-  go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
-  go contains: "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)", assertTrue
-  go contains: "switch __matchErr.(type) {", assertTrue
-  go contains: "case main_Error1:", assertTrue
-  go contains: "it := __matchErr.(main_Error1)", assertTrue
-  go contains: "it := __matchValue", assertTrue
-  Assert that: (go contains: "func main__core_Unit__bar(this struct{}) (int, error)") equals: false
-]

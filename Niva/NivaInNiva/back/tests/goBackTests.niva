@@ -12,6 +12,12 @@ Test goTaggedUnionShapes = [
     | this
     | Rectangle => width * height
     | Circle => radius * radius * 3
+
+    Unit area: Shape -> Int =
+    | area
+    | Rectangle => area width * area height
+    | Circle => area radius * area radius * 3
+
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"

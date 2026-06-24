@@ -7,15 +7,12 @@
 //content echo
 //x = #{1 2  3 4}
 
+type Person name: String
+mut Person changeName: String = [
+  name <- changeName
+]
 
-union Result(T) =
-| Ok t: T
-| Baad x: T
-
-type Box(T, G) x: T y: G
-
-x = Ok t: 42
-
-| x
-| Ok =>   [x t echo]
-| Baad => [x x echo]
+p::mut Person = Person name: "qwf"
+p echo
+p changeName: "Aboba"
+p echo
