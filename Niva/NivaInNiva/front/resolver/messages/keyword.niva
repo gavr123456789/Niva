@@ -102,7 +102,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             (shadowLetterToType isNotEmpty && fieldType isContainsUnresolvedGenerics)
               ifTrue: [fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db]
               ifFalse: [fieldType]
-          TypeTField name: (kwArg name name) typeT: resolvedFieldType
+          TypeTField name: (kwArg name name) typeT: resolvedFieldType isMut: false
         ]
 
         shadowMsg = NivaMethod

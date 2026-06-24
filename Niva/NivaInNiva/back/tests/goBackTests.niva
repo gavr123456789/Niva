@@ -57,6 +57,34 @@ Test goShadowCopyCodegen = [
   go contains: "main_Person{p.name, 25}", assertTrue
 ]
 
+Test goMutReceiverUsesPointer = [
+  fileMain = """
+    type Person
+      name: String
+
+    mut Person changeName: String = [
+      name <- changeName
+    ]
+
+    Int person: mut Person = [
+      person changeName: "Aboba2"
+    ]
+
+    p::mut Person = Person name: "qwf"
+    p changeName: "Aboba"
+    1 person: p
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "func main__Person__changeName(this *main_Person, changeName string)", assertTrue
+  go contains: "func main__core_Int__person(this int, person *main_Person)", assertTrue
+  go contains: "var p main_Person = main_Person{\"qwf\"}", assertTrue
+  go contains: "main__Person__changeName(&p, \"Aboba\")", assertTrue
+  go contains: "main__core_Int__person(1, &p)", assertTrue
+]
+
 Test goBindingsReadFile = [
   fileMain = """
     Int read: String -> String = [

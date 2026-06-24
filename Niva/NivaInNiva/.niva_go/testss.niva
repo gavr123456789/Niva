@@ -7,12 +7,22 @@
 //content echo
 //x = #{1 2  3 4}
 
+
+
 type Person name: String
 mut Person changeName: String = [
   name <- changeName
 ]
 
+Int person: mut Person = [
+    person changeName: "Aboba2"
+]
+
 p::mut Person = Person name: "qwf"
 p echo
+
 p changeName: "Aboba"
+p echo
+
+1 person: p
 p echo

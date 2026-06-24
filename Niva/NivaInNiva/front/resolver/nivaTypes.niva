@@ -1,9 +1,12 @@
-type TypeTField name: String typeT: NivaType
+type TypeTField
+  name: String
+  typeT: NivaType
+  isMut: Bool
 TypeTField toString -> String =
-  "$name: $typeT"
+  "$name: " + (isMut ifTrue: ["mut "] ifFalse: [""]) + typeT toString
 
 /// no name provided
-constructor TypeTField binary(t): NivaType = TypeTField name: "" typeT: t
+constructor TypeTField binary(t): NivaType = TypeTField name: "" typeT: t isMut: false
 
 union NivaType name: String pkgName: String =
 | ^Complex
@@ -92,6 +95,7 @@ extend NivaType [
       newFields = fields map: [
         TypeTField name: it name
                   typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
+                  isMut: it isMut
       ]
       newGenericArgs = genericArgs map: [it replaceGenericsFromTableDeep: letterToType db: db]
       newReturnType = returnType replaceGenericsFromTableDeep: letterToType db: db
@@ -341,6 +345,7 @@ extend NivaMethod [
     newArgs = args map: [
       TypeTField name: it name
                 typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
+                isMut: it isMut
     ]
 
     // instantiating the receiver does not change the method name:
@@ -539,16 +544,16 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   set = (SetT t: t)
   set2 = (SetT t: q)
 
-  intRangeFields = {(TypeTField name: "start" typeT: int)
-                    (TypeTField name: "endInclusive" typeT: int)}!
+  intRangeFields = {(TypeTField name: "start" typeT: int isMut: false)
+                    (TypeTField name: "endInclusive" typeT: int isMut: false)}!
   intRange = TypeT
     name: "IntRange"
     pkgName: "core"
     fields: intRangeFields
     genericArgs: {}!
 
-  charRangeFields = {(TypeTField name: "start" typeT: char)
-                     (TypeTField name: "endInclusive" typeT: char)}!
+  charRangeFields = {(TypeTField name: "start" typeT: char isMut: false)
+                     (TypeTField name: "endInclusive" typeT: char isMut: false)}!
   charRange = TypeT
     name: "CharRange"
     pkgName: "core"

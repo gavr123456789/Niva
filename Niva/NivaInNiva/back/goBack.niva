@@ -20,16 +20,19 @@ GoContext addImport(name): String -> Unit = [
 type GoScope
   locals: mut Set(String)
   fieldAliases: mut Set(String)
+  pointerLocals: mut Set(String)
 
-constructor GoScope new = GoScope locals: #()! fieldAliases: #()!
+constructor GoScope new = GoScope locals: #()! fieldAliases: #()! pointerLocals: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
   newAliases::mut Set(String) = #()!
+  newPointers::mut Set(String) = #()!
   newLocals addAll: locals
   newAliases addAll: fieldAliases
+  newPointers addAll: pointerLocals
 
-  ^ GoScope locals: newLocals fieldAliases: newAliases
+  ^ GoScope locals: newLocals fieldAliases: newAliases pointerLocals: newPointers
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -276,7 +279,7 @@ extend IrTypeRef [
     baseId = typeId goNormalizeTypeId
     ^ | kind
       | IrTypeRefKind.Function => [
-          argsStr = args joinWith: ", " transform: [it toGoType: ctx]
+          argsStr = args joinWith: ", " transform: [it toGoParamType: ctx]
           retTypeMaybe = returnType
           retStr = | retTypeMaybe
                   | null => ""
@@ -335,6 +338,19 @@ extend IrTypeRef [
         ]
         ifFalse: [base]
   ]
+
+  on isGoPointerParam -> Bool =
+    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLikeType not)
+
+
+  on toGoParamType(ctx): GoContext -> String =
+    .isGoPointerParam,
+      ifTrue: [ nullable ifTrue:  [.toGoType: ctx]
+                         ifFalse: ["*" + (.goBaseType: ctx)] ]
+      ifFalse: [.toGoType: ctx]
+
+  on needsGoAddressAtCall -> Bool =
+    .isGoPointerParam && (nullable not)
 
 ]
 
@@ -489,6 +505,18 @@ extend IrExpr [
     ]
     |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
 
+  on toGoArgExpr(ctx): GoContext scope: GoScope paramType: IrTypeRef -> String = [
+    exprStr = this toGoExpr: ctx scope: scope
+    paramType needsGoAddressAtCall ifFalse: [^ exprStr]
+
+    alreadyPointer =
+      | this
+      | IrVarRef => scope pointerLocals contains: name
+      | IrThisRef => scope pointerLocals contains: "this"
+      |=> false
+
+    ^ alreadyPointer ifTrue: [exprStr] ifFalse: ["&" + exprStr]
+  ]
 
   on toGoExpr(ctx): GoContext scope: GoScope -> String =
     | this
@@ -517,7 +545,10 @@ extend IrExpr [
     | IrCall => [
         bindExpr = this tryGoBindExpr: ctx scope: scope
         bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
-        argsStr = args map: [it toGoExpr: ctx scope: scope], goCallArgs
+        argsStr = args mapIndexed: [i, it ->
+          paramType = paramTypes at: i
+          it toGoArgExpr: ctx scope: scope paramType: paramType
+        ], goCallArgs
         funcIdLocal = funcId
         | funcIdLocal
         | null => [
@@ -547,7 +578,7 @@ extend IrExpr [
           ]
       ]
     | IrLambda => [
-        argsStr = args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoType: ctx)]
+        argsStr = args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoParamType: ctx)]
         retTypeMaybe = typeRef returnType
         retType = | retTypeMaybe
           | null => typeRef
@@ -1175,14 +1206,21 @@ constructor GoBackend [
   on emitFunction(fn): IrFunction ctx: GoContext sb: StringBuilder -> Unit = [
     name = ctx goFuncNameForFn: fn
     typeParams = fn generics goTypeParams
-    argsStr = fn args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoType: ctx)]
+    argsStr = fn args joinWith: ", " transform: [a ->
+      (a name toSafeGoIdent) + " " + (a typeRef toGoParamType: ctx)
+    ]
     retStr = fn returnType goReturnTypes: ctx
 
     sb appendLine: ("// funcId: " + fn id + " goName: " + name)
     sb appendLine: ("func " + name + typeParams + "(" + argsStr + ")" + retStr + " {")
 
     scope = GoScope new
-    fn args forEach: [scope locals add: it name]
+    fn args forEach: [
+      scope locals add: it name
+      (it typeRef isGoPointerParam) ifTrue: [
+        scope pointerLocals add: it name
+      ]
+    ]
     fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
 
     fn returnType isGoUnitType

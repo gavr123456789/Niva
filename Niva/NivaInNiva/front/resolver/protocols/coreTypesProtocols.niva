@@ -26,7 +26,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
   // foreach: (item) -> unit
-  itArg = TypeTField name: "it" typeT: itemType
+  itArg = TypeTField name: "it" typeT: itemType isMut: false
   foreachBlock = FuntionT
                   fields: { itArg }!
                   name: "forEach"
@@ -63,7 +63,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   // injectInto: initial operation: (acc, item) -> acc (List only)
   | collectionType
   | ListT => [
-      accArg = TypeTField name: "acc" typeT: t
+      accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
                       fields: { accArg itArg }!
                       name: "injectInto"
@@ -71,8 +71,8 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                       pkgName: "core"
                       returnType: t
 
-      injectArgs = {(TypeTField name: "inject" typeT: t)
-                    (TypeTField name: "into" typeT: injectBlock)}
+      injectArgs = {(TypeTField name: "inject" typeT: t isMut: false)
+                    (TypeTField name: "into" typeT: injectBlock isMut: false)}
       collP addMethod: (NivaMethod manyArgKw: injectArgs receiverType: collectionType returnT: t)
     ]
   |=> []
@@ -100,8 +100,8 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                     returnT: str)
 
   // joinWith: String transform: [T -> String]
-  joinArgs = {(TypeTField name: "joinWith"  typeT: str)
-              (TypeTField name: "transform" typeT: joinTransformBlock)}
+  joinArgs = {(TypeTField name: "joinWith"  typeT: str isMut: false)
+              (TypeTField name: "transform" typeT: joinTransformBlock isMut: false)}
   collP addMethod: (NivaMethod manyArgKw: joinArgs
                     receiverType: collectionType
                     returnT: str)
@@ -168,7 +168,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
   strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
 
-  itArg = TypeTField name: "it" typeT: char
+  itArg = TypeTField name: "it" typeT: char isMut: false
   foreachBlock = FuntionT
                   fields: { itArg }!
                   name: "forEach"
@@ -186,7 +186,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: str argT: filterBlock returnT: str)
 
   mapBlock = FuntionT
-             fields: { (TypeTField name: "it" typeT: char) }!
+             fields: { (TypeTField name: "it" typeT: char isMut: false) }!
              name: "map"
              genericArgs: {}!
              pkgName: "core"
@@ -197,8 +197,8 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
                         argT: mapBlock
                         returnT: str)
 
-  args = {(TypeTField name: "replace" typeT: str)
-          (TypeTField name: "with" typeT: str)}
+  args = {(TypeTField name: "replace" typeT: str isMut: false)
+          (TypeTField name: "with" typeT: str isMut: false)}
   strProto addMethod: (NivaMethod manyArgKw: args receiverType: str returnT: str )
 
   ^ strProto methods
@@ -237,8 +237,8 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgsFunc returnT: unit )
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit )
 
-  args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t)
-          (TypeTField name: "ifFalse" typeT: no-args-to-t)}
+  args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)
+          (TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)}
   boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
 
 
@@ -320,7 +320,7 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
   errProto addMethod: (NivaMethod
     name: "throwWithMsg"
     receiverType: errorType
-    args: {(TypeTField name: "throwWithMsg" typeT: str)}
+    args: {(TypeTField name: "throwWithMsg" typeT: str isMut: false)}
     returnType: nothing
     returnErrors: {errorType}
     forMut: false
@@ -333,7 +333,7 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
   errProto addMethod: (NivaMethod
     name: "throwWithMessage"
     receiverType: errorType
-    args: {(TypeTField name: "throwWithMessage" typeT: str)}
+    args: {(TypeTField name: "throwWithMessage" typeT: str isMut: false)}
     returnType: nothing
     returnErrors: {errorType}
     forMut: false
@@ -351,7 +351,7 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
 
   rangeProto = NivaProtocol name: "range"
 
-  itArg = TypeTField name: "it" typeT: itemType
+  itArg = TypeTField name: "it" typeT: itemType isMut: false
   foreachBlock = FuntionT
                   fields: { itArg }!
                   name: "forEach"
@@ -445,7 +445,7 @@ constructor NivaMethod binary(name): String receiverType: NivaType argT: NivaTyp
   NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
-  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 
 
@@ -463,7 +463,7 @@ constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT
   NivaMethod
     defaultConstructorWithName: name
     :receiverType
-    args: {(TypeTField name: name typeT: argT)}
+    args: {(TypeTField name: name typeT: argT isMut: false)}
     returnType: receiverType
     decl: null
     protocolName: "constructors"
@@ -473,7 +473,7 @@ constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT
   NivaMethod
     defaultConstructorWithName: name
     :receiverType
-    args: {(TypeTField name: name typeT: argT)}
+    args: {(TypeTField name: name typeT: argT isMut: false)}
     :returnType
     decl: null
     protocolName: "constructors"
@@ -483,7 +483,7 @@ constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: N
   NivaMethod
     defaultConstructorWithName: name1 + "__" + name2
     :receiverType
-    args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2)}
+    args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false)}
     :returnType
     decl: null
     protocolName: "constructors"
@@ -493,7 +493,7 @@ constructor NivaMethod threeArgCtorKw(name1): String name2: String name3: String
   NivaMethod
     defaultConstructorWithName: name1 + "__" + name2 + "__" + name3
     :receiverType
-    args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2), (TypeTField name: name3 typeT: argT3)}
+    args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false), (TypeTField name: name3 typeT: argT3 isMut: false)}
     :returnType
     decl: null
     protocolName: "constructors"

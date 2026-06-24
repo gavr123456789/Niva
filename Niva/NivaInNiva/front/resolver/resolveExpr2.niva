@@ -287,7 +287,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
         t = astType toNivaTypefromDB: db inPkg: null
         errorsList = astType toErrorsFromDb: db inPkg: null
         c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-        TypeTField name: name typeT: t
+        TypeTField name: name typeT: t isMut: false
       ]
     ]
     ifFalse: [
@@ -303,7 +303,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
               untypedArgs mapIndexed: [i, ident ->
                 expectedField = expectedFields at: i
                 c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
-                TypeTField name: ident name typeT: expectedField typeT
+                TypeTField name: ident name typeT: expectedField typeT isMut: expectedField isMut
               ]
             ]
         ]
@@ -707,7 +707,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           t = astType toNivaTypefromDB: db inPkg: null
           errorsList = astType toErrorsFromDb: db inPkg: null
           c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-          TypeTField name: name typeT: t
+          TypeTField name: name typeT: t isMut: false
         ]
       ]
       ifFalse: [
@@ -716,7 +716,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             untypedArgs map: [ident ->
               unresolvedT = UnresolvedGenericT name: ident name
               c defineVar: ident name withType: unresolvedT toTypeInfoDefault
-              TypeTField name: ident name typeT: unresolvedT
+              TypeTField name: ident name typeT: unresolvedT isMut: false
             ]
           ]
           ifFalse: [{}]
