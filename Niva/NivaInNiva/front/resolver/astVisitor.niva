@@ -118,7 +118,7 @@ TypeDeclVisitor
         noFieldsTypes at: rootDecl name put: rootStub
         pkgTotypeDecls2 add: (Tuple x: pkgName y: rootDecl)
 
-        branchNames::mut List::String = {}!
+        branchNames::mut List(String) = {}!
         it branches forEach: [branch ->
           branchNames add: branch name
           branchId = pkgName + "." + branch name

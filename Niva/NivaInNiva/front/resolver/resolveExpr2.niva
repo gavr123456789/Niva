@@ -1,28 +1,68 @@
 
 
+// Collect all identifier names from untyped expressions in a body
+// Conservative: collects ALL lowercase identifiers (before resolution)
+// Used to determine which VarDeclarationT are actually used
+Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
+  | this
+  | Identifier => [ name first isUpperCase ifFalse: [refs add: name] ]
+  | ExprInBrackets => value collectExprRefNames: refs
+  | VarDeclaration => value collectExprRefNames: refs
+  | Assign => value collectExprRefNames: refs
+  | DestructingAssign => value collectExprRefNames: refs
+  | ReturnStatement => value unpack: [it collectExprRefNames: refs]
+  | UnaryMsg => [ receiver collectExprRefNames: refs ]
+  | BinaryMsg => [
+    receiver collectExprRefNames: refs
+    args forEach: [it expr collectExprRefNames: refs]
+  ]
+  | KeywordMsg => [
+    receiver collectExprRefNames: refs
+    args forEach: [it expr collectExprRefNames: refs]
+  ]
+  | MessageSend => [ receiver collectExprRefNames: refs ]
+  | CodeBlock => body unTypedBody forEach: [it collectExprRefNames: refs]
+  | Match => [
+    subject collectExprRefNames: refs
+    branches forEach: [br ->
+      br condition collectExprRefNames: refs
+      br additionalConditions unTypedBody forEach: [it collectExprRefNames: refs]
+      br body unTypedBody forEach: [it collectExprRefNames: refs]
+    ]
+    elseBranch unpack: [it unTypedBody forEach: [it collectExprRefNames: refs]]
+  ]
+  | CollectionLiteral => elements unTypedBody forEach: [it collectExprRefNames: refs]
+  | LiteralExpr => []
+  | TypedExpr => exprAst collectExprRefNames: refs
+  |=> []
+]
+
 extend Body [
   on resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
     .resolveBody2: db withContext: upperContext expectedType: null
 
   /// used only for resolving body inside expressions, not for resolve body from message declarations
+  /// expectedType - if this expression is in place where certain type expected, like return type declared
   on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
     //StackTrace get log
     //Compiler getPlace log
 
     c = Context fromParent: upperContext
 
-    // [] nothing to resolve
+    // scan untyped body for referenced names (fill isUsed for VarDeclarationT)
+    unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
+
+    // '[]' body, nothing to resolve
     unTypedBody isEmpty ifTrue: [
       ^ TypedBody v: {} t: db dtc unit listOfErrors: {}
     ]
 
-    // stackOfVisited::mut Set::MessageDecl = #()
     lastIndex = unTypedBody count - 1
     listOfTypedExpr2 = unTypedBody mapIndexed: [ i, expr ->
       isLast = i == lastIndex
       expectedForExpr =
         | expectedType
-        | null => [null]
+        | null => null
         |=> [
           | expr
           | ReturnStatement => expectedType
@@ -70,7 +110,7 @@ extend Body [
 ]
 
 List(NivaType) normalizeErrorList -> List(NivaType) = [
-  seen::mut Set::String = #()!
+  seen::mut Set(String) = #()!
   result::mut List(NivaType) = {}!
 
   this forEach: [err ->
@@ -132,7 +172,7 @@ extend TyperDB [
       unionLeaves = this unionLeaves: subjectType
       // if else exists, it's a catch-all
       elseBranch == null ifTrue: [
-        checkedLeaves::mut Set::String = #()!
+        checkedLeaves::mut Set(String) = #()!
 
         addCheckedBranch = [expr::TypedExpr2 ->
           | expr
@@ -185,7 +225,7 @@ extend TyperDB [
   on checkErrorMatchExhaustiveness(subjectErrors): List(NivaType) branches: List(MatchBranchT) token: Token = [
     subjectErrors isEmpty ifTrue: [^ Unit]
 
-    leaves::mut Set::String = #()!
+    leaves::mut Set(String) = #()!
     subjectErrors forEach: [err ->
       | err
       | TypeT => [
@@ -203,7 +243,7 @@ extend TyperDB [
       |=> []
     ]
 
-    checked::mut Set::String = #()!
+    checked::mut Set(String) = #()!
     branches forEach: [branch ->
       branchType = branch condition typeInfo t
       | branchType
@@ -595,12 +635,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     varTypeInfo = declaredTypeInfo unpackOrValue: typedExpr typeInfo
     c defineVar: name withType: varTypeInfo
 
+    isVarUsed = c currentBlockRefNames contains: name
+
     VarDeclarationT
       :name
       value: typedExpr
       :astType
       :token
       :isMut
+      isUsed: isVarUsed
       typeInfo: db dtc unit toTypeInfoDefault
 
   ]

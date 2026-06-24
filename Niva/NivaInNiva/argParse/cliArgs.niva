@@ -10,7 +10,7 @@ constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help 
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
-constructor ArgParser args::List::String -> ArgsParsed = [
+constructor ArgParser args::List(String) -> ArgsParsed = [
   args contains: "--help", ifTrue: [
     help = """
       Usage:
@@ -31,7 +31,7 @@ constructor ArgParser args::List::String -> ArgsParsed = [
 
   mut verbose = false
   mut backend = CompilerBackend.Js
-  mut filteredArgs2::mut List::String = {}!
+  mut filteredArgs2::mut List(String) = {}!
   mut skipNext = false
   mut backendError = false
 

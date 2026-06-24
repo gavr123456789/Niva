@@ -3,7 +3,7 @@ Test parseType -> Unit = [
     type Person
       name: String
       age: Int
-      intList: List::Int
+      intList: List(Int)
       nullableInt: Int?
       lambdaType: [Int -> Int]
   """ trimIndent
