@@ -1,0 +1,232 @@
+
+
+
+TypedStatement toTSFromPkg(currentPkg): String db: TyperDB -> String =
+    | this
+    | TypeDeclT => [
+        // class Person {
+        //     constructor(name, age) {
+        //         this.name = name;
+        //         this.age = age;
+        //     }
+        // }
+        sb = StringBuilder new
+
+        sb append: "export class "
+        sb append: this name
+        sb append: " {\n"
+        sb append: "    constructor("
+
+        argsStr = this fields joinWith: "," transform: [it name]
+
+        sb append: argsStr
+        sb append: ") {\n"
+
+        // foreach arg
+        this fields forEach: [
+            fieldName = it name
+            sb append: "        this.$fieldName = $fieldName;\n"
+        ]
+
+
+        sb append: "    }\n"
+        sb append: "}"
+
+        // and probably function CLASS_new_C()
+        sb toString
+    ]
+    | EnumDeclT => [TO DO]
+    | UnionDeclT => [
+        sb = StringBuilder new
+
+        commonFields = this commonUnionFields
+        rootType = db findByTypeName: this name inPkg: null
+        parentUnion =
+          | rootType
+          | TypeT => db findUnionParent: rootType
+          |=> null
+
+        // root class
+        sb append: "export class "
+        sb append: this name
+        | parentUnion
+        | null => []
+        |=> [
+            sb append: " extends "
+            sb append: parentUnion name
+            ()
+        ]
+        sb append: " {\n"
+        sb append: "    constructor("
+
+        commonArgsStr = commonFields joinWith: "," transform: [it name]
+        sb append: commonArgsStr
+        sb append: ") {\n"
+
+        | parentUnion
+        | null => []
+        |=> [
+            sb append: "        super("
+            sb append: commonArgsStr
+            sb append: ");\n"
+            ()
+        ]
+
+        parentUnion == null ifTrue: [
+            commonFields forEach: [
+                commonFieldName = it name
+                sb append: "        this.$commonFieldName = $commonFieldName;\n"
+            ]
+        ]
+
+        sb append: "    }\n"
+        sb append: "}\n\n"
+
+        // branches
+        this branches forEach: [branch ->
+            branch isInclude ifTrue: [] ifFalse: [
+                branchFields = branch fields
+                commonArgsStr2 = commonFields joinWith: "," transform: [it name]
+                branchArgsStr = branchFields joinWith: "," transform: [it name]
+                allArgsStr =
+                  (commonArgsStr2 != "") && (branchArgsStr != "")
+                    ifTrue: [commonArgsStr2 + "," + branchArgsStr]
+                    ifFalse: [commonArgsStr2 + branchArgsStr]
+
+                sb append: "export class "
+                sb append: branch name
+                sb append: " extends "
+                sb append: this name
+                sb append: " {\n"
+                sb append: "    constructor("
+                sb append: allArgsStr
+                sb append: ") {\n"
+
+                superArgsStr = commonFields joinWith: ", " transform: [it name]
+                sb append: "        super("
+                sb append: superArgsStr
+                sb append: ");\n"
+
+                branchFields forEach: [
+                    branchFieldName = it name
+                    sb append: "        this.$branchFieldName = $branchFieldName;\n"
+                ]
+
+                sb append: "    }\n"
+                sb append: "}\n\n"
+                ()
+            ]
+        ]
+
+        sb toString
+    ]
+    | MessageDeclT => [
+
+        //export function Person__withAge(_this, withAge) {
+        //  //destruct this age, name
+        //  let age = _this.age
+        //  let name = _this.name
+        //  _this.age = withAge
+        //}
+
+        sb = StringBuilder new
+
+        // resolve receiver type to get mangled name
+        receiverType = receiver
+        receiverFields =
+            | receiverType
+            | Complex => [receiverType fields]
+            |=> {TypeTField}!
+
+        selectorFromArgs =
+            args isNotEmpty
+                ifTrue: [args joinWith: "__" transform: [it name]]
+                ifFalse: [""]
+        keywordPrefix = selectorFromArgs + "__"
+        isKeyword =
+            (args isNotEmpty) &&
+            ((name == selectorFromArgs) || ((name substringBefore: keywordPrefix) == ""))
+
+        maybeSuffix = name substringAfter: "__"
+        hasNonKeywordSuffix = maybeSuffix != name
+        baseNameNonKeyword = hasNonKeywordSuffix ifTrue: [name substringBefore: "__"] ifFalse: [name]
+
+        keywordSuffix =
+            isKeyword
+                ifTrue: [
+                    name == selectorFromArgs
+                        ifTrue: [""]
+                        ifFalse: [name substringAfter: keywordPrefix]
+                ]
+                ifFalse: [""]
+
+        suffix = isKeyword
+            ifTrue: [keywordSuffix]
+            ifFalse: [hasNonKeywordSuffix ifTrue: [maybeSuffix] ifFalse: [""]]
+
+        suffixStr = suffix != "" ifTrue: ["__" + suffix] ifFalse: [""]
+
+        baseName = isKeyword
+            ifTrue: [selectorFromArgs]
+            ifFalse: [baseNameNonKeyword]
+
+        finalBaseName = baseName operatorToString
+
+        methodName = receiverType name + "__" + finalBaseName + suffixStr
+
+        sb append: "export function "
+        sb append: methodName
+
+
+        argsStr =
+            isConstructor
+                ifTrue: [args joinWith: ", " transform: [it name]]
+                ifFalse: [
+                    "_this" +
+                        (args isNotEmpty ifTrue:  [", "]
+                                         ifFalse: [""]) +
+                        (args joinWith: ", " transform: [it name])
+                ]
+
+
+        sb append: "("
+        sb append: argsStr
+        sb append: ") {\n"
+
+        // add receiver destructing
+        //  let age = _this.age
+        //  let name = _this.name
+        isConstructor ifFalse: [
+            generateDestruct = [
+                // let fieldName = _this.fieldName
+                receiverFields forEach: [
+                   sb append: "    "
+                   sb append: "let "
+                   sb append: it name
+                   sb append: " = _this."
+                   sb append: it name
+                   sb append: "\n"
+                ]
+            ] do
+        ]
+
+        this body v forEach: [expr::TypedExpr2 ->
+            sb append: "    "
+            sb appendLine: (expr toTSFromPkg: currentPkg db: db)
+        ]
+
+        sb append: "}"
+        sb toString
+    ]
+    | ExtendDeclT => [
+      sb = StringBuilder new
+      sb appendLine: "// extend declaration"
+      this messages forEach: [
+        sb appendLine: (it toTSFromPkg: currentPkg :db)
+      ]
+      sb toString
+    ]
+    | TypedExpr2 => [
+        expr::TypedExpr2 = this
+        expr toTSExprFromPkg: currentPkg :db
+    ]
