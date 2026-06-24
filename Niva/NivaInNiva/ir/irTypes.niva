@@ -6,7 +6,7 @@ type IrImport
 
 enum IrTypeRefKind = Builtin | Custom | Function
 
-// IDEA: cacthe normilized type id here in additional field
+// IDEA: cache normilized type id here in additional field
 type IrTypeRef
   kind: IrTypeRefKind
   typeId: String
@@ -87,14 +87,14 @@ type IrLiteral
 
 type IrMatchCase
   condition: IrExpr
-  additionalConditions: List::IrExpr
+  additionalConditions: List(IrExpr)
   body: IrBlock
 
 union IrStmt =
-| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool bindingKind: IrBindingKind
+| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool bindingKind: IrBindingKind isUsed: Bool
 | IrSetLocal name: String value: IrExpr
 | IrSetField receiver: IrExpr field: String value: IrExpr
-| IrDestructure bindings: List::IrArg value: IrExpr
+| IrDestructure bindings: List(IrArg) value: IrExpr
 | IrExprStmt expr: IrExpr
 | IrReturn expr: IrExpr?
 | IrWhile cond: IrExpr body: IrExpr
@@ -104,33 +104,30 @@ union IrExpr typeRef: IrTypeRef =
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-// If IrCall isConstructor: true THEN ctor function call without receiver arg
-// If IrCall isBindCall: true THEN call to core_Bind.* (binds external modules)
-| IrCall funcId: String? callee: IrExpr? args: List::IrExpr isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
-| IrLambda args: List::IrArg body: IrBlock
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
+| IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
-| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List::IrMatchCase elseBranch: IrBlock?
-// IrNewExpr => "new Type(...)" (default ctor without decl / shadow copy)
-| IrNewExpr typeId: String args: List::IrExpr
-| IrCollectionLiteral kind: IrCollectionKind items: List::IrExpr
+| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock?
+| IrNewExpr typeId: String args: List(IrExpr)
+| IrCollectionLiteral kind: IrCollectionKind items: List(IrExpr)
 | IrOpBin op: String left: IrExpr right: IrExpr
 | IrTypeRefExpr ref: IrTypeRef
 
 type IrPackage
   name: String
-  imports: List::IrImport
-  types: List::IrTypeDef
-  unions: List::IrUnionDef
-  enums: List::IrEnumDef
-  functions: List::IrFunction
+  imports: List(IrImport)
+  types: List(IrTypeDef)
+  unions: List(IrUnionDef)
+  enums: List(IrEnumDef)
+  functions: List(IrFunction)
 
 type IrModule
   version: String
   pkg: String
-  packages: List::IrPackage
-  imports: List::IrImport
-  types: List::IrTypeDef
-  unions: List::IrUnionDef
-  enums: List::IrEnumDef
-  functions: List::IrFunction
+  packages: List(IrPackage)
+  imports: List(IrImport)
+  types: List(IrTypeDef)
+  unions: List(IrUnionDef)
+  enums: List(IrEnumDef)
+  functions: List(IrFunction)
   entry: IrBlock?

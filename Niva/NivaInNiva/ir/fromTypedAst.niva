@@ -181,6 +181,7 @@ TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
       value: (value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
       isMut: isMut
       bindingKind: IrBindingKind.Local
+      isUsed: isUsed
   ]
   | AssignT => [
     valExpr = value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
@@ -597,7 +598,8 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
         typeRef: field typeRef
         value: null
         isMut: false
-        bindingKind: IrBindingKind.FieldAlias)
+        bindingKind: IrBindingKind.FieldAlias
+        isUsed: true)
     ]
   ]
 
@@ -611,7 +613,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   genericTypes add: returnType t
 
   genericsSet::mut Set(String) = #()!
-  genericsList::mut List::String = {}!
+  genericsList::mut List(String) = {}!
   genericTypes forEach: [t ->
     t collectUnresolvedGenerics forEach: [g ->
       genericsSet contains: g name, ifFalse: [

@@ -110,7 +110,7 @@ Test parseString = [
 
 Test parseAstTypeList = [
   input = """
-    List::List::Int
+    List(List(Int))
   """ trimIndent
 
   tokens = Lexer get-tokens: input

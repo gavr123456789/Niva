@@ -64,7 +64,7 @@ extend mut Parser [
 
     savePosition = current
 
-    names::mut List::String = {}!
+    names::mut List(String) = {}!
     mut c = true
     [c] whileTrue: [
       nextTok = .peek

@@ -1,7 +1,7 @@
 
 type KeywordDeclParts
   args: List::NameAndAstType
-  nameParts: List::String
+  nameParts: List(String)
 
 type KeywordDeclArg
   arg: NameAndAstType
@@ -289,7 +289,7 @@ extend mut Parser [
 
   on parseKeywordDeclArgsFrom(firstTok): Token -> KeywordDeclParts? = [
     args::mut List::NameAndAstType = {}!
-    nameParts::mut List::String = {}!
+    nameParts::mut List(String) = {}!
 
     firstArg = .parseKeywordDeclArgFrom: firstTok
     firstArg == null ifTrue: [^ null]

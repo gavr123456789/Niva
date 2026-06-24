@@ -420,6 +420,59 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   ]
 ]
 
+// Collect all IrVarRef names from an IR block (for match alias usage check)
+IrBlock collectIrRefNames -> mut Set(String) = [
+  refs::mut Set(String) = #()!
+  stmts forEach: [it collectIrStmtRefs: refs]
+  result unpack: [it collectIrExprRefs: refs]
+  ^ refs
+]
+
+IrStmt collectIrStmtRefs(refs): mut Set(String) -> Unit = [
+  | this
+  | IrLet =>      [ value unpack: [it collectIrExprRefs: refs] ]
+  | IrSetLocal => [ value collectIrExprRefs: refs ]
+  | IrSetField => [ receiver collectIrExprRefs: refs
+                    value collectIrExprRefs: refs ]
+  | IrDestructure => [ value collectIrExprRefs: refs ]
+  | IrExprStmt =>    [ expr collectIrExprRefs: refs ]
+  | IrReturn =>      [ expr unpack: [it collectIrExprRefs: refs] ]
+  | IrWhile =>       [ cond collectIrExprRefs: refs
+                       body collectIrExprRefs: refs ]
+  |=> []
+]
+
+IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
+  | this
+  | IrVarRef => refs add: name
+  | IrLiteralExpr => []
+  | IrThisRef => []
+  | IrFieldGet => receiver collectIrExprRefs: refs
+  | IrCall => [
+    callee unpack: [it collectIrExprRefs: refs]
+    args forEach: [it collectIrExprRefs: refs]
+  ]
+  | IrLambda => body collectIrRefNames forEach: [refs add: it]
+  | IrBlockExpr => block collectIrRefNames forEach: [refs add: it]
+  | IrMatchExpr => [
+    subject collectIrExprRefs: refs
+    cases forEach: [c ->
+      c condition collectIrExprRefs: refs
+      c additionalConditions forEach: [it collectIrExprRefs: refs]
+      c body collectIrRefNames forEach: [refs add: it]
+    ]
+    elseBranch unpack: [it collectIrRefNames forEach: [refs add: it]]
+  ]
+  | IrNewExpr => args forEach: [it collectIrExprRefs: refs]
+  | IrCollectionLiteral => items forEach: [it collectIrExprRefs: refs]
+  | IrOpBin => [
+    left collectIrExprRefs: refs
+    right collectIrExprRefs: refs
+  ]
+  | IrTypeRefExpr => []
+  |=> []
+]
+
 extend IrExpr [
 
   on irStringLiteralValue -> String? = | this
@@ -802,9 +855,12 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
           |=> (condType toGoExpr: ctx scope: innerScope)
         sb appendIndent: 1 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
+        caseRefNames = c body collectIrRefNames
         emitAlias = [aliasName::String ->
           sb appendIndent: 2 line: (aliasName + " := " + subjectName + ".(" + typeStr + ")")
-          sb appendIndent: 2 line: ("_ = " + aliasName)
+          (caseRefNames contains: aliasName) ifFalse: [
+            sb appendIndent: 2 line: ("_ = " + aliasName)
+          ]
           caseScope locals add: aliasName
         ]
         subjectIsThis ifTrue: [
@@ -923,7 +979,9 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
                 sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
               ]
           ]
-          sb appendIndent: indent line: ("_ = " + goName)
+          isUsed ifFalse: [
+            sb appendIndent: indent line: ("_ = " + goName)
+          ]
         ]
     ]
   | IrSetLocal => [

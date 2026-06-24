@@ -25,7 +25,7 @@ union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^LiteralExprT
 | IdentifierT        name: String path: List(String)? isNameOfTheType: Bool
 | ExprInBracketsT    value: TypedExpr2
-| VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool
+| VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool isUsed: Bool
 | AssignT            name: String value: TypedExpr2 kind: AssignKind
 | DestructingAssignT names: List(String) value: TypedExpr2 // {name} = person
 
