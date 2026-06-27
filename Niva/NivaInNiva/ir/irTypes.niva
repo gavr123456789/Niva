@@ -55,6 +55,7 @@ type IrDestructureBinding
   name: String
   fieldName: String
   typeRef: IrTypeRef
+  isUsed: Bool
 
 type IrInstantiation
   receiverType: IrTypeRef

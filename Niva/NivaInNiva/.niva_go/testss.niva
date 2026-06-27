@@ -14,5 +14,3 @@ type Person
 
 alice = Person name: "Alice" age: 24
 {n = name a = age} = alice
-n echo
-a echo
