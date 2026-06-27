@@ -59,19 +59,32 @@ extend mut Parser [
   ]
 
   /// {a b} = expr
+  /// {local = field} = expr
   on tryParseDestructingAssign(tok): Token -> Expr? = [
     tok kind != TokenType.OpenBrace ifTrue: [^ null]
 
     savePosition = current
 
-    names::mut List(String) = {}!
+    bindings::mut List(DestructureBinding) = {}!
     mut c = true
     [c] whileTrue: [
       nextTok = .peek
       | nextTok kind
       | TokenType.Identifier
       | TokenType.NullableIdentifier => [
-        names add: (.step lexeme)
+        localName = .step lexeme
+        mut fieldName = localName
+        .match: TokenType.Assign, ifTrue: [
+            fieldTok = .step
+            | fieldTok kind
+            | TokenType.Identifier
+            | TokenType.NullableIdentifier => [fieldName <- fieldTok lexeme]
+            |=> [
+              .restoreFrom: savePosition
+              ^ null
+            ]
+        ]
+        bindings add: (DestructureBinding :localName :fieldName)
         .match: TokenType.Comma
         Unit
       ]
@@ -88,7 +101,7 @@ extend mut Parser [
       ^ null
     ]
 
-    names isEmpty ifTrue: [
+    bindings isEmpty ifTrue: [
       .restoreFrom: savePosition
       ^ null
     ]
@@ -99,7 +112,7 @@ extend mut Parser [
     ]
 
     value = .nextExpression: .step
-    ^ DestructingAssign names: names toList value: value token: tok
+    ^ DestructingAssign bindings: bindings toList value: value token: tok
   ]
 
   /// a^.b.c

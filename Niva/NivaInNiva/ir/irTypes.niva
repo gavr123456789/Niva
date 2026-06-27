@@ -51,6 +51,11 @@ type IrArg
   name: String
   typeRef: IrTypeRef
 
+type IrDestructureBinding
+  name: String
+  fieldName: String
+  typeRef: IrTypeRef
+
 type IrInstantiation
   receiverType: IrTypeRef
   argTypes: List(IrTypeRef)
@@ -94,7 +99,7 @@ union IrStmt =
 | IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool bindingKind: IrBindingKind isUsed: Bool
 | IrSetLocal name: String value: IrExpr
 | IrSetField receiver: IrExpr field: String value: IrExpr
-| IrDestructure bindings: List(IrArg) value: IrExpr
+| IrDestructure bindings: List(IrDestructureBinding) value: IrExpr
 | IrExprStmt expr: IrExpr
 | IrReturn expr: IrExpr?
 | IrWhile cond: IrExpr body: IrExpr

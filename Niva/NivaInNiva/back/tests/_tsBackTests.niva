@@ -114,6 +114,23 @@ Test tsDestructAssignCodegen = [
   js contains: "const {age, name} = alice", assertTrue
 ]
 
+Test tsDestructAssignAliasCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  fileToJs = TypeScript fullFromResolver: result
+  js = fileToJs at: "main", unpackOrPANIC
+
+  js contains: "const {name: n, age: a} = alice", assertTrue
+]
+
 Test tsSingleExprReturnCodegen = [
   fileMain = """
     type Square side: Int

@@ -26,6 +26,49 @@ Test varDeclarationExpr -> Unit = [
   statements = TestParse withInput: input expectedCount: 2
 ]
 
+Test destructuringAssignAliases -> Unit = [
+  input = """
+    {n = name a = age} = p
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  expr = statements first
+  | expr
+  | DestructingAssign => [
+    Assert that: expr bindings count equals: 2
+    first = expr bindings at: 0
+    second = expr bindings at: 1
+    Assert that: first localName equals: "n"
+    Assert that: first fieldName equals: "name"
+    Assert that: second localName equals: "a"
+    Assert that: second fieldName equals: "age"
+  ]
+  |=> [TO DO: "DestructingAssign expected"]
+]
+
+Test destructuringAssignAliasesInProgram -> Unit = [
+  input = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 3
+  expr = statements last
+  | expr
+  | DestructingAssign => [
+    Assert that: expr bindings count equals: 2
+    first = expr bindings at: 0
+    second = expr bindings at: 1
+    Assert that: first localName equals: "n"
+    Assert that: first fieldName equals: "name"
+    Assert that: second localName equals: "a"
+    Assert that: second fieldName equals: "age"
+  ]
+  |=> [TO DO: "DestructingAssign expected"]
+]
+
 Test mutVarDeclarationExpr -> Unit = [
   input = """
     mut x = 56
