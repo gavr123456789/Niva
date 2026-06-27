@@ -8,21 +8,11 @@
 //x = #{1 2  3 4}
 
 
+type Person
+  name: String
+  age: Int
 
-type Person name: String
-mut Person changeName: String = [
-  name <- changeName
-]
-
-Int person: mut Person = [
-    person changeName: "Aboba2"
-]
-
-p::mut Person = Person name: "qwf"
-p echo
-
-p changeName: "Aboba"
-p echo
-
-1 person: p
-p echo
+alice = Person name: "Alice" age: 24
+{n = name a = age} = alice
+n echo
+a echo

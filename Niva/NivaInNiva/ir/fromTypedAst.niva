@@ -199,13 +199,17 @@ TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
   | DestructingAssignT => [
     valueExpr = value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
     valueType = value typeInfo t
-    bindings = names map: [fieldName ->
+    irBindings = bindings map: [binding ->
+      fieldName = binding fieldName
       field = valueType findField: fieldName
       fieldType = field unpack: [it typeT] or: (Unknown new)
-      IrArg name: fieldName typeRef: (fieldType toIrTypeRefWithMutErrors: false errorsList: {})
+      IrDestructureBinding
+        name: binding localName
+        :fieldName
+        typeRef: (fieldType toIrTypeRefWithMutErrors: false errorsList: {})
     ]
     IrDestructure
-      bindings: bindings
+      bindings: irBindings
       value: valueExpr
   ]
   | ReturnStatementT => [

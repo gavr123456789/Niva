@@ -308,7 +308,11 @@ VarDeclarationT varDeclToTSFromPkg(currentPkg): String db: TyperDB -> String = [
 ]
 
 DestructingAssignT destructToTSFromPkg(currentPkg): String db: TyperDB -> String = [
-    fieldsStr = names joinWith: ", "
+    fieldsStr = bindings joinWith: ", " transform: [binding ->
+        binding localName == binding fieldName
+          ifTrue: [binding fieldName]
+          ifFalse: [binding fieldName + ": " + binding localName]
+    ]
     ^ "const {" + fieldsStr + "} = " + (value toTSFromPkg: currentPkg db: db)
 ]
 

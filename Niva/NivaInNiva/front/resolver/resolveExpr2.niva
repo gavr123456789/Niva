@@ -665,7 +665,14 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     typedValue = value toTypedExprFromDb2: db withContext: c
     valueType = typedValue typeInfo t
 
-    names forEach: [fieldName ->
+    typedBindings = bindings map: [binding ->
+      DestructureBindingT
+        localName: binding localName
+        fieldName: binding fieldName
+    ]
+
+    typedBindings forEach: [binding ->
+      fieldName = binding fieldName
       field = valueType findField: fieldName
       | field
       | null => [
@@ -675,12 +682,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         db addErrorMessage: (LazyError tok: token msg: errMsg)
       ]
       |=> [
-        c defineVar: fieldName withType: field typeT toTypeInfoDefault
+        c defineVar: binding localName withType: field typeT toTypeInfoDefault
       ]
     ]
 
     DestructingAssignT
-      :names
+      bindings: typedBindings
       value: typedValue
       :token
       typeInfo: db dtc unit toTypeInfoDefault

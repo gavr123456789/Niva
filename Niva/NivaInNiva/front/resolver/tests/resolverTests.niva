@@ -698,6 +698,26 @@ Test destructAssignDefinesVars = [
   Assert that: db listOfErrors count equals: 0
 ]
 
+Test destructAssignAliasesDefineVars = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    name = "Bob"
+    age = 1
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+    n echo
+    a echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
 
 Test constructorCall = [
   fileMain = """

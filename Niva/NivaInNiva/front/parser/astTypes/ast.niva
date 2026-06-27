@@ -98,6 +98,10 @@ type MatchBranch
   body: Body
 
 
+type DestructureBinding
+  localName: String
+  fieldName: String
+
 
 // Expressions
 union Expr token: Token =
@@ -106,7 +110,7 @@ union Expr token: Token =
   | ExprInBrackets value: Expr
   | VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
   | Assign            name: String value: Expr
-  | DestructingAssign names: List(String) value: Expr // {name} = person
+  | DestructingAssign bindings: List(DestructureBinding) value: Expr // {name} = person, {local = field} = person
 
   | ^CollectionLiteral
   | ^MessageSend
