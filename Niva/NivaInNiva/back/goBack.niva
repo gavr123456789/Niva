@@ -1033,6 +1033,9 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
         goName = b name toSafeGoIdent
         scope locals add: b name
         sb appendIndent: indent line: ("var " + goName + " " + (b typeRef toGoType: ctx) + " = " + tmpName + "." + (b fieldName toSafeGoIdent))
+        b isUsed ifFalse: [
+          sb appendIndent: indent line: ("_ = " + goName)
+        ]
       ]
   ]
   | IrExprStmt => [

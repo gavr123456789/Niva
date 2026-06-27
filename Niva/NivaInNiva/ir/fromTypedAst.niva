@@ -207,6 +207,7 @@ TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
         name: binding localName
         :fieldName
         typeRef: (fieldType toIrTypeRefWithMutErrors: false errorsList: {})
+        isUsed: binding isUsed
     ]
     IrDestructure
       bindings: irBindings

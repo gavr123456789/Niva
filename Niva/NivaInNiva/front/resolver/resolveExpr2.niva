@@ -669,6 +669,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       DestructureBindingT
         localName: binding localName
         fieldName: binding fieldName
+        isUsed: (c currentBlockRefNames contains: binding localName)
     ]
 
     typedBindings forEach: [binding ->

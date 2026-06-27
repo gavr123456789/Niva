@@ -326,6 +326,23 @@ Test goDestructureAliasCodegen = [
   go contains: "var a int = __destructTmp.age", assertTrue
 ]
 
+Test goDestructureAliasUnusedCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromResolver: result
+
+  go contains: "_ = n", assertTrue
+  go contains: "_ = a", assertTrue
+]
+
 Test goNestedMatchCodegen = [
   fileMain = """
     x = 1

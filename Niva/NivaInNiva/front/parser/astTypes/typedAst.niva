@@ -24,6 +24,7 @@ enum AssignKind = TO_THIS_FIELD | TO_LOCAL_MUT
 type DestructureBindingT
   localName: String
   fieldName: String
+  isUsed: Bool
 
 union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^LiteralExprT
