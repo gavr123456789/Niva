@@ -21,7 +21,7 @@ Test goTaggedUnionShapes = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Point struct {", assertTrue
   go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
@@ -52,7 +52,7 @@ Test goShadowCopyCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "main_Person{p.name, 25}", assertTrue
 ]
@@ -76,7 +76,7 @@ Test goMutReceiverUsesPointer = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "func main__Person__changeName(this *main_Person, changeName string)", assertTrue
   go contains: "func main__core_Int__person(this int, person *main_Person)", assertTrue
@@ -96,7 +96,7 @@ Test goBindingsReadFile = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
   go contains: "import (", assertTrue
   go contains: "\"niva_go/core\"", assertTrue
   go contains: "\"os\"", assertTrue
@@ -111,7 +111,7 @@ Test goCoreAnyMethodOwnerCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "core.Any__echo(1)", assertTrue
   Assert that: (go contains: "core.Int__echo(1)") equals: false
@@ -124,7 +124,7 @@ Test goEntryLastExprDoesNotReturn = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "_ = (1 + 2)", assertTrue
   go contains: "_ = (3 + 4)", assertTrue
@@ -141,7 +141,7 @@ Test goGenericTypeParams = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Box[T any] struct {", assertTrue
   go contains: "value T", assertTrue
@@ -156,7 +156,7 @@ Test goExplicitGenericTypeParams = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Box[T any, G any] struct {", assertTrue
   go contains: "x T", assertTrue
@@ -172,7 +172,7 @@ Test goGenericUnionBranchTypeParams = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Result interface { ismain_Result() }", assertTrue
   go contains: "type main_Ok[T any] struct {", assertTrue
@@ -193,7 +193,7 @@ Test goExplicitGenericUnionBranchTypeParams = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Result[T any] interface { ismain_Result() }", assertTrue
   go contains: "type main_Ok[T any] struct {", assertTrue
@@ -215,7 +215,7 @@ Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "var __matchSubject any = x", assertTrue
   go contains: "case main_Ok[int]:", assertTrue
@@ -238,7 +238,7 @@ Test goUnitMatchBranchResultIsEmitted = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "case main_Ok[int]:", assertTrue
   go contains: "core.Any__echo(1)", assertTrue
@@ -252,7 +252,7 @@ Test goUnitMatchBranchResultIsEmitted = [
 //  """
 //
 //  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-//  go = GoBackend fullFromResolver: result
+//  go = GoBackend fullFromIrModule: (result toIrModule)
 //
 //  go contains: "type main_Color int", assertTrue
 //  go contains: "main_Color_Red main_Color = iota", assertTrue
@@ -271,7 +271,7 @@ Test goNullableTypeCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "maybeAge *int", assertTrue
   go contains: "maybePerson *main_Person", assertTrue
@@ -284,7 +284,7 @@ Test goWhileTrueCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "for {", assertTrue
   go contains: "if !(", assertTrue
@@ -303,7 +303,7 @@ Test goDestructureCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "var age int = __destructTmp.age", assertTrue
   go contains: "var name string = __destructTmp.name", assertTrue
@@ -320,7 +320,7 @@ Test goDestructureAliasCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "var n string = __destructTmp.name", assertTrue
   go contains: "var a int = __destructTmp.age", assertTrue
@@ -337,7 +337,7 @@ Test goDestructureAliasUnusedCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "_ = n", assertTrue
   go contains: "_ = a", assertTrue
@@ -355,7 +355,7 @@ Test goNestedMatchCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "__matchSubject :=", assertTrue
   go contains: "return func()", assertTrue
@@ -375,7 +375,7 @@ Test goMatchVariableSubjectNarrowsAlias = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "case main_Rectangle:", assertTrue
   go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
@@ -391,7 +391,7 @@ Test goLambdaArgCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "func(item int)", assertTrue
 ]
@@ -402,7 +402,7 @@ Test goImplicitLambdaArgCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "core.List__map([]int{1, 2, 3}, func(it int) int {", assertTrue
   go contains: "return (it + 1)", assertTrue
@@ -423,7 +423,7 @@ Test goErrorDomainThrowCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_MyError interface { error; ismain_MyError() }", assertTrue
   go contains: "func (main_Error1) Error() string { return \"Error1\" }", assertTrue
@@ -453,7 +453,7 @@ Test goErrorDomainHandledMatchCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
   go contains: "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)", assertTrue
@@ -484,7 +484,7 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "case error:", assertTrue
   go contains: "it := __matchErr.(error)", assertTrue
@@ -499,7 +499,7 @@ Test goBindPlaceholder10 = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromResolver: result
+  go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "return j + a", assertTrue
 ]
