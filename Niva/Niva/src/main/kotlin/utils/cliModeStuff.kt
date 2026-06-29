@@ -22,6 +22,7 @@ enum class MainArgument {
     TEST_MILL,
 
     SINGLE_FILE_PATH,
+    FORMAT,
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
@@ -92,6 +93,7 @@ class ArgsManager(val args: MutableList<String>) {
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
                 "graphviz" -> MainArgument.GRAPHVIZ
+                "format" -> MainArgument.FORMAT
                 "new" -> MainArgument.NEW
                 else -> {
                     if (!File(firstArg).exists()) {
@@ -129,6 +131,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
 
     val pathToNivaMainFile: String = when (mainArg) {
         MainArgument.SINGLE_FILE_PATH,
+        MainArgument.FORMAT,
         MainArgument.LSP,
         MainArgument.RUN,
         MainArgument.INFO_ONLY,
@@ -398,6 +401,7 @@ Usage:
     ${WHITE}run$RESET      — compile and run project from "main.niva" file
     ${WHITE}FILE$RESET     — compile and run single file
     ${WHITE}run FILE$RESET — compile and run project from FILE entry point
+    ${WHITE}format FILE$RESET — format FILE in place
     ${WHITE}new$RESET      — create new project in ./nivaProject
 
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)
