@@ -69,7 +69,8 @@ constructor NivaCompiler [
 
         generateGoFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realGoPath toPath)
-            goContent = GoBackend fullFromResolver: res
+            irModule = res toIrModule
+            goContent = GoBackend fullFromIrModule: irModule
             destanation = realGoPath + "/main.go"
             io writeFile file: destanation content: goContent
         ]

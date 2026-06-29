@@ -1140,8 +1140,6 @@ List(String) goCallArgs -> String = [
 ]
 
 constructor GoBackend [
-  on fullFromResolver(rh): ResolverHelper -> String = GoBackend fullFromIrModule: (rh toIrModule)
-
   on emitTypeDef(def): IrTypeDef ctx: GoContext sb: StringBuilder -> Unit = [
     name = ctx goTypeNameFor: def id
     typeParams = def typeParams goTypeParams
