@@ -5,6 +5,7 @@ package main
 
 import java.io.File
 import kotlin.system.exitProcess
+import main.formatter.formatNivaFile
 import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -22,6 +23,8 @@ fun main(args: Array<String>) {
     run(args)
 }
 
+
+
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
@@ -32,6 +35,11 @@ fun run(args2: Array<String>) {
 
     val am = ArgsManager(args)
     val mainArg = am.mainArg()
+
+    if (mainArg == MainArgument.FORMAT) {
+        format(args)
+        return
+    }
 
     if (mainArg == MainArgument.NEW) {
         createNewProject()
@@ -117,6 +125,22 @@ fun run(args2: Array<String>) {
     }
 
     am.time(System.currentTimeMillis() - secondTime, true)
+}
+
+fun format(args: List<String>) {
+    val path = args.getOrNull(1)
+    if (path == null) {
+        System.err.println("Usage: niva format FILE")
+        exitProcess(1)
+    }
+
+    val file = File(path)
+    if (!file.exists() || !file.isFile) {
+        System.err.println("File $path doesn't exist")
+        exitProcess(1)
+    }
+
+    formatNivaFile(file)
 }
 
 enum class Option {
