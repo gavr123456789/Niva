@@ -1,14 +1,44 @@
 type GoBackend
 
+type GoSymbolTable
+  typeNames: Map(String, String)
+  funcNames: Map(String, String)
+  packageNames: Map(String, String)
+  fileNames: Map(String, String)
+
+type GoImportPlan
+  importsByFile: Map(String, List(String))
+
+type GoFragment
+  pkgId: String
+  fileKey: String
+  orderKey: String
+  imports: List(String)
+  code: String
+
+type GoFragmentFrame
+  ctx: GoContext
+  sb: StringBuilder
+
+type GoFile
+  path: String
+  packageName: String
+  imports: List(String)
+  body: String
+
+type GoIrError
+  message: String
+
 type GoContext
-  typeNames: mut Map(String, String)
-  funcNames: mut Map(String, String)
-  usedTypeNames: mut Set(String)
-  usedFuncNames: mut Set(String)
+  symbols: GoSymbolTable
   imports: mut List(String)
   importSet: mut Set(String)
 
-constructor GoContext new = GoContext typeNames: #{}! funcNames: #{}! usedTypeNames: #()! usedFuncNames: #()! imports: {}! importSet: #()!
+constructor GoContext forSymbols(symbols): GoSymbolTable -> GoContext = GoContext symbols: symbols imports: {}! importSet: #()!
+
+GoContext seedImports(imports): List(String) -> Unit = [
+  imports forEach: [this addImport: it]
+]
 
 GoContext addImport(name): String -> Unit = [
   (importSet contains: name) ifFalse: [
@@ -19,17 +49,19 @@ GoContext addImport(name): String -> Unit = [
 
 type GoScope
   locals: mut Set(String)
-  fieldAliases: mut Set(String)
+  fieldAliases: mut Map(String, IrFieldAlias)
   pointerLocals: mut Set(String)
 
-constructor GoScope new = GoScope locals: #()! fieldAliases: #()! pointerLocals: #()!
+constructor GoScope new = GoScope locals: #()! fieldAliases: #{}! pointerLocals: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
-  newAliases::mut Set(String) = #()!
+  newAliases::mut Map(String, IrFieldAlias) = #{}!
   newPointers::mut Set(String) = #()!
   newLocals addAll: locals
-  newAliases addAll: fieldAliases
+  fieldAliases forEach: [aliasName, alias ->
+    newAliases at: aliasName put: alias
+  ]
   newPointers addAll: pointerLocals
 
   ^ GoScope locals: newLocals fieldAliases: newAliases pointerLocals: newPointers
@@ -138,6 +170,18 @@ extend String [
         ifFalse: [this]
   ]
 
+  on hasPrefix(prefix): String -> Bool = [
+    prefixLen = prefix count
+    ^ (this count >= prefixLen) && ((this slice: 0..<prefixLen) == prefix)
+  ]
+
+  on addToGoImports(imports): mut List(String) seen: mut Set(String) -> Unit = [
+    (seen contains: this) ifFalse: [
+      seen add: this
+      imports add: this
+    ]
+  ]
+
 ]
 
 IrTypeRef coreFuncNameFromCall(name): String -> String = [
@@ -158,14 +202,9 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
 
 GoContext goTypeNameFor(typeId): String -> String = [
   baseId = typeId goNormalizeTypeId
-  existing = typeNames at: baseId
+  existing = symbols typeNames at: baseId
   ^ | existing
-    | null => [
-        raw = baseId toSafeGoIdent
-        name = raw uniqueName: usedTypeNames
-        typeNames at: baseId put: name
-        ^ name
-    ]
+    | null => [TO DO: "Go typeId not registered in symbol table: " + baseId]
     |=> existing
 ]
 
@@ -190,24 +229,26 @@ IrFunction goFuncNameFromIr -> String = [
 
 extend GoContext [
   on goFuncNameForFn(fn): IrFunction -> String = [
-    existing = funcNames at: fn id
-    ^ | existing
-      | null => [
-          raw = fn goFuncNameFromIr
-          name = raw uniqueName: usedFuncNames
-          funcNames at: fn id put: name
-          ^ name
-        ]
-      |=> existing
+    ^ this goFuncNameFor: fn id
   ]
 
   on goFuncNameFor(funcId): String -> String = [
-    existing = funcNames at: funcId
+    existing = symbols funcNames at: funcId
     ^ | existing
       | null => [TO DO: "Go funcId not registered: " + funcId]
       |=> existing
   ]
 
+]
+
+IrUnionDef goBranchTypeIds -> List(String) = [
+  ids::mut List(String) = {}!
+  branches forEach: [br ->
+    br isInclude ifFalse: [
+      ids add: (pkgId + "_" + br name)
+    ]
+  ]
+  ^ ids toList
 ]
 
 Int goIndent -> String = [
@@ -223,6 +264,11 @@ Int goIndent -> String = [
 StringBuilder appendIndent(level): Int line: String -> Unit = [
   this append: (level goIndent)
   this appendLine: line
+]
+
+GoImportPlan importsForFile(fileKey): String -> List(String) = [
+  imports = importsByFile at: fileKey
+  ^ imports unpack: [it] or: {}
 ]
 
 extend IrTypeRef [
@@ -316,6 +362,7 @@ extend IrTypeRef [
           |=> ctx goTypeNameFor: baseId
         ]
       | IrTypeRefKind.Custom => [
+          baseId isGeneric ifTrue: [^ baseId toSafeGoIdent]
           name = ctx goTypeNameFor: baseId
           argsStr = args isNotEmpty
             ifTrue:  ["[" + (args joinWith: ", " transform: [it toGoType: ctx]) + "]"]
@@ -489,6 +536,193 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
   |=> []
 ]
 
+IrTypeRef validateGoTypeRefs(knownTypeIds): Set(String) goErrors: mut List(GoIrError) -> Unit = [
+  baseId = typeId goNormalizeTypeId
+  shouldCheck =
+    (kind == IrTypeRefKind.Custom) &&
+    (baseId isGeneric not) &&
+    (baseId hasPrefix: "core_", not)
+
+  shouldCheck && (knownTypeIds contains: baseId, not) ifTrue: [
+    goErrors add: (GoIrError message: ("unknown Go IR type id: " + baseId))
+  ]
+
+  args forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+  returnType unpack: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+  errors forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+]
+
+IrBlock validateGoIrBlock(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
+  resultType validateGoTypeRefs: knownTypeIds goErrors: goErrors
+  stmts forEach: [it validateGoIrStmt: knownFuncIds :knownTypeIds :goErrors]
+  result unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+]
+
+IrStmt validateGoIrStmt(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
+  | this
+  | IrLet => [
+      typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors
+      value unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+    ]
+  | IrSetLocal => [value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrSetField => [
+      receiver validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+    ]
+  | IrDestructure => [
+      bindings forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+      value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+    ]
+  | IrExprStmt => [expr validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrReturn => [expr unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]]
+  | IrWhile => [
+      cond validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      body validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+    ]
+  |=> []
+]
+
+IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
+  typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors
+  | this
+  | IrVarRef => []
+  | IrLiteralExpr => []
+  | IrThisRef => []
+  | IrFieldGet => [receiver validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrCall => [
+      fid = funcId
+      | fid
+      | null => [
+          callee == null ifTrue: [
+            goErrors add: (GoIrError message: "IrCall without funcId must have callee")
+          ]
+        ]
+      |=> [
+          isCore = declPkg unpack: [it == "core"] or: false
+          (isCore not) && (knownFuncIds contains: fid, not) ifTrue: [
+            goErrors add: (GoIrError message: ("unknown Go IR func id: " + fid))
+          ]
+        ]
+      callee unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+      args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+      paramTypes forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+      receiverType unpack: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+    ]
+  | IrLambda => [body validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
+  | IrBlockExpr => [block validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
+  | IrMatchExpr => [
+      subject validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      cases forEach: [c ->
+        c condition validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+        c additionalConditions forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+        c body validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors
+      ]
+      elseBranch unpack: [it validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
+    ]
+  | IrNewExpr => [
+      baseId = typeId goNormalizeTypeId
+      (baseId isGeneric not) && ((baseId hasPrefix: "core_") not) && (knownTypeIds contains: baseId, not) ifTrue: [
+        goErrors add: (GoIrError message: ("unknown Go IR constructor type id: " + baseId))
+      ]
+      args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+    ]
+  | IrCollectionLiteral => [items forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]]
+  | IrOpBin => [
+      left validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      right validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+    ]
+  | IrTypeRefExpr => [ref validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+  |=> []
+]
+
+IrCall collectGoBindImports(imports): mut List(String) seen: mut Set(String) -> Unit = [
+  r = receiverType
+  isBind = r unpack: [it typeId == "core_Bind"] or: false
+  isBind ifFalse: [^ Unit]
+
+  msgName unpack: [msg ->
+    | msg
+    | "addImport" => [
+        importExpr = args first
+        importName = importExpr irStringLiteralValue
+        importName unpack: [it addToGoImports: imports :seen]
+      ]
+    | "addImport__backend" => [
+        importExpr = args first
+        backendExpr = args at: 1
+        isGo = backendExpr irStringLiteralValue unpack: [it == "go"] or: false
+        isGo ifTrue: [
+          importName = importExpr irStringLiteralValue
+          importName unpack: [it addToGoImports: imports :seen]
+        ]
+      ]
+    |=> []
+  ]
+]
+
+IrBlock collectGoImportsInto(imports): mut List(String) seen: mut Set(String) -> Unit = [
+  stmts forEach: [it collectGoImportsInto: imports :seen]
+  result unpack: [it collectGoImportsInto: imports :seen]
+]
+
+IrStmt collectGoImportsInto(imports): mut List(String) seen: mut Set(String) -> Unit = [
+  | this
+  | IrLet => [value unpack: [it collectGoImportsInto: imports :seen]]
+  | IrSetLocal => [value collectGoImportsInto: imports :seen]
+  | IrSetField => [
+      receiver collectGoImportsInto: imports :seen
+      value collectGoImportsInto: imports :seen
+    ]
+  | IrDestructure => [value collectGoImportsInto: imports :seen]
+  | IrExprStmt => [expr collectGoImportsInto: imports :seen]
+  | IrReturn => [expr unpack: [it collectGoImportsInto: imports :seen]]
+  | IrWhile => [
+      cond collectGoImportsInto: imports :seen
+      body collectGoImportsInto: imports :seen
+    ]
+  |=> []
+]
+
+IrExpr collectGoImportsInto(imports): mut List(String) seen: mut Set(String) -> Unit = [
+  | this
+  | IrLiteralExpr => [
+      literal kind == IrLiteralKind.Unit ifTrue: [
+        "niva_go/core" addToGoImports: imports :seen
+      ]
+    ]
+  | IrVarRef => []
+  | IrThisRef => []
+  | IrFieldGet => [receiver collectGoImportsInto: imports :seen]
+  | IrCall => [
+      isCore = declPkg unpack: [it == "core"] or: false
+      isCore ifTrue: ["niva_go/core" addToGoImports: imports :seen]
+      isThrow = (msgName unpack: [it == "throw"] or: false) && isCore
+      isThrow ifTrue: ["fmt" addToGoImports: imports :seen]
+      .collectGoBindImports: imports :seen
+      callee unpack: [it collectGoImportsInto: imports :seen]
+      args forEach: [it collectGoImportsInto: imports :seen]
+    ]
+  | IrLambda => [body collectGoImportsInto: imports :seen]
+  | IrBlockExpr => [block collectGoImportsInto: imports :seen]
+  | IrMatchExpr => [
+      subject collectGoImportsInto: imports :seen
+      cases forEach: [c ->
+        c condition collectGoImportsInto: imports :seen
+        c additionalConditions forEach: [it collectGoImportsInto: imports :seen]
+        c body collectGoImportsInto: imports :seen
+      ]
+      elseBranch unpack: [it collectGoImportsInto: imports :seen]
+    ]
+  | IrNewExpr => [args forEach: [it collectGoImportsInto: imports :seen]]
+  | IrCollectionLiteral => [items forEach: [it collectGoImportsInto: imports :seen]]
+  | IrOpBin => [
+      left collectGoImportsInto: imports :seen
+      right collectGoImportsInto: imports :seen
+    ]
+  | IrTypeRefExpr => []
+  |=> []
+]
+
 extend IrExpr [
 
   on irStringLiteralValue -> String? = | this
@@ -526,9 +760,10 @@ extend IrExpr [
         scope locals contains: name,
           ifTrue: [name toSafeGoIdent]
           ifFalse: [
-            scope fieldAliases contains: name,
-              ifTrue: ["this." + (name toSafeGoIdent)]
-              ifFalse: [name toSafeGoIdent]
+            alias = scope fieldAliases at: name
+            alias unpack: [
+              (it receiverName toSafeGoIdent) + "." + (it fieldName toSafeGoIdent)
+            ] or: (name toSafeGoIdent)
           ]
       ]
     | IrThisRef => "this"
@@ -985,35 +1220,27 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
 IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit =
   | this
   | IrLet => [
-      | bindingKind
-      | IrBindingKind.FieldAlias => [
-          scope fieldAliases add: name
-          // no emitted code, references are rewritten to this.field
-          ()
-        ]
+      goName = name toSafeGoIdent
+      scope locals add: name
+      valueLocal = value
+      typeStr = typeRef toGoType: ctx
+      | valueLocal
+      | null => [sb appendIndent: indent line: ("var " + goName + " " + typeStr)]
       |=> [
-          goName = name toSafeGoIdent
-          scope locals add: name
-          valueLocal = value
-          typeStr = typeRef toGoType: ctx
-          | valueLocal
-          | null => [sb appendIndent: indent line: ("var " + goName + " " + typeStr)]
-          |=> [
-            valueExpr = valueLocal
-            valueExpr typeRef hasGoErrors
-              ifTrue: [
-                valueExpr emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
-                Unit
-              ]
-              ifFalse: [
-                valueStr = valueExpr toGoExpr: ctx scope: scope
-                sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
-              ]
+        valueExpr = valueLocal
+        valueExpr typeRef hasGoErrors
+          ifTrue: [
+            valueExpr emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
+            Unit
           ]
-          isUsed ifFalse: [
-            sb appendIndent: indent line: ("_ = " + goName)
+          ifFalse: [
+            valueStr = valueExpr toGoExpr: ctx scope: scope
+            sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
           ]
-        ]
+      ]
+      isUsed ifFalse: [
+        sb appendIndent: indent line: ("_ = " + goName)
+      ]
     ]
   | IrSetLocal => [
       goName = name toSafeGoIdent
@@ -1120,15 +1347,15 @@ IrTypeRef collectGoTypeParamsInto(names): mut List(String) seen: mut Set(String)
       names add: baseId
     ]
   ]
-  args forEach: [it collectGoTypeParamsInto: names seen: seen]
-  returnType unpack: [it collectGoTypeParamsInto: names seen: seen]
-  errors forEach: [it collectGoTypeParamsInto: names seen: seen]
+  args forEach: [it collectGoTypeParamsInto: names :seen]
+  returnType unpack: [it collectGoTypeParamsInto: names :seen]
+  errors forEach: [it collectGoTypeParamsInto: names :seen]
 ]
 
 List(IrField) goTypeParamsFromFields -> List(String) = [
   names::mut List(String) = {}!
   seen::mut Set(String) = #()!
-  this forEach: [field -> field typeRef collectGoTypeParamsInto: names seen: seen]
+  this forEach: [field -> field typeRef collectGoTypeParamsInto: names :seen]
   ^ names toList
 ]
 
@@ -1222,6 +1449,9 @@ constructor GoBackend [
         scope pointerLocals add: it name
       ]
     ]
+    fn receiverFieldAliases forEach: [
+      scope fieldAliases at: it localName put: it
+    ]
     fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
 
     fn returnType isGoUnitType
@@ -1265,33 +1495,219 @@ constructor GoBackend [
     sb appendLine: ""
   ]
 
-  on fullFromIrModule(ir): IrModule -> String = [
-    ctx = GoContext new
+  // Phase 2: build the deterministic symbol table before any code is printed.
+  on planGoSymbols(ir): IrModule -> GoSymbolTable = [
+    typeNames::mut Map(String, String) = #{}!
+    funcNames::mut Map(String, String) = #{}!
+    packageNames::mut Map(String, String) = #{}!
+    fileNames::mut Map(String, String) = #{}!
+    usedTypeNames::mut Set(String) = #()!
+    usedFuncNames::mut Set(String) = #()!
 
-    bodySb = StringBuilder new
-
-    // Pre-register function names to avoid parsing funcId strings during codegen.
-    ir functions forEach: [ctx goFuncNameForFn: it]
-
-    ir types forEach: [GoBackend emitTypeDef: it ctx: ctx sb: bodySb]
-    ir unions forEach: [GoBackend emitUnionDef: it ctx: ctx sb: bodySb]
-    ir enums forEach: [GoBackend emitEnumDef: it ctx: ctx sb: bodySb]
-
-    ir functions forEach: [GoBackend emitFunction: it ctx: ctx sb: bodySb]
-
-    | ir entry
-    | null => []
-    |=> [
-      entry = ir entry unpackOrPANIC
-      GoBackend emitEntry: entry ctx: ctx sb: bodySb
+    registerTypeName = [typeId::String ->
+      baseId = typeId goNormalizeTypeId
+      existing = typeNames at: baseId
+      | existing
+      | null => [
+          raw = baseId toSafeGoIdent
+          name = raw uniqueName: usedTypeNames
+          typeNames at: baseId put: name
+        ]
+      |=> []
     ]
 
+    registerFuncName = [fn::IrFunction ->
+      existing = funcNames at: fn id
+      | existing
+      | null => [
+          raw = fn goFuncNameFromIr
+          name = raw uniqueName: usedFuncNames
+          funcNames at: fn id put: name
+        ]
+      |=> []
+    ]
+
+    collectedTypeIds::mut List(String) = {}!
+    ir types forEach: [collectedTypeIds add: it id]
+    ir unions forEach: [
+      collectedTypeIds add: it id
+      it goBranchTypeIds forEach: [collectedTypeIds add: it]
+    ]
+    ir enums forEach: [collectedTypeIds add: it id]
+
+    typeIds = (collectedTypeIds toList) sortedBy: [it]
+    typeIds forEach: [registerTypeName do: it]
+
+    functions = ir functions sortedBy: [it id]
+    functions forEach: [registerFuncName do: it]
+
+    ir packages forEach: [
+      packageNames at: it name put: (it name toSafeGoIdent)
+      fileNames at: it name put: "main.go"
+    ]
+
+    ^ GoSymbolTable
+      typeNames: typeNames
+      funcNames: funcNames
+      packageNames: packageNames
+      fileNames: fileNames
+  ]
+
+  // Phase 1: reject IR shapes that the Go backend cannot emit safely.
+  on validateIr(ir): IrModule -> List(GoIrError) = [
+    errors::mut List(GoIrError) = {}!
+    knownTypeIds::mut Set(String) = #()!
+    knownFuncIds::mut Set(String) = #()!
+
+    ir types forEach: [knownTypeIds add: (it id goNormalizeTypeId)]
+    ir unions forEach: [
+      knownTypeIds add: (it id goNormalizeTypeId)
+      it goBranchTypeIds forEach: [branchTypeId ->
+        branchTypeId hasPrefix: (it pkgId + "_"), ifFalse: [
+          errors add: (GoIrError message: ("union branch id is outside package: " + branchTypeId))
+        ]
+        knownTypeIds add: (branchTypeId goNormalizeTypeId)
+      ]
+    ]
+    ir enums forEach: [knownTypeIds add: (it id goNormalizeTypeId)]
+    ir functions forEach: [knownFuncIds add: it id]
+
+    ir types forEach: [
+      it fields forEach: [field -> field typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
+    ]
+    ir unions forEach: [
+      it commonFields forEach: [field -> field typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
+      it branches forEach: [br -> br fields forEach: [field -> field typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]]
+    ]
+    ir functions forEach: [fn ->
+      fn receiverType validateGoTypeRefs: knownTypeIds goErrors: errors
+      fn args forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
+      fn returnType validateGoTypeRefs: knownTypeIds goErrors: errors
+      fn receiverFieldAliases forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
+      fn body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors
+    ]
+    ir entry unpack: [it validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors]
+
+    ^ errors toList
+  ]
+
+  // Phase 3: collect file imports from IR facts before fragment emission.
+  on planGoImports(ir): IrModule symbols: GoSymbolTable -> GoImportPlan = [
+    imports::mut List(String) = {}!
+    seen::mut Set(String) = #()!
+
+    ir functions forEach: [it body collectGoImportsInto: imports :seen]
+    ir entry unpack: [it collectGoImportsInto: imports :seen]
+
+    importsByFile::mut Map(String, List(String)) = #{}!
+    importsByFile at: "main.go" put: (imports toList)
+
+    ^ GoImportPlan importsByFile: importsByFile
+  ]
+
+  // Fragment helper: creates the local emission state shared by every independently emitted fragment.
+  on newFragmentFrame(symbols): GoSymbolTable imports: GoImportPlan fileKey: String -> GoFragmentFrame = [
+    ctx = GoContext forSymbols: symbols
+    ctx seedImports: (imports importsForFile: fileKey)
+    sb = StringBuilder new
+    ^ GoFragmentFrame ctx: ctx sb: sb
+  ]
+
+  // Fragment helper: converts a filled fragment frame into stable merge metadata and generated code.
+  on finishFragment(frame): GoFragmentFrame pkgId: String fileKey: String orderKey: String -> GoFragment = [
+    ^ GoFragment
+      pkgId: pkgId
+      fileKey: fileKey
+      orderKey: orderKey
+      imports: (frame ctx imports toList)
+      code: (frame sb toString)
+  ]
+
+  // Fragment builder: turns one type definition into an independently mergeable Go fragment.
+  on typeFragment(def): IrTypeDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
+    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    GoBackend emitTypeDef: def ctx: frame ctx sb: frame sb
+    ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("10_type_" + def id)
+  ]
+
+  // Fragment builder: turns one union definition and its branch declarations into a Go fragment.
+  on unionFragment(def): IrUnionDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
+    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    GoBackend emitUnionDef: def ctx: frame ctx sb: frame sb
+    ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("20_union_" + def id)
+  ]
+
+  // Fragment builder: turns one enum definition into an independently mergeable Go fragment.
+  on enumFragment(def): IrEnumDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
+    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    GoBackend emitEnumDef: def ctx: frame ctx sb: frame sb
+    ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("30_enum_" + def id)
+  ]
+
+  // Fragment builder: emits one function with planned names/imports so it can later run in parallel.
+  on functionFragment(fn): IrFunction symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
+    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    GoBackend emitFunction: fn ctx: frame ctx sb: frame sb
+    ^ GoBackend finishFragment: frame pkgId: fn pkgId fileKey: "main.go" orderKey: ("40_function_" + fn id)
+  ]
+
+  // Fragment builder: wraps the IR entry block as the deterministic main function fragment.
+  on entryFragment(entry): IrBlock symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
+    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    GoBackend emitEntry: entry ctx: frame ctx sb: frame sb
+    ^ GoBackend finishFragment: frame pkgId: "main" fileKey: "main.go" orderKey: "90_entry_main"
+  ]
+
+  // Phase 4: emit top-level declarations as fragments instead of one shared mutable output stream.
+  on emitGoFragments(ir): IrModule symbols: GoSymbolTable imports: GoImportPlan -> List(GoFragment) = [
+    fragments::mut List(GoFragment) = {}!
+
+    // todo parallel
+    ir types forEach: [fragments add: (GoBackend typeFragment: it :symbols :imports)]
+    // todo parallel
+    ir unions forEach: [fragments add: (GoBackend unionFragment: it :symbols :imports)]
+    // todo parallel
+    ir enums forEach: [fragments add: (GoBackend enumFragment: it :symbols :imports)]
+    // todo parallel
+    ir functions forEach: [fragments add: (GoBackend functionFragment: it :symbols :imports)]
+
+    ir entry unpack: [
+      fragments add: (GoBackend entryFragment: it :symbols :imports)
+    ]
+
+    ^ fragments toList
+  ]
+
+  // Phase 5: sort fragments, combine imports, and assemble stable Go file bodies.
+  on mergeGoFragments(fragments): List(GoFragment) -> List(GoFile) = [
+    sorted = fragments sortedBy: [it orderKey]
+    imports::mut List(String) = {}!
+    seenImports::mut Set(String) = #()!
+    bodySb = StringBuilder new
+
+    // todo parallel
+    sorted forEach: [fragment ->
+      fragment imports forEach: [it addToGoImports: imports seen: seenImports]
+      bodySb append: fragment code
+    ]
+
+    goFile = GoFile
+              path: "main.go"
+              packageName: "main"
+              imports: (imports toList)
+              body: (bodySb toString)
+
+    ^ {goFile}
+  ]
+
+  // Final rendering step: print the package header, import block, and merged file body.
+  on renderGoFile(file): GoFile -> String = [
     sb = StringBuilder new
     sb appendLine: "// Code generated by Niva. DO NOT EDIT."
-    sb appendLine: "package main"
+    sb appendLine: ("package " + file packageName)
     sb appendLine: ""
 
-    imports = ctx imports
+    imports = file imports
     imports isEmpty ifFalse: [
       imports count == 1 ifTrue: [
         imp = imports first
@@ -1304,7 +1720,23 @@ constructor GoBackend [
       sb appendLine: ""
     ]
 
-    sb append: (bodySb toString)
+    sb append: file body
     ^ sb toString
+  ]
+
+  // Public backend entry point: runs the phased pipeline and returns the current single-file output.
+  on fullFromIrModule(ir): IrModule -> String = [
+    errors = GoBackend validateIr: ir
+    errors isEmpty ifFalse: [
+      message = errors joinWith: "\n" transform: [it message]
+      TO DO: "invalid Go IR:\n" + message
+    ]
+
+    symbols = GoBackend planGoSymbols: ir
+    imports = GoBackend planGoImports: ir symbols: symbols
+    fragments = GoBackend emitGoFragments: ir :symbols :imports
+    files = GoBackend mergeGoFragments: fragments
+
+    ^ GoBackend renderGoFile: (files first)
   ]
 ]
