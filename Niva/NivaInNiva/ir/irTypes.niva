@@ -51,6 +51,12 @@ type IrArg
   name: String
   typeRef: IrTypeRef
 
+type IrFieldAlias
+  localName: String
+  fieldName: String
+  receiverName: String
+  typeRef: IrTypeRef
+
 type IrDestructureBinding
   name: String
   fieldName: String
@@ -72,14 +78,13 @@ type IrInstantiation
     requiresMutReceiver: Bool
     generics: List(String)
     instantiations: List(IrInstantiation)
+    receiverFieldAliases: List(IrFieldAlias)
     body: IrBlock
 
 type IrBlock
   stmts: List(IrStmt)
   result: IrExpr?
   resultType: IrTypeRef
-
-enum IrBindingKind = Local | FieldAlias
 
 enum IrMatchKind = ByType | ByValue | ByBool | ByError
 
@@ -97,7 +102,7 @@ type IrMatchCase
   body: IrBlock
 
 union IrStmt =
-| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool bindingKind: IrBindingKind isUsed: Bool
+| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool isUsed: Bool
 | IrSetLocal name: String value: IrExpr
 | IrSetField receiver: IrExpr field: String value: IrExpr
 | IrDestructure bindings: List(IrDestructureBinding) value: IrExpr

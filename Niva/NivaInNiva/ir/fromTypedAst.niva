@@ -184,7 +184,6 @@ TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
       typeRef: (declaredInfo toIrTypeRef)
       value: (value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
       isMut: isMut
-      bindingKind: IrBindingKind.Local
       isUsed: isUsed
   ]
   | AssignT => [
@@ -602,23 +601,23 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   receiverArgTypeRef = receiverType toIrTypeRefWithMutErrors: requiresMutReceiver errorsList: {}
   finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverArgTypeRef)} + argsList]
 
-  // field aliases in scope
+  // field aliases in method scope
   receiverTypeId = receiverType toIrTypeId
   aliasFields = typeFieldsById at: receiverTypeId
-  prefixStmts::mut List::IrStmt = {}!
-  aliasFields unpack: [
-    it forEach: [field ->
-      prefixStmts add: (IrLet
-        name: field name
-        typeRef: field typeRef
-        value: null
-        isMut: false
-        bindingKind: IrBindingKind.FieldAlias
-        isUsed: true)
+  receiverFieldAliases::mut List::IrFieldAlias = {}!
+  isConstructor ifFalse: [
+    aliasFields unpack: [
+      it forEach: [field ->
+        receiverFieldAliases add: (IrFieldAlias
+          localName: field name
+          fieldName: field name
+          receiverName: "this"
+          typeRef: field typeRef)
+      ]
     ]
   ]
 
-  bodyBlock = body toIrBlockWithPrefix: (prefixStmts toList) db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverArgTypeRef
+  bodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverArgTypeRef
 
   returnTypeRef = returnType toIrTypeRef
 
@@ -648,6 +647,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     requiresMutReceiver: requiresMutReceiver
     generics: genericsList toList
     instantiations: {}
+    receiverFieldAliases: receiverFieldAliases toList
     body: bodyBlock
 ]
 
@@ -874,6 +874,7 @@ ResolverHelper toIrModule -> IrModule = [
       requiresMutReceiver: f requiresMutReceiver
       generics: f generics
       instantiations: instList
+      receiverFieldAliases: f receiverFieldAliases
       body: f body
   ]
 
