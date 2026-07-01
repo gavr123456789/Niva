@@ -805,14 +805,7 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
 
   innerScope = scope copy
   subjectName = "__matchSubject"
-  subjectLocal = subject
-  subjectIsThis =  | subjectLocal
-                   | IrThisRef => true
-                   |=> false
-  subjectVarName = | subjectLocal
-                   | IrVarRef => subjectLocal name
-                   |=> null
-  subjectExpr = subjectLocal toGoExpr: ctx scope: innerScope
+  subjectExpr = subject toGoExpr: ctx scope: innerScope
   kind != IrMatchKind.ByError ifTrue: [
     kind == IrMatchKind.ByType
       ifTrue: [sb appendIndent: 1 line: ("var " + subjectName + " any = " + subjectExpr)]
@@ -827,27 +820,23 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   | IrMatchKind.ByError => [
       valueName = "__matchValue"
       errName = "__matchErr"
-      subjectCall = subjectExpr
-      subjectRetIsUnit = subject typeRef isGoUnitType
-      subjectRetIsUnit
+      subjectIsUnit
         ifTrue: [
-          sb appendIndent: 1 line: (errName + " := " + subjectCall)
+          sb appendIndent: 1 line: (errName + " := " + subjectExpr)
         ]
         ifFalse: [
-          sb appendIndent: 1 line: (valueName + ", " + errName + " := " + subjectCall)
+          sb appendIndent: 1 line: (valueName + ", " + errName + " := " + subjectExpr)
         ]
 
       sb appendIndent: 1 line: ("if " + errName + " != nil {")
       sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
       cases forEach: [c ->
-        condType = c condition
-        typeStr = | condType
-                  | IrTypeRefExpr => condType ref toGoType: ctx
-                  |=> (condType toGoExpr: ctx scope: innerScope)
+        typeStr = c assertedTypeRef unpack: [it toGoType: ctx] or: (c condition toGoExpr: ctx scope: innerScope)
         sb appendIndent: 2 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
-        caseScope locals add: "it"
-        sb appendIndent: 3 line: ("it := " + errName + ".(" + typeStr + ")")
+        aliasStr = typeAlias unpackOrValue: "it"
+        caseScope locals add: aliasStr
+        sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
         retType isGoUnitType
           ifTrue: [
@@ -867,24 +856,16 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
 
       | elseBranchLocal
       | null => [
-        subjectRetIsUnit
+        retType isGoUnitType
           ifTrue: [
-            retType isGoUnitType
-              ifTrue: [
-                retErrors isNotEmpty
-                  ifTrue: [sb appendIndent: 1 line: "return nil"]
-                 ifFalse: [sb appendIndent: 1 line: "return"]
-              ]
-              ifFalse: [sb appendIndent: 1 line: ("return " + (retType goZeroValue: ctx))]
+            retErrors isNotEmpty
+              ifTrue: [sb appendIndent: 1 line: "return nil"]
+             ifFalse: [sb appendIndent: 1 line: "return"]
           ]
           ifFalse: [
-            retType isGoUnitType
-              ifTrue: [
-                retErrors isNotEmpty
-                  ifTrue: [sb appendIndent: 1 line: "return nil"]
-                 ifFalse: [sb appendIndent: 1 line: "return"]
-              ]
-              ifFalse: [
+            subjectIsUnit
+              ifTrue: [sb appendIndent: 1 line: ("return " + (retType goZeroValue: ctx))]
+             ifFalse: [
                 retErrors isNotEmpty
                   ifTrue: [sb appendIndent: 1 line: ("return " + valueName + ", nil")]
                  ifFalse: [sb appendIndent: 1 line: ("return " + valueName)]
@@ -894,9 +875,10 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
       |=> [
         elseBlock = elseBranchLocal
         elseScope = innerScope copy
-        elseScope locals add: "it"
-        subjectRetIsUnit ifFalse: [
-          sb appendIndent: 1 line: ("it := " + valueName)
+        aliasStr = typeAlias unpackOrValue: "it"
+        elseScope locals add: aliasStr
+        subjectIsUnit ifFalse: [
+          sb appendIndent: 1 line: (aliasStr + " := " + valueName)
         ]
         elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 1 returnType: retType
         retType isGoUnitType
@@ -914,26 +896,16 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   | IrMatchKind.ByType => [
       sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
       cases forEach: [c ->
-        condType = c condition
-        typeStr = | condType
-                  | IrTypeRefExpr => condType ref toGoType: ctx
-                  |=> (condType toGoExpr: ctx scope: innerScope)
+        typeStr = c assertedTypeRef unpack: [it toGoType: ctx] or: (c condition toGoExpr: ctx scope: innerScope)
         sb appendIndent: 1 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
-        caseRefNames = c body collectIrRefNames
-        emitAlias = [aliasName::String ->
+        typeAlias unpack: [aliasName ->
+          caseRefNames = c body collectIrRefNames
           sb appendIndent: 2 line: (aliasName + " := " + subjectName + ".(" + typeStr + ")")
           (caseRefNames contains: aliasName) ifFalse: [
             sb appendIndent: 2 line: ("_ = " + aliasName)
           ]
           caseScope locals add: aliasName
-        ]
-        subjectIsThis ifTrue: [
-          emitAlias do: "this"
-        ] ifFalse: [
-          subjectVarName unpack: [
-            emitAlias do: (it toSafeGoIdent)
-          ]
         ]
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
         retType isGoUnitType

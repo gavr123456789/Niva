@@ -290,6 +290,17 @@ MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String,
         ifFalse: [IrMatchKind.ByValue]
     ]
 
+  typeAlias = | kind
+    | IrMatchKind.ByError => "it"
+    | IrMatchKind.ByType => [
+      | subjectExpr
+      | IrThisRef => "this"
+      | IrVarRef => subjectExpr name
+      |=> null
+    ]
+    |=> null
+  subjectIsUnit = subjectType isCoreTypeNamed: "Unit"
+
   cases = branches map: [br ->
     condExpr = | kind
       | IrMatchKind.ByType => [
@@ -301,8 +312,9 @@ MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String,
 
     addConds = br additionalConditions v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
     bodyBlock = br body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    asserted = | condExpr | IrTypeRefExpr => condExpr ref |=> null
 
-    IrMatchCase condition: condExpr additionalConditions: addConds body: bodyBlock
+    IrMatchCase condition: condExpr additionalConditions: addConds body: bodyBlock assertedTypeRef: asserted
   ]
 
   elseBlock = elseBranch unpack: [
@@ -310,7 +322,7 @@ MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String,
   ] or: null
 
   exprType = typeInfo toIrTypeRef
-  ^ IrMatchExpr kind: kind subject: subjectExpr cases: cases elseBranch: elseBlock typeRef: exprType
+  ^ IrMatchExpr kind: kind subject: subjectExpr cases: cases elseBranch: elseBlock typeRef: exprType typeAlias: typeAlias subjectIsUnit: subjectIsUnit
 ]
 
 MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
@@ -355,6 +367,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
         condition: (true toIrBoolLiteralExpr: db)
         additionalConditions: {}
         body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
+        assertedTypeRef: null
     ]
 
     isIfFalse ifTrue: [
@@ -363,6 +376,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
         condition: (false toIrBoolLiteralExpr: db)
         additionalConditions: {}
         body: (argExpr toIrBlockFromExpr: db currentPkg: currentPkg :typeFieldsById :thisTypeRef)
+        assertedTypeRef: null
     ]
 
     isIfTrueIfFalse ifTrue: [
@@ -372,10 +386,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
         condition: (true toIrBoolLiteralExpr: db)
         additionalConditions: {}
         body: (argTrue toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        assertedTypeRef: null
       falseCase <- IrMatchCase
         condition: (false toIrBoolLiteralExpr: db)
         additionalConditions: {}
         body: (argFalse toIrBlockFromExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef)
+        assertedTypeRef: null
     ]
 
     cases::mut List::IrMatchCase = {}!
@@ -388,6 +404,8 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
       cases: cases toList
       elseBranch: null
       typeRef: exprType
+      typeAlias: null
+      subjectIsUnit: false
   ]
 
   result == null ifTrue: [

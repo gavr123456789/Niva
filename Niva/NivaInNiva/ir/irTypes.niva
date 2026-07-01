@@ -100,6 +100,7 @@ type IrMatchCase
   condition: IrExpr
   additionalConditions: List(IrExpr)
   body: IrBlock
+  assertedTypeRef: IrTypeRef?
 
 union IrStmt =
 | IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool isUsed: Bool
@@ -118,7 +119,9 @@ union IrExpr typeRef: IrTypeRef =
 | IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
-| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock?
+// typeAlias name of the variable that will change its type inside different match branches (usually this, or it)
+// subjectIsUnit if its match on error, and func returns only error, no value, then we emit `err := call()` not `val, err := call()`
+| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock? typeAlias: String? subjectIsUnit: Bool
 | IrNewExpr typeId: String args: List(IrExpr)
 | IrCollectionLiteral kind: IrCollectionKind items: List(IrExpr)
 | IrOpBin op: String left: IrExpr right: IrExpr
