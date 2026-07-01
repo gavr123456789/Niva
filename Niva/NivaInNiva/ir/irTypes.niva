@@ -68,18 +68,18 @@ type IrInstantiation
   argTypes: List(IrTypeRef)
   returnType: IrTypeRef
 
-  type IrFunction
-    id: String
-    pkgId: String
-    name: String
-    receiverType: IrTypeRef
-    args: List(IrArg)
-    returnType: IrTypeRef
-    requiresMutReceiver: Bool
-    generics: List(String)
-    instantiations: List(IrInstantiation)
-    receiverFieldAliases: List(IrFieldAlias)
-    body: IrBlock
+type IrFunction
+  id: String
+  pkgId: String
+  name: String
+  receiverType: IrTypeRef
+  args: List(IrArg)
+  returnType: IrTypeRef
+  requiresMutReceiver: Bool
+  generics: List(String)
+  instantiations: List(IrInstantiation)
+  receiverFieldAliases: List(IrFieldAlias)
+  body: IrBlock
 
 type IrBlock
   stmts: List(IrStmt)
@@ -136,9 +136,54 @@ type IrModule
   version: String
   pkg: String
   packages: List(IrPackage)
-  imports: List(IrImport)
-  types: List(IrTypeDef)
-  unions: List(IrUnionDef)
-  enums: List(IrEnumDef)
-  functions: List(IrFunction)
   entry: IrBlock?
+
+IrModule imports -> List(IrImport) = [
+  imports::mut List::IrImport = {}!
+  seenLocalImports::mut Set(String) = #()!
+  seenPackageImports::mut Set(String) = #()!
+
+  packages forEach: [pkg ->
+    pkg imports forEach: [imp ->
+      | imp kind
+      | IrImportKind.Local => [
+          seenLocalImports contains: imp name, ifFalse: [
+            seenLocalImports add: imp name
+            imports add: imp
+          ]
+        ]
+      | IrImportKind.Package => [
+          seenPackageImports contains: imp name, ifFalse: [
+            seenPackageImports add: imp name
+            imports add: imp
+          ]
+      ]
+    ]
+  ]
+
+  ^ imports toList
+]
+
+IrModule types -> List(IrTypeDef) = [
+  result::mut List::IrTypeDef = {}!
+  packages forEach: [pkg -> result addAll: pkg types]
+  ^ result toList
+]
+
+IrModule unions -> List(IrUnionDef) = [
+  result::mut List::IrUnionDef = {}!
+  packages forEach: [pkg -> result addAll: pkg unions]
+  ^ result toList
+]
+
+IrModule enums -> List(IrEnumDef) = [
+  result::mut List::IrEnumDef = {}!
+  packages forEach: [pkg -> result addAll: pkg enums]
+  ^ result toList
+]
+
+IrModule functions -> List(IrFunction) = [
+  result::mut List::IrFunction = {}!
+  packages forEach: [pkg -> result addAll: pkg functions]
+  ^ result toList
+]

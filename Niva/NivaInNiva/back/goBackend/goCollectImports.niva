@@ -1,0 +1,85 @@
+IrCall collectGoBindImports(imports): mut Set(String) -> Unit = [
+  r = receiverType
+  isBind = r unpack: [it typeId == "core_Bind"] or: false
+  isBind ifFalse: [^ Unit]
+
+  msgName unpack: [msg ->
+    | msg
+    | "addImport" => [
+        importExpr = args first
+        importName = importExpr irStringLiteralValue
+        importName unpack: [it addToGoImports: imports]
+      ]
+    | "addImport__backend" => [
+        importExpr = args first
+        backendExpr = args at: 1
+        isGo = backendExpr irStringLiteralValue unpack: [it == "go"] or: false
+        isGo ifTrue: [
+          importName = importExpr irStringLiteralValue
+          importName unpack: [it addToGoImports: imports]
+        ]
+      ]
+    |=> []
+  ]
+]
+
+IrBlock collectGoImportsInto(imports): mut Set(String) -> Unit = [
+  stmts forEach: [it collectGoImportsInto: imports]
+  result unpack: [it collectGoImportsInto: imports]
+]
+
+IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
+  | this
+  | IrLet      => [value unpack: [it collectGoImportsInto: imports]]
+  | IrSetLocal => [value collectGoImportsInto: imports]
+  | IrSetField => [
+      receiver collectGoImportsInto: imports
+      value collectGoImportsInto: imports
+    ]
+  | IrDestructure => [value collectGoImportsInto: imports]
+  | IrExprStmt    => [expr collectGoImportsInto: imports]
+  | IrReturn      => [expr unpack: [it collectGoImportsInto: imports]]
+  | IrWhile       => [
+      cond collectGoImportsInto: imports
+      body collectGoImportsInto: imports
+    ]
+]
+
+IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
+  | this
+  | IrLiteralExpr => [
+      literal kind == IrLiteralKind.Unit ifTrue: [
+        "niva_go/core" addToGoImports: imports
+      ]
+    ]
+  | IrVarRef   => []
+  | IrThisRef  => []
+  | IrFieldGet => [receiver collectGoImportsInto: imports]
+  | IrCall     => [
+      isCore = declPkg unpack: [it == "core"] or: false
+      isCore ifTrue: ["niva_go/core" addToGoImports: imports]
+      isThrow = (msgName unpack: [it == "throw"] or: false) && isCore
+      isThrow ifTrue: ["fmt" addToGoImports: imports]
+      .collectGoBindImports: imports
+      callee unpack: [it collectGoImportsInto: imports]
+      args forEach: [it collectGoImportsInto: imports]
+    ]
+  | IrLambda    => [body collectGoImportsInto: imports]
+  | IrBlockExpr => [block collectGoImportsInto: imports]
+  | IrMatchExpr => [
+      subject collectGoImportsInto: imports
+      cases forEach: [c ->
+        c condition collectGoImportsInto: imports
+        c additionalConditions forEach: [it collectGoImportsInto: imports]
+        c body collectGoImportsInto: imports
+      ]
+      elseBranch unpack: [it collectGoImportsInto: imports]
+    ]
+  | IrNewExpr           => [args forEach: [it collectGoImportsInto: imports]]
+  | IrCollectionLiteral => [items forEach: [it collectGoImportsInto: imports]]
+  | IrOpBin             => [
+      left collectGoImportsInto: imports
+      right collectGoImportsInto: imports
+    ]
+  | IrTypeRefExpr => []
+]

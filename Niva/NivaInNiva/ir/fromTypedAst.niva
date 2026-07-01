@@ -950,10 +950,5 @@ ResolverHelper toIrModule -> IrModule = [
       version: "nir/v0"
       pkg: entryPointName
       packages: packagesIr toList
-      imports: imports toList
-      types: types toList
-      unions: unions toList
-      enums: enums toList
-      functions: functionsWithInst
       entry: entryBlock
 ]
