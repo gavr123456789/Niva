@@ -43,6 +43,11 @@ IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
       cond collectGoImportsInto: imports
       body collectGoImportsInto: imports
     ]
+  | IrThrow       => [
+      throwErrExpr = errExpr
+      | throwErrExpr | IrTypeRefExpr => ["fmt" addToGoImports: imports] |=> []
+      throwErrExpr collectGoImportsInto: imports
+    ]
 ]
 
 IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
@@ -58,8 +63,6 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
   | IrCall     => [
       isCore = declPkg unpack: [it == "core"] or: false
       isCore ifTrue: ["niva_go/core" addToGoImports: imports]
-      isThrow = (msgName unpack: [it == "throw"] or: false) && isCore
-      isThrow ifTrue: ["fmt" addToGoImports: imports]
       .collectGoBindImports: imports
       callee unpack: [it collectGoImportsInto: imports]
       args forEach: [it collectGoImportsInto: imports]

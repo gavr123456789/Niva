@@ -103,13 +103,14 @@ union IrStmt =
 | IrExprStmt expr: IrExpr
 | IrReturn expr: IrExpr?
 | IrWhile cond: IrExpr body: IrExpr
+| IrThrow errExpr: IrExpr
 
 union IrExpr typeRef: IrTypeRef =
 | IrLiteralExpr literal: IrLiteral
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef?
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
 // typeAlias name of the variable that will change its type inside different match branches (usually this, or it)

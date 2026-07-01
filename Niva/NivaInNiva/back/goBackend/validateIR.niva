@@ -94,4 +94,5 @@ IrStmt validateGoIrStmt(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
       cond validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
       body validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
     ]
+  | IrThrow    => [errExpr validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
 ]
