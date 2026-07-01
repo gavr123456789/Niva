@@ -619,23 +619,30 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   receiverArgTypeRef = receiverType toIrTypeRefWithMutErrors: requiresMutReceiver errorsList: {}
   finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverArgTypeRef)} + argsList]
 
-  // field aliases in method scope
+  // inject field aliases as IrLet bindings at the top of the method body
   receiverTypeId = receiverType toIrTypeId
   aliasFields = typeFieldsById at: receiverTypeId
-  receiverFieldAliases::mut List::IrFieldAlias = {}!
+  aliasLetStmts::mut List(IrStmt) = {}!
   isConstructor ifFalse: [
     aliasFields unpack: [
       it forEach: [field ->
-        receiverFieldAliases add: (IrFieldAlias
-          localName: field name
-          fieldName: field name
-          receiverName: "this"
-          typeRef: field typeRef)
+        aliasLetStmts add: (IrLet
+          name: field name
+          typeRef: field typeRef
+          value: (IrFieldGet
+            receiver: (IrThisRef typeRef: receiverArgTypeRef)
+            field: field name
+            typeRef: field typeRef)
+          isMut: false
+          isUsed: false)
       ]
     ]
   ]
 
-  bodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverArgTypeRef
+  rawBodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: receiverArgTypeRef
+  bodyBlock = aliasLetStmts isEmpty
+    ifTrue: [rawBodyBlock]
+    ifFalse: [IrBlock stmts: (aliasLetStmts toList + rawBodyBlock stmts) result: rawBodyBlock result resultType: rawBodyBlock resultType]
 
   returnTypeRef = returnType toIrTypeRef
 
@@ -665,7 +672,6 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     requiresMutReceiver: requiresMutReceiver
     generics: genericsList toList
     instantiations: {}
-    receiverFieldAliases: receiverFieldAliases toList
     body: bodyBlock
 ]
 
@@ -892,7 +898,6 @@ ResolverHelper toIrModule -> IrModule = [
       requiresMutReceiver: f requiresMutReceiver
       generics: f generics
       instantiations: instList
-      receiverFieldAliases: f receiverFieldAliases
       body: f body
   ]
 

@@ -42,20 +42,17 @@ GoContext addImport(name): String -> Unit = [
 
 type GoScope
        locals: mut Set(String)
- fieldAliases: mut Map(String, IrFieldAlias)
 pointerLocals: mut Set(String)
 
-constructor GoScope new = GoScope locals: #()! fieldAliases: #{}! pointerLocals: #()!
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
-  newAliases::mut Map(String, IrFieldAlias) = #{}!
   newPointers::mut Set(String) = #()!
   newLocals addAll: locals
-  newAliases putAll: fieldAliases
   newPointers addAll: pointerLocals
 
-  ^ GoScope locals: newLocals fieldAliases: newAliases pointerLocals: newPointers
+  ^ GoScope locals: newLocals pointerLocals: newPointers
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -554,17 +551,7 @@ extend IrExpr [
   on toGoExpr(ctx): GoContext scope: GoScope -> String =
     | this
     | IrLiteralExpr => literal toGoLiteral
-    | IrVarRef      => [
-        // resolve field alias
-        scope locals contains: name,
-                       ifTrue: [name toSafeGoIdent]
-          ifFalse: [
-            alias = scope fieldAliases at: name
-            alias unpack: [
-              (it receiverName toSafeGoIdent) + "." + (it fieldName toSafeGoIdent)
-            ] or: (name toSafeGoIdent)
-          ]
-      ]
+    | IrVarRef      => name toSafeGoIdent
     | IrThisRef  => "this"
     | IrFieldGet => [
         recv = receiver toGoExpr: ctx scope: scope

@@ -82,9 +82,6 @@ constructor GoBackend [
         scope pointerLocals add: it name
       ]
     ]
-    fn receiverFieldAliases forEach: [
-      scope fieldAliases at: it localName put: it
-    ]
     fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
 
     fn returnType isGoUnitType
@@ -220,7 +217,6 @@ constructor GoBackend [
         fn receiverType validateGoTypeRefs: knownTypeIds goErrors: errors
         fn args forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
         fn returnType validateGoTypeRefs: knownTypeIds goErrors: errors
-        fn receiverFieldAliases forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
         fn body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors
       ]
     ]

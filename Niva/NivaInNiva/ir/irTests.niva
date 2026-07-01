@@ -32,7 +32,7 @@ Test irTypeAndMethod = [
   ]
 ]
 
-Test irReceiverFieldAliasesAreFunctionFacts = [
+Test irFieldAliasesAreIrLetBindings = [
   fileMain = """
     type Person
       name: String
@@ -51,17 +51,11 @@ Test irReceiverFieldAliasesAreFunctionFacts = [
   | null => [TO DO: "describe function not found"]
   |=> [
     fn = fnMaybe
-    Assert that: fn receiverFieldAliases count equals: 2
+    Assert that: fn body stmts count equals: 2
 
-    aliasMaybe = fn receiverFieldAliases find: [it localName == "name"]
-    | aliasMaybe
-    | null => [TO DO: "name field alias not found"]
-    |=> [
-      alias = aliasMaybe
-      Assert that: alias fieldName equals: "name"
-      Assert that: alias receiverName equals: "this"
-    ]
-
-    Assert that: fn body stmts count equals: 0
+    firstStmt = fn body stmts at: 0
+    | firstStmt
+    | IrLet => [Assert that: firstStmt name equals: "name"]
+    |=> [TO DO: "expected IrLet for name field"]
   ]
 ]
