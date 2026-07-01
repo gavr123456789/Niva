@@ -51,12 +51,6 @@ type IrArg
   name: String
   typeRef: IrTypeRef
 
-type IrFieldAlias
-  localName: String
-  fieldName: String
-  receiverName: String
-  typeRef: IrTypeRef
-
 type IrDestructureBinding
   name: String
   fieldName: String
@@ -78,7 +72,6 @@ type IrFunction
   requiresMutReceiver: Bool
   generics: List(String)
   instantiations: List(IrInstantiation)
-  receiverFieldAliases: List(IrFieldAlias)
   body: IrBlock
 
 type IrBlock
