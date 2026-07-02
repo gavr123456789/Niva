@@ -259,11 +259,11 @@ constructor GoBackend [
   // Fragment helper: converts a filled fragment frame into stable merge metadata and generated code.
   on finishFragment(frame): GoFragmentFrame pkgId: String fileKey: String orderKey: String -> GoFragment = [
     ^ GoFragment
-     pkgId: pkgId
-   fileKey: fileKey
-  orderKey: orderKey
-   imports: (frame ctx imports toList)
-      code: (frame sb toString)
+          pkgId: pkgId
+        fileKey: fileKey
+       orderKey: orderKey
+        imports: (frame ctx imports toList)
+           code: (frame sb toString)
   ]
 
   // Fragment builder: turns one type definition into an independently mergeable Go fragment.

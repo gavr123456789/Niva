@@ -517,7 +517,7 @@ extend mut Parser [
         .tryParseDestructingAssign: tok, unpack: [^ it]
      ]
 
-     primaryReceiver = .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
+     primaryReceiver = .primary: tok, unpackOrMsg: "nextExpression: no primary1 ($tok)"
      //primaryReceiver token lexeme == "inc" ifTrue: [TO DO]
      // assign
      .peek kind == TokenType.Assign, ifTrue: [
@@ -592,7 +592,7 @@ extend mut Parser [
                         .matchAssert: TokenType.CloseParen
                         ExprInBrackets value: inner token: tok
                       ] ifFalse: [
-                        .primary: tok, unpackOrMsg: "nextExpression: no primary ($tok)"
+                        .primary: tok, unpackOrMsg: "nextExpression: no primary2 ($tok)"
                       ]
                     ]
                     |=> receiver
