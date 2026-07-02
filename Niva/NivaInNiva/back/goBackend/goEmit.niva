@@ -78,7 +78,7 @@ constructor GoBackend [
     scope = GoScope new
     fn args forEach: [
       scope locals add: it name
-      (it typeRef isGoPointerParam) ifTrue: [
+      it needsGoPointer ifTrue: [
         scope pointerLocals add: it name
       ]
     ]

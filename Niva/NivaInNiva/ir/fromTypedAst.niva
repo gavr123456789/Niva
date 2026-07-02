@@ -241,12 +241,16 @@ CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(St
     ifTrue: [
       args map: [arg ->
         argTypeInfo = arg astType toTypeInfoFromDb: db inPkg: null
-        IrArg name: arg name typeRef: (argTypeInfo toIrTypeRef)
+        typeRef = argTypeInfo toIrTypeRef
+        IrArg name: arg name typeRef: typeRef needsGoPointer: typeRef isGoPointerParam
       ]
     ] ifFalse: [
       typedArgs isNotEmpty
         ifTrue: [
-          typedArgs map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+          typedArgs map: [a ->
+            typeRef = a typeInfo toIrTypeRef
+            IrArg name: a name typeRef: typeRef needsGoPointer: typeRef isGoPointerParam
+          ]
         ]
         ifFalse: [
           lambdaType = typeInfo t
@@ -254,7 +258,7 @@ CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(St
           | FuntionT => [
               lambdaType fields map: [f ->
                 argName = f name == "" ifTrue: ["it"] ifFalse: [f name]
-                IrArg name: argName typeRef: (f typeT toIrType-immut-no-errors)
+                IrArg name: argName typeRef: (f typeT toIrType-immut-no-errors) needsGoPointer: false
               ]
             ]
           |=> {IrArg}
@@ -635,9 +639,14 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     method unpack: [requiresMutReceiver <- it forMut]
   ]
 
-  argsList = args map: [a -> IrArg name: a name typeRef: (a typeInfo toIrTypeRef)]
+  argsList = args map: [a ->
+    typeRef = a typeInfo toIrTypeRef
+    IrArg name: a name typeRef: typeRef needsGoPointer: typeRef isGoPointerParam
+  ]
   receiverArgTypeRef = receiverType toIrTypeRefWithMutErrors: requiresMutReceiver errorsList: {}
-  finalArgs = isConstructor ifTrue: [argsList] ifFalse: [{(IrArg name: "this" typeRef: receiverArgTypeRef)} + argsList]
+  finalArgs = isConstructor
+    ifTrue: [argsList]
+    ifFalse: [{(IrArg name: "this" typeRef: receiverArgTypeRef needsGoPointer: receiverArgTypeRef isGoPointerParam)} + argsList]
 
   // inject field aliases as IrLet bindings at the top of the method body
   receiverTypeId = receiverType toIrTypeId
