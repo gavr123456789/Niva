@@ -50,6 +50,7 @@ type IrEnumDef
 type IrArg
   name: String
   typeRef: IrTypeRef
+  needsGoPointer: Bool
 
 type IrDestructureBinding
   name: String
@@ -134,6 +135,20 @@ type IrModule
   pkg: String
   packages: List(IrPackage)
   entry: IrBlock?
+
+extend IrTypeRef [
+  on isGoRefLike -> Bool =
+    | kind
+    | IrTypeRefKind.Function => true
+    | IrTypeRefKind.Builtin  => (typeId == "core_List") || (typeId == "core_Set") || (typeId == "core_Map")
+    |=> false
+
+  on isGoPointerParam -> Bool =
+    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLike not)
+
+  on needsGoAddressAtCall -> Bool =
+    .isGoPointerParam && (nullable not)
+]
 
 IrModule imports -> List(IrImport) = [
   imports::mut List::IrImport = {}!

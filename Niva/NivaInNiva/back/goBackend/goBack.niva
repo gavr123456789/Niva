@@ -77,15 +77,7 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
     ]
 ]
 
-static GO_KEYWORDS = #("break" "default" "func" "interface" "select"
-                        "case" "defer" "go" "map" "struct"
-                        "chan" "else" "goto" "package" "switch"
-                        "const" "fallthrough" "if" "range" "type"
-                        "continue" "for" "import" "return" "var")
-
-//str go utils
 extend String [
-  on isGoKeyword -> Bool = GO_KEYWORDS contains: this
   on goNormalizeTypeId -> String = [
     hasGeneric = .contains: "__"
     result = hasGeneric
@@ -95,60 +87,6 @@ extend String [
       "goNormalizeTypeId: before = $this, after = $result" log
     ]
     ^ result
-  ]
-  // verrry badd, need iterate over symbols
-  on goSanitizeIdent -> String =
-        .replace: ".." with: "rangeTo"
-        ,replace: "==" with: "equals"
-        ,replace: "!=" with: "notEquals"
-        ,replace: ">=" with: "gte"
-        ,replace: "<=" with: "lte"
-        ,replace: ">" with: "gt"
-        ,replace: "<" with: "lt"
-        ,replace: "||" with: "or"
-        ,replace: "&&" with: "and"
-        ,replace: "+" with: "plus"
-        ,replace: "-" with: "minus"
-        ,replace: "*" with: "times"
-        ,replace: "/" with: "div"
-        ,replace: "%" with: "rem"
-        //,replace: ":" with: "__"
-        ,replace: "." with: "_"
-        ,replace: "/" with: "_"
-        ,replace: "?" with: "_Nullable"
-        ,replace: "(" with: "_"
-        ,replace: ")" with: "_"
-        ,replace: "," with: "_"
-        ,replace: " " with: "_"
-  on toSafeGoIdent -> String = [
-    mut s = this goSanitizeIdent
-    s count > 0 ifTrue: [
-      first = s at: 0
-      first isDigit ifTrue: [s <- "_" + s]
-    ]
-    s isGoKeyword ifTrue: [s <- s + "_"]
-
-    areEqual = . == s
-    areEqual ifTrue: [
-      "toSafeGoIdent: before = $this after = $s" //debug
-    ]
-    ^ s
-  ]
-
-  on uniqueName(used): mut Set(String) -> String = [
-    base = this
-    used contains: base, ifFalse: [
-      used add: base
-      ^ base
-    ]
-    mut i = 1
-    mut candidate = base + "_" + i toString
-    [used contains: candidate] whileTrue: [
-      i <- i + 1
-      candidate <- base + "_" + i toString
-    ]
-    used add: candidate
-    ^ candidate
   ]
 
   on stripPkgPrefix(prefix): String -> String = [
@@ -260,18 +198,6 @@ GoImportPlan importsForFile(fileKey): String -> List(String) = [
 
 extend IrTypeRef [
 
-  on isGoRefLikeType -> Bool =
-    | kind
-    | IrTypeRefKind.Function => true
-    | IrTypeRefKind.Builtin  => [
-        baseId = typeId goNormalizeTypeId
-        | baseId
-        | "core_List" | "core_Set" | "core_Map" => true
-        |=> false
-      ]
-    |=> false
-
-
   on isGoUnitType -> Bool =
     (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
 
@@ -365,24 +291,17 @@ extend IrTypeRef [
           isIfaceStr = base == "interface{}"
           isIface = isAny || isIfaceStr
 
-          isRefLike = (.isGoRefLikeType) || isIface
+          isRefLike = (.isGoRefLike) || isIface
           isRefLike ifTrue: [base] ifFalse: ["*" + base]
         ]
         ifFalse: [base]
   ]
-
-  on isGoPointerParam -> Bool =
-    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLikeType not)
-
 
   on toGoParamType(ctx): GoContext -> String =
     .isGoPointerParam,
       ifTrue: [ nullable ifTrue:  [.toGoType: ctx]
                          ifFalse: ["*" + (.goBaseType: ctx)] ]
       ifFalse: [.toGoType: ctx]
-
-  on needsGoAddressAtCall -> Bool =
-    .isGoPointerParam && (nullable not)
 
 ]
 
