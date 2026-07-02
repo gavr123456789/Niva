@@ -130,7 +130,7 @@ extend String [
 
     areEqual = . == s
     areEqual ifTrue: [
-      "toSafeGoIdent: before = $this after = $s" debug
+      "toSafeGoIdent: before = $this after = $s" //debug
     ]
     ^ s
   ]
@@ -179,8 +179,9 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
   x = recvBaseSafe + "__" + normalized
 
   name == x ifFalse: [
-    "coreFuncNameFromCall: was: $name became $x" log
-  ] ifTrue: ["coreFuncNameFromCall: no changes" log]
+    "coreFuncNameFromCall: was: $name became $x"// log
+  ] ifTrue: ["coreFuncNameFromCall: no changes" //log
+            ]
 
   ^ x
 
@@ -332,7 +333,7 @@ extend IrTypeRef [
           | "core_Error"   => "error"
           | "core_List"    => [
               elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]
-              elem
+              "[]" + elem
             ]
           | "core_Set" => [
               elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]

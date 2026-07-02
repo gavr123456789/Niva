@@ -79,7 +79,7 @@ constructor NivaCompiler [
           | backend
           | CompilerBackend.Go => "go"
           | CompilerBackend.Js => "js"
-          | CompilerBackend.Lsp => "lsp"
+          | CompilerBackend.Lsp => TO DO: "no lsp binary"
 
         rootFile = path unpackOrValue: "main.niva"
         entryPoint = rootFile toPath name substringBeforeLast: "."
@@ -115,7 +115,9 @@ constructor NivaCompiler [
 
                 option == CompilerOption.Run ifTrue: [
                   pathToEntryPoint = realGoPath //+ "/main.go"
-                  io runProgramFromPath path: pathToEntryPoint args: {"go" "run" "."}
+                  run-code = io runProgramFromPath path: pathToEntryPoint args: {"go" "build" "."}
+                  run-code == 0 ifTrue: [io runProgram args: {"./.niva_go/niva_go"}]
+
                 ]
 
                 //t6 = System currentTimeMillis

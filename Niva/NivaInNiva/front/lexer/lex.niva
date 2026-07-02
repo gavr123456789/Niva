@@ -380,7 +380,7 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
 mut Lexer readIdentifier -> String = [
   localPos = pos
 
-  [ch isLetter || ch isDigit || (ch == '_')] whileTrue: [
+  [ch isLetter || ch isDigit || (ch == '_') || (ch == '-')] whileTrue: [
     .step
   ]
 
