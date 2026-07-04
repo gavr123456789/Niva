@@ -532,8 +532,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     // if they all equal take first and second as k and v types
 
 
-    mapType = MapT k: first v: second
-    db addCollectionInstantiationIfAbsent: mapType
+    mapType = db addCollectionInstantiationIfAbsent: (MapT k: first v: second)
 
     MapLiteralT
       :token
@@ -586,13 +585,11 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     astType =
       | this
       | ListLiteral => [
-        newType = ListT t: f
-        db addCollectionInstantiationIfAbsent: newType
+        newType = db addCollectionInstantiationIfAbsent: (ListT t: f)
         ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
       | SetLiteral => [
-        newType = SetT t: f
-        db addCollectionInstantiationIfAbsent: newType
+        newType = db addCollectionInstantiationIfAbsent: (SetT t: f)
         SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
       ]
       | MapLiteral => [TO DO:"Impossible, we are inside ListLiteral | SetLiteral, but niva dont shrinc enougth"]

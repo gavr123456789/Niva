@@ -58,7 +58,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
           ^ baseType
         ]
         inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
-        ListT t: inner
+        db addCollectionInstantiationIfAbsent: (ListT t: inner)
       ]
       | SetT => [
         genericParams count != 1 ifTrue: [
@@ -66,7 +66,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
           ^ baseType
         ]
         inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
-        SetT t: inner
+        db addCollectionInstantiationIfAbsent: (SetT t: inner)
       ]
       | MapT => [
         genericParams count != 2 ifTrue: [
@@ -75,7 +75,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
         ]
         keyType = genericParams at: 0, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
         valType = genericParams at: 1, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
-        MapT k: keyType v: valType
+        db addCollectionInstantiationIfAbsent: (MapT k: keyType v: valType)
       ]
       |=> [TO DO: "only TypeT/ListT/SetT/MapT can have generics"]
     ] ifFalse: [
