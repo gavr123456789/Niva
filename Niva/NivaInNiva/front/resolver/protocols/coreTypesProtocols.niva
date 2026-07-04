@@ -291,6 +291,8 @@ constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   bindProto = NivaProtocol name: "constructors"
 
   bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: any)
+  // `goCode:` is `emit:` whose expected type comes from the surrounding annotation
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "goCode" receiverType: bind argT: str returnType: any)
   bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
   bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: any)
   bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "backend" receiverType: bind argT1: str argT2: str returnType: any)

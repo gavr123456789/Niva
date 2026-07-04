@@ -43,6 +43,83 @@ extend TypeInfo [
   on toIrTypeRefNoErrors -> IrTypeRef = t toIrTypeRefWithMutErrors: isMut errorsList: {}
 ]
 
+// new Bind design https://github.com/gavr123456789/Niva/issues/418#issuecomment-4822453495
+
+extend String [
+  on bindCapitalizeFirst -> String = [
+    this count == 0 ifTrue: [^ this]
+    firstUp = ((this at: 0) toString) uppercase
+    ^ firstUp + (this drop: 1)
+  ]
+]
+
+extend MessageDecl [
+  // message name is stored joined by "__"; take the first keyword part
+  on bindFirstKey -> String = (name split: "__") first
+
+  on bindIsEmptyBody -> Bool = (isSingleExpr not) && (body unTypedBody isEmpty)
+
+  // exactly `Bind emit: "..."` or `Bind goCode: "..."` (one keyword) -> template
+  on bindEmitTemplate -> String? = [
+    exprs = body unTypedBody
+    exprs count == 1 ifFalse: [^ null]
+    first = exprs first
+    firstExpr = | first
+      | ReturnStatement => (first value unpack: [it] or: first)
+      |=> first
+    ^ | firstExpr
+      | KeywordMsg => [
+        recv = firstExpr receiver
+        recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
+        recvIsBind ifFalse: [^ null]
+        (firstExpr args count == 1) ifFalse: [^ null]
+        firstArg = firstExpr args first
+        selName = firstArg name name
+        ((selName == "emit") || (selName == "goCode")) ifFalse: [^ null]
+        | firstArg expr
+        | StringExpr => (firstArg expr token lexeme) unquoteLiteral
+        |=> null
+      ]
+      |=> null
+  ]
+
+  on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
+    ((db isBindMessageDecl: this) && (.bindIsEmptyBody)) ifTrue: [
+      ^ IrBindByName goPkg: pkg goName: (.bindFirstKey bindCapitalizeFirst) isStatic: isConstructor
+    ]
+    tmpl = .bindEmitTemplate
+    ^ tmpl unpack: [t ->
+      // emits inside a .bind.niva file auto-import that file's Go package
+      emitPkg = (db isBindMessageDecl: this) ifTrue: [pkg] ifFalse: [null]
+      IrBindEmit template: t goPkg: emitPkg
+    ] or: null
+  ]
+  // TODO: decide what to do when a bind function is passed as a value (higher-order).
+  // For empty-body (by-name) binds this is harmless (it's just a known Go function),
+  // but an inline `Bind emit:` has no wrapper to reference. Very rare; revisit later.
+]
+
+extend MessageDeclT [
+  // typed-side check used to skip generating a real Go function for inline emits
+  on isInlineBindEmit -> Bool = [
+    exprs = body v
+    exprs count == 1 ifFalse: [^ false]
+    first = exprs first
+    // single-expr method bodies are wrapped in an implicit return
+    firstExpr = | first
+      | ReturnStatementT => (first value unpack: [it] or: first)
+      |=> first
+    ^ | firstExpr
+      | KeywordMsgT => [
+        recvIsBind = (firstExpr dbMsg receiverType toMangledName) == "core_Bind"
+        (recvIsBind && (firstExpr args count == 1)) ifFalse: [^ false]
+        selName = firstExpr args first name name
+        (selName == "emit") || (selName == "goCode")
+      ]
+      |=> false
+  ]
+]
+
 extend TypeTField [
   on toIrTypeRef -> IrTypeRef = typeT toIrTypeRefWithMutErrors: isMut errorsList: {}
 ]
@@ -352,6 +429,8 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   baseReceiverType = receiverType unwrapNullable
   isBindReceiver = (baseReceiverType toMangledName) == "core_Bind"
   useNewCtor = isDefaultCtor && (dbMsg decl == null) && (isBindReceiver not)
+  // inlineable bind plan for this call (null for ordinary calls); computed once here
+  bindPlan = dbMsg decl unpack: [d -> d bindPlanWith: db pkg: (dbMsg pkgName)] or: null
   isReceiverFunction = | receiverType
     | FuntionT => true
     |=> false
@@ -441,20 +520,20 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             isReceiverFunction && (selector name == "do")
                   ifTrue: [
                     propagatingErrVar = exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]
-                    IrCall funcId: null callee: receiverExpr args: {} paramTypes: {} isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType :propagatingErrVar
+                    IrCall funcId: null callee: receiverExpr args: {} paramTypes: {} isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType :propagatingErrVar bind: null
                   ]
                   ifFalse: [
                     isCtor ifTrue: [
                              useNewCtor ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {} typeRef: exprType]
                                         ifFalse: [
                                           callId = dbMsg toCanonicalIrFunctionId: db
-                                          IrCall funcId: callId callee: null args: {} paramTypes: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null
+                                          IrCall funcId: callId callee: null args: {} paramTypes: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null bind: bindPlan
                                         ]
                            ]
                            ifFalse: [
                              callId = dbMsg toCanonicalIrFunctionId: db
                              propagatingErrVar = exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]
-                             IrCall funcId: callId callee: null args: {receiverExpr} paramTypes: {methodReceiverParamTypeRef} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType :propagatingErrVar
+                             IrCall funcId: callId callee: null args: {receiverExpr} paramTypes: {methodReceiverParamTypeRef} isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType :propagatingErrVar bind: bindPlan
                            ]
                   ]
           ]
@@ -496,7 +575,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             ifFalse: [
               callId = currentType toIrFunctionId: op
               currentTypeRef = currentType toIrTypeRefWithMutErrors: false errorsList: {}
-              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null])
+              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
             ]
 
           currentType <- opResultType
@@ -529,7 +608,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             isReceiverFunction
               ifTrue: [
                 argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
-                IrCall funcId: null callee: receiverExpr args: argsExprs paramTypes: functionParamTypes isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null])
+                IrCall funcId: null callee: receiverExpr args: argsExprs paramTypes: functionParamTypes isConstructor: false isBindCall: false msgName: null declPkg: null receiverType: null typeRef: exprType propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
               ]
               ifFalse: [
                 argsExprs = args map: [it expr toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
@@ -539,12 +618,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                       ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs typeRef: exprType]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null
+                        IrCall funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null bind: bindPlan
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) paramTypes: ({methodReceiverParamTypeRef} + methodArgParamTypes) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null])
+                    IrCall funcId: callId callee: null args: ({receiverExpr} + argsExprs) paramTypes: ({methodReceiverParamTypeRef} + methodArgParamTypes) isConstructor: false isBindCall: isBindReceiver msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: bindPlan
                   ]
               ]
           ]
@@ -707,11 +786,14 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
 TypedStatement toIrFunctions(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) -> List::IrFunction =
   | this
   | MessageDeclT => [
+      // single `Bind emit:`/`goCode:` body is inlined at call sites -> no Go function
+      this isInlineBindEmit ifTrue: [^ {IrFunction}]
       res::mut List::IrFunction = {}!
       res add: (this toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById)
       res toList
     ]
-  | ExtendDeclT => messages map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
+  | ExtendDeclT => (messages filter: [it isInlineBindEmit not])
+                     map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
   |=> {IrFunction}
 
 TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map(String, List(IrField)) -> List(IrTypeDef) =

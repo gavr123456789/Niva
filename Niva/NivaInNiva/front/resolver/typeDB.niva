@@ -160,7 +160,7 @@ extend TyperDB [
     bindMeta bindMessageDecls add: m
   ]
 
-  //on isBindMessageDecl(m): MessageDecl -> Bool = bindMeta bindMessageDecls contains: m
+  on isBindMessageDecl(m): MessageDecl -> Bool = bindMeta bindMessageDecls contains: m
 
   on markBindTypeId(typeId): String = [
     bindMeta bindTypeIds add: typeId
@@ -913,24 +913,16 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
 ]
 
-String parseBindFileName -> Tuple(String, String)? = [
-  markerDot = ".bind."
-  markerDash = "-bind-"
-  hasDot = this contains: markerDot
-  hasDot ifTrue: [
-    pkg = this substringBefore: markerDot
-    backend = this substringAfter: markerDot
-    (pkg count == 0) || (backend count == 0) ifTrue: [^ null]
-    ^ Tuple x: pkg y: backend
-  ]
-  hasDash = this contains: markerDash
-  hasDash ifTrue: [
-    pkg = this substringBefore: markerDash
-    backend = this substringAfter: markerDash
-    (pkg count == 0) || (backend count == 0) ifTrue: [^ null]
-    ^ Tuple x: pkg y: backend
-  ]
-  ^ null
+// A bind file is named `<pkgpath>.bind.niva`; the map key has `.niva` already
+// stripped, so we look for a trailing `.bind`. Dots in the package part become
+// slashes so `net.http.bind.niva` binds to the Go import path `net/http`.
+// Returns the Go import path, or null if this is not a bind file.
+String parseBindFileName -> String? = [
+  marker = ".bind"
+  (this endsWith: marker) ifFalse: [^ null]
+  pkgRaw = this substringBeforeLast: marker
+  pkgRaw count == 0 ifTrue: [^ null]
+  ^ pkgRaw replace: "." with: "/"
 ]
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String backend: String -> ResolverHelper  = [
@@ -950,22 +942,29 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
 
   // scan bind files first
   fileToContent forEach: [ file, content ->
-    bindInfo = file parseBindFileName
-    | bindInfo
+    pkgNameMaybe = file parseBindFileName
+    | pkgNameMaybe
     | null => []
     |=> [
-      pkgName = bindInfo x
-      backendName = bindInfo y
-      backendName == backend ifTrue: [
-        db addBindFile: file pkgName: pkgName
-        statements = TestParse withInput: content expectedCount: -1
-        list = getStatementsList pkgName: pkgName
-        statements forEach: [
+      pkgName = pkgNameMaybe
+      db addBindFile: file pkgName: pkgName
+      statements = TestParse withInput: content expectedCount: -1
+      list = getStatementsList pkgName: pkgName
+      statements forEach: [
+        | it
+        // no top level expressions allowed in a .bind.niva file
+        // TODO: report a proper compile error here instead of skipping
+        | Expr => []
+        |=> [
           list add: it
           db markBindStatement: it
           | it
           | MessageDecl => db markBindMessageDecl: it
-          | ExtendDecl => it messages forEach: [db markBindMessageDecl: it]
+          | ExtendDecl  => it messages forEach: [db markBindMessageDecl: it]
+          // types declared in a bind file are bindings to existing Go types,
+          // so mark them: the Go backend must not emit a struct for them
+          | TypeDecl    => db markBindTypeId: (pkgName + "_" + it name)
+          | UnionDecl   => db markBindTypeId: (pkgName + "_" + it name)
           |=> []
         ]
       ]

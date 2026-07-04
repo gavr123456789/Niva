@@ -106,12 +106,22 @@ union IrStmt =
 | IrWhile cond: IrExpr body: IrExpr
 | IrThrow errExpr: IrExpr
 
+// Inlineable binding info attached to an IrCall.
+// IrBindByName: empty-body bind in a .bind.niva file -> emitted as goPkg.goName(args)
+// IrBindEmit:   single `Bind emit:` body -> template inlined at each call site
+//               ($0 = receiver/this, $1 = first keyword arg, ...)
+union IrBind =
+| IrBindByName goPkg: String goName: String isStatic: Bool
+// goPkg: non-null when the emit lives in a .bind.niva file -> that Go package is
+// auto-imported at the call site (so no manual `Bind addImport:` is needed)
+| IrBindEmit template: String goPkg: String?
+
 union IrExpr typeRef: IrTypeRef =
 | IrLiteralExpr literal: IrLiteral
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String?
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
 // typeAlias name of the variable that will change its type inside different match branches (usually this, or it)

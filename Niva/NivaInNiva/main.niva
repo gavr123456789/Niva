@@ -56,14 +56,13 @@ constructor IO_Container new -> IO_Container = [
 compilerTry = [
   path = Compiler cliArgs
   NivaCompiler runArgs: path withIO: IO_Container new
-]do
+]
 
 compilerTry2 = [
   //path = {"run" ".niva_js/testss.niva"}
-  //path = {"run" ".niva_go/_testss.niva" "--backend" "go"}
-  path = {"run" "/Users/gavriil.maksyutenko/Documents/Fun/1_rareLangs/Roc/main.niva" "--backend" "go"}
+  path = {"run" ".niva_go/_testss.niva" "--backend" "go"}
   t1 = System currentTimeMillis
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
   diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
+] do

@@ -503,3 +503,80 @@ Test goBindPlaceholder10 = [
 
   go contains: "return j + a", assertTrue
 ]
+
+// New bind design (docs/bind_redesign_plan.md)
+
+// Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
+Test goBindInlineEmitUnary = [
+  fileMain = """
+    Int double -> Int = Bind emit: "($0 * 2)"
+    x = 21 double
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "(21 * 2)", assertTrue
+  // no wrapper function is generated for an inline emit
+  Assert that: (go contains: "func main__core_Int__double") equals: false
+]
+
+// Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
+Test goBindInlineEmitKeyword = [
+  fileMain = """
+    Int sas: Int and: Bool -> Int = Bind emit: "kekeke($1, $0, $2)"
+    y = 1 sas: 2 and: true
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "kekeke(2, 1, true)", assertTrue
+  Assert that: (go contains: "func main__core_Int__sas__and") equals: false
+]
+
+// Point 1: empty body in a .bind.niva file -> bind by function name.
+// instance method: receiver becomes the first Go argument.
+Test goBindByNameInstance = [
+  bindFile = """
+    String toUpper -> String = []
+  """
+  fileMain = """
+    a = "hi" toUpper
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "strings.ToUpper(\"hi\")", assertTrue
+  go contains: "\"strings\"", assertTrue
+]
+
+// Point 1: static (constructor) bind by name -> receiver is NOT an argument.
+Test goBindByNameStatic = [
+  bindFile = """
+    static String atoi: String -> Int = []
+  """
+  fileMain = """
+    b = String atoi: "42"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "strconv.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "strconv.Atoi(\"42\")", assertTrue
+  go contains: "\"strconv\"", assertTrue
+]
+
+// Point 3: multi-expr body stays a real function; `Bind goCode:` is inserted inline.
+Test goBindGoCodeInBody = [
+  fileMain = """
+    Int compute -> Int = [
+      a::Int = Bind goCode: "1 + 41"
+      ^ a
+    ]
+    x = 0 compute
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "1 + 41", assertTrue
+  // a multi-expr bind body is a normal Go function
+  go contains: "func main__core_Int__compute", assertTrue
+]
