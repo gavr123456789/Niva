@@ -454,7 +454,7 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                   |=> templateExpr toTSFromPkg: currentPkg db: db
             ]
 
-        isBindReceiver && (dbMsg name == "emit")
+        isBindReceiver && ((dbMsg name == "emit") || (dbMsg name == "goCode"))
             ifTrue: [
                 argExpr = args first expr
                 ^ | argExpr

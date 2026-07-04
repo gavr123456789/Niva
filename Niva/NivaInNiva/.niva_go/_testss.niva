@@ -1,2 +1,3 @@
-text = "a-b-c"
-splitted = text split: "-"
+
+List(Int) average = 42
+{1 2 3} average echo

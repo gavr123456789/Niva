@@ -129,6 +129,41 @@ extend String [
     ^ sb toString
   ]
 
+  // Like bindApply but 0-based: $0 -> argsValues[0] (receiver/this), $1 -> arg1, ...
+  // Used by inline `Bind emit:` bodies in the new bind design.
+  on bindApply0(argsValues): List(String) -> String = [
+    template = this
+    sb = StringBuilder new
+    len = template count
+    mut i = 0
+    [i < len] whileTrue: [
+      ch = template at: i
+      ch == '$' ifTrue: [
+        (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+          mut digitStr = ""
+          mut j = i + 1
+          [j < len && ((template at: j) isDigit)] whileTrue: [
+            digitStr <- digitStr + ((template at: j) toString)
+            j <- j + 1
+          ]
+          idx = digitStr toInt
+          isValid = (idx >= 0) && (idx < (argsValues count))
+          isValid
+            ifTrue: [sb append: (argsValues at: idx)]
+            ifFalse: [sb append: "$" + digitStr]
+          i <- j
+        ] ifFalse: [
+          sb append: "$"
+          i <- i + 1
+        ]
+      ] ifFalse: [
+        sb append: (ch toString)
+        i <- i + 1
+      ]
+    ]
+    ^ sb toString
+  ]
+
 ]
 
 String

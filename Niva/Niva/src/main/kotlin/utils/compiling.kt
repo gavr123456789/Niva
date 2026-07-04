@@ -803,7 +803,7 @@ fun putInMainKotlinCode(
                     val y = lines.getOrNull(kotlinLine - 1)
                     if (y != null) {
                         val splitted = y.split("@")
-                        if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
+                            if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine + " in file " + file)
                             val fileAndLineNumber = splitted[1].trim()
                             val (file, lineStr) = fileAndLineNumber.split(":::")
                             val line = lineStr.toInt()

@@ -6,19 +6,23 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
   | IrThisRef     => []
   | IrFieldGet    => [receiver validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
   | IrCall        => [
-      fid = funcId
-      | fid
-      | null => [
-          callee == null ifTrue: [
-            goErrors add: (GoIrError message: "IrCall without funcId must have callee")
+      // inlined bind calls (emit / by-name) don't resolve a funcId, they are
+      // substituted directly by the backend, so skip funcId validation for them
+      bind == null ifTrue: [
+        fid = funcId
+        | fid
+        | null => [
+            callee == null ifTrue: [
+              goErrors add: (GoIrError message: "IrCall without funcId must have callee")
+            ]
           ]
-        ]
-      |=> [
-          isCore = declPkg unpack: [it == "core"] or: false
-          (isCore not) && (knownFuncIds contains: fid, not) ifTrue: [
-            goErrors add: (GoIrError message: ("unknown Go IR func id: " + fid))
+        |=> [
+            isCore = declPkg unpack: [it == "core"] or: false
+            (isCore not) && (knownFuncIds contains: fid, not) ifTrue: [
+              goErrors add: (GoIrError message: ("unknown Go IR func id: " + fid))
+            ]
           ]
-        ]
+      ]
       callee unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
       args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
       paramTypes forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]

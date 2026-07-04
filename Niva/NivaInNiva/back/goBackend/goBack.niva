@@ -332,7 +332,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   |=> [
     msgNameLocal = msgNameLocalMaybe
     ^ | msgNameLocal
-    | "emit" => [
+    | "emit" | "goCode" => [
       templateExpr = args first
       templateVal = templateExpr irStringLiteralValue
       | templateVal
@@ -485,6 +485,26 @@ extend IrExpr [
         "(" + l + " " + op + " " + r + ")"
       ]
     | IrCall => [
+        // new bind design: inlineable bind plan attached during IR generation
+        bind unpack: [bp ->
+          | bp
+          | IrBindByName => [
+              ctx addImport: bp goPkg
+              byNameArgs = args mapIndexed: [i, it ->
+                paramType = paramTypes at: i
+                it toGoArgExpr: ctx scope: scope paramType: paramType
+              ], goCallArgs
+              ^ (bp goPkg goPkgQualifier) + "." + (bp goName) + "(" + byNameArgs + ")"
+            ]
+          | IrBindEmit => [
+              // emits from a .bind.niva file auto-import that Go package
+              bp goPkg unpack: [ctx addImport: it]
+              // $0 = receiver/this, $1 = first keyword arg, ...
+              emitArgVals = args map: [it toGoExpr: ctx scope: scope]
+              ^ bp template bindApply0: emitArgVals
+            ]
+        ]
+
         bindExpr = this tryGoBindExpr: ctx scope: scope
         bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
         argsStr = args mapIndexed: [i, it ->
