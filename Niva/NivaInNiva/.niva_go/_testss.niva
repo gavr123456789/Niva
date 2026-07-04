@@ -1,3 +1,9 @@
 
+List(Int) sum -> Int = [
+  mut x = 0
+  this forEach: [x <- x + it]
+  ^ x
+]
+
 List(Int) average = 42
-{1 2 3} average echo
+{1 2 3} sum echo

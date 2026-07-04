@@ -460,7 +460,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context rootWithPkg: pkg
-    receiverType = db findByTypeName: receiver name inPkg: null
+    receiverType = receiver toNivaTypefromDB: db inPkg: null
     receiverType name == "Nothing" ifTrue: [
       TO DO: "You cant declare methods for Nothing type"
     ]

@@ -19,6 +19,8 @@ type TyperDB
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
   constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
+  // canonical instances for collection types (ListT/SetT/MapT), keyed by "List_Int" etc.
+  canonicalCollectionInstances: mut Map(String, NivaType)
 
   // generated
   generatedMessageDecls: mut List::MessageDecl
@@ -129,6 +131,7 @@ constructor TyperDB new -> TyperDB = [
     typeToMethodNameToMethod: typeToMethodNameToMethod
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
+    canonicalCollectionInstances: #{}!
     generatedMessageDecls: {}!
     typedBodiesCache: #{}!
     declToMethod: #{}!
@@ -565,73 +568,73 @@ extend TyperDB [
   on addCollectionInstantiationIfAbsent(collectionType): NivaType -> NivaType = [
     ^| collectionType
     | ListT => [
-      existing = typeToMethodNameToMethod at: collectionType
-      | existing
-      | null => [
-        coreBase = dtc list
-        letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: coreBase t name put: collectionType t
+      collId = "List_" + collectionType t toMangledName
+      existingCanonical = canonicalCollectionInstances at: collId
+      existingCanonical != null ifTrue: [^ existingCanonical unpackOrPANIC]
+      canonicalCollectionInstances at: collId put: collectionType
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
-        instMethods::mut Map(String, NivaMethod) = #{}!
-        dontMangle = letterToType keys toSet
+      coreBase = dtc list
+      letterToType::mut Map(String, NivaType) = #{}!
+      letterToType at: coreBase t name put: collectionType t
 
-        baseMethods values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-          instMethods at: newM name put: newM
-        ]
+      baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
+      instMethods::mut Map(String, NivaMethod) = #{}!
+      dontMangle = letterToType keys toSet
 
-        typeToMethodNameToMethod at: collectionType put: instMethods
-        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      baseMethods values forEach: [ m ->
+        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+        instMethods at: newM name put: newM
       ]
-      |=> []
+
+      typeToMethodNameToMethod at: collectionType put: instMethods
+      constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
       collectionType
     ]
     | SetT => [
-      existing = typeToMethodNameToMethod at: collectionType
-      | existing
-      | null => [
-        coreBase = dtc set
-        letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: coreBase t name put: collectionType t
+      collId = "Set_" + collectionType t toMangledName
+      existingCanonical = canonicalCollectionInstances at: collId
+      existingCanonical != null ifTrue: [^ existingCanonical unpackOrPANIC]
+      canonicalCollectionInstances at: collId put: collectionType
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
-        instMethods::mut Map(String, NivaMethod) = #{}!
-        dontMangle = letterToType keys toSet
+      coreBase = dtc set
+      letterToType::mut Map(String, NivaType) = #{}!
+      letterToType at: coreBase t name put: collectionType t
 
-        baseMethods values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-          instMethods at: newM name put: newM
-        ]
+      baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
+      instMethods::mut Map(String, NivaMethod) = #{}!
+      dontMangle = letterToType keys toSet
 
-        typeToMethodNameToMethod at: collectionType put: instMethods
-        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      baseMethods values forEach: [ m ->
+        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+        instMethods at: newM name put: newM
       ]
-      |=> []
+
+      typeToMethodNameToMethod at: collectionType put: instMethods
+      constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
       collectionType
     ]
     | MapT => [
-      existing = typeToMethodNameToMethod at: collectionType
-      | existing
-      | null => [
-        coreBase = dtc map
-        letterToType::mut Map(String, NivaType) = #{}!
-        letterToType at: coreBase k name put: collectionType k
-        letterToType at: coreBase v name put: collectionType v
+      collId = "Map_" + collectionType k toMangledName + "_" + collectionType v toMangledName
+      existingCanonical = canonicalCollectionInstances at: collId
+      existingCanonical != null ifTrue: [^ existingCanonical unpackOrPANIC]
+      canonicalCollectionInstances at: collId put: collectionType
 
-        baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
-        instMethods::mut Map(String, NivaMethod) = #{}!
-        dontMangle = letterToType keys toSet
+      coreBase = dtc map
+      letterToType::mut Map(String, NivaType) = #{}!
+      letterToType at: coreBase k name put: collectionType k
+      letterToType at: coreBase v name put: collectionType v
 
-        baseMethods values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-          instMethods at: newM name put: newM
-        ]
+      baseMethods::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: coreBase, unpackOrPANIC
+      instMethods::mut Map(String, NivaMethod) = #{}!
+      dontMangle = letterToType keys toSet
 
-        typeToMethodNameToMethod at: collectionType put: instMethods
-        constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
+      baseMethods values forEach: [ m ->
+        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+        instMethods at: newM name put: newM
       ]
-      |=> []
+
+      typeToMethodNameToMethod at: collectionType put: instMethods
+      constructorsTypeToMethodNameToMethod at: collectionType put: #{}!
       collectionType
     ]
     |=> collectionType
