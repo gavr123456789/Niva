@@ -60,9 +60,9 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
 
-  // injectInto: initial operation: (acc, item) -> acc (List only)
   | collectionType
   | ListT => [
+      // injectInto: initial operation: (acc, item) -> acc (List only)
       accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
                       fields: { accArg itArg }!
@@ -74,6 +74,19 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
       injectArgs = {(TypeTField name: "inject" typeT: t isMut: false)
                     (TypeTField name: "into" typeT: injectBlock isMut: false)}
       collP addMethod: (NivaMethod manyArgKw: injectArgs receiverType: collectionType returnT: t)
+
+
+      reduceArg = TypeTField name: "acc" typeT: t isMut: false
+      reduceBlock = FuntionT
+                      fields: { reduceArg itArg }!
+                      name: "reduce"
+                      genericArgs: {}!
+                      pkgName: "core"
+                      returnType: t
+
+      reduceArgs = {(TypeTField name: "reduce" typeT: reduceBlock isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: reduceArgs receiverType: collectionType returnT: t)
+
     ]
   |=> []
 
