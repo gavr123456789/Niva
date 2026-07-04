@@ -2,8 +2,13 @@
 List(Int) sum -> Int = [
   mut x = 0
   this forEach: [x <- x + it]
-  ^ x
+  x
 ]
 
-List(Int) average = 42
-{1 2 3} sum echo
+List(Int) sum2 -> Int =
+  this reduce: [a, b -> a + b]
+
+List(Int) average =
+  this sum2 / this count
+
+{1 2 3} average echo

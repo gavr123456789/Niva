@@ -84,7 +84,7 @@ extend String [
         ifTrue: [.substringBefore: "__"]
        ifFalse: [this]
     this == result ifFalse: [
-      "goNormalizeTypeId: before = $this, after = $result" log
+      "goNormalizeTypeId: before = $this, after = $result" // log
     ]
     ^ result
   ]
