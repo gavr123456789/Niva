@@ -142,7 +142,9 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   // hasGenerics
   // and at the end if it has then use the new generated kwMsg with instantiated geneircs, if not then use kwMsgDB
 
+
   Assert that: kwMsgDB args count equals: args count
+         andSay: (receiverTyped token toPosition + " " + kwMsgDB toString + " has different abount of arguments ")
 
 
 
@@ -235,8 +237,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     // instantiated receiver type is already registered in replaceGenericsFromTable
 
     // register the method in the instantiated receiver type's method table
-    instReceiverType = newMethod receiverType
-    db addCollectionInstantiationIfAbsent: instReceiverType
+    instReceiverType = db addCollectionInstantiationIfAbsent: newMethod receiverType
 
     // add the method to the cache if missing
     // instantiated methods go to instantiatedCache
@@ -322,13 +323,14 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "db isAssignable: realType toExpected: argTypeFromDb"
 
+  canonicalReturnType = db addCollectionInstantiationIfAbsent: kwMsgDB returnType
   newKeyword = KeywordMsgT
     args: typedArgs
     kind: kwMsgDB kind
     receiver: receiverTypedExpr
     token: token
     typeInfo: (TypeInfo
-                  t: kwMsgDB returnType
+                  t: canonicalReturnType
                   isMut: kwMsgDB forMut
                   listOfErrors: kwMsgDB returnErrors)
     dbMsg: kwMsgDB
