@@ -179,7 +179,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
-  strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
+  // strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
 
   itArg = TypeTField name: "it" typeT: char isMut: false
   foreachBlock = FuntionT
