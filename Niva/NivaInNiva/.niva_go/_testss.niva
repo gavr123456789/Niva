@@ -1,14 +1,8 @@
 
-List(Int) sum -> Int = [
-  mut x = 0
-  this forEach: [x <- x + it]
-  x
+
+cats = "😼 😹 😻 😺 😸 😽" split: " "
+1..3 forEach: [
+  cats shuffled take: 3,
+                forEach: [it echonl]
+  "" echo
 ]
-
-List(Int) sum2 -> Int =
-  this reduce: [a, b -> a + b]
-
-List(Int) average =
-  this sum2 / this count
-
-{1 2 3} average echo
