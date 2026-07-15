@@ -72,6 +72,7 @@ constructor GoBackend [
     ]
     retStr = fn returnType goReturnTypes: ctx
 
+    fn token printGoLine-intoSb: sb
     sb appendLine: ("// funcId: " + fn id + " goName: " + name)
     sb appendLine: ("func " + name + typeParams + "(" + argsStr + ")" + retStr + " {")
 
@@ -119,6 +120,7 @@ constructor GoBackend [
     | entryResult
     | null => []
     |=> [
+      entryResult token printGoLine-intoSb: sb
       sb appendIndent: 1 line: (entryResult toGoStatement: ctx scope: scope)
     ]
     sb appendLine: "}"

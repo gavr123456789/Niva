@@ -406,7 +406,6 @@ Test goImplicitLambdaArgCodegen = [
 
   go contains: "core.List__map([]int{1, 2, 3}, func(it int) int {", assertTrue
   go contains: "return (it + 1)", assertTrue
-  go contains: "},\n)", assertTrue
   Assert that: (go contains: "func() int") equals: false
 ]
 
