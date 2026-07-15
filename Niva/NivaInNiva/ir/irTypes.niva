@@ -74,7 +74,9 @@ type IrFunction
   generics: List(String)
   instantiations: List(IrInstantiation)
   body: IrBlock
+  token: Token
 
+// [...]
 type IrBlock
   stmts: List(IrStmt)
   result: IrExpr?
@@ -96,7 +98,7 @@ type IrMatchCase
   body: IrBlock
   assertedTypeRef: IrTypeRef?
 
-union IrStmt =
+union IrStmt token: Token =
 | IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool isUsed: Bool
 | IrSetLocal name: String value: IrExpr
 | IrSetField receiver: IrExpr field: String value: IrExpr
@@ -116,7 +118,7 @@ union IrBind =
 // auto-imported at the call site (so no manual `Bind addImport:` is needed)
 | IrBindEmit template: String goPkg: String?
 
-union IrExpr typeRef: IrTypeRef =
+union IrExpr typeRef: IrTypeRef token: Token =
 | IrLiteralExpr literal: IrLiteral
 | IrVarRef name: String
 | IrThisRef
