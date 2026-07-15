@@ -62,6 +62,7 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
       | emitResult
       | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
       |=> [
+        emitResult token printGoLine-intoSb: sb
         exprStr = emitResult toGoExpr: this :scope
         line = hasErrors
           ifTrue:  ["return " + exprStr + ", nil"]
@@ -72,7 +73,9 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
     ifTrue: [
       | emitResult
       | null => []
-      |=> [ sb appendIndent: indent
+      |=> [
+        emitResult token printGoLine-intoSb: sb
+        sb appendIndent: indent
                line: (emitResult toGoStatement: this :scope) ]
     ]
 ]
@@ -879,7 +882,8 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   ^ sb toString
 ]
 
-IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit =
+IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
+  token printGoLine-intoSb: sb
   | this
   | IrLet => [
       goName = name toSafeGoIdent
@@ -971,6 +975,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
         ifFalse: ["return " + (returnType goZeroValue: ctx) + ", " + errStr]
       sb appendIndent: indent line: returnLine
   ]
+]
 
 extend IrBlock [
   on blockToGoExpr(ctx): GoContext scope: GoScope -> String = [
@@ -1033,8 +1038,5 @@ List(IrField) goTypeParamsFromFields -> List(String) = [
 
 List(String) goCallArgs -> String = [
   .isEmpty ifTrue: [^ ""]
-  joined = .joinWith: ", "
-  hasMultilineArg = .any: [it contains: "\n"]
-  ^ hasMultilineArg ifTrue: [joined + ",\n"]
-                   ifFalse: [joined]
+  ^ .joinWith: ", "
 ]

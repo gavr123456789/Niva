@@ -26,7 +26,7 @@ constructor NivaBuildSystem [
 type NivaCompiler
 
 constructor NivaCompiler [
-    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: false
+    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: true
     on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [
         t1 = System currentTimeMillis
 
@@ -83,12 +83,12 @@ constructor NivaCompiler [
 
         rootFile = path unpackOrValue: "main.niva"
         entryPoint = rootFile toPath name substringBeforeLast: "."
-        t2 = measureTimeFrom from: t1 text: "arg-parsed"
+        //t2 = measureTimeFrom from: t1 text: "arg-parsed"
 
         runOrBuild = [
 
           pathToContent = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
-          t3 = measureTimeFrom from: t2 text: "collect-files"
+          //t3 = measureTimeFrom from: t2 text: "collect-files"
 
           resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
           resolver db listOfErrors isNotEmpty ifTrue: [
@@ -104,19 +104,23 @@ constructor NivaCompiler [
             t3 = System currentTimeMillis
 
             resolver = runOrBuild do
-            t4 = measureTimeFrom from: t3 text: "resolve"
+            //t4 = measureTimeFrom from: t3 text: "resolve"
 
             | backend
             | CompilerBackend.Go => [
                 generateGoFromResolver res: resolver
 
 
-                t5 = measureTimeFrom from: t4 text: "generated-go"
+                t5 = measureTimeFrom from: t1 text: "full niva until go generated"
 
                 option == CompilerOption.Run ifTrue: [
                   pathToEntryPoint = realGoPath //+ "/main.go"
-                  run-code = io runProgramFromPath path: pathToEntryPoint args: {"go" "build" "."}
-                  run-code == 0 ifTrue: [io runProgram args: {"./.niva_go/niva_go"}]
+                  //run-code = io runProgramFromPath path: pathToEntryPoint args: {"ixgo" "run" "."}
+                  t6 = measureTimeFrom from: t5 text: "go build"
+
+                  //run-code == 0 ifTrue: [io runProgram args: {"./.niva_go/niva_go"}]
+                  io runProgram args: {"ixgo" "run" pathToEntryPoint}
+                  t7 = measureTimeFrom from: t6 text: "run binary"
 
                 ]
 
