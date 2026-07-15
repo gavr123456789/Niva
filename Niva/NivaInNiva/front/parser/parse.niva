@@ -771,7 +771,7 @@ extend mut Parser [
   /// otherwise returns token at current position
   on peek -> Token = [
     // current >= tokens count, ifTrue: [
-    //   ^ Token eof
+    //   ^ EOF_TOKEN
     // ]
 
     ^tokens at: current

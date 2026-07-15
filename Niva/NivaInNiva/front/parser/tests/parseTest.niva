@@ -11,6 +11,18 @@ constructor TestParse withInput: String expectedCount: Int -> mut List::Statemen
   ^statements
 ]
 
+constructor TestParse withInput(content): String file(sf): SourceFile expectedCount: Int -> mut List::Statement = [
+  tokens = Lexer get-tokens: content file: sf
+  parser = Parser newParseTokens: tokens
+  statements::mut List(Statement) = parser statements
+
+  expectedCount > 0 ifTrue: [
+    Assert that: statements count equals: expectedCount
+  ]
+
+  ^statements
+]
+
 constructor TestParse expression::String -> Expr = [
   expr = Parser newParseTokens: (Lexer get-tokens: expression), statements at: 0
 

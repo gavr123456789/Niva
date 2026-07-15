@@ -272,13 +272,13 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
              // get resolved type from newMethod args
              resolvedArgType = newMethod args at: i, typeT
 
-             NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: (Token fake))
+             NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: FAKE_TOKEN)
           ]
           newDecl = MessageDecl
-            receiver: (AstType name: instReceiverType toMangledName tok: (Token fake))
+            receiver: (AstType name: instReceiverType toMangledName tok: FAKE_TOKEN)
             name: newMethod name // mangled name if method was generic
             args: newArgs
-            returnType: (AstType name: newMethod returnType toMangledName tok: (Token fake))
+            returnType: (AstType name: newMethod returnType toMangledName tok: FAKE_TOKEN)
             body: newBody
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor

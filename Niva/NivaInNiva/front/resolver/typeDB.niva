@@ -951,7 +951,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
     |=> [
       pkgName = pkgNameMaybe
       db addBindFile: file pkgName: pkgName
-      statements = TestParse withInput: content expectedCount: -1
+      statements = TestParse withInput: content file: (SourceFile path: (file + ".bind.niva")) expectedCount: -1
       list = getStatementsList pkgName: pkgName
       statements forEach: [
         | it
@@ -978,7 +978,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   fileToContent forEach: [ file, content ->
     bindInfo = file parseBindFileName
     bindInfo == null ifTrue: [
-      statements = TestParse withInput: content expectedCount: -1
+      statements = TestParse withInput: content file: (SourceFile path: (file + ".niva")) expectedCount: -1
       list = getStatementsList pkgName: file
       statements forEach: [list add: it]
     ]

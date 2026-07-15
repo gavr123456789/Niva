@@ -4,6 +4,8 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP = NivaProtocol common
   // unary
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
+  // not pure
+  collP addMethod: (NivaMethod unary: "shuffled" receiverType: collectionType returnT: collectionType)
   // can throw
   collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
   collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
@@ -18,12 +20,13 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   // keyword
   collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType ) //TODO nullable
   collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
+
+  collP addMethod: (NivaMethod singleArgKw: "take" receiverType: collectionType argT: int returnT: collectionType)
+  collP addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: collectionType argT: int returnT: collectionType)
   collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
   collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
-  //collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
-  /////
-  // lambdas (map/foreach/filter)
 
+  // lambdas (map/foreach/filter)
   collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
   // foreach: (item) -> unit
   itArg = TypeTField name: "it" typeT: itemType isMut: false
@@ -289,6 +292,7 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
 
   // unary
   anyProto addMethod: (NivaMethod unary: "echo" receiverType: any returnT: unit)
+  anyProto addMethod: (NivaMethod unary: "echonl" receiverType: any returnT: unit)
   anyProto addMethod: (NivaMethod unary: "toString" receiverType: any returnT: str)
   // binary
   anyProto addMethod: (NivaMethod binary: "==" receiverType: any argT: any returnT: bool)
@@ -362,7 +366,7 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
 ]
 
 constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer rangeType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
-  {unit bool t} = dtc
+  {unit bool t int list} = dtc
 
   rangeProto = NivaProtocol name: "range"
 
@@ -373,7 +377,11 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
                   genericArgs: {}!
                   pkgName: "core"
                   returnType: unit
+
   rangeProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: rangeType argT: foreachBlock returnT: unit)
+  rangeProto addMethod: (NivaMethod unary: "random" receiverType: rangeType returnT: int)
+  rangeProto addMethod: (NivaMethod singleArgKw: "take" receiverType: rangeType argT: int returnT: (ListT t: itemType))
+  rangeProto addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: rangeType argT: int returnT: (ListT t: itemType))
 
   // filter: (item) -> bool, returns List[item]
   filterBlock = FuntionT

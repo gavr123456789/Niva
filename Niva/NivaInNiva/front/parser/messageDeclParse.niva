@@ -376,7 +376,7 @@ extend mut Parser [
       externalName = tok lexeme
 
       mut ok = .match: TokenType.OpenParen
-      mut localTok = Token eof
+      mut localTok = EOF_TOKEN
       ok ifTrue: [
         localTok <- .peek
         ok <- (localTok kind == TokenType.Identifier)
