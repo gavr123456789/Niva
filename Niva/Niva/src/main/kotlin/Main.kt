@@ -28,6 +28,9 @@ fun main(args: Array<String>) {
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
+    val arr = List(100) {42}
+    val aar = List(100) {it * 2}
+
 
     // readJar("/home/gavr/.gradle/caches/modules-2/files-2.1/io.github.jwharm.javagi/gtk/0.9.0/2caa1960a0bec1c8ed7127a6804693418441f166/gtk-0.9.0.jar")
 
